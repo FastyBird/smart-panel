@@ -121,15 +121,15 @@ describe('WhatsAppBotProvider', () => {
 	});
 
 	describe('onModuleInit', () => {
-		it('should initialize with disabled config', async () => {
+		it('should initialize with disabled config', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.isConfigured()).toBe(false);
 		});
 
-		it('should initialize when fully configured', async () => {
+		it('should initialize when fully configured', () => {
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({
 					enabled: true,
@@ -139,44 +139,44 @@ describe('WhatsAppBotProvider', () => {
 				}),
 			);
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.isConfigured()).toBe(true);
 		});
 	});
 
 	describe('verifyWebhookToken', () => {
-		it('should return true when token matches', async () => {
+		it('should return true when token matches', () => {
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({ enabled: true, webhookVerifyToken: 'my-verify-token' }),
 			);
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.verifyWebhookToken('my-verify-token')).toBe(true);
 		});
 
-		it('should return false when token does not match', async () => {
+		it('should return false when token does not match', () => {
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({ enabled: true, webhookVerifyToken: 'my-verify-token' }),
 			);
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.verifyWebhookToken('wrong-token')).toBe(false);
 		});
 
-		it('should return false when no verify token configured', async () => {
+		it('should return false when no verify token configured', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: true }));
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.verifyWebhookToken('any-token')).toBe(false);
 		});
 	});
 
 	describe('handleWebhookPayload', () => {
-		beforeEach(async () => {
+		beforeEach(() => {
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({
 					enabled: true,
@@ -191,7 +191,7 @@ describe('WhatsAppBotProvider', () => {
 				text: jest.fn().mockResolvedValue('{}'),
 			});
 
-			await provider.onModuleInit();
+			provider.onModuleInit();
 		});
 
 		afterEach(() => {
@@ -273,12 +273,73 @@ describe('WhatsAppBotProvider', () => {
 
 			expect(conversationService.create).not.toHaveBeenCalled();
 		});
+
+		it('should continue processing remaining messages when one fails', async () => {
+			jest.useFakeTimers();
+
+			// First conversation: sendMessage fails, then error-recovery fetch also fails all retries
+			// Second conversation: works normally
+			conversationService.create.mockResolvedValueOnce({ id: 'conv-fail' }).mockResolvedValueOnce({ id: 'conv-2' });
+			conversationService.sendMessage
+				.mockRejectedValueOnce(new Error('Service unavailable'))
+				.mockResolvedValueOnce({ content: 'Response 2' });
+
+			// All fetch calls for the error-recovery message fail, then subsequent calls succeed
+			const fetchMock = jest.fn();
+			const networkError = new Error('Network error');
+
+			// 5 rejections = exhaust all retries for the error-recovery sendTextMessage
+			for (let i = 0; i < 5; i++) {
+				fetchMock.mockRejectedValueOnce(networkError);
+			}
+
+			// Then succeed for second message's response
+			fetchMock.mockResolvedValue({ ok: true, text: jest.fn().mockResolvedValue('{}') });
+			global.fetch = fetchMock;
+
+			const payload = {
+				object: 'whatsapp_business_account',
+				entry: [
+					{
+						id: 'entry-1',
+						changes: [
+							{
+								value: {
+									messaging_product: 'whatsapp',
+									metadata: { phone_number_id: '123456' },
+									messages: [
+										{ from: '+1111111111', id: 'msg-1', type: 'text', text: { body: 'First' } },
+										{ from: '+2222222222', id: 'msg-2', type: 'text', text: { body: 'Second' } },
+									],
+								},
+							},
+						],
+					},
+				],
+			};
+
+			// Run the payload processing, advancing timers to skip retry delays
+			const promise = provider.handleWebhookPayload(payload);
+
+			// Advance through all retry delays
+			for (let i = 0; i < 10; i++) {
+				await Promise.resolve();
+				jest.advanceTimersByTime(20_000);
+			}
+
+			await promise;
+
+			// Second message should still have been processed despite first message failing
+			expect(conversationService.sendMessage).toHaveBeenCalledWith('conv-2', 'Second');
+
+			jest.useRealTimers();
+		});
 	});
 
 	describe('onConfigUpdated', () => {
-		it('should update config when values change', async () => {
+		it('should update config when values change', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({
@@ -293,11 +354,11 @@ describe('WhatsAppBotProvider', () => {
 			expect(provider.isConfigured()).toBe(true);
 		});
 
-		it('should not update when config has not changed', async () => {
+		it('should not update when config has not changed', () => {
 			const config = makeConfig({ enabled: false });
 
 			configService.getPluginConfig.mockReturnValue(config);
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			// Call again with same config
 			provider.onConfigUpdated();
@@ -316,13 +377,13 @@ describe('WhatsAppBotProvider', () => {
 	});
 
 	describe('getPluginConfig fallback', () => {
-		it('should return null when config service throws', async () => {
+		it('should return null when config service throws', () => {
 			configService.getPluginConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
 
 			// Should not throw - falls back to null config
-			await provider.onModuleInit();
+			provider.onModuleInit();
 
 			expect(provider.isConfigured()).toBe(false);
 		});

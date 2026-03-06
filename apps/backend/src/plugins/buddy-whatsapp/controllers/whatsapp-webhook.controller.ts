@@ -1,7 +1,7 @@
+import type { Response } from 'express';
+
 import { Body, Controller, Get, HttpCode, Logger, Post, Query, Res } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
-
-import type { Response } from 'express';
 
 import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
 

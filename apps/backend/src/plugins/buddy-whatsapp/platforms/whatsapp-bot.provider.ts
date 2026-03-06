@@ -69,7 +69,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		const config = this.getPluginConfig();
 
 		this.activeConfig = {
@@ -145,15 +145,10 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			}
 
 			try {
-				await this.sendInteractiveButtons(
-					config,
-					phone,
-					`💡 *${suggestion.title}*\n\n${suggestion.reason}`,
-					[
-						{ id: `suggestion:accept:${suggestion.id}`, title: 'Accept' },
-						{ id: `suggestion:dismiss:${suggestion.id}`, title: 'Dismiss' },
-					],
-				);
+				await this.sendInteractiveButtons(config, phone, `💡 *${suggestion.title}*\n\n${suggestion.reason}`, [
+					{ id: `suggestion:accept:${suggestion.id}`, title: 'Accept' },
+					{ id: `suggestion:dismiss:${suggestion.id}`, title: 'Dismiss' },
+				]);
 			} catch (error) {
 				this.logger.warn(`Failed to send suggestion to WhatsApp ${phone}: ${String(error)}`);
 			}
@@ -196,27 +191,31 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 				}
 
 				for (const message of messages) {
-					const from = message.from;
+					try {
+						const from = message.from;
 
-					if (!from) {
-						continue;
-					}
+						if (!from) {
+							continue;
+						}
 
-					// Enforce phone number whitelist
-					if (allowedPhones.size > 0 && !allowedPhones.has(from)) {
-						this.logger.debug(`Rejected message from unauthorized WhatsApp number ${from}`);
+						// Enforce phone number whitelist
+						if (allowedPhones.size > 0 && !allowedPhones.has(from)) {
+							this.logger.debug(`Rejected message from unauthorized WhatsApp number ${from}`);
 
-						continue;
-					}
+							continue;
+						}
 
-					if (message.type === 'text' && message.text?.body) {
-						await this.handleTextMessage(config, from, message.text.body);
-					} else if (
-						message.type === 'interactive' &&
-						message.interactive?.type === 'button_reply' &&
-						message.interactive.button_reply?.id
-					) {
-						await this.handleButtonReply(config, from, message.interactive.button_reply.id);
+						if (message.type === 'text' && message.text?.body) {
+							await this.handleTextMessage(config, from, message.text.body);
+						} else if (
+							message.type === 'interactive' &&
+							message.interactive?.type === 'button_reply' &&
+							message.interactive.button_reply?.id
+						) {
+							await this.handleButtonReply(config, from, message.interactive.button_reply.id);
+						}
+					} catch (error) {
+						this.logger.error(`Failed to process WhatsApp message: ${String(error)}`);
 					}
 				}
 			}
@@ -243,7 +242,11 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			await this.sendTextMessage(config, from, response.content);
 		} catch (error) {
 			this.logger.error(`Error processing WhatsApp message from ${from}: ${String(error)}`);
-			await this.sendTextMessage(config, from, 'Sorry, I encountered an error processing your message. Please try again.');
+			await this.sendTextMessage(
+				config,
+				from,
+				'Sorry, I encountered an error processing your message. Please try again.',
+			);
 		}
 	}
 
@@ -350,7 +353,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 				const response = await fetch(url, {
 					method: 'POST',
 					headers: {
-						'Authorization': `Bearer ${config.accessToken}`,
+						Authorization: `Bearer ${config.accessToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify(body),
@@ -367,7 +370,9 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 				if (attempt < WHATSAPP_RETRY_DELAYS_MS.length) {
 					const delay = WHATSAPP_RETRY_DELAYS_MS[attempt];
 
-					this.logger.warn(`WhatsApp API call failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`);
+					this.logger.warn(
+						`WhatsApp API call failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`,
+					);
 					await this.sleep(delay);
 				} else {
 					throw error;
