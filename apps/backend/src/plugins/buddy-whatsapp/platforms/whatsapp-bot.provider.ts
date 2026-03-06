@@ -171,7 +171,18 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 	verifyWebhookToken(token: string): boolean {
 		const config = this.getPluginConfig();
 
-		return Boolean(config?.webhookVerifyToken && config.webhookVerifyToken === token);
+		if (!config?.webhookVerifyToken) {
+			return false;
+		}
+
+		const expected = Buffer.from(config.webhookVerifyToken, 'utf8');
+		const provided = Buffer.from(token, 'utf8');
+
+		if (expected.length !== provided.length) {
+			return false;
+		}
+
+		return timingSafeEqual(expected, provided);
 	}
 
 	/**

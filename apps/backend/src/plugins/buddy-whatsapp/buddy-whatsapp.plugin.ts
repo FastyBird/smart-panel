@@ -130,8 +130,8 @@ WhatsApp adapter plugin for the Buddy module. Enables remote conversations and a
 				done(null, Readable.from(rawBody));
 			});
 
-			stream.on('error', () => {
-				done(null, payload);
+			stream.on('error', (err: Error) => {
+				done(err, payload);
 			});
 		});
 	}
