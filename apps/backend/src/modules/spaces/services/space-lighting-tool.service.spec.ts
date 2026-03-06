@@ -72,9 +72,9 @@ describe('SpaceLightingToolService', () => {
 				arguments: { space_id: 'space-1', mode: 'off' },
 			});
 
-			expect(result!.success).toBe(true);
-			expect(result!.message).toContain('Living Room');
-			expect(result!.message).toContain('"off"');
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('Living Room');
+			expect(result.message).toContain('"off"');
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(
 				'space-1',
 				expect.objectContaining({ type: 'off' }),
@@ -95,7 +95,7 @@ describe('SpaceLightingToolService', () => {
 				arguments: { space_id: 'space-1', mode: 'relax' },
 			});
 
-			expect(result!.success).toBe(true);
+			expect(result.success).toBe(true);
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(
 				'space-1',
 				expect.objectContaining({ type: 'set_mode', mode: 'relax' }),
@@ -111,8 +111,8 @@ describe('SpaceLightingToolService', () => {
 				arguments: { space_id: 'nonexistent', mode: 'off' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('not found');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('not found');
 		});
 
 		it('should return failure for invalid mode', async () => {
@@ -122,8 +122,8 @@ describe('SpaceLightingToolService', () => {
 				arguments: { space_id: 'space-1', mode: 'disco' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('Invalid lighting mode');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Invalid lighting mode');
 		});
 
 		it('should return failure when missing parameters', async () => {
@@ -133,8 +133,8 @@ describe('SpaceLightingToolService', () => {
 				arguments: { space_id: 'space-1' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('Missing required parameters');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Missing required parameters');
 		});
 	});
 

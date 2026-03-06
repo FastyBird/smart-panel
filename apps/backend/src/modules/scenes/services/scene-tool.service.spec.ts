@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
-import { SceneToolService } from './scene-tool.service';
 import { SceneExecutorService } from './scene-executor.service';
+import { SceneToolService } from './scene-tool.service';
 import { ScenesService } from './scenes.service';
 
 describe('SceneToolService', () => {
@@ -60,9 +59,9 @@ describe('SceneToolService', () => {
 				arguments: { scene_id: 'scene-1' },
 			});
 
-			expect(result!.success).toBe(true);
-			expect(result!.message).toContain('Movie Night');
-			expect(result!.message).toContain('executed successfully');
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('Movie Night');
+			expect(result.message).toContain('executed successfully');
 			expect(sceneExecutor.triggerScene).toHaveBeenCalledWith('scene-1', 'buddy');
 		});
 
@@ -75,8 +74,8 @@ describe('SceneToolService', () => {
 				arguments: { scene_id: 'nonexistent' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('not found');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('not found');
 		});
 
 		it('should return failure when missing scene_id', async () => {
@@ -86,8 +85,8 @@ describe('SceneToolService', () => {
 				arguments: {},
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('Missing required parameter');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Missing required parameter');
 		});
 
 		it('should handle partially completed scene', async () => {
@@ -104,9 +103,9 @@ describe('SceneToolService', () => {
 				arguments: { scene_id: 'scene-1' },
 			});
 
-			expect(result!.success).toBe(true);
-			expect(result!.message).toContain('partially completed');
-			expect(result!.message).toContain('2/3');
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('partially completed');
+			expect(result.message).toContain('2/3');
 		});
 
 		it('should handle failed scene execution', async () => {
@@ -124,8 +123,8 @@ describe('SceneToolService', () => {
 				arguments: { scene_id: 'scene-1' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('failed');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('failed');
 		});
 	});
 
@@ -140,8 +139,8 @@ describe('SceneToolService', () => {
 				arguments: { scene_id: 'scene-1' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('Scene is disabled');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Scene is disabled');
 		});
 	});
 

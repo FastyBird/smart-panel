@@ -17,8 +17,6 @@ import { ToolProviderRegistryService } from '../tools/services/tool-provider-reg
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
-import { SpaceLightingToolService } from './services/space-lighting-tool.service';
-
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
@@ -48,6 +46,7 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';

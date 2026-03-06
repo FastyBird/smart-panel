@@ -24,8 +24,6 @@ import { ToolProviderRegistryService } from '../tools/services/tool-provider-reg
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
-import { DeviceControlToolService } from './services/device-control-tool.service';
-
 import { ChannelsController } from './controllers/channels.controller';
 import { ChannelsControlsController } from './controllers/channels.controls.controller';
 import { ChannelsPropertiesController } from './controllers/channels.properties.controller';
@@ -61,6 +59,7 @@ import { ChannelsPropertiesService } from './services/channels.properties.servic
 import { ChannelsService } from './services/channels.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
+import { DeviceControlToolService } from './services/device-control-tool.service';
 import { DeviceValidationService } from './services/device-validation.service';
 import { DeviceZonesService } from './services/device-zones.service';
 import { DevicesSeederService } from './services/devices-seeder.service';

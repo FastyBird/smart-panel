@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { IntentTargetStatus } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
 
@@ -84,8 +83,8 @@ describe('DeviceControlToolService', () => {
 				},
 			});
 
-			expect(result!.success).toBe(true);
-			expect(result!.message).toContain('Kitchen Light');
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('Kitchen Light');
 			expect(intentsService.createIntent).toHaveBeenCalled();
 			expect(intentsService.completeIntent).toHaveBeenCalledWith(
 				'intent-1',
@@ -107,8 +106,8 @@ describe('DeviceControlToolService', () => {
 				},
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('not found');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('not found');
 		});
 
 		it('should return failure when platform rejects write', async () => {
@@ -132,7 +131,7 @@ describe('DeviceControlToolService', () => {
 				},
 			});
 
-			expect(result!.success).toBe(false);
+			expect(result.success).toBe(false);
 			expect(intentsService.completeIntent).toHaveBeenCalledWith(
 				'intent-1',
 				expect.arrayContaining([expect.objectContaining({ status: IntentTargetStatus.FAILED })]),
@@ -159,8 +158,8 @@ describe('DeviceControlToolService', () => {
 				},
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('No platform registered');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('No platform registered');
 		});
 
 		it('should return failure when missing parameters', async () => {
@@ -170,8 +169,8 @@ describe('DeviceControlToolService', () => {
 				arguments: { device_id: 'dev-1' },
 			});
 
-			expect(result!.success).toBe(false);
-			expect(result!.message).toContain('Missing required parameters');
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Missing required parameters');
 		});
 	});
 

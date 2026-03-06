@@ -3,12 +3,11 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
-
-import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
