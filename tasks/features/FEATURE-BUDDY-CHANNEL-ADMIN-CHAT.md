@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -39,14 +39,14 @@ I want a chat widget embedded in the admin buddy settings page where I can conve
 
 ## 4. Acceptance criteria
 
-- [ ] Chat widget visible on buddy admin settings page below the configuration form
-- [ ] Can create new conversations and switch between existing ones
-- [ ] Messages display as styled bubbles (user right, assistant left)
-- [ ] Send button and Enter key submit messages
-- [ ] Loading indicator while waiting for response
-- [ ] Can delete conversations
-- [ ] Poll for new messages every 3 seconds when a conversation is active
-- [ ] Follows existing admin UI styling
+- [x] Chat widget visible on buddy admin settings page below the configuration form
+- [x] Can create new conversations and switch between existing ones
+- [x] Messages display as styled bubbles (user right, assistant left)
+- [x] Send button and Enter key submit messages
+- [x] Loading indicator while waiting for response
+- [x] Can delete conversations
+- [x] Poll for new messages every 3 seconds when a conversation is active
+- [x] Follows existing admin UI styling
 
 ## 5. Example scenarios
 
