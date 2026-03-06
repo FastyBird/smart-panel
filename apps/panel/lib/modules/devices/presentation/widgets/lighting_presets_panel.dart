@@ -297,8 +297,9 @@ class LightingPresetsPanel extends StatelessWidget {
         break;
       case _LightingPresetType.color:
         final presetColor =
-            HSVColor.fromAHSV(1, preset.value.toDouble(), 1, 1).toColor();
-        onColorChanged?.call(presetColor, 1.0);
+            HSVColor.fromAHSV(1, preset.value.toDouble(), saturation, 1)
+                .toColor();
+        onColorChanged?.call(presetColor, saturation);
         break;
       case _LightingPresetType.saturation:
         final currentColor = color ?? Colors.red;
