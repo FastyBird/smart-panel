@@ -2,15 +2,26 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Lighting capabilities for mode selection.
 enum LightCapability {
 	power,
 	brightness,
 	colorTemp,
-	color,
-	white,
+	hue,
+	saturation,
+	white;
+
+	/// Return the controllable capabilities from [caps] in display order.
+	static List<LightCapability> orderedFrom(Set<LightCapability> caps) {
+		return const [
+			LightCapability.brightness,
+			LightCapability.colorTemp,
+			LightCapability.hue,
+			LightCapability.saturation,
+			LightCapability.white,
+		].where(caps.contains).toList();
+	}
 }
 
 /// Mode selector widget for switching between lighting capabilities
@@ -33,27 +44,23 @@ class LightingModeSelector extends StatelessWidget {
 		this.showLabels,
 	});
 
-	List<LightCapability> get _enabledCapabilities {
-		return [
-			LightCapability.brightness,
-			LightCapability.colorTemp,
-			LightCapability.color,
-			LightCapability.white,
-		].where((cap) => capabilities.contains(cap)).toList();
-	}
+	List<LightCapability> get _enabledCapabilities =>
+		LightCapability.orderedFrom(capabilities);
 
 	IconData _getCapabilityIcon(LightCapability cap) {
 		switch (cap) {
 			case LightCapability.brightness:
-				return MdiIcons.brightness6;
+				return Icons.wb_sunny_outlined;
 			case LightCapability.colorTemp:
-				return MdiIcons.thermometer;
-			case LightCapability.color:
-				return MdiIcons.palette;
+				return Icons.thermostat;
+			case LightCapability.hue:
+				return Icons.palette_outlined;
+			case LightCapability.saturation:
+				return Icons.opacity;
 			case LightCapability.white:
-				return MdiIcons.ceilingLight;
+				return Icons.square_rounded;
 			default:
-				return MdiIcons.lightbulb;
+				return Icons.lightbulb_outline;
 		}
 	}
 
@@ -64,8 +71,10 @@ class LightingModeSelector extends StatelessWidget {
 				return localizations.light_mode_brightness;
 			case LightCapability.colorTemp:
 				return localizations.light_mode_temperature;
-			case LightCapability.color:
+			case LightCapability.hue:
 				return localizations.light_mode_color;
+			case LightCapability.saturation:
+				return localizations.light_mode_saturation;
 			case LightCapability.white:
 				return localizations.light_mode_white;
 			default:

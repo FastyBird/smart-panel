@@ -502,6 +502,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_mode_temperature => 'Temperature';
 
   @override
+  String get light_mode_saturation => 'Saturation';
+
+  @override
   String get light_mode_white => 'White';
 
   @override

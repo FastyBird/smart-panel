@@ -513,6 +513,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_mode_temperature => 'Teplota';
 
   @override
+  String get light_mode_saturation => 'Sytost';
+
+  @override
   String get light_mode_white => 'Bílé';
 
   @override

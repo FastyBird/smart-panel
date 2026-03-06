@@ -893,6 +893,12 @@ abstract class AppLocalizations {
   /// **'Temperature'**
   String get light_mode_temperature;
 
+  /// Mode for adjusting color saturation
+  ///
+  /// In en, this message translates to:
+  /// **'Saturation'**
+  String get light_mode_saturation;
+
   /// Mode for adjusting white color
   ///
   /// In en, this message translates to:

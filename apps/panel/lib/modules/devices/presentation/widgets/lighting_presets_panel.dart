@@ -29,6 +29,9 @@ class LightingPresetsPanel extends StatelessWidget {
   /// Current color (for highlighting active preset)
   final Color? color;
 
+  /// Current saturation value 0.0–1.0 (for highlighting active preset)
+  final double saturation;
+
   /// Current white channel value (for highlighting active preset)
   final int? whiteChannel;
 
@@ -53,6 +56,7 @@ class LightingPresetsPanel extends StatelessWidget {
     this.brightness = 100,
     this.colorTemp = 4000,
     this.color,
+    this.saturation = 1.0,
     this.whiteChannel,
     this.isLandscape = false,
     this.onBrightnessChanged,
@@ -70,7 +74,7 @@ class LightingPresetsPanel extends StatelessWidget {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (selectedCapability == LightCapability.color) {
+    if (selectedCapability == LightCapability.hue) {
       return isLandscape
           ? _buildLandscapeColorPresets(context, isDark, presets)
           : _buildPortraitColorPresets(context, isDark, presets);
@@ -140,7 +144,7 @@ class LightingPresetsPanel extends StatelessWidget {
             type: _LightingPresetType.colorTemp,
           ),
         ];
-      case LightCapability.color:
+      case LightCapability.hue:
         return [
           _LightingPreset(
             icon: MdiIcons.circle,
@@ -199,6 +203,39 @@ class LightingPresetsPanel extends StatelessWidget {
             color: Colors.pink,
           ),
         ];
+      case LightCapability.saturation:
+        return [
+          _LightingPreset(
+            icon: MdiIcons.brightness5,
+            label: '25%',
+            value: 25,
+            type: _LightingPresetType.saturation,
+          ),
+          _LightingPreset(
+            icon: MdiIcons.brightness6,
+            label: '50%',
+            value: 50,
+            type: _LightingPresetType.saturation,
+          ),
+          _LightingPreset(
+            icon: MdiIcons.brightness7,
+            label: '75%',
+            value: 75,
+            type: _LightingPresetType.saturation,
+          ),
+          _LightingPreset(
+            icon: MdiIcons.circleMedium,
+            label: '85%',
+            value: 85,
+            type: _LightingPresetType.saturation,
+          ),
+          _LightingPreset(
+            icon: MdiIcons.whiteBalanceSunny,
+            label: '100%',
+            value: 100,
+            type: _LightingPresetType.saturation,
+          ),
+        ];
       case LightCapability.white:
         return [
           _LightingPreset(
@@ -242,6 +279,8 @@ class LightingPresetsPanel extends StatelessWidget {
         final hsv = HSVColor.fromColor(color!);
         final hueDiff = (hsv.hue - preset.value).abs();
         return hueDiff < 15 || (360 - hueDiff) < 15;
+      case _LightingPresetType.saturation:
+        return ((saturation * 100).round() - preset.value).abs() < 5;
       case _LightingPresetType.white:
         return ((whiteChannel ?? 0) - preset.value).abs() < 5;
     }
@@ -258,8 +297,16 @@ class LightingPresetsPanel extends StatelessWidget {
         break;
       case _LightingPresetType.color:
         final presetColor =
-            HSVColor.fromAHSV(1, preset.value.toDouble(), 1, 1).toColor();
-        onColorChanged?.call(presetColor, 1.0);
+            HSVColor.fromAHSV(1, preset.value.toDouble(), saturation, 1)
+                .toColor();
+        onColorChanged?.call(presetColor, saturation);
+        break;
+      case _LightingPresetType.saturation:
+        final currentColor = color ?? Colors.red;
+        final hsv = HSVColor.fromColor(currentColor);
+        final newColor =
+            HSVColor.fromAHSV(1, hsv.hue, preset.value / 100, 1).toColor();
+        onColorChanged?.call(newColor, preset.value / 100);
         break;
       case _LightingPresetType.white:
         onWhiteChannelChanged?.call(preset.value);
@@ -456,7 +503,7 @@ class LightingPresetsPanel extends StatelessWidget {
 // Internal preset types (used only by LightingPresetsPanel)
 // ----------------------------------------------------------------------------
 
-enum _LightingPresetType { brightness, colorTemp, color, white }
+enum _LightingPresetType { brightness, colorTemp, color, saturation, white }
 
 class _LightingPreset {
   final IconData icon;

@@ -610,6 +610,10 @@
   "@light_mode_temperature": {
     "description": "Mode for adjusting color temperature"
   },
+  "light_mode_saturation": "Saturation",
+  "@light_mode_saturation": {
+    "description": "Mode for adjusting color saturation"
+  },
   "light_mode_white": "White",
   "@light_mode_white": {
     "description": "Mode for adjusting white color"
