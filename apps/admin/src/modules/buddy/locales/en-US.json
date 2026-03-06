@@ -41,6 +41,9 @@
 		},
 		"goToSettings": {
 			"title": "Go to Settings"
+		},
+		"savePersonality": {
+			"title": "Save Personality"
 		}
 	},
 	"fields": {
@@ -101,6 +104,11 @@
 			"ttsSpeed": {
 				"title": "Speech Speed",
 				"placeholder": "1.0"
+			},
+			"personality": {
+				"title": "Personality",
+				"description": "Define the buddy's tone, style, and personality. This text is included in the AI system prompt.",
+				"placeholder": "You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language."
 			}
 		},
 		"message": {
@@ -140,7 +148,8 @@
 		"testChatNoProvider": "No AI provider configured",
 		"testChatNoProviderHint": "Configure an AI provider above to test the buddy chat.",
 		"testChatNoConversations": "No conversations yet",
-		"testChatSelectOrCreate": "Select or create a conversation to test"
+		"testChatSelectOrCreate": "Select or create a conversation to test",
+		"personalitySaved": "Personality saved successfully"
 	},
 	"meta": {
 		"settings": {

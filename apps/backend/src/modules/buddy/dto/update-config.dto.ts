@@ -30,6 +30,17 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	name?: string;
 
 	@ApiPropertyOptional({
+		name: 'personality_path',
+		description: 'File path to the personality.md file that defines buddy tone and style',
+		type: 'string',
+		example: 'var/buddy/personality.md',
+	})
+	@Expose({ name: 'personality_path' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"personality_path","reason":"Personality path must be a valid string."}]' })
+	personality_path?: string;
+
+	@ApiPropertyOptional({
 		description:
 			'LLM provider plugin type (e.g. buddy-openai-plugin, buddy-claude-plugin, buddy-ollama-plugin, or none)',
 		type: 'string',
