@@ -11,7 +11,6 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	BUDDY_OPENAI_DEFAULT_MODEL,
 	BUDDY_OPENAI_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_OPENAI_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_PLUGIN_NAME,
 } from '../buddy-openai.constants';
 import { BuddyOpenaiConfigModel } from '../models/config.model';
@@ -25,7 +24,7 @@ export class OpenAiProvider implements ILlmProvider {
 	}
 
 	getName(): string {
-		return BUDDY_OPENAI_PLUGIN_API_TAG_NAME;
+		return 'OpenAI';
 	}
 
 	getDescription(): string {

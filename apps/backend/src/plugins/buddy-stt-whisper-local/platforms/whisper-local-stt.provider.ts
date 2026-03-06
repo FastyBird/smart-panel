@@ -31,7 +31,7 @@ export class WhisperLocalSttProvider implements ISttProvider {
 	}
 
 	getName(): string {
-		return 'Whisper (local)';
+		return 'Whisper Local';
 	}
 
 	getDescription(): string {

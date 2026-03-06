@@ -11,7 +11,6 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	BUDDY_CLAUDE_SETUP_TOKEN_DEFAULT_MODEL,
 	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME,
 	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 } from '../buddy-claude-setup-token.constants';
 import { BuddyClaudeSetupTokenConfigModel } from '../models/config.model';
@@ -25,7 +24,7 @@ export class ClaudeSetupTokenProvider implements ILlmProvider {
 	}
 
 	getName(): string {
-		return BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME;
+		return 'Claude Setup Token';
 	}
 
 	getDescription(): string {

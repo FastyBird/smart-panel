@@ -22,7 +22,7 @@ export class OpenAiSttProvider implements ISttProvider {
 	}
 
 	getName(): string {
-		return 'OpenAI Whisper';
+		return 'OpenAI';
 	}
 
 	getDescription(): string {

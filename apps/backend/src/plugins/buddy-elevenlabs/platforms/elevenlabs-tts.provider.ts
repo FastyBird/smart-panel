@@ -22,7 +22,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 	}
 
 	getName(): string {
-		return 'ElevenLabs TTS';
+		return 'ElevenLabs';
 	}
 
 	getDescription(): string {

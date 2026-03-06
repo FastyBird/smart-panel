@@ -22,7 +22,7 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 	}
 
 	getName(): string {
-		return 'Voice.ai TTS';
+		return 'Voice.ai';
 	}
 
 	getDescription(): string {
