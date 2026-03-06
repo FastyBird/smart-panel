@@ -14,6 +14,11 @@ import {
 	SuggestionResponseModel,
 	SuggestionsResponseModel,
 } from './models/suggestion-response.model';
+import {
+	SttProviderStatusesResponseModel,
+	TtsProviderStatusesResponseModel,
+	VoiceProviderStatusDataModel,
+} from './models/voice-provider-status.model';
 
 export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	// Entities
@@ -28,6 +33,9 @@ export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	MessagesResponseModel,
 	ProviderStatusDataModel,
 	ProviderStatusesResponseModel,
+	VoiceProviderStatusDataModel,
+	SttProviderStatusesResponseModel,
+	TtsProviderStatusesResponseModel,
 	SuggestionDataModel,
 	SuggestionResponseModel,
 	SuggestionsResponseModel,

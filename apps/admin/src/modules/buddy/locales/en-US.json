@@ -74,17 +74,29 @@
 			},
 			"voiceEnabled": {
 				"title": "Voice Interface",
-				"description": "Enable speech-to-text and text-to-speech capabilities"
+				"description": "Enable speech recognition and voice synthesis for hands-free interaction with the assistant"
 			},
 			"sttPlugin": {
-				"title": "STT Plugin",
-				"placeholder": "Enter STT plugin type or none",
-				"description": "Enter the STT plugin type (e.g., buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin) or 'none' to disable"
+				"title": "Speech Recognition Provider (Speech-to-Text)",
+				"placeholder": "Select a speech recognition provider",
+				"notConfigured": "not configured",
+				"options": {
+					"none": "None"
+				},
+				"tags": {
+					"disabled": "disabled"
+				}
 			},
 			"ttsPlugin": {
-				"title": "TTS Plugin",
-				"placeholder": "Enter TTS plugin type or none",
-				"description": "Enter the TTS plugin type (e.g., buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin) or 'none' to disable"
+				"title": "Voice Synthesis Provider (Text-to-Speech)",
+				"placeholder": "Select a voice synthesis provider",
+				"notConfigured": "not configured",
+				"options": {
+					"none": "None"
+				},
+				"tags": {
+					"disabled": "disabled"
+				}
 			},
 			"ttsVoice": {
 				"title": "Voice",
@@ -127,6 +139,8 @@
 		"noSpace": "No space",
 		"noActiveConversation": "No conversation selected",
 		"providersFetchFailed": "Failed to load available providers. The provider list may be incomplete.",
+		"sttProvidersFetchFailed": "Failed to load available speech recognition providers. The provider list may be incomplete.",
+		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
 		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},

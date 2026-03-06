@@ -41,9 +41,11 @@ import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderRegistryService } from './services/stt-provider-registry.service';
+import { SttProviderStatusService } from './services/stt-provider-status.service';
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
+import { TtsProviderStatusService } from './services/tts-provider-status.service';
 import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
@@ -84,8 +86,10 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
 		SttProviderRegistryService,
+		SttProviderStatusService,
 		SttProviderService,
 		TtsProviderRegistryService,
+		TtsProviderStatusService,
 		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
