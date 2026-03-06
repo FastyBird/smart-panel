@@ -264,14 +264,25 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		const [, action, suggestionId] = match;
 		const feedback = action === 'accept' ? SuggestionFeedback.APPLIED : SuggestionFeedback.DISMISSED;
 
+		let feedbackRecorded = false;
+
 		try {
 			this.suggestionEngine.recordFeedback(suggestionId, feedback);
-
-			const confirmText = action === 'accept' ? 'Suggestion accepted ✅' : 'Suggestion dismissed';
-
-			await this.sendTextMessage(config, from, confirmText);
+			feedbackRecorded = true;
 		} catch {
 			await this.sendTextMessage(config, from, 'Suggestion not found or expired.');
+
+			return;
+		}
+
+		if (feedbackRecorded) {
+			const confirmText = action === 'accept' ? 'Suggestion accepted ✅' : 'Suggestion dismissed';
+
+			try {
+				await this.sendTextMessage(config, from, confirmText);
+			} catch (error) {
+				this.logger.warn(`Failed to send confirmation to WhatsApp ${from}: ${String(error)}`);
+			}
 		}
 	}
 
@@ -395,7 +406,8 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			const trimmed = part.trim();
 
 			if (trimmed.length > 0) {
-				phones.add(trimmed);
+				// Strip leading '+' so entries match WhatsApp's from field (no '+' prefix)
+				phones.add(trimmed.replace(/^\+/, ''));
 			}
 		}
 

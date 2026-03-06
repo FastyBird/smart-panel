@@ -24,8 +24,8 @@
 			},
 			"allowedPhoneNumbers": {
 				"title": "Allowed phone numbers",
-				"placeholder": "e.g., +1234567890,+9876543210",
-				"description": "Comma-separated phone numbers in E.164 format allowed to interact with the bot. Leave empty to allow all numbers."
+				"placeholder": "e.g., 1234567890,9876543210",
+				"description": "Comma-separated phone numbers allowed to interact with the bot (with or without '+' prefix). Leave empty to allow all numbers."
 			}
 		}
 	},
