@@ -4,17 +4,17 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_NAME } from '../buddy-claude-oauth.constants';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-token.constants';
 
-@ApiSchema({ name: 'BuddyClaudeOauthPluginDataConfig' })
-export class BuddyClaudeOauthConfigModel extends PluginConfigModel {
+@ApiSchema({ name: 'BuddyClaudeSetupTokenPluginDataConfig' })
+export class BuddyClaudeSetupTokenConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type identifier',
-		example: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
+		example: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 	})
 	@Expose()
 	@IsString()
-	type: string = BUDDY_CLAUDE_OAUTH_PLUGIN_NAME;
+	type: string = BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME;
 
 	@ApiProperty({
 		description: 'Whether the plugin is enabled',

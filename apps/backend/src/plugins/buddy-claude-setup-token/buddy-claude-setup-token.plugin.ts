@@ -11,49 +11,49 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import {
-	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_NAME,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-} from './buddy-claude-oauth.constants';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-claude-oauth.openapi';
-import { UpdateBuddyClaudeOauthConfigDto } from './dto/update-config.dto';
-import { BuddyClaudeOauthConfigModel } from './models/config.model';
-import { ClaudeOauthProvider } from './platforms/claude-oauth.provider';
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_DESCRIPTION,
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME,
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
+} from './buddy-claude-setup-token.constants';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-claude-setup-token.openapi';
+import { UpdateBuddyClaudeSetupTokenConfigDto } from './dto/update-config.dto';
+import { BuddyClaudeSetupTokenConfigModel } from './models/config.model';
+import { ClaudeSetupTokenProvider } from './platforms/claude-setup-token.provider';
 
 @ApiTag({
-	tagName: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-	displayName: BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_NAME,
-	description: BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_DESCRIPTION,
+	tagName: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
+	displayName: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME,
+	description: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [ClaudeOauthProvider],
-	exports: [ClaudeOauthProvider],
+	providers: [ClaudeSetupTokenProvider],
+	exports: [ClaudeSetupTokenProvider],
 })
-export class BuddyClaudeOauthPlugin implements OnModuleInit {
+export class BuddyClaudeSetupTokenPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly providerRegistry: LlmProviderRegistryService,
-		private readonly claudeOauthProvider: ClaudeOauthProvider,
+		private readonly claudeSetupTokenProvider: ClaudeSetupTokenProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<BuddyClaudeOauthConfigModel, UpdateBuddyClaudeOauthConfigDto>({
-			type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-			class: BuddyClaudeOauthConfigModel,
-			configDto: UpdateBuddyClaudeOauthConfigDto,
+		this.configMapper.registerMapping<BuddyClaudeSetupTokenConfigModel, UpdateBuddyClaudeSetupTokenConfigDto>({
+			type: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
+			class: BuddyClaudeSetupTokenConfigModel,
+			configDto: UpdateBuddyClaudeSetupTokenConfigDto,
 		});
 
-		this.providerRegistry.register(this.claudeOauthProvider);
+		this.providerRegistry.register(this.claudeSetupTokenProvider);
 
-		for (const model of BUDDY_CLAUDE_OAUTH_PLUGIN_SWAGGER_EXTRA_MODELS) {
+		for (const model of BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
 
 		this.extensionsService.registerPluginMetadata({
-			type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
+			type: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 			name: 'Claude Setup Token',
 			description: 'LLM provider for Buddy module using Anthropic Claude with setup-token authentication',
 			author: 'FastyBird',
@@ -71,7 +71,7 @@ LLM provider plugin for the Buddy module using the Anthropic Claude API with set
 1. Run \`claude setup-token\` in your terminal (requires Claude Code CLI)
 2. Copy the generated token
 3. Paste the token in plugin configuration
-4. Set the buddy module \`provider\` to \`${BUDDY_CLAUDE_OAUTH_PLUGIN_NAME}\`
+4. Set the buddy module \`provider\` to \`${BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME}\`
 
 ## Configuration
 

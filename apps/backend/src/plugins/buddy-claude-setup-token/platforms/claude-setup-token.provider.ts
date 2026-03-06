@@ -9,31 +9,31 @@ import {
 } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
-	BUDDY_CLAUDE_OAUTH_DEFAULT_MODEL,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_NAME,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-} from '../buddy-claude-oauth.constants';
-import { BuddyClaudeOauthConfigModel } from '../models/config.model';
+	BUDDY_CLAUDE_SETUP_TOKEN_DEFAULT_MODEL,
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_DESCRIPTION,
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME,
+	BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
+} from '../buddy-claude-setup-token.constants';
+import { BuddyClaudeSetupTokenConfigModel } from '../models/config.model';
 
 @Injectable()
-export class ClaudeOauthProvider implements ILlmProvider {
+export class ClaudeSetupTokenProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_CLAUDE_OAUTH_PLUGIN_NAME;
+		return BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME;
 	}
 
 	getName(): string {
-		return BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_NAME;
+		return BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_NAME;
 	}
 
 	getDescription(): string {
-		return BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_DESCRIPTION;
+		return BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_API_TAG_DESCRIPTION;
 	}
 
 	getDefaultModel(): string {
-		return BUDDY_CLAUDE_OAUTH_DEFAULT_MODEL;
+		return BUDDY_CLAUDE_SETUP_TOKEN_DEFAULT_MODEL;
 	}
 
 	isConfigured(pluginConfig: Record<string, unknown>): boolean {
@@ -73,7 +73,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		return {
 			content: result.content,
 			meta: {
-				provider: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
+				provider: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 				model: result.model,
 				inputTokens: result.inputTokens,
 				outputTokens: result.outputTokens,
@@ -85,9 +85,9 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		};
 	}
 
-	private getPluginConfig(): BuddyClaudeOauthConfigModel | null {
+	private getPluginConfig(): BuddyClaudeSetupTokenConfigModel | null {
 		try {
-			return this.configService.getPluginConfig<BuddyClaudeOauthConfigModel>(BUDDY_CLAUDE_OAUTH_PLUGIN_NAME);
+			return this.configService.getPluginConfig<BuddyClaudeSetupTokenConfigModel>(BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME);
 		} catch {
 			return null;
 		}

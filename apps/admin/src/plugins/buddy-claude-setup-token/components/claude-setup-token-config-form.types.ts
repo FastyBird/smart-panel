@@ -1,7 +1,7 @@
 import type { FormResultType, LayoutType } from '../../../modules/config';
 import type { IConfigPlugin } from '../../../modules/config/store/config-plugins.store.types';
 
-export interface IClaudeOauthConfigFormProps {
+export interface IClaudeSetupTokenConfigFormProps {
 	config: IConfigPlugin;
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;

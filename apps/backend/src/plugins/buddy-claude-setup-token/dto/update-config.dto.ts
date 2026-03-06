@@ -4,18 +4,18 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_NAME } from '../buddy-claude-oauth.constants';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-token.constants';
 
-@ApiSchema({ name: 'BuddyClaudeOauthPluginUpdateConfig' })
-export class UpdateBuddyClaudeOauthConfigDto extends UpdatePluginConfigDto {
+@ApiSchema({ name: 'BuddyClaudeSetupTokenPluginUpdateConfig' })
+export class UpdateBuddyClaudeSetupTokenConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',
-		example: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
+		example: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
-	type: typeof BUDDY_CLAUDE_OAUTH_PLUGIN_NAME;
+	type: typeof BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME;
 
 	@ApiPropertyOptional({
 		description: 'Enable or disable the plugin',

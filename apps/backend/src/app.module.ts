@@ -51,8 +51,8 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from './plugins/buddy-claude-oauth/buddy-claude-oauth.constants';
-import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth/buddy-claude-oauth.plugin';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_PREFIX } from './plugins/buddy-claude-setup-token/buddy-claude-setup-token.constants';
+import { BuddyClaudeSetupTokenPlugin } from './plugins/buddy-claude-setup-token/buddy-claude-setup-token.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
 import { BUDDY_ELEVENLABS_PLUGIN_PREFIX } from './plugins/buddy-elevenlabs/buddy-elevenlabs.constants';
@@ -293,8 +293,8 @@ export class AppModule {
 								module: BuddyOpenaiCodexPlugin,
 							},
 							{
-								path: BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX,
-								module: BuddyClaudeOauthPlugin,
+								path: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_PREFIX,
+								module: BuddyClaudeSetupTokenPlugin,
 							},
 							{
 								path: BUDDY_ELEVENLABS_PLUGIN_PREFIX,
@@ -363,7 +363,7 @@ export class AppModule {
 				BuddyOpenaiPlugin,
 				BuddyOpenaiCodexPlugin,
 				BuddyClaudePlugin,
-				BuddyClaudeOauthPlugin,
+				BuddyClaudeSetupTokenPlugin,
 				BuddyElevenlabsPlugin,
 				BuddyOllamaPlugin,
 				BuddyVoiceaiPlugin,

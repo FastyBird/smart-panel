@@ -1,9 +1,9 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_NAME } from '../buddy-claude-oauth.constants';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-token.constants';
 
-export const ClaudeOauthConfigSchema = ConfigPluginSchema.extend({
+export const ClaudeSetupTokenConfigSchema = ConfigPluginSchema.extend({
 	accessToken: z.string().trim().nullable(),
 	model: z.string().trim().nullable(),
 });
@@ -11,17 +11,17 @@ export const ClaudeOauthConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const ClaudeOauthConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const ClaudeSetupTokenConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
 	z.object({
-		type: z.literal(BUDDY_CLAUDE_OAUTH_PLUGIN_NAME),
+		type: z.literal(BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME),
 		access_token: z.string().trim().nullable().optional(),
 		model: z.string().trim().nullable().optional(),
 	})
 );
 
-export const ClaudeOauthConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const ClaudeSetupTokenConfigResSchema: ZodType = ConfigPluginResSchema.and(
 	z.object({
-		type: z.literal(BUDDY_CLAUDE_OAUTH_PLUGIN_NAME),
+		type: z.literal(BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME),
 		access_token: z.string().trim().nullable(),
 		model: z.string().trim().nullable(),
 	})

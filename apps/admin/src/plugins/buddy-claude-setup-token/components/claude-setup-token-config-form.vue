@@ -8,14 +8,14 @@
 	>
 		<el-alert
 			type="info"
-			:title="t('buddyClaudeOauthPlugin.headings.aboutApiSettings')"
+			:title="t('buddyClaudeSetupTokenPlugin.headings.aboutApiSettings')"
 			:closable="false"
 		>
-			{{ t('buddyClaudeOauthPlugin.texts.aboutApiSettings') }}
+			{{ t('buddyClaudeSetupTokenPlugin.texts.aboutApiSettings') }}
 		</el-alert>
 
 		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.enabled.title')"
+			:label="t('buddyClaudeSetupTokenPlugin.fields.config.enabled.title')"
 			prop="enabled"
 			label-position="left"
 			class="mt-3"
@@ -27,12 +27,12 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.accessToken.title')"
+			:label="t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.title')"
 			prop="accessToken"
 		>
 			<el-input
 				v-model="model.accessToken"
-				:placeholder="t('buddyClaudeOauthPlugin.fields.config.accessToken.placeholder')"
+				:placeholder="t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.placeholder')"
 				name="accessToken"
 				type="password"
 				show-password
@@ -45,20 +45,20 @@
 			show-icon
 			class="mb-2!"
 		>
-			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.howTo') }}
+			{{ t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.howTo') }}
 			<code class="font-bold">claude setup-token</code>
-			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.howToSuffix') }}
+			{{ t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.howToSuffix') }}
 			<br />
-			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.machineNote') }}
+			{{ t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.machineNote') }}
 		</el-alert>
 
 		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.model.title')"
+			:label="t('buddyClaudeSetupTokenPlugin.fields.config.model.title')"
 			prop="model"
 		>
 			<el-select
 				v-model="model.model"
-				:placeholder="t('buddyClaudeOauthPlugin.fields.config.model.placeholder')"
+				:placeholder="t('buddyClaudeSetupTokenPlugin.fields.config.model.placeholder')"
 				filterable
 				allow-create
 				default-first-option
@@ -72,7 +72,7 @@
 				/>
 			</el-select>
 			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyClaudeOauthPlugin.fields.config.model.description') }}
+				{{ t('buddyClaudeSetupTokenPlugin.fields.config.model.description') }}
 			</div>
 		</el-form-item>
 	</el-form>
@@ -94,16 +94,16 @@ import {
 } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
-import { BUDDY_CLAUDE_OAUTH_MODELS } from '../buddy-claude-oauth.models';
-import type { IClaudeOauthConfigEditForm } from '../schemas/config.types';
+import { BUDDY_CLAUDE_SETUP_TOKEN_MODELS } from '../buddy-claude-setup-token.models';
+import type { IClaudeSetupTokenConfigEditForm } from '../schemas/config.types';
 
-import type { IClaudeOauthConfigFormProps } from './claude-oauth-config-form.types';
+import type { IClaudeSetupTokenConfigFormProps } from './claude-setup-token-config-form.types';
 
 defineOptions({
-	name: 'ClaudeOauthConfigForm',
+	name: 'ClaudeSetupTokenConfigForm',
 });
 
-const props = withDefaults(defineProps<IClaudeOauthConfigFormProps>(), {
+const props = withDefaults(defineProps<IClaudeSetupTokenConfigFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
@@ -119,17 +119,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IClaudeOauthConfigEditForm>({
+const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IClaudeSetupTokenConfigEditForm>({
 	config: props.config,
 	messages: {
-		success: t('buddyClaudeOauthPlugin.messages.config.edited'),
-		error: t('buddyClaudeOauthPlugin.messages.config.notEdited'),
+		success: t('buddyClaudeSetupTokenPlugin.messages.config.edited'),
+		error: t('buddyClaudeSetupTokenPlugin.messages.config.notEdited'),
 	},
 });
 
-const modelOptions = BUDDY_CLAUDE_OAUTH_MODELS;
+const modelOptions = BUDDY_CLAUDE_SETUP_TOKEN_MODELS;
 
-const rules = reactive<FormRules<IClaudeOauthConfigEditForm>>({});
+const rules = reactive<FormRules<IClaudeSetupTokenConfigEditForm>>({});
 
 watch(
 	(): FormResultType => formResult.value,
