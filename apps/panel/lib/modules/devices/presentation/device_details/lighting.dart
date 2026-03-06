@@ -1,28 +1,30 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/toast.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_presets_panel.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_presets_panel.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
-import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -182,7 +184,10 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
     final caps = <LightCapability>{LightCapability.power};
     if (controller.hasBrightness) caps.add(LightCapability.brightness);
-    if (controller.hasColor) caps.add(LightCapability.color);
+    if (controller.hasColor) {
+      caps.add(LightCapability.hue);
+      caps.add(LightCapability.saturation);
+    }
     if (controller.hasTemperature) caps.add(LightCapability.colorTemp);
     if (controller.hasColorWhite) caps.add(LightCapability.white);
     return caps;
@@ -192,7 +197,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     return [
       LightCapability.brightness,
       LightCapability.colorTemp,
-      LightCapability.color,
+      LightCapability.hue,
+      LightCapability.saturation,
       LightCapability.white,
     ].where((cap) => _capabilities.contains(cap)).toList();
   }
@@ -562,24 +568,14 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       saturation = 1.0;
     }
 
-    final showModeSelector = !_isSimple && _enabledCapabilities.length > 1;
     final showPresets = !_isSimple;
 
-    // Build main content (mode selector + main control + presets)
-    final mainContent = Column(
-      spacing: AppSpacings.pMd,
-      children: [
-        if (showModeSelector)
-          LightingModeSelector(
-            capabilities: _capabilities,
-            selectedCapability: _selectedCapability,
-            onCapabilityChanged: (value) {
-              setState(() => _selectedCapability = value);
-            },
-            isVertical: false,
-          ),
-        Expanded(
-          child: LightingMainControl(
+    return DevicePortraitLayout(
+      scrollable: false,
+      content: Column(
+        spacing: AppSpacings.pMd,
+        children: [
+          _LightingHeroCard(
             selectedCapability: _selectedCapability,
             isOn: isOn,
             brightness: brightness,
@@ -588,36 +584,34 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             saturation: saturation,
             whiteChannel: white,
             capabilities: _capabilities,
-            isLandscape: false,
+            onBrightnessChanged: _handleBrightnessChanged,
+            onColorTempChanged: _handleColorTempChanged,
+            onColorChanged: _handleColorChanged,
+            onWhiteChannelChanged: _handleWhiteChannelChanged,
+            onCapabilityChanged: (value) {
+              setState(() => _selectedCapability = value);
+            },
             onPowerToggle: () {
               activeController.togglePower();
               setState(() {});
             },
-            onBrightnessChanged: _handleBrightnessChanged,
-            onColorTempChanged: _handleColorTempChanged,
-            onColorChanged: _handleColorChanged,
-            onWhiteChannelChanged: _handleWhiteChannelChanged,
           ),
-        ),
-        if (showPresets)
-          LightingPresetsPanel(
-            selectedCapability: _selectedCapability,
-            brightness: brightness,
-            colorTemp: colorTemp,
-            color: color,
-            whiteChannel: white,
-            isLandscape: false,
-            onBrightnessChanged: _handleBrightnessChanged,
-            onColorTempChanged: _handleColorTempChanged,
-            onColorChanged: _handleColorChanged,
-            onWhiteChannelChanged: _handleWhiteChannelChanged,
-          ),
-      ],
-    );
-
-    return DevicePortraitLayout(
-      scrollable: false,
-      content: mainContent,
+          if (showPresets)
+            LightingPresetsPanel(
+              selectedCapability: _selectedCapability,
+              brightness: brightness,
+              colorTemp: colorTemp,
+              color: color,
+              saturation: saturation,
+              whiteChannel: white,
+              isLandscape: false,
+              onBrightnessChanged: _handleBrightnessChanged,
+              onColorTempChanged: _handleColorTempChanged,
+              onColorChanged: _handleColorChanged,
+              onWhiteChannelChanged: _handleWhiteChannelChanged,
+            ),
+        ],
+      ),
     );
   }
 
@@ -644,68 +638,45 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       saturation = 1.0;
     }
 
-    final showModeSelector = !_isSimple && _enabledCapabilities.length > 1;
     final showPresets = !_isSimple;
 
-    Widget? secondaryContent;
-    if (showPresets) {
-      secondaryContent = LightingPresetsPanel(
+    return DeviceLandscapeLayout(
+      mainContent: _LightingHeroCard(
         selectedCapability: _selectedCapability,
+        isOn: isOn,
         brightness: brightness,
         colorTemp: colorTemp,
         color: color,
+        saturation: saturation,
         whiteChannel: white,
-        isLandscape: true,
+        capabilities: _capabilities,
         onBrightnessChanged: _handleBrightnessChanged,
         onColorTempChanged: _handleColorTempChanged,
         onColorChanged: _handleColorChanged,
         onWhiteChannelChanged: _handleWhiteChannelChanged,
-      );
-    }
-
-    return DeviceLandscapeLayout(
-      mainContent: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: LightingMainControl(
+        onCapabilityChanged: (value) {
+          setState(() => _selectedCapability = value);
+        },
+        onPowerToggle: () {
+          activeController.togglePower();
+          setState(() {});
+        },
+      ),
+      secondaryContent: showPresets
+          ? LightingPresetsPanel(
               selectedCapability: _selectedCapability,
-              isOn: isOn,
               brightness: brightness,
               colorTemp: colorTemp,
               color: color,
               saturation: saturation,
               whiteChannel: white,
-              capabilities: _capabilities,
               isLandscape: true,
-              onPowerToggle: () {
-                activeController.togglePower();
-                setState(() {});
-              },
               onBrightnessChanged: _handleBrightnessChanged,
               onColorTempChanged: _handleColorTempChanged,
               onColorChanged: _handleColorChanged,
               onWhiteChannelChanged: _handleWhiteChannelChanged,
-            ),
-          ),
-          if (showModeSelector)
-            SizedBox(
-              width: AppSpacings.scale(64.0),
-              child: Padding(
-                padding: EdgeInsets.only(left: AppSpacings.pMd),
-                child: LightingModeSelector(
-                  capabilities: _capabilities,
-                  selectedCapability: _selectedCapability,
-                  onCapabilityChanged: (value) {
-                    setState(() => _selectedCapability = value);
-                  },
-                  isVertical: true,
-                ),
-              ),
-            ),
-        ],
-      ),
-      secondaryContent: secondaryContent,
+            )
+          : null,
     );
   }
 
@@ -852,9 +823,51 @@ class LightingChannelData {
   }
 }
 
-// --- Main control (power + capability panels) ---
+// =============================================================================
+// GRADIENT DEFINITIONS
+// =============================================================================
 
-class LightingMainControl extends StatelessWidget {
+class _LightingGradients {
+  _LightingGradients._();
+
+  static List<Color> brightness(bool isDark) => [
+        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
+        AppColors.white,
+      ];
+
+  static const colorTemp = [
+    Color(0xFFFF9800),
+    Color(0xFFFFFAF0),
+    Color(0xFFE3F2FD),
+    Color(0xFF64B5F6),
+  ];
+
+  static const hue = [
+    Color(0xFFFF0000),
+    Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
+    Color(0xFFFF0000),
+  ];
+
+  static List<Color> saturation(Color hueColor) => [
+        AppColors.white,
+        hueColor,
+      ];
+
+  static List<Color> whiteChannel(bool isDark) => [
+        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
+        AppColors.white,
+      ];
+}
+
+// =============================================================================
+// HERO CARD
+// =============================================================================
+
+class _LightingHeroCard extends StatelessWidget {
   final LightCapability selectedCapability;
   final bool isOn;
   final int brightness;
@@ -863,15 +876,14 @@ class LightingMainControl extends StatelessWidget {
   final double saturation;
   final int? whiteChannel;
   final Set<LightCapability> capabilities;
-  final bool isLandscape;
-  final VoidCallback? onPowerToggle;
   final ValueChanged<int>? onBrightnessChanged;
   final ValueChanged<int>? onColorTempChanged;
   final Function(Color, double)? onColorChanged;
   final ValueChanged<int>? onWhiteChannelChanged;
+  final ValueChanged<LightCapability>? onCapabilityChanged;
+  final VoidCallback? onPowerToggle;
 
-  const LightingMainControl({
-    super.key,
+  const _LightingHeroCard({
     required this.selectedCapability,
     required this.isOn,
     this.brightness = 100,
@@ -880,16 +892,26 @@ class LightingMainControl extends StatelessWidget {
     this.saturation = 1.0,
     this.whiteChannel,
     required this.capabilities,
-    this.isLandscape = false,
-    this.onPowerToggle,
     this.onBrightnessChanged,
     this.onColorTempChanged,
     this.onColorChanged,
     this.onWhiteChannelChanged,
+    this.onCapabilityChanged,
+    this.onPowerToggle,
   });
 
   bool get _isSimple =>
       capabilities.length == 1 && capabilities.contains(LightCapability.power);
+
+  List<LightCapability> get _enabledCapabilities {
+    return [
+      LightCapability.brightness,
+      LightCapability.colorTemp,
+      LightCapability.hue,
+      LightCapability.saturation,
+      LightCapability.white,
+    ].where((cap) => capabilities.contains(cap)).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -900,799 +922,311 @@ class LightingMainControl extends StatelessWidget {
         onTap: onPowerToggle,
       );
     }
-    return _buildControlPanel(context, Theme.of(context).brightness == Brightness.dark);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final screenService = locator<ScreenService>();
+
+    return HeroCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompactFont = screenService.isPortrait
+              ? screenService.isSmallScreen
+              : screenService.isSmallScreen || screenService.isMediumScreen;
+          final fontSize = isCompactFont
+              ? (constraints.maxHeight * 0.25)
+                  .clamp(AppSpacings.scale(48), AppSpacings.scale(120))
+              : (constraints.maxHeight * 0.35)
+                  .clamp(AppSpacings.scale(48), AppSpacings.scale(120));
+
+          final showModeSelector = _enabledCapabilities.length > 1;
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildValueRow(isDark, fontSize, localizations),
+              _buildCapabilityLabel(isDark, localizations),
+              if (showModeSelector) ...[
+                AppSpacings.spacingLgVertical,
+                LightingModeSelector(
+                  capabilities: capabilities,
+                  selectedCapability: selectedCapability,
+                  onCapabilityChanged: (value) {
+                    onCapabilityChanged?.call(value);
+                  },
+                  isVertical: false,
+                ),
+              ],
+              AppSpacings.spacingMdVertical,
+              _buildSliders(isDark, localizations),
+            ],
+          );
+        },
+      ),
+    );
   }
 
-  Widget _buildControlPanel(BuildContext context, bool isDark) {
+  Widget _buildValueRow(
+      bool isDark, double fontSize, AppLocalizations localizations) {
+    final textColor =
+        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
+    final unitColor =
+        isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+    final unitFontSize = fontSize * 0.27;
+    final swatchSize = fontSize * 0.28;
+
+    final fmt = NumberFormatUtils.defaultFormat;
+
+    final String value;
+    IconData? unitIcon;
+    String? unitText;
+    Color? swatchColor;
+
     switch (selectedCapability) {
       case LightCapability.brightness:
-        return _LightingBrightnessPanel(
-          isLandscape: isLandscape,
-          isDark: isDark,
-          value: brightness,
-          onChanged: (value) {
-            HapticFeedback.selectionClick();
-            onBrightnessChanged?.call(value);
-          },
-        );
+        value = fmt.formatInteger(brightness);
+        unitIcon = Icons.wb_sunny_outlined;
       case LightCapability.colorTemp:
-        return _LightingColorTempPanel(
-          isLandscape: isLandscape,
-          isDark: isDark,
-          value: colorTemp,
-          onChanged: (value) {
-            HapticFeedback.selectionClick();
-            onColorTempChanged?.call(value);
-          },
-        );
-      case LightCapability.color:
+        value = fmt.formatInteger(colorTemp);
+        unitText = 'K';
+        final t = (colorTemp - 2700) / (6500 - 2700);
+        swatchColor =
+            _sampleGradient(_LightingGradients.colorTemp, t.clamp(0.0, 1.0));
+      case LightCapability.hue:
+        value = fmt.formatInteger(brightness);
+        unitIcon = Icons.palette_outlined;
         final currentColor = color ?? Colors.red;
         final hsv = HSVColor.fromColor(currentColor);
-        return _LightingColorPanel(
-          isLandscape: isLandscape,
-          isDark: isDark,
-          hue: hsv.hue,
-          saturation: saturation,
-          onChanged: (hue, sat) {
-            final newColor = HSVColor.fromAHSV(1, hue, sat, 1).toColor();
-            onColorChanged?.call(newColor, sat);
-          },
+        swatchColor = HSVColor.fromAHSV(1, hsv.hue, 1, 1).toColor();
+      case LightCapability.saturation:
+        value = fmt.formatInteger((saturation * 100).round());
+        unitIcon = Icons.opacity;
+        final currentColor = color ?? Colors.red;
+        swatchColor = HSVColor.fromColor(currentColor)
+            .withSaturation(saturation.clamp(0.0, 1.0))
+            .toColor();
+      case LightCapability.white:
+        value = fmt.formatInteger(whiteChannel ?? 80);
+        unitIcon = Icons.square_rounded;
+      default:
+        value = fmt.formatInteger(brightness);
+        unitIcon = Icons.wb_sunny_outlined;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w200,
+                fontFamily: 'DIN1451',
+                color: textColor,
+                height: 0.7,
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: -unitFontSize,
+              child: unitIcon != null
+                  ? Icon(
+                      unitIcon,
+                      size: unitFontSize,
+                      color: unitColor,
+                    )
+                  : Text(
+                      unitText ?? '',
+                      style: TextStyle(
+                        fontSize: unitFontSize,
+                        fontWeight: FontWeight.w300,
+                        color: unitColor,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+        if (swatchColor != null) ...[
+          SizedBox(width: unitFontSize + AppSpacings.pSm),
+          Container(
+            width: swatchSize,
+            height: swatchSize,
+            decoration: BoxDecoration(
+              color: swatchColor,
+              borderRadius: BorderRadius.circular(AppBorderRadius.small),
+              border: !isDark
+                  ? Border.all(
+                      color: AppBorderColorLight.darker,
+                      width: AppSpacings.scale(1),
+                    )
+                  : null,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCapabilityLabel(bool isDark, AppLocalizations localizations) {
+    final labelColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    final String label;
+    switch (selectedCapability) {
+      case LightCapability.brightness:
+        label = localizations.light_mode_brightness;
+      case LightCapability.colorTemp:
+        label = localizations.light_mode_temperature;
+      case LightCapability.hue:
+        label = localizations.light_mode_color;
+      case LightCapability.saturation:
+        label = localizations.light_mode_saturation;
+      case LightCapability.white:
+        label = localizations.light_mode_white;
+      default:
+        label = '';
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(top: AppSpacings.pXs),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: AppFontSize.small,
+          color: labelColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliders(bool isDark, AppLocalizations localizations) {
+    final currentColor = color ?? Colors.red;
+    final hsv = HSVColor.fromColor(currentColor);
+    final currentHueColor =
+        HSVColor.fromAHSV(1, hsv.hue.clamp(0, 360), 1, 1).toColor();
+
+    switch (selectedCapability) {
+      case LightCapability.brightness:
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+          child: SliderWithSteps(
+            value: brightness / 100,
+            themeColor: ThemeColors.neutral,
+            trackGradientColors: _LightingGradients.brightness(isDark),
+            steps: const ['0%', '25%', '50%', '75%', '100%'],
+            enabled: isOn,
+            onChanged: isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    onBrightnessChanged?.call((v * 100).round());
+                  }
+                : null,
+          ),
+        );
+      case LightCapability.colorTemp:
+        final tempPosition = (colorTemp - 2700) / (6500 - 2700);
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+          child: SliderWithSteps(
+            value: tempPosition.clamp(0.0, 1.0),
+            themeColor: ThemeColors.neutral,
+            trackGradientColors: _LightingGradients.colorTemp,
+            thumbBorderColor: _sampleGradient(
+                _LightingGradients.colorTemp, tempPosition.clamp(0.0, 1.0)),
+            steps: const ['2700K', '4600K', '6500K'],
+            enabled: isOn,
+            onChanged: isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    onColorTempChanged
+                        ?.call((2700 + (6500 - 2700) * v).round());
+                  }
+                : null,
+          ),
+        );
+      case LightCapability.hue:
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+          child: SliderWithSteps(
+            value: (hsv.hue / 360).clamp(0.0, 1.0),
+            themeColor: ThemeColors.neutral,
+            trackGradientColors: _LightingGradients.hue,
+            thumbBorderColor: currentHueColor,
+            steps: const ['0\u00B0', '120\u00B0', '240\u00B0', '359\u00B0'],
+            enabled: isOn,
+            onChanged: isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    final newHue = v * 360;
+                    final newColor =
+                        HSVColor.fromAHSV(1, newHue, saturation, 1).toColor();
+                    onColorChanged?.call(newColor, saturation);
+                  }
+                : null,
+          ),
+        );
+      case LightCapability.saturation:
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+          child: SliderWithSteps(
+            value: saturation.clamp(0.0, 1.0),
+            themeColor: ThemeColors.neutral,
+            trackGradientColors:
+                _LightingGradients.saturation(currentHueColor),
+            thumbBorderColor: HSVColor.fromAHSV(
+                    1, hsv.hue, saturation.clamp(0.0, 1.0), 1)
+                .toColor(),
+            steps: const ['0%', '25%', '50%', '75%', '100%'],
+            enabled: isOn,
+            onChanged: isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    final newColor =
+                        HSVColor.fromAHSV(1, hsv.hue, v, 1).toColor();
+                    onColorChanged?.call(newColor, v);
+                  }
+                : null,
+          ),
         );
       case LightCapability.white:
-        return _LightingWhitePanel(
-          isLandscape: isLandscape,
-          isDark: isDark,
-          value: whiteChannel ?? 80,
-          onChanged: (value) {
-            HapticFeedback.selectionClick();
-            onWhiteChannelChanged?.call(value);
-          },
+        final white = whiteChannel ?? 80;
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+          child: SliderWithSteps(
+            value: white / 100,
+            themeColor: ThemeColors.neutral,
+            trackGradientColors: _LightingGradients.whiteChannel(isDark),
+            steps: [localizations.on_state_off, '25%', '50%', '75%', '100%'],
+            enabled: isOn,
+            onChanged: isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    onWhiteChannelChanged?.call((v * 100).round());
+                  }
+                : null,
+          ),
         );
       default:
         return const SizedBox.shrink();
     }
   }
+
 }
 
-// --- Slider panels (brightness, color temp, white) ---
+// =============================================================================
+// HELPER
+// =============================================================================
 
-class _LightingBrightnessPanel extends StatelessWidget {
-  final bool isLandscape;
-  final bool isDark;
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  const _LightingBrightnessPanel({
-    required this.isLandscape,
-    required this.isDark,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _LightingSliderPanel(
-      isLandscape: isLandscape,
-      isDark: isDark,
-      value: value,
-      minValue: 0,
-      maxValue: 100,
-      displayValue: '$value%',
-      gradientColors: [
-        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
-        AppColors.white,
-      ],
-      thumbColor: AppColors.white,
-      onChanged: onChanged,
-    );
-  }
+Color _sampleGradient(List<Color> colors, double t) {
+  assert(colors.length >= 2);
+  t = t.clamp(0.0, 1.0);
+  final segments = colors.length - 1;
+  final segment = (t * segments).floor().clamp(0, segments - 1);
+  final localT = (t * segments - segment).clamp(0.0, 1.0);
+  return Color.lerp(colors[segment], colors[segment + 1], localT)!;
 }
-
-class _LightingColorTempPanel extends StatelessWidget {
-  final bool isLandscape;
-  final bool isDark;
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  const _LightingColorTempPanel({
-    required this.isLandscape,
-    required this.isDark,
-    required this.value,
-    required this.onChanged,
-  });
-
-  Color _getColorTempColor(int temp) {
-    final t = (temp - 2700) / (6500 - 2700);
-    if (t < 0.33) {
-      return Color.lerp(
-          const Color(0xFFFF9800), const Color(0xFFFFFAF0), t / 0.33)!;
-    } else if (t < 0.66) {
-      return Color.lerp(
-          const Color(0xFFFFFAF0), const Color(0xFFE3F2FD), (t - 0.33) / 0.33)!;
-    } else {
-      return Color.lerp(
-          const Color(0xFFE3F2FD), const Color(0xFF64B5F6), (t - 0.66) / 0.34)!;
-    }
-  }
-
-  String _getColorTempName(int temp) {
-    if (temp <= 2700) return 'Candle';
-    if (temp <= 3200) return 'Warm White';
-    if (temp <= 4000) return 'Neutral';
-    if (temp <= 5000) return 'Daylight';
-    return 'Cool White';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _LightingSliderPanel(
-      isLandscape: isLandscape,
-      isDark: isDark,
-      value: value,
-      minValue: 2700,
-      maxValue: 6500,
-      displayValue: '${value}K',
-      sublabel: _getColorTempName(value),
-      gradientColors: const [
-        Color(0xFFFF9800),
-        Color(0xFFFFFAF0),
-        Color(0xFFE3F2FD),
-        Color(0xFF64B5F6),
-      ],
-      thumbColor: _getColorTempColor(value),
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _LightingWhitePanel extends StatelessWidget {
-  final bool isLandscape;
-  final bool isDark;
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  const _LightingWhitePanel({
-    required this.isLandscape,
-    required this.isDark,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _LightingSliderPanel(
-      isLandscape: isLandscape,
-      isDark: isDark,
-      value: value,
-      minValue: 0,
-      maxValue: 100,
-      displayValue: '$value%',
-      gradientColors: [
-        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
-        AppColors.white,
-      ],
-      thumbColor: AppColors.white,
-      onChanged: onChanged,
-    );
-  }
-}
-
-// --- Shared slider panel ---
-
-class _LightingSliderPanel extends StatelessWidget {
-  final bool isLandscape;
-  final bool isDark;
-  final int value;
-  final int minValue;
-  final int maxValue;
-  final String displayValue;
-  final String? sublabel;
-  final List<Color> gradientColors;
-  final Color thumbColor;
-  final ValueChanged<int> onChanged;
-
-  const _LightingSliderPanel({
-    required this.isLandscape,
-    required this.isDark,
-    required this.value,
-    required this.minValue,
-    required this.maxValue,
-    required this.displayValue,
-    this.sublabel,
-    required this.gradientColors,
-    this.thumbColor = AppColors.white,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isLandscape) {
-      return Row(
-        spacing: AppSpacings.pMd,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildDisplay()),
-          _buildVerticalSlider(),
-        ],
-      );
-    }
-    return Column(
-      spacing: AppSpacings.pMd,
-      children: [
-        Expanded(child: _buildDisplay()),
-        _buildHorizontalSlider(),
-      ],
-    );
-  }
-
-  Widget _buildDisplay() {
-    final match = RegExp(r'^(\d+)(.*)$').firstMatch(displayValue);
-    final valueText = match?.group(1) ?? displayValue;
-    final unitText = match?.group(2) ?? '';
-    return Container(
-      padding: EdgeInsets.all(AppSpacings.pSm),
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: isDark
-            ? null
-            : Border.all(
-                color: AppBorderColorLight.darker,
-                width: AppSpacings.scale(1),
-              ),
-      ),
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpacings.pMd,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    valueText,
-                    style: TextStyle(
-                      fontFamily: 'DIN1451',
-                      fontSize: AppSpacings.scale(60),
-                      fontWeight: FontWeight.w100,
-                      height: 1.0,
-                      color: isDark
-                          ? AppTextColorDark.regular
-                          : AppTextColorLight.regular,
-                    ),
-                  ),
-                  if (unitText.isNotEmpty)
-                    Text(
-                      unitText,
-                      style: TextStyle(
-                        fontFamily: 'DIN1451',
-                        fontSize: AppSpacings.scale(25),
-                        fontWeight: FontWeight.w100,
-                        height: 1.0,
-                        color: isDark
-                            ? AppTextColorDark.regular
-                            : AppTextColorLight.regular,
-                      ),
-                    ),
-                ],
-              ),
-              if (sublabel != null)
-                Text(
-                  sublabel!,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.extraLarge,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVerticalSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = (value - minValue) / (maxValue - minValue);
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(
-              1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * (1 - progress);
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newProgress = 1 -
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            onTapDown: (details) {
-              final newProgress = 1 -
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: gradientColors,
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(thumbSize),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = (value - minValue) / (maxValue - minValue);
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(
-              1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * progress;
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: gradientColors,
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(thumbSize),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildThumb(double size) {
-    final borderColor =
-        isDark ? AppTextColorDark.primary : AppBorderColorLight.darker;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: AppSpacings.scale(3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppShadowColor.medium,
-            blurRadius: AppSpacings.scale(8),
-            offset: Offset(0, AppSpacings.scale(2)),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: size * 2 / 3,
-          height: size * 2 / 3,
-          decoration: BoxDecoration(
-            color: thumbColor,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- Color picker panel ---
-
-class _LightingColorPanel extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final bool isLandscape;
-  final bool isDark;
-  final double hue;
-  final double saturation;
-  final Function(double hue, double saturation) onChanged;
-
-  _LightingColorPanel({
-    required this.isLandscape,
-    required this.isDark,
-    required this.hue,
-    required this.saturation,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = HSVColor.fromAHSV(1, hue, saturation, 1).toColor();
-    if (isLandscape) {
-      return Row(
-        spacing: AppSpacings.pMd,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildDisplay(color)),
-          _buildVerticalHueSlider(),
-          _buildVerticalSatSlider(),
-        ],
-      );
-    }
-    final previewFlex = _screenService.isSmallScreen ? 1 : 2;
-    return Column(
-      spacing: AppSpacings.pMd,
-      children: [
-        Expanded(flex: previewFlex, child: _buildDisplay(color)),
-        _buildHorizontalHueSlider(),
-        _buildHorizontalSatSlider(),
-      ],
-    );
-  }
-
-  Widget _buildDisplay(Color color) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: AppSpacings.scale(20),
-            spreadRadius: AppSpacings.scale(2),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVerticalHueSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = hue / 360;
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(
-              1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * progress;
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFF0000),
-                    Color(0xFFFFFF00),
-                    Color(0xFF00FF00),
-                    Color(0xFF00FFFF),
-                    Color(0xFF0000FF),
-                    Color(0xFFFF00FF),
-                    Color(0xFFFF0000),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(
-                        thumbSize, HSVColor.fromAHSV(1, hue, 1, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildVerticalSatSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(
-              1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * (1 - saturation);
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newSat = 1 -
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            onTapDown: (details) {
-              final newSat = 1 -
-                  (details.localPosition.dy - padding - thumbSize / 2) /
-                      trackHeight;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [currentColor, AppColors.white],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(thumbSize,
-                        HSVColor.fromAHSV(1, hue, saturation, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalHueSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = hue / 360;
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(
-              1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * progress;
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFF0000),
-                    Color(0xFFFFFF00),
-                    Color(0xFF00FF00),
-                    Color(0xFF00FFFF),
-                    Color(0xFF0000FF),
-                    Color(0xFFFF00FF),
-                    Color(0xFFFF0000),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(
-                        thumbSize, HSVColor.fromAHSV(1, hue, 1, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalSatSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(
-              1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * saturation;
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newSat =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            onTapDown: (details) {
-              final newSat =
-                  (details.localPosition.dx - padding - thumbSize / 2) /
-                      trackWidth;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.white, currentColor],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(thumbSize,
-                        HSVColor.fromAHSV(1, hue, saturation, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildThumb(double size, Color color) {
-    final borderColor =
-        isDark ? AppTextColorDark.primary : AppBorderColorLight.darker;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: AppSpacings.scale(3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppShadowColor.medium,
-            blurRadius: AppSpacings.scale(8),
-            offset: Offset(0, AppSpacings.scale(2)),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: size * 2 / 3,
-          height: size * 2 / 3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- Mode selector (brightness / color temp / color / white) ---
 

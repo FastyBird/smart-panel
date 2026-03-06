@@ -131,6 +131,7 @@
   "light_mode_brightness": "Jas",
   "light_mode_color": "Barva",
   "light_mode_temperature": "Teplota",
+  "light_mode_saturation": "Sytost",
   "light_mode_white": "Bílé",
   "light_mode_swatches": "Palety",
   "lights_more_scenes": "Více scén",
