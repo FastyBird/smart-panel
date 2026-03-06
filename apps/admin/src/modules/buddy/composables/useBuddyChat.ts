@@ -1,12 +1,14 @@
 import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend, useFlashMessage } from '../../../common';
+import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { sessionStoreKey } from '../../auth/store/keys';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 import type { IConversation, IMessage } from '../buddy.types';
 
 import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
+import { useBuddyTtsProviders } from './useBuddyTtsProviders';
 
 interface IUseBuddyChat {
 	conversations: Ref<IConversation[]>;
@@ -20,19 +22,27 @@ interface IUseBuddyChat {
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
 	selectedProviderStatus: ComputedRef<IProviderStatus | undefined>;
+	isTtsConfigured: ComputedRef<boolean>;
+	playingMessageId: Ref<string | null>;
+	audioLoading: Ref<boolean>;
 	fetchConversations: () => Promise<void>;
 	fetchProviderStatuses: () => Promise<void>;
+	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
 	deleteConversation: (id: string) => Promise<void>;
+	playMessageAudio: (messageId: string) => Promise<void>;
+	stopAudio: () => void;
 }
 
 export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
+	const storesManager = injectStoresManager();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
+	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
 	const conversations = ref<IConversation[]>([]);
 	const activeConversationId = ref<string | null>(null);
@@ -297,6 +307,89 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		}
 	};
 
+	// ============================================
+	// TTS / AUDIO PLAYBACK
+	// ============================================
+
+	const isTtsConfigured = computed<boolean>(() => {
+		if (!ttsProviderStatusesFetched.value) return false;
+
+		return ttsProviderStatuses.value.some((p) => p.selected && p.configured);
+	});
+
+	const playingMessageId = ref<string | null>(null);
+	const audioLoading = ref<boolean>(false);
+	let currentAudio: HTMLAudioElement | null = null;
+	let currentBlobUrl: string | null = null;
+
+	const stopAudio = (): void => {
+		if (currentAudio) {
+			currentAudio.onended = null;
+			currentAudio.onerror = null;
+			currentAudio.pause();
+			currentAudio = null;
+		}
+
+		if (currentBlobUrl) {
+			URL.revokeObjectURL(currentBlobUrl);
+			currentBlobUrl = null;
+		}
+
+		playingMessageId.value = null;
+		audioLoading.value = false;
+	};
+
+	const playMessageAudio = async (messageId: string): Promise<void> => {
+		stopAudio();
+
+		const conversationId = activeConversationId.value;
+
+		if (!conversationId) return;
+
+		audioLoading.value = true;
+		playingMessageId.value = messageId;
+
+		try {
+			const port =
+				import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT;
+			const baseUrl = `${window.location.protocol}//${window.location.hostname}:${port}/api/v1`;
+			const url = `${baseUrl}/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio`;
+
+			const sessionStore = storesManager.getStore(sessionStoreKey);
+			const token = sessionStore.accessToken();
+
+			const headers: Record<string, string> = {};
+
+			if (token) {
+				headers['Authorization'] = `Bearer ${token}`;
+			}
+
+			const response = await fetch(url, { headers });
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
+			const blob = await response.blob();
+			currentBlobUrl = URL.createObjectURL(blob);
+
+			currentAudio = new Audio(currentBlobUrl);
+
+			currentAudio.onended = () => stopAudio();
+			currentAudio.onerror = () => {
+				flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
+				stopAudio();
+			};
+
+			audioLoading.value = false;
+
+			await currentAudio.play();
+		} catch (err) {
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.audioPlayback'));
+			stopAudio();
+		}
+	};
+
 	return {
 		conversations,
 		activeConversationId,
@@ -309,11 +402,17 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isProviderNotConfigured,
 		providerStatuses,
 		selectedProviderStatus,
+		isTtsConfigured,
+		playingMessageId,
+		audioLoading,
 		fetchConversations,
 		fetchProviderStatuses,
+		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
 		sendMessage,
 		deleteConversation,
+		playMessageAudio,
+		stopAudio,
 	};
 };

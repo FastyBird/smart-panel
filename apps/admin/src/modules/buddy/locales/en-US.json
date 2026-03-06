@@ -22,7 +22,8 @@
 			"loadMessages": "Failed to load messages",
 			"providerUnavailable": "The AI provider is temporarily unavailable. Please try again later.",
 			"sendMessage": "Failed to send message",
-			"deleteConversation": "Failed to delete conversation"
+			"deleteConversation": "Failed to delete conversation",
+			"audioPlayback": "Failed to play audio"
 		}
 	},
 	"buttons": {

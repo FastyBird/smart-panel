@@ -104,6 +104,11 @@
 						v-for="message in messages"
 						:key="message.id"
 						:message="message"
+						:show-speaker="isTtsConfigured && message.role === 'assistant'"
+						:is-playing="playingMessageId === message.id && !audioLoading"
+						:is-loading-audio="playingMessageId === message.id && audioLoading"
+						@play="emit('play-audio', $event)"
+						@stop="emit('stop-audio')"
 					/>
 
 					<div
@@ -172,10 +177,15 @@ const props = defineProps<{
 	isProviderNotConfigured: boolean;
 	selectedProvider?: IProviderStatus;
 	providerStatuses: IProviderStatus[];
+	isTtsConfigured?: boolean;
+	playingMessageId?: string | null;
+	audioLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
 	(e: 'send', content: string): void;
+	(e: 'play-audio', messageId: string): void;
+	(e: 'stop-audio'): void;
 }>();
 
 const { t } = useI18n();
