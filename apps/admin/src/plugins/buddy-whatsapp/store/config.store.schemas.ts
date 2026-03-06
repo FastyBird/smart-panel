@@ -7,6 +7,7 @@ export const WhatsappConfigSchema = ConfigPluginSchema.extend({
 	phoneNumberId: z.string().trim().nullable(),
 	accessToken: z.string().trim().nullable(),
 	webhookVerifyToken: z.string().trim().nullable(),
+	appSecret: z.string().trim().nullable(),
 	allowedPhoneNumbers: z.string().trim().nullable(),
 });
 
@@ -19,6 +20,7 @@ export const WhatsappConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchem
 		phone_number_id: z.string().trim().nullable().optional(),
 		access_token: z.string().trim().nullable().optional(),
 		webhook_verify_token: z.string().trim().nullable().optional(),
+		app_secret: z.string().trim().nullable().optional(),
 		allowed_phone_numbers: z.string().trim().nullable().optional(),
 	})
 );

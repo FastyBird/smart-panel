@@ -193,11 +193,13 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		const expected = createHmac('sha256', config.appSecret).update(rawBody).digest('hex');
 		const provided = signature.slice('sha256='.length);
 
-		if (expected.length !== provided.length) {
+		// Validate hex format (SHA-256 = 64 hex chars) to reject malformed signatures early
+		if (!/^[0-9a-f]{64}$/i.test(provided)) {
 			return false;
 		}
 
-		return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(provided, 'hex'));
+		// Compare as UTF-8 strings to avoid Buffer.from(hex) silently dropping non-hex chars
+		return timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(provided.toLowerCase(), 'utf8'));
 	}
 
 	/**
