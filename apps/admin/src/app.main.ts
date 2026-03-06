@@ -63,6 +63,7 @@ import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts';
 import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai';
 import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local';
 import { BuddyTelegramPlugin } from './plugins/buddy-telegram';
+import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -200,6 +201,7 @@ app.use(BuddySystemTtsPlugin, pluginOptions);
 app.use(BuddyVoiceaiPlugin, pluginOptions);
 app.use(BuddySttWhisperLocalPlugin, pluginOptions);
 app.use(BuddyTelegramPlugin, pluginOptions);
+app.use(BuddyWhatsappPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
