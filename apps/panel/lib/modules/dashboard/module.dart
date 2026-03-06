@@ -76,6 +76,10 @@ class DashboardModuleService {
       DashboardModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+    _socketService.registerEventHandler(
+      PagesCardsPluginConstants.pluginWildcardEvent,
+      _socketEventHandler,
+    );
 
     if (kDebugMode) {
       debugPrint(
@@ -89,6 +93,10 @@ class DashboardModuleService {
   void dispose() {
     _socketService.unregisterEventHandler(
       DashboardModuleConstants.moduleWildcardEvent,
+      _socketEventHandler,
+    );
+    _socketService.unregisterEventHandler(
+      PagesCardsPluginConstants.pluginWildcardEvent,
       _socketEventHandler,
     );
   }
@@ -138,12 +146,12 @@ class DashboardModuleService {
       _pagesRepository.delete(payload['id']);
 
       /// Card CREATE/UPDATE
-    } else if (event == DashboardModuleConstants.cardCreatedEvent ||
-        event == DashboardModuleConstants.cardUpdatedEvent) {
+    } else if (event == PagesCardsPluginConstants.cardCreatedEvent ||
+        event == PagesCardsPluginConstants.cardUpdatedEvent) {
       _cardsRepository.insert([payload]);
 
       /// Card DELETE
-    } else if (event == DashboardModuleConstants.cardDeletedEvent &&
+    } else if (event == PagesCardsPluginConstants.cardDeletedEvent &&
         payload.containsKey('id')) {
       _cardsRepository.delete(payload['id']);
 
