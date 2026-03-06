@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -53,7 +53,6 @@ export class WledService implements IManagedPluginService {
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
-		@Inject(forwardRef(() => PluginServiceManagerService))
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {
 		// Set up adapter callbacks

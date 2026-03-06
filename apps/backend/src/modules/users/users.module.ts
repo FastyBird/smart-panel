@@ -1,10 +1,8 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
@@ -12,7 +10,6 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
 
 import { ListUsersCommand } from './commands/list-users.command';
 import { UsersController } from './controllers/users.controller';
@@ -33,14 +30,7 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 	description: USERS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([UserEntity]),
-		forwardRef(() => ConfigModule),
-		forwardRef(() => ExtensionsModule),
-		forwardRef(() => SystemModule),
-		SwaggerModule,
-		SeedModule,
-	],
+	imports: [TypeOrmModule.forFeature([UserEntity]), SwaggerModule, SeedModule],
 	providers: [
 		UsersService,
 		UserExistsConstraintValidator,

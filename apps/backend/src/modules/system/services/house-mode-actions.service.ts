@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnApplicationBootstrap, forwardRef } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -30,9 +30,7 @@ export class HouseModeActionsService implements OnApplicationBootstrap {
 
 	constructor(
 		private readonly configService: ConfigService,
-		@Inject(forwardRef(() => SpacesService))
 		private readonly spacesService: SpacesService,
-		@Inject(forwardRef(() => SpaceIntentService))
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}

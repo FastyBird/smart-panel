@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -50,7 +50,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		private readonly deviceMapper: Z2mDeviceMapperService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
-		@Inject(forwardRef(() => PluginServiceManagerService))
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {
 		// Register callbacks for adapter events

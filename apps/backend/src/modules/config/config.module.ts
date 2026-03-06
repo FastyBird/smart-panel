@@ -1,7 +1,6 @@
-import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { PlatformModule } from '../platform/platform.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -9,7 +8,6 @@ import { ExtendedDiscriminatorService } from '../swagger/services/extended-discr
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
 
 import { GenerateAdminExtensionsCommand } from './commands/generate-admin-extensions.command';
 import { CONFIG_MODULE_API_TAG_DESCRIPTION, CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from './config.constants';
@@ -19,7 +17,6 @@ import { UpdateConfigModuleConfigDto } from './dto/update-module-config.dto';
 import { ConfigModuleConfigModel } from './models/module-config.model';
 import { ConfigService } from './services/config.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
-import { PluginsTypeMapperService } from './services/plugins-type-mapper.service';
 
 @ApiTag({
 	tagName: CONFIG_MODULE_NAME,
@@ -28,16 +25,10 @@ import { PluginsTypeMapperService } from './services/plugins-type-mapper.service
 })
 @Global()
 @Module({
-	imports: [
-		NestConfigModule,
-		PlatformModule,
-		forwardRef(() => SystemModule),
-		forwardRef(() => ExtensionsModule),
-		SwaggerModule,
-	],
-	providers: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService, GenerateAdminExtensionsCommand],
+	imports: [NestConfigModule, PlatformModule, SwaggerModule],
+	providers: [ConfigService, GenerateAdminExtensionsCommand],
 	controllers: [ConfigController],
-	exports: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService],
+	exports: [ConfigService],
 })
 export class ConfigModule implements OnModuleInit {
 	constructor(

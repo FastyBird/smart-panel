@@ -1,10 +1,9 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity } from '../devices/entities/devices.entity';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -42,9 +41,8 @@ import { DetectionRulesLoaderService } from './spec/detection-rules-loader.servi
 @Module({
 	imports: [
 		SwaggerModule,
-		ExtensionsModule,
 		DevicesModule,
-		forwardRef(() => InfluxDbModule),
+		InfluxDbModule,
 		TypeOrmModule.forFeature([SecurityAlertAckEntity, ChannelEntity]),
 	],
 	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],
