@@ -199,7 +199,7 @@ const inputMessage = ref<string>('');
 const scrollbarRef = ref<InstanceType<typeof ElScrollbar> | null>(null);
 const messagesContainerRef = ref<HTMLDivElement | null>(null);
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
 const {
 	conversations,
@@ -249,23 +249,33 @@ const onDeleteConversation = async (id: string): Promise<void> => {
 
 // --- Polling ---
 
+const schedulePoll = async (): Promise<void> => {
+	if (!activeConversationId.value || isSending.value) {
+		startPolling();
+
+		return;
+	}
+
+	// Use refreshMessages instead of selectConversation to avoid clearing
+	// any error currently displayed to the user
+	await refreshMessages(activeConversationId.value);
+
+	// Schedule the next poll only after the current one completes,
+	// preventing overlapping requests from stale data overwrites
+	startPolling();
+};
+
 const startPolling = (): void => {
 	stopPolling();
 
-	pollTimer = setInterval(async () => {
-		if (!activeConversationId.value || isSending.value) {
-			return;
-		}
-
-		// Use refreshMessages instead of selectConversation to avoid clearing
-		// any error currently displayed to the user
-		await refreshMessages(activeConversationId.value);
+	pollTimer = setTimeout(() => {
+		void schedulePoll();
 	}, POLL_INTERVAL_MS);
 };
 
 const stopPolling = (): void => {
 	if (pollTimer !== null) {
-		clearInterval(pollTimer);
+		clearTimeout(pollTimer);
 		pollTimer = null;
 	}
 };
