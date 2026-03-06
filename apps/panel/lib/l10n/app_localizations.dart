@@ -7169,6 +7169,24 @@ abstract class AppLocalizations {
   /// **'Listening...'**
   String get buddy_voice_listening;
 
+  /// Label shown in voice activation indicator during recording
+  ///
+  /// In en, this message translates to:
+  /// **'Recording {seconds}s / {maxSeconds}s'**
+  String buddy_voice_recording_progress(int seconds, int maxSeconds);
+
+  /// Label shown in voice activation indicator during STT processing
+  ///
+  /// In en, this message translates to:
+  /// **'Processing...'**
+  String get buddy_voice_processing;
+
+  /// Placeholder text shown while audio is being transcribed
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing audio...'**
+  String get buddy_voice_transcribing;
+
   /// Error when security events API returns unexpected data
   ///
   /// In en, this message translates to:

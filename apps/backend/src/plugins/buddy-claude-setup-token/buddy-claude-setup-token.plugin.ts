@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { BuddyCapability } from '../../modules/buddy/buddy.constants';
 import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { LlmProviderRegistryService } from '../../modules/buddy/services/llm-provider-registry.service';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -54,6 +55,7 @@ export class BuddyClaudeSetupTokenPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
+			capabilities: [BuddyCapability.LLM],
 			name: 'Claude Setup Token',
 			description: 'LLM provider for Buddy module using Anthropic Claude with setup-token authentication',
 			author: 'FastyBird',

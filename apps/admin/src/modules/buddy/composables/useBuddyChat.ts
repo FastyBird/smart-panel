@@ -1,4 +1,4 @@
-import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
@@ -389,6 +389,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			stopAudio();
 		}
 	};
+
+	onBeforeUnmount(() => {
+		stopAudio();
+	});
 
 	return {
 		conversations,

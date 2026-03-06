@@ -21,7 +21,7 @@ const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
 export class SpaceLightingToolService extends BaseToolProviderService implements OnModuleInit {
 	protected readonly logger = new Logger(SpaceLightingToolService.name);
 
-	private spaceIntentService!: import('./space-intent.service').SpaceIntentService;
+	private spaceIntentService: import('./space-intent.service').SpaceIntentService | undefined;
 
 	constructor(
 		private readonly spacesService: SpacesService,
@@ -74,11 +74,15 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 	}
 
 	private async executeSetSpaceLighting(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const spaceId = args.space_id as string;
-		const mode = args.mode as string;
+		const spaceId = typeof args.space_id === 'string' ? args.space_id : '';
+		const mode = typeof args.mode === 'string' ? args.mode : '';
 
 		if (!spaceId || !mode) {
 			return { success: false, message: 'Missing required parameters: space_id, mode' };
+		}
+
+		if (!this.spaceIntentService) {
+			return { success: false, message: 'Space lighting service is not available' };
 		}
 
 		// Validate mode

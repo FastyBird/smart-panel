@@ -54,7 +54,7 @@ export class SceneToolService extends BaseToolProviderService {
 	}
 
 	private async executeRunScene(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const sceneId = args.scene_id as string;
+		const sceneId = typeof args.scene_id === 'string' ? args.scene_id : '';
 
 		if (!sceneId) {
 			return { success: false, message: 'Missing required parameter: scene_id' };
@@ -65,6 +65,10 @@ export class SceneToolService extends BaseToolProviderService {
 
 		if (!scene) {
 			return { success: false, message: `Scene with ID "${sceneId}" not found` };
+		}
+
+		if (!scene.enabled) {
+			return { success: false, message: `Scene "${scene.name}" is disabled` };
 		}
 
 		const result = await this.sceneExecutor.triggerScene(sceneId, 'buddy');

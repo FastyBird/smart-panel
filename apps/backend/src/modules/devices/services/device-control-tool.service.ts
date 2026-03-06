@@ -70,9 +70,9 @@ export class DeviceControlToolService extends BaseToolProviderService {
 	}
 
 	private async executeControlDevice(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const deviceId = args.device_id as string;
-		const channelId = args.channel_id as string;
-		const propertyId = args.property_id as string;
+		const deviceId = typeof args.device_id === 'string' ? args.device_id : '';
+		const channelId = typeof args.channel_id === 'string' ? args.channel_id : '';
+		const propertyId = typeof args.property_id === 'string' ? args.property_id : '';
 		const value = args.value;
 
 		if (!deviceId || !channelId || !propertyId || value === undefined || value === null) {

@@ -3841,6 +3841,17 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_voice_listening => 'Naslouchám...';
 
   @override
+  String buddy_voice_recording_progress(int seconds, int maxSeconds) {
+    return 'Nahrávání ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_voice_processing => 'Zpracovávám...';
+
+  @override
+  String get buddy_voice_transcribing => 'Přepisuji zvuk...';
+
+  @override
   String get security_events_error_unexpected_response => 'Neočekávaná odpověď';
 
   @override

@@ -3820,6 +3820,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buddy_voice_listening => 'Listening...';
 
   @override
+  String buddy_voice_recording_progress(int seconds, int maxSeconds) {
+    return 'Recording ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_voice_processing => 'Processing...';
+
+  @override
+  String get buddy_voice_transcribing => 'Transcribing audio...';
+
+  @override
   String get security_events_error_unexpected_response => 'Unexpected response';
 
   @override

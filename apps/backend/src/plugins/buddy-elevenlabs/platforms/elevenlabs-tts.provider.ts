@@ -6,11 +6,10 @@ import {
 	TtsSynthesisResult,
 } from '../../../modules/buddy/platforms/tts-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
+import { BUDDY_ELEVENLABS_API_BASE, BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
 import { BuddyElevenlabsConfigModel } from '../models/config.model';
 
 const TTS_DEFAULT_TIMEOUT = 30_000;
-const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io';
 
 interface ElevenLabsVoice {
 	voice_id: string;
@@ -53,7 +52,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 		const voiceId = options?.voice ?? config?.voiceId ?? (await this.getDefaultVoiceId(apiKey));
 
 		try {
-			const url = `${ELEVENLABS_API_BASE}/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
+			const url = `${BUDDY_ELEVENLABS_API_BASE}/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -104,7 +103,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 		}
 
 		try {
-			const response = await fetch(`${ELEVENLABS_API_BASE}/v1/voices`, {
+			const response = await fetch(`${BUDDY_ELEVENLABS_API_BASE}/v1/voices`, {
 				headers: { 'xi-api-key': apiKey },
 				signal: AbortSignal.timeout(TTS_DEFAULT_TIMEOUT),
 			});

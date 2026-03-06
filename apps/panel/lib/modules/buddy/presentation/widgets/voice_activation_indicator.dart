@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 
 /// Visual indicator for voice activation detection state.
@@ -115,6 +116,7 @@ class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 	}
 
 	Widget _buildIndicator(BuildContext context, bool isDark, VoiceActivationState state) {
+		final localizations = AppLocalizations.of(context)!;
 		final Color iconColor;
 		final Color bgColor;
 		final IconData icon;
@@ -126,7 +128,7 @@ class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 				bgColor = (isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9)
 					.withValues(alpha: 0.9);
 				icon = Icons.mic_none;
-				label = 'Listening...';
+				label = localizations.buddy_voice_listening;
 			case VoiceActivationState.recording:
 				iconColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 				bgColor = (isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight9)
@@ -134,13 +136,13 @@ class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 				icon = Icons.mic;
 				final seconds = widget.voiceActivationService.recordingDuration.inSeconds;
 				final maxSeconds = widget.voiceActivationService.config.maxRecordingDurationSec;
-				label = 'Recording ${seconds}s / ${maxSeconds}s';
+				label = localizations.buddy_voice_recording_progress(seconds, maxSeconds);
 			case VoiceActivationState.processing:
 				iconColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 				bgColor = (isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9)
 					.withValues(alpha: 0.9);
 				icon = Icons.hearing;
-				label = 'Processing...';
+				label = localizations.buddy_voice_processing;
 			case VoiceActivationState.stopped:
 				return const SizedBox.shrink();
 		}

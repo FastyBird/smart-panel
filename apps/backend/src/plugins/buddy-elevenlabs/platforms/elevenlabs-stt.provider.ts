@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ISttProvider, SttTranscriptionOptions } from '../../../modules/buddy/platforms/stt-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
+import { BUDDY_ELEVENLABS_API_BASE, BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
 import { BuddyElevenlabsConfigModel } from '../models/config.model';
 
 const STT_DEFAULT_MODEL = 'scribe_v2';
@@ -51,7 +51,7 @@ export class ElevenLabsSttProvider implements ISttProvider {
 				formData.append('language_code', options.language);
 			}
 
-			const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+			const response = await fetch(`${BUDDY_ELEVENLABS_API_BASE}/v1/speech-to-text`, {
 				method: 'POST',
 				headers: {
 					'xi-api-key': apiKey,

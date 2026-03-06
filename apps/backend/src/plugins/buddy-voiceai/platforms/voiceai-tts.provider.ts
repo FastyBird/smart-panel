@@ -69,7 +69,9 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 			});
 
 			if (!response.ok) {
-				throw new Error(`Voice.ai API returned ${response.status}: ${response.statusText}`);
+				const body = await response.text().catch(() => '');
+
+				throw new Error(`Voice.ai API returned ${response.status}: ${response.statusText}${body ? ` - ${body}` : ''}`);
 			}
 
 			const arrayBuffer = await response.arrayBuffer();

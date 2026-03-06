@@ -4645,6 +4645,22 @@
   "@buddy_voice_listening": {
     "description": "Label shown in voice input overlay while recording"
   },
+  "buddy_voice_recording_progress": "Recording {seconds}s / {maxSeconds}s",
+  "@buddy_voice_recording_progress": {
+    "description": "Label shown in voice activation indicator during recording",
+    "placeholders": {
+      "seconds": { "type": "int" },
+      "maxSeconds": { "type": "int" }
+    }
+  },
+  "buddy_voice_processing": "Processing...",
+  "@buddy_voice_processing": {
+    "description": "Label shown in voice activation indicator during STT processing"
+  },
+  "buddy_voice_transcribing": "Transcribing audio...",
+  "@buddy_voice_transcribing": {
+    "description": "Placeholder text shown while audio is being transcribed"
+  },
 
   "security_events_error_unexpected_response": "Unexpected response",
   "@security_events_error_unexpected_response": {
