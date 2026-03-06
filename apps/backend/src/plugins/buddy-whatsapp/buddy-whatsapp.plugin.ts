@@ -106,9 +106,14 @@ WhatsApp adapter plugin for the Buddy module. Enables remote conversations and a
 			return;
 		}
 
-		const fastify = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
+		const instance = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
 
-		fastify.addHook('preParsing', (request, _reply, payload, done) => {
+		// Skip when running under a non-Fastify adapter (e.g., Express in e2e tests)
+		if (typeof instance.addHook !== 'function') {
+			return;
+		}
+
+		instance.addHook('preParsing', (request, _reply, payload, done) => {
 			if (request.method !== 'POST' || !request.url.includes('/buddy-whatsapp/webhook')) {
 				done(null, payload);
 

@@ -324,7 +324,11 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.suggestionEngine.recordFeedback(suggestionId, feedback);
 			feedbackRecorded = true;
 		} catch {
-			await this.sendTextMessage(config, from, 'Suggestion not found or expired.');
+			try {
+				await this.sendTextMessage(config, from, 'Suggestion not found or expired.');
+			} catch (sendError) {
+				this.logger.warn(`Failed to send not-found notification to WhatsApp ${from}: ${String(sendError)}`);
+			}
 
 			return;
 		}
