@@ -55,6 +55,8 @@ import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_PREFIX } from './plugins/buddy-claude-s
 import { BuddyClaudeSetupTokenPlugin } from './plugins/buddy-claude-setup-token/buddy-claude-setup-token.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
+import { BUDDY_DISCORD_PLUGIN_PREFIX } from './plugins/buddy-discord/buddy-discord.constants';
+import { BuddyDiscordPlugin } from './plugins/buddy-discord/buddy-discord.plugin';
 import { BUDDY_ELEVENLABS_PLUGIN_PREFIX } from './plugins/buddy-elevenlabs/buddy-elevenlabs.constants';
 import { BuddyElevenlabsPlugin } from './plugins/buddy-elevenlabs/buddy-elevenlabs.plugin';
 import { BUDDY_OLLAMA_PLUGIN_PREFIX } from './plugins/buddy-ollama/buddy-ollama.constants';
@@ -324,6 +326,10 @@ export class AppModule {
 								path: BUDDY_WHATSAPP_PLUGIN_PREFIX,
 								module: BuddyWhatsappPlugin,
 							},
+							{
+								path: BUDDY_DISCORD_PLUGIN_PREFIX,
+								module: BuddyDiscordPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -383,6 +389,7 @@ export class AppModule {
 				BuddySttWhisperLocalPlugin,
 				BuddyTelegramPlugin,
 				BuddyWhatsappPlugin,
+				BuddyDiscordPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

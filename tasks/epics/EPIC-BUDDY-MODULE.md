@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -143,7 +143,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 - [x] Telegram bot adapter for buddy conversations
 - [x] WhatsApp adapter for buddy conversations (single-channel, webhook-based)
-- [ ] Discord bot adapter with space-channel mapping (multi-channel)
+- [x] Discord bot adapter with space-channel mapping (multi-channel)
 - [x] Admin web chat interface embedded in admin settings
 - [x] `personality.md` configuration file for buddy tone/style customisation
 
