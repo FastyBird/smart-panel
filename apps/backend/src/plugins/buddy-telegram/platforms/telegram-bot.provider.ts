@@ -54,6 +54,8 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 
 	onModuleDestroy(): void {
 		this.stopBot();
+		this.registeredChatIds.clear();
+		this.userConversations.clear();
 	}
 
 	/**
@@ -242,8 +244,8 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.bot = null;
 			this.running = false;
 			this.activeConfig = null;
-			this.registeredChatIds.clear();
-			this.userConversations.clear();
+			// Preserve registeredChatIds and userConversations across restarts
+			// so users don't need to re-message after a config change.
 			this.logger.log('Telegram bot stopped');
 		}
 	}
