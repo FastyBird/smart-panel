@@ -56,39 +56,8 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 
 		// Register a preParsing hook to capture the raw body only for the WhatsApp webhook POST route.
 		// This avoids enabling rawBody globally which would double per-request memory for all routes.
-		const fastifyInstance = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
-
-		fastifyInstance.addHook(
-			'preParsing',
-			(request: FastifyRequest, _reply: unknown, payload: Readable, done: (err: null, payload: Readable) => void) => {
-				if (request.method !== 'POST' || !request.url.includes('/buddy-whatsapp/webhook')) {
-					done(null, payload);
-
-					return;
-				}
-
-				const chunks: Buffer[] = [];
-
-				payload.on('data', (chunk: Buffer) => {
-					chunks.push(chunk);
-				});
-
-				payload.on('end', () => {
-					const rawBody = Buffer.concat(chunks);
-
-					(request as FastifyRequest & { whatsappRawBody?: Buffer }).whatsappRawBody = rawBody;
-
-					// Create a new readable stream with the same data so Fastify can still parse the JSON body
-					const replacement = Readable.from(rawBody);
-
-					done(null, replacement);
-				});
-
-				payload.on('error', () => {
-					done(null, payload);
-				});
-			},
-		);
+		// Guard: httpAdapter is null when running in CLI context (e.g., openapi:generate).
+		this.registerRawBodyHook();
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_WHATSAPP_PLUGIN_NAME,
@@ -124,6 +93,46 @@ WhatsApp adapter plugin for the Buddy module. Enables remote conversations and a
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
+		});
+	}
+
+	/**
+	 * Register a Fastify preParsing hook to capture raw body only for the webhook POST route.
+	 * This avoids enabling rawBody globally which would double per-request memory for all routes.
+	 */
+	private registerRawBodyHook(): void {
+		// httpAdapter is null when running in CLI context (e.g., openapi:generate)
+		if (!this.httpAdapterHost.httpAdapter) {
+			return;
+		}
+
+		const fastify = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
+
+		fastify.addHook('preParsing', (request, _reply, payload, done) => {
+			if (request.method !== 'POST' || !request.url.includes('/buddy-whatsapp/webhook')) {
+				done(null, payload);
+
+				return;
+			}
+
+			const chunks: Buffer[] = [];
+			const stream = payload as Readable;
+
+			stream.on('data', (chunk: Buffer) => {
+				chunks.push(chunk);
+			});
+
+			stream.on('end', () => {
+				const rawBody = Buffer.concat(chunks);
+
+				(request as FastifyRequest & { whatsappRawBody?: Buffer }).whatsappRawBody = rawBody;
+
+				done(null, Readable.from(rawBody));
+			});
+
+			stream.on('error', () => {
+				done(null, payload);
+			});
 		});
 	}
 }
