@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 /// Service that manages the navigation deck.
 ///
@@ -99,7 +100,7 @@ class DeckService extends ChangeNotifier {
   /// Initializes the deck with display settings.
   ///
   /// Call this during app hydration after display settings are loaded.
-  void initialize(DisplayModel display, {BuildContext? context}) {
+  void initialize(DisplayModel display) {
     _display = display;
 
     if (kDebugMode) {
@@ -117,12 +118,10 @@ class DeckService extends ChangeNotifier {
       return;
     }
 
-    // Extract localizations before any async gaps
-    final localizations = context != null ? AppLocalizations.of(context) : null;
-
     // Build initial deck (may not have device categories yet for ROOM role)
-    _buildDeck(localizations);
-    _isInitialized = true;
+    if (_buildDeck()) {
+      _isInitialized = true;
+    }
     notifyListeners();
 
     // Listen for dashboard changes
@@ -154,7 +153,7 @@ class DeckService extends ChangeNotifier {
           '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
         );
       }
-      _fetchDeviceCategoriesAsync(display.roomId!, localizations);
+      _fetchDeviceCategoriesAsync(display.roomId!);
       _prefetchDomainData(display.roomId!);
     } else if (kDebugMode) {
       debugPrint(
@@ -165,10 +164,7 @@ class DeckService extends ChangeNotifier {
   }
 
   /// Fetches device categories for a room and rebuilds the deck.
-  Future<void> _fetchDeviceCategoriesAsync(
-    String roomId,
-    AppLocalizations? localizations,
-  ) async {
+  Future<void> _fetchDeviceCategoriesAsync(String roomId) async {
     if (_devicesService == null) {
       if (kDebugMode) {
         debugPrint(
@@ -238,7 +234,7 @@ class DeckService extends ChangeNotifier {
       }
 
       // Rebuild deck with device categories
-      _buildDeck(localizations);
+      _buildDeck();
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -259,7 +255,7 @@ class DeckService extends ChangeNotifier {
 
   void _onDashboardChanged() {
     if (_display != null && _configError == null) {
-      _buildDeck(null);
+      _buildDeck();
       notifyListeners();
     }
   }
@@ -292,7 +288,7 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      _buildDeck(null);
+      _buildDeck();
       notifyListeners();
     }
   }
@@ -331,7 +327,7 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      _buildDeck(null);
+      _buildDeck();
       notifyListeners();
     }
   }
@@ -355,13 +351,35 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      _buildDeck(null);
+      _buildDeck();
       notifyListeners();
     }
   }
 
-  void _buildDeck(AppLocalizations? localizations) {
-    if (_display == null) return;
+  /// Resolves the current [AppLocalizations] from the active app locale.
+  ///
+  /// Uses [Intl.defaultLocale] which is synced by [MaterialApp]'s
+  /// [localeResolutionCallback]. Falls back to English if not set.
+  AppLocalizations _resolveLocalizations() {
+    final tag = Intl.defaultLocale;
+    if (tag != null) {
+      try {
+        final parts = tag.split('-');
+        return lookupAppLocalizations(
+          Locale(parts[0], parts.length > 1 ? parts[1] : null),
+        );
+      } catch (_) {}
+    }
+    return lookupAppLocalizations(const Locale('en'));
+  }
+
+  /// Builds the deck from current state.
+  ///
+  /// Returns `true` if the deck was successfully built.
+  bool _buildDeck() {
+    if (_display == null) return false;
+
+    final localizations = _resolveLocalizations();
 
     // Get pages from dashboard service
     final pages = _dashboardService.pages.values.toList();
@@ -385,16 +403,16 @@ class DeckService extends ChangeNotifier {
       climateTargetsCount: _climateTargetsCount,
       coversTargetsCount: _coversTargetsCount,
       mediaBindingsCount: _mediaBindingsCount,
-      roomViewTitle: localizations?.system_view_room ?? 'Room',
-      masterViewTitle: localizations?.system_view_master ?? 'Home',
-      entryViewTitle: localizations?.system_view_entry ?? 'Entry',
-      lightsViewTitle: localizations?.domain_lights ?? 'Lights',
-      climateViewTitle: localizations?.domain_climate ?? 'Climate',
-      mediaViewTitle: localizations?.domain_media ?? 'Media',
-      sensorsViewTitle: localizations?.domain_sensors ?? 'Sensors',
-      energyViewTitle: localizations?.domain_energy ?? 'Energy',
-      securityViewTitle: localizations?.entry_security ?? 'Security',
-      energyScreenTitle: localizations?.domain_energy ?? 'Energy',
+      roomViewTitle: localizations.system_view_room,
+      masterViewTitle: localizations.system_view_master,
+      entryViewTitle: localizations.system_view_entry,
+      lightsViewTitle: localizations.domain_lights,
+      climateViewTitle: localizations.domain_climate,
+      mediaViewTitle: localizations.domain_media,
+      sensorsViewTitle: localizations.domain_sensors,
+      energyViewTitle: localizations.domain_energy,
+      securityViewTitle: localizations.entry_security,
+      energyScreenTitle: localizations.domain_energy,
       energySupported: energySupported,
     );
 
@@ -414,18 +432,17 @@ class DeckService extends ChangeNotifier {
         debugPrint('[DECK SERVICE] Warning: ${_deck!.warningMessage}');
       }
     }
+
+    return true;
   }
 
   /// Updates the display settings and rebuilds the deck.
-  void updateDisplay(DisplayModel display, {BuildContext? context}) {
+  void updateDisplay(DisplayModel display) {
     final oldRoomId = _display?.roomId;
     _display = display;
     _configError = validateDisplayConfig(display);
 
     if (_configError == null) {
-      // Extract localizations before any async gaps
-      final localizations = context != null ? AppLocalizations.of(context) : null;
-
       // If room changed, reset device categories and config counts, then refetch
       if (display.role == DisplayRole.room &&
           display.roomId != null &&
@@ -437,11 +454,11 @@ class DeckService extends ChangeNotifier {
         _climateTargetsCount = null;
         _coversTargetsCount = null;
         _mediaBindingsCount = null;
-        _buildDeck(localizations);
-        _fetchDeviceCategoriesAsync(display.roomId!, localizations);
+        _buildDeck();
+        _fetchDeviceCategoriesAsync(display.roomId!);
         _prefetchDomainData(display.roomId!);
       } else {
-        _buildDeck(localizations);
+        _buildDeck();
       }
     }
 
@@ -657,7 +674,7 @@ class DeckService extends ChangeNotifier {
             );
           }
 
-          _buildDeck(null);
+          _buildDeck();
           notifyListeners();
         }
       });

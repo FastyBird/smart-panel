@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/modules/buddy/buddy_strings.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 
 /// Dismissible card widget for buddy suggestions.
@@ -84,6 +84,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 
 	@override
 	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 		final accentColor = ThemeColorFamily.get(
@@ -178,7 +179,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 													vertical: AppSpacings.pSm,
 												),
 											),
-											child: const Text(BuddyStrings.dismiss),
+											child: Text(localizations.buddy_dismiss),
 										),
 									),
 									SizedBox(width: AppSpacings.pMd),
@@ -207,7 +208,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 														size: AppSpacings.scale(16),
 													),
 												label: Text(
-													BuddyStrings.apply,
+													localizations.buddy_apply,
 													style: TextStyle(
 														fontSize: AppFontSize.small,
 													),
@@ -230,7 +231,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 													),
 												),
 												child: Text(
-													BuddyStrings.gotIt,
+													localizations.buddy_got_it,
 													style: TextStyle(
 														fontSize: AppFontSize.small,
 													),

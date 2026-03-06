@@ -6772,6 +6772,360 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Light'**
   String get sensor_label_light;
+
+  /// Toast message when saving settings fails
+  ///
+  /// In en, this message translates to:
+  /// **'Save settings failed.'**
+  String get settings_save_failed;
+
+  /// Placeholder while app version is loading
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get settings_about_version_loading;
+
+  /// Title for app startup error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to Start Application'**
+  String get app_error_failed_to_start;
+
+  /// Short title for app startup error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to Start'**
+  String get app_error_failed_to_start_short;
+
+  /// Message for unexpected startup error
+  ///
+  /// In en, this message translates to:
+  /// **'An unexpected error occurred while starting the application.'**
+  String get app_error_unexpected;
+
+  /// Message when error details are available
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred. See details below.'**
+  String get app_error_see_details;
+
+  /// Button label to restart the application
+  ///
+  /// In en, this message translates to:
+  /// **'Restart Application'**
+  String get app_error_restart_button;
+
+  /// Hint for permit join error
+  ///
+  /// In en, this message translates to:
+  /// **'Please ask the administrator to activate \"Permit Join\" in the admin panel, then restart the application.'**
+  String get app_error_permit_join_hint;
+
+  /// Error when stored backend connection fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the stored backend server.'**
+  String get app_error_connection_failed_stored;
+
+  /// Error when backend connection fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to {name} at {address}'**
+  String app_error_connection_failed_backend(String name, String address);
+
+  /// Error when backend initialization fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to initialize connection to backend.'**
+  String get app_error_initialization_failed;
+
+  /// Error when URL connection fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to {url}'**
+  String app_error_connection_failed_url(String url);
+
+  /// Title for empty deck state
+  ///
+  /// In en, this message translates to:
+  /// **'No pages configured'**
+  String get deck_empty_title;
+
+  /// Description for empty deck state
+  ///
+  /// In en, this message translates to:
+  /// **'Please configure your dashboard in Admin.'**
+  String get deck_empty_description;
+
+  /// Button label on alert banner
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get alert_banner_view_button;
+
+  /// Label for current time on sensor chart axis
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get sensor_chart_label_now;
+
+  /// Fallback name when room name is unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get room_name_fallback;
+
+  /// Weather tile text when not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get weather_tile_not_configured;
+
+  /// Error message when security data fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load security data'**
+  String get entry_error_load_security_data;
+
+  /// Status when all locks are locked
+  ///
+  /// In en, this message translates to:
+  /// **'All locked'**
+  String get entry_locks_all_locked;
+
+  /// Status when some locks are locked
+  ///
+  /// In en, this message translates to:
+  /// **'{locked}/{total} locked'**
+  String entry_locks_status_partial(int locked, int total);
+
+  /// Status when alarm is armed
+  ///
+  /// In en, this message translates to:
+  /// **'Armed'**
+  String get entry_alarm_armed;
+
+  /// Status when alarm is disarmed
+  ///
+  /// In en, this message translates to:
+  /// **'Disarmed'**
+  String get entry_alarm_disarmed;
+
+  /// Status showing active camera count
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active'**
+  String entry_cameras_status_active(int count);
+
+  /// Error when house data fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load house data'**
+  String get master_error_load_house_data;
+
+  /// Device count summary for a room
+  ///
+  /// In en, this message translates to:
+  /// **'{online}/{total} devices'**
+  String master_room_device_count(int online, int total);
+
+  /// Buddy suggestion dismiss button
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get buddy_dismiss;
+
+  /// Buddy suggestion apply button
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get buddy_apply;
+
+  /// Buddy acknowledgement button
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get buddy_got_it;
+
+  /// Empty state message in buddy chat
+  ///
+  /// In en, this message translates to:
+  /// **'Ask me anything about your home!'**
+  String get buddy_empty_state_message;
+
+  /// Error when buddy conversation fails to start
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start a conversation'**
+  String get buddy_init_failed_message;
+
+  /// Title when AI provider is not configured
+  ///
+  /// In en, this message translates to:
+  /// **'AI provider not configured'**
+  String get buddy_provider_not_configured_title;
+
+  /// Description when AI provider is not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Configure an AI provider in admin settings to enable chat.'**
+  String get buddy_provider_not_configured_description;
+
+  /// Status text while buddy is processing
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking...'**
+  String get buddy_thinking;
+
+  /// Input hint when conversation init failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start conversation'**
+  String get buddy_hint_init_failed;
+
+  /// Input hint while conversation is starting
+  ///
+  /// In en, this message translates to:
+  /// **'Starting conversation...'**
+  String get buddy_hint_starting_conversation;
+
+  /// Default input hint in buddy chat
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about your home...'**
+  String get buddy_hint_default;
+
+  /// Error when loading conversations fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load conversations'**
+  String get buddy_error_load_conversations;
+
+  /// Error when creating conversation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create conversation'**
+  String get buddy_error_create_conversation;
+
+  /// Error when loading messages fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load messages'**
+  String get buddy_error_load_messages;
+
+  /// Error when sending message fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send message'**
+  String get buddy_error_send_message;
+
+  /// Error when AI provider is not set up
+  ///
+  /// In en, this message translates to:
+  /// **'AI provider not configured'**
+  String get buddy_error_provider_not_configured;
+
+  /// Error when buddy request times out
+  ///
+  /// In en, this message translates to:
+  /// **'Request timed out. Please try again.'**
+  String get buddy_error_request_timeout;
+
+  /// Error when buddy has connection issues
+  ///
+  /// In en, this message translates to:
+  /// **'Connection error. Please check your network.'**
+  String get buddy_error_connection_error;
+
+  /// Generic buddy error message
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get buddy_error_generic;
+
+  /// Error when security events API returns unexpected data
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected response'**
+  String get security_events_error_unexpected_response;
+
+  /// Fallback label for media activation step
+  ///
+  /// In en, this message translates to:
+  /// **'Step {index}'**
+  String media_activation_step_fallback(int index);
+
+  /// Error when deck is not initialized
+  ///
+  /// In en, this message translates to:
+  /// **'Deck not initialized'**
+  String get intent_error_deck_not_initialized;
+
+  /// Error when deck item is not found
+  ///
+  /// In en, this message translates to:
+  /// **'Deck item not found'**
+  String get intent_error_deck_item_not_found;
+
+  /// Error when no home item is available
+  ///
+  /// In en, this message translates to:
+  /// **'No home item available'**
+  String get intent_error_no_home_item;
+
+  /// Error when scenes service is unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Scenes service not available'**
+  String get intent_error_scenes_not_available;
+
+  /// Error when scene activation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to activate scene'**
+  String get intent_error_scene_activation_failed;
+
+  /// Error during scene activation
+  ///
+  /// In en, this message translates to:
+  /// **'Error activating scene'**
+  String get intent_error_scene_activation_error;
+
+  /// Error when device repo is unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Device properties repository not available'**
+  String get intent_error_device_repo_not_available;
+
+  /// Error when setting device property fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to set property value'**
+  String get intent_error_set_property_failed;
+
+  /// Error during property value set
+  ///
+  /// In en, this message translates to:
+  /// **'Error setting property value'**
+  String get intent_error_set_property_error;
+
+  /// Error when device toggle fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to toggle device'**
+  String get intent_error_toggle_device_failed;
+
+  /// Error during device toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Error toggling device'**
+  String get intent_error_toggle_device_error;
+
+  /// Screen lock duration option for never
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get settings_display_screen_lock_never;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

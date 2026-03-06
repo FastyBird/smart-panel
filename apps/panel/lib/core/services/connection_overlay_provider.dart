@@ -206,8 +206,7 @@ class ConnectionOverlayProvider {
 		if (overlay == null) return;
 
 		final context = navigatorState.context;
-		final localizations = AppLocalizations.of(context);
-		if (localizations == null) return;
+		final localizations = AppLocalizations.of(context)!;
 
 		Toast.showSuccess(
 			context,

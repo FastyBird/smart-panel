@@ -4341,5 +4341,276 @@
   "sensor_label_light": "Light",
   "@sensor_label_light": {
     "description": "Label for light/illuminance sensor reading"
+  },
+
+  "settings_save_failed": "Save settings failed.",
+  "@settings_save_failed": {
+    "description": "Toast message when saving settings fails"
+  },
+  "settings_about_version_loading": "Loading...",
+  "@settings_about_version_loading": {
+    "description": "Placeholder while app version is loading"
+  },
+
+  "app_error_failed_to_start": "Failed to Start Application",
+  "@app_error_failed_to_start": {
+    "description": "Title for app startup error screen"
+  },
+  "app_error_failed_to_start_short": "Failed to Start",
+  "@app_error_failed_to_start_short": {
+    "description": "Short title for app startup error screen"
+  },
+  "app_error_unexpected": "An unexpected error occurred while starting the application.",
+  "@app_error_unexpected": {
+    "description": "Message for unexpected startup error"
+  },
+  "app_error_see_details": "An error occurred. See details below.",
+  "@app_error_see_details": {
+    "description": "Message when error details are available"
+  },
+  "app_error_restart_button": "Restart Application",
+  "@app_error_restart_button": {
+    "description": "Button label to restart the application"
+  },
+  "app_error_permit_join_hint": "Please ask the administrator to activate \"Permit Join\" in the admin panel, then restart the application.",
+  "@app_error_permit_join_hint": {
+    "description": "Hint for permit join error"
+  },
+  "app_error_connection_failed_stored": "Could not connect to the stored backend server.",
+  "@app_error_connection_failed_stored": {
+    "description": "Error when stored backend connection fails"
+  },
+  "app_error_connection_failed_backend": "Could not connect to {name} at {address}",
+  "@app_error_connection_failed_backend": {
+    "description": "Error when backend connection fails",
+    "placeholders": {
+      "name": { "type": "String" },
+      "address": { "type": "String" }
+    }
+  },
+  "app_error_initialization_failed": "Failed to initialize connection to backend.",
+  "@app_error_initialization_failed": {
+    "description": "Error when backend initialization fails"
+  },
+  "app_error_connection_failed_url": "Could not connect to {url}",
+  "@app_error_connection_failed_url": {
+    "description": "Error when URL connection fails",
+    "placeholders": {
+      "url": { "type": "String" }
+    }
+  },
+
+  "deck_empty_title": "No pages configured",
+  "@deck_empty_title": {
+    "description": "Title for empty deck state"
+  },
+  "deck_empty_description": "Please configure your dashboard in Admin.",
+  "@deck_empty_description": {
+    "description": "Description for empty deck state"
+  },
+
+  "alert_banner_view_button": "View",
+  "@alert_banner_view_button": {
+    "description": "Button label on alert banner"
+  },
+
+  "sensor_chart_label_now": "Now",
+  "@sensor_chart_label_now": {
+    "description": "Label for current time on sensor chart axis"
+  },
+
+  "room_name_fallback": "Room",
+  "@room_name_fallback": {
+    "description": "Fallback name when room name is unavailable"
+  },
+
+  "weather_tile_not_configured": "Not configured",
+  "@weather_tile_not_configured": {
+    "description": "Weather tile text when not configured"
+  },
+
+  "entry_error_load_security_data": "Failed to load security data",
+  "@entry_error_load_security_data": {
+    "description": "Error message when security data fails to load"
+  },
+  "entry_locks_all_locked": "All locked",
+  "@entry_locks_all_locked": {
+    "description": "Status when all locks are locked"
+  },
+  "entry_locks_status_partial": "{locked}/{total} locked",
+  "@entry_locks_status_partial": {
+    "description": "Status when some locks are locked",
+    "placeholders": {
+      "locked": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "entry_alarm_armed": "Armed",
+  "@entry_alarm_armed": {
+    "description": "Status when alarm is armed"
+  },
+  "entry_alarm_disarmed": "Disarmed",
+  "@entry_alarm_disarmed": {
+    "description": "Status when alarm is disarmed"
+  },
+  "entry_cameras_status_active": "{count} active",
+  "@entry_cameras_status_active": {
+    "description": "Status showing active camera count",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "master_error_load_house_data": "Failed to load house data",
+  "@master_error_load_house_data": {
+    "description": "Error when house data fails to load"
+  },
+  "master_room_device_count": "{online}/{total} devices",
+  "@master_room_device_count": {
+    "description": "Device count summary for a room",
+    "placeholders": {
+      "online": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "buddy_dismiss": "Dismiss",
+  "@buddy_dismiss": {
+    "description": "Buddy suggestion dismiss button"
+  },
+  "buddy_apply": "Apply",
+  "@buddy_apply": {
+    "description": "Buddy suggestion apply button"
+  },
+  "buddy_got_it": "Got it",
+  "@buddy_got_it": {
+    "description": "Buddy acknowledgement button"
+  },
+  "buddy_empty_state_message": "Ask me anything about your home!",
+  "@buddy_empty_state_message": {
+    "description": "Empty state message in buddy chat"
+  },
+  "buddy_init_failed_message": "Could not start a conversation",
+  "@buddy_init_failed_message": {
+    "description": "Error when buddy conversation fails to start"
+  },
+  "buddy_provider_not_configured_title": "AI provider not configured",
+  "@buddy_provider_not_configured_title": {
+    "description": "Title when AI provider is not configured"
+  },
+  "buddy_provider_not_configured_description": "Configure an AI provider in admin settings to enable chat.",
+  "@buddy_provider_not_configured_description": {
+    "description": "Description when AI provider is not configured"
+  },
+  "buddy_thinking": "Thinking...",
+  "@buddy_thinking": {
+    "description": "Status text while buddy is processing"
+  },
+  "buddy_hint_init_failed": "Failed to start conversation",
+  "@buddy_hint_init_failed": {
+    "description": "Input hint when conversation init failed"
+  },
+  "buddy_hint_starting_conversation": "Starting conversation...",
+  "@buddy_hint_starting_conversation": {
+    "description": "Input hint while conversation is starting"
+  },
+  "buddy_hint_default": "Ask about your home...",
+  "@buddy_hint_default": {
+    "description": "Default input hint in buddy chat"
+  },
+  "buddy_error_load_conversations": "Failed to load conversations",
+  "@buddy_error_load_conversations": {
+    "description": "Error when loading conversations fails"
+  },
+  "buddy_error_create_conversation": "Failed to create conversation",
+  "@buddy_error_create_conversation": {
+    "description": "Error when creating conversation fails"
+  },
+  "buddy_error_load_messages": "Failed to load messages",
+  "@buddy_error_load_messages": {
+    "description": "Error when loading messages fails"
+  },
+  "buddy_error_send_message": "Failed to send message",
+  "@buddy_error_send_message": {
+    "description": "Error when sending message fails"
+  },
+  "buddy_error_provider_not_configured": "AI provider not configured",
+  "@buddy_error_provider_not_configured": {
+    "description": "Error when AI provider is not set up"
+  },
+  "buddy_error_request_timeout": "Request timed out. Please try again.",
+  "@buddy_error_request_timeout": {
+    "description": "Error when buddy request times out"
+  },
+  "buddy_error_connection_error": "Connection error. Please check your network.",
+  "@buddy_error_connection_error": {
+    "description": "Error when buddy has connection issues"
+  },
+  "buddy_error_generic": "Something went wrong. Please try again.",
+  "@buddy_error_generic": {
+    "description": "Generic buddy error message"
+  },
+
+  "security_events_error_unexpected_response": "Unexpected response",
+  "@security_events_error_unexpected_response": {
+    "description": "Error when security events API returns unexpected data"
+  },
+
+  "media_activation_step_fallback": "Step {index}",
+  "@media_activation_step_fallback": {
+    "description": "Fallback label for media activation step",
+    "placeholders": {
+      "index": { "type": "int" }
+    }
+  },
+
+  "intent_error_deck_not_initialized": "Deck not initialized",
+  "@intent_error_deck_not_initialized": {
+    "description": "Error when deck is not initialized"
+  },
+  "intent_error_deck_item_not_found": "Deck item not found",
+  "@intent_error_deck_item_not_found": {
+    "description": "Error when deck item is not found"
+  },
+  "intent_error_no_home_item": "No home item available",
+  "@intent_error_no_home_item": {
+    "description": "Error when no home item is available"
+  },
+  "intent_error_scenes_not_available": "Scenes service not available",
+  "@intent_error_scenes_not_available": {
+    "description": "Error when scenes service is unavailable"
+  },
+  "intent_error_scene_activation_failed": "Failed to activate scene",
+  "@intent_error_scene_activation_failed": {
+    "description": "Error when scene activation fails"
+  },
+  "intent_error_scene_activation_error": "Error activating scene",
+  "@intent_error_scene_activation_error": {
+    "description": "Error during scene activation"
+  },
+  "intent_error_device_repo_not_available": "Device properties repository not available",
+  "@intent_error_device_repo_not_available": {
+    "description": "Error when device repo is unavailable"
+  },
+  "intent_error_set_property_failed": "Failed to set property value",
+  "@intent_error_set_property_failed": {
+    "description": "Error when setting device property fails"
+  },
+  "intent_error_set_property_error": "Error setting property value",
+  "@intent_error_set_property_error": {
+    "description": "Error during property value set"
+  },
+  "intent_error_toggle_device_failed": "Failed to toggle device",
+  "@intent_error_toggle_device_failed": {
+    "description": "Error when device toggle fails"
+  },
+  "intent_error_toggle_device_error": "Error toggling device",
+  "@intent_error_toggle_device_error": {
+    "description": "Error during device toggle"
+  },
+
+  "settings_display_screen_lock_never": "Never",
+  "@settings_display_screen_lock_never": {
+    "description": "Screen lock duration option for never"
   }
 }

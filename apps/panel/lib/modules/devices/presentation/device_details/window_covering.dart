@@ -172,8 +172,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _showActionFailed() {
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
+    if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
       Toast.showError(context, message: localizations.action_failed);
     }
   }
@@ -686,7 +686,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   borderRadius: BorderRadius.circular(AppBorderRadius.small),
                 ),
                 child: Text(
-                  AppLocalizations.of(context)?.window_covering_position_open_percent(_position) ?? '$_position%',
+                  AppLocalizations.of(context)!.window_covering_position_open_percent(_position),
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
@@ -1159,13 +1159,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildPositionSlider(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final normalizedValue = _position / 100.0;
 
     return SliderWithSteps(
       value: normalizedValue,
       steps: [
-        localizations!.window_covering_status_closed,
+        localizations.window_covering_status_closed,
         '25%',
         '50%',
         '75%',
@@ -1528,8 +1528,7 @@ class _Preset {
     this.tiltAngle,
   });
 
-  String getName(AppLocalizations? localizations) {
-    if (localizations == null) return type.name;
+  String getName(AppLocalizations localizations) {
     switch (type) {
       case _PresetType.morning:
         return localizations.window_covering_preset_morning;

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
@@ -47,7 +48,7 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
       String description = currentWeather != null
           ? WeatherConditionMapper.getDescription(
               currentWeather.weatherCode, context)
-          : 'Not configured';
+          : AppLocalizations.of(context)!.weather_tile_not_configured;
 
       return GestureDetector(
         onTap: currentWeather != null

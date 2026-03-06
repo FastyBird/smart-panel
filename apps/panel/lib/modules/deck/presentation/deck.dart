@@ -4,6 +4,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -404,7 +405,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 isLandscape: locator<ScreenService>().isLandscape,
               ),
               Text(
-                'No pages configured',
+                AppLocalizations.of(context)!.deck_empty_title,
                 style: TextStyle(
                   fontSize: AppFontSize.large,
                   fontWeight: FontWeight.w600,
@@ -414,7 +415,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 textAlign: TextAlign.center,
               ),
               Text(
-                'Please configure your dashboard in Admin.',
+                AppLocalizations.of(context)!.deck_empty_description,
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   color: isDark

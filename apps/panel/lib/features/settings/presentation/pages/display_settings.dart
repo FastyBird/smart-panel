@@ -172,7 +172,10 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						title: localizations.settings_display_settings_screen_lock_title,
 						currentValue: _screenLockDuration,
 						options: _screenLockDurationLabels.entries
-								.map((e) => SelectionOption(value: e.key, label: e.value))
+								.map((e) => SelectionOption(
+									value: e.key,
+									label: e.key == 0 ? localizations.settings_display_screen_lock_never : e.value,
+								))
 								.toList(),
 					);
 					if (result != null && context.mounted) {
@@ -180,7 +183,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 					}
 				},
 				child: SettingsDropdownValue(
-					value: _getScreenLockLabel(_screenLockDuration),
+					value: _getScreenLockLabel(_screenLockDuration, localizations),
 				),
 			),
 		);
@@ -470,7 +473,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		);
 	}
 
-	String _getScreenLockLabel(int duration) {
+	String _getScreenLockLabel(int duration, AppLocalizations localizations) {
+		if (duration == 0) return localizations.settings_display_screen_lock_never;
 		return _screenLockDurationLabels[duration] ?? '${duration}s';
 	}
 
@@ -499,7 +503,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						_isDarkMode = !_isDarkMode;
 					});
 
-					Toast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
 			},
 		);
@@ -543,7 +547,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 						Toast.showError(
 							context,
-							message: 'Save settings failed.',
+							message: AppLocalizations.of(context)!.settings_save_failed,
 						);
 					} else {
 						setState(() {
@@ -589,7 +593,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 					Toast.showError(
 						context,
-						message: 'Save settings failed.',
+						message: AppLocalizations.of(context)!.settings_save_failed,
 					);
 				}
 			},
@@ -623,7 +627,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 					Toast.showError(
 						context,
-						message: 'Save settings failed.',
+						message: AppLocalizations.of(context)!.settings_save_failed,
 					);
 				}
 			},
@@ -730,7 +734,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				if (!success) {
 					setState(revert);
 
-					Toast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
 			},
 		);

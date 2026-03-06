@@ -21,7 +21,8 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-	String _appVersion = 'Loading...';
+	String? _appVersion;
+	bool _versionError = false;
 
 	@override
 	void initState() {
@@ -36,10 +37,12 @@ class _AboutPageState extends State<AboutPage> {
 
 			setState(() {
 				_appVersion = packageInfo.version;
+				_versionError = false;
 			});
 		} catch (e) {
 			setState(() {
-				_appVersion = 'Error';
+				_appVersion = null;
+				_versionError = true;
 			});
 		}
 	}
@@ -171,7 +174,7 @@ class _AboutPageState extends State<AboutPage> {
 						),
 					),
 					Text(
-						'Version $_appVersion',
+						'Version ${_appVersion ?? (_versionError ? localizations.error : localizations.settings_about_version_loading)}',
 						style: TextStyle(
 							fontSize: AppFontSize.extraSmall,
 							color: subColor,

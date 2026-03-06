@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:flutter/foundation.dart';
 
@@ -220,8 +221,9 @@ class MediaActivityRepository extends ChangeNotifier {
 
 	Future<MediaActivationResultModel?> activateActivity(
 		String spaceId,
-		MediaActivityKey activityKey,
-	) async {
+		MediaActivityKey activityKey, {
+		required AppLocalizations localizations,
+	}) async {
 		// Fetch preview to get plan steps before the optimistic update
 		List<MediaActivationPlanStepModel> previewSteps = [];
 		try {
@@ -230,7 +232,7 @@ class MediaActivityRepository extends ChangeNotifier {
 				previewSteps = preview.plan.asMap().entries.map((e) =>
 					MediaActivationPlanStepModel(
 						index: e.key,
-						label: e.value.label ?? 'Step ${e.key + 1}',
+						label: e.value.label ?? localizations.media_activation_step_fallback(e.key + 1),
 						critical: e.value.critical,
 					),
 				).toList();

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/media_activity.dart';
 import 'package:flutter/foundation.dart';
@@ -273,8 +274,9 @@ class MediaActivityService extends ChangeNotifier {
 
 	Future<MediaActivationResultModel?> activateActivity(
 		String spaceId,
-		MediaActivityKey activityKey,
-	) => _repository.activateActivity(spaceId, activityKey);
+		MediaActivityKey activityKey, {
+		required AppLocalizations localizations,
+	}) => _repository.activateActivity(spaceId, activityKey, localizations: localizations);
 
 	Future<MediaDryRunPreviewModel?> previewActivity(
 		String spaceId,

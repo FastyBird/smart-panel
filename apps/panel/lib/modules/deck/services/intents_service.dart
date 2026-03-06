@@ -1,4 +1,5 @@
 import 'package:event_bus/event_bus.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
@@ -50,11 +51,11 @@ class IntentsService extends ChangeNotifier {
   /// Navigates to a specific deck item by ID.
   ///
   /// Fires a NavigateToDeckItemEvent that the deck navigation UI should handle.
-  IntentResult navigateToDeckItem(String itemId) {
+  IntentResult navigateToDeckItem(String itemId, {required AppLocalizations localizations}) {
     if (_currentDeck == null) {
       return IntentResult.failure(
         IntentType.navigateToDeckItem,
-        message: 'Deck not initialized',
+        message: localizations.intent_error_deck_not_initialized,
       );
     }
 
@@ -62,7 +63,7 @@ class IntentsService extends ChangeNotifier {
     if (item == null) {
       return IntentResult.invalid(
         IntentType.navigateToDeckItem,
-        message: 'Deck item not found: $itemId',
+        message: localizations.intent_error_deck_item_not_found,
       );
     }
 
@@ -80,11 +81,11 @@ class IntentsService extends ChangeNotifier {
   }
 
   /// Navigates to the home/start item.
-  IntentResult navigateHome() {
+  IntentResult navigateHome({required AppLocalizations localizations}) {
     if (_currentDeck == null) {
       return IntentResult.failure(
         IntentType.navigateHome,
-        message: 'Deck not initialized',
+        message: localizations.intent_error_deck_not_initialized,
       );
     }
 
@@ -92,19 +93,19 @@ class IntentsService extends ChangeNotifier {
     if (startItem == null) {
       return IntentResult.failure(
         IntentType.navigateHome,
-        message: 'No home item available',
+        message: localizations.intent_error_no_home_item,
       );
     }
 
-    return navigateToDeckItem(startItem.id);
+    return navigateToDeckItem(startItem.id, localizations: localizations);
   }
 
   /// Activates a scene by ID.
-  Future<IntentResult> activateScene(String sceneId) async {
+  Future<IntentResult> activateScene(String sceneId, {required AppLocalizations localizations}) async {
     if (_scenesService == null) {
       return IntentResult.failure(
         IntentType.activateScene,
-        message: 'Scenes service not available',
+        message: localizations.intent_error_scenes_not_available,
       );
     }
 
@@ -115,7 +116,7 @@ class IntentsService extends ChangeNotifier {
         if (result.failureCount > 0) {
           return IntentResult.partialSuccess(
             IntentType.activateScene,
-            message: result.errorMessage ?? 'Scene partially activated',
+            message: result.errorMessage ?? localizations.space_scene_partial_success,
             data: {
               'sceneId': sceneId,
               'successCount': result.successCount,
@@ -126,7 +127,7 @@ class IntentsService extends ChangeNotifier {
 
         return IntentResult.success(
           IntentType.activateScene,
-          message: 'Scene activated',
+          message: localizations.space_scene_triggered,
           data: {
             'sceneId': sceneId,
             'successCount': result.successCount,
@@ -136,7 +137,7 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.activateScene,
-        message: result.errorMessage ?? 'Failed to activate scene',
+        message: result.errorMessage ?? localizations.intent_error_scene_activation_failed,
         data: {'sceneId': sceneId},
       );
     } catch (e) {
@@ -146,7 +147,7 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.activateScene,
-        message: 'Error activating scene',
+        message: localizations.intent_error_scene_activation_error,
         data: {'sceneId': sceneId, 'error': e.toString()},
       );
     }
@@ -156,11 +157,12 @@ class IntentsService extends ChangeNotifier {
   Future<IntentResult> setDeviceProperty({
     required String propertyId,
     required dynamic value,
+    required AppLocalizations localizations,
   }) async {
     if (_channelPropertiesRepository == null) {
       return IntentResult.failure(
         IntentType.setDeviceProperty,
-        message: 'Device properties repository not available',
+        message: localizations.intent_error_device_repo_not_available,
       );
     }
 
@@ -179,7 +181,7 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.setDeviceProperty,
-        message: 'Failed to set property value',
+        message: localizations.intent_error_set_property_failed,
         data: {'propertyId': propertyId, 'value': value},
       );
     } catch (e) {
@@ -189,18 +191,18 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.setDeviceProperty,
-        message: 'Error setting property value',
+        message: localizations.intent_error_set_property_error,
         data: {'propertyId': propertyId, 'error': e.toString()},
       );
     }
   }
 
   /// Toggles a boolean device property.
-  Future<IntentResult> toggleDevice(String propertyId) async {
+  Future<IntentResult> toggleDevice(String propertyId, {required AppLocalizations localizations}) async {
     if (_channelPropertiesRepository == null) {
       return IntentResult.failure(
         IntentType.toggleDevice,
-        message: 'Device properties repository not available',
+        message: localizations.intent_error_device_repo_not_available,
       );
     }
 
@@ -218,7 +220,7 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.toggleDevice,
-        message: 'Failed to toggle device',
+        message: localizations.intent_error_toggle_device_failed,
         data: {'propertyId': propertyId},
       );
     } catch (e) {
@@ -228,7 +230,7 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.toggleDevice,
-        message: 'Error toggling device',
+        message: localizations.intent_error_toggle_device_error,
         data: {'propertyId': propertyId, 'error': e.toString()},
       );
     }

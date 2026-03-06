@@ -130,12 +130,9 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           '[LightingDeviceDetail] Controller error for $propertyId: $error');
     }
 
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
-      Toast.showError(context, message: localizations.action_failed);
-    }
-
     if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
+      Toast.showError(context, message: localizations.action_failed);
       setState(() {});
     }
   }

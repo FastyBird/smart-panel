@@ -9,22 +9,34 @@ enum SecurityEventsState {
 	error,
 }
 
+/// Error types for the security events repository.
+///
+/// Used to store structured error information so the UI can localize
+/// error messages using [AppLocalizations] from a widget context.
+enum SecurityEventsErrorType {
+	unexpectedResponse,
+	loadFailed,
+}
+
 class SecurityEventsRepository extends ChangeNotifier {
 	final Dio _dio;
 
 	List<SecurityEventModel> _events = [];
 	SecurityEventsState _state = SecurityEventsState.initial;
 	String? _errorMessage;
+	SecurityEventsErrorType? _errorType;
 
 	SecurityEventsRepository({required Dio dio}) : _dio = dio;
 
 	List<SecurityEventModel> get events => _events;
 	SecurityEventsState get state => _state;
 	String? get errorMessage => _errorMessage;
+	SecurityEventsErrorType? get errorType => _errorType;
 
 	Future<void> fetchEvents({int limit = 50}) async {
 		_state = SecurityEventsState.loading;
 		_errorMessage = null;
+		_errorType = null;
 		notifyListeners();
 
 		try {
@@ -52,10 +64,12 @@ class SecurityEventsRepository extends ChangeNotifier {
 				_state = SecurityEventsState.loaded;
 			} else {
 				_state = SecurityEventsState.error;
+				_errorType = SecurityEventsErrorType.unexpectedResponse;
 				_errorMessage = 'Unexpected response';
 			}
 		} catch (e) {
 			_state = SecurityEventsState.error;
+			_errorType = SecurityEventsErrorType.loadFailed;
 			_errorMessage = 'Failed to load events';
 
 			if (kDebugMode) {

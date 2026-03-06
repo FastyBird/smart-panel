@@ -51,7 +51,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   ScenesModuleDataSceneCategory? _activeHouseMode;
 
   // Error state
-  String? _errorMessage;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -72,7 +72,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Future<void> _loadSecurityData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _hasError = false;
     });
 
     try {
@@ -117,7 +117,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load security data';
+        _hasError = true;
       });
     }
   }
@@ -214,7 +214,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     });
 
     try {
-      final result = await _intentsService.activateScene(scene.id);
+      final result = await _intentsService.activateScene(scene.id, localizations: AppLocalizations.of(context)!);
 
       if (!mounted) return;
 
@@ -228,24 +228,23 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           _activeHouseMode = scene.category;
         });
 
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showSuccess(
           context,
-          message: localizations?.entry_mode_activated ?? 'Mode activated',
+          message: localizations.entry_mode_activated,
         );
       } else if (result.isPartialSuccess) {
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showInfo(
           context,
           message: result.message ??
-              localizations?.space_scene_partial_success ??
-              'Mode partially activated',
+              localizations.space_scene_partial_success,
         );
       } else {
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showError(
           context,
-          message: result.message ?? localizations?.action_failed ?? 'Failed',
+          message: result.message ?? localizations.action_failed,
         );
       }
     } catch (e) {
@@ -256,17 +255,17 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _triggeringSceneId = null;
       });
 
-      final localizations = AppLocalizations.of(context);
+      final localizations = AppLocalizations.of(context)!;
       Toast.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to activate mode',
+        message: localizations.action_failed,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppTopBar(
@@ -279,7 +278,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           padding: AppSpacings.paddingMd,
           child: _isLoading
               ? _buildLoadingState()
-              : _errorMessage != null
+              : _hasError
                   ? _buildErrorState()
                   : _buildContent(context, localizations),
         ),
@@ -335,7 +334,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     : AppColorsDark.warning),
           ),
           Text(
-            allLocked ? 'Locked' : '$_locksLockedCount/$_locksCount',
+            allLocked ? AppLocalizations.of(context)!.entry_locks_all_locked : '$_locksLockedCount/$_locksCount',
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w500,
@@ -387,7 +386,9 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     : AppTextColorDark.placeholder),
           ),
           Text(
-            _alarmArmed ? 'Armed' : 'Disarmed',
+            _alarmArmed
+                ? AppLocalizations.of(context)!.entry_alarm_armed
+                : AppLocalizations.of(context)!.entry_alarm_disarmed,
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w500,
@@ -427,7 +428,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 : AppColorsDark.danger,
           ),
           Text(
-            _errorMessage!,
+            AppLocalizations.of(context)!.entry_error_load_security_data,
             style: TextStyle(
               fontSize: AppFontSize.base,
               color: Theme.of(context).brightness == Brightness.light
@@ -451,7 +452,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
               ),
-              label: const Text('Retry'),
+              label: Text(AppLocalizations.of(context)!.action_retry),
             ),
           ),
         ],
@@ -459,7 +460,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildContent(BuildContext context, AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: AppSpacings.pLg,
@@ -475,7 +476,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
   Widget _buildHouseModesSection(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +490,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
               size: AppSpacings.scale(20),
             ),
             Text(
-              localizations?.entry_house_modes ?? 'House Mode',
+              localizations.entry_house_modes,
               style: TextStyle(
                 fontSize: AppFontSize.base,
                 fontWeight: FontWeight.w600,
@@ -518,7 +519,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
   Widget _buildDefaultHouseModes(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     // Default house mode buttons when no scenes are configured
     return Row(
@@ -527,7 +528,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _buildHouseModeButton(
           context,
           icon: MdiIcons.home,
-          label: localizations?.entry_mode_home ?? 'Home',
+          label: localizations.entry_mode_home,
           isActive: _activeHouseMode == ScenesModuleDataSceneCategory.home,
           onTap: () {
             setState(() {
@@ -538,7 +539,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _buildHouseModeButton(
           context,
           icon: MdiIcons.exitRun,
-          label: localizations?.entry_mode_away ?? 'Away',
+          label: localizations.entry_mode_away,
           isActive: _activeHouseMode == ScenesModuleDataSceneCategory.away,
           onTap: () {
             setState(() {
@@ -549,7 +550,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _buildHouseModeButton(
           context,
           icon: MdiIcons.weatherNight,
-          label: localizations?.entry_mode_night ?? 'Night',
+          label: localizations.entry_mode_night,
           isActive: _activeHouseMode == ScenesModuleDataSceneCategory.night,
           onTap: () {
             setState(() {
@@ -560,7 +561,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _buildHouseModeButton(
           context,
           icon: MdiIcons.movieOpen,
-          label: localizations?.entry_mode_movie ?? 'Movie',
+          label: localizations.entry_mode_movie,
           isActive: _activeHouseMode == ScenesModuleDataSceneCategory.movie,
           onTap: () {
             setState(() {
@@ -725,7 +726,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
   Widget _buildSecuritySection(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     final hasSecurityDevices =
         _locksCount > 0 || _alarmsCount > 0 || _camerasCount > 0;
@@ -750,7 +751,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     size: AppSpacings.scale(24),
                   ),
                   Text(
-                    localizations?.entry_security ?? 'Security',
+                    localizations.entry_security,
                     style: TextStyle(
                       fontSize: AppFontSize.base,
                       fontWeight: FontWeight.w600,
@@ -773,7 +774,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
   Widget _buildSecurityEmptyState(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Center(
       child: Column(
@@ -788,7 +789,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 : AppTextColorDark.placeholder,
           ),
           Text(
-            localizations?.entry_no_security_devices ?? 'No Security Devices',
+            localizations.entry_no_security_devices,
             style: TextStyle(
               fontSize: AppFontSize.small,
               color: Theme.of(context).brightness == Brightness.light
@@ -804,7 +805,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
   Widget _buildSecurityDevices(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Column(
       children: [
@@ -814,26 +815,26 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             icon: _locksLockedCount == _locksCount
                 ? MdiIcons.lock
                 : MdiIcons.lockOpenVariant,
-            label: localizations?.entry_locks ?? 'Locks',
+            label: localizations.entry_locks,
             status: _locksLockedCount == _locksCount
-                ? 'All locked'
-                : '$_locksLockedCount/$_locksCount locked',
+                ? localizations.entry_locks_all_locked
+                : localizations.entry_locks_status_partial(_locksLockedCount, _locksCount),
             isSecure: _locksLockedCount == _locksCount,
           ),
         if (_alarmsCount > 0)
           _buildSecurityRow(
             context,
             icon: _alarmArmed ? MdiIcons.shieldLock : MdiIcons.shieldOffOutline,
-            label: localizations?.entry_alarm ?? 'Alarm',
-            status: _alarmArmed ? 'Armed' : 'Disarmed',
+            label: localizations.entry_alarm,
+            status: _alarmArmed ? localizations.entry_alarm_armed : localizations.entry_alarm_disarmed,
             isSecure: _alarmArmed,
           ),
         if (_camerasCount > 0)
           _buildSecurityRow(
             context,
             icon: MdiIcons.cctv,
-            label: localizations?.entry_cameras ?? 'Cameras',
-            status: '$_camerasCount active',
+            label: localizations.entry_cameras,
+            status: localizations.entry_cameras_status_active(_camerasCount),
             isSecure: true,
           ),
       ],

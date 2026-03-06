@@ -226,10 +226,27 @@ class _AppBodyState extends State<AppBody> {
 
   void _syncStateWithRepository() {
     final config = _systemConfigRepository.data;
+    final newLanguage = config?.language ?? Language.english;
+    final languageChanged = newLanguage != _language;
+
     setState(() {
       _hasDarkMode = _displayRepository.hasDarkMode;
-      _language = config?.language ?? Language.english;
+      _language = newLanguage;
     });
+
+    // Synchronize Intl locale so DeckService._resolveLocalizations() works
+    // before MaterialApp renders (initState runs before build).
+    // localeResolutionCallback sets the same value during build().
+    final parts = _language.value.split('_');
+    Intl.defaultLocale = Locale(parts[0], parts[1]).toLanguageTag();
+
+    // Rebuild deck titles when the language changes
+    if (languageChanged && _deckService.isInitialized) {
+      final display = _displayRepository.display;
+      if (display != null) {
+        _deckService.updateDisplay(display);
+      }
+    }
 
     _inactivityOverlayProvider.updateConfig(
       screenLockDuration: _displayRepository.screenLockDuration,
