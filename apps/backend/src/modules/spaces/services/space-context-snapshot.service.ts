@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { hsvToHex } from '../../../common/utils/color.utils';
@@ -13,8 +14,8 @@ import {
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
+import { ClimateState } from './space-climate-state.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
-import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
@@ -98,15 +99,22 @@ export interface SpaceContextSnapshot {
 }
 
 @Injectable()
-export class SpaceContextSnapshotService {
+export class SpaceContextSnapshotService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceContextSnapshotService');
+
+	private spaceIntentService!: import('./space-intent.service').SpaceIntentService;
 
 	constructor(
 		private readonly spacesService: SpacesService,
-		private readonly spaceIntentService: SpaceIntentService,
+		private readonly moduleRef: ModuleRef,
 		private readonly lightingRoleService: SpaceLightingRoleService,
 		private readonly coversRoleService: SpaceCoversRoleService,
 	) {}
+
+	async onModuleInit(): Promise<void> {
+		const { SpaceIntentService } = await import('./space-intent.service');
+		this.spaceIntentService = this.moduleRef.get(SpaceIntentService, { strict: false });
+	}
 
 	/**
 	 * Capture a complete context snapshot for a space.

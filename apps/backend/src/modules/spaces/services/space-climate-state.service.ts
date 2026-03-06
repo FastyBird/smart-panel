@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -96,7 +96,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly climateRoleService: SpaceClimateRoleService,
-		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();

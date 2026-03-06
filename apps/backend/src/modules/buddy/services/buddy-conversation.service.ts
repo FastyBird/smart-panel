@@ -10,7 +10,6 @@ import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
-import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';

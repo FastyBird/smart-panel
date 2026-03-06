@@ -1,10 +1,8 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
@@ -13,12 +11,9 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
 import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
-
-import { SceneToolService } from './services/scene-tool.service';
 
 import { SceneActionsController } from './controllers/scene-actions.controller';
 import { ScenesController } from './controllers/scenes.controller';
@@ -45,12 +40,9 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity]),
-		ConfigModule,
-		ExtensionsModule,
-		forwardRef(() => SystemModule),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => SpacesModule),
-		forwardRef(() => IntentsModule),
+		DevicesModule,
+		SpacesModule,
+		IntentsModule,
 		ToolsModule,
 		WebsocketModule,
 		SeedModule,

@@ -1,11 +1,9 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { ScenesModule } from '../scenes/scenes.module';
@@ -56,12 +54,10 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([BuddyConversationEntity, BuddyMessageEntity]),
-		ConfigModule,
 		SwaggerModule,
-		ExtensionsModule,
-		forwardRef(() => SpacesModule),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => ScenesModule),
+		SpacesModule,
+		DevicesModule,
+		ScenesModule,
 		IntentsModule,
 		ToolsModule,
 		WeatherModule,

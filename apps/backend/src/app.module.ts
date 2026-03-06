@@ -26,10 +26,13 @@ import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
 import { ENERGY_MODULE_PREFIX } from './modules/energy/energy.constants';
 import { EnergyModule } from './modules/energy/energy.module';
+import { ExtensionRegistryModule } from './modules/extension-registry/extension-registry.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
+import { FactoryResetModule } from './modules/factory-reset/factory-reset.module';
 import { IntentsModule } from './modules/intents/intents.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
+import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
 import { ScenesModule } from './modules/scenes/scenes.module';
@@ -301,6 +304,9 @@ export class AppModule {
 						],
 					},
 				]),
+				ModuleRegistryModule,
+				ExtensionRegistryModule,
+				FactoryResetModule,
 				AuthModule,
 				ApiModule,
 				ConfigModule,

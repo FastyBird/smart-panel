@@ -1,12 +1,10 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
@@ -16,8 +14,6 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
-
-import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
@@ -80,11 +76,9 @@ import { IntentSpecLoaderService } from './spec';
 			ChannelEntity,
 			DisplayEntity,
 		]),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => IntentsModule),
-		forwardRef(() => ExtensionsModule),
-		forwardRef(() => ConfigModule),
-		forwardRef(() => WebsocketModule),
+		DevicesModule,
+		IntentsModule,
+		WebsocketModule,
 		SeedModule,
 		ToolsModule,
 	],

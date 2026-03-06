@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment,
+eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-return,
 @typescript-eslint/no-unnecessary-type-assertion
 */
 /*

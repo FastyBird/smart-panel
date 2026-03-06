@@ -1,11 +1,9 @@
-import { Module, OnApplicationBootstrap, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { AuthModule } from '../auth/auth.module';
-import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
@@ -24,7 +22,6 @@ import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
 import { DisplayCommandService } from './services/display-command.service';
-import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
@@ -45,28 +42,17 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [
-		NestConfigModule,
-		PlatformModule,
-		WebsocketModule,
-		AuthModule,
-		forwardRef(() => InfluxDbModule),
-		StatsModule,
-		forwardRef(() => ConfigModule),
-		forwardRef(() => ExtensionsModule),
-		forwardRef(() => SpacesModule),
-	],
+	imports: [NestConfigModule, PlatformModule, WebsocketModule, AuthModule, InfluxDbModule, StatsModule, SpacesModule],
 	providers: [
 		SystemService,
 		SystemCommandService,
 		DisplayCommandService,
-		FactoryResetRegistryService,
 		SystemLoggerService,
 		SystemStatsProvider,
 		HouseModeActionsService,
 	],
 	controllers: [SystemController, LogsController],
-	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],
+	exports: [SystemService, SystemLoggerService],
 })
 export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 	constructor(

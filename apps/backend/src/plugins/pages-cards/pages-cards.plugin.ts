@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { CreatePageDto } from '../../modules/dashboard/dto/create-page.dto';
@@ -9,14 +8,12 @@ import { UpdatePageDto } from '../../modules/dashboard/dto/update-page.dto';
 import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
-import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
-import { SystemModule } from '../../modules/system/system.module';
 
 import { CardsController } from './controllers/cards.controller';
 import { CreateCardsPageDto } from './dto/create-page.dto';
@@ -41,14 +38,7 @@ import { PluginResetService } from './services/plugin-reset.service';
 	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([CardsPageEntity, CardEntity]),
-		DashboardModule,
-		ConfigModule,
-		ExtensionsModule,
-		SystemModule,
-		SwaggerModule,
-	],
+	imports: [TypeOrmModule.forFeature([CardsPageEntity, CardEntity]), DashboardModule, SwaggerModule],
 	providers: [CardsService, CardsPageNestedBuilderService, PluginResetService],
 	controllers: [CardsController],
 	exports: [CardsService],

@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 
@@ -18,7 +18,7 @@ import { ApiStatsProvider } from './providers/api-stats.provider';
 import { ApiMetricsService } from './services/api-metrics.service';
 
 @Module({
-	imports: [ConfigModule, StatsModule, forwardRef(() => InfluxDbModule)],
+	imports: [ConfigModule, StatsModule, InfluxDbModule],
 	providers: [
 		ApiStatsProvider,
 		ApiMetricsService,
