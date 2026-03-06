@@ -5,6 +5,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
+import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, EventType, TELEGRAM_RETRY_DELAYS_MS } from '../buddy.constants';
 import { BuddyConfigModel } from '../models/config.model';
@@ -94,6 +95,11 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 				this.logger.warn(`Failed to send suggestion to chat ${chatId}: ${String(error)}`);
 			}
 		}
+	}
+
+	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
+	async onConfigUpdated(): Promise<void> {
+		await this.reconfigure();
 	}
 
 	isRunning(): boolean {
@@ -202,6 +208,8 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 			this.bot.stop('reconfigure');
 			this.bot = null;
 			this.running = false;
+			this.registeredChatIds.clear();
+			this.userConversations.clear();
 			this.logger.log('Telegram bot stopped');
 		}
 	}

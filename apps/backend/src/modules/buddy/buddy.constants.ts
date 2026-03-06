@@ -134,6 +134,4 @@ export const BUDDY_CORE_TOOLS_PROVIDER = 'buddy-core-tools';
 
 export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';
 
-export const TELEGRAM_MESSAGE_RATE_LIMIT = 30; // messages per second (Telegram API limit)
-
 export const TELEGRAM_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000]; // exponential backoff for Telegram API errors
