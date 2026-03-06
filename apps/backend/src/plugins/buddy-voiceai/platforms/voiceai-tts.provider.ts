@@ -33,7 +33,7 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 		const apiKey = (pluginConfig['apiKey'] ?? pluginConfig['api_key']) as string | undefined;
 		const voiceId = (pluginConfig['voiceId'] ?? pluginConfig['voice_id']) as string | undefined;
 
-		return !!apiKey && apiKey !== '***' && !!voiceId;
+		return !!apiKey && !!voiceId;
 	}
 
 	async synthesize(text: string, options?: TtsSynthesisOptions): Promise<TtsSynthesisResult> {

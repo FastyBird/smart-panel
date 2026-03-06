@@ -34,10 +34,6 @@ export class BuddyVoiceaiConfigModel extends PluginConfigModel {
 	@Transform(({ obj }: { obj: { api_key?: string | null; apiKey?: string | null } }) => obj.api_key ?? obj.apiKey, {
 		toClassOnly: true,
 	})
-	@Transform(
-		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
 	@IsOptional()
 	@IsString()
 	apiKey: string | null = null;
