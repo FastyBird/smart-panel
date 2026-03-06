@@ -107,7 +107,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@ApiPropertyOptional({
 		name: 'stt_plugin',
 		description:
-			'STT provider plugin type (e.g. buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin, or none)',
+			'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
 		example: STT_PLUGIN_NONE,
 	})
@@ -124,7 +124,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 			const legacy = (raw['stt_provider'] ?? raw['sttProvider']) as string | undefined;
 
 			if (legacy === 'whisper_api') {
-				return 'buddy-stt-whisper-api-plugin';
+				return 'buddy-openai-plugin';
 			}
 
 			if (legacy === 'whisper_local') {

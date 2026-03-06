@@ -48,24 +48,28 @@ async function bootstrap() {
 
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
-	// Register multipart support for file uploads
+	// Raise the body-size limit for multipart/form-data routes (audio uploads)
+	// while keeping Fastify's default 1 MiB for JSON endpoints.
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+
+	fastifyInstance.addHook(
+		'onRoute',
+		(routeOptions: { url?: string; path?: string; bodyLimit?: number; method?: string | string[] }) => {
+			// Only raise the limit for routes that explicitly consume multipart
+			const path = routeOptions.url ?? routeOptions.path ?? '';
+
+			if (path.endsWith('/audio')) {
+				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
+			}
+		},
+	);
+
+	// Register multipart support for file uploads — this adds the content-type
+	// parser that sets req[kMultipart] = true, which req.file() relies on.
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	await app.register(fastifyMultipart, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
-
-	// Scope the raised body limit to multipart/form-data only, keeping
-	// Fastify's default 1 MiB for JSON endpoints to limit memory pressure.
-	const fastifyInstance = app.getHttpAdapter().getInstance();
-
-	fastifyInstance.removeContentTypeParser('multipart/form-data');
-	fastifyInstance.addContentTypeParser(
-		'multipart/form-data',
-		{ bodyLimit: MULTIPART_MAX_FILE_SIZE_BYTES },
-		(_request: unknown, _payload: unknown, done: (err: null) => void) => {
-			done(null);
-		},
-	);
 
 	const sysLogger = app.get(SystemLoggerService);
 

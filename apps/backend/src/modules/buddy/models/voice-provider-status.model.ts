@@ -6,7 +6,7 @@ import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
 @ApiSchema({ name: 'BuddyModuleDataVoiceProviderStatus' })
 export class VoiceProviderStatusDataModel {
-	@ApiProperty({ description: 'Plugin type identifier', type: 'string', example: 'buddy-stt-whisper-api-plugin' })
+	@ApiProperty({ description: 'Plugin type identifier', type: 'string', example: 'buddy-openai-plugin' })
 	@Expose()
 	type: string;
 

@@ -405,6 +405,9 @@ class BuddyRepository extends ChangeNotifier {
 			final response = await _dio.post(
 				'${BuddyModuleConstants.conversationsPath}/$conversationId/audio',
 				data: formData,
+				options: Options(
+					contentType: 'multipart/form-data; boundary=${formData.boundary}',
+				),
 			);
 
 			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {

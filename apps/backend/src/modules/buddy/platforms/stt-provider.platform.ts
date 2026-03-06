@@ -11,7 +11,7 @@ export interface SttTranscriptionOptions {
  */
 export interface ISttProvider {
 	/**
-	 * Returns the provider type identifier (e.g., 'buddy-stt-whisper-api-plugin')
+	 * Returns the provider type identifier (e.g., 'buddy-openai-plugin')
 	 */
 	getType(): string;
 

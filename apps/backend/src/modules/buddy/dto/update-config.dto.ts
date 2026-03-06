@@ -43,7 +43,7 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@ApiPropertyOptional({
 		name: 'stt_plugin',
 		description:
-			'STT provider plugin type (e.g. buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin, or none)',
+			'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
 		example: 'none',
 	})

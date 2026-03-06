@@ -15,7 +15,7 @@ describe('SttProviderService', () => {
 	const mimeType = 'audio/wav';
 
 	const mockSttProvider: ISttProvider = {
-		getType: () => 'buddy-stt-whisper-api-plugin',
+		getType: () => 'buddy-openai-plugin',
 		getName: () => 'Whisper API',
 		getDescription: () => 'Test STT provider',
 		isConfigured: (config: Record<string, unknown>) => !!config['apiKey'],
@@ -26,7 +26,7 @@ describe('SttProviderService', () => {
 		const config = new BuddyConfigModel();
 
 		config.voiceEnabled = 'voiceEnabled' in overrides ? overrides.voiceEnabled : true;
-		config.sttPlugin = 'sttPlugin' in overrides ? overrides.sttPlugin : 'buddy-stt-whisper-api-plugin';
+		config.sttPlugin = 'sttPlugin' in overrides ? overrides.sttPlugin : 'buddy-openai-plugin';
 
 		return config;
 	}
