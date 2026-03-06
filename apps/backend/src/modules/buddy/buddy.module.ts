@@ -44,7 +44,6 @@ import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
 import { TtsProviderService } from './services/tts-provider.service';
-import { TelegramAdapterService } from './services/telegram-adapter.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
 @ApiTag({
@@ -88,7 +87,6 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
-		TelegramAdapterService,
 	],
 	exports: [
 		ActionObserverService,

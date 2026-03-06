@@ -4,17 +4,17 @@ import { message } from 'telegraf/filters';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
-import { SuggestionFeedback } from '../../spaces/spaces.constants';
-import { EventType as ConfigModuleEventType } from '../../config/config.constants';
-import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME, EventType, TELEGRAM_RETRY_DELAYS_MS } from '../buddy.constants';
-import { BuddyConfigModel } from '../models/config.model';
-
-import { BuddyConversationService } from './buddy-conversation.service';
-import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';
+import { EventType } from '../../../modules/buddy/buddy.constants';
+import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
+import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
+import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
+import { BUDDY_TELEGRAM_PLUGIN_NAME, TELEGRAM_RETRY_DELAYS_MS } from '../buddy-telegram.constants';
+import { BuddyTelegramConfigModel } from '../models/config.model';
 
 /**
- * Telegram bot adapter that bridges Telegram messages to buddy conversations.
+ * Telegram bot provider that bridges Telegram messages to buddy conversations.
  *
  * - Routes incoming Telegram text messages through BuddyConversationService
  * - Forwards suggestion notifications to registered Telegram users with inline keyboards
@@ -23,8 +23,8 @@ import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.se
  * - Enforces a user whitelist for security
  */
 @Injectable()
-export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
-	private readonly logger = new Logger(TelegramAdapterService.name);
+export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
+	private readonly logger = new Logger(TelegramBotProvider.name);
 
 	private bot: Telegraf | null = null;
 	private running = false;
@@ -42,9 +42,9 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		const config = this.getConfig();
+		const config = this.getPluginConfig();
 
-		if (config.telegramEnabled && config.telegramBotToken) {
+		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
 		}
 	}
@@ -55,14 +55,14 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Restart bot when configuration changes.
-	 * Called by the config module after a config update.
 	 */
-	async reconfigure(): Promise<void> {
+	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
+	async onConfigUpdated(): Promise<void> {
 		await this.stopBot();
 
-		const config = this.getConfig();
+		const config = this.getPluginConfig();
 
-		if (config.telegramEnabled && config.telegramBotToken) {
+		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
 		}
 	}
@@ -97,20 +97,15 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async onConfigUpdated(): Promise<void> {
-		await this.reconfigure();
-	}
-
 	isRunning(): boolean {
 		return this.running;
 	}
 
-	private async startBot(config: BuddyConfigModel): Promise<void> {
+	private async startBot(config: BuddyTelegramConfigModel): Promise<void> {
 		try {
-			this.bot = new Telegraf(config.telegramBotToken!);
+			this.bot = new Telegraf(config.botToken!);
 
-			const allowedUserIds = this.parseAllowedUserIds(config.telegramAllowedUserIds);
+			const allowedUserIds = this.parseAllowedUserIds(config.allowedUserIds);
 
 			// Text message handler
 			this.bot.on(message('text'), async (ctx) => {
@@ -239,7 +234,7 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Parse comma-separated user IDs into a Set.
 	 */
-	private parseAllowedUserIds(raw?: string): Set<number> {
+	private parseAllowedUserIds(raw?: string | null): Set<number> {
 		const ids = new Set<number>();
 
 		if (!raw || raw.trim() === '') {
@@ -261,11 +256,7 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Send a Telegram message with retry and exponential backoff.
 	 */
-	private async sendWithRetry(
-		chatId: number,
-		text: string,
-		extra?: Record<string, unknown>,
-	): Promise<void> {
+	private async sendWithRetry(chatId: number, text: string, extra?: Record<string, unknown>): Promise<void> {
 		if (!this.bot) {
 			return;
 		}
@@ -301,11 +292,11 @@ export class TelegramAdapterService implements OnModuleInit, OnModuleDestroy {
 		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
-	private getConfig(): BuddyConfigModel {
+	private getPluginConfig(): BuddyTelegramConfigModel | null {
 		try {
-			return this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+			return this.configService.getPluginConfig<BuddyTelegramConfigModel>(BUDDY_TELEGRAM_PLUGIN_NAME);
 		} catch {
-			return Object.assign(new BuddyConfigModel(), { telegramEnabled: false });
+			return null;
 		}
 	}
 }

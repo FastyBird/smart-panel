@@ -13,7 +13,4 @@ export const BuddyConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
 	voiceEnabled: z.boolean().optional().default(false),
 	ttsVoice: z.string().nullable().optional().default(null),
 	ttsSpeed: z.number().optional().default(1.0),
-	telegramEnabled: z.boolean().optional().default(false),
-	telegramBotToken: z.string().nullable().optional().default(null),
-	telegramAllowedUserIds: z.string().nullable().optional().default(null),
 });

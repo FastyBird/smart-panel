@@ -137,42 +137,6 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	tts_speed?: number;
 
 	@ApiPropertyOptional({
-		name: 'telegram_enabled',
-		description: 'Enable Telegram bot adapter for remote conversations',
-		type: 'boolean',
-		example: false,
-	})
-	@Expose({ name: 'telegram_enabled' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"telegram_enabled","reason":"Telegram enabled must be a boolean."}]' })
-	telegram_enabled?: boolean;
-
-	@ApiPropertyOptional({
-		name: 'telegram_bot_token',
-		description: 'Telegram Bot API token (from @BotFather)',
-		type: 'string',
-	})
-	@Expose({ name: 'telegram_bot_token' })
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)))
-	@IsOptional()
-	@IsString({ message: '[{"field":"telegram_bot_token","reason":"Telegram bot token must be a valid string."}]' })
-	telegram_bot_token?: string;
-
-	@ApiPropertyOptional({
-		name: 'telegram_allowed_user_ids',
-		description: 'Comma-separated list of Telegram user IDs allowed to interact with the bot',
-		type: 'string',
-		example: '',
-	})
-	@Expose({ name: 'telegram_allowed_user_ids' })
-	@IsOptional()
-	@IsString({
-		message: '[{"field":"telegram_allowed_user_ids","reason":"Telegram allowed user IDs must be a valid string."}]',
-	})
-	telegram_allowed_user_ids?: string;
-
-	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',
 		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
 		type: 'integer',
