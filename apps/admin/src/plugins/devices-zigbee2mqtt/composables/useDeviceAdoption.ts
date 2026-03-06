@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
@@ -17,6 +18,7 @@ export interface IUseDeviceAdoption {
 }
 
 export const useDeviceAdoption = (): IUseDeviceAdoption => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
@@ -65,7 +67,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				return parsedDevice.data;
 			}
 
-			let errorReason: string | null = 'Failed to adopt device.';
+			let errorReason: string | null = t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
 
 			if (apiError) {
 				errorReason = getErrorReason(apiError as never, errorReason);
@@ -83,7 +85,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				flashMessage.error(errorObj.message);
 			} else {
 				logger.error('Failed to adopt device:', errorObj);
-				flashMessage.error('Failed to adopt device. Please try again.');
+				flashMessage.error(t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }));
 			}
 
 			throw errorObj;

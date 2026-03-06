@@ -14,6 +14,15 @@
 		"config": {
 			"edited": "Buddy configuration has been successfully updated",
 			"notEdited": "Failed to update buddy configuration"
+		},
+		"errors": {
+			"unexpectedError": "An unexpected error occurred",
+			"loadConversations": "Failed to load conversations",
+			"createConversation": "Failed to create conversation",
+			"loadMessages": "Failed to load messages",
+			"providerUnavailable": "The AI provider is temporarily unavailable. Please try again later.",
+			"sendMessage": "Failed to send message",
+			"deleteConversation": "Failed to delete conversation"
 		}
 	},
 	"buttons": {

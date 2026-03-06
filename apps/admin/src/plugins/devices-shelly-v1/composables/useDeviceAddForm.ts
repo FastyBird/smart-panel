@@ -134,7 +134,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					return 'ok';
 				}
 
-				let errorReason: string | null = 'Failed to check device.';
+				let errorReason: string | null = errorMessage;
 
 				if (error) {
 					errorReason = getErrorReason<DevicesShellyV1PluginCreateDeviceInfoOperation>(error, errorReason);

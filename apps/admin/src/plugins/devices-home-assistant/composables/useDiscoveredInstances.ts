@@ -1,4 +1,5 @@
 import { type Ref, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { injectStoresManager } from '../../../common';
@@ -38,6 +39,7 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 
 export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
+	const { t } = useI18n();
 	const storesManager = injectStoresManager();
 	const sessionStore = storesManager.getStore(sessionStoreKey);
 
@@ -85,10 +87,10 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 				const responseData = await response.json();
 				parseResponse(responseData);
 			} else {
-				error.value = `Failed to fetch discovered instances (${response.status})`;
+				error.value = t('devicesHomeAssistantPlugin.messages.discovery.fetchFailed');
 			}
 		} catch (err) {
-			error.value = err instanceof Error ? err.message : 'Failed to fetch discovered instances';
+			error.value = err instanceof Error ? err.message : t('devicesHomeAssistantPlugin.messages.discovery.fetchFailed');
 		} finally {
 			isLoading.value = false;
 		}
@@ -123,10 +125,10 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 				const responseData = await response.json();
 				parseResponse(responseData);
 			} else {
-				error.value = `Failed to refresh discovered instances (${response.status})`;
+				error.value = t('devicesHomeAssistantPlugin.messages.discovery.refreshFailed');
 			}
 		} catch (err) {
-			error.value = err instanceof Error ? err.message : 'Failed to refresh discovered instances';
+			error.value = err instanceof Error ? err.message : t('devicesHomeAssistantPlugin.messages.discovery.refreshFailed');
 		} finally {
 			isLoading.value = false;
 		}

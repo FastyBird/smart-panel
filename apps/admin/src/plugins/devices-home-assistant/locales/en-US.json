@@ -207,6 +207,10 @@
     },
     "categorySelection": {
       "description": "Based on the device's entities, a category has been suggested. Please review and select the correct category for this device. The mapping preview will be updated based on your selection."
+    },
+    "discovery": {
+      "fetchFailed": "Failed to fetch discovered instances",
+      "refreshFailed": "Failed to refresh discovered instances"
     }
   },
   "buttons": {
