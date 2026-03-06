@@ -37,6 +37,7 @@ export enum TtsProvider {
 	NONE = 'none',
 	OPENAI_TTS = 'openai_tts',
 	ELEVENLABS = 'elevenlabs',
+	VOICEAI = 'voiceai',
 	SYSTEM = 'system',
 }
 

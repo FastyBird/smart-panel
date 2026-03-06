@@ -19,6 +19,8 @@ export const TTS_PLUGIN_NONE = 'none';
 
 export const TTS_PLUGIN_ELEVENLABS = 'buddy-elevenlabs-plugin';
 
+export const TTS_PLUGIN_VOICEAI = 'buddy-voiceai-plugin';
+
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.

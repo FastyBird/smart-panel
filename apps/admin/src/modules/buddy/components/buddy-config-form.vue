@@ -224,7 +224,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE && model.ttsPlugin !== TTS_PLUGIN_ELEVENLABS"
+			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE && model.ttsPlugin !== TTS_PLUGIN_ELEVENLABS && model.ttsPlugin !== TTS_PLUGIN_VOICEAI"
 			:label="t('buddyModule.fields.config.ttsSpeed.title')"
 			prop="ttsSpeed"
 		>
@@ -249,7 +249,7 @@ import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber,
 import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE, TTS_PLUGIN_VOICEAI } from '../buddy.constants';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
