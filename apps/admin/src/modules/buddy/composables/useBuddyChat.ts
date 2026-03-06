@@ -30,6 +30,7 @@ interface IUseBuddyChat {
 	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
+	refreshMessages: (conversationId: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
 	deleteConversation: (id: string) => Promise<void>;
 	playMessageAudio: (messageId: string) => Promise<void>;
@@ -162,6 +163,16 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingMessages.value = true;
 
 		try {
+			await fetchMessagesQuiet(conversationId);
+		} finally {
+			isLoadingMessages.value = false;
+		}
+	};
+
+	// Lightweight message refresh that skips the isLoadingMessages flag,
+	// suitable for background polling without UI flicker.
+	const fetchMessagesQuiet = async (conversationId: string): Promise<void> => {
+		try {
 			const response = await backend.client.GET(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
 				{
@@ -188,8 +199,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			}
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
-		} finally {
-			isLoadingMessages.value = false;
 		}
 	};
 
@@ -440,6 +449,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
+		refreshMessages: fetchMessagesQuiet,
 		sendMessage,
 		deleteConversation,
 		playMessageAudio,

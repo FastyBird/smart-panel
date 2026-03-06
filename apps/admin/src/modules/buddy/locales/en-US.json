@@ -3,7 +3,8 @@
 		"settings": "Buddy",
 		"chat": "Buddy Chat",
 		"chats": "Chats",
-		"aboutBuddy": "AI Buddy Configuration"
+		"aboutBuddy": "AI Buddy Configuration",
+		"testChat": "Test Chat"
 	},
 	"subHeadings": {
 		"settings": "Configure AI buddy assistant settings",
@@ -135,7 +136,11 @@
 		"sttProvidersFetchFailed": "Failed to load available speech recognition providers. The provider list may be incomplete.",
 		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
-		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
+		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions.",
+		"testChatNoProvider": "No AI provider configured",
+		"testChatNoProviderHint": "Configure an AI provider above to test the buddy chat.",
+		"testChatNoConversations": "No conversations yet",
+		"testChatSelectOrCreate": "Select or create a conversation to test"
 	},
 	"meta": {
 		"settings": {
