@@ -35,8 +35,8 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 	/** Telegram user ID → active buddy conversation ID */
 	private readonly userConversations = new Map<number, string>();
 
-	/** Registered Telegram chat IDs for suggestion forwarding (populated on first message from allowed user) */
-	private readonly registeredChatIds = new Set<number>();
+	/** Registered Telegram chat ID → user ID for suggestion forwarding (populated on first message from allowed user) */
+	private readonly registeredChats = new Map<number, number>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -62,7 +62,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 
 	onModuleDestroy(): void {
 		this.stopBot();
-		this.registeredChatIds.clear();
+		this.registeredChats.clear();
 		this.userConversations.clear();
 	}
 
@@ -101,6 +101,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Forward new suggestions to all registered Telegram users with inline keyboard buttons.
+	 * Only sends to users still on the current whitelist.
 	 */
 	@OnEvent(EventType.SUGGESTION_CREATED)
 	async onSuggestionCreated(suggestion: BuddySuggestion): Promise<void> {
@@ -108,9 +109,16 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
+		const config = this.getPluginConfig();
+		const allowedUserIds = this.parseAllowedUserIds(config?.allowedUserIds);
+
 		const text = `💡 *${this.escapeMarkdown(suggestion.title)}*\n\n${this.escapeMarkdown(suggestion.reason)}`;
 
-		for (const chatId of this.registeredChatIds) {
+		for (const [chatId, userId] of this.registeredChats) {
+			if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) {
+				continue;
+			}
+
 			try {
 				await this.sendWithRetry(chatId, text, {
 					parse_mode: 'MarkdownV2',
@@ -151,7 +159,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 					return;
 				}
 
-				this.registeredChatIds.add(ctx.chat.id);
+				this.registeredChats.set(ctx.chat.id, userId);
 
 				await ctx.reply(
 					"👋 Hello! I'm your Smart Panel buddy.\n\n" +
@@ -172,7 +180,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 				}
 
 				// Register chat for suggestion forwarding
-				this.registeredChatIds.add(ctx.chat.id);
+				this.registeredChats.set(ctx.chat.id, userId);
 
 				try {
 					const conversationId = await this.getOrCreateConversation(userId);
@@ -252,7 +260,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.bot = null;
 			this.running = false;
 			this.activeConfig = null;
-			// Preserve registeredChatIds and userConversations across restarts
+			// Preserve registeredChats and userConversations across restarts
 			// so users don't need to re-message after a config change.
 			this.logger.log('Telegram bot stopped');
 		}
