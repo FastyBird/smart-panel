@@ -1,5 +1,4 @@
-import type { Response } from 'express';
-import { FastifyRequest } from 'fastify';
+import { FastifyRequest, FastifyReply as Response } from 'fastify';
 
 import {
 	Body,

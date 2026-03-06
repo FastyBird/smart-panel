@@ -22,6 +22,11 @@
 				"placeholder": "Enter a custom verify token",
 				"description": "A custom token used to verify the webhook URL during WhatsApp webhook registration."
 			},
+			"appSecret": {
+				"title": "App secret",
+				"placeholder": "Enter your Meta App Secret",
+				"description": "App Secret from the Meta Developer Portal, used to verify webhook payload signatures (X-Hub-Signature-256). Leave empty to skip signature verification."
+			},
 			"allowedPhoneNumbers": {
 				"title": "Allowed phone numbers",
 				"placeholder": "e.g., 1234567890,9876543210",

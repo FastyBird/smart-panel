@@ -72,6 +72,22 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('buddyWhatsappPlugin.fields.config.appSecret.title')"
+			prop="appSecret"
+		>
+			<el-input
+				v-model="model.appSecret"
+				:placeholder="t('buddyWhatsappPlugin.fields.config.appSecret.placeholder')"
+				name="appSecret"
+				type="password"
+				show-password
+			/>
+			<div class="text-xs text-gray-500 mt-1">
+				{{ t('buddyWhatsappPlugin.fields.config.appSecret.description') }}
+			</div>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('buddyWhatsappPlugin.fields.config.allowedPhoneNumbers.title')"
 			prop="allowedPhoneNumbers"
 		>

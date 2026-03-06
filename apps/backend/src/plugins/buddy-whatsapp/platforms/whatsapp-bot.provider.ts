@@ -57,6 +57,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		phoneNumberId: string | null;
 		accessToken: string | null;
 		webhookVerifyToken: string | null;
+		appSecret: string | null;
 		allowedPhoneNumbers: string | null;
 	} | null = null;
 
@@ -80,6 +81,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			phoneNumberId: config?.phoneNumberId ?? null,
 			accessToken: config?.accessToken ?? null,
 			webhookVerifyToken: config?.webhookVerifyToken ?? null,
+			appSecret: config?.appSecret ?? null,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
@@ -105,6 +107,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			phoneNumberId: config?.phoneNumberId ?? null,
 			accessToken: config?.accessToken ?? null,
 			webhookVerifyToken: config?.webhookVerifyToken ?? null,
+			appSecret: config?.appSecret ?? null,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
@@ -114,6 +117,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.activeConfig.phoneNumberId === newSnapshot.phoneNumberId &&
 			this.activeConfig.accessToken === newSnapshot.accessToken &&
 			this.activeConfig.webhookVerifyToken === newSnapshot.webhookVerifyToken &&
+			this.activeConfig.appSecret === newSnapshot.appSecret &&
 			this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers
 		) {
 			return;
@@ -172,13 +176,13 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Verify the X-Hub-Signature-256 header sent by Meta with webhook deliveries.
-	 * Uses the webhookVerifyToken as the HMAC secret.
+	 * Uses the App Secret (from the Meta Developer Dashboard) as the HMAC key.
 	 */
 	verifyWebhookSignature(rawBody: Buffer, signature: string | undefined): boolean {
 		const config = this.getPluginConfig();
 
-		if (!config?.webhookVerifyToken) {
-			// No verify token configured — skip signature check
+		if (!config?.appSecret) {
+			// No app secret configured — skip signature check
 			return true;
 		}
 
@@ -186,7 +190,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			return false;
 		}
 
-		const expected = createHmac('sha256', config.webhookVerifyToken).update(rawBody).digest('hex');
+		const expected = createHmac('sha256', config.appSecret).update(rawBody).digest('hex');
 		const provided = signature.slice('sha256='.length);
 
 		if (expected.length !== provided.length) {

@@ -83,6 +83,25 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	webhookVerifyToken?: string | null;
 
 	@ApiPropertyOptional({
+		description: 'Meta App Secret for verifying webhook payload signatures (X-Hub-Signature-256)',
+		name: 'app_secret',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'app_secret' })
+	@Transform(
+		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => {
+			const resolved = obj.app_secret ?? obj.appSecret;
+
+			return resolved === '***' ? undefined : resolved;
+		},
+		{ toClassOnly: true },
+	)
+	@IsOptional()
+	@IsString({ message: '[{"field":"app_secret","reason":"App secret must be a string."}]' })
+	appSecret?: string | null;
+
+	@ApiPropertyOptional({
 		description:
 			'Comma-separated list of phone numbers in E.164 format allowed to interact with the bot (empty = allow all)',
 		name: 'allowed_phone_numbers',

@@ -81,6 +81,25 @@ export class BuddyWhatsappConfigModel extends PluginConfigModel {
 	webhookVerifyToken: string | null = null;
 
 	@ApiPropertyOptional({
+		description: 'Meta App Secret for verifying webhook payload signatures (X-Hub-Signature-256)',
+		name: 'app_secret',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'app_secret' })
+	@Transform(
+		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => obj.app_secret ?? obj.appSecret,
+		{ toClassOnly: true },
+	)
+	@Transform(
+		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
+		{ toPlainOnly: true, groups: ['api'] },
+	)
+	@IsOptional()
+	@IsString()
+	appSecret: string | null = null;
+
+	@ApiPropertyOptional({
 		description:
 			'Comma-separated list of phone numbers in E.164 format allowed to interact with the bot (empty = allow all)',
 		name: 'allowed_phone_numbers',
