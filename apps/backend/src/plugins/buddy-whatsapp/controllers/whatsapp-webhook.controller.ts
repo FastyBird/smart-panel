@@ -1,6 +1,19 @@
 import type { Response } from 'express';
+import { FastifyRequest } from 'fastify';
 
-import { Body, Controller, Get, HttpCode, Logger, Post, Query, Res } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Headers,
+	HttpCode,
+	Logger,
+	Post,
+	Query,
+	RawBodyRequest,
+	Req,
+	Res,
+} from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 
 import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
@@ -48,10 +61,21 @@ export class WhatsAppWebhookController {
 	 * Incoming message handler.
 	 * Meta sends a POST request with the webhook payload containing messages,
 	 * status updates, and interactive button replies.
+	 * The X-Hub-Signature-256 header is verified to prevent forged payloads.
 	 */
 	@Post()
 	@HttpCode(200)
-	handleIncoming(@Body() body: unknown): string {
+	handleIncoming(
+		@Body() body: unknown,
+		@Req() req: RawBodyRequest<FastifyRequest>,
+		@Headers('x-hub-signature-256') signature: string | undefined,
+	): string {
+		if (!this.whatsAppProvider.verifyWebhookSignature(req.rawBody ?? Buffer.alloc(0), signature)) {
+			this.logger.warn('WhatsApp webhook signature verification failed');
+
+			return 'OK';
+		}
+
 		// Fire-and-forget: process asynchronously so the 200 returns immediately.
 		// WhatsApp Cloud API expects a fast response and will re-deliver on timeout.
 		this.whatsAppProvider.handleWebhookPayload(body).catch((error: unknown) => {

@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'crypto';
+
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -9,6 +11,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
+	WHATSAPP_BUTTON_ID_MAX_LENGTH,
 	WHATSAPP_GRAPH_API_BASE_URL,
 	WHATSAPP_GRAPH_API_VERSION,
 	WHATSAPP_RETRY_DELAYS_MS,
@@ -145,9 +148,12 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			}
 
 			try {
+				const acceptId = `suggestion:accept:${suggestion.id}`.slice(0, WHATSAPP_BUTTON_ID_MAX_LENGTH);
+				const dismissId = `suggestion:dismiss:${suggestion.id}`.slice(0, WHATSAPP_BUTTON_ID_MAX_LENGTH);
+
 				await this.sendInteractiveButtons(config, phone, `💡 *${suggestion.title}*\n\n${suggestion.reason}`, [
-					{ id: `suggestion:accept:${suggestion.id}`, title: 'Accept' },
-					{ id: `suggestion:dismiss:${suggestion.id}`, title: 'Dismiss' },
+					{ id: acceptId, title: 'Accept' },
+					{ id: dismissId, title: 'Dismiss' },
 				]);
 			} catch (error) {
 				this.logger.warn(`Failed to send suggestion to WhatsApp ${phone}: ${String(error)}`);
@@ -162,6 +168,32 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		const config = this.getPluginConfig();
 
 		return Boolean(config?.webhookVerifyToken && config.webhookVerifyToken === token);
+	}
+
+	/**
+	 * Verify the X-Hub-Signature-256 header sent by Meta with webhook deliveries.
+	 * Uses the webhookVerifyToken as the HMAC secret.
+	 */
+	verifyWebhookSignature(rawBody: Buffer, signature: string | undefined): boolean {
+		const config = this.getPluginConfig();
+
+		if (!config?.webhookVerifyToken) {
+			// No verify token configured — skip signature check
+			return true;
+		}
+
+		if (!signature || !signature.startsWith('sha256=')) {
+			return false;
+		}
+
+		const expected = createHmac('sha256', config.webhookVerifyToken).update(rawBody).digest('hex');
+		const provided = signature.slice('sha256='.length);
+
+		if (expected.length !== provided.length) {
+			return false;
+		}
+
+		return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(provided, 'hex'));
 	}
 
 	/**
@@ -260,7 +292,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		from: string,
 		buttonId: string,
 	): Promise<void> {
-		const match = /^suggestion:(accept|dismiss):(.+)$/.exec(buttonId);
+		const match = /^suggestion:(accept|dismiss):([^:]+)$/.exec(buttonId);
 
 		if (!match) {
 			return;

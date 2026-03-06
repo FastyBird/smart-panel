@@ -11,3 +11,5 @@ export const WHATSAPP_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000]; // expone
 export const WHATSAPP_GRAPH_API_VERSION = 'v21.0';
 
 export const WHATSAPP_GRAPH_API_BASE_URL = 'https://graph.facebook.com';
+
+export const WHATSAPP_BUTTON_ID_MAX_LENGTH = 256;

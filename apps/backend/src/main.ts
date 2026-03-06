@@ -46,7 +46,9 @@ async function bootstrap() {
 		pluginExtensions,
 	});
 
-	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
+	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter({ rawBody: true }), {
+		bufferLogs: true,
+	});
 
 	// Register multipart support for file uploads
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
