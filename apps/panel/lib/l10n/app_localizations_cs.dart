@@ -3838,6 +3838,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_recording_permission_error => 'Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.';
 
   @override
+  String get buddy_voice_listening => 'Naslouchám...';
+
+  @override
   String get security_events_error_unexpected_response => 'Neočekávaná odpověď';
 
   @override

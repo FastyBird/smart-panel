@@ -12,9 +12,9 @@ import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_input_overlay.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -26,7 +26,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 /// - Scrollable message list (newest at bottom)
 /// - Suggestion cards section
 /// - Text input with send button
-/// - Microphone button for voice input (press-and-hold)
+/// - Microphone button that opens full-screen voice input overlay
 /// - Loading indicator while waiting for AI response
 /// - Empty state when no messages
 /// - Disabled state when AI provider is not configured
@@ -44,7 +44,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	late final BuddyService _buddyService;
 	late final ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
-	late final AudioRecordingService _audioRecordingService;
 	late final AudioPlaybackService _audioPlaybackService;
 
 	String _buddyName = 'Buddy';
@@ -55,11 +54,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	/// Track message count so _scrollToBottom fires only on new messages.
 	int _lastMessageCount = 0;
-
-	/// Track the last recording state + displayed second so we skip
-	/// sub-second rebuilds that produce no visible change.
-	bool _lastIsRecording = false;
-	int _lastRecordingSecond = -1;
 
 	/// Whether voice mode is active (last input was via microphone).
 	/// When true, TTS auto-play is enabled for new assistant messages.
@@ -80,10 +74,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 				.getModuleRepository<BuddyConfigModel>('buddy-module');
 		_buddyName = _buddyConfigRepo.data?.name ?? 'Buddy';
 		_buddyConfigRepo.addListener(_onBuddyConfigChanged);
-
-		_audioRecordingService = AudioRecordingService();
-		_audioRecordingService.addListener(_onRecordingChanged);
-		_audioRecordingService.checkPermission();
 
 		_audioPlaybackService = AudioPlaybackService(
 			getToken: () => _buddyService.getCurrentToken(),
@@ -153,45 +143,11 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		}
 	}
 
-	Future<void> _startRecording() async {
-		final localizations = AppLocalizations.of(context)!;
-		final started = await _audioRecordingService.startRecording();
+	Future<void> _openVoiceOverlay() async {
+		final sent = await VoiceInputOverlay.show(context);
 
-		if (!started && mounted) {
-			Toast.showWarning(context, message: localizations.buddy_recording_permission_error);
-		}
-	}
-
-	Future<void> _stopRecordingAndSend() async {
-		final localizations = AppLocalizations.of(context)!;
-		// Capture the service reference before any async gap — the widget
-		// may be disposed during stopRecording, making context.read unsafe.
-		final buddyService = context.read<BuddyService>();
-
-		// Check minimum duration before stopping — if too short, cancel
-		// and give the user visible feedback instead of silently discarding.
-		if (_audioRecordingService.isRecording &&
-				_audioRecordingService.recordingDuration < const Duration(milliseconds: 500)) {
-			await _audioRecordingService.cancelRecording();
-
-			if (mounted) {
-				Toast.showWarning(context, message: localizations.buddy_recording_too_short);
-			}
-
-			return;
-		}
-
-		final recorded = await _audioRecordingService.stopRecording();
-
-		if (recorded == null) return;
-
-		if (!buddyService.hasActiveConversation) return;
-
-		_voiceModeActive = true;
-
-		await buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
-
-		if (mounted) {
+		if (sent && mounted) {
+			_voiceModeActive = true;
 			_scrollToBottom();
 		}
 	}
@@ -261,36 +217,11 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		setState(() {});
 	}
 
-	void _onRecordingChanged() {
-		if (!mounted) return;
-
-		// When auto-stop fires, immediately submit the recorded audio.
-		if (_audioRecordingService.wasAutoStopped) {
-			_stopRecordingAndSend().catchError((_) {});
-		}
-
-		// The recording timer fires every 100ms but the indicator only
-		// shows whole seconds. Skip rebuilds that produce no visible change.
-		final isRecording = _audioRecordingService.isRecording;
-		final currentSecond = _audioRecordingService.recordingDuration.inSeconds;
-
-		if (isRecording == _lastIsRecording && currentSecond == _lastRecordingSecond) {
-			return;
-		}
-
-		_lastIsRecording = isRecording;
-		_lastRecordingSecond = currentSecond;
-
-		setState(() {});
-	}
-
 	@override
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
 		_buddyConfigRepo.removeListener(_onBuddyConfigChanged);
-		_audioRecordingService.removeListener(_onRecordingChanged);
 		_audioPlaybackService.removeListener(_onPlaybackChanged);
-		_audioRecordingService.dispose();
 		_audioPlaybackService.dispose();
 		_inputController.dispose();
 		_scrollController.dispose();
@@ -367,8 +298,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									),
 								),
 						),
-						if (_audioRecordingService.isRecording)
-							_buildRecordingIndicator(context, isDark),
 						_buildInput(context, isDark),
 					],
 				),
@@ -630,57 +559,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		}
 	}
 
-	Widget _buildRecordingIndicator(BuildContext context, bool isDark) {
-		final localizations = AppLocalizations.of(context)!;
-		final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-		final seconds = _audioRecordingService.recordingDuration.inSeconds;
-		final maxSeconds = AudioRecordingService.maxDuration.inSeconds;
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pLg,
-				vertical: AppSpacings.pSm,
-			),
-			decoration: BoxDecoration(
-				border: Border(
-					top: BorderSide(color: borderColor),
-				),
-			),
-			child: Row(
-				children: [
-					Icon(
-						Icons.fiber_manual_record,
-						color: dangerColor,
-						size: AppSpacings.scale(12),
-					),
-					SizedBox(width: AppSpacings.pSm),
-					Text(
-						localizations.buddy_recording_progress(seconds, maxSeconds),
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: dangerColor,
-							fontWeight: FontWeight.w500,
-						),
-					),
-					const Spacer(),
-					GestureDetector(
-						onTap: () => _audioRecordingService.cancelRecording(),
-						child: Text(
-							localizations.button_cancel,
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: isDark
-									? AppTextColorDark.secondary
-									: AppTextColorLight.secondary,
-							),
-						),
-					),
-				],
-			),
-		);
-	}
-
 	Widget _buildInput(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -695,7 +573,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 				final isDisabled = !_initialized || buddyService.isProviderNotConfigured || _initFailed;
 				final isMicDisabled = isDisabled || buddyService.isSttNotConfigured;
 				final isSending = buddyService.isSendingMessage;
-				final isRecording = _audioRecordingService.isRecording;
 
 				return Container(
 					padding: EdgeInsets.symmetric(
@@ -719,15 +596,13 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									child: TextField(
 										controller: _inputController,
 										focusNode: _inputFocusNode,
-										enabled: !isDisabled && !isSending && !isRecording,
+										enabled: !isDisabled && !isSending,
 										style: TextStyle(
 											fontSize: AppFontSize.base,
 											color: textColor,
 										),
 										decoration: InputDecoration(
-											hintText: isRecording
-												? localizations.buddy_hint_recording
-												: _initProviderMissing
+											hintText: _initProviderMissing
 													? localizations.buddy_provider_not_configured_title
 													: _initFailed
 														? localizations.buddy_hint_init_failed
@@ -754,7 +629,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 							SizedBox(width: AppSpacings.pSm),
 							_buildMicButton(context, isDark, isSending || isMicDisabled),
 							SizedBox(width: AppSpacings.pSm),
-							_buildSendButton(context, isDark, isSending || isDisabled || isRecording),
+							_buildSendButton(context, isDark, isSending || isDisabled),
 						],
 					),
 				);
@@ -767,33 +642,20 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			isDark ? Brightness.dark : Brightness.light,
 			ThemeColors.primary,
 		).base;
-		final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-		final isRecording = _audioRecordingService.isRecording;
-		final buttonColor = isRecording ? dangerColor : accentColor;
 
 		return GestureDetector(
-			onLongPressStart: disabled || isRecording ? null : (_) => _startRecording(),
-			onLongPressEnd: disabled && !isRecording ? null : (_) => _stopRecordingAndSend(),
-			onTap: disabled && !isRecording
-				? null
-				: () {
-					if (isRecording) {
-						_stopRecordingAndSend();
-					} else {
-						_startRecording();
-					}
-				},
+			onTap: disabled ? null : _openVoiceOverlay,
 			child: Container(
 				width: AppSpacings.scale(36),
 				height: AppSpacings.scale(36),
 				decoration: BoxDecoration(
 					color: disabled
-						? buttonColor.withValues(alpha: 0.3)
-						: buttonColor,
+						? accentColor.withValues(alpha: 0.3)
+						: accentColor,
 					shape: BoxShape.circle,
 				),
 				child: Icon(
-					isRecording ? Icons.stop : Icons.mic,
+					Icons.mic,
 					size: AppSpacings.scale(18),
 					color: Colors.white,
 				),

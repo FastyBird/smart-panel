@@ -1277,6 +1277,8 @@
   "buddy_recording_too_short": "Nahrávka je příliš krátká. Podržte déle.",
   "buddy_recording_permission_error": "Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.",
 
+  "buddy_voice_listening": "Naslouchám...",
+
   "security_events_error_unexpected_response": "Neočekávaná odpověď",
 
   "media_activation_step_fallback": "Krok {index}",

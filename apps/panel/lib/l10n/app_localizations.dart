@@ -7163,6 +7163,12 @@ abstract class AppLocalizations {
   /// **'Could not start recording. Check microphone permissions.'**
   String get buddy_recording_permission_error;
 
+  /// Label shown in voice input overlay while recording
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get buddy_voice_listening;
+
   /// Error when security events API returns unexpected data
   ///
   /// In en, this message translates to:

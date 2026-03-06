@@ -4641,6 +4641,11 @@
     "description": "Snackbar when microphone permission denied"
   },
 
+  "buddy_voice_listening": "Listening...",
+  "@buddy_voice_listening": {
+    "description": "Label shown in voice input overlay while recording"
+  },
+
   "security_events_error_unexpected_response": "Unexpected response",
   "@security_events_error_unexpected_response": {
     "description": "Error when security events API returns unexpected data"
