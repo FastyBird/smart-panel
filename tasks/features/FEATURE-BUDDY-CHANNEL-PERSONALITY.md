@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -45,13 +45,13 @@ I want to customise the buddy's personality — tone, style, name, and behaviora
 
 ## 4. Acceptance criteria
 
-- [ ] Backend reads `personality.md` from configured path at startup
-- [ ] Personality text is included in LLM system prompt
-- [ ] If file doesn't exist, uses sensible default personality
-- [ ] Admin settings page includes a textarea for editing personality
-- [ ] Saving personality in admin writes to the file and refreshes the cached version
-- [ ] Buddy name is configurable in buddy config and used in API responses
-- [ ] Changes take effect on next conversation (no restart needed)
+- [x] Backend reads `personality.md` from configured path at startup
+- [x] Personality text is included in LLM system prompt
+- [x] If file doesn't exist, uses sensible default personality
+- [x] Admin settings page includes a textarea for editing personality
+- [x] Saving personality in admin writes to the file and refreshes the cached version
+- [x] Buddy name is configurable in buddy config and used in API responses
+- [x] Changes take effect on next conversation (no restart needed)
 
 ## 5. Example scenarios
 

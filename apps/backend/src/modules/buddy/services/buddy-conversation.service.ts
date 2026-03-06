@@ -13,6 +13,7 @@ import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
+import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -30,6 +31,7 @@ export class BuddyConversationService {
 		private readonly dataSource: OrmDataSource,
 		private readonly llmProvider: LlmProviderService,
 		private readonly contextService: BuddyContextService,
+		private readonly personalityService: BuddyPersonalityService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -85,9 +87,9 @@ export class BuddyConversationService {
 	async sendMessage(conversationId: string, content: string): Promise<BuddyMessageEntity> {
 		const conversation = await this.findOneOrThrow(conversationId);
 
-		// 1. Build system prompt with context
+		// 1. Build system prompt with context and personality
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = this.buildSystemPrompt(context);
+		const systemPrompt = await this.buildSystemPrompt(context);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -288,14 +290,11 @@ export class BuddyConversationService {
 		return (a ?? 0) + (b ?? 0);
 	}
 
-	private buildSystemPrompt(context: BuddyContext): string {
+	private async buildSystemPrompt(context: BuddyContext): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
+		const personality = await this.personalityService.getPersonality();
 
-		const lines: string[] = [
-			'You are a smart home assistant for the FastyBird Smart Panel.',
-			'Answer questions about the home, suggest improvements, and help the user manage their smart home.',
-			'Be concise, helpful, and friendly. Use the context below to inform your responses.',
-		];
+		const lines: string[] = [personality];
 
 		if (hasTools) {
 			lines.push(

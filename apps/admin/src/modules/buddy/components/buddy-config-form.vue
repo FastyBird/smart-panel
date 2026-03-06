@@ -90,6 +90,54 @@
 
 		<el-divider />
 
+		<el-form-item>
+			<template #label>
+				{{ t('buddyModule.fields.config.personality.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.personality.description') }}
+				</el-text>
+			</template>
+			<el-input
+				v-model="personalityText"
+				type="textarea"
+				:rows="5"
+				:maxlength="2000"
+				show-word-limit
+				:placeholder="t('buddyModule.fields.config.personality.placeholder')"
+				name="personality"
+			/>
+			<div style="margin-top: 8px; display: flex; gap: 8px; align-items: center">
+				<el-button
+					type="primary"
+					size="small"
+					:loading="personalityLoading"
+					:disabled="!personalityDirty"
+					@click="handleSavePersonality"
+				>
+					{{ t('buddyModule.buttons.savePersonality.title') }}
+				</el-button>
+				<el-text
+					v-if="personalitySaved"
+					size="small"
+					type="success"
+				>
+					{{ t('buddyModule.texts.personalitySaved') }}
+				</el-text>
+				<el-text
+					v-if="personalityError"
+					size="small"
+					type="danger"
+				>
+					{{ personalityError }}
+				</el-text>
+			</div>
+		</el-form-item>
+
+		<el-divider />
+
 		<el-form-item
 			:label="t('buddyModule.fields.config.voiceEnabled.title')"
 			prop="voiceEnabled"
@@ -247,13 +295,14 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import BuddyTestChat from './buddy-test-chat.vue';
+import { useBuddyPersonality } from '../composables/useBuddyPersonality';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
@@ -291,7 +340,7 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 
 onBeforeMount(async (): Promise<void> => {
-	await fetchProviderStatuses();
+	await Promise.all([fetchProviderStatuses(), fetchPersonality()]);
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
@@ -303,6 +352,37 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 });
 
 const showSttApiKey = ref<boolean>(false);
+
+const { personalityContent, personalityLoading, personalityError, fetchPersonality, savePersonality } = useBuddyPersonality();
+
+const personalityText = ref<string>('');
+const personalityOriginal = ref<string>('');
+const personalitySaved = ref<boolean>(false);
+
+const personalityDirty = computed<boolean>(() => personalityText.value !== personalityOriginal.value);
+
+watch(personalityContent, (val: string): void => {
+	if (!personalityDirty.value) {
+		personalityText.value = val;
+		personalityOriginal.value = val;
+	}
+}, { immediate: true });
+
+const handleSavePersonality = async (): Promise<void> => {
+	personalitySaved.value = false;
+
+	const success = await savePersonality(personalityText.value);
+
+	if (success) {
+		personalityOriginal.value = personalityContent.value;
+		personalityText.value = personalityContent.value;
+		personalitySaved.value = true;
+
+		setTimeout(() => {
+			personalitySaved.value = false;
+		}, 3000);
+	}
+};
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 

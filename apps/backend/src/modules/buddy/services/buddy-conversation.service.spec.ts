@@ -11,6 +11,7 @@ import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
+import { BuddyPersonalityService } from './buddy-personality.service';
 import { LlmProviderService } from './llm-provider.service';
 
 describe('BuddyConversationService', () => {
@@ -20,6 +21,7 @@ describe('BuddyConversationService', () => {
 	let dataSource: Record<string, jest.Mock>;
 	let llmProvider: Record<string, jest.Mock>;
 	let contextService: Record<string, jest.Mock>;
+	let personalityService: Record<string, jest.Mock>;
 	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
@@ -87,6 +89,12 @@ describe('BuddyConversationService', () => {
 			}),
 		};
 
+		personalityService = {
+			getPersonality: jest.fn().mockResolvedValue(
+				'You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.',
+			),
+		};
+
 		toolProviderRegistry = {
 			getAllToolDefinitions: jest.fn().mockReturnValue([]),
 			executeTool: jest.fn().mockResolvedValue({ success: true, message: 'done' }),
@@ -102,6 +110,7 @@ describe('BuddyConversationService', () => {
 			dataSource as unknown as OrmDataSource,
 			llmProvider as unknown as LlmProviderService,
 			contextService as unknown as BuddyContextService,
+			personalityService as unknown as BuddyPersonalityService,
 			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
 		);

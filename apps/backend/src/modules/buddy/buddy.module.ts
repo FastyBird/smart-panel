@@ -17,6 +17,7 @@ import { WeatherModule } from '../weather/weather.module';
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
+import { BuddyPersonalityController } from './controllers/buddy-personality.controller';
 import { BuddyProvidersController } from './controllers/buddy-providers.controller';
 import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
@@ -38,6 +39,7 @@ import { LlmProviderRegistryService } from './services/llm-provider-registry.ser
 import { LlmProviderService } from './services/llm-provider.service';
 import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
+import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderService } from './services/stt-provider.service';
@@ -63,12 +65,13 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		WeatherModule,
 		EnergyModule,
 	],
-	controllers: [BuddyConversationsController, BuddyProvidersController, BuddySuggestionsController],
+	controllers: [BuddyConversationsController, BuddyPersonalityController, BuddyProvidersController, BuddySuggestionsController],
 	providers: [
 		EvaluatorRulesLoaderService,
 		ActionObserverService,
 		BuddyContextService,
 		BuddyProviderStatusService,
+		BuddyPersonalityService,
 		BuddyContextCacheListener,
 		IntentEventListener,
 		MediaActivityEventListener,
@@ -91,6 +94,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 	exports: [
 		ActionObserverService,
 		BuddyContextService,
+		BuddyPersonalityService,
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
