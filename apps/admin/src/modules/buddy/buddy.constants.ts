@@ -29,4 +29,5 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['claude', 'buddy-claude-plugin'],
 	['openai', 'buddy-openai-plugin'],
 	['ollama', 'buddy-ollama-plugin'],
+	['buddy-claude-oauth-plugin', 'buddy-claude-setup-token-plugin'],
 ]);

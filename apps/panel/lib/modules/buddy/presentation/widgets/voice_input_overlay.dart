@@ -118,9 +118,14 @@ class _VoiceInputOverlayState extends State<VoiceInputOverlay> {
 			return;
 		}
 
-		_audioSent = true;
+		final result = await _buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
 
-		await _buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
+		if (result == null) {
+			if (mounted) _close(false);
+			return;
+		}
+
+		_audioSent = true;
 
 		// If sendAudioMessage completed quickly, isSendingMessage might already be false
 		if (mounted && !_buddyService.isSendingMessage) {
