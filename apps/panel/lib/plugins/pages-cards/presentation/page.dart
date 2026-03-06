@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -139,6 +140,11 @@ class CardsPage extends StatelessWidget {
     BuildContext context,
     CardView card,
   ) {
+    final screenService = context.read<ScreenService>();
+
+    final rows = card.rows ?? screenService.rows;
+    final cols = card.cols ?? screenService.columns;
+
     return Padding(
       padding: EdgeInsets.only(bottom: AppSpacings.pSm),
       child: Column(
@@ -150,19 +156,18 @@ class CardsPage extends StatelessWidget {
               title: card.title,
               icon: card.icon ?? MdiIcons.cardText,
             ),
-          if (card.tiles.isNotEmpty)
-            AspectRatio(
-              aspectRatio: (card.cols ?? 4) / (card.rows ?? 2),
-              child: FixedGridSizeGrid(
-                mainAxisSize: card.rows ?? 2,
-                crossAxisSize: card.cols ?? 4,
-                children: card.tiles
-                    .map(
-                      (tile) => _buildGridTile(context, tile),
-                    )
-                    .toList(),
-              ),
+          AspectRatio(
+            aspectRatio: cols / rows,
+            child: FixedGridSizeGrid(
+              mainAxisSize: rows,
+              crossAxisSize: cols,
+              children: card.tiles
+                  .map(
+                    (tile) => _buildGridTile(context, tile),
+                  )
+                  .toList(),
             ),
+          ),
         ],
       ),
     );
