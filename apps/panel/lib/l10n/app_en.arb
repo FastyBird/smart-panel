@@ -4616,6 +4616,30 @@
   "@buddy_error_generic": {
     "description": "Generic buddy error message"
   },
+  "buddy_hint_recording": "Recording audio...",
+  "@buddy_hint_recording": {
+    "description": "Input hint shown while recording audio"
+  },
+  "buddy_recording_progress": "Recording... {seconds}s / {maxSeconds}s",
+  "@buddy_recording_progress": {
+    "description": "Recording progress indicator",
+    "placeholders": {
+      "seconds": { "type": "int" },
+      "maxSeconds": { "type": "int" }
+    }
+  },
+  "buddy_recording_cancel": "Cancel",
+  "@buddy_recording_cancel": {
+    "description": "Cancel recording button"
+  },
+  "buddy_recording_too_short": "Recording too short. Hold longer to record.",
+  "@buddy_recording_too_short": {
+    "description": "Snackbar when recording is too short"
+  },
+  "buddy_recording_permission_error": "Could not start recording. Check microphone permissions.",
+  "@buddy_recording_permission_error": {
+    "description": "Snackbar when microphone permission denied"
+  },
 
   "security_events_error_unexpected_response": "Unexpected response",
   "@security_events_error_unexpected_response": {

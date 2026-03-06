@@ -3821,6 +3821,23 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_error_generic => 'Něco se pokazilo. Zkuste to prosím znovu.';
 
   @override
+  String get buddy_hint_recording => 'Nahrávání zvuku...';
+
+  @override
+  String buddy_recording_progress(int seconds, int maxSeconds) {
+    return 'Nahrávání... ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_recording_cancel => 'Zrušit';
+
+  @override
+  String get buddy_recording_too_short => 'Nahrávka je příliš krátká. Podržte déle.';
+
+  @override
+  String get buddy_recording_permission_error => 'Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.';
+
+  @override
   String get security_events_error_unexpected_response => 'Neočekávaná odpověď';
 
   @override

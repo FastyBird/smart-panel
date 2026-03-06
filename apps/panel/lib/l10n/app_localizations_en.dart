@@ -3800,6 +3800,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buddy_error_generic => 'Something went wrong. Please try again.';
 
   @override
+  String get buddy_hint_recording => 'Recording audio...';
+
+  @override
+  String buddy_recording_progress(int seconds, int maxSeconds) {
+    return 'Recording... ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_recording_cancel => 'Cancel';
+
+  @override
+  String get buddy_recording_too_short => 'Recording too short. Hold longer to record.';
+
+  @override
+  String get buddy_recording_permission_error => 'Could not start recording. Check microphone permissions.';
+
+  @override
   String get security_events_error_unexpected_response => 'Unexpected response';
 
   @override

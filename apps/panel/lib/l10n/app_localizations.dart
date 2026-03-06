@@ -7133,6 +7133,36 @@ abstract class AppLocalizations {
   /// **'Something went wrong. Please try again.'**
   String get buddy_error_generic;
 
+  /// Input hint shown while recording audio
+  ///
+  /// In en, this message translates to:
+  /// **'Recording audio...'**
+  String get buddy_hint_recording;
+
+  /// Recording progress indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Recording... {seconds}s / {maxSeconds}s'**
+  String buddy_recording_progress(int seconds, int maxSeconds);
+
+  /// Cancel recording button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get buddy_recording_cancel;
+
+  /// Snackbar when recording is too short
+  ///
+  /// In en, this message translates to:
+  /// **'Recording too short. Hold longer to record.'**
+  String get buddy_recording_too_short;
+
+  /// Snackbar when microphone permission denied
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start recording. Check microphone permissions.'**
+  String get buddy_recording_permission_error;
+
   /// Error when security events API returns unexpected data
   ///
   /// In en, this message translates to:
