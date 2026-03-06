@@ -131,6 +131,7 @@ class MessageBubble extends StatelessWidget {
 		final service = audioPlaybackService!;
 		final isPlaying = service.isPlayingMessage(message.id);
 		final isLoading = service.isLoadingMessage(message.id);
+		final hasError = service.currentMessageId == message.id && service.error != null;
 
 		return Padding(
 			padding: EdgeInsets.only(left: AppSpacings.pSm),
@@ -155,9 +156,13 @@ class MessageBubble extends StatelessWidget {
 								),
 							)
 						: Icon(
-								isPlaying ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
+								hasError
+									? Icons.volume_off_outlined
+									: isPlaying
+										? Icons.stop_circle_outlined
+										: Icons.volume_up_outlined,
 								size: AppSpacings.scale(14),
-								color: iconColor,
+								color: hasError ? Colors.red.shade300 : iconColor,
 							),
 				),
 			),

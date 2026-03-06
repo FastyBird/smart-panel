@@ -79,3 +79,27 @@ export class BuddyTranscriptionEmptyException extends BadRequestException {
 		super('No speech was detected in the audio. Please try again and speak clearly.');
 	}
 }
+
+export class BuddySttProviderErrorException extends InternalServerErrorException {
+	constructor(detail?: string) {
+		super(detail ? `STT provider error: ${detail}` : 'STT provider encountered an error. Please try again later.');
+	}
+}
+
+export class BuddySttProviderTimeoutException extends GatewayTimeoutException {
+	constructor() {
+		super('STT provider timeout. The provider did not respond in time.');
+	}
+}
+
+export class BuddyTtsProviderErrorException extends InternalServerErrorException {
+	constructor(detail?: string) {
+		super(detail ? `TTS provider error: ${detail}` : 'TTS provider encountered an error. Please try again later.');
+	}
+}
+
+export class BuddyTtsProviderTimeoutException extends GatewayTimeoutException {
+	constructor() {
+		super('TTS provider timeout. The provider did not respond in time.');
+	}
+}

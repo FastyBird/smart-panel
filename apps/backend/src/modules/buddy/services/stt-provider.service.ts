@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
-import { BuddySttNotConfiguredException } from '../buddy.exceptions';
+import {
+	BuddySttNotConfiguredException,
+	BuddySttProviderErrorException,
+	BuddySttProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { SttProviderRegistryService } from './stt-provider-registry.service';
@@ -50,11 +54,15 @@ export class SttProviderService {
 			throw new BuddySttNotConfiguredException();
 		}
 
-		const text = await provider.transcribe(audioBuffer, mimeType);
+		try {
+			const text = await provider.transcribe(audioBuffer, mimeType);
 
-		this.logger.debug(`STT transcription: ${text.substring(0, 100)}...`);
+			this.logger.debug(`STT transcription: ${text.substring(0, 100)}...`);
 
-		return text.trim();
+			return text.trim();
+		} catch (error) {
+			this.handleProviderError(provider.getName(), error);
+		}
 	}
 
 	isConfigured(): boolean {
@@ -84,6 +92,30 @@ export class SttProviderService {
 		} catch {
 			return false;
 		}
+	}
+
+	private handleProviderError(providerName: string, error: unknown): never {
+		const err = error as Error;
+		const name = err.name ?? '';
+		const message = err.message ?? '';
+
+		const isTimeout =
+			name === 'AbortError' ||
+			name.includes('Timeout') ||
+			message.includes('timeout') ||
+			message.includes('timed out') ||
+			message.includes('ETIMEDOUT') ||
+			message.includes('ECONNABORTED');
+
+		if (isTimeout) {
+			this.logger.error(`${providerName} STT provider timeout`);
+
+			throw new BuddySttProviderTimeoutException();
+		}
+
+		this.logger.error(`${providerName} STT provider error: ${message}`);
+
+		throw new BuddySttProviderErrorException(message);
 	}
 
 	private getConfig(): BuddyConfigModel {

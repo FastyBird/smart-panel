@@ -2,7 +2,11 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_DEFAULT_SPEED, TTS_PLUGIN_NONE } from '../buddy.constants';
-import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
+import {
+	BuddyTtsNotConfiguredException,
+	BuddyTtsProviderErrorException,
+	BuddyTtsProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { TtsProviderRegistryService } from './tts-provider-registry.service';
@@ -128,10 +132,16 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
-		const result = await provider.synthesize(text, {
-			voice: config.ttsVoice,
-			speed: config.ttsSpeed,
-		});
+		let result: { buffer: Buffer; contentType: string };
+
+		try {
+			result = await provider.synthesize(text, {
+				voice: config.ttsVoice,
+				speed: config.ttsSpeed,
+			});
+		} catch (error) {
+			this.handleProviderError(provider.getName(), error);
+		}
 
 		const entrySize = result.buffer.length;
 
@@ -198,6 +208,30 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		} catch {
 			return false;
 		}
+	}
+
+	private handleProviderError(providerName: string, error: unknown): never {
+		const err = error as Error;
+		const name = err.name ?? '';
+		const message = err.message ?? '';
+
+		const isTimeout =
+			name === 'AbortError' ||
+			name.includes('Timeout') ||
+			message.includes('timeout') ||
+			message.includes('timed out') ||
+			message.includes('ETIMEDOUT') ||
+			message.includes('ECONNABORTED');
+
+		if (isTimeout) {
+			this.logger.error(`${providerName} TTS provider timeout`);
+
+			throw new BuddyTtsProviderTimeoutException();
+		}
+
+		this.logger.error(`${providerName} TTS provider error: ${message}`);
+
+		throw new BuddyTtsProviderErrorException(message);
 	}
 
 	private getConfig(): BuddyConfigModel {
