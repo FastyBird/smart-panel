@@ -69,6 +69,8 @@ import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
 import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
 import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai/buddy-voiceai.plugin';
+import { BUDDY_TELEGRAM_PLUGIN_PREFIX } from './plugins/buddy-telegram/buddy-telegram.constants';
+import { BuddyTelegramPlugin } from './plugins/buddy-telegram/buddy-telegram.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -312,6 +314,10 @@ export class AppModule {
 								path: BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX,
 								module: BuddySttWhisperLocalPlugin,
 							},
+							{
+								path: BUDDY_TELEGRAM_PLUGIN_PREFIX,
+								module: BuddyTelegramPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -369,6 +375,7 @@ export class AppModule {
 				BuddyVoiceaiPlugin,
 				BuddySystemTtsPlugin,
 				BuddySttWhisperLocalPlugin,
+				BuddyTelegramPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
