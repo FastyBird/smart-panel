@@ -49,6 +49,14 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 
 		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
+		} else {
+			// Record the initial config snapshot so that onConfigUpdated can
+			// detect real changes and skip unrelated CONFIG_UPDATED events.
+			this.activeConfig = {
+				enabled: config?.enabled ?? false,
+				botToken: config?.botToken ?? null,
+				allowedUserIds: config?.allowedUserIds ?? null,
+			};
 		}
 	}
 
