@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 
 import { BuddyCapability } from '../../modules/buddy/buddy.constants';
 import { BuddyModule } from '../../modules/buddy/buddy.module';
+import { SttProviderRegistryService } from '../../modules/buddy/services/stt-provider-registry.service';
 import { TtsProviderRegistryService } from '../../modules/buddy/services/tts-provider-registry.service';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -19,6 +20,7 @@ import {
 import { BUDDY_ELEVENLABS_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-elevenlabs.openapi';
 import { UpdateBuddyElevenlabsConfigDto } from './dto/update-config.dto';
 import { BuddyElevenlabsConfigModel } from './models/config.model';
+import { ElevenLabsSttProvider } from './platforms/elevenlabs-stt.provider';
 import { ElevenLabsTtsProvider } from './platforms/elevenlabs-tts.provider';
 
 @ApiTag({
@@ -28,13 +30,15 @@ import { ElevenLabsTtsProvider } from './platforms/elevenlabs-tts.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [ElevenLabsTtsProvider],
-	exports: [ElevenLabsTtsProvider],
+	providers: [ElevenLabsSttProvider, ElevenLabsTtsProvider],
+	exports: [ElevenLabsSttProvider, ElevenLabsTtsProvider],
 })
 export class BuddyElevenlabsPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
+		private readonly sttProviderRegistry: SttProviderRegistryService,
 		private readonly ttsProviderRegistry: TtsProviderRegistryService,
+		private readonly elevenlabsSttProvider: ElevenLabsSttProvider,
 		private readonly elevenlabsTtsProvider: ElevenLabsTtsProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
@@ -47,6 +51,7 @@ export class BuddyElevenlabsPlugin implements OnModuleInit {
 			configDto: UpdateBuddyElevenlabsConfigDto,
 		});
 
+		this.sttProviderRegistry.register(this.elevenlabsSttProvider);
 		this.ttsProviderRegistry.register(this.elevenlabsTtsProvider);
 
 		for (const model of BUDDY_ELEVENLABS_PLUGIN_SWAGGER_EXTRA_MODELS) {
@@ -56,15 +61,16 @@ export class BuddyElevenlabsPlugin implements OnModuleInit {
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_ELEVENLABS_PLUGIN_NAME,
 			name: 'ElevenLabs',
-			description: 'TTS provider for Buddy module using ElevenLabs API',
+			description: 'STT and TTS provider for Buddy module using ElevenLabs API',
 			author: 'FastyBird',
-			capabilities: [BuddyCapability.TTS],
+			capabilities: [BuddyCapability.STT, BuddyCapability.TTS],
 			readme: `# Buddy ElevenLabs Provider
 
-TTS provider plugin for the Buddy module using the ElevenLabs API.
+STT and TTS provider plugin for the Buddy module using the ElevenLabs API.
 
 ## Features
 
+- **Speech-to-Text** - Accurate transcription using the Scribe v2 model across 99 languages
 - **High-Quality Voices** - Natural-sounding text-to-speech
 - **Multiple Voices** - Choose from various voice profiles
 
@@ -73,12 +79,12 @@ TTS provider plugin for the Buddy module using the ElevenLabs API.
 1. Create an account at [ElevenLabs](https://elevenlabs.io)
 2. Generate an API key from your account dashboard
 3. Enter the API key in plugin configuration
-4. Set the buddy module \`tts_plugin\` to \`${BUDDY_ELEVENLABS_PLUGIN_NAME}\`
+4. Set the buddy module \`stt_plugin\` and/or \`tts_plugin\` to \`${BUDDY_ELEVENLABS_PLUGIN_NAME}\`
 
 ## Configuration
 
 - **API Key** - Your ElevenLabs API key (required)
-- **Voice ID** - ElevenLabs voice ID (default: Rachel)`,
+- **Voice ID** - ElevenLabs voice ID for TTS (default: Rachel)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
