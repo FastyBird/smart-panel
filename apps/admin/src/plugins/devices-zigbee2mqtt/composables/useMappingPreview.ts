@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
@@ -17,6 +18,7 @@ export interface IUseMappingPreview {
 }
 
 export const useMappingPreview = (): IUseMappingPreview => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
@@ -72,7 +74,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				return transformed;
 			}
 
-			const errorReason = apiError ? String(apiError) : 'Failed to fetch mapping preview.';
+			const errorReason = apiError ? String(apiError) : t('devicesZigbee2mqttPlugin.messages.mapping.previewError');
 
 			throw new DevicesZigbee2mqttApiException(errorReason, response?.status ?? 500);
 		} catch (err: unknown) {
@@ -99,7 +101,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 			} else {
 				error.value = errorObj;
 				logger.error('Failed to fetch mapping preview:', errorObj);
-				flashMessage.error('Failed to load mapping preview. Please try again.');
+				flashMessage.error(t('devicesZigbee2mqttPlugin.messages.mapping.previewError'));
 			}
 
 			throw errorObj;

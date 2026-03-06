@@ -1,4 +1,5 @@
 import { type Ref, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
@@ -17,6 +18,7 @@ export interface IUseDeviceAdoption {
 }
 
 export const useDeviceAdoption = (): IUseDeviceAdoption => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
@@ -69,7 +71,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 
 			// Check for errors first - if there's an error or non-2xx status, don't process response data
 			if (apiError || response.status < 200 || response.status >= 300) {
-				let errorReason: string | null = 'Failed to adopt device.';
+				let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.adoptionError');
 
 				if (apiError) {
 					// OpenAPI operation type will be generated when OpenAPI spec is updated
@@ -132,7 +134,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 			} else {
 				error.value = errorObj;
 				logger.error('[DEVICE ADOPTION] Failed to adopt device:', errorObj);
-				flashMessage.error('Failed to adopt device. Please try again.');
+				flashMessage.error(t('devicesHomeAssistantPlugin.messages.mapping.adoptionError'));
 			}
 
 			throw errorObj;

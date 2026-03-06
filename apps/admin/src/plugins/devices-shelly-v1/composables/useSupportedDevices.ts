@@ -36,8 +36,10 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 			return;
 		}
 
+		const localizedError = t('devicesShellyV1Plugin.messages.devices.failedLoadSupportedDevices');
+
 		if (response.status === 422) {
-			let errorMessage: string | null = 'Failed to fetch supported devices.';
+			let errorMessage: string | null = localizedError;
 
 			if (error) {
 				errorMessage = getErrorReason<DevicesShellyV1PluginGetSupportedOperation>(error, errorMessage);
@@ -45,7 +47,7 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 
 			flashMessage.error(errorMessage);
 		} else {
-			flashMessage.error(t('devicesShellyV1Plugin.messages.devices.failedLoadSupportedDevices'));
+			flashMessage.error(localizedError);
 		}
 	};
 

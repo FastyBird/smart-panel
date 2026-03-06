@@ -1,4 +1,5 @@
 import { type Ref, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
@@ -24,6 +25,7 @@ export interface IUseMappingPreview {
 }
 
 export const useMappingPreview = (): IUseMappingPreview => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
@@ -83,7 +85,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 					transformed = transformHelperMappingPreviewResponse(responseData.data);
 				} else {
-					let errorReason: string | null = 'Failed to fetch helper mapping preview.';
+					let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.previewError');
 
 					if (apiError) {
 						errorReason = getErrorReason(apiError as never, errorReason);
@@ -118,7 +120,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 					transformed = transformMappingPreviewResponse(responseData.data);
 				} else {
-					let errorReason: string | null = 'Failed to fetch mapping preview.';
+					let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.previewError');
 
 					if (apiError) {
 						errorReason = getErrorReason(apiError as never, errorReason);
@@ -158,7 +160,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 			} else {
 				error.value = errorObj;
 				logger.error('Failed to fetch mapping preview:', errorObj);
-				flashMessage.error('Failed to load mapping preview. Please try again.');
+				flashMessage.error(t('devicesHomeAssistantPlugin.messages.mapping.previewError'));
 			}
 
 			throw errorObj;

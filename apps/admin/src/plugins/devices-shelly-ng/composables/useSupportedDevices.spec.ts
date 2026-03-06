@@ -136,7 +136,7 @@ describe('useSupportedDevices', () => {
 		await nextTick();
 
 		expect(flash.error).toHaveBeenCalledTimes(1);
-		expect(flash.error).toHaveBeenCalledWith('Failed to fetch supported devices.');
+		expect(flash.error).toHaveBeenCalledWith('devicesShellyNgPlugin.messages.devices.failedLoadSupportedDevices');
 	});
 
 	it('shows generic i18n error message for non-422 errors', async () => {

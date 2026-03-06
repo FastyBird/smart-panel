@@ -1,4 +1,5 @@
 import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -29,6 +30,7 @@ interface IUseBuddyChat {
 }
 
 export const useBuddyChat = (): IUseBuddyChat => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
 
@@ -81,7 +83,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		const message = res.error?.error?.message;
 
 		if (typeof status === 'number' && status >= 400) {
-			return { status, message: message ?? 'An unexpected error occurred' };
+			return { status, message: message ?? t('buddyModule.messages.errors.unexpectedError') };
 		}
 
 		return null;
@@ -110,7 +112,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				conversations.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : 'Failed to load conversations';
+			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations');
 		} finally {
 			isLoadingConversations.value = false;
 		}
@@ -144,7 +146,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : 'Failed to create conversation';
+			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation');
 		}
 
 		return undefined;
@@ -179,7 +181,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : 'Failed to load messages';
+			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages');
 		} finally {
 			isLoadingMessages.value = false;
 		}
@@ -232,7 +234,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				// Remove optimistic message on error
 				messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-				error.value = apiError.status === 503 ? 'The AI provider is temporarily unavailable. Please try again later.' : apiError.message;
+				error.value = apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message;
 
 				return;
 			}
@@ -254,7 +256,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			// Remove optimistic message on error
 			messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-			error.value = err instanceof Error ? err.message : 'Failed to send message';
+			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.sendMessage');
 		} finally {
 			isSending.value = false;
 		}
@@ -297,7 +299,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				}
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : 'Failed to delete conversation';
+			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation');
 		}
 	};
 
