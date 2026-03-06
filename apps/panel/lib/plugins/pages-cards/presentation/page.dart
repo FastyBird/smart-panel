@@ -1,9 +1,12 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:flutter/material.dart';
@@ -116,15 +119,12 @@ class CardsPage extends StatelessWidget {
                       : null,
                 ),
               Expanded(
-                child: Padding(
+                child: ListView.builder(
                   padding: AppSpacings.paddingSm,
-                  child: Column(
-                    children: freshPage.cards
-                        .map(
-                          (tile) => _buildCard(context, tile),
-                        )
-                        .toList(),
-                  ),
+                  itemCount: freshPage.cards.length,
+                  itemBuilder: (context, index) {
+                    return _buildCard(context, freshPage.cards[index]);
+                  },
                 ),
               ),
             ],
@@ -138,6 +138,70 @@ class CardsPage extends StatelessWidget {
     BuildContext context,
     CardView card,
   ) {
-    return Text('CARD CONTENT HERE: ${card.title}');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (card.title.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacings.pSm,
+                bottom: AppSpacings.pXs,
+              ),
+              child: Row(
+                spacing: AppSpacings.pSm,
+                children: [
+                  if (card.icon != null)
+                    Icon(
+                      card.icon,
+                      size: AppSpacings.scale(20),
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                    ),
+                  Text(
+                    card.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: isDark
+                              ? AppTextColorDark.secondary
+                              : AppTextColorLight.secondary,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          if (card.tiles.isNotEmpty)
+            AspectRatio(
+              aspectRatio: (card.cols ?? 4) / (card.rows ?? 2),
+              child: FixedGridSizeGrid(
+                mainAxisSize: card.rows ?? 2,
+                crossAxisSize: card.cols ?? 4,
+                children: card.tiles
+                    .map(
+                      (tile) => _buildGridTile(context, tile),
+                    )
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  FixedGridSizeGridItem _buildGridTile(
+    BuildContext context,
+    TileView tile,
+  ) {
+    return FixedGridSizeGridItem(
+      mainAxisIndex: tile.row,
+      crossAxisIndex: tile.col,
+      mainAxisCellCount: tile.rowSpan,
+      crossAxisCellCount: tile.colSpan,
+      child: buildTileWidget(tile),
+    );
   }
 }

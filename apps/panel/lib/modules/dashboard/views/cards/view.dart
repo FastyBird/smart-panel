@@ -28,6 +28,10 @@ class CardView {
 
   String get page => _model.page;
 
+  int? get rows => _model.rows;
+
+  int? get cols => _model.cols;
+
   List<String> get tilesIds => _model.tiles;
 
   List<String> get dataSourceIds => _model.dataSource;
