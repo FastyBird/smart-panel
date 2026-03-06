@@ -50,10 +50,9 @@ export class BuddyDiscordConfigModel extends PluginConfigModel {
 		nullable: true,
 	})
 	@Expose({ name: 'guild_id' })
-	@Transform(
-		({ obj }: { obj: { guild_id?: string | null; guildId?: string | null } }) => obj.guild_id ?? obj.guildId,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }: { obj: { guild_id?: string | null; guildId?: string | null } }) => obj.guild_id ?? obj.guildId, {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsString()
 	guildId: string | null = null;

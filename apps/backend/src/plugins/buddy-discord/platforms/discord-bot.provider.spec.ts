@@ -57,7 +57,11 @@ describe('DiscordBotProvider', () => {
 			recordFeedback: jest.fn().mockReturnValue({ success: true }),
 		};
 
-		provider = new DiscordBotProvider(configService as any, conversationService as any, suggestionEngine as any);
+		provider = new DiscordBotProvider(
+			configService as unknown as ConstructorParameters<typeof DiscordBotProvider>[0],
+			conversationService as unknown as ConstructorParameters<typeof DiscordBotProvider>[1],
+			suggestionEngine as unknown as ConstructorParameters<typeof DiscordBotProvider>[2],
+		);
 	});
 
 	afterEach(async () => {
@@ -97,7 +101,7 @@ describe('DiscordBotProvider', () => {
 			await provider.onConfigUpdated();
 
 			// Simulate unrelated config change — same discord config returned
-			const stopSpy = jest.spyOn(provider as any, 'stopBot');
+			const stopSpy = jest.spyOn(provider as never, 'stopBot' as never);
 
 			await provider.onConfigUpdated();
 
@@ -131,14 +135,14 @@ describe('DiscordBotProvider', () => {
 
 	describe('splitMessage', () => {
 		it('should not split messages under the limit', () => {
-			const result = (provider as any).splitMessage('Hello world');
+			const result = provider.splitMessage('Hello world');
 
 			expect(result).toEqual(['Hello world']);
 		});
 
 		it('should split long messages at newlines', () => {
 			const longText = 'A'.repeat(1900) + '\n' + 'B'.repeat(200);
-			const result = (provider as any).splitMessage(longText);
+			const result = provider.splitMessage(longText);
 
 			expect(result.length).toBe(2);
 			expect(result[0]).toBe('A'.repeat(1900));
@@ -148,37 +152,37 @@ describe('DiscordBotProvider', () => {
 
 	describe('parseSpaceChannelMappings', () => {
 		it('should parse valid JSON mappings', () => {
-			const result = (provider as any).parseSpaceChannelMappings('{"space-1":"chan-1","space-2":"chan-2"}');
+			const result = provider.parseSpaceChannelMappings('{"space-1":"chan-1","space-2":"chan-2"}');
 
 			expect(result).toEqual({ 'space-1': 'chan-1', 'space-2': 'chan-2' });
 		});
 
 		it('should return empty object for null/empty', () => {
-			expect((provider as any).parseSpaceChannelMappings(null)).toEqual({});
-			expect((provider as any).parseSpaceChannelMappings('')).toEqual({});
+			expect(provider.parseSpaceChannelMappings(null)).toEqual({});
+			expect(provider.parseSpaceChannelMappings('')).toEqual({});
 		});
 
 		it('should return empty object for invalid JSON', () => {
-			expect((provider as any).parseSpaceChannelMappings('not-json')).toEqual({});
+			expect(provider.parseSpaceChannelMappings('not-json')).toEqual({});
 		});
 
 		it('should return empty object for non-object JSON', () => {
-			expect((provider as any).parseSpaceChannelMappings('[]')).toEqual({});
-			expect((provider as any).parseSpaceChannelMappings('"string"')).toEqual({});
+			expect(provider.parseSpaceChannelMappings('[]')).toEqual({});
+			expect(provider.parseSpaceChannelMappings('"string"')).toEqual({});
 		});
 	});
 
 	describe('getSpaceForChannel', () => {
 		it('should return the space ID for a mapped channel', () => {
 			const config = makeConfig({ spaceChannelMappings: '{"space-1":"chan-1","space-2":"chan-2"}' });
-			const result = (provider as any).getSpaceForChannel(config, 'chan-1');
+			const result = provider.getSpaceForChannel(config, 'chan-1');
 
 			expect(result).toBe('space-1');
 		});
 
 		it('should return null for an unmapped channel', () => {
 			const config = makeConfig({ spaceChannelMappings: '{"space-1":"chan-1"}' });
-			const result = (provider as any).getSpaceForChannel(config, 'chan-unknown');
+			const result = provider.getSpaceForChannel(config, 'chan-unknown');
 
 			expect(result).toBeNull();
 		});
@@ -187,14 +191,14 @@ describe('DiscordBotProvider', () => {
 	describe('getChannelForSpace', () => {
 		it('should return the channel ID for a mapped space', () => {
 			const config = makeConfig({ spaceChannelMappings: '{"space-1":"chan-1"}' });
-			const result = (provider as any).getChannelForSpace(config, 'space-1');
+			const result = provider.getChannelForSpace(config, 'space-1');
 
 			expect(result).toBe('chan-1');
 		});
 
 		it('should return null for an unmapped space', () => {
 			const config = makeConfig({ spaceChannelMappings: '{"space-1":"chan-1"}' });
-			const result = (provider as any).getChannelForSpace(config, 'space-unknown');
+			const result = provider.getChannelForSpace(config, 'space-unknown');
 
 			expect(result).toBeNull();
 		});
@@ -206,14 +210,14 @@ describe('DiscordBotProvider', () => {
 				generalChannelId: 'general-chan',
 				spaceChannelMappings: '{"space-1":"chan-1","space-2":"chan-2"}',
 			});
-			const result = (provider as any).getAllowedChannelIds(config);
+			const result = provider.getAllowedChannelIds(config);
 
 			expect(result).toEqual(new Set(['general-chan', 'chan-1', 'chan-2']));
 		});
 
 		it('should return empty set when no channels configured', () => {
 			const config = makeConfig();
-			const result = (provider as any).getAllowedChannelIds(config);
+			const result = provider.getAllowedChannelIds(config);
 
 			expect(result).toEqual(new Set());
 		});

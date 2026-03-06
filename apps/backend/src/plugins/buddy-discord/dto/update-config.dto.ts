@@ -54,10 +54,9 @@ export class UpdateBuddyDiscordConfigDto extends UpdatePluginConfigDto {
 		nullable: true,
 	})
 	@Expose({ name: 'guild_id' })
-	@Transform(
-		({ obj }: { obj: { guild_id?: string | null; guildId?: string | null } }) => obj.guild_id ?? obj.guildId,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }: { obj: { guild_id?: string | null; guildId?: string | null } }) => obj.guild_id ?? obj.guildId, {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsString({ message: '[{"field":"guild_id","reason":"Guild ID must be a string."}]' })
 	guildId?: string | null;

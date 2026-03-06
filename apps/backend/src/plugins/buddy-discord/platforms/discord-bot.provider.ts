@@ -5,6 +5,7 @@ import {
 	Client,
 	GatewayIntentBits,
 	type GuildMember,
+	type Interaction,
 	type Message,
 	type TextChannel,
 } from 'discord.js';
@@ -18,7 +19,11 @@ import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
-import { BUDDY_DISCORD_PLUGIN_NAME, DISCORD_MAX_MESSAGE_LENGTH, DISCORD_RETRY_DELAYS_MS } from '../buddy-discord.constants';
+import {
+	BUDDY_DISCORD_PLUGIN_NAME,
+	DISCORD_MAX_MESSAGE_LENGTH,
+	DISCORD_RETRY_DELAYS_MS,
+} from '../buddy-discord.constants';
 import { BuddyDiscordConfigModel } from '../models/config.model';
 
 /**
@@ -179,51 +184,12 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 				],
 			});
 
-			this.client.on('messageCreate', async (message: Message) => {
-				await this.handleMessage(message, config);
+			this.client.on('messageCreate', (message: Message) => {
+				void this.handleMessage(message, config);
 			});
 
-			this.client.on('interactionCreate', async (interaction) => {
-				if (!interaction.isButton()) {
-					return;
-				}
-
-				const match = /^suggestion:(accept|dismiss):(.+)$/.exec(interaction.customId);
-
-				if (!match) {
-					await interaction.reply({ content: 'Unknown action', ephemeral: true });
-
-					return;
-				}
-
-				// Check role-based access
-				if (config.allowedRoleId && interaction.member) {
-					const member = interaction.member as GuildMember;
-					const hasRole = member.roles.cache.has(config.allowedRoleId);
-
-					if (!hasRole) {
-						await interaction.reply({ content: '🔒 You do not have permission to perform this action.', ephemeral: true });
-
-						return;
-					}
-				}
-
-				const [, action, suggestionId] = match;
-				const feedback = action === 'accept' ? SuggestionFeedback.APPLIED : SuggestionFeedback.DISMISSED;
-
-				try {
-					this.suggestionEngine.recordFeedback(suggestionId, feedback);
-
-					await interaction.reply({
-						content: action === 'accept' ? 'Suggestion accepted ✅' : 'Suggestion dismissed',
-						ephemeral: true,
-					});
-
-					// Update the original message to remove buttons
-					await interaction.message.edit({ components: [] });
-				} catch {
-					await interaction.reply({ content: 'Suggestion not found or expired', ephemeral: true });
-				}
+			this.client.on('interactionCreate', (interaction: Interaction) => {
+				void this.handleInteraction(interaction, config);
 			});
 
 			await this.client.login(config.botToken);
@@ -253,6 +219,62 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.running = false;
 			this.activeConfig = null;
 			this.logger.log('Discord bot stopped');
+		}
+	}
+
+	/**
+	 * Handle a button interaction (suggestion feedback).
+	 */
+	private async handleInteraction(interaction: Interaction, config: BuddyDiscordConfigModel): Promise<void> {
+		if (!interaction.isButton()) {
+			return;
+		}
+
+		const match = /^suggestion:(accept|dismiss):(.+)$/.exec(interaction.customId);
+
+		if (!match) {
+			await interaction.reply({ content: 'Unknown action', ephemeral: true });
+
+			return;
+		}
+
+		// Check role-based access
+		if (config.allowedRoleId && interaction.member) {
+			const member = interaction.member as GuildMember;
+			const hasRole = member.roles.cache.has(config.allowedRoleId);
+
+			if (!hasRole) {
+				await interaction.reply({
+					content: '🔒 You do not have permission to perform this action.',
+					ephemeral: true,
+				});
+
+				return;
+			}
+		}
+
+		const [, action, suggestionId] = match;
+		const feedback = action === 'accept' ? SuggestionFeedback.APPLIED : SuggestionFeedback.DISMISSED;
+
+		try {
+			this.suggestionEngine.recordFeedback(suggestionId, feedback);
+
+			await interaction.reply({
+				content: action === 'accept' ? 'Suggestion accepted ✅' : 'Suggestion dismissed',
+				ephemeral: true,
+			});
+
+			// Update the original message to remove buttons — failure here is non-critical
+			try {
+				await interaction.message.edit({ components: [] });
+			} catch (editError) {
+				this.logger.warn(`Failed to remove buttons from suggestion message: ${String(editError)}`);
+			}
+		} catch {
+			// Only reply if we haven't already replied (recordFeedback may throw before reply)
+			if (!interaction.replied) {
+				await interaction.reply({ content: 'Suggestion not found or expired', ephemeral: true });
+			}
 		}
 	}
 
@@ -362,7 +384,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Parse space-channel mappings from the config JSON string.
 	 */
-	private parseSpaceChannelMappings(raw?: string | null): Record<string, string> {
+	parseSpaceChannelMappings(raw?: string | null): Record<string, string> {
 		if (!raw || raw.trim() === '') {
 			return {};
 		}
@@ -385,7 +407,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Get the space ID associated with a Discord channel.
 	 */
-	private getSpaceForChannel(config: BuddyDiscordConfigModel, channelId: string): string | null {
+	getSpaceForChannel(config: BuddyDiscordConfigModel, channelId: string): string | null {
 		const mappings = this.parseSpaceChannelMappings(config.spaceChannelMappings);
 
 		for (const [spaceId, mappedChannelId] of Object.entries(mappings)) {
@@ -400,7 +422,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Get the Discord channel ID associated with a space.
 	 */
-	private getChannelForSpace(config: BuddyDiscordConfigModel, spaceId: string): string | null {
+	getChannelForSpace(config: BuddyDiscordConfigModel, spaceId: string): string | null {
 		const mappings = this.parseSpaceChannelMappings(config.spaceChannelMappings);
 
 		return mappings[spaceId] ?? null;
@@ -409,7 +431,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Get all allowed channel IDs (general + all space-mapped channels).
 	 */
-	private getAllowedChannelIds(config: BuddyDiscordConfigModel): Set<string> {
+	getAllowedChannelIds(config: BuddyDiscordConfigModel): Set<string> {
 		const ids = new Set<string>();
 
 		if (config.generalChannelId) {
@@ -428,7 +450,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Split a message into chunks that fit Discord's character limit.
 	 */
-	private splitMessage(text: string): string[] {
+	splitMessage(text: string): string[] {
 		if (text.length <= DISCORD_MAX_MESSAGE_LENGTH) {
 			return [text];
 		}
