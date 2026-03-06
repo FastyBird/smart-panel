@@ -239,6 +239,8 @@
 		</el-form-item>
 
 	</el-form>
+
+	<buddy-test-chat v-if="model.enabled" />
 </template>
 
 <script setup lang="ts">
@@ -251,6 +253,7 @@ import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE } from '../buddy.constants';
+import BuddyTestChat from './buddy-test-chat.vue';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 

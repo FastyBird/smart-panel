@@ -140,7 +140,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 ### Phase 4 (Multi-Channel)
 
 - [x] Telegram bot adapter for buddy conversations
-- [ ] Admin web chat interface embedded in admin settings
+- [x] Admin web chat interface embedded in admin settings
 - [ ] `personality.md` configuration file for buddy tone/style customisation
 
 ## 5. Example scenarios
