@@ -8,9 +8,12 @@ import { promisify } from 'util';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ConfigService } from '../../../modules/config/services/config.service';
 import { ISttProvider, SttTranscriptionOptions } from '../../../modules/buddy/platforms/stt-provider.platform';
-import { BUDDY_STT_WHISPER_LOCAL_DEFAULT_MODEL, BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME } from '../buddy-stt-whisper-local.constants';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	BUDDY_STT_WHISPER_LOCAL_DEFAULT_MODEL,
+	BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME,
+} from '../buddy-stt-whisper-local.constants';
 import { BuddySttWhisperLocalConfigModel } from '../models/config.model';
 
 const execFileAsync = promisify(execFile);

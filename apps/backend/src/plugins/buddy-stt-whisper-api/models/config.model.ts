@@ -38,8 +38,7 @@ export class BuddySttWhisperApiConfigModel extends PluginConfigModel {
 		toClassOnly: true,
 	})
 	@Transform(
-		({ value }): string | null =>
-			typeof value === 'string' && value.length > 0 ? '***' : (value as string | null),
+		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
 		{ toPlainOnly: true, groups: ['api'] },
 	)
 	@IsOptional()

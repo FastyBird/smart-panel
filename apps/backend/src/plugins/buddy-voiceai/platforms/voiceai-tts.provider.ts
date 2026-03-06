@@ -31,8 +31,9 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 
 	isConfigured(pluginConfig: Record<string, unknown>): boolean {
 		const apiKey = pluginConfig.apiKey;
+		const voiceId = pluginConfig.voiceId;
 
-		return typeof apiKey === 'string' && apiKey.length > 0;
+		return typeof apiKey === 'string' && apiKey.length > 0 && typeof voiceId === 'string' && voiceId.length > 0;
 	}
 
 	async synthesize(text: string, options?: TtsSynthesisOptions): Promise<TtsSynthesisResult> {

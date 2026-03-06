@@ -40,10 +40,8 @@ describe('SttProviderService', () => {
 		sttProviderRegistry = new SttProviderRegistryService();
 		sttProviderRegistry.register(mockSttProvider);
 
-		service = new SttProviderService(
-			configService as any,
-			sttProviderRegistry,
-		);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		service = new SttProviderService(configService as any, sttProviderRegistry);
 	});
 
 	describe('isConfigured', () => {
@@ -115,6 +113,7 @@ describe('SttProviderService', () => {
 			const result = await service.transcribe(audioBuffer, mimeType);
 
 			expect(result).toBe('Hello world');
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType);
 		});
 

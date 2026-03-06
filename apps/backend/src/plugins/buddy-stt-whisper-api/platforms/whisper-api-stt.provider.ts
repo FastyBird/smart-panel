@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ConfigService } from '../../../modules/config/services/config.service';
 import { ISttProvider, SttTranscriptionOptions } from '../../../modules/buddy/platforms/stt-provider.platform';
-import { BUDDY_STT_WHISPER_API_DEFAULT_MODEL, BUDDY_STT_WHISPER_API_PLUGIN_NAME } from '../buddy-stt-whisper-api.constants';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	BUDDY_STT_WHISPER_API_DEFAULT_MODEL,
+	BUDDY_STT_WHISPER_API_PLUGIN_NAME,
+} from '../buddy-stt-whisper-api.constants';
 import { BuddySttWhisperApiConfigModel } from '../models/config.model';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
