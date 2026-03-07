@@ -7,7 +7,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
-import { API_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
+import { API_PREFIX, MODULES_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
@@ -58,7 +58,7 @@ async function bootstrap() {
 			// Only raise the limit for routes that explicitly consume multipart
 			const path = routeOptions.url ?? routeOptions.path ?? '';
 
-			if (path === '/api/v1/buddy/conversations/:conversationId/audio') {
+			if (path === `/api/v1/${MODULES_PREFIX}/buddy/conversations/:id/audio`) {
 				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
 			}
 		},
