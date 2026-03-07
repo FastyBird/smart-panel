@@ -195,11 +195,11 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			});
 
 			this.client.on('messageCreate', (message: Message) => {
-				void this.handleMessage(message, config);
+				void this.handleMessage(message);
 			});
 
 			this.client.on('interactionCreate', (interaction: Interaction) => {
-				void this.handleInteraction(interaction, config);
+				void this.handleInteraction(interaction);
 			});
 
 			await this.client.login(config.botToken);
@@ -234,7 +234,13 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 	/**
 	 * Handle a button interaction (suggestion feedback).
 	 */
-	private async handleInteraction(interaction: Interaction, config: BuddyDiscordConfigModel): Promise<void> {
+	private async handleInteraction(interaction: Interaction): Promise<void> {
+		const config = this.getPluginConfig();
+
+		if (!config?.enabled) {
+			return;
+		}
+
 		if (!interaction.isButton()) {
 			return;
 		}
@@ -290,7 +296,13 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 	/**
 	 * Handle an incoming Discord message.
 	 */
-	private async handleMessage(message: Message, config: BuddyDiscordConfigModel): Promise<void> {
+	private async handleMessage(message: Message): Promise<void> {
+		const config = this.getPluginConfig();
+
+		if (!config?.enabled) {
+			return;
+		}
+
 		// Ignore bot messages
 		if (message.author.bot) {
 			return;

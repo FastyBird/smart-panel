@@ -47,9 +47,15 @@ export class ShortIdMappingService {
 		this.evictIfNeeded();
 
 		let shortId: string;
+		let attempts = 0;
 
 		do {
 			shortId = this.generateShortId();
+			attempts++;
+
+			if (attempts > 100) {
+				throw new Error('ShortIdMappingService: failed to generate a unique short ID after 100 attempts');
+			}
 		} while (this.shortToUuid.has(shortId));
 
 		this.shortToUuid.set(shortId, uuid);

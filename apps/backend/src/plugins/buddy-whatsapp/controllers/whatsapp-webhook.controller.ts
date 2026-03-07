@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, Logger, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
@@ -18,24 +18,9 @@ export class WhatsAppWebhookController {
 	constructor(private readonly whatsAppProvider: WhatsAppBotProvider) {}
 
 	@Get('status')
-	@ApiOperation({ summary: 'Get WhatsApp connection status and QR code' })
-	@ApiResponse({
-		status: 200,
-		description: 'Current connection status',
-		schema: {
-			type: 'object',
-			properties: {
-				status: {
-					type: 'string',
-					enum: Object.values(WhatsAppConnectionStatus),
-				},
-				qr: {
-					type: 'string',
-					nullable: true,
-					description: 'QR code string to render (only present when status is qr_ready)',
-				},
-			},
-		},
+	@ApiOperation({
+		summary: 'Get WhatsApp connection status and QR code',
+		description: 'Returns current connection status and QR code string (only present when status is qr_ready)',
 	})
 	getStatus(): { status: WhatsAppConnectionStatus; qr: string | null } {
 		return {
@@ -46,8 +31,10 @@ export class WhatsAppWebhookController {
 
 	@Post('logout')
 	@HttpCode(200)
-	@ApiOperation({ summary: 'Disconnect WhatsApp and clear session' })
-	@ApiResponse({ status: 200, description: 'Session cleared, new QR code will be generated' })
+	@ApiOperation({
+		summary: 'Disconnect WhatsApp and clear session',
+		description: 'Session cleared, new QR code will be generated',
+	})
 	logout(): { status: string } {
 		this.logger.log('WhatsApp logout requested via API');
 
