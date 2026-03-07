@@ -231,6 +231,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			currentSocket.ev.on('connection.update', (update) => {
 				// Ignore events from a socket that is no longer active
 				if (this.socket !== currentSocket) {
+					this.logger.debug('Ignoring connection.update from stale socket');
+
 					return;
 				}
 
@@ -254,17 +256,26 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 					const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
 						?.statusCode;
-					const loggedOut = statusCode === DisconnectReason.loggedOut;
+
+					this.logger.log(`WhatsApp connection closed (statusCode=${statusCode}, reconnecting=${this.reconnecting})`);
 
 					this.socket = null;
 
-					if (loggedOut) {
+					if (this.reconnecting) {
+						// Intentional disconnect (stopBot was called) — do not auto-reconnect
 						this.status = WhatsAppConnectionStatus.DISCONNECTED;
-						this.logger.log('WhatsApp logged out — re-enable plugin to reconnect');
-					} else if (!this.reconnecting) {
+					} else {
+						// Unexpected disconnect — clear auth state and reconnect
+						const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
+
+						if (statusCode === DisconnectReason.loggedOut && existsSync(authDir)) {
+							this.logger.log('Clearing auth state after loggedOut disconnect');
+							rmSync(authDir, { recursive: true, force: true });
+						}
+
 						this.status = WhatsAppConnectionStatus.CONNECTING;
 						this.reconnecting = true;
-						this.logger.log('WhatsApp disconnected, reconnecting...');
+						this.logger.log('WhatsApp reconnecting...');
 						void this.startBot();
 					}
 				}
