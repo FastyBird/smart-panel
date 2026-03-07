@@ -157,8 +157,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		return undefined;
 	};
 
-	const fetchMessages = async (conversationId: string): Promise<void> => {
-		isLoadingMessages.value = true;
+	const fetchMessagesInternal = async (conversationId: string, quiet: boolean): Promise<void> => {
+		if (!quiet) {
+			isLoadingMessages.value = true;
+		}
 
 		try {
 			const response = await backend.client.GET(
@@ -173,7 +175,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status !== 503) {
+				if (!quiet && apiError.status !== 503) {
 					flashMessage.error(apiError.message);
 				}
 
@@ -186,41 +188,22 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
+			if (!quiet) {
+				flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
+			}
 		} finally {
-			isLoadingMessages.value = false;
+			if (!quiet) {
+				isLoadingMessages.value = false;
+			}
 		}
 	};
+
+	const fetchMessages = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, false);
 
 	// Lightweight message refresh that skips the isLoadingMessages flag,
 	// suitable for background polling without UI flicker.
 	// Errors are silently ignored to avoid toast spam during transient network issues.
-	const fetchMessagesQuiet = async (conversationId: string): Promise<void> => {
-		try {
-			const response = await backend.client.GET(
-				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
-				{
-					params: {
-						path: { id: conversationId },
-					},
-				} as never
-			);
-
-			const apiError = extractApiError(response);
-
-			if (apiError) {
-				return;
-			}
-
-			const responseData = (response as { data?: { data: IMessage[] } }).data;
-
-			if (typeof responseData !== 'undefined' && activeConversationId.value === conversationId) {
-				messages.value = responseData.data;
-			}
-		} catch {
-			// Silently ignore — quiet refresh should not disturb the user
-		}
-	};
+	const fetchMessagesQuiet = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, true);
 
 	const selectConversation = async (id: string): Promise<void> => {
 		activeConversationId.value = id;
