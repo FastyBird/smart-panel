@@ -22,7 +22,7 @@ export const useModules = (): IUseModules => {
 	});
 
 	const options = computed<{ value: IModule['type']; label: IModule['name'] }[]>((): { value: IModule['type']; label: IModule['name'] }[] => {
-		return orderBy<IModule>(modules.value, [(module) => module.name], ['asc']).map((module) => ({
+		return modules.value.map((module) => ({
 			value: module.type,
 			label: module.name,
 		}));

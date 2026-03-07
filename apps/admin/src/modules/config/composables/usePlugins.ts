@@ -22,7 +22,7 @@ export const usePlugins = (): IUsePlugins => {
 	});
 
 	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>((): { value: IPlugin['type']; label: IPlugin['name'] }[] => {
-		return orderBy<IPlugin>(plugins.value, [(plugin) => plugin.name], ['asc']).map((plugin) => ({
+		return plugins.value.map((plugin) => ({
 			value: plugin.type,
 			label: plugin.name,
 		}));

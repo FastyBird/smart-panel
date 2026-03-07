@@ -46,7 +46,7 @@ describe('SceneToolService', () => {
 
 	describe('executeTool - run_scene', () => {
 		it('should execute a scene successfully', async () => {
-			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Movie Night' });
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Movie Night', enabled: true });
 			sceneExecutor.triggerScene.mockResolvedValue({
 				status: 'completed',
 				successfulActions: 3,
@@ -90,7 +90,7 @@ describe('SceneToolService', () => {
 		});
 
 		it('should handle partially completed scene', async () => {
-			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Lights' });
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Lights', enabled: true });
 			sceneExecutor.triggerScene.mockResolvedValue({
 				status: 'partially_completed',
 				successfulActions: 2,
@@ -109,7 +109,7 @@ describe('SceneToolService', () => {
 		});
 
 		it('should handle failed scene execution', async () => {
-			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Lights' });
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Lights', enabled: true });
 			sceneExecutor.triggerScene.mockResolvedValue({
 				status: 'failed',
 				successfulActions: 0,
@@ -129,9 +129,8 @@ describe('SceneToolService', () => {
 	});
 
 	describe('executeTool - error handling', () => {
-		it('should catch and return errors from scene execution', async () => {
-			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Test' });
-			sceneExecutor.triggerScene.mockRejectedValue(new Error('Scene is disabled'));
+		it('should return failure when scene is disabled', async () => {
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Test', enabled: false });
 
 			const result = await service.executeTool({
 				id: 'call-1',
@@ -140,7 +139,21 @@ describe('SceneToolService', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('Scene is disabled');
+			expect(result.message).toContain('disabled');
+		});
+
+		it('should catch and return errors from scene execution', async () => {
+			scenesService.findOne.mockResolvedValue({ id: 'scene-1', name: 'Test', enabled: true });
+			sceneExecutor.triggerScene.mockRejectedValue(new Error('Connection timeout'));
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'run_scene',
+				arguments: { scene_id: 'scene-1' },
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Connection timeout');
 		});
 	});
 

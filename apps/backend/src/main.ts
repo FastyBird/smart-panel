@@ -58,7 +58,7 @@ async function bootstrap() {
 			// Only raise the limit for routes that explicitly consume multipart
 			const path = routeOptions.url ?? routeOptions.path ?? '';
 
-			if (path.endsWith('/audio')) {
+			if (path === '/api/v1/buddy/conversations/:conversationId/audio') {
 				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
 			}
 		},

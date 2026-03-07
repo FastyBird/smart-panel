@@ -142,6 +142,11 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			});
 		} catch (error) {
 			this.handleProviderError(provider.getName(), error);
+
+			// handleProviderError always throws — this is unreachable but
+			// satisfies TypeScript's definite-assignment analysis for `result`.
+			/* istanbul ignore next */
+			throw error;
 		}
 
 		const entrySize = result.buffer.length;
@@ -257,7 +262,18 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		const plugin = config.ttsPlugin ?? '';
 		const language = this.getSystemLanguage();
 
-		return `${messageId}:${plugin}:${language}`;
+		// Include a snapshot of plugin config so cache invalidates when
+		// provider settings change (e.g. voice ID, API key).
+		let configHash = '';
+
+		try {
+			const pluginConfig = this.configService.getPluginConfig(plugin);
+			configHash = JSON.stringify(pluginConfig);
+		} catch {
+			// Plugin not configured — empty hash is fine
+		}
+
+		return `${messageId}:${plugin}:${language}:${configHash}`;
 	}
 
 	private cleanExpiredCache(): void {
