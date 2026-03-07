@@ -250,6 +250,7 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
 const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
+const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 onBeforeMount(async (): Promise<void> => {
 	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses(), fetchPersonality()]);
@@ -262,8 +263,6 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('buddyModule.messages.config.notEdited'),
 	},
 });
-
-const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 const personalityText = ref<string>('');
 const personalityOriginal = ref<string>('');
