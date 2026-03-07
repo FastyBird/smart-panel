@@ -208,6 +208,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
+import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { useBuddyPersonality } from '../composables/useBuddyPersonality';
@@ -237,6 +238,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 // Normalize legacy provider values before initializing the form so the
 // initial snapshot already contains the mapped value (avoids false dirty state).
@@ -444,6 +446,7 @@ watch(
 					personalityOriginal.value = personalityContent.value;
 					personalityText.value = personalityContent.value;
 				} else {
+					flashMessage.error(t('buddyModule.messages.savePersonality'));
 					emit('update:remote-form-result', FormResult.ERROR);
 				}
 			}
