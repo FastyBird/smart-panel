@@ -446,7 +446,7 @@ watch(
 					personalityOriginal.value = personalityContent.value;
 					personalityText.value = personalityContent.value;
 				} else {
-					flashMessage.error(t('buddyModule.messages.savePersonality'));
+					flashMessage.error(t('buddyModule.messages.errors.savePersonality'));
 					emit('update:remote-form-result', FormResult.ERROR);
 				}
 			}
