@@ -1,6 +1,7 @@
 import { MessageRole } from '../buddy.constants';
 
 import type { ChatMessage } from './llm-provider.platform';
+import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
@@ -20,6 +21,7 @@ export type AnthropicCredentials = { apiKey: string } | { authToken: string };
  */
 export interface AnthropicSdkResult {
 	content: string;
+	toolCalls?: LlmToolCall[];
 	model: string | null;
 	inputTokens: number | null;
 	outputTokens: number | null;
@@ -39,6 +41,7 @@ export async function sendAnthropicMessage(
 	messages: ChatMessage[],
 	timeout: number,
 	maxTokens: number = 1024,
+	tools?: ToolDefinition[],
 ): Promise<AnthropicSdkResult> {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
@@ -49,8 +52,8 @@ export async function sendAnthropicMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 	const client = new Anthropic({ ...credentials, timeout, defaultHeaders });
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-	const response = await client.messages.create({
+	// Build the request payload
+	const requestPayload: Record<string, unknown> = {
 		model,
 		max_tokens: maxTokens,
 		system: systemPrompt,
@@ -58,13 +61,37 @@ export async function sendAnthropicMessage(
 			role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
 			content: m.content,
 		})),
-	});
+	};
+
+	if (tools && tools.length > 0) {
+		requestPayload.tools = tools.map((t) => ({
+			name: t.name,
+			description: t.description,
+			input_schema: t.parameters,
+		}));
+	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-	const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
+	const response = await client.messages.create(requestPayload);
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	const content = textBlock && 'text' in textBlock ? (textBlock.text as string) : '';
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+	const contentBlocks = response.content as Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
+
+	// Extract text content
+	const textParts = contentBlocks.filter((block) => block.type === 'text').map((block) => block.text ?? '');
+	const content = textParts.join('');
+
+	// Extract tool use blocks
+	let toolCalls: LlmToolCall[] | undefined;
+	const toolUseBlocks = contentBlocks.filter((block) => block.type === 'tool_use');
+
+	if (toolUseBlocks.length > 0) {
+		toolCalls = toolUseBlocks.map((block) => ({
+			id: block.id ?? '',
+			name: block.name ?? '',
+			arguments: (block.input as Record<string, unknown>) ?? {},
+		}));
+	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const usage = response.usage as
@@ -78,6 +105,7 @@ export async function sendAnthropicMessage(
 
 	return {
 		content,
+		toolCalls,
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		model: (response.model as string) ?? null,
 		inputTokens: usage?.input_tokens ?? null,

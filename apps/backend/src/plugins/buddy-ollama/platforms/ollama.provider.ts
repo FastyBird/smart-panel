@@ -7,6 +7,7 @@ import {
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
+import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	BUDDY_OLLAMA_DEFAULT_MODEL,
@@ -16,8 +17,12 @@ import {
 } from '../buddy-ollama.constants';
 import { BuddyOllamaConfigModel } from '../models/config.model';
 
+interface OllamaToolCall {
+	function?: { name?: string; arguments?: Record<string, unknown> };
+}
+
 interface OllamaResponse {
-	message?: { content?: string };
+	message?: { content?: string; tool_calls?: OllamaToolCall[] };
 	model?: string;
 	prompt_eval_count?: number;
 	eval_count?: number;
@@ -50,6 +55,10 @@ export class OllamaProvider implements ILlmProvider {
 		return typeof baseUrl === 'string' && baseUrl.length > 0;
 	}
 
+	supportsTools(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -67,20 +76,26 @@ export class OllamaProvider implements ILlmProvider {
 		const start = Date.now();
 
 		try {
+			const requestPayload: Record<string, unknown> = {
+				model: resolvedModel,
+				stream: false,
+				messages: [
+					{ role: 'system', content: systemPrompt },
+					...messages.map((m) => ({
+						role: m.role === MessageRole.USER ? 'user' : 'assistant',
+						content: m.content,
+					})),
+				],
+			};
+
+			if (options?.tools && options.tools.length > 0) {
+				requestPayload.tools = this.formatTools(options.tools);
+			}
+
 			const response = await fetch(`${baseUrl}/api/chat`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					model: resolvedModel,
-					stream: false,
-					messages: [
-						{ role: 'system', content: systemPrompt },
-						...messages.map((m) => ({
-							role: m.role === MessageRole.USER ? 'user' : 'assistant',
-							content: m.content,
-						})),
-					],
-				}),
+				body: JSON.stringify(requestPayload),
 				signal: controller.signal,
 			});
 
@@ -91,8 +106,22 @@ export class OllamaProvider implements ILlmProvider {
 			const data = (await response.json()) as OllamaResponse;
 			const durationMs = Date.now() - start;
 
+			// Extract tool calls if present
+			let toolCalls: LlmToolCall[] | undefined;
+
+			if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
+				toolCalls = data.message.tool_calls
+					.filter((tc) => tc.function?.name)
+					.map((tc, index) => ({
+						id: `ollama-${index}`,
+						name: tc.function!.name!,
+						arguments: tc.function?.arguments ?? {},
+					}));
+			}
+
 			return {
 				content: data.message?.content ?? '',
+				toolCalls,
 				meta: {
 					provider: BUDDY_OLLAMA_PLUGIN_NAME,
 					model: data.model ?? null,
@@ -107,6 +136,17 @@ export class OllamaProvider implements ILlmProvider {
 		} finally {
 			clearTimeout(timeoutId);
 		}
+	}
+
+	private formatTools(tools: ToolDefinition[]): unknown[] {
+		return tools.map((t) => ({
+			type: 'function',
+			function: {
+				name: t.name,
+				description: t.description,
+				parameters: t.parameters,
+			},
+		}));
 	}
 
 	private getPluginConfig(): BuddyOllamaConfigModel | null {

@@ -41,6 +41,10 @@ export class OpenAiProvider implements ILlmProvider {
 		return typeof apiKey === 'string' && apiKey.length > 0;
 	}
 
+	supportsTools(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -55,11 +59,12 @@ export class OpenAiProvider implements ILlmProvider {
 		const maxTokens = options?.maxTokens ?? 1024;
 
 		const start = Date.now();
-		const result = await sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout, maxTokens);
+		const result = await sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout, maxTokens, options?.tools);
 		const durationMs = Date.now() - start;
 
 		return {
 			content: result.content,
+			toolCalls: result.toolCalls,
 			meta: {
 				provider: BUDDY_OPENAI_PLUGIN_NAME,
 				model: result.model,

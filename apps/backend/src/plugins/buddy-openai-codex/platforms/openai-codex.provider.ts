@@ -7,6 +7,7 @@ import {
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
+import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
@@ -58,6 +59,10 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		return hasAccessToken || hasOAuthCredentials;
 	}
 
+	supportsTools(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -75,6 +80,9 @@ export class OpenAiCodexProvider implements ILlmProvider {
 			content: m.content,
 			type: 'message',
 		}));
+
+		// Build tools in Responses API format
+		const tools = this.formatTools(options?.tools);
 
 		// ChatGPT backend requires streaming. We collect SSE chunks and assemble the response.
 		const controller = new AbortController();
@@ -95,7 +103,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					input,
 					stream: true,
 					store: false,
-					tools: [],
+					tools,
 					tool_choice: 'auto',
 				}),
 				signal: controller.signal,
@@ -107,11 +115,12 @@ export class OpenAiCodexProvider implements ILlmProvider {
 				throw new Error(`${response.status} ${errorBody || response.statusText}`);
 			}
 
-			const content = await this.collectStreamResponse(response);
+			const { content, toolCalls } = await this.collectStreamResponse(response);
 			const durationMs = Date.now() - start;
 
 			return {
 				content,
+				toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 				meta: {
 					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 					model: resolvedModel,
@@ -128,17 +137,34 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		}
 	}
 
-	private async collectStreamResponse(response: Response): Promise<string> {
+	private formatTools(tools?: ToolDefinition[]): unknown[] {
+		if (!tools || tools.length === 0) {
+			return [];
+		}
+
+		return tools.map((t) => ({
+			type: 'function',
+			name: t.name,
+			description: t.description,
+			parameters: t.parameters,
+		}));
+	}
+
+	private async collectStreamResponse(response: Response): Promise<{ content: string; toolCalls: LlmToolCall[] }> {
 		const body = response.body;
 
 		if (!body) {
-			return '';
+			return { content: '', toolCalls: [] };
 		}
 
 		const reader = body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
-		let result = '';
+		let content = '';
+
+		// Track tool calls: Responses API emits function_call_arguments.delta events
+		// with a call_id, and we accumulate the JSON argument strings per call
+		const toolCallMap = new Map<string, { id: string; name: string; args: string }>();
 
 		while (true) {
 			const { done, value } = await reader.read();
@@ -163,10 +189,33 @@ export class OpenAiCodexProvider implements ILlmProvider {
 					const event = JSON.parse(line.slice(6)) as {
 						type?: string;
 						delta?: string;
+						call_id?: string;
+						name?: string;
+						item_id?: string;
 					};
 
 					if (event.type === 'response.output_text.delta' && event.delta) {
-						result += event.delta;
+						content += event.delta;
+					} else if (event.type === 'response.function_call_arguments.delta' && event.call_id && event.delta) {
+						const existing = toolCallMap.get(event.call_id);
+
+						if (existing) {
+							existing.args += event.delta;
+						}
+					} else if (event.type === 'response.output_item.added') {
+						// A new function call output item — initialize the accumulator
+						const rawEvent = JSON.parse(line.slice(6)) as {
+							type?: string;
+							item?: { type?: string; call_id?: string; name?: string };
+						};
+
+						if (rawEvent.item?.type === 'function_call' && rawEvent.item.call_id) {
+							toolCallMap.set(rawEvent.item.call_id, {
+								id: rawEvent.item.call_id,
+								name: rawEvent.item.name ?? '',
+								args: '',
+							});
+						}
 					}
 				} catch {
 					// Skip malformed JSON lines
@@ -174,7 +223,21 @@ export class OpenAiCodexProvider implements ILlmProvider {
 			}
 		}
 
-		return result;
+		const toolCalls: LlmToolCall[] = [];
+
+		for (const tc of toolCallMap.values()) {
+			try {
+				toolCalls.push({
+					id: tc.id,
+					name: tc.name,
+					arguments: JSON.parse(tc.args || '{}') as Record<string, unknown>,
+				});
+			} catch {
+				// Skip tool calls with malformed arguments
+			}
+		}
+
+		return { content, toolCalls };
 	}
 
 	private getPluginConfig(): BuddyOpenaiCodexConfigModel | null {
