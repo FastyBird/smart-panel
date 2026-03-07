@@ -140,11 +140,14 @@ export class BuddyConversationService {
 			const persistedAssistant = await manager.save(assistantMsg);
 
 			// Update conversation title from first message if no title set
-			if (!conversation.title) {
-				const autoTitle = content.length > 50 ? content.substring(0, 47) + '...' : content;
+			// Always touch updatedAt so conversations sort by last activity
+			const updatePayload: Partial<BuddyConversationEntity> = { updatedAt: new Date() };
 
-				await manager.update(BuddyConversationEntity, conversation.id, { title: autoTitle });
+			if (!conversation.title) {
+				updatePayload.title = content.length > 50 ? content.substring(0, 47) + '...' : content;
 			}
+
+			await manager.update(BuddyConversationEntity, conversation.id, updatePayload);
 
 			return { savedUser: persistedUser, savedAssistant: persistedAssistant };
 		});
