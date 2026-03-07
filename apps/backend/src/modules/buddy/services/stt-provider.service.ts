@@ -56,17 +56,24 @@ export class SttProviderService {
 			throw new BuddySttNotConfiguredException();
 		}
 
+		let text: string;
+
 		try {
-			const text = await provider.transcribe(audioBuffer, mimeType, {
+			text = await provider.transcribe(audioBuffer, mimeType, {
 				language: this.getSystemLanguage(),
 			});
-
-			this.logger.debug(`STT transcription: ${text.substring(0, 100)}...`);
-
-			return text.trim();
 		} catch (error) {
 			this.handleProviderError(provider.getName(), error);
+
+			// handleProviderError always throws — this is unreachable but
+			// satisfies TypeScript's definite-assignment analysis for `text`.
+			/* istanbul ignore next */
+			throw error;
 		}
+
+		this.logger.debug(`STT transcription: ${text.substring(0, 100)}...`);
+
+		return text.trim();
 	}
 
 	isConfigured(): boolean {
