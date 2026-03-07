@@ -28,6 +28,16 @@ describe('ShortIdMappingService', () => {
 
 			expect(id1).not.toBe(id2);
 		});
+
+		it('should produce deterministic IDs across separate service instances', () => {
+			const uuid = '550e8400-e29b-41d4-a716-446655440000';
+			const id1 = service.shorten(uuid);
+
+			const service2 = new ShortIdMappingService();
+			const id2 = service2.shorten(uuid);
+
+			expect(id1).toBe(id2);
+		});
 	});
 
 	describe('resolve', () => {

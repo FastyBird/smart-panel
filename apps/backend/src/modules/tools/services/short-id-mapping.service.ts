@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 
 const BASE62_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -14,13 +16,18 @@ const SHORT_ID_LENGTH = 4;
 const MAX_MAPPINGS = 10_000;
 
 /**
- * Generates short IDs for UUIDs used in the LLM system prompt and resolves them
- * back to full UUIDs when the LLM returns tool calls.
+ * Generates deterministic short IDs for UUIDs used in the LLM system prompt and
+ * resolves them back to full UUIDs when the LLM returns tool calls.
  *
- * Mappings accumulate for the lifetime of the service (singleton). The same UUID
- * always resolves to the same short ID, which is safe for concurrent requests
- * from multiple bot adapters. A size limit prevents unbounded memory growth —
- * once MAX_MAPPINGS is reached, the oldest entries are evicted.
+ * Short IDs are derived from a hash of the UUID, making them stable across server
+ * restarts. This ensures that short IDs referenced in conversation history remain
+ * valid after a restart.
+ *
+ * When hash collisions occur (rare with 14.7M possible values and ≤10K entries),
+ * a salt counter is incremented until a unique short ID is found.
+ *
+ * A size limit prevents unbounded memory growth — once MAX_MAPPINGS is reached,
+ * the oldest entries are evicted.
  */
 @Injectable()
 export class ShortIdMappingService {
@@ -47,16 +54,16 @@ export class ShortIdMappingService {
 		this.evictIfNeeded();
 
 		let shortId: string;
-		let attempts = 0;
+		let salt = 0;
 
 		do {
-			shortId = this.generateShortId();
-			attempts++;
+			shortId = this.deriveShortId(uuid, salt);
+			salt++;
 
-			if (attempts > 100) {
+			if (salt > 100) {
 				throw new Error('ShortIdMappingService: failed to generate a unique short ID after 100 attempts');
 			}
-		} while (this.shortToUuid.has(shortId));
+		} while (this.shortToUuid.has(shortId) && this.shortToUuid.get(shortId) !== uuid);
 
 		this.shortToUuid.set(shortId, uuid);
 		this.uuidToShort.set(uuid, shortId);
@@ -95,11 +102,19 @@ export class ShortIdMappingService {
 		}
 	}
 
-	private generateShortId(): string {
+	/**
+	 * Derive a deterministic short ID from a UUID using SHA-256.
+	 * The salt parameter handles hash collisions — incrementing it
+	 * produces a different short ID from the same UUID.
+	 */
+	private deriveShortId(uuid: string, salt: number): string {
+		const input = salt === 0 ? uuid : `${uuid}:${salt}`;
+		const hash = createHash('sha256').update(input).digest();
+
 		let result = '';
 
 		for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-			result += BASE62_CHARS[Math.floor(Math.random() * BASE62_CHARS.length)];
+			result += BASE62_CHARS[hash[i] % BASE62_CHARS.length];
 		}
 
 		return result;

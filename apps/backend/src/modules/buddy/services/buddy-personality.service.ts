@@ -77,7 +77,7 @@ export class BuddyPersonalityService {
 		const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME) ?? new BuddyConfigModel();
 		const configuredPath = config.personalityPath;
 
-		const baseDir = path.resolve(__dirname, '../../../../../../');
+		const baseDir = process.cwd();
 		const allowedDir = path.resolve(baseDir, 'var/buddy');
 		const relativePath = configuredPath || BUDDY_DEFAULT_PERSONALITY_PATH;
 		const resolved = path.resolve(baseDir, relativePath);
