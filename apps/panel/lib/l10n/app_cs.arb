@@ -190,6 +190,7 @@
   "settings_voice_activation_section_detection": "Detekce hlasové aktivace",
   "settings_voice_activation_enable_label": "Povolit hlasovou aktivaci",
   "settings_voice_activation_enable_description": "Řekněte \"{wakeWord}\" pro aktivaci hlasových příkazů bez dotyku panelu.",
+  "settings_voice_activation_microphone_unavailable": "Mikrofon není na tomto displeji dostupný nebo je vypnutý.",
   "settings_voice_activation_section_sensitivity": "Citlivost",
   "settings_voice_activation_sensitivity_label": "Citlivost detekce",
   "settings_voice_activation_sensitivity_description": "Vyšší citlivost detekuje tišší řeč, ale může reagovat na okolní hluk.",

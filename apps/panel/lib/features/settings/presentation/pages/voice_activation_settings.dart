@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 
 /// Settings page for voice activation detection configuration.
 ///
@@ -124,6 +125,9 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
+		final displayRepo = locator<DisplayRepository>();
+		final canRecordAudio = displayRepo.audioInputSupported && displayRepo.hasMicrophoneEnabled;
+
 		return [
 			SectionTitle(
 				title: localizations.settings_voice_activation_section_detection,
@@ -135,10 +139,12 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_voice_activation_enable_label,
-				description: localizations.settings_voice_activation_enable_description(_voiceActivationService.config.wakeWord),
+				description: canRecordAudio
+					? localizations.settings_voice_activation_enable_description(_voiceActivationService.config.wakeWord)
+					: localizations.settings_voice_activation_microphone_unavailable,
 				trailing: SettingsToggle(
-					value: _enabled,
-					onChanged: _handleEnabledChanged,
+					value: _enabled && canRecordAudio,
+					onChanged: canRecordAudio ? _handleEnabledChanged : null,
 				),
 			),
 		];

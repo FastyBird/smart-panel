@@ -184,7 +184,10 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			_scrollToBottom();
 
 			// Auto-play TTS for new assistant messages when voice mode is active
-			if (_voiceModeActive && _buddyService.isTtsConfigured && messageCount > 0) {
+			final displayRepo = locator<DisplayRepository>();
+			final canPlayAudio = displayRepo.audioOutputSupported && displayRepo.hasSpeakerEnabled;
+
+			if (_voiceModeActive && canPlayAudio && _buddyService.isTtsConfigured && messageCount > 0) {
 				final lastMessage = messages.last;
 
 				if (lastMessage.role == BuddyMessageRole.assistant &&
@@ -320,6 +323,9 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			return _buildEmptyState(context, isDark);
 		}
 
+		final displayRepo = locator<DisplayRepository>();
+		final canPlayAudio = displayRepo.audioOutputSupported && displayRepo.hasSpeakerEnabled;
+
 		return ListView(
 			controller: _scrollController,
 			reverse: true,
@@ -334,7 +340,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					(message) => MessageBubble(
 						key: ValueKey(message.id),
 						message: message,
-						showSpeakerIcon: buddyService.isTtsConfigured,
+						showSpeakerIcon: canPlayAudio && buddyService.isTtsConfigured,
 						audioPlaybackService: _audioPlaybackService,
 						audioUrl: message.role == BuddyMessageRole.assistant
 							? buddyService.getMessageAudioUrl(message.id)
@@ -568,10 +574,13 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			? AppTextColorDark.placeholder
 			: AppTextColorLight.placeholder;
 
+		final displayRepo = locator<DisplayRepository>();
+		final canRecordAudio = displayRepo.audioInputSupported && displayRepo.hasMicrophoneEnabled;
+
 		return Consumer<BuddyService>(
 			builder: (context, buddyService, _) {
 				final isDisabled = !_initialized || buddyService.isProviderNotConfigured || _initFailed;
-				final isMicDisabled = isDisabled || buddyService.isSttNotConfigured;
+				final isMicDisabled = isDisabled || buddyService.isSttNotConfigured || !canRecordAudio;
 				final isSending = buddyService.isSendingMessage;
 
 				return Container(

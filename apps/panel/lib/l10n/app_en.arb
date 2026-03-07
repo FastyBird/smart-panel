@@ -866,6 +866,10 @@
       }
     }
   },
+  "settings_voice_activation_microphone_unavailable": "Microphone is not available or disabled on this display.",
+  "@settings_voice_activation_microphone_unavailable": {
+    "description": "Description shown when the display does not support audio input or the microphone is disabled."
+  },
   "settings_voice_activation_section_sensitivity": "Sensitivity",
   "@settings_voice_activation_section_sensitivity": {
     "description": "Section title for voice activation sensitivity settings."

@@ -684,6 +684,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settings_voice_activation_microphone_unavailable => 'Microphone is not available or disabled on this display.';
+
+  @override
   String get settings_voice_activation_section_sensitivity => 'Sensitivity';
 
   @override

@@ -1241,6 +1241,12 @@ abstract class AppLocalizations {
   /// **'Say \"{wakeWord}\" to activate voice commands without touching the panel.'**
   String settings_voice_activation_enable_description(String wakeWord);
 
+  /// Description shown when the display does not support audio input or the microphone is disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone is not available or disabled on this display.'**
+  String get settings_voice_activation_microphone_unavailable;
+
   /// Section title for voice activation sensitivity settings.
   ///
   /// In en, this message translates to:

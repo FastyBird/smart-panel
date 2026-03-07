@@ -695,6 +695,9 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get settings_voice_activation_microphone_unavailable => 'Mikrofon není na tomto displeji dostupný nebo je vypnutý.';
+
+  @override
   String get settings_voice_activation_section_sensitivity => 'Citlivost';
 
   @override
