@@ -438,15 +438,12 @@ watch(
 
 			// Save personality only after config was saved successfully
 			if (personalityDirty.value) {
-				const savedText = personalityText.value;
-				const success = await savePersonality(savedText);
+				const success = await savePersonality(personalityText.value);
 
 				if (success) {
-					// Use server response if available, otherwise fall back to the saved text
-					const canonical = personalityContent.value || savedText;
-
-					personalityOriginal.value = canonical;
-					personalityText.value = canonical;
+					// savePersonality updates personalityContent synchronously before returning
+					personalityOriginal.value = personalityContent.value;
+					personalityText.value = personalityContent.value;
 				}
 			}
 		}

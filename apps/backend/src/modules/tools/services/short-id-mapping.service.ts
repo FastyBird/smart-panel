@@ -106,15 +106,33 @@ export class ShortIdMappingService {
 	 * Derive a deterministic short ID from a UUID using SHA-256.
 	 * The salt parameter handles hash collisions — incrementing it
 	 * produces a different short ID from the same UUID.
+	 *
+	 * Uses rejection sampling to avoid modulo bias (256 is not
+	 * evenly divisible by 62).
 	 */
 	private deriveShortId(uuid: string, salt: number): string {
 		const input = salt === 0 ? uuid : `${uuid}:${salt}`;
 		const hash = createHash('sha256').update(input).digest();
 
 		let result = '';
+		let byteIndex = 0;
+
+		// 248 is the largest multiple of 62 that fits in a byte (62 * 4 = 248)
+		const limit = 248;
 
 		for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-			result += BASE62_CHARS[hash[i] % BASE62_CHARS.length];
+			// Skip biased bytes (≥248), use next byte from hash
+			while (byteIndex < hash.length && hash[byteIndex] >= limit) {
+				byteIndex++;
+			}
+
+			if (byteIndex < hash.length) {
+				result += BASE62_CHARS[hash[byteIndex] % BASE62_CHARS.length];
+				byteIndex++;
+			} else {
+				// Fallback: extremely unlikely with 32-byte hash and 4-char output
+				result += BASE62_CHARS[0];
+			}
 		}
 
 		return result;
