@@ -219,17 +219,21 @@ installStaticExtensions(
 	staticExtensions
 );
 
-await installRemoteExtensions(
-	app,
-	backendClient,
-	logger,
-	{
-		router,
-		store: pinia,
-		i18n,
-	},
-	installedNames
-);
+try {
+	await installRemoteExtensions(
+		app,
+		backendClient,
+		logger,
+		{
+			router,
+			store: pinia,
+			i18n,
+		},
+		installedNames
+	);
+} catch (err) {
+	logger.error('Failed to load remote extensions, continuing without them', err);
+}
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

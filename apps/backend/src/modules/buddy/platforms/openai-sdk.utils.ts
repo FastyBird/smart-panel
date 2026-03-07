@@ -90,8 +90,9 @@ export async function sendOpenAiMessage(
 					name: tc.function.name,
 					arguments: JSON.parse(tc.function.arguments) as Record<string, unknown>,
 				});
-			} catch {
-				// Skip tool calls with malformed JSON arguments
+			} catch (parseError) {
+				// eslint-disable-next-line no-console
+				console.warn(`Skipping tool call "${tc.function.name}" with malformed JSON arguments: ${String(parseError)}`);
 			}
 		}
 

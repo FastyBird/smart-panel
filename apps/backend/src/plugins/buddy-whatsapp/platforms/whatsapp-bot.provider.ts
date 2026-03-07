@@ -9,7 +9,13 @@ import { BuddyConversationService } from '../../../modules/buddy/services/buddy-
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BUDDY_WHATSAPP_PLUGIN_NAME, WHATSAPP_AUTH_DIR, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
+import {
+	BUDDY_WHATSAPP_PLUGIN_NAME,
+	WHATSAPP_AUTH_DIR,
+	WHATSAPP_MAX_RECONNECT_ATTEMPTS,
+	WHATSAPP_RECONNECT_DELAYS_MS,
+	WhatsAppConnectionStatus,
+} from '../buddy-whatsapp.constants';
 import { BuddyWhatsappConfigModel } from '../models/config.model';
 
 /**
@@ -29,6 +35,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;
 	private currentQr: string | null = null;
 	private reconnecting = false;
+	private reconnectAttempts = 0;
 
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
@@ -244,6 +251,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 					this.currentQr = null;
 					this.status = WhatsAppConnectionStatus.CONNECTED;
 					this.reconnecting = false;
+					this.reconnectAttempts = 0;
 					this.logger.log('WhatsApp bot connected');
 				}
 
@@ -260,7 +268,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 						// Intentional disconnect (stopBot was called) — do not auto-reconnect
 						this.status = WhatsAppConnectionStatus.DISCONNECTED;
 					} else {
-						// Unexpected disconnect — clear auth state and reconnect
+						// Unexpected disconnect — clear auth state and reconnect with backoff
 						const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
 
 						if (statusCode === Number(DisconnectReason.loggedOut) && existsSync(authDir)) {
@@ -268,10 +276,31 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 							rmSync(authDir, { recursive: true, force: true });
 						}
 
+						if (this.reconnectAttempts >= WHATSAPP_MAX_RECONNECT_ATTEMPTS) {
+							this.logger.error(
+								`WhatsApp reconnect limit reached (${WHATSAPP_MAX_RECONNECT_ATTEMPTS} attempts), giving up`,
+							);
+							this.status = WhatsAppConnectionStatus.DISCONNECTED;
+
+							return;
+						}
+
+						const delayIndex = Math.min(this.reconnectAttempts, WHATSAPP_RECONNECT_DELAYS_MS.length - 1);
+						const delay = WHATSAPP_RECONNECT_DELAYS_MS[delayIndex];
+
+						this.reconnectAttempts++;
 						this.status = WhatsAppConnectionStatus.CONNECTING;
 						this.reconnecting = true;
-						this.logger.log('WhatsApp reconnecting...');
-						void this.startBot();
+						this.logger.log(
+							`WhatsApp reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${WHATSAPP_MAX_RECONNECT_ATTEMPTS})...`,
+						);
+
+						setTimeout(() => {
+							// Only reconnect if stopBot hasn't been called in the meantime
+							if (this.reconnecting && this.socket === null) {
+								void this.startBot();
+							}
+						}, delay);
 					}
 				}
 			});
@@ -298,7 +327,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	}
 
 	private stopBot(): void {
-		this.reconnecting = true; // Prevent auto-reconnect
+		this.reconnecting = false;
+		this.reconnectAttempts = 0;
 
 		if (this.socket) {
 			this.socket.end(undefined);
@@ -307,7 +337,6 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		this.status = WhatsAppConnectionStatus.DISCONNECTED;
 		this.currentQr = null;
-		this.reconnecting = false;
 	}
 
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {

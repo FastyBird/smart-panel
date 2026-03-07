@@ -8,6 +8,10 @@ export const BUDDY_WHATSAPP_PLUGIN_API_TAG_DESCRIPTION = 'WhatsApp adapter plugi
 
 export const WHATSAPP_AUTH_DIR = 'var/buddy/whatsapp-auth';
 
+export const WHATSAPP_RECONNECT_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000]; // exponential backoff
+
+export const WHATSAPP_MAX_RECONNECT_ATTEMPTS = 10;
+
 export enum WhatsAppConnectionStatus {
 	DISCONNECTED = 'disconnected',
 	CONNECTING = 'connecting',

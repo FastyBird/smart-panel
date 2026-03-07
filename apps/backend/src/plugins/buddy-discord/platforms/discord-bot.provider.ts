@@ -253,6 +253,18 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			return;
 		}
 
+		// Block DM interactions when guild/role restrictions are configured
+		const isGuildInteraction = interaction.guildId !== null;
+
+		if (!isGuildInteraction && (config.guildId || config.allowedRoleId)) {
+			await interaction.reply({
+				content: '🔒 This action is not available in DMs.',
+				ephemeral: true,
+			});
+
+			return;
+		}
+
 		// Check role-based access
 		if (config.allowedRoleId && interaction.member) {
 			const member = interaction.member as GuildMember;
