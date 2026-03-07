@@ -256,6 +256,16 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			return;
 		}
 
+		// Reject interactions from other guilds
+		if (isGuildInteraction && config.guildId && interaction.guildId !== config.guildId) {
+			await interaction.reply({
+				content: '🔒 This action is not available in this server.',
+				ephemeral: true,
+			});
+
+			return;
+		}
+
 		// Check role-based access
 		if (config.allowedRoleId && interaction.member) {
 			const member = interaction.member as GuildMember;

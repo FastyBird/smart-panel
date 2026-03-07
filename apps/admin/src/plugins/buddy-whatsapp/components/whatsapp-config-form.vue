@@ -177,21 +177,17 @@ const handleLogout = async (): Promise<void> => {
 	}
 };
 
-const startPolling = (): void => {
+const POLL_FAST_MS = 3000;
+const POLL_SLOW_MS = 15000;
+
+const startPolling = (interval = POLL_FAST_MS): void => {
 	stopPolling();
 
 	void fetchStatus();
 
-	// Poll faster while waiting for QR/connection, slower once connected
 	pollTimer = setInterval(() => {
-		if (connectionStatus.value === 'connected') {
-			stopPolling();
-
-			return;
-		}
-
 		void fetchStatus();
-	}, 3000);
+	}, interval);
 };
 
 const stopPolling = (): void => {
@@ -221,6 +217,18 @@ watch(
 			connectionStatus.value = 'disconnected';
 			qrDataUrl.value = null;
 		}
+	}
+);
+
+// Adjust polling rate: fast while waiting for QR/connection, slow once connected
+watch(
+	() => connectionStatus.value,
+	(status) => {
+		if (!model.enabled || !pollTimer) {
+			return;
+		}
+
+		startPolling(status === 'connected' ? POLL_SLOW_MS : POLL_FAST_MS);
 	}
 );
 

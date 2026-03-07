@@ -24,7 +24,6 @@ interface IUseBuddyChat {
 	isTtsConfigured: ComputedRef<boolean>;
 	playingMessageId: Ref<string | null>;
 	audioLoading: Ref<boolean>;
-	error: Ref<string | null>;
 	fetchConversations: () => Promise<void>;
 	fetchProviderStatuses: () => Promise<void>;
 	fetchTtsProviderStatuses: () => Promise<void>;
@@ -51,7 +50,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const isSending = ref<boolean>(false);
-	const error = ref<string | null>(null);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
 		return providerStatuses.value.find((p) => p.selected);
@@ -171,6 +169,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	// Lightweight message refresh that skips the isLoadingMessages flag,
 	// suitable for background polling without UI flicker.
+	// Errors are silently ignored to avoid toast spam during transient network issues.
 	const fetchMessagesQuiet = async (conversationId: string): Promise<void> => {
 		try {
 			const response = await backend.client.GET(
@@ -185,10 +184,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status !== 503) {
-					flashMessage.error(apiError.message);
-				}
-
 				return;
 			}
 
@@ -197,8 +192,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (typeof responseData !== 'undefined' && activeConversationId.value === conversationId) {
 				messages.value = responseData.data;
 			}
-		} catch (err: unknown) {
-			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
+		} catch {
+			// Silently ignore — quiet refresh should not disturb the user
 		}
 	};
 
@@ -432,7 +427,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isTtsConfigured,
 		playingMessageId,
 		audioLoading,
-		error,
 		fetchConversations,
 		fetchProviderStatuses,
 		fetchTtsProviderStatuses,
