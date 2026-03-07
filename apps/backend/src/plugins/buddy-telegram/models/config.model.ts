@@ -35,10 +35,6 @@ export class BuddyTelegramConfigModel extends PluginConfigModel {
 		({ obj }: { obj: { bot_token?: string | null; botToken?: string | null } }) => obj.bot_token ?? obj.botToken,
 		{ toClassOnly: true },
 	)
-	@Transform(
-		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
 	@IsOptional()
 	@IsString()
 	botToken: string | null = null;

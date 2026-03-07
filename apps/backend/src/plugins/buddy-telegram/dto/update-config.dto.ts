@@ -39,9 +39,6 @@ export class UpdateBuddyTelegramConfigDto extends UpdatePluginConfigDto {
 		({ obj }: { obj: { bot_token?: string | null; botToken?: string | null } }) => obj.bot_token ?? obj.botToken,
 		{ toClassOnly: true },
 	)
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)), {
-		toClassOnly: true,
-	})
 	@IsOptional()
 	@IsString({ message: '[{"field":"bot_token","reason":"Bot token must be a string."}]' })
 	botToken?: string | null;

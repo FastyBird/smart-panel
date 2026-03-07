@@ -24,8 +24,10 @@
 			},
 			"spaceChannelMappings": {
 				"title": "Space-channel mappings",
-				"placeholder": "{\"space-uuid-1\":\"channel-id-1\",\"space-uuid-2\":\"channel-id-2\"}",
-				"description": "JSON mapping of smart home space IDs to Discord channel IDs. Messages in a mapped channel include that space's context."
+				"selectSpace": "Select a space",
+				"channelPlaceholder": "Discord channel ID",
+				"add": "Add mapping",
+				"description": "Map smart home spaces to Discord channels. Messages in a mapped channel will include that space's context."
 			},
 			"allowedRoleId": {
 				"title": "Allowed role ID",

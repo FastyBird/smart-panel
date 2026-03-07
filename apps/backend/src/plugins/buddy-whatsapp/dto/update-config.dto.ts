@@ -52,11 +52,8 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) => {
-			const resolved = obj.access_token ?? obj.accessToken;
-
-			return resolved === '***' ? undefined : resolved;
-		},
+		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) =>
+			obj.access_token ?? obj.accessToken,
 		{ toClassOnly: true },
 	)
 	@IsOptional()
@@ -71,11 +68,8 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'webhook_verify_token' })
 	@Transform(
-		({ obj }: { obj: { webhook_verify_token?: string | null; webhookVerifyToken?: string | null } }) => {
-			const resolved = obj.webhook_verify_token ?? obj.webhookVerifyToken;
-
-			return resolved === '***' ? undefined : resolved;
-		},
+		({ obj }: { obj: { webhook_verify_token?: string | null; webhookVerifyToken?: string | null } }) =>
+			obj.webhook_verify_token ?? obj.webhookVerifyToken,
 		{ toClassOnly: true },
 	)
 	@IsOptional()
@@ -90,11 +84,7 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'app_secret' })
 	@Transform(
-		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => {
-			const resolved = obj.app_secret ?? obj.appSecret;
-
-			return resolved === '***' ? undefined : resolved;
-		},
+		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => obj.app_secret ?? obj.appSecret,
 		{ toClassOnly: true },
 	)
 	@IsOptional()

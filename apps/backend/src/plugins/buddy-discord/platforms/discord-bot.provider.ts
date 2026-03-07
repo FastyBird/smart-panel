@@ -328,14 +328,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 
 			const conversationId = await this.getOrCreateConversation(message.channelId, spaceId);
 
-			// If we have a space context, prepend it to help the buddy understand the scope
-			let messageText = content;
-
-			if (spaceId) {
-				messageText = `[Space context: ${spaceId}] ${content}`;
-			}
-
-			const response = await this.conversationService.sendMessage(conversationId, messageText);
+			const response = await this.conversationService.sendMessage(conversationId, content);
 
 			const channel = message.channel as TextChannel;
 
@@ -374,7 +367,7 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 
 		const name = spaceId ? `Discord (channel ${channelId}, space ${spaceId})` : `Discord (channel ${channelId})`;
 
-		const conversation = await this.conversationService.create(name);
+		const conversation = await this.conversationService.create(name, spaceId);
 
 		this.channelConversations.set(channelId, conversation.id);
 

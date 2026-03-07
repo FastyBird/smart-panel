@@ -36,11 +36,7 @@ export class UpdateBuddyDiscordConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'bot_token' })
 	@Transform(
-		({ obj }: { obj: { bot_token?: string | null; botToken?: string | null } }) => {
-			const resolved = obj.bot_token ?? obj.botToken;
-
-			return resolved === '***' ? undefined : resolved;
-		},
+		({ obj }: { obj: { bot_token?: string | null; botToken?: string | null } }) => obj.bot_token ?? obj.botToken,
 		{ toClassOnly: true },
 	)
 	@IsOptional()

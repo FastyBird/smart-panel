@@ -73,15 +73,51 @@
 			:label="t('buddyDiscordPlugin.fields.config.spaceChannelMappings.title')"
 			prop="spaceChannelMappings"
 		>
-			<el-input
-				v-model="model.spaceChannelMappings"
-				:placeholder="t('buddyDiscordPlugin.fields.config.spaceChannelMappings.placeholder')"
-				name="spaceChannelMappings"
-				type="textarea"
-				:rows="3"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyDiscordPlugin.fields.config.spaceChannelMappings.description') }}
+			<div class="w-full">
+				<div
+					v-for="(mapping, index) in mappings"
+					:key="index"
+					class="flex items-center gap-2 mb-2"
+				>
+					<el-select
+						v-model="mapping.spaceId"
+						:placeholder="t('buddyDiscordPlugin.fields.config.spaceChannelMappings.selectSpace')"
+						filterable
+						class="flex-1"
+					>
+						<el-option
+							v-for="space in getAvailableSpaces(index)"
+							:key="space.id"
+							:label="space.name"
+							:value="space.id"
+						/>
+					</el-select>
+					<el-input
+						v-model="mapping.channelId"
+						:placeholder="t('buddyDiscordPlugin.fields.config.spaceChannelMappings.channelPlaceholder')"
+						class="flex-1"
+					/>
+					<el-button
+						type="danger"
+						plain
+						@click="removeMapping(index)"
+					>
+						<template #icon>
+							<icon icon="mdi:trash" />
+						</template>
+					</el-button>
+				</div>
+				<el-button
+					type="primary"
+					plain
+					size="small"
+					@click="addMapping"
+				>
+					{{ t('buddyDiscordPlugin.fields.config.spaceChannelMappings.add') }}
+				</el-button>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('buddyDiscordPlugin.fields.config.spaceChannelMappings.description') }}
+				</div>
 			</div>
 		</el-form-item>
 
@@ -105,9 +141,11 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { Icon } from '@iconify/vue';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { useSpaces } from '../../../modules/spaces';
 import type { IDiscordConfigEditForm } from '../schemas/config.types';
 
 import type { IDiscordConfigFormProps } from './discord-config-form.types';
@@ -140,6 +178,63 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 	},
 });
 
+const { spaces, fetchSpaces } = useSpaces();
+
+interface ISpaceChannelMapping {
+	spaceId: string;
+	channelId: string;
+}
+
+const mappings = reactive<ISpaceChannelMapping[]>([]);
+
+const parseMappings = (): void => {
+	const entries: ISpaceChannelMapping[] = [];
+
+	try {
+		const parsed = JSON.parse(model.spaceChannelMappings || '{}') as Record<string, string>;
+
+		for (const [spaceId, channelId] of Object.entries(parsed)) {
+			entries.push({ spaceId, channelId });
+		}
+	} catch {
+		// Invalid JSON, start with empty mappings
+	}
+
+	mappings.splice(0, mappings.length, ...entries);
+};
+
+const syncToModel = (): void => {
+	const obj: Record<string, string> = {};
+
+	for (const m of mappings) {
+		if (m.spaceId && m.channelId) {
+			obj[m.spaceId] = m.channelId;
+		}
+	}
+
+	model.spaceChannelMappings = Object.keys(obj).length > 0 ? JSON.stringify(obj) : null;
+};
+
+const getAvailableSpaces = (currentIndex: number) => {
+	const usedSpaceIds = mappings.filter((_, i) => i !== currentIndex).map((m) => m.spaceId).filter(Boolean);
+
+	return spaces.value.filter((space) => !usedSpaceIds.includes(space.id));
+};
+
+const addMapping = (): void => {
+	mappings.push({ spaceId: '', channelId: '' });
+};
+
+const removeMapping = (index: number): void => {
+	mappings.splice(index, 1);
+	syncToModel();
+};
+
+parseMappings();
+fetchSpaces();
+
+watch(mappings, syncToModel, { deep: true });
+
 const rules = reactive<FormRules<IDiscordConfigEditForm>>({});
 
 watch(
@@ -171,6 +266,7 @@ watch(
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();
+			parseMappings();
 		}
 	}
 );

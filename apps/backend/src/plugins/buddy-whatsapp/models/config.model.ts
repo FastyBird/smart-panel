@@ -52,10 +52,6 @@ export class BuddyWhatsappConfigModel extends PluginConfigModel {
 			obj.access_token ?? obj.accessToken,
 		{ toClassOnly: true },
 	)
-	@Transform(
-		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
 	@IsOptional()
 	@IsString()
 	accessToken: string | null = null;
@@ -72,10 +68,6 @@ export class BuddyWhatsappConfigModel extends PluginConfigModel {
 			obj.webhook_verify_token ?? obj.webhookVerifyToken,
 		{ toClassOnly: true },
 	)
-	@Transform(
-		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
 	@IsOptional()
 	@IsString()
 	webhookVerifyToken: string | null = null;
@@ -90,10 +82,6 @@ export class BuddyWhatsappConfigModel extends PluginConfigModel {
 	@Transform(
 		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => obj.app_secret ?? obj.appSecret,
 		{ toClassOnly: true },
-	)
-	@Transform(
-		({ value }): string | null => (typeof value === 'string' && value.length > 0 ? '***' : (value as string | null)),
-		{ toPlainOnly: true, groups: ['api'] },
 	)
 	@IsOptional()
 	@IsString()
