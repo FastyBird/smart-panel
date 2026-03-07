@@ -3,6 +3,7 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ConfigService } from '../../config/services/config.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
@@ -107,6 +108,10 @@ describe('BuddyConversationService', () => {
 			emit: jest.fn(),
 		} as any;
 
+		const configService = {
+			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy' }),
+		};
+
 		service = new BuddyConversationService(
 			conversationRepo as unknown as Repository<BuddyConversationEntity>,
 			messageRepo as unknown as Repository<BuddyMessageEntity>,
@@ -117,6 +122,7 @@ describe('BuddyConversationService', () => {
 			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
 			new ShortIdMappingService(),
+			configService as unknown as ConfigService,
 		);
 	});
 

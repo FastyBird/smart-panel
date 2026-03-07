@@ -12,6 +12,10 @@ import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
+import { ConfigService } from '../../config/services/config.service';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
+import { BuddyConfigModel } from '../models/config.model';
+
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
@@ -36,6 +40,7 @@ export class BuddyConversationService {
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly shortIdMapping: ShortIdMappingService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
@@ -301,8 +306,9 @@ export class BuddyConversationService {
 	private async buildSystemPrompt(context: BuddyContext): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
+		const buddyName = this.getBuddyName();
 
-		const lines: string[] = [personality];
+		const lines: string[] = [`Your name is ${buddyName}.`, '', personality];
 
 		if (hasTools) {
 			lines.push(
@@ -456,5 +462,15 @@ export class BuddyConversationService {
 		}
 
 		return lines.join('\n');
+	}
+
+	private getBuddyName(): string {
+		try {
+			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+
+			return config.name || 'Buddy';
+		} catch {
+			return 'Buddy';
+		}
 	}
 }
