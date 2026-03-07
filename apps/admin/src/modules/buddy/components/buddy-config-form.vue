@@ -444,6 +444,8 @@ watch(
 					// savePersonality updates personalityContent synchronously before returning
 					personalityOriginal.value = personalityContent.value;
 					personalityText.value = personalityContent.value;
+				} else {
+					emit('update:remote-form-result', FormResult.ERROR);
 				}
 			}
 		}

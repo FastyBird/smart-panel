@@ -313,8 +313,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {
 		const jid = msg.key.remoteJid;
 
-		if (!jid || jid.endsWith('@g.us')) {
-			// Ignore group messages
+		if (!jid || jid.endsWith('@g.us') || jid.endsWith('@broadcast') || jid === 'status@broadcast') {
+			// Ignore group messages, broadcasts, and status updates
 			return;
 		}
 
