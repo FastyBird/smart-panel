@@ -68,19 +68,19 @@ describe('DiscordBotProvider', () => {
 		await provider.onModuleDestroy();
 	});
 
-	describe('onModuleInit', () => {
-		it('should not start bot when plugin is disabled', async () => {
+	describe('onApplicationBootstrap', () => {
+		it('should not start bot when plugin is disabled', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
 
-			await provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isRunning()).toBe(false);
 		});
 
-		it('should not start bot when token is missing', async () => {
+		it('should not start bot when token is missing', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: true, botToken: null }));
 
-			await provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isRunning()).toBe(false);
 		});
@@ -121,13 +121,13 @@ describe('DiscordBotProvider', () => {
 	});
 
 	describe('getPluginConfig fallback', () => {
-		it('should return null when config service throws', async () => {
+		it('should return null when config service throws', () => {
 			configService.getPluginConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
 
 			// Should not throw - falls back to null config, bot stays stopped
-			await provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isRunning()).toBe(false);
 		});

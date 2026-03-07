@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { EventType } from '../../../modules/buddy/buddy.constants';
@@ -23,7 +23,7 @@ import { BuddyTelegramConfigModel } from '../models/config.model';
  * - Enforces a user whitelist for security
  */
 @Injectable()
-export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
+export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = new Logger(TelegramBotProvider.name);
 
 	private bot: Telegraf | null = null;
@@ -44,11 +44,11 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onApplicationBootstrap(): void {
 		const config = this.getPluginConfig();
 
 		if (config?.enabled && config.botToken) {
-			await this.startBot(config);
+			void this.startBot(config);
 		} else {
 			// Record the initial config snapshot so that onConfigUpdated can
 			// detect real changes and skip unrelated CONFIG_UPDATED events.

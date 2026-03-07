@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { EventType } from '../../../modules/buddy/buddy.constants';
@@ -48,7 +48,7 @@ interface WhatsAppWebhookPayload {
  * - Enforces a phone number whitelist for security
  */
 @Injectable()
-export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
+export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = new Logger(WhatsAppBotProvider.name);
 
 	/** Snapshot of the last applied config to detect actual changes */
@@ -73,7 +73,7 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	onModuleInit(): void {
+	onApplicationBootstrap(): void {
 		const config = this.getPluginConfig();
 
 		this.activeConfig = {

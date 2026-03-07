@@ -120,11 +120,11 @@ describe('WhatsAppBotProvider', () => {
 		provider.onModuleDestroy();
 	});
 
-	describe('onModuleInit', () => {
+	describe('onApplicationBootstrap', () => {
 		it('should initialize with disabled config', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isConfigured()).toBe(false);
 		});
@@ -139,7 +139,7 @@ describe('WhatsAppBotProvider', () => {
 				}),
 			);
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isConfigured()).toBe(true);
 		});
@@ -151,7 +151,7 @@ describe('WhatsAppBotProvider', () => {
 				makeConfig({ enabled: true, webhookVerifyToken: 'my-verify-token' }),
 			);
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.verifyWebhookToken('my-verify-token')).toBe(true);
 		});
@@ -161,7 +161,7 @@ describe('WhatsAppBotProvider', () => {
 				makeConfig({ enabled: true, webhookVerifyToken: 'my-verify-token' }),
 			);
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.verifyWebhookToken('wrong-token')).toBe(false);
 		});
@@ -169,7 +169,7 @@ describe('WhatsAppBotProvider', () => {
 		it('should return false when no verify token configured', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: true }));
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.verifyWebhookToken('any-token')).toBe(false);
 		});
@@ -191,7 +191,7 @@ describe('WhatsAppBotProvider', () => {
 				text: jest.fn().mockResolvedValue('{}'),
 			});
 
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 		});
 
 		afterEach(() => {
@@ -339,7 +339,7 @@ describe('WhatsAppBotProvider', () => {
 	describe('onConfigUpdated', () => {
 		it('should update config when values change', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			configService.getPluginConfig.mockReturnValue(
 				makeConfig({
@@ -358,7 +358,7 @@ describe('WhatsAppBotProvider', () => {
 			const config = makeConfig({ enabled: false });
 
 			configService.getPluginConfig.mockReturnValue(config);
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			// Call again with same config
 			provider.onConfigUpdated();
@@ -383,7 +383,7 @@ describe('WhatsAppBotProvider', () => {
 			});
 
 			// Should not throw - falls back to null config
-			provider.onModuleInit();
+			provider.onApplicationBootstrap();
 
 			expect(provider.isConfigured()).toBe(false);
 		});

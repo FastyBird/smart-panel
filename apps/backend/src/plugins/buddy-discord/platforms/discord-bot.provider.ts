@@ -2,15 +2,17 @@ import {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
+	ChannelType,
 	Client,
 	GatewayIntentBits,
 	type GuildMember,
 	type Interaction,
 	type Message,
+	Partials,
 	type TextChannel,
 } from 'discord.js';
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { EventType } from '../../../modules/buddy/buddy.constants';
@@ -36,7 +38,7 @@ import { BuddyDiscordConfigModel } from '../models/config.model';
  * - Enforces role-based access control
  */
 @Injectable()
-export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
+export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = new Logger(DiscordBotProvider.name);
 
 	private client: Client | null = null;
@@ -61,11 +63,11 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onApplicationBootstrap(): void {
 		const config = this.getPluginConfig();
 
 		if (config?.enabled && config.botToken) {
-			await this.startBot(config);
+			void this.startBot(config);
 		} else {
 			this.activeConfig = {
 				enabled: config?.enabled ?? false,
@@ -179,9 +181,11 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 				intents: [
 					GatewayIntentBits.Guilds,
 					GatewayIntentBits.GuildMessages,
+					GatewayIntentBits.DirectMessages,
 					GatewayIntentBits.MessageContent,
 					GatewayIntentBits.GuildMembers,
 				],
+				partials: [Partials.Channel],
 			});
 
 			this.client.on('messageCreate', (message: Message) => {
@@ -287,32 +291,36 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		// Only handle messages from the configured guild
-		if (config.guildId && message.guildId !== config.guildId) {
-			return;
-		}
+		const isDm = message.channel.type === ChannelType.DM;
 
-		// Check if the message is in a configured channel
-		const allowedChannels = this.getAllowedChannelIds(config);
-
-		if (allowedChannels.size > 0 && !allowedChannels.has(message.channelId)) {
-			return;
-		}
-
-		// Role-based access control
-		if (config.allowedRoleId && message.member) {
-			const hasRole = message.member.roles.cache.has(config.allowedRoleId);
-
-			if (!hasRole) {
-				this.logger.debug(`Rejected message from user ${message.author.id} without required role`);
-
-				try {
-					await message.react('🔒');
-				} catch {
-					// Ignore reaction failures
-				}
-
+		if (!isDm) {
+			// Only handle messages from the configured guild
+			if (config.guildId && message.guildId !== config.guildId) {
 				return;
+			}
+
+			// Check if the message is in a configured channel
+			const allowedChannels = this.getAllowedChannelIds(config);
+
+			if (allowedChannels.size > 0 && !allowedChannels.has(message.channelId)) {
+				return;
+			}
+
+			// Role-based access control
+			if (config.allowedRoleId && message.member) {
+				const hasRole = message.member.roles.cache.has(config.allowedRoleId);
+
+				if (!hasRole) {
+					this.logger.debug(`Rejected message from user ${message.author.id} without required role`);
+
+					try {
+						await message.react('🔒');
+					} catch {
+						// Ignore reaction failures
+					}
+
+					return;
+				}
 			}
 		}
 
@@ -322,29 +330,31 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		try {
-			// Determine space context from channel mapping
-			const spaceId = this.getSpaceForChannel(config, message.channelId);
+		if (!('send' in message.channel)) {
+			return;
+		}
 
-			const conversationId = await this.getOrCreateConversation(message.channelId, spaceId);
+		try {
+			// Determine space context from channel mapping (DMs have no space context)
+			const spaceId = isDm ? null : this.getSpaceForChannel(config, message.channelId);
+
+			// Use user ID as conversation key for DMs, channel ID for guild messages
+			const conversationKey = isDm ? `dm:${message.author.id}` : message.channelId;
+			const conversationId = await this.getOrCreateConversation(conversationKey, spaceId);
 
 			const response = await this.conversationService.sendMessage(conversationId, content);
-
-			const channel = message.channel as TextChannel;
 
 			// Split long messages if needed
 			const chunks = this.splitMessage(response.content);
 
 			for (const chunk of chunks) {
-				await this.sendWithRetry(channel, chunk);
+				await message.channel.send(chunk);
 			}
 		} catch (error) {
 			this.logger.error(`Error processing Discord message: ${String(error)}`);
 
 			try {
-				const channel = message.channel as TextChannel;
-
-				await channel.send('Sorry, I encountered an error processing your message. Please try again.');
+				await message.channel.send('Sorry, I encountered an error processing your message. Please try again.');
 			} catch {
 				// Ignore send failure for error message
 			}
@@ -365,7 +375,12 @@ export class DiscordBotProvider implements OnModuleInit, OnModuleDestroy {
 			}
 		}
 
-		const name = spaceId ? `Discord (channel ${channelId}, space ${spaceId})` : `Discord (channel ${channelId})`;
+		const isDm = channelId.startsWith('dm:');
+		const name = isDm
+			? `Discord DM (${channelId.slice(3)})`
+			: spaceId
+				? `Discord (channel ${channelId}, space ${spaceId})`
+				: `Discord (channel ${channelId})`;
 
 		const conversation = await this.conversationService.create(name, spaceId);
 
