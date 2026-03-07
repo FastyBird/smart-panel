@@ -15,6 +15,7 @@ import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-p
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_TOOL_ITERATIONS = 5;
@@ -34,6 +35,7 @@ export class BuddyConversationService {
 		private readonly personalityService: BuddyPersonalityService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly shortIdMapping: ShortIdMappingService,
 	) {}
 
 	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
@@ -88,6 +90,9 @@ export class BuddyConversationService {
 		const conversation = await this.findOneOrThrow(conversationId);
 
 		// 1. Build system prompt with context and personality
+		// Reset short ID mappings so tool calls from this LLM round resolve correctly
+		this.shortIdMapping.clear();
+
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
 		const systemPrompt = await this.buildSystemPrompt(context);
 
@@ -310,14 +315,16 @@ export class BuddyConversationService {
 			lines.push('', '## Spaces');
 
 			for (const space of context.spaces) {
-				lines.push(`- ${space.name} [id=${space.id}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
+				const sid = this.shortIdMapping.shorten(space.id);
+
+				lines.push(`- ${space.name} [id=${sid}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
 			}
 		}
 
 		if (context.devices.length > 0) {
 			lines.push('', '## Devices');
 
-			for (const device of context.devices.slice(0, 30)) {
+			for (const device of context.devices) {
 				const stateEntries = Object.entries(device.state);
 				const stateStr =
 					stateEntries.length > 0
@@ -330,24 +337,25 @@ export class BuddyConversationService {
 								.join(', ')
 						: 'no state data';
 
-				lines.push(`- ${device.name} [id=${device.id}] (${device.category}): ${stateStr}`);
+				lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
 
-				// When tools are available, include channel/property UUIDs so the LLM can use control_device
+				// When tools are available, include property IDs grouped by channel so the LLM can use control_device
 				if (hasTools && device.channels.length > 0) {
 					for (const channel of device.channels) {
+						if (channel.properties.length === 0) {
+							continue;
+						}
+
+						lines.push(`  - ${channel.name}:`);
+
 						for (const prop of channel.properties) {
+							const pid = this.shortIdMapping.shorten(prop.id);
 							const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
 
-							lines.push(
-								`  - channel=${channel.name} [channel_id=${channel.id}] property=${prop.category} [property_id=${prop.id}] value=${val}`,
-							);
+							lines.push(`    - ${prop.category} [p=${pid}] value=${val}`);
 						}
 					}
 				}
-			}
-
-			if (context.devices.length > 30) {
-				lines.push(`- ... and ${context.devices.length - 30} more devices`);
 			}
 		}
 
@@ -355,7 +363,9 @@ export class BuddyConversationService {
 			lines.push('', '## Scenes');
 
 			for (const scene of context.scenes) {
-				lines.push(`- ${scene.name} [id=${scene.id}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
+				const sid = this.shortIdMapping.shorten(scene.id);
+
+				lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
 			}
 		}
 

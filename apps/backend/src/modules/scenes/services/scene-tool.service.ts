@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 import { SceneExecutionStatus } from '../scenes.constants';
@@ -20,6 +21,7 @@ export class SceneToolService extends BaseToolProviderService {
 	constructor(
 		private readonly scenesService: ScenesService,
 		private readonly sceneExecutor: SceneExecutorService,
+		private readonly shortIdMapping: ShortIdMappingService,
 	) {
 		super();
 	}
@@ -40,7 +42,7 @@ export class SceneToolService extends BaseToolProviderService {
 					properties: {
 						scene_id: {
 							type: 'string',
-							description: 'UUID of the scene to run',
+							description: 'Short scene ID from the home context (the id=... value)',
 						},
 					},
 					required: ['scene_id'],
@@ -54,11 +56,13 @@ export class SceneToolService extends BaseToolProviderService {
 	}
 
 	private async executeRunScene(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const sceneId = typeof args.scene_id === 'string' ? args.scene_id : '';
+		const rawSceneId = typeof args.scene_id === 'string' ? args.scene_id : '';
 
-		if (!sceneId) {
+		if (!rawSceneId) {
 			return { success: false, message: 'Missing required parameter: scene_id' };
 		}
+
+		const sceneId = this.shortIdMapping.resolve(rawSceneId) ?? rawSceneId;
 
 		// Verify scene exists
 		const scene = await this.scenesService.findOne(sceneId);

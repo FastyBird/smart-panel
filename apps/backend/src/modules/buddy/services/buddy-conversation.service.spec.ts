@@ -3,6 +3,7 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
@@ -115,6 +116,7 @@ describe('BuddyConversationService', () => {
 			personalityService as unknown as BuddyPersonalityService,
 			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
+			new ShortIdMappingService(),
 		);
 	});
 

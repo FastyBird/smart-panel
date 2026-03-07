@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { ModuleRef } from '@nestjs/core';
 
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+
 import { SpaceLightingToolService } from './space-lighting-tool.service';
 import { SpacesService } from './spaces.service';
 
@@ -25,6 +27,7 @@ describe('SpaceLightingToolService', () => {
 		service = new SpaceLightingToolService(
 			spacesService as unknown as SpacesService,
 			moduleRef as unknown as ModuleRef,
+			new ShortIdMappingService(),
 		);
 
 		// Simulate onModuleInit which resolves SpaceIntentService lazily
