@@ -1,3 +1,5 @@
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
+
 import { SceneExecutorService } from './scene-executor.service';
 import { SceneToolService } from './scene-tool.service';
 import { ScenesService } from './scenes.service';
@@ -19,6 +21,7 @@ describe('SceneToolService', () => {
 		service = new SceneToolService(
 			scenesService as unknown as ScenesService,
 			sceneExecutor as unknown as SceneExecutorService,
+			new ShortIdMappingService(),
 		);
 	});
 

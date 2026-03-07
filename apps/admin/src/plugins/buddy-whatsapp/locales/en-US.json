@@ -1,0 +1,35 @@
+{
+	"headings": {
+		"aboutWhatsappSettings": "WhatsApp bot settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"allowedPhoneNumbers": {
+				"title": "Allowed phone numbers",
+				"placeholder": "e.g., 1234567890,9876543210",
+				"description": "Comma-separated phone numbers allowed to interact with the bot (with or without '+' prefix). Leave empty to allow all numbers."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "WhatsApp bot settings have been updated",
+			"notEdited": "Failed to update WhatsApp bot settings"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Connect a dedicated WhatsApp number for the bot. Use a second SIM, eSIM, or virtual number — install WhatsApp (or WhatsApp Business) with that number and scan the QR code below. Users can then message the bot number from their personal WhatsApp.",
+		"status": {
+			"disconnected": "Not connected. Enable the plugin and wait for the QR code.",
+			"connecting": "Connecting to WhatsApp...",
+			"qrReady": "Open WhatsApp on the bot's phone (the dedicated number) and scan this QR code via Settings > Linked Devices > Link a Device.",
+			"connected": "WhatsApp bot is connected and running. Users can message the bot's number to chat."
+		}
+	},
+	"buttons": {
+		"logout": "Disconnect & re-pair"
+	}
+}

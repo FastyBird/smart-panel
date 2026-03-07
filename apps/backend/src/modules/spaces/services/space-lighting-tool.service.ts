@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode } from '../spaces.constants';
 
@@ -26,6 +27,7 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly moduleRef: ModuleRef,
+		private readonly shortIdMapping: ShortIdMappingService,
 	) {
 		super();
 	}
@@ -55,7 +57,7 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 					properties: {
 						space_id: {
 							type: 'string',
-							description: 'UUID of the space to control lighting for',
+							description: 'Short space ID from the home context (the id=... value)',
 						},
 						mode: {
 							type: 'string',
@@ -74,12 +76,14 @@ export class SpaceLightingToolService extends BaseToolProviderService implements
 	}
 
 	private async executeSetSpaceLighting(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		const spaceId = typeof args.space_id === 'string' ? args.space_id : '';
+		const rawSpaceId = typeof args.space_id === 'string' ? args.space_id : '';
 		const mode = typeof args.mode === 'string' ? args.mode : '';
 
-		if (!spaceId || !mode) {
+		if (!rawSpaceId || !mode) {
 			return { success: false, message: 'Missing required parameters: space_id, mode' };
 		}
+
+		const spaceId = this.shortIdMapping.resolve(rawSpaceId) ?? rawSpaceId;
 
 		if (!this.spaceIntentService) {
 			return { success: false, message: 'Space lighting service is not available' };

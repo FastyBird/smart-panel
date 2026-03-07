@@ -1,9 +1,8 @@
 import { type ComputedRef, type Ref, computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import { sessionStoreKey } from '../../auth/store/keys';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 import type { IConversation, IMessage } from '../buddy.types';
 
@@ -30,6 +29,7 @@ interface IUseBuddyChat {
 	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
+	refreshMessages: (conversationId: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
 	deleteConversation: (id: string) => Promise<void>;
 	playMessageAudio: (messageId: string) => Promise<void>;
@@ -40,7 +40,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
-	const storesManager = injectStoresManager();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
 	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
@@ -158,8 +157,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		return undefined;
 	};
 
-	const fetchMessages = async (conversationId: string): Promise<void> => {
-		isLoadingMessages.value = true;
+	const fetchMessagesInternal = async (conversationId: string, quiet: boolean): Promise<void> => {
+		if (!quiet) {
+			isLoadingMessages.value = true;
+		}
 
 		try {
 			const response = await backend.client.GET(
@@ -174,7 +175,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status !== 503) {
+				if (!quiet && apiError.status !== 503) {
 					flashMessage.error(apiError.message);
 				}
 
@@ -187,11 +188,22 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
+			if (!quiet) {
+				flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
+			}
 		} finally {
-			isLoadingMessages.value = false;
+			if (!quiet) {
+				isLoadingMessages.value = false;
+			}
 		}
 	};
+
+	const fetchMessages = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, false);
+
+	// Lightweight message refresh that skips the isLoadingMessages flag,
+	// suitable for background polling without UI flicker.
+	// Errors are silently ignored to avoid toast spam during transient network issues.
+	const fetchMessagesQuiet = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, true);
 
 	const selectConversation = async (id: string): Promise<void> => {
 		activeConversationId.value = id;
@@ -257,6 +269,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (conv) {
 				conv.updated_at = new Date().toISOString();
+				conversations.value.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 			}
 		} catch (err: unknown) {
 			// Remove optimistic message on error
@@ -363,33 +376,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		currentAbortController = abortController;
 
 		try {
-			const port =
-				import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT;
-			const baseUrl = `${window.location.protocol}//${window.location.hostname}:${port}/api/v1`;
-			const url = `${baseUrl}/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio`;
-
-			const sessionStore = storesManager.getStore(sessionStoreKey);
-			const token = sessionStore.accessToken();
-
-			const headers: Record<string, string> = {};
-
-			if (token) {
-				headers['Authorization'] = `Bearer ${token}`;
-			}
-
-			const response = await fetch(url, { headers, signal: abortController.signal });
+			const { data: blob, error: apiError } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio` as never,
+				{
+					signal: abortController.signal,
+					parseAs: 'blob',
+				} as never,
+			);
 
 			// Discard if a newer request has been started
 			if (requestId !== audioRequestId) return;
 
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`);
+			if (apiError || !blob) {
+				throw new Error('Failed to fetch audio');
 			}
-
-			const blob = await response.blob();
-
-			// Discard if a newer request has been started
-			if (requestId !== audioRequestId) return;
 
 			currentBlobUrl = URL.createObjectURL(blob);
 
@@ -440,6 +440,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
+		refreshMessages: fetchMessagesQuiet,
 		sendMessage,
 		deleteConversation,
 		playMessageAudio,

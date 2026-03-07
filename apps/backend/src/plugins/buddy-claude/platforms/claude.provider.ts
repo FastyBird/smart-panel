@@ -41,6 +41,10 @@ export class ClaudeProvider implements ILlmProvider {
 		return typeof apiKey === 'string' && apiKey.length > 0;
 	}
 
+	supportsTools(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -48,17 +52,31 @@ export class ClaudeProvider implements ILlmProvider {
 		options?: LlmOptions,
 	): Promise<LlmResponse> {
 		const config = this.getPluginConfig();
-		const apiKey = config?.apiKey ?? '';
+		const apiKey = config?.apiKey;
+
+		if (!apiKey) {
+			throw new Error('Claude API key is not configured');
+		}
+
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		const start = Date.now();
 		const maxTokens = options?.maxTokens ?? 1024;
-		const result = await sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout, maxTokens);
+		const result = await sendAnthropicMessage(
+			{ apiKey },
+			resolvedModel,
+			systemPrompt,
+			messages,
+			timeout,
+			maxTokens,
+			options?.tools,
+		);
 		const durationMs = Date.now() - start;
 
 		return {
 			content: result.content,
+			toolCalls: result.toolCalls,
 			meta: {
 				provider: BUDDY_CLAUDE_PLUGIN_NAME,
 				model: result.model,

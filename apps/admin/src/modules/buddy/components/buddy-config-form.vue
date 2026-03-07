@@ -30,15 +30,6 @@
 		</el-form-item>
 
 		<el-alert
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.fields.config.name.description') }}
-		</el-alert>
-
-		<el-alert
 			v-if="providerFetchFailed"
 			type="warning"
 			show-icon
@@ -78,14 +69,30 @@
 			</el-select>
 		</el-form-item>
 
+		<el-divider />
+
+		<el-form-item
+			:label="t('buddyModule.fields.config.personality.title')"
+			prop="personality"
+		>
+			<el-input
+				v-model="personalityText"
+				type="textarea"
+				:rows="5"
+				:maxlength="2000"
+				show-word-limit
+				:placeholder="t('buddyModule.fields.config.personality.placeholder')"
+				name="personality"
+			/>
+		</el-form-item>
+
 		<el-alert
-			v-if="model.provider !== LLM_PROVIDER_NONE"
 			type="info"
 			show-icon
 			:closable="false"
 			style="margin-bottom: 18px"
 		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
+			{{ t('buddyModule.fields.config.personality.description') }}
 		</el-alert>
 
 		<el-divider />
@@ -150,16 +157,6 @@
 			</el-select>
 		</el-form-item>
 
-		<el-alert
-			v-if="model.sttPlugin && model.sttPlugin !== STT_PLUGIN_NONE"
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
-		</el-alert>
-
 		<el-divider />
 
 		<el-alert
@@ -202,27 +199,19 @@
 			</el-select>
 		</el-form-item>
 
-		<el-alert
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
-		</el-alert>
-
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
+import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
+import { useBuddyPersonality } from '../composables/useBuddyPersonality';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import { useBuddySttProviders } from '../composables/useBuddySttProviders';
 import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
@@ -249,6 +238,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 // Normalize legacy provider values before initializing the form so the
 // initial snapshot already contains the mapped value (avoids false dirty state).
@@ -262,9 +252,10 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
 const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
+const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 onBeforeMount(async (): Promise<void> => {
-	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses()]);
+	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses(), fetchPersonality()]);
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
@@ -274,6 +265,18 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('buddyModule.messages.config.notEdited'),
 	},
 });
+
+const personalityText = ref<string>('');
+const personalityOriginal = ref<string>('');
+
+const personalityDirty = computed<boolean>(() => personalityText.value !== personalityOriginal.value);
+
+watch(personalityContent, (val: string): void => {
+	if (!personalityDirty.value) {
+		personalityText.value = val;
+		personalityOriginal.value = val;
+	}
+}, { immediate: true });
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 
@@ -427,9 +430,26 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			submit().catch(() => {
-				// The form is not valid
-			});
+			try {
+				await submit();
+			} catch {
+				// The form is not valid — do not save personality
+				return;
+			}
+
+			// Save personality only after config was saved successfully
+			if (personalityDirty.value) {
+				const success = await savePersonality(personalityText.value);
+
+				if (success) {
+					// savePersonality updates personalityContent synchronously before returning
+					personalityOriginal.value = personalityContent.value;
+					personalityText.value = personalityContent.value;
+				} else {
+					flashMessage.error(t('buddyModule.messages.errors.savePersonality'));
+					emit('update:remote-form-result', FormResult.ERROR);
+				}
+			}
 		}
 	}
 );
@@ -443,12 +463,13 @@ watch(
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();
+			personalityText.value = personalityOriginal.value;
 		}
 	}
 );
 
 watch(
-	(): boolean => formChanged.value,
+	(): boolean => formChanged.value || personalityDirty.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
 	}

@@ -41,6 +41,10 @@ export class ClaudeSetupTokenProvider implements ILlmProvider {
 		return typeof accessToken === 'string' && accessToken.length > 0;
 	}
 
+	supportsTools(): boolean {
+		return true;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -66,11 +70,13 @@ export class ClaudeSetupTokenProvider implements ILlmProvider {
 			messages,
 			timeout,
 			maxTokens,
+			options?.tools,
 		);
 		const durationMs = Date.now() - start;
 
 		return {
 			content: result.content,
+			toolCalls: result.toolCalls,
 			meta: {
 				provider: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
 				model: result.model,

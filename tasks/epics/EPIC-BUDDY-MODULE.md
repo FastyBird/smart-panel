@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -76,6 +76,8 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 | Sub-task | Scope | Size |
 |----------|-------|------|
 | FEATURE-BUDDY-CHANNEL-TELEGRAM | backend | medium |
+| FEATURE-BUDDY-CHANNEL-WHATSAPP | backend, admin | medium |
+| FEATURE-BUDDY-CHANNEL-DISCORD | backend, admin | medium |
 | FEATURE-BUDDY-CHANNEL-ADMIN-CHAT | admin | small |
 | FEATURE-BUDDY-CHANNEL-PERSONALITY | backend | small |
 
@@ -139,9 +141,11 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 ### Phase 4 (Multi-Channel)
 
-- [ ] Telegram bot adapter for buddy conversations
-- [ ] Admin web chat interface embedded in admin settings
-- [ ] `personality.md` configuration file for buddy tone/style customisation
+- [x] Telegram bot adapter for buddy conversations
+- [x] WhatsApp adapter for buddy conversations (single-channel, webhook-based)
+- [x] Discord bot adapter with space-channel mapping (multi-channel)
+- [x] Admin web chat interface embedded in admin settings
+- [x] `personality.md` configuration file for buddy tone/style customisation
 
 ## 5. Example scenarios
 
@@ -187,6 +191,19 @@ Then the text is sent through the buddy conversation service
 And the buddy creates a lighting intent for the kitchen space
 And responds via TTS: "Done, kitchen lights are off."
 
+### Scenario: WhatsApp remote check (Phase 4)
+
+Given the operator is away from home
+When they send "Is everything locked?" via WhatsApp
+Then the buddy checks all door/window sensors and responds with a security summary
+
+### Scenario: Discord space-channel query (Phase 4)
+
+Given the operator has mapped the "Kitchen" space to a `#kitchen` Discord channel
+When they type "What's cooking?" in `#kitchen`
+Then the buddy responds with Kitchen-specific device states (oven temperature, hood status)
+And suggestions for the Kitchen appear in `#kitchen` rather than a general channel
+
 ## 6. Technical constraints
 
 - **Module, not plugin** — follows `apps/backend/src/modules/` structure, registered in `app.module.ts` `RouterModule` under `MODULES_PREFIX`
@@ -203,6 +220,8 @@ And responds via TTS: "Done, kitchen lights are off."
 - LLM calls must be async with proper error handling and timeouts (30s default)
 - Do not introduce new dependencies unless really needed; exceptions:
   - `@anthropic-ai/sdk` or `openai` for LLM provider (optional peer dependency)
+  - `discord.js` for Discord bot adapter (optional peer dependency)
+  - WhatsApp Cloud API uses plain HTTP (no additional dependency)
 - Respect existing auth patterns (JWT tokens, display tokens)
 - Tests are expected for new business logic
 
@@ -313,6 +332,8 @@ This context is serialised into the LLM system prompt so the buddy can answer qu
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
 | [FEATURE-BUDDY-CHANNEL-TELEGRAM](./FEATURE-BUDDY-CHANNEL-TELEGRAM.md) | Telegram bot adapter | backend | medium |
+| [FEATURE-BUDDY-CHANNEL-WHATSAPP](./FEATURE-BUDDY-CHANNEL-WHATSAPP.md) | WhatsApp adapter (Cloud API, single-channel, webhook-based) | backend, admin | medium |
+| [FEATURE-BUDDY-CHANNEL-DISCORD](./FEATURE-BUDDY-CHANNEL-DISCORD.md) | Discord bot adapter (multi-channel, space-channel mapping) | backend, admin | medium |
 | [FEATURE-BUDDY-CHANNEL-ADMIN-CHAT](./FEATURE-BUDDY-CHANNEL-ADMIN-CHAT.md) | Admin web chat interface | admin | small |
 | [FEATURE-BUDDY-CHANNEL-PERSONALITY](./FEATURE-BUDDY-CHANNEL-PERSONALITY.md) | Personality configuration (personality.md) | backend | small |
 

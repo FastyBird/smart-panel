@@ -62,6 +62,9 @@ import { BuddyElevenlabsPlugin } from './plugins/buddy-elevenlabs';
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts';
 import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai';
 import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local';
+import { BuddyTelegramPlugin } from './plugins/buddy-telegram';
+import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp';
+import { BuddyDiscordPlugin } from './plugins/buddy-discord';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -198,6 +201,9 @@ app.use(BuddyElevenlabsPlugin, pluginOptions);
 app.use(BuddySystemTtsPlugin, pluginOptions);
 app.use(BuddyVoiceaiPlugin, pluginOptions);
 app.use(BuddySttWhisperLocalPlugin, pluginOptions);
+app.use(BuddyTelegramPlugin, pluginOptions);
+app.use(BuddyWhatsappPlugin, pluginOptions);
+app.use(BuddyDiscordPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
@@ -213,17 +219,21 @@ installStaticExtensions(
 	staticExtensions
 );
 
-await installRemoteExtensions(
-	app,
-	backendClient,
-	logger,
-	{
-		router,
-		store: pinia,
-		i18n,
-	},
-	installedNames
-);
+try {
+	await installRemoteExtensions(
+		app,
+		backendClient,
+		logger,
+		{
+			router,
+			store: pinia,
+			i18n,
+		},
+		installedNames
+	);
+} catch (err) {
+	logger.error('Failed to load remote extensions, continuing without them', err);
+}
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

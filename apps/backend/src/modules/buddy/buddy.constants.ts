@@ -46,6 +46,13 @@ export const STT_ALLOWED_MIME_TYPES = [
 
 export const BUDDY_DEFAULT_NAME = 'Buddy';
 
+export const BUDDY_DEFAULT_PERSONALITY =
+	'You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.';
+
+export const BUDDY_PERSONALITY_MAX_LENGTH = 2000;
+
+export const BUDDY_DEFAULT_PERSONALITY_PATH = 'var/buddy/personality.md';
+
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.

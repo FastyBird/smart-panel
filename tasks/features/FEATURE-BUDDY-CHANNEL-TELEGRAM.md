@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -43,15 +43,15 @@ I want to chat with the buddy via Telegram — asking about home status, receivi
 
 ## 4. Acceptance criteria
 
-- [ ] `TelegramAdapterService` connects to Telegram Bot API using configured bot token
-- [ ] Incoming Telegram messages create/continue buddy conversations
-- [ ] Buddy responses are sent back to the Telegram user
-- [ ] Suggestion notifications are forwarded to registered Telegram users with inline keyboards
-- [ ] Inline keyboard buttons map to suggestion feedback (accept/dismiss)
-- [ ] User whitelist: only configured Telegram user IDs can interact
-- [ ] Bot token configurable in admin buddy settings
-- [ ] Handles Telegram API errors gracefully (retry with backoff)
-- [ ] Unit tests with mocked Telegram API
+- [x] `TelegramAdapterService` connects to Telegram Bot API using configured bot token
+- [x] Incoming Telegram messages create/continue buddy conversations
+- [x] Buddy responses are sent back to the Telegram user
+- [x] Suggestion notifications are forwarded to registered Telegram users with inline keyboards
+- [x] Inline keyboard buttons map to suggestion feedback (accept/dismiss)
+- [x] User whitelist: only configured Telegram user IDs can interact
+- [x] Bot token configurable in admin buddy settings
+- [x] Handles Telegram API errors gracefully (retry with backoff)
+- [x] Unit tests with mocked Telegram API
 
 ## 5. Example scenarios
 

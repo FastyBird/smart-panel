@@ -46,7 +46,9 @@ async function bootstrap() {
 		pluginExtensions,
 	});
 
-	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
+	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), {
+		bufferLogs: true,
+	});
 
 	// Raise the body-size limit for multipart/form-data routes (audio uploads)
 	// while keeping Fastify's default 1 MiB for JSON endpoints.

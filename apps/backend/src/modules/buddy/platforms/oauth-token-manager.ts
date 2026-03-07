@@ -109,7 +109,11 @@ export class OAuthTokenManager {
 
 			const data = (await response.json()) as { access_token?: string };
 
-			return data.access_token ?? '';
+			if (!data.access_token) {
+				throw new Error('OAuth token refresh returned no access_token');
+			}
+
+			return data.access_token;
 		} finally {
 			clearTimeout(timeoutId);
 		}

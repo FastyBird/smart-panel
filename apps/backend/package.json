@@ -81,6 +81,7 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.78.0",
+		"@whiskeysockets/baileys": "7.0.0-rc.9",
 		"@fastify/multipart": "^9.4.0",
 		"@fastify/static": "^8.3.0",
 		"@fastybird/smart-panel-extension-sdk": "workspace:*",
@@ -104,6 +105,7 @@
 		"bonjour-service": "^1.3.0",
 		"cache-manager": "^6.4.3",
 		"class-transformer": "^0.5.1",
+		"discord.js": "^14.16.3",
 		"class-validator": "^0.14.3",
 		"cron": "^4.3.5",
 		"dotenv": "^16.6.1",
@@ -125,6 +127,7 @@
 		"socket.io": "^4.8.3",
 		"sqlite3": "^5.1.7",
 		"systeminformation": "^5.28.10",
+		"telegraf": "^4.16.3",
 		"typeorm": "^0.3.28",
 		"ulid": "^3.0.2",
 		"uuid": "^11.1.0",

@@ -3,6 +3,8 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ConfigService } from '../../config/services/config.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
@@ -11,6 +13,7 @@ import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
+import { BuddyPersonalityService } from './buddy-personality.service';
 import { LlmProviderService } from './llm-provider.service';
 
 describe('BuddyConversationService', () => {
@@ -20,6 +23,7 @@ describe('BuddyConversationService', () => {
 	let dataSource: Record<string, jest.Mock>;
 	let llmProvider: Record<string, jest.Mock>;
 	let contextService: Record<string, jest.Mock>;
+	let personalityService: Record<string, jest.Mock>;
 	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
@@ -87,6 +91,14 @@ describe('BuddyConversationService', () => {
 			}),
 		};
 
+		personalityService = {
+			getPersonality: jest
+				.fn()
+				.mockResolvedValue(
+					'You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.',
+				),
+		};
+
 		toolProviderRegistry = {
 			getAllToolDefinitions: jest.fn().mockReturnValue([]),
 			executeTool: jest.fn().mockResolvedValue({ success: true, message: 'done' }),
@@ -96,14 +108,21 @@ describe('BuddyConversationService', () => {
 			emit: jest.fn(),
 		} as any;
 
+		const configService = {
+			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy' }),
+		};
+
 		service = new BuddyConversationService(
 			conversationRepo as unknown as Repository<BuddyConversationEntity>,
 			messageRepo as unknown as Repository<BuddyMessageEntity>,
 			dataSource as unknown as OrmDataSource,
 			llmProvider as unknown as LlmProviderService,
 			contextService as unknown as BuddyContextService,
+			personalityService as unknown as BuddyPersonalityService,
 			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
+			new ShortIdMappingService(),
+			configService as unknown as ConfigService,
 		);
 	});
 

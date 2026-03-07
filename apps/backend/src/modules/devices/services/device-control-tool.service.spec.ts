@@ -1,5 +1,6 @@
 import { IntentTargetStatus } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { DeviceControlToolService } from './device-control-tool.service';
@@ -12,6 +13,7 @@ describe('DeviceControlToolService', () => {
 	let devicesService: Record<string, jest.Mock>;
 	let channelsPropertiesService: Record<string, jest.Mock>;
 	let platformRegistry: Record<string, jest.Mock>;
+	let shortIdMapping: ShortIdMappingService;
 
 	beforeEach(() => {
 		intentsService = {
@@ -31,11 +33,14 @@ describe('DeviceControlToolService', () => {
 			get: jest.fn(),
 		};
 
+		shortIdMapping = new ShortIdMappingService();
+
 		service = new DeviceControlToolService(
 			intentsService as unknown as IntentsService,
 			devicesService as unknown as DevicesService,
 			channelsPropertiesService as unknown as ChannelsPropertiesService,
 			platformRegistry as unknown as PlatformRegistryService,
+			shortIdMapping,
 		);
 	});
 
@@ -55,20 +60,20 @@ describe('DeviceControlToolService', () => {
 			expect(controlDevice?.parameters).toEqual(
 				expect.objectContaining({
 					type: 'object',
-					required: ['device_id', 'channel_id', 'property_id', 'value'],
+					required: ['property_id', 'value'],
 				}),
 			);
 		});
 	});
 
 	describe('executeTool - control_device', () => {
-		it('should control a device property successfully', async () => {
+		it('should control a device property using short ID', async () => {
+			const shortId = shortIdMapping.shorten('prop-1');
 			const mockDevice = { id: 'dev-1', name: 'Kitchen Light', type: 'local' };
-			const mockChannel = { id: 'chan-1', device: 'dev-1' };
+			const mockChannel = { id: 'chan-1', device: mockDevice };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 			const mockPlatform = { process: jest.fn().mockResolvedValue(true) };
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
 			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
 			platformRegistry.get.mockReturnValue(mockPlatform);
 
@@ -76,15 +81,14 @@ describe('DeviceControlToolService', () => {
 				id: 'call-1',
 				name: 'control_device',
 				arguments: {
-					device_id: 'dev-1',
-					channel_id: 'chan-1',
-					property_id: 'prop-1',
+					property_id: shortId,
 					value: true,
 				},
 			});
 
 			expect(result.success).toBe(true);
 			expect(result.message).toContain('Kitchen Light');
+			expect(channelsPropertiesService.findOne).toHaveBeenCalledWith('prop-1');
 			expect(intentsService.createIntent).toHaveBeenCalled();
 			expect(intentsService.completeIntent).toHaveBeenCalledWith(
 				'intent-1',
@@ -92,16 +96,36 @@ describe('DeviceControlToolService', () => {
 			);
 		});
 
-		it('should return failure for non-existent device', async () => {
-			devicesService.findOne.mockResolvedValue(null);
+		it('should fall back to raw ID if short ID not found in mapping', async () => {
+			const mockDevice = { id: 'dev-1', name: 'Light', type: 'local' };
+			const mockChannel = { id: 'chan-1', device: mockDevice };
+			const mockProperty = { id: 'prop-uuid', channel: mockChannel };
+			const mockPlatform = { process: jest.fn().mockResolvedValue(true) };
+
+			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
+			platformRegistry.get.mockReturnValue(mockPlatform);
 
 			const result = await service.executeTool({
 				id: 'call-1',
 				name: 'control_device',
 				arguments: {
-					device_id: 'nonexistent',
-					channel_id: 'chan-1',
-					property_id: 'prop-1',
+					property_id: 'prop-uuid',
+					value: true,
+				},
+			});
+
+			expect(result.success).toBe(true);
+			expect(channelsPropertiesService.findOne).toHaveBeenCalledWith('prop-uuid');
+		});
+
+		it('should return failure for non-existent property', async () => {
+			channelsPropertiesService.findOne.mockResolvedValue(null);
+
+			const result = await service.executeTool({
+				id: 'call-1',
+				name: 'control_device',
+				arguments: {
+					property_id: 'nonexistent',
 					value: true,
 				},
 			});
@@ -112,11 +136,10 @@ describe('DeviceControlToolService', () => {
 
 		it('should return failure when platform rejects write', async () => {
 			const mockDevice = { id: 'dev-1', name: 'Light', type: 'local' };
-			const mockChannel = { id: 'chan-1', device: 'dev-1' };
+			const mockChannel = { id: 'chan-1', device: mockDevice };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 			const mockPlatform = { process: jest.fn().mockResolvedValue(false) };
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
 			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
 			platformRegistry.get.mockReturnValue(mockPlatform);
 
@@ -124,8 +147,6 @@ describe('DeviceControlToolService', () => {
 				id: 'call-1',
 				name: 'control_device',
 				arguments: {
-					device_id: 'dev-1',
-					channel_id: 'chan-1',
 					property_id: 'prop-1',
 					value: 50,
 				},
@@ -140,10 +161,9 @@ describe('DeviceControlToolService', () => {
 
 		it('should return failure when no platform registered', async () => {
 			const mockDevice = { id: 'dev-1', name: 'Light', type: 'local' };
-			const mockChannel = { id: 'chan-1', device: 'dev-1' };
+			const mockChannel = { id: 'chan-1', device: mockDevice };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
 			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
 			platformRegistry.get.mockReturnValue(null);
 
@@ -151,8 +171,6 @@ describe('DeviceControlToolService', () => {
 				id: 'call-1',
 				name: 'control_device',
 				arguments: {
-					device_id: 'dev-1',
-					channel_id: 'chan-1',
 					property_id: 'prop-1',
 					value: true,
 				},
@@ -166,7 +184,7 @@ describe('DeviceControlToolService', () => {
 			const result = await service.executeTool({
 				id: 'call-1',
 				name: 'control_device',
-				arguments: { device_id: 'dev-1' },
+				arguments: {},
 			});
 
 			expect(result.success).toBe(false);

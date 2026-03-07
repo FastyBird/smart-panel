@@ -23,7 +23,9 @@
 			"providerUnavailable": "The AI provider is temporarily unavailable. Please try again later.",
 			"sendMessage": "Failed to send message",
 			"deleteConversation": "Failed to delete conversation",
-			"audioPlayback": "Failed to play audio"
+			"audioPlayback": "Failed to play audio",
+			"loadPersonality": "Failed to load personality",
+			"savePersonality": "Failed to save personality"
 		}
 	},
 	"buttons": {
@@ -59,8 +61,7 @@
 			},
 			"name": {
 				"title": "Buddy name",
-				"placeholder": "Enter buddy name",
-				"description": "The name displayed in the panel chat header"
+				"placeholder": "Enter buddy name"
 			},
 			"provider": {
 				"title": "AI Provider Plugin",
@@ -98,6 +99,11 @@
 				"tags": {
 					"disabled": "disabled"
 				}
+			},
+			"personality": {
+				"title": "Personality",
+				"description": "Define the buddy's tone, style, and personality. This text is included in the AI system prompt.",
+				"placeholder": "You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language."
 			}
 		},
 		"message": {
@@ -108,7 +114,6 @@
 		"loadingConfig": "Loading buddy configuration...",
 		"loadingConversations": "Loading conversations...",
 		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider plugin to enable chat functionality. Provider-specific settings (API key, model) are configured in the plugin's own settings page. Without a provider, rule-based suggestions will still work.",
-		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page.",
 		"emptyChat": "Select or create a conversation to start chatting",
 		"startConversation": "Ask me anything about your home!",
 		"thinking": "Thinking...",

@@ -93,7 +93,7 @@ describe('Buddy module (e2e)', () => {
 		}
 
 		accessToken = loginBody.data.access_token;
-	});
+	}, 30_000);
 
 	afterAll(async () => {
 		await app.close();

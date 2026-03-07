@@ -1,0 +1,48 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Discord bot settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"botToken": {
+				"title": "Bot token",
+				"placeholder": "Enter your Discord bot token",
+				"description": "Get your bot token from the Discord Developer Portal under your application's Bot settings."
+			},
+			"guildId": {
+				"title": "Guild (server) ID",
+				"placeholder": "e.g., 123456789012345678",
+				"description": "The Discord server ID. Enable Developer Mode in Discord settings, then right-click the server to copy its ID."
+			},
+			"generalChannelId": {
+				"title": "General channel ID",
+				"placeholder": "e.g., 123456789012345678",
+				"description": "The default channel for cross-space queries and unrouted suggestions. Right-click a channel to copy its ID."
+			},
+			"spaceChannelMappings": {
+				"title": "Space-channel mappings",
+				"selectSpace": "Select a space",
+				"channelPlaceholder": "Discord channel ID",
+				"add": "Add mapping",
+				"description": "Map smart home spaces to Discord channels. Messages in a mapped channel will include that space's context."
+			},
+			"allowedRoleId": {
+				"title": "Allowed role ID",
+				"placeholder": "e.g., 123456789012345678",
+				"description": "Discord role ID required to interact with the bot. Leave empty to allow all server members."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Discord bot settings have been updated",
+			"notEdited": "Failed to update Discord bot settings"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Configure your Discord bot integration. Create a bot at the Discord Developer Portal, enable the Message Content Intent, and add it to your server. Map Discord channels to smart home spaces for context-aware conversations."
+	}
+}

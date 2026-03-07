@@ -96,8 +96,10 @@
       "@parcel/watcher",
       "@scarf/scarf",
       "@swc/core",
+      "@whiskeysockets/baileys",
       "bcrypt",
       "esbuild",
+      "protobufjs",
       "sharp",
       "sqlite3",
       "vue-demi"

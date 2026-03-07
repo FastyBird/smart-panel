@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -28,6 +28,21 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	name?: string;
+
+	@ApiPropertyOptional({
+		name: 'personality_path',
+		description: 'File path to the personality.md file that defines buddy tone and style',
+		type: 'string',
+		example: 'var/buddy/personality.md',
+	})
+	@Expose({ name: 'personality_path' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"personality_path","reason":"Personality path must be a valid string."}]' })
+	@Matches(/^var\/buddy\/[a-zA-Z0-9._-]+$/, {
+		message:
+			'[{"field":"personality_path","reason":"Personality path must be within var/buddy/ and contain only safe characters."}]',
+	})
+	personality_path?: string;
 
 	@ApiPropertyOptional({
 		description:

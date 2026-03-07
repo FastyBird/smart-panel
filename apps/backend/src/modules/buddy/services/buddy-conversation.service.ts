@@ -5,14 +5,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ConfigService } from '../../config/services/config.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { EventType, MessageRole } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
+import { BuddyConfigModel } from '../models/config.model';
 import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
+import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -30,8 +34,11 @@ export class BuddyConversationService {
 		private readonly dataSource: OrmDataSource,
 		private readonly llmProvider: LlmProviderService,
 		private readonly contextService: BuddyContextService,
+		private readonly personalityService: BuddyPersonalityService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly shortIdMapping: ShortIdMappingService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
@@ -85,9 +92,12 @@ export class BuddyConversationService {
 	async sendMessage(conversationId: string, content: string): Promise<BuddyMessageEntity> {
 		const conversation = await this.findOneOrThrow(conversationId);
 
-		// 1. Build system prompt with context
+		// 1. Build system prompt with context and personality
+		// Short ID mappings accumulate across requests — the same UUID always maps
+		// to the same short ID, so concurrent requests from different bot adapters
+		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = this.buildSystemPrompt(context);
+		const systemPrompt = await this.buildSystemPrompt(context);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -133,11 +143,14 @@ export class BuddyConversationService {
 			const persistedAssistant = await manager.save(assistantMsg);
 
 			// Update conversation title from first message if no title set
-			if (!conversation.title) {
-				const autoTitle = content.length > 50 ? content.substring(0, 47) + '...' : content;
+			// Always touch updatedAt so conversations sort by last activity
+			const updatePayload: Partial<BuddyConversationEntity> = { updatedAt: new Date() };
 
-				await manager.update(BuddyConversationEntity, conversation.id, { title: autoTitle });
+			if (!conversation.title) {
+				updatePayload.title = content.length > 50 ? content.substring(0, 47) + '...' : content;
 			}
+
+			await manager.update(BuddyConversationEntity, conversation.id, updatePayload);
 
 			return { savedUser: persistedUser, savedAssistant: persistedAssistant };
 		});
@@ -288,14 +301,12 @@ export class BuddyConversationService {
 		return (a ?? 0) + (b ?? 0);
 	}
 
-	private buildSystemPrompt(context: BuddyContext): string {
+	private async buildSystemPrompt(context: BuddyContext): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
+		const personality = await this.personalityService.getPersonality();
+		const buddyName = this.getBuddyName();
 
-		const lines: string[] = [
-			'You are a smart home assistant for the FastyBird Smart Panel.',
-			'Answer questions about the home, suggest improvements, and help the user manage their smart home.',
-			'Be concise, helpful, and friendly. Use the context below to inform your responses.',
-		];
+		const lines: string[] = [`Your name is ${buddyName}.`, '', personality];
 
 		if (hasTools) {
 			lines.push(
@@ -311,14 +322,16 @@ export class BuddyConversationService {
 			lines.push('', '## Spaces');
 
 			for (const space of context.spaces) {
-				lines.push(`- ${space.name} [id=${space.id}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
+				const sid = this.shortIdMapping.shorten(space.id);
+
+				lines.push(`- ${space.name} [id=${sid}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
 			}
 		}
 
 		if (context.devices.length > 0) {
 			lines.push('', '## Devices');
 
-			for (const device of context.devices.slice(0, 30)) {
+			for (const device of context.devices) {
 				const stateEntries = Object.entries(device.state);
 				const stateStr =
 					stateEntries.length > 0
@@ -331,24 +344,25 @@ export class BuddyConversationService {
 								.join(', ')
 						: 'no state data';
 
-				lines.push(`- ${device.name} [id=${device.id}] (${device.category}): ${stateStr}`);
+				lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
 
-				// When tools are available, include channel/property UUIDs so the LLM can use control_device
+				// When tools are available, include property IDs grouped by channel so the LLM can use control_device
 				if (hasTools && device.channels.length > 0) {
 					for (const channel of device.channels) {
+						if (channel.properties.length === 0) {
+							continue;
+						}
+
+						lines.push(`  - ${channel.name}:`);
+
 						for (const prop of channel.properties) {
+							const pid = this.shortIdMapping.shorten(prop.id);
 							const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
 
-							lines.push(
-								`  - channel=${channel.name} [channel_id=${channel.id}] property=${prop.category} [property_id=${prop.id}] value=${val}`,
-							);
+							lines.push(`    - ${prop.category} [p=${pid}] value=${val}`);
 						}
 					}
 				}
-			}
-
-			if (context.devices.length > 30) {
-				lines.push(`- ... and ${context.devices.length - 30} more devices`);
 			}
 		}
 
@@ -356,7 +370,9 @@ export class BuddyConversationService {
 			lines.push('', '## Scenes');
 
 			for (const scene of context.scenes) {
-				lines.push(`- ${scene.name} [id=${scene.id}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
+				const sid = this.shortIdMapping.shorten(scene.id);
+
+				lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
 			}
 		}
 
@@ -444,5 +460,15 @@ export class BuddyConversationService {
 		}
 
 		return lines.join('\n');
+	}
+
+	private getBuddyName(): string {
+		try {
+			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+
+			return config.name || 'Buddy';
+		} catch {
+			return 'Buddy';
+		}
 	}
 }
