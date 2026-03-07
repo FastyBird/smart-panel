@@ -49,23 +49,21 @@
 				</template>
 			</el-alert>
 
-			<el-alert
-				v-else-if="connectionStatus === 'qr_ready' && qrDataUrl"
-				type="warning"
-				:title="t('buddyWhatsappPlugin.texts.status.qrReady')"
-				:closable="false"
-			>
-				<template #default>
-					<div class="flex justify-center mt-3">
-						<img
-							:src="qrDataUrl"
-							alt="WhatsApp QR Code"
-							class="rounded"
-							style="width: 260px; height: 260px"
-						/>
-					</div>
-				</template>
-			</el-alert>
+			<template v-else-if="connectionStatus === 'qr_ready' && qrDataUrl">
+				<el-alert
+					type="warning"
+					:title="t('buddyWhatsappPlugin.texts.status.qrReady')"
+					:closable="false"
+				/>
+				<div class="flex justify-center mt-3">
+					<img
+						:src="qrDataUrl"
+						alt="WhatsApp QR Code"
+						class="rounded"
+						style="width: 260px; height: 260px"
+					/>
+				</div>
+			</template>
 
 			<el-alert
 				v-else-if="connectionStatus === 'connecting'"
