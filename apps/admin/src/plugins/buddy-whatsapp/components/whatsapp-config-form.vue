@@ -179,11 +179,18 @@ const handleLogout = async (): Promise<void> => {
 
 const POLL_FAST_MS = 3000;
 const POLL_SLOW_MS = 15000;
+let currentPollInterval = 0;
 
 const startPolling = (interval = POLL_FAST_MS): void => {
+	if (pollTimer && currentPollInterval === interval) {
+		return;
+	}
+
 	stopPolling();
 
 	void fetchStatus();
+
+	currentPollInterval = interval;
 
 	pollTimer = setInterval(() => {
 		void fetchStatus();
@@ -195,6 +202,8 @@ const stopPolling = (): void => {
 		clearInterval(pollTimer);
 		pollTimer = null;
 	}
+
+	currentPollInterval = 0;
 };
 
 onMounted(() => {
