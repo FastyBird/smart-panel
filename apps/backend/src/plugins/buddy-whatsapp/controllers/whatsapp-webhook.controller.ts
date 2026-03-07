@@ -48,10 +48,10 @@ export class WhatsAppWebhookController {
 	@HttpCode(200)
 	@ApiOperation({ summary: 'Disconnect WhatsApp and clear session' })
 	@ApiResponse({ status: 200, description: 'Session cleared, new QR code will be generated' })
-	async logout(): Promise<{ status: string }> {
+	logout(): { status: string } {
 		this.logger.log('WhatsApp logout requested via API');
 
-		await this.whatsAppProvider.logout();
+		this.whatsAppProvider.logout();
 
 		return { status: 'logged_out' };
 	}

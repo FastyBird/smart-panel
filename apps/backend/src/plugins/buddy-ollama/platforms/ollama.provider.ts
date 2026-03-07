@@ -7,8 +7,8 @@ import {
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
-import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import {
 	BUDDY_OLLAMA_DEFAULT_MODEL,
 	BUDDY_OLLAMA_DEFAULT_URL,
@@ -114,7 +114,7 @@ export class OllamaProvider implements ILlmProvider {
 					.filter((tc) => tc.function?.name)
 					.map((tc, index) => ({
 						id: `ollama-${index}`,
-						name: tc.function!.name!,
+						name: tc.function?.name ?? '',
 						arguments: tc.function?.arguments ?? {},
 					}));
 			}

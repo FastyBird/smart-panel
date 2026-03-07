@@ -1,7 +1,7 @@
+import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
 
 import type { ChatMessage } from './llm-provider.platform';
-import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
@@ -81,11 +81,23 @@ export async function sendOpenAiMessage(
 	let toolCalls: LlmToolCall[] | undefined;
 
 	if (message?.tool_calls && message.tool_calls.length > 0) {
-		toolCalls = message.tool_calls.map((tc) => ({
-			id: tc.id,
-			name: tc.function.name,
-			arguments: JSON.parse(tc.function.arguments) as Record<string, unknown>,
-		}));
+		toolCalls = [];
+
+		for (const tc of message.tool_calls) {
+			try {
+				toolCalls.push({
+					id: tc.id,
+					name: tc.function.name,
+					arguments: JSON.parse(tc.function.arguments) as Record<string, unknown>,
+				});
+			} catch {
+				// Skip tool calls with malformed JSON arguments
+			}
+		}
+
+		if (toolCalls.length === 0) {
+			toolCalls = undefined;
+		}
 	}
 
 	return {

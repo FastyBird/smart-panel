@@ -1,14 +1,6 @@
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 
-import makeWASocket, {
-	DisconnectReason,
-	type WASocket,
-	fetchLatestBaileysVersion,
-	makeCacheableSignalKeyStore,
-	useMultiFileAuthState,
-} from '@whiskeysockets/baileys';
-
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -17,12 +9,7 @@ import { BuddyConversationService } from '../../../modules/buddy/services/buddy-
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
-import {
-	BUDDY_WHATSAPP_PLUGIN_NAME,
-	WHATSAPP_AUTH_DIR,
-	WhatsAppConnectionStatus,
-} from '../buddy-whatsapp.constants';
+import { BUDDY_WHATSAPP_PLUGIN_NAME, WHATSAPP_AUTH_DIR, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { BuddyWhatsappConfigModel } from '../models/config.model';
 
 /**
@@ -38,7 +25,7 @@ import { BuddyWhatsappConfigModel } from '../models/config.model';
 export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = new Logger(WhatsAppBotProvider.name);
 
-	private socket: WASocket | null = null;
+	private socket: import('@whiskeysockets/baileys').WASocket | null = null;
 	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;
 	private currentQr: string | null = null;
 	private reconnecting = false;
@@ -78,8 +65,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 		}
 	}
 
-	async onModuleDestroy(): Promise<void> {
-		await this.stopBot();
+	onModuleDestroy(): void {
+		this.stopBot();
 		this.jidConversations.clear();
 		this.registeredJids.clear();
 	}
@@ -88,7 +75,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	 * Restart bot when WhatsApp plugin configuration changes.
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async onConfigUpdated(): Promise<void> {
+	onConfigUpdated(): void {
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
@@ -104,7 +91,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			return;
 		}
 
-		await this.stopBot();
+		this.stopBot();
 
 		this.activeConfig = newSnapshot;
 
@@ -168,8 +155,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	 * Instead we just close the connection and delete the local auth state —
 	 * the old server-side session will expire on its own.
 	 */
-	async logout(): Promise<void> {
-		await this.stopBot();
+	logout(): void {
+		this.stopBot();
 
 		// Clear auth state so a fresh QR code is generated on next start
 		const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
@@ -192,6 +179,15 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		try {
 			this.status = WhatsAppConnectionStatus.CONNECTING;
+
+			// Dynamic import to avoid Jest ESM parse errors (baileys is ESM-only)
+			const {
+				default: makeWASocket,
+				DisconnectReason,
+				fetchLatestBaileysVersion,
+				makeCacheableSignalKeyStore,
+				useMultiFileAuthState,
+			} = await import('@whiskeysockets/baileys');
 
 			const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
 
@@ -226,7 +222,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			// (e.g., after logout → stopBot → startBot) do not clobber the new socket.
 			const currentSocket = this.socket;
 
-			currentSocket.ev.on('creds.update', saveCreds);
+			currentSocket.ev.on('creds.update', () => void saveCreds());
 
 			currentSocket.ev.on('connection.update', (update) => {
 				// Ignore events from a socket that is no longer active
@@ -254,8 +250,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 				if (connection === 'close') {
 					this.currentQr = null;
 
-					const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
-						?.statusCode;
+					const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output?.statusCode;
 
 					this.logger.log(`WhatsApp connection closed (statusCode=${statusCode}, reconnecting=${this.reconnecting})`);
 
@@ -268,7 +263,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 						// Unexpected disconnect — clear auth state and reconnect
 						const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
 
-						if (statusCode === DisconnectReason.loggedOut && existsSync(authDir)) {
+						if (statusCode === Number(DisconnectReason.loggedOut) && existsSync(authDir)) {
 							this.logger.log('Clearing auth state after loggedOut disconnect');
 							rmSync(authDir, { recursive: true, force: true });
 						}
@@ -302,7 +297,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 		}
 	}
 
-	private async stopBot(): Promise<void> {
+	private stopBot(): void {
 		this.reconnecting = true; // Prevent auto-reconnect
 
 		if (this.socket) {

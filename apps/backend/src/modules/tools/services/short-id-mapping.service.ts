@@ -11,8 +11,9 @@ const SHORT_ID_LENGTH = 4;
  * Generates short IDs for UUIDs used in the LLM system prompt and resolves them
  * back to full UUIDs when the LLM returns tool calls.
  *
- * The mapping is rebuilt on every system prompt build, so short IDs are ephemeral
- * and valid only for the current LLM call.
+ * Mappings accumulate for the lifetime of the service (singleton). The same UUID
+ * always resolves to the same short ID, which is safe for concurrent requests
+ * from multiple bot adapters.
  */
 @Injectable()
 export class ShortIdMappingService {
@@ -21,14 +22,6 @@ export class ShortIdMappingService {
 
 	/** Full UUID → short ID (reverse lookup to avoid generating duplicates for the same UUID) */
 	private readonly uuidToShort = new Map<string, string>();
-
-	/**
-	 * Clear all mappings. Called before building a new system prompt.
-	 */
-	clear(): void {
-		this.shortToUuid.clear();
-		this.uuidToShort.clear();
-	}
 
 	/**
 	 * Get or create a short ID for the given UUID.

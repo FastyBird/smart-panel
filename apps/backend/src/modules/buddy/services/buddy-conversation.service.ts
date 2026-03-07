@@ -5,21 +5,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ConfigService } from '../../config/services/config.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { EventType, MessageRole } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
-import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
-
-import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { BuddyConfigModel } from '../models/config.model';
+import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_TOOL_ITERATIONS = 5;
@@ -95,9 +93,9 @@ export class BuddyConversationService {
 		const conversation = await this.findOneOrThrow(conversationId);
 
 		// 1. Build system prompt with context and personality
-		// Reset short ID mappings so tool calls from this LLM round resolve correctly
-		this.shortIdMapping.clear();
-
+		// Short ID mappings accumulate across requests — the same UUID always maps
+		// to the same short ID, so concurrent requests from different bot adapters
+		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
 		const systemPrompt = await this.buildSystemPrompt(context);
 

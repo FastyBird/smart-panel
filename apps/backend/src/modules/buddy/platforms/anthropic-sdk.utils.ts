@@ -1,7 +1,7 @@
+import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
 
 import type { ChatMessage } from './llm-provider.platform';
-import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
@@ -74,8 +74,14 @@ export async function sendAnthropicMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.messages.create(requestPayload);
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-	const contentBlocks = response.content as Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	const contentBlocks = response.content as Array<{
+		type: string;
+		text?: string;
+		id?: string;
+		name?: string;
+		input?: Record<string, unknown>;
+	}>;
 
 	// Extract text content
 	const textParts = contentBlocks.filter((block) => block.type === 'text').map((block) => block.text ?? '');
@@ -89,7 +95,7 @@ export async function sendAnthropicMessage(
 		toolCalls = toolUseBlocks.map((block) => ({
 			id: block.id ?? '',
 			name: block.name ?? '',
-			arguments: (block.input as Record<string, unknown>) ?? {},
+			arguments: block.input ?? {},
 		}));
 	}
 

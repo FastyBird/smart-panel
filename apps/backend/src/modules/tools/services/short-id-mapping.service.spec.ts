@@ -42,27 +42,4 @@ describe('ShortIdMappingService', () => {
 			expect(service.resolve('xxxx')).toBeNull();
 		});
 	});
-
-	describe('clear', () => {
-		it('should clear all mappings', () => {
-			const uuid = 'uuid-1';
-			const shortId = service.shorten(uuid);
-
-			service.clear();
-
-			expect(service.resolve(shortId)).toBeNull();
-		});
-
-		it('should generate new short IDs after clearing', () => {
-			const uuid = 'uuid-1';
-			const firstShortId = service.shorten(uuid);
-
-			service.clear();
-
-			const secondShortId = service.shorten(uuid);
-
-			// New short ID generated (could theoretically be the same by chance, but very unlikely)
-			expect(service.resolve(secondShortId)).toBe(uuid);
-		});
-	});
 });

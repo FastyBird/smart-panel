@@ -7,9 +7,9 @@ import {
 	LlmOptions,
 	LlmResponse,
 } from '../../../modules/buddy/platforms/llm-provider.platform';
-import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { LlmToolCall, ToolDefinition } from '../../../modules/tools/platforms/tool-provider.platform';
 import {
 	BUDDY_OPENAI_CODEX_BASE_URL,
 	BUDDY_OPENAI_CODEX_DEFAULT_MODEL,

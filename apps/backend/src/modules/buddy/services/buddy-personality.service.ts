@@ -77,11 +77,13 @@ export class BuddyPersonalityService {
 		const configuredPath = config.personalityPath;
 
 		const baseDir = path.resolve(__dirname, '../../../../../../');
+		const allowedDir = path.resolve(baseDir, 'var/buddy');
 		const relativePath = configuredPath || BUDDY_DEFAULT_PERSONALITY_PATH;
 		const resolved = path.resolve(baseDir, relativePath);
 
-		if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
-			this.logger.warn(`Personality path "${configuredPath}" resolves outside project root, using default`);
+		// Restrict writes to the var/buddy/ directory to prevent overwriting arbitrary project files
+		if (!resolved.startsWith(allowedDir + path.sep) && resolved !== allowedDir) {
+			this.logger.warn(`Personality path "${configuredPath}" resolves outside var/buddy/, using default`);
 
 			return path.resolve(baseDir, BUDDY_DEFAULT_PERSONALITY_PATH);
 		}

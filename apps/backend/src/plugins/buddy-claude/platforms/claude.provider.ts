@@ -58,7 +58,15 @@ export class ClaudeProvider implements ILlmProvider {
 
 		const start = Date.now();
 		const maxTokens = options?.maxTokens ?? 1024;
-		const result = await sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout, maxTokens, options?.tools);
+		const result = await sendAnthropicMessage(
+			{ apiKey },
+			resolvedModel,
+			systemPrompt,
+			messages,
+			timeout,
+			maxTokens,
+			options?.tools,
+		);
 		const durationMs = Date.now() - start;
 
 		return {
