@@ -42,4 +42,26 @@ describe('ShortIdMappingService', () => {
 			expect(service.resolve('xxxx')).toBeNull();
 		});
 	});
+
+	describe('eviction', () => {
+		it('should evict oldest entries when size limit is reached', () => {
+			// Fill up to the limit (10 000) + 1 to trigger eviction
+			const firstUuid = 'first-uuid';
+			const firstShortId = service.shorten(firstUuid);
+
+			for (let i = 1; i < 10_000; i++) {
+				service.shorten(`uuid-${i}`);
+			}
+
+			// The first entry should still be resolvable (size = 10 000)
+			expect(service.resolve(firstShortId)).toBe(firstUuid);
+			expect(service.size).toBe(10_000);
+
+			// Adding one more should evict the oldest (firstUuid)
+			service.shorten('uuid-overflow');
+
+			expect(service.resolve(firstShortId)).toBeNull();
+			expect(service.size).toBe(10_000);
+		});
+	});
 });

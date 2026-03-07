@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
+import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { DevicesService } from './devices.service';

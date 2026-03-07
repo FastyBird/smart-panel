@@ -69,10 +69,10 @@ import { BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX } from './plugins/buddy-stt-whisp
 import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.plugin';
 import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy-system-tts.constants';
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
-import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
-import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai/buddy-voiceai.plugin';
 import { BUDDY_TELEGRAM_PLUGIN_PREFIX } from './plugins/buddy-telegram/buddy-telegram.constants';
 import { BuddyTelegramPlugin } from './plugins/buddy-telegram/buddy-telegram.plugin';
+import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
+import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai/buddy-voiceai.plugin';
 import { BUDDY_WHATSAPP_PLUGIN_PREFIX } from './plugins/buddy-whatsapp/buddy-whatsapp.constants';
 import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp/buddy-whatsapp.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';

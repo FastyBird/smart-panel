@@ -1,7 +1,8 @@
+import { realpathSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import {
@@ -81,11 +82,29 @@ export class BuddyPersonalityService {
 		const relativePath = configuredPath || BUDDY_DEFAULT_PERSONALITY_PATH;
 		const resolved = path.resolve(baseDir, relativePath);
 
-		// Restrict writes to the var/buddy/ directory to prevent overwriting arbitrary project files
+		// Restrict writes to the var/buddy/ directory to prevent overwriting arbitrary project files.
+		// First check the lexical path, then resolve symlinks to catch symlink-based bypasses.
 		if (!resolved.startsWith(allowedDir + path.sep) && resolved !== allowedDir) {
-			this.logger.warn(`Personality path "${configuredPath}" resolves outside var/buddy/, using default`);
+			throw new BadRequestException(`Personality path "${configuredPath}" resolves outside allowed directory`);
+		}
 
-			return path.resolve(baseDir, BUDDY_DEFAULT_PERSONALITY_PATH);
+		// If the parent directory already exists, resolve symlinks to catch symlink-based bypasses
+		const parentDir = path.dirname(resolved);
+
+		try {
+			const realParent = realpathSync(parentDir);
+			const realAllowed = realpathSync(allowedDir);
+
+			if (!realParent.startsWith(realAllowed + path.sep) && realParent !== realAllowed) {
+				throw new BadRequestException(
+					`Personality path "${configuredPath}" resolves outside allowed directory via symlink`,
+				);
+			}
+		} catch (error) {
+			// If parentDir doesn't exist yet (ENOENT), the lexical check above is sufficient
+			if (error instanceof BadRequestException) {
+				throw error;
+			}
 		}
 
 		return resolved;

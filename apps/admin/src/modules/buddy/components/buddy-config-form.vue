@@ -429,7 +429,14 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			// Save personality alongside config
+			try {
+				await submit();
+			} catch {
+				// The form is not valid — do not save personality
+				return;
+			}
+
+			// Save personality only after config was saved successfully
 			if (personalityDirty.value) {
 				const success = await savePersonality(personalityText.value);
 
@@ -438,10 +445,6 @@ watch(
 					personalityText.value = personalityContent.value;
 				}
 			}
-
-			submit().catch(() => {
-				// The form is not valid
-			});
 		}
 	}
 );

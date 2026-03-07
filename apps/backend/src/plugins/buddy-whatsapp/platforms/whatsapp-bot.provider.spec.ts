@@ -1,3 +1,10 @@
+import { SuggestionType } from '../../../modules/buddy/buddy.constants';
+import { BuddySuggestion } from '../../../modules/buddy/services/suggestion-engine.service';
+import { BUDDY_WHATSAPP_PLUGIN_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
+import { BuddyWhatsappConfigModel } from '../models/config.model';
+
+import { WhatsAppBotProvider } from './whatsapp-bot.provider';
+
 jest.mock('@whiskeysockets/baileys', () => ({
 	__esModule: true,
 	default: jest.fn(),
@@ -9,13 +16,6 @@ jest.mock('@whiskeysockets/baileys', () => ({
 		saveCreds: jest.fn(),
 	}),
 }));
-
-import { SuggestionType } from '../../../modules/buddy/buddy.constants';
-import { BuddySuggestion } from '../../../modules/buddy/services/suggestion-engine.service';
-import { BUDDY_WHATSAPP_PLUGIN_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
-import { BuddyWhatsappConfigModel } from '../models/config.model';
-
-import { WhatsAppBotProvider } from './whatsapp-bot.provider';
 
 function makeConfig(overrides: Partial<BuddyWhatsappConfigModel> = {}): BuddyWhatsappConfigModel {
 	return Object.assign(new BuddyWhatsappConfigModel(), {
@@ -68,8 +68,8 @@ describe('WhatsAppBotProvider', () => {
 		provider = new WhatsAppBotProvider(configService as any, conversationService as any, suggestionEngine as any);
 	});
 
-	afterEach(async () => {
-		await provider.onModuleDestroy();
+	afterEach(() => {
+		provider.onModuleDestroy();
 	});
 
 	describe('onApplicationBootstrap', () => {
@@ -83,14 +83,14 @@ describe('WhatsAppBotProvider', () => {
 	});
 
 	describe('onConfigUpdated', () => {
-		it('should not restart when config has not changed', async () => {
+		it('should not restart when config has not changed', () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
 
 			provider.onApplicationBootstrap();
 
 			const stopSpy = jest.spyOn(provider as any, 'stopBot');
 
-			await provider.onConfigUpdated();
+			provider.onConfigUpdated();
 
 			expect(stopSpy).not.toHaveBeenCalled();
 

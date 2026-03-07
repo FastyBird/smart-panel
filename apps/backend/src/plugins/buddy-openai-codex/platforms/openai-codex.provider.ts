@@ -191,7 +191,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 						delta?: string;
 						call_id?: string;
 						name?: string;
-						item_id?: string;
+						item?: { type?: string; call_id?: string; name?: string };
 					};
 
 					if (event.type === 'response.output_text.delta' && event.delta) {
@@ -202,20 +202,16 @@ export class OpenAiCodexProvider implements ILlmProvider {
 						if (existing) {
 							existing.args += event.delta;
 						}
-					} else if (event.type === 'response.output_item.added') {
-						// A new function call output item — initialize the accumulator
-						const rawEvent = JSON.parse(line.slice(6)) as {
-							type?: string;
-							item?: { type?: string; call_id?: string; name?: string };
-						};
-
-						if (rawEvent.item?.type === 'function_call' && rawEvent.item.call_id) {
-							toolCallMap.set(rawEvent.item.call_id, {
-								id: rawEvent.item.call_id,
-								name: rawEvent.item.name ?? '',
-								args: '',
-							});
-						}
+					} else if (
+						event.type === 'response.output_item.added' &&
+						event.item?.type === 'function_call' &&
+						event.item.call_id
+					) {
+						toolCallMap.set(event.item.call_id, {
+							id: event.item.call_id,
+							name: event.item.name ?? '',
+							args: '',
+						});
 					}
 				} catch {
 					// Skip malformed JSON lines

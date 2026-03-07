@@ -45,7 +45,6 @@ describe('TtsProviderService', () => {
 			list: jest.fn().mockReturnValue([mockProvider]),
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		service = new TtsProviderService(
 			configService as any,
 			ttsProviderRegistry as unknown as TtsProviderRegistryService,
