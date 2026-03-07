@@ -339,8 +339,17 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		audioLoading.value = false;
 	};
 
+	let currentAbortController: AbortController | null = null;
+	let audioRequestId = 0;
+
 	const playMessageAudio = async (messageId: string): Promise<void> => {
 		stopAudio();
+
+		// Abort any in-flight fetch from a previous playMessageAudio call
+		if (currentAbortController) {
+			currentAbortController.abort();
+			currentAbortController = null;
+		}
 
 		const conversationId = activeConversationId.value;
 
@@ -348,6 +357,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 		audioLoading.value = true;
 		playingMessageId.value = messageId;
+
+		const requestId = ++audioRequestId;
+		const abortController = new AbortController();
+		currentAbortController = abortController;
 
 		try {
 			const port =
@@ -364,13 +377,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				headers['Authorization'] = `Bearer ${token}`;
 			}
 
-			const response = await fetch(url, { headers });
+			const response = await fetch(url, { headers, signal: abortController.signal });
+
+			// Discard if a newer request has been started
+			if (requestId !== audioRequestId) return;
 
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}`);
 			}
 
 			const blob = await response.blob();
+
+			// Discard if a newer request has been started
+			if (requestId !== audioRequestId) return;
+
 			currentBlobUrl = URL.createObjectURL(blob);
 
 			currentAudio = new Audio(currentBlobUrl);
@@ -382,11 +402,17 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			};
 
 			audioLoading.value = false;
+			currentAbortController = null;
 
 			await currentAudio.play();
-		} catch {
-			flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
-			stopAudio();
+		} catch (err) {
+			// Swallow abort errors — they're expected when switching tracks
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+
+			if (requestId === audioRequestId) {
+				flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
+				stopAudio();
+			}
 		}
 	};
 
