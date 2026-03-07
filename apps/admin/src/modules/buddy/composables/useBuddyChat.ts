@@ -161,7 +161,32 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingMessages.value = true;
 
 		try {
-			await fetchMessagesQuiet(conversationId);
+			const response = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
+				{
+					params: {
+						path: { id: conversationId },
+					},
+				} as never
+			);
+
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				if (apiError.status !== 503) {
+					flashMessage.error(apiError.message);
+				}
+
+				return;
+			}
+
+			const responseData = (response as { data?: { data: IMessage[] } }).data;
+
+			if (typeof responseData !== 'undefined' && activeConversationId.value === conversationId) {
+				messages.value = responseData.data;
+			}
+		} catch (err: unknown) {
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
 		} finally {
 			isLoadingMessages.value = false;
 		}
