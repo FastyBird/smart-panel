@@ -6,10 +6,11 @@ export const BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME = 'Buddy WhatsApp';
 
 export const BUDDY_WHATSAPP_PLUGIN_API_TAG_DESCRIPTION = 'WhatsApp adapter plugin for Buddy module.';
 
-export const WHATSAPP_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000]; // exponential backoff for WhatsApp API errors
+export const WHATSAPP_AUTH_DIR = 'var/buddy/whatsapp-auth';
 
-export const WHATSAPP_GRAPH_API_VERSION = 'v21.0';
-
-export const WHATSAPP_GRAPH_API_BASE_URL = 'https://graph.facebook.com';
-
-export const WHATSAPP_BUTTON_ID_MAX_LENGTH = 256;
+export enum WhatsAppConnectionStatus {
+	DISCONNECTED = 'disconnected',
+	CONNECTING = 'connecting',
+	QR_READY = 'qr_ready',
+	CONNECTED = 'connected',
+}

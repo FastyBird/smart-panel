@@ -45,18 +45,22 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 	) {}
 
 	onApplicationBootstrap(): void {
+		if (process.env.FB_CLI === 'on') {
+			return;
+		}
+
 		const config = this.getPluginConfig();
+
+		// Record config snapshot eagerly so that CONFIG_UPDATED events
+		// for unrelated plugins are correctly ignored even while startBot is in progress.
+		this.activeConfig = {
+			enabled: config?.enabled ?? false,
+			botToken: config?.botToken ?? null,
+			allowedUserIds: config?.allowedUserIds ?? null,
+		};
 
 		if (config?.enabled && config.botToken) {
 			void this.startBot(config);
-		} else {
-			// Record the initial config snapshot so that onConfigUpdated can
-			// detect real changes and skip unrelated CONFIG_UPDATED events.
-			this.activeConfig = {
-				enabled: config?.enabled ?? false,
-				botToken: config?.botToken ?? null,
-				allowedUserIds: config?.allowedUserIds ?? null,
-			};
 		}
 	}
 
@@ -90,12 +94,10 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		this.stopBot();
 
+		this.activeConfig = newSnapshot;
+
 		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
-		} else {
-			// Track the config even when the bot is not started so that
-			// subsequent unrelated CONFIG_UPDATED events are correctly ignored.
-			this.activeConfig = newSnapshot;
 		}
 	}
 
@@ -256,10 +258,12 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 	private stopBot(): void {
 		if (this.bot) {
-			this.bot.stop('reconfigure');
+			if (this.running) {
+				this.bot.stop('reconfigure');
+			}
+
 			this.bot = null;
 			this.running = false;
-			this.activeConfig = null;
 			// Preserve registeredChats and userConversations across restarts
 			// so users don't need to re-message after a config change.
 			this.logger.log('Telegram bot stopped');

@@ -31,8 +31,8 @@ export default {
 			name: 'WhatsApp',
 			description: 'WhatsApp adapter plugin for Buddy module',
 			links: {
-				documentation: 'https://developers.facebook.com/docs/whatsapp/cloud-api',
-				devDocumentation: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				devDocumentation: 'https://smart-panel.fastybird.com/docs',
 				bugsTracking: 'http://www.fastybird.com',
 			},
 			elements: [

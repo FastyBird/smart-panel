@@ -25,67 +25,62 @@
 			/>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('buddyWhatsappPlugin.fields.config.phoneNumberId.title')"
-			prop="phoneNumberId"
+		<!-- Connection status & QR code -->
+		<div
+			v-if="model.enabled"
+			class="mb-4"
 		>
-			<el-input
-				v-model="model.phoneNumberId"
-				:placeholder="t('buddyWhatsappPlugin.fields.config.phoneNumberId.placeholder')"
-				name="phoneNumberId"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyWhatsappPlugin.fields.config.phoneNumberId.description') }}
-			</div>
-		</el-form-item>
+			<el-alert
+				v-if="connectionStatus === 'connected'"
+				type="success"
+				:title="t('buddyWhatsappPlugin.texts.status.connected')"
+				:closable="false"
+			>
+				<template #default>
+					<el-button
+						type="danger"
+						plain
+						size="small"
+						class="mt-2"
+						@click="handleLogout"
+					>
+						{{ t('buddyWhatsappPlugin.buttons.logout') }}
+					</el-button>
+				</template>
+			</el-alert>
 
-		<el-form-item
-			:label="t('buddyWhatsappPlugin.fields.config.accessToken.title')"
-			prop="accessToken"
-		>
-			<el-input
-				v-model="model.accessToken"
-				:placeholder="t('buddyWhatsappPlugin.fields.config.accessToken.placeholder')"
-				name="accessToken"
-				type="password"
-				show-password
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyWhatsappPlugin.fields.config.accessToken.description') }}
-			</div>
-		</el-form-item>
+			<el-alert
+				v-else-if="connectionStatus === 'qr_ready' && qrDataUrl"
+				type="warning"
+				:title="t('buddyWhatsappPlugin.texts.status.qrReady')"
+				:closable="false"
+			>
+				<template #default>
+					<div class="flex justify-center mt-3">
+						<img
+							:src="qrDataUrl"
+							alt="WhatsApp QR Code"
+							class="rounded"
+							style="width: 260px; height: 260px"
+						/>
+					</div>
+				</template>
+			</el-alert>
 
-		<el-form-item
-			:label="t('buddyWhatsappPlugin.fields.config.webhookVerifyToken.title')"
-			prop="webhookVerifyToken"
-		>
-			<el-input
-				v-model="model.webhookVerifyToken"
-				:placeholder="t('buddyWhatsappPlugin.fields.config.webhookVerifyToken.placeholder')"
-				name="webhookVerifyToken"
-				type="password"
-				show-password
+			<el-alert
+				v-else-if="connectionStatus === 'connecting'"
+				type="info"
+				:title="t('buddyWhatsappPlugin.texts.status.connecting')"
+				:closable="false"
 			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyWhatsappPlugin.fields.config.webhookVerifyToken.description') }}
-			</div>
-		</el-form-item>
 
-		<el-form-item
-			:label="t('buddyWhatsappPlugin.fields.config.appSecret.title')"
-			prop="appSecret"
-		>
-			<el-input
-				v-model="model.appSecret"
-				:placeholder="t('buddyWhatsappPlugin.fields.config.appSecret.placeholder')"
-				name="appSecret"
-				type="password"
-				show-password
+			<el-alert
+				v-else
+				type="warning"
+				:title="t('buddyWhatsappPlugin.texts.status.disconnected')"
+				:closable="false"
 			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyWhatsappPlugin.fields.config.appSecret.description') }}
-			</div>
-		</el-form-item>
+		</div>
 
 		<el-form-item
 			:label="t('buddyWhatsappPlugin.fields.config.allowedPhoneNumbers.title')"
@@ -104,11 +99,14 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import QRCode from 'qrcode';
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
+import { injectStoresManager } from '../../../common';
+import { sessionStoreKey } from '../../../modules/auth/store/keys';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IWhatsappConfigEditForm } from '../schemas/config.types';
 
@@ -143,6 +141,100 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 });
 
 const rules = reactive<FormRules<IWhatsappConfigEditForm>>({});
+
+const storesManager = injectStoresManager();
+const sessionStore = storesManager.getStore(sessionStoreKey);
+
+const connectionStatus = ref<string>('disconnected');
+const qrDataUrl = ref<string | null>(null);
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const backendBaseUrl = `${window.location.protocol}//${window.location.hostname}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`;
+
+const authHeaders = (): HeadersInit => {
+	const token = sessionStore.accessToken();
+
+	return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const fetchStatus = async (): Promise<void> => {
+	try {
+		const res = await fetch(`${backendBaseUrl}/plugins/buddy-whatsapp/status`, {
+			headers: authHeaders(),
+		});
+		const json = (await res.json()) as { data: { status: string; qr: string | null } };
+
+		connectionStatus.value = json.data.status;
+
+		if (json.data.qr) {
+			qrDataUrl.value = await QRCode.toDataURL(json.data.qr, { width: 260, margin: 2 });
+		} else {
+			qrDataUrl.value = null;
+		}
+	} catch {
+		// Ignore fetch errors
+	}
+};
+
+const handleLogout = async (): Promise<void> => {
+	try {
+		await fetch(`${backendBaseUrl}/plugins/buddy-whatsapp/logout`, {
+			method: 'POST',
+			headers: authHeaders(),
+		});
+
+		startPolling();
+	} catch {
+		// Ignore
+	}
+};
+
+const startPolling = (): void => {
+	stopPolling();
+
+	void fetchStatus();
+
+	// Poll faster while waiting for QR/connection, slower once connected
+	pollTimer = setInterval(() => {
+		if (connectionStatus.value === 'connected') {
+			stopPolling();
+
+			return;
+		}
+
+		void fetchStatus();
+	}, 3000);
+};
+
+const stopPolling = (): void => {
+	if (pollTimer) {
+		clearInterval(pollTimer);
+		pollTimer = null;
+	}
+};
+
+onMounted(() => {
+	if (model.enabled) {
+		startPolling();
+	}
+});
+
+onBeforeUnmount(() => {
+	stopPolling();
+});
+
+watch(
+	() => model.enabled,
+	(enabled) => {
+		if (enabled) {
+			startPolling();
+		} else {
+			stopPolling();
+			connectionStatus.value = 'disconnected';
+			qrDataUrl.value = null;
+		}
+	}
+);
 
 watch(
 	(): FormResultType => formResult.value,

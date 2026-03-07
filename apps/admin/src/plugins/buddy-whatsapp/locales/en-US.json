@@ -7,26 +7,6 @@
 			"enabled": {
 				"title": "Enabled"
 			},
-			"phoneNumberId": {
-				"title": "Phone Number ID",
-				"placeholder": "Enter your WhatsApp Business Phone Number ID",
-				"description": "Get your Phone Number ID from the Meta Developer Portal under your WhatsApp Business app."
-			},
-			"accessToken": {
-				"title": "Access token",
-				"placeholder": "Enter your Meta Cloud API access token",
-				"description": "Permanent access token from the Meta Developer Portal for the WhatsApp Business API."
-			},
-			"webhookVerifyToken": {
-				"title": "Webhook verify token",
-				"placeholder": "Enter a custom verify token",
-				"description": "A custom token used to verify the webhook URL during WhatsApp webhook registration."
-			},
-			"appSecret": {
-				"title": "App secret",
-				"placeholder": "Enter your Meta App Secret",
-				"description": "App Secret from the Meta Developer Portal, used to verify webhook payload signatures (X-Hub-Signature-256). Leave empty to skip signature verification."
-			},
 			"allowedPhoneNumbers": {
 				"title": "Allowed phone numbers",
 				"placeholder": "e.g., 1234567890,9876543210",
@@ -41,6 +21,15 @@
 		}
 	},
 	"texts": {
-		"aboutWhatsappSettings": "Configure your WhatsApp Business API integration. You need a Meta Business account with a verified phone number. Set the webhook URL to your server's /api/v1/plugins/buddy-whatsapp/webhook endpoint."
+		"aboutWhatsappSettings": "Connect a dedicated WhatsApp number for the bot. Use a second SIM, eSIM, or virtual number — install WhatsApp (or WhatsApp Business) with that number and scan the QR code below. Users can then message the bot number from their personal WhatsApp.",
+		"status": {
+			"disconnected": "Not connected. Enable the plugin and wait for the QR code.",
+			"connecting": "Connecting to WhatsApp...",
+			"qrReady": "Open WhatsApp on the bot's phone (the dedicated number) and scan this QR code via Settings > Linked Devices > Link a Device.",
+			"connected": "WhatsApp bot is connected and running. Users can message the bot's number to chat."
+		}
+	},
+	"buttons": {
+		"logout": "Disconnect & re-pair"
 	}
 }

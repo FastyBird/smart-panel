@@ -1,4 +1,13 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { existsSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
+
+import makeWASocket, {
+	DisconnectReason,
+	type WASocket,
+	fetchLatestBaileysVersion,
+	makeCacheableSignalKeyStore,
+	useMultiFileAuthState,
+} from '@whiskeysockets/baileys';
 
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -11,61 +20,40 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
-	WHATSAPP_BUTTON_ID_MAX_LENGTH,
-	WHATSAPP_GRAPH_API_BASE_URL,
-	WHATSAPP_GRAPH_API_VERSION,
-	WHATSAPP_RETRY_DELAYS_MS,
+	WHATSAPP_AUTH_DIR,
+	WhatsAppConnectionStatus,
 } from '../buddy-whatsapp.constants';
 import { BuddyWhatsappConfigModel } from '../models/config.model';
 
-interface WhatsAppWebhookPayload {
-	object?: string;
-	entry?: Array<{
-		id?: string;
-		changes?: Array<{
-			value?: {
-				messaging_product?: string;
-				metadata?: { phone_number_id?: string };
-				messages?: Array<{
-					from?: string;
-					id?: string;
-					type?: string;
-					text?: { body?: string };
-					interactive?: { type?: string; button_reply?: { id?: string; title?: string } };
-				}>;
-			};
-		}>;
-	}>;
-}
-
 /**
- * WhatsApp bot provider that bridges WhatsApp messages to buddy conversations.
+ * WhatsApp bot provider using Baileys (WhatsApp Web protocol).
  *
- * - Routes incoming WhatsApp text messages through BuddyConversationService
- * - Forwards suggestion notifications to registered WhatsApp numbers with interactive buttons
- * - Maps interactive button replies to suggestion feedback (accept/dismiss)
- * - Uses WhatsApp Cloud API (Meta Graph API) — no third-party library needed
+ * - Connects via QR code scan (no Meta Business account needed)
+ * - Routes incoming text messages through BuddyConversationService
+ * - Forwards suggestion notifications to registered phone numbers
+ * - Persists authentication state across restarts
  * - Enforces a phone number whitelist for security
  */
 @Injectable()
 export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = new Logger(WhatsAppBotProvider.name);
 
+	private socket: WASocket | null = null;
+	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;
+	private currentQr: string | null = null;
+	private reconnecting = false;
+
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
 		enabled: boolean;
-		phoneNumberId: string | null;
-		accessToken: string | null;
-		webhookVerifyToken: string | null;
-		appSecret: string | null;
 		allowedPhoneNumbers: string | null;
 	} | null = null;
 
-	/** WhatsApp phone number (E.164) → active buddy conversation ID */
-	private readonly phoneConversations = new Map<string, string>();
+	/** WhatsApp JID → active buddy conversation ID */
+	private readonly jidConversations = new Map<string, string>();
 
-	/** Registered phone numbers that have interacted (for suggestion forwarding) */
-	private readonly registeredPhones = new Set<string>();
+	/** Registered JIDs that have interacted (for suggestion forwarding) */
+	private readonly registeredJids = new Set<string>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -74,281 +62,324 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 	) {}
 
 	onApplicationBootstrap(): void {
+		if (process.env.FB_CLI === 'on') {
+			return;
+		}
+
 		const config = this.getPluginConfig();
 
 		this.activeConfig = {
 			enabled: config?.enabled ?? false,
-			phoneNumberId: config?.phoneNumberId ?? null,
-			accessToken: config?.accessToken ?? null,
-			webhookVerifyToken: config?.webhookVerifyToken ?? null,
-			appSecret: config?.appSecret ?? null,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
-		if (config?.enabled && config.phoneNumberId && config.accessToken) {
-			this.logger.log('WhatsApp bot provider initialized (webhook mode)');
+		if (config?.enabled) {
+			void this.startBot();
 		}
 	}
 
-	onModuleDestroy(): void {
-		this.registeredPhones.clear();
-		this.phoneConversations.clear();
+	async onModuleDestroy(): Promise<void> {
+		await this.stopBot();
+		this.jidConversations.clear();
+		this.registeredJids.clear();
 	}
 
 	/**
-	 * Re-read config when configuration is updated.
+	 * Restart bot when WhatsApp plugin configuration changes.
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	onConfigUpdated(): void {
+	async onConfigUpdated(): Promise<void> {
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
 			enabled: config?.enabled ?? false,
-			phoneNumberId: config?.phoneNumberId ?? null,
-			accessToken: config?.accessToken ?? null,
-			webhookVerifyToken: config?.webhookVerifyToken ?? null,
-			appSecret: config?.appSecret ?? null,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
 		if (
 			this.activeConfig &&
 			this.activeConfig.enabled === newSnapshot.enabled &&
-			this.activeConfig.phoneNumberId === newSnapshot.phoneNumberId &&
-			this.activeConfig.accessToken === newSnapshot.accessToken &&
-			this.activeConfig.webhookVerifyToken === newSnapshot.webhookVerifyToken &&
-			this.activeConfig.appSecret === newSnapshot.appSecret &&
 			this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers
 		) {
 			return;
 		}
 
+		await this.stopBot();
+
 		this.activeConfig = newSnapshot;
 
-		if (newSnapshot.enabled && newSnapshot.phoneNumberId && newSnapshot.accessToken) {
-			this.logger.log('WhatsApp bot provider config updated');
-		} else {
-			this.logger.log('WhatsApp bot provider disabled or not configured');
+		if (config?.enabled) {
+			void this.startBot();
 		}
 	}
 
 	/**
-	 * Forward new suggestions to all registered WhatsApp phones with interactive buttons.
-	 * Only sends to phones still on the current whitelist.
+	 * Forward new suggestions to all registered WhatsApp users.
 	 */
 	@OnEvent(EventType.SUGGESTION_CREATED)
 	async onSuggestionCreated(suggestion: BuddySuggestion): Promise<void> {
+		if (!this.socket || this.status !== WhatsAppConnectionStatus.CONNECTED) {
+			return;
+		}
+
 		const config = this.getPluginConfig();
 
-		if (!config?.enabled || !config.phoneNumberId || !config.accessToken) {
+		if (!config?.enabled) {
 			return;
 		}
 
 		const allowedPhones = this.parseAllowedPhoneNumbers(config.allowedPhoneNumbers);
 
-		for (const phone of this.registeredPhones) {
+		for (const jid of this.registeredJids) {
+			const phone = jid.split('@')[0];
+
 			if (allowedPhones.size > 0 && !allowedPhones.has(phone)) {
 				continue;
 			}
 
 			try {
-				const acceptId = `suggestion:accept:${suggestion.id}`.slice(0, WHATSAPP_BUTTON_ID_MAX_LENGTH);
-				const dismissId = `suggestion:dismiss:${suggestion.id}`.slice(0, WHATSAPP_BUTTON_ID_MAX_LENGTH);
-
-				await this.sendInteractiveButtons(config, phone, `💡 *${suggestion.title}*\n\n${suggestion.reason}`, [
-					{ id: acceptId, title: 'Accept' },
-					{ id: dismissId, title: 'Dismiss' },
-				]);
+				await this.socket.sendMessage(jid, {
+					text: `*${suggestion.title}*\n\n${suggestion.reason}`,
+				});
 			} catch (error) {
-				this.logger.warn(`Failed to send suggestion to WhatsApp ${phone}: ${String(error)}`);
+				this.logger.warn(`Failed to send suggestion to ${jid}: ${String(error)}`);
 			}
 		}
 	}
 
-	/**
-	 * Verify a webhook token against the configured verify token.
-	 */
-	verifyWebhookToken(token: string): boolean {
-		const config = this.getPluginConfig();
+	getConnectionStatus(): WhatsAppConnectionStatus {
+		return this.status;
+	}
 
-		if (!config?.webhookVerifyToken) {
-			return false;
-		}
+	getCurrentQr(): string | null {
+		return this.currentQr;
+	}
 
-		const expected = Buffer.from(config.webhookVerifyToken, 'utf8');
-		const provided = Buffer.from(token, 'utf8');
-
-		if (expected.length !== provided.length) {
-			return false;
-		}
-
-		return timingSafeEqual(expected, provided);
+	isConnected(): boolean {
+		return this.status === WhatsAppConnectionStatus.CONNECTED;
 	}
 
 	/**
-	 * Verify the X-Hub-Signature-256 header sent by Meta with webhook deliveries.
-	 * Uses the App Secret (from the Meta Developer Dashboard) as the HMAC key.
+	 * Disconnect and clear authentication state so a new QR code can be generated.
 	 */
-	verifyWebhookSignature(rawBody: Buffer, signature: string | undefined): boolean {
+	async logout(): Promise<void> {
+		try {
+			if (this.socket) {
+				await this.socket.logout();
+			}
+		} catch {
+			// Ignore logout errors (e.g., already disconnected)
+		}
+
+		await this.stopBot();
+
+		// Clear auth state so a fresh QR code is generated on next start
+		const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
+
+		if (existsSync(authDir)) {
+			rmSync(authDir, { recursive: true, force: true });
+		}
+
 		const config = this.getPluginConfig();
 
-		if (!config?.appSecret) {
-			// No app secret configured — skip signature check
-			return true;
+		if (config?.enabled) {
+			void this.startBot();
 		}
-
-		if (!signature || !signature.startsWith('sha256=')) {
-			return false;
-		}
-
-		const expected = createHmac('sha256', config.appSecret).update(rawBody).digest('hex');
-		const provided = signature.slice('sha256='.length);
-
-		// Validate hex format (SHA-256 = 64 hex chars) to reject malformed signatures early
-		if (!/^[0-9a-f]{64}$/i.test(provided)) {
-			return false;
-		}
-
-		// Compare as UTF-8 strings to avoid Buffer.from(hex) silently dropping non-hex chars
-		return timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(provided.toLowerCase(), 'utf8'));
 	}
 
-	/**
-	 * Handle an incoming WhatsApp webhook payload.
-	 */
-	async handleWebhookPayload(payload: unknown): Promise<void> {
-		const config = this.getPluginConfig();
-
-		if (!config?.enabled || !config.phoneNumberId || !config.accessToken) {
+	private async startBot(): Promise<void> {
+		if (this.socket) {
 			return;
 		}
 
-		const typed = payload as WhatsAppWebhookPayload;
+		try {
+			this.status = WhatsAppConnectionStatus.CONNECTING;
 
-		if (typed.object !== 'whatsapp_business_account') {
-			return;
-		}
+			const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
 
-		const allowedPhones = this.parseAllowedPhoneNumbers(config.allowedPhoneNumbers);
+			if (!existsSync(authDir)) {
+				mkdirSync(authDir, { recursive: true });
+			}
 
-		for (const entry of typed.entry ?? []) {
-			for (const change of entry.changes ?? []) {
-				const messages = change.value?.messages;
+			const { state, saveCreds } = await useMultiFileAuthState(authDir);
+			const { version } = await fetchLatestBaileysVersion();
 
-				if (!messages) {
-					continue;
+			const noopLogger = {
+				level: 'silent',
+				child: () => noopLogger,
+				trace: () => {},
+				debug: () => {},
+				info: () => {},
+				warn: () => {},
+				error: () => {},
+				fatal: () => {},
+			};
+
+			this.socket = makeWASocket({
+				version,
+				auth: {
+					creds: state.creds,
+					keys: makeCacheableSignalKeyStore(state.keys, noopLogger as never),
+				},
+				logger: noopLogger as never,
+			});
+
+			// Capture a reference so that async event handlers from a stale socket
+			// (e.g., after logout → stopBot → startBot) do not clobber the new socket.
+			const currentSocket = this.socket;
+
+			currentSocket.ev.on('creds.update', saveCreds);
+
+			currentSocket.ev.on('connection.update', (update) => {
+				// Ignore events from a socket that is no longer active
+				if (this.socket !== currentSocket) {
+					return;
 				}
 
-				for (const message of messages) {
-					try {
-						const from = message.from;
+				const { connection, lastDisconnect, qr } = update;
 
-						if (!from) {
-							continue;
-						}
+				if (qr) {
+					this.currentQr = qr;
+					this.status = WhatsAppConnectionStatus.QR_READY;
+					this.logger.log('WhatsApp QR code ready — scan with your phone');
+				}
 
-						// Enforce phone number whitelist
-						if (allowedPhones.size > 0 && !allowedPhones.has(from)) {
-							this.logger.debug(`Rejected message from unauthorized WhatsApp number ${from}`);
+				if (connection === 'open') {
+					this.currentQr = null;
+					this.status = WhatsAppConnectionStatus.CONNECTED;
+					this.reconnecting = false;
+					this.logger.log('WhatsApp bot connected');
+				}
 
-							continue;
-						}
+				if (connection === 'close') {
+					this.currentQr = null;
 
-						if (message.type === 'text' && message.text?.body) {
-							await this.handleTextMessage(config, from, message.text.body);
-						} else if (
-							message.type === 'interactive' &&
-							message.interactive?.type === 'button_reply' &&
-							message.interactive.button_reply?.id
-						) {
-							await this.handleButtonReply(config, from, message.interactive.button_reply.id);
-						}
-					} catch (error) {
-						this.logger.error(`Failed to process WhatsApp message: ${String(error)}`);
+					const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
+						?.statusCode;
+					const loggedOut = statusCode === DisconnectReason.loggedOut;
+
+					this.socket = null;
+
+					if (loggedOut) {
+						this.status = WhatsAppConnectionStatus.DISCONNECTED;
+						this.logger.log('WhatsApp logged out — re-enable plugin to reconnect');
+					} else if (!this.reconnecting) {
+						this.status = WhatsAppConnectionStatus.CONNECTING;
+						this.reconnecting = true;
+						this.logger.log('WhatsApp disconnected, reconnecting...');
+						void this.startBot();
 					}
 				}
-			}
+			});
+
+			currentSocket.ev.on('messages.upsert', ({ messages }) => {
+				// Ignore events from a stale socket
+				if (this.socket !== currentSocket) {
+					return;
+				}
+
+				for (const msg of messages) {
+					if (msg.key.fromMe || !msg.message) {
+						continue;
+					}
+
+					void this.handleMessage(msg);
+				}
+			});
+		} catch (error) {
+			this.logger.error(`Failed to start WhatsApp bot: ${String(error)}`);
+			this.socket = null;
+			this.status = WhatsAppConnectionStatus.DISCONNECTED;
 		}
 	}
 
-	isConfigured(): boolean {
+	private async stopBot(): Promise<void> {
+		this.reconnecting = true; // Prevent auto-reconnect
+
+		if (this.socket) {
+			this.socket.end(undefined);
+			this.socket = null;
+		}
+
+		this.status = WhatsAppConnectionStatus.DISCONNECTED;
+		this.currentQr = null;
+		this.reconnecting = false;
+	}
+
+	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {
+		const jid = msg.key.remoteJid;
+
+		if (!jid || jid.endsWith('@g.us')) {
+			// Ignore group messages
+			return;
+		}
+
 		const config = this.getPluginConfig();
 
-		return Boolean(config?.enabled && config.phoneNumberId && config.accessToken);
-	}
+		if (!config?.enabled) {
+			return;
+		}
 
-	private async handleTextMessage(
-		config: BuddyWhatsappConfigModel & { phoneNumberId: string; accessToken: string },
-		from: string,
-		text: string,
-	): Promise<void> {
-		this.registeredPhones.add(from);
+		// Extract text from various message types
+		const text = this.extractText(msg.message);
+
+		if (!text) {
+			return;
+		}
+
+		const phone = jid.split('@')[0];
+		const allowedPhones = this.parseAllowedPhoneNumbers(config.allowedPhoneNumbers);
+
+		if (allowedPhones.size > 0 && !allowedPhones.has(phone)) {
+			this.logger.debug(`Rejected message from unauthorized WhatsApp number ${phone}`);
+
+			return;
+		}
+
+		this.registeredJids.add(jid);
 
 		try {
-			const conversationId = await this.getOrCreateConversation(from);
+			const conversationId = await this.getOrCreateConversation(jid, phone);
 			const response = await this.conversationService.sendMessage(conversationId, text);
 
-			await this.sendTextMessage(config, from, response.content);
+			await this.socket?.sendMessage(jid, { text: response.content });
 		} catch (error) {
-			this.logger.error(`Error processing WhatsApp message from ${from}: ${String(error)}`);
+			this.logger.error(`Error processing WhatsApp message from ${phone}: ${String(error)}`);
 
 			try {
-				await this.sendTextMessage(
-					config,
-					from,
-					'Sorry, I encountered an error processing your message. Please try again.',
-				);
-			} catch (sendError) {
-				this.logger.warn(`Failed to send error notification to WhatsApp ${from}: ${String(sendError)}`);
+				await this.socket?.sendMessage(jid, {
+					text: 'Sorry, I encountered an error processing your message. Please try again.',
+				});
+			} catch {
+				// Ignore send failure for error message
 			}
 		}
 	}
 
-	private async handleButtonReply(
-		config: BuddyWhatsappConfigModel & { phoneNumberId: string; accessToken: string },
-		from: string,
-		buttonId: string,
-	): Promise<void> {
-		const match = /^suggestion:(accept|dismiss):([^:]+)$/.exec(buttonId);
-
-		if (!match) {
-			return;
+	private extractText(message?: object | null): string | null {
+		if (!message) {
+			return null;
 		}
 
-		const [, action, suggestionId] = match;
-		const feedback = action === 'accept' ? SuggestionFeedback.APPLIED : SuggestionFeedback.DISMISSED;
+		const msg = message as Record<string, unknown>;
 
-		let feedbackRecorded = false;
-
-		try {
-			this.suggestionEngine.recordFeedback(suggestionId, feedback);
-			feedbackRecorded = true;
-		} catch {
-			try {
-				await this.sendTextMessage(config, from, 'Suggestion not found or expired.');
-			} catch (sendError) {
-				this.logger.warn(`Failed to send not-found notification to WhatsApp ${from}: ${String(sendError)}`);
-			}
-
-			return;
+		// Plain text message
+		if (typeof msg.conversation === 'string') {
+			return msg.conversation.trim() || null;
 		}
 
-		if (feedbackRecorded) {
-			const confirmText = action === 'accept' ? 'Suggestion accepted ✅' : 'Suggestion dismissed';
+		// Extended text message (e.g., replies, links)
+		const ext = msg.extendedTextMessage as { text?: string } | undefined;
 
-			try {
-				await this.sendTextMessage(config, from, confirmText);
-			} catch (error) {
-				this.logger.warn(`Failed to send confirmation to WhatsApp ${from}: ${String(error)}`);
-			}
+		if (ext?.text) {
+			return ext.text.trim() || null;
 		}
+
+		return null;
 	}
 
-	/**
-	 * Get the active conversation for a WhatsApp phone number, or create a new one.
-	 */
-	private async getOrCreateConversation(phone: string): Promise<string> {
-		const existingId = this.phoneConversations.get(phone);
+	private async getOrCreateConversation(jid: string, phone: string): Promise<string> {
+		const existingId = this.jidConversations.get(jid);
 
 		if (existingId) {
 			const conversation = await this.conversationService.findOne(existingId);
@@ -360,101 +391,9 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		const conversation = await this.conversationService.create(`WhatsApp (${phone})`);
 
-		this.phoneConversations.set(phone, conversation.id);
+		this.jidConversations.set(jid, conversation.id);
 
 		return conversation.id;
-	}
-
-	/**
-	 * Send a plain text message via WhatsApp Cloud API.
-	 */
-	private async sendTextMessage(
-		config: { phoneNumberId: string; accessToken: string },
-		to: string,
-		text: string,
-	): Promise<void> {
-		const body = {
-			messaging_product: 'whatsapp',
-			to,
-			type: 'text',
-			text: { body: text },
-		};
-
-		await this.callWhatsAppApi(config, body);
-	}
-
-	/**
-	 * Send an interactive message with buttons via WhatsApp Cloud API.
-	 */
-	private async sendInteractiveButtons(
-		config: { phoneNumberId: string; accessToken: string },
-		to: string,
-		bodyText: string,
-		buttons: Array<{ id: string; title: string }>,
-	): Promise<void> {
-		const body = {
-			messaging_product: 'whatsapp',
-			to,
-			type: 'interactive',
-			interactive: {
-				type: 'button',
-				body: { text: bodyText },
-				action: {
-					buttons: buttons.slice(0, 3).map((btn) => ({
-						type: 'reply',
-						reply: { id: btn.id, title: btn.title },
-					})),
-				},
-			},
-		};
-
-		await this.callWhatsAppApi(config, body);
-	}
-
-	/**
-	 * Make a WhatsApp Cloud API call with retry and exponential backoff.
-	 */
-	private async callWhatsAppApi(config: { phoneNumberId: string; accessToken: string }, body: unknown): Promise<void> {
-		const url = `${WHATSAPP_GRAPH_API_BASE_URL}/${WHATSAPP_GRAPH_API_VERSION}/${config.phoneNumberId}/messages`;
-
-		for (let attempt = 0; attempt <= WHATSAPP_RETRY_DELAYS_MS.length; attempt++) {
-			try {
-				const response = await fetch(url, {
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${config.accessToken}`,
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify(body),
-				});
-
-				if (!response.ok) {
-					const errorText = await response.text();
-					const error = new Error(`WhatsApp API error ${response.status}: ${errorText}`);
-
-					// Client errors (4xx) are permanent failures — do not retry, except 429 (rate limit)
-					if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-						throw Object.assign(error, { permanent: true });
-					}
-
-					throw error;
-				}
-
-				return;
-			} catch (error) {
-				// Do not retry permanent (4xx) client errors
-				if ((error as { permanent?: boolean }).permanent || attempt >= WHATSAPP_RETRY_DELAYS_MS.length) {
-					throw error;
-				}
-
-				const delay = WHATSAPP_RETRY_DELAYS_MS[attempt];
-
-				const msg = `WhatsApp API call failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`;
-
-				this.logger.warn(msg);
-				await this.sleep(delay);
-			}
-		}
 	}
 
 	/**
@@ -471,16 +410,12 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			const trimmed = part.trim();
 
 			if (trimmed.length > 0) {
-				// Strip leading '+' so entries match WhatsApp's from field (no '+' prefix)
+				// Strip leading '+' so entries match WhatsApp's JID format (no '+' prefix)
 				phones.add(trimmed.replace(/^\+/, ''));
 			}
 		}
 
 		return phones;
-	}
-
-	private sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	private getPluginConfig(): BuddyWhatsappConfigModel | null {

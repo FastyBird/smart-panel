@@ -25,69 +25,6 @@ export class BuddyWhatsappConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'WhatsApp Business Phone Number ID',
-		name: 'phone_number_id',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'phone_number_id' })
-	@Transform(
-		({ obj }: { obj: { phone_number_id?: string | null; phoneNumberId?: string | null } }) =>
-			obj.phone_number_id ?? obj.phoneNumberId,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	phoneNumberId: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'Meta Cloud API access token',
-		name: 'access_token',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'access_token' })
-	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) =>
-			obj.access_token ?? obj.accessToken,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	accessToken: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'Webhook verify token for WhatsApp webhook registration',
-		name: 'webhook_verify_token',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'webhook_verify_token' })
-	@Transform(
-		({ obj }: { obj: { webhook_verify_token?: string | null; webhookVerifyToken?: string | null } }) =>
-			obj.webhook_verify_token ?? obj.webhookVerifyToken,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	webhookVerifyToken: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'Meta App Secret for verifying webhook payload signatures (X-Hub-Signature-256)',
-		name: 'app_secret',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'app_secret' })
-	@Transform(
-		({ obj }: { obj: { app_secret?: string | null; appSecret?: string | null } }) => obj.app_secret ?? obj.appSecret,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	appSecret: string | null = null;
-
-	@ApiPropertyOptional({
 		description:
 			'Comma-separated list of phone numbers in E.164 format allowed to interact with the bot (empty = allow all)',
 		name: 'allowed_phone_numbers',

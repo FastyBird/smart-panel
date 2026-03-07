@@ -1,8 +1,4 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
-import { Readable } from 'stream';
-
 import { Module, OnModuleInit } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
 
 import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -40,7 +36,6 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly httpAdapterHost: HttpAdapterHost,
 	) {}
 
 	onModuleInit() {
@@ -54,11 +49,6 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 			this.swaggerRegistry.register(model);
 		}
 
-		// Register a preParsing hook to capture the raw body only for the WhatsApp webhook POST route.
-		// This avoids enabling rawBody globally which would double per-request memory for all routes.
-		// Guard: httpAdapter is null when running in CLI context (e.g., openapi:generate).
-		this.registerRawBodyHook();
-
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_WHATSAPP_PLUGIN_NAME,
 			name: 'WhatsApp',
@@ -67,77 +57,30 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 			capabilities: [],
 			readme: `# Buddy WhatsApp Plugin
 
-WhatsApp adapter plugin for the Buddy module. Enables remote conversations and alert forwarding via WhatsApp.
+WhatsApp adapter plugin for the Buddy module. Connects via WhatsApp Web protocol (QR code scan).
 
 ## Features
 
+- **QR Code Pairing** - Scan a QR code with your phone to connect (no Meta Business account needed)
 - **Remote Chat** - Interact with your smart home buddy from anywhere via WhatsApp
-- **Alert Forwarding** - Receive suggestion notifications with interactive buttons
+- **Alert Forwarding** - Receive suggestion notifications
 - **Phone Whitelist** - Restrict access to specific phone numbers
+- **Persistent Session** - Authentication persists across restarts
 
 ## Setup
 
-1. Create a Meta Business account and set up a WhatsApp Business API app
-2. Get your Phone Number ID and Access Token from the Meta Developer Portal
-3. Enable the plugin and enter the credentials in configuration
-4. Set the webhook URL to \`https://your-server/api/v1/plugins/buddy-whatsapp/webhook\`
-5. Set the webhook verify token to match the one configured in the plugin
+1. Enable the plugin in configuration
+2. Open the status endpoint or check the terminal for the QR code
+3. Scan the QR code with WhatsApp on your phone (Linked Devices)
+4. Start chatting with the bot
 
 ## Configuration
 
-- **Phone Number ID** - WhatsApp Business Phone Number ID (required)
-- **Access Token** - Meta Cloud API access token (required)
-- **Webhook Verify Token** - Token for webhook verification (required)
 - **Allowed Phone Numbers** - Comma-separated E.164 phone numbers (empty = allow all)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
-		});
-	}
-
-	/**
-	 * Register a Fastify preParsing hook to capture raw body only for the webhook POST route.
-	 * This avoids enabling rawBody globally which would double per-request memory for all routes.
-	 */
-	private registerRawBodyHook(): void {
-		// httpAdapter is null when running in CLI context (e.g., openapi:generate)
-		if (!this.httpAdapterHost.httpAdapter) {
-			return;
-		}
-
-		const instance = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
-
-		// Skip when running under a non-Fastify adapter (e.g., Express in e2e tests)
-		if (typeof instance.addHook !== 'function') {
-			return;
-		}
-
-		instance.addHook('preParsing', (request, _reply, payload, done) => {
-			if (request.method !== 'POST' || !request.url.includes('/buddy-whatsapp/webhook')) {
-				done(null, payload);
-
-				return;
-			}
-
-			const chunks: Buffer[] = [];
-			const stream = payload as Readable;
-
-			stream.on('data', (chunk: Buffer) => {
-				chunks.push(chunk);
-			});
-
-			stream.on('end', () => {
-				const rawBody = Buffer.concat(chunks);
-
-				(request as FastifyRequest & { whatsappRawBody?: Buffer }).whatsappRawBody = rawBody;
-
-				done(null, Readable.from(rawBody));
-			});
-
-			stream.on('error', (err: Error) => {
-				done(err, payload);
-			});
 		});
 	}
 }

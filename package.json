@@ -96,15 +96,20 @@
       "@parcel/watcher",
       "@scarf/scarf",
       "@swc/core",
+      "@whiskeysockets/baileys",
       "bcrypt",
       "esbuild",
+      "protobufjs",
       "sharp",
       "sqlite3",
       "vue-demi"
     ]
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
+    "@whiskeysockets/baileys": "7.0.0-rc.9",
     "discord.js": "^14.16.3",
+    "qrcode": "^1.5.4",
     "telegraf": "^4.16.3"
   }
 }

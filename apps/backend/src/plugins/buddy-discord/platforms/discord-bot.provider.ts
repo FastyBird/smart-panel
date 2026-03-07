@@ -64,19 +64,25 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 	) {}
 
 	onApplicationBootstrap(): void {
+		if (process.env.FB_CLI === 'on') {
+			return;
+		}
+
 		const config = this.getPluginConfig();
+
+		// Record config snapshot eagerly so that CONFIG_UPDATED events
+		// for unrelated plugins are correctly ignored even while startBot is in progress.
+		this.activeConfig = {
+			enabled: config?.enabled ?? false,
+			botToken: config?.botToken ?? null,
+			guildId: config?.guildId ?? null,
+			generalChannelId: config?.generalChannelId ?? null,
+			spaceChannelMappings: config?.spaceChannelMappings ?? null,
+			allowedRoleId: config?.allowedRoleId ?? null,
+		};
 
 		if (config?.enabled && config.botToken) {
 			void this.startBot(config);
-		} else {
-			this.activeConfig = {
-				enabled: config?.enabled ?? false,
-				botToken: config?.botToken ?? null,
-				guildId: config?.guildId ?? null,
-				generalChannelId: config?.generalChannelId ?? null,
-				spaceChannelMappings: config?.spaceChannelMappings ?? null,
-				allowedRoleId: config?.allowedRoleId ?? null,
-			};
 		}
 	}
 
@@ -115,10 +121,10 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 
 		await this.stopBot();
 
+		this.activeConfig = newSnapshot;
+
 		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
-		} else {
-			this.activeConfig = newSnapshot;
 		}
 	}
 
@@ -221,7 +227,6 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			await this.client.destroy();
 			this.client = null;
 			this.running = false;
-			this.activeConfig = null;
 			this.logger.log('Discord bot stopped');
 		}
 	}
