@@ -49,7 +49,7 @@ export class BuddyTelegramPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_TELEGRAM_PLUGIN_NAME,
-			name: 'Buddy Telegram',
+			name: 'Telegram',
 			description: 'Telegram bot adapter for Buddy module remote conversations and alerts',
 			author: 'FastyBird',
 			capabilities: [],

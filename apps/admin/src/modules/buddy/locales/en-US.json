@@ -3,8 +3,7 @@
 		"settings": "Buddy",
 		"chat": "Buddy Chat",
 		"chats": "Chats",
-		"aboutBuddy": "AI Buddy Configuration",
-		"testChat": "Test Chat"
+		"aboutBuddy": "AI Buddy Configuration"
 	},
 	"subHeadings": {
 		"settings": "Configure AI buddy assistant settings",
@@ -24,7 +23,9 @@
 			"providerUnavailable": "The AI provider is temporarily unavailable. Please try again later.",
 			"sendMessage": "Failed to send message",
 			"deleteConversation": "Failed to delete conversation",
-			"audioPlayback": "Failed to play audio"
+			"audioPlayback": "Failed to play audio",
+			"loadPersonality": "Failed to load personality",
+			"savePersonality": "Failed to save personality"
 		}
 	},
 	"buttons": {
@@ -51,9 +52,6 @@
 		},
 		"goToSettings": {
 			"title": "Go to Settings"
-		},
-		"savePersonality": {
-			"title": "Save Personality"
 		}
 	},
 	"fields": {
@@ -63,8 +61,7 @@
 			},
 			"name": {
 				"title": "Buddy name",
-				"placeholder": "Enter buddy name",
-				"description": "The name displayed in the panel chat header"
+				"placeholder": "Enter buddy name"
 			},
 			"provider": {
 				"title": "AI Provider Plugin",
@@ -103,14 +100,6 @@
 					"disabled": "disabled"
 				}
 			},
-			"ttsVoice": {
-				"title": "Voice",
-				"placeholder": "Voice identifier"
-			},
-			"ttsSpeed": {
-				"title": "Speech Speed",
-				"placeholder": "1.0"
-			},
 			"personality": {
 				"title": "Personality",
 				"description": "Define the buddy's tone, style, and personality. This text is included in the AI system prompt.",
@@ -125,7 +114,6 @@
 		"loadingConfig": "Loading buddy configuration...",
 		"loadingConversations": "Loading conversations...",
 		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider plugin to enable chat functionality. Provider-specific settings (API key, model) are configured in the plugin's own settings page. Without a provider, rule-based suggestions will still work.",
-		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page.",
 		"emptyChat": "Select or create a conversation to start chatting",
 		"startConversation": "Ask me anything about your home!",
 		"thinking": "Thinking...",
@@ -152,12 +140,7 @@
 		"sttProvidersFetchFailed": "Failed to load available speech recognition providers. The provider list may be incomplete.",
 		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
-		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions.",
-		"testChatNoProvider": "No AI provider configured",
-		"testChatNoProviderHint": "Configure an AI provider above to test the buddy chat.",
-		"testChatNoConversations": "No conversations yet",
-		"testChatSelectOrCreate": "Select or create a conversation to test",
-		"personalitySaved": "Personality saved successfully"
+		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},
 	"meta": {
 		"settings": {

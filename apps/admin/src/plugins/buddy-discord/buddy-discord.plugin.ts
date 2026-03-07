@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyDiscordPluginKey, {
 			type: BUDDY_DISCORD_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-discord',
-			name: 'Buddy Discord',
+			name: 'Discord',
 			description: 'Discord bot adapter plugin for Buddy module with multi-channel space mapping',
 			links: {
 				documentation: 'https://discord.com/developers/docs',

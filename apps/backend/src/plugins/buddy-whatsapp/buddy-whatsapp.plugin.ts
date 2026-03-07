@@ -61,7 +61,7 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_WHATSAPP_PLUGIN_NAME,
-			name: 'Buddy WhatsApp',
+			name: 'WhatsApp',
 			description: 'WhatsApp adapter plugin for Buddy module remote conversations and alerts',
 			author: 'FastyBird',
 			capabilities: [],

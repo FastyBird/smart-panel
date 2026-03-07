@@ -167,9 +167,9 @@ watch(
 watch(
 	(): boolean => props.remoteFormReset,
 	(val: boolean): void => {
-		if (val) {
-			emit('update:remote-form-reset', false);
+		emit('update:remote-form-reset', false);
 
+		if (val) {
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();

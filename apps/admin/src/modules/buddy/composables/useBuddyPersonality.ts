@@ -1,4 +1,5 @@
 import { type Ref, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -13,6 +14,7 @@ interface IUseBuddyPersonality {
 }
 
 export const useBuddyPersonality = (): IUseBuddyPersonality => {
+	const { t } = useI18n();
 	const backend = useBackend();
 
 	const personalityContent = ref<string>('');
@@ -31,10 +33,10 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			if (typeof res.data !== 'undefined') {
 				personalityContent.value = res.data.data.content;
 			} else {
-				personalityError.value = 'Failed to load personality';
+				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 			}
 		} catch {
-			personalityError.value = 'Failed to load personality';
+			personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 		} finally {
 			personalityLoading.value = false;
 		}
@@ -53,7 +55,7 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			const status = res.response?.status;
 
 			if (status && status >= 400) {
-				personalityError.value = 'Failed to save personality';
+				personalityError.value = t('buddyModule.messages.errors.savePersonality');
 
 				return false;
 			}
@@ -64,7 +66,7 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 
 			return true;
 		} catch {
-			personalityError.value = 'Failed to save personality';
+			personalityError.value = t('buddyModule.messages.errors.savePersonality');
 
 			return false;
 		} finally {

@@ -30,15 +30,6 @@
 		</el-form-item>
 
 		<el-alert
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.fields.config.name.description') }}
-		</el-alert>
-
-		<el-alert
 			v-if="providerFetchFailed"
 			type="warning"
 			show-icon
@@ -78,28 +69,12 @@
 			</el-select>
 		</el-form-item>
 
-		<el-alert
-			v-if="model.provider !== LLM_PROVIDER_NONE"
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
-		</el-alert>
-
 		<el-divider />
 
-		<el-form-item>
-			<template #label>
-				{{ t('buddyModule.fields.config.personality.title') }}
-				<el-text
-					size="small"
-					type="info"
-				>
-					{{ t('buddyModule.fields.config.personality.description') }}
-				</el-text>
-			</template>
+		<el-form-item
+			:label="t('buddyModule.fields.config.personality.title')"
+			prop="personality"
+		>
 			<el-input
 				v-model="personalityText"
 				type="textarea"
@@ -109,32 +84,16 @@
 				:placeholder="t('buddyModule.fields.config.personality.placeholder')"
 				name="personality"
 			/>
-			<div style="margin-top: 8px; display: flex; gap: 8px; align-items: center">
-				<el-button
-					type="primary"
-					size="small"
-					:loading="personalityLoading"
-					:disabled="!personalityDirty"
-					@click="handleSavePersonality"
-				>
-					{{ t('buddyModule.buttons.savePersonality.title') }}
-				</el-button>
-				<el-text
-					v-if="personalitySaved"
-					size="small"
-					type="success"
-				>
-					{{ t('buddyModule.texts.personalitySaved') }}
-				</el-text>
-				<el-text
-					v-if="personalityError"
-					size="small"
-					type="danger"
-				>
-					{{ personalityError }}
-				</el-text>
-			</div>
 		</el-form-item>
+
+		<el-alert
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.fields.config.personality.description') }}
+		</el-alert>
 
 		<el-divider />
 
@@ -198,16 +157,6 @@
 			</el-select>
 		</el-form-item>
 
-		<el-alert
-			v-if="model.sttPlugin && model.sttPlugin !== STT_PLUGIN_NONE"
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
-		</el-alert>
-
 		<el-divider />
 
 		<el-alert
@@ -250,60 +199,17 @@
 			</el-select>
 		</el-form-item>
 
-		<el-alert
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			type="info"
-			show-icon
-			:closable="false"
-			style="margin-bottom: 18px"
-		>
-			{{ t('buddyModule.texts.pluginConfigHint') }}
-		</el-alert>
-
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			:label="t('buddyModule.fields.config.ttsVoice.title')"
-			prop="ttsVoice"
-		>
-			<el-input
-				v-model="model.ttsVoice"
-				:placeholder="t('buddyModule.fields.config.ttsVoice.placeholder')"
-				name="ttsVoice"
-				clearable
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE && model.ttsPlugin !== TTS_PLUGIN_ELEVENLABS"
-			:label="t('buddyModule.fields.config.ttsSpeed.title')"
-			prop="ttsSpeed"
-		>
-			<el-input-number
-				v-model="model.ttsSpeed"
-				:min="0.25"
-				:max="4.0"
-				:step="0.25"
-				:precision="2"
-				name="ttsSpeed"
-			/>
-		</el-form-item>
-
 	</el-form>
-
-	<buddy-test-chat v-if="model.enabled" />
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE } from '../buddy.constants';
-import BuddyTestChat from './buddy-test-chat.vue';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { useBuddyPersonality } from '../composables/useBuddyPersonality';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import { useBuddySttProviders } from '../composables/useBuddySttProviders';
@@ -357,11 +263,10 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const { personalityContent, personalityLoading, personalityError, fetchPersonality, savePersonality } = useBuddyPersonality();
+const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 const personalityText = ref<string>('');
 const personalityOriginal = ref<string>('');
-const personalitySaved = ref<boolean>(false);
 
 const personalityDirty = computed<boolean>(() => personalityText.value !== personalityOriginal.value);
 
@@ -371,22 +276,6 @@ watch(personalityContent, (val: string): void => {
 		personalityOriginal.value = val;
 	}
 }, { immediate: true });
-
-const handleSavePersonality = async (): Promise<void> => {
-	personalitySaved.value = false;
-
-	const success = await savePersonality(personalityText.value);
-
-	if (success) {
-		personalityOriginal.value = personalityContent.value;
-		personalityText.value = personalityContent.value;
-		personalitySaved.value = true;
-
-		setTimeout(() => {
-			personalitySaved.value = false;
-		}, 3000);
-	}
-};
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 
@@ -540,6 +429,16 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
+			// Save personality alongside config
+			if (personalityDirty.value) {
+				const success = await savePersonality(personalityText.value);
+
+				if (success) {
+					personalityOriginal.value = personalityContent.value;
+					personalityText.value = personalityContent.value;
+				}
+			}
+
 			submit().catch(() => {
 				// The form is not valid
 			});
@@ -556,12 +455,13 @@ watch(
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();
+			personalityText.value = personalityOriginal.value;
 		}
 	}
 );
 
 watch(
-	(): boolean => formChanged.value,
+	(): boolean => formChanged.value || personalityDirty.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
 	}

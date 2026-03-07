@@ -25,6 +25,7 @@ interface IUseBuddyChat {
 	isTtsConfigured: ComputedRef<boolean>;
 	playingMessageId: Ref<string | null>;
 	audioLoading: Ref<boolean>;
+	error: Ref<string | null>;
 	fetchConversations: () => Promise<void>;
 	fetchProviderStatuses: () => Promise<void>;
 	fetchTtsProviderStatuses: () => Promise<void>;
@@ -52,6 +53,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const isSending = ref<boolean>(false);
+	const error = ref<string | null>(null);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
 		return providerStatuses.value.find((p) => p.selected);
@@ -444,6 +446,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isTtsConfigured,
 		playingMessageId,
 		audioLoading,
+		error,
 		fetchConversations,
 		fetchProviderStatuses,
 		fetchTtsProviderStatuses,

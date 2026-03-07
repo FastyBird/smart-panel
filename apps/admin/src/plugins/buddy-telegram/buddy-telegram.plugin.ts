@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyTelegramPluginKey, {
 			type: BUDDY_TELEGRAM_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-telegram',
-			name: 'Buddy Telegram',
+			name: 'Telegram',
 			description: 'Telegram bot adapter plugin for Buddy module',
 			links: {
 				documentation: 'https://core.telegram.org/bots',

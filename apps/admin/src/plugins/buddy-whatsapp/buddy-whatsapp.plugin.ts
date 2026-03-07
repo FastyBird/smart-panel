@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyWhatsappPluginKey, {
 			type: BUDDY_WHATSAPP_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-whatsapp',
-			name: 'Buddy WhatsApp',
+			name: 'WhatsApp',
 			description: 'WhatsApp adapter plugin for Buddy module',
 			links: {
 				documentation: 'https://developers.facebook.com/docs/whatsapp/cloud-api',

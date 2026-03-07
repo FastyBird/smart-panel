@@ -49,7 +49,7 @@ export class BuddyDiscordPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_DISCORD_PLUGIN_NAME,
-			name: 'Buddy Discord',
+			name: 'Discord',
 			description: 'Discord bot adapter for Buddy module with multi-channel space mapping',
 			author: 'FastyBird',
 			capabilities: [],
