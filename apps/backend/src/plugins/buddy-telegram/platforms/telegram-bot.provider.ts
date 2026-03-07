@@ -151,12 +151,12 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 		try {
 			this.bot = new Telegraf(config.botToken);
 
-			const allowedUserIds = this.parseAllowedUserIds(config.allowedUserIds);
-
 			// /start command — must be registered before the generic text handler
 			// so that Telegraf matches `/start` as a command rather than plain text.
 			this.bot.command('start', async (ctx) => {
 				const userId = ctx.from.id;
+				const currentConfig = this.getPluginConfig();
+				const allowedUserIds = this.parseAllowedUserIds(currentConfig?.allowedUserIds);
 				const allowed = allowedUserIds.size === 0 || allowedUserIds.has(userId);
 
 				if (!allowed) {
@@ -177,6 +177,8 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 			// Text message handler
 			this.bot.on(message('text'), async (ctx) => {
 				const userId = ctx.from.id;
+				const currentConfig = this.getPluginConfig();
+				const allowedUserIds = this.parseAllowedUserIds(currentConfig?.allowedUserIds);
 
 				if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) {
 					this.logger.debug(`Rejected message from unauthorized Telegram user ${userId}`);
@@ -206,8 +208,10 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 			// Inline keyboard callback handler (suggestion feedback)
 			this.bot.on('callback_query', async (ctx) => {
 				const userId = ctx.from.id;
+				const currentConfig = this.getPluginConfig();
+				const cbAllowedUserIds = this.parseAllowedUserIds(currentConfig?.allowedUserIds);
 
-				if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) {
+				if (cbAllowedUserIds.size > 0 && !cbAllowedUserIds.has(userId)) {
 					this.logger.debug(`Rejected callback from unauthorized Telegram user ${userId}`);
 					await ctx.answerCbQuery('⛔ Not authorized');
 
@@ -249,12 +253,6 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 			await this.bot.launch({ dropPendingUpdates: true });
 			this.running = true;
-
-			this.activeConfig = {
-				enabled: config.enabled,
-				botToken: config.botToken,
-				allowedUserIds: config.allowedUserIds ?? null,
-			};
 
 			this.logger.log('Telegram bot started (long polling)');
 		} catch (error) {

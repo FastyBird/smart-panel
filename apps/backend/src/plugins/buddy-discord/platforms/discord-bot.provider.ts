@@ -205,15 +205,6 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			await this.client.login(config.botToken);
 			this.running = true;
 
-			this.activeConfig = {
-				enabled: config.enabled,
-				botToken: config.botToken,
-				guildId: config.guildId ?? null,
-				generalChannelId: config.generalChannelId ?? null,
-				spaceChannelMappings: config.spaceChannelMappings ?? null,
-				allowedRoleId: config.allowedRoleId ?? null,
-			};
-
 			this.logger.log('Discord bot started (gateway)');
 		} catch (error) {
 			this.logger.error(`Failed to start Discord bot: ${String(error)}`);

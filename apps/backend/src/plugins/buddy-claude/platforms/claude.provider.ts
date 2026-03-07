@@ -52,7 +52,12 @@ export class ClaudeProvider implements ILlmProvider {
 		options?: LlmOptions,
 	): Promise<LlmResponse> {
 		const config = this.getPluginConfig();
-		const apiKey = config?.apiKey ?? '';
+		const apiKey = config?.apiKey;
+
+		if (!apiKey) {
+			throw new Error('Claude API key is not configured');
+		}
+
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
