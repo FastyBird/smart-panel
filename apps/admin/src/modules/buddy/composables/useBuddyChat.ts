@@ -1,9 +1,8 @@
 import { type ComputedRef, type Ref, computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import { sessionStoreKey } from '../../auth/store/keys';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 import type { IConversation, IMessage } from '../buddy.types';
 
@@ -42,7 +41,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
-	const storesManager = injectStoresManager();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
 	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
@@ -374,33 +372,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		currentAbortController = abortController;
 
 		try {
-			const port =
-				import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT;
-			const baseUrl = `${window.location.protocol}//${window.location.hostname}:${port}/api/v1`;
-			const url = `${baseUrl}/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio`;
-
-			const sessionStore = storesManager.getStore(sessionStoreKey);
-			const token = sessionStore.accessToken();
-
-			const headers: Record<string, string> = {};
-
-			if (token) {
-				headers['Authorization'] = `Bearer ${token}`;
-			}
-
-			const response = await fetch(url, { headers, signal: abortController.signal });
+			const { data: blob, error: apiError } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio` as never,
+				{
+					signal: abortController.signal,
+					parseAs: 'blob',
+				} as never,
+			);
 
 			// Discard if a newer request has been started
 			if (requestId !== audioRequestId) return;
 
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`);
+			if (apiError || !blob) {
+				throw new Error('Failed to fetch audio');
 			}
-
-			const blob = await response.blob();
-
-			// Discard if a newer request has been started
-			if (requestId !== audioRequestId) return;
 
 			currentBlobUrl = URL.createObjectURL(blob);
 

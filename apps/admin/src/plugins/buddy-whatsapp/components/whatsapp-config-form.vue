@@ -103,9 +103,10 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
-import { sessionStoreKey } from '../../../modules/auth/store/keys';
+import { useBackend } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { BUDDY_WHATSAPP_PLUGIN_PREFIX } from '../buddy-whatsapp.constants';
 import type { IWhatsappConfigEditForm } from '../schemas/config.types';
 
 import type { IWhatsappConfigFormProps } from './whatsapp-config-form.types';
@@ -140,34 +141,26 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 
 const rules = reactive<FormRules<IWhatsappConfigEditForm>>({});
 
-const storesManager = injectStoresManager();
-const sessionStore = storesManager.getStore(sessionStoreKey);
+const backend = useBackend();
 
 const connectionStatus = ref<string>('disconnected');
 const qrDataUrl = ref<string | null>(null);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-const backendBaseUrl = `${window.location.protocol}//${window.location.hostname}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`;
-
-const authHeaders = (): HeadersInit => {
-	const token = sessionStore.accessToken();
-
-	return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
 const fetchStatus = async (): Promise<void> => {
 	try {
-		const res = await fetch(`${backendBaseUrl}/plugins/buddy-whatsapp/status`, {
-			headers: authHeaders(),
-		});
-		const json = (await res.json()) as { data: { status: string; qr: string | null } };
+		const { data } = await backend.client.GET(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/status` as never);
 
-		connectionStatus.value = json.data.status;
+		const result = data as { data: { status: string; qr: string | null } } | undefined;
 
-		if (json.data.qr) {
-			qrDataUrl.value = await QRCode.toDataURL(json.data.qr, { width: 260, margin: 2 });
-		} else {
-			qrDataUrl.value = null;
+		if (result) {
+			connectionStatus.value = result.data.status;
+
+			if (result.data.qr) {
+				qrDataUrl.value = await QRCode.toDataURL(result.data.qr, { width: 260, margin: 2 });
+			} else {
+				qrDataUrl.value = null;
+			}
 		}
 	} catch {
 		// Ignore fetch errors
@@ -176,10 +169,7 @@ const fetchStatus = async (): Promise<void> => {
 
 const handleLogout = async (): Promise<void> => {
 	try {
-		await fetch(`${backendBaseUrl}/plugins/buddy-whatsapp/logout`, {
-			method: 'POST',
-			headers: authHeaders(),
-		});
+		await backend.client.POST(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/logout` as never);
 
 		startPolling();
 	} catch {

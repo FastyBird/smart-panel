@@ -2,8 +2,7 @@ import { type Ref, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { injectStoresManager } from '../../../common';
-import { sessionStoreKey } from '../../../modules/auth/store/keys';
+import { useBackend } from '../../../common';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 
 export interface IDiscoveredInstance {
@@ -40,20 +39,7 @@ const error = ref<string | null>(null);
 
 export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 	const { t } = useI18n();
-	const storesManager = injectStoresManager();
-	const sessionStore = storesManager.getStore(sessionStoreKey);
-
-	const getAuthHeaders = (): HeadersInit => {
-		const headers: HeadersInit = {
-			'Content-Type': 'application/json',
-		};
-
-		if (sessionStore.tokenPair?.accessToken) {
-			headers['Authorization'] = `Bearer ${sessionStore.tokenPair.accessToken}`;
-		}
-
-		return headers;
-	};
+	const backend = useBackend();
 
 	const parseResponse = (responseData: unknown): void => {
 		if (responseData && typeof responseData === 'object' && 'data' in responseData) {
@@ -79,13 +65,12 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 		error.value = null;
 
 		try {
-			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
-			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`, {
-				headers: getAuthHeaders(),
-			});
-			if (response.ok) {
-				const responseData = await response.json();
-				parseResponse(responseData);
+			const { data, error: apiError } = await backend.client.GET(
+				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery` as never,
+			);
+
+			if (!apiError) {
+				parseResponse(data);
 			} else {
 				error.value = t('devicesHomeAssistantPlugin.messages.discovery.fetchFailed');
 			}
@@ -94,16 +79,6 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 		} finally {
 			isLoading.value = false;
 		}
-	};
-
-	const getAuthHeadersWithoutContentType = (): HeadersInit => {
-		const headers: HeadersInit = {};
-
-		if (sessionStore.tokenPair?.accessToken) {
-			headers['Authorization'] = `Bearer ${sessionStore.tokenPair.accessToken}`;
-		}
-
-		return headers;
 	};
 
 	const refreshInstances = async (): Promise<void> => {
@@ -115,15 +90,12 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 		error.value = null;
 
 		try {
-			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
-			// Note: Don't send Content-Type for POST with no body to avoid validation errors
-			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`, {
-				method: 'POST',
-				headers: getAuthHeadersWithoutContentType(),
-			});
-			if (response.ok) {
-				const responseData = await response.json();
-				parseResponse(responseData);
+			const { data, error: apiError } = await backend.client.POST(
+				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh` as never,
+			);
+
+			if (!apiError) {
+				parseResponse(data);
 			} else {
 				error.value = t('devicesHomeAssistantPlugin.messages.discovery.refreshFailed');
 			}
