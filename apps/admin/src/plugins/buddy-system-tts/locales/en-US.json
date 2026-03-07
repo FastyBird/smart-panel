@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutSettings": "System TTS settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"engine": {
+				"title": "Engine",
+				"placeholder": "piper or espeak (auto-detected if empty)",
+				"description": "TTS engine to use. Leave empty to auto-detect (prefers piper, falls back to espeak)"
+			},
+			"voice": {
+				"title": "Voice",
+				"placeholder": "Voice name or code (optional)",
+				"description": "Piper model name or espeak voice code. Leave empty for the default voice"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "System TTS settings have been updated",
+			"notEdited": "Failed to update system TTS settings"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Configure the local text-to-speech engine. No API key is required. Uses piper (neural TTS) or espeak (basic TTS) installed on the system."
+	}
+}

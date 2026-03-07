@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyOllamaPluginKey, {
 			type: BUDDY_OLLAMA_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-ollama',
-			name: 'Buddy Ollama',
+			name: 'Ollama',
 			description: 'LLM provider plugin for Buddy module using local Ollama inference',
 			links: {
 				documentation: 'https://ollama.com',

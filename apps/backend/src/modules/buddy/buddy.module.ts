@@ -1,17 +1,17 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { IntentsModule } from '../intents/intents.module';
 import { ScenesModule } from '../scenes/scenes.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
@@ -40,7 +40,13 @@ import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
+import { SttProviderRegistryService } from './services/stt-provider-registry.service';
+import { SttProviderStatusService } from './services/stt-provider-status.service';
+import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
+import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
+import { TtsProviderStatusService } from './services/tts-provider-status.service';
+import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
 @ApiTag({
@@ -51,12 +57,12 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([BuddyConversationEntity, BuddyMessageEntity]),
-		ConfigModule,
 		SwaggerModule,
-		ExtensionsModule,
-		forwardRef(() => SpacesModule),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => ScenesModule),
+		SpacesModule,
+		DevicesModule,
+		ScenesModule,
+		IntentsModule,
+		ToolsModule,
 		WeatherModule,
 		EnergyModule,
 	],
@@ -79,6 +85,12 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderRegistryService,
+		SttProviderStatusService,
+		SttProviderService,
+		TtsProviderRegistryService,
+		TtsProviderStatusService,
+		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
 	],
@@ -95,6 +107,8 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderRegistryService,
+		TtsProviderRegistryService,
 		OAuthCallbackService,
 		OAuthFlowService,
 	],
@@ -142,18 +156,16 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 - **Action Observer** - Tracks completed intents to build a history of user actions
 - **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
 - **Text Chat** - Conversational interface powered by pluggable LLM providers
+- **Voice Interface** - Optional STT/TTS for hands-free interaction via pluggable providers
+- **Tool Execution** - LLM can control devices, run scenes, and set lighting modes via extensible tool providers
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
-## LLM Provider Plugins
+## Plugins
 
-Chat functionality is powered by separate provider plugins:
+All LLM, TTS, and STT functionality is provided by separate plugins that register themselves with the buddy module. Install and enable the desired plugins, then set the buddy module \`provider\`, \`tts_plugin\`, and \`stt_plugin\` configs to the corresponding plugin type.
 
-- **buddy-openai-plugin** - OpenAI API (GPT models)
-- **buddy-claude-plugin** - Anthropic Claude API
-- **buddy-ollama-plugin** - Local LLM inference via Ollama
-
-Install and enable the desired provider plugin, then set the buddy module \`provider\` config to the plugin type.`,
+Each plugin declares its capabilities (LLM, TTS, STT) when registering, and the buddy module discovers them dynamically.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

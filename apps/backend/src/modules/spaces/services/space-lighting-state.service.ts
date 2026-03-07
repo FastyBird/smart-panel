@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { hsvToHex } from '../../../common/utils/color.utils';
@@ -134,7 +134,6 @@ export class SpaceLightingStateService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
-		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {}

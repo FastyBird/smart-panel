@@ -14,11 +14,15 @@ export const useModules = (): IUseModules => {
 	const modules = computed<IModule<IModulesComponents, IModulesSchemas>[]>((): IModule<IModulesComponents, IModulesSchemas>[] => {
 		const modules = modulesManager.getModules();
 
-		return modules.filter((module) => module.modules?.includes(CONFIG_MODULE_NAME));
+		return orderBy(
+			modules.filter((module) => module.modules?.includes(CONFIG_MODULE_NAME)),
+			[(module) => module.name],
+			['asc'],
+		);
 	});
 
 	const options = computed<{ value: IModule['type']; label: IModule['name'] }[]>((): { value: IModule['type']; label: IModule['name'] }[] => {
-		return orderBy<IModule>(modules.value, [(module) => module.name], ['asc']).map((module) => ({
+		return modules.value.map((module) => ({
 			value: module.type,
 			label: module.name,
 		}));

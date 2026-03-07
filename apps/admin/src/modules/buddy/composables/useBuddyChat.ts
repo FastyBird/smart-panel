@@ -1,12 +1,14 @@
-import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend } from '../../../common';
+import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { sessionStoreKey } from '../../auth/store/keys';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 import type { IConversation, IMessage } from '../buddy.types';
 
 import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
+import { useBuddyTtsProviders } from './useBuddyTtsProviders';
 
 interface IUseBuddyChat {
 	conversations: Ref<IConversation[]>;
@@ -17,22 +19,30 @@ interface IUseBuddyChat {
 	isLoadingConversations: Ref<boolean>;
 	isLoadingMessages: Ref<boolean>;
 	isSending: Ref<boolean>;
-	error: Ref<string | null>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
 	selectedProviderStatus: ComputedRef<IProviderStatus | undefined>;
+	isTtsConfigured: ComputedRef<boolean>;
+	playingMessageId: Ref<string | null>;
+	audioLoading: Ref<boolean>;
 	fetchConversations: () => Promise<void>;
 	fetchProviderStatuses: () => Promise<void>;
+	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
 	deleteConversation: (id: string) => Promise<void>;
+	playMessageAudio: (messageId: string) => Promise<void>;
+	stopAudio: () => void;
 }
 
 export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
+	const flashMessage = useFlashMessage();
+	const storesManager = injectStoresManager();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
+	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
 	const conversations = ref<IConversation[]>([]);
 	const activeConversationId = ref<string | null>(null);
@@ -41,7 +51,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const isSending = ref<boolean>(false);
-	const error = ref<string | null>(null);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
 		return providerStatuses.value.find((p) => p.selected);
@@ -91,7 +100,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
-		error.value = null;
 
 		try {
 			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never);
@@ -100,7 +108,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return;
@@ -112,15 +120,13 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				conversations.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
 		} finally {
 			isLoadingConversations.value = false;
 		}
 	};
 
 	const createConversation = async (title?: string): Promise<IConversation | undefined> => {
-		error.value = null;
-
 		try {
 			const response = await backend.client.POST(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never, {
 				body: { data: { title: title ?? null } },
@@ -130,7 +136,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return undefined;
@@ -146,7 +152,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation'));
 		}
 
 		return undefined;
@@ -169,7 +175,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return;
@@ -181,7 +187,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
 		} finally {
 			isLoadingMessages.value = false;
 		}
@@ -189,7 +195,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const selectConversation = async (id: string): Promise<void> => {
 		activeConversationId.value = id;
-		error.value = null;
 
 		await fetchMessages(id);
 	};
@@ -213,7 +218,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 		messages.value.push(userMessage);
 		isSending.value = true;
-		error.value = null;
 
 		await nextTick();
 
@@ -234,7 +238,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				// Remove optimistic message on error
 				messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-				error.value = apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message;
+				flashMessage.error(
+					apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message
+				);
 
 				return;
 			}
@@ -256,15 +262,13 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			// Remove optimistic message on error
 			messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.sendMessage');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.sendMessage'));
 		} finally {
 			isSending.value = false;
 		}
 	};
 
 	const deleteConversation = async (id: string): Promise<void> => {
-		error.value = null;
-
 		try {
 			const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}` as never, {
 				params: {
@@ -275,7 +279,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				error.value = apiError.message;
+				flashMessage.error(apiError.message);
 
 				return;
 			}
@@ -299,9 +303,122 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				}
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation'));
 		}
 	};
+
+	// ============================================
+	// TTS / AUDIO PLAYBACK
+	// ============================================
+
+	const isTtsConfigured = computed<boolean>(() => {
+		if (!ttsProviderStatusesFetched.value) return false;
+
+		return ttsProviderStatuses.value.some((p) => p.selected && p.configured);
+	});
+
+	const playingMessageId = ref<string | null>(null);
+	const audioLoading = ref<boolean>(false);
+	let currentAudio: HTMLAudioElement | null = null;
+	let currentBlobUrl: string | null = null;
+
+	const stopAudio = (): void => {
+		if (currentAudio) {
+			currentAudio.onended = null;
+			currentAudio.onerror = null;
+			currentAudio.pause();
+			currentAudio = null;
+		}
+
+		if (currentBlobUrl) {
+			URL.revokeObjectURL(currentBlobUrl);
+			currentBlobUrl = null;
+		}
+
+		playingMessageId.value = null;
+		audioLoading.value = false;
+	};
+
+	let currentAbortController: AbortController | null = null;
+	let audioRequestId = 0;
+
+	const playMessageAudio = async (messageId: string): Promise<void> => {
+		stopAudio();
+
+		// Abort any in-flight fetch from a previous playMessageAudio call
+		if (currentAbortController) {
+			currentAbortController.abort();
+			currentAbortController = null;
+		}
+
+		const conversationId = activeConversationId.value;
+
+		if (!conversationId) return;
+
+		audioLoading.value = true;
+		playingMessageId.value = messageId;
+
+		const requestId = ++audioRequestId;
+		const abortController = new AbortController();
+		currentAbortController = abortController;
+
+		try {
+			const port =
+				import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT;
+			const baseUrl = `${window.location.protocol}//${window.location.hostname}:${port}/api/v1`;
+			const url = `${baseUrl}/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio`;
+
+			const sessionStore = storesManager.getStore(sessionStoreKey);
+			const token = sessionStore.accessToken();
+
+			const headers: Record<string, string> = {};
+
+			if (token) {
+				headers['Authorization'] = `Bearer ${token}`;
+			}
+
+			const response = await fetch(url, { headers, signal: abortController.signal });
+
+			// Discard if a newer request has been started
+			if (requestId !== audioRequestId) return;
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
+			const blob = await response.blob();
+
+			// Discard if a newer request has been started
+			if (requestId !== audioRequestId) return;
+
+			currentBlobUrl = URL.createObjectURL(blob);
+
+			currentAudio = new Audio(currentBlobUrl);
+
+			currentAudio.onended = () => stopAudio();
+			currentAudio.onerror = () => {
+				flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
+				stopAudio();
+			};
+
+			audioLoading.value = false;
+			currentAbortController = null;
+
+			await currentAudio.play();
+		} catch (err) {
+			// Swallow abort errors — they're expected when switching tracks
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+
+			if (requestId === audioRequestId) {
+				flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
+				stopAudio();
+			}
+		}
+	};
+
+	onBeforeUnmount(() => {
+		stopAudio();
+	});
 
 	return {
 		conversations,
@@ -312,15 +429,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingConversations,
 		isLoadingMessages,
 		isSending,
-		error,
 		isProviderNotConfigured,
 		providerStatuses,
 		selectedProviderStatus,
+		isTtsConfigured,
+		playingMessageId,
+		audioLoading,
 		fetchConversations,
 		fetchProviderStatuses,
+		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
 		sendMessage,
 		deleteConversation,
+		playMessageAudio,
+		stopAudio,
 	};
 };

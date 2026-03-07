@@ -36,7 +36,7 @@ export async function sendOpenAiMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.chat.completions.create({
 		model,
-		max_tokens: maxTokens,
+		max_completion_tokens: maxTokens,
 		messages: [
 			{ role: 'system' as const, content: systemPrompt },
 			...messages.map((m) => ({

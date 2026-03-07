@@ -678,6 +678,53 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Údržba';
 
   @override
+  String get settings_general_settings_button_voice_activation => 'Hlasová aktivace';
+
+  @override
+  String get settings_voice_activation_settings_title => 'Nastavení hlasové aktivace';
+
+  @override
+  String get settings_voice_activation_section_detection => 'Detekce hlasové aktivace';
+
+  @override
+  String get settings_voice_activation_enable_label => 'Povolit hlasovou aktivaci';
+
+  @override
+  String settings_voice_activation_enable_description(String wakeWord) {
+    return 'Řekněte \"$wakeWord\" pro aktivaci hlasových příkazů bez dotyku panelu.';
+  }
+
+  @override
+  String get settings_voice_activation_microphone_unavailable => 'Mikrofon není na tomto displeji dostupný nebo je vypnutý.';
+
+  @override
+  String get settings_voice_activation_section_sensitivity => 'Citlivost';
+
+  @override
+  String get settings_voice_activation_sensitivity_label => 'Citlivost detekce';
+
+  @override
+  String get settings_voice_activation_sensitivity_description => 'Vyšší citlivost detekuje tišší řeč, ale může reagovat na okolní hluk.';
+
+  @override
+  String get settings_voice_activation_section_status => 'Stav';
+
+  @override
+  String get settings_voice_activation_status_label => 'Stav enginu';
+
+  @override
+  String get settings_voice_activation_status_stopped => 'Zastaveno';
+
+  @override
+  String get settings_voice_activation_status_listening => 'Naslouchání hlasové aktivaci...';
+
+  @override
+  String get settings_voice_activation_status_recording => 'Nahrávání řeči...';
+
+  @override
+  String get settings_voice_activation_status_processing => 'Zpracování zvuku...';
+
+  @override
   String get settings_weather_settings_title => 'Nastavení počasí';
 
   @override
@@ -3775,6 +3822,42 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get buddy_error_generic => 'Něco se pokazilo. Zkuste to prosím znovu.';
+
+  @override
+  String get buddy_hint_recording => 'Nahrávání zvuku...';
+
+  @override
+  String buddy_recording_progress(int seconds, int maxSeconds) {
+    return 'Nahrávání... ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_recording_cancel => 'Zrušit';
+
+  @override
+  String get buddy_recording_too_short => 'Nahrávka je příliš krátká. Podržte déle.';
+
+  @override
+  String get buddy_recording_permission_error => 'Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.';
+
+  @override
+  String get buddy_voice_listening => 'Naslouchám...';
+
+  @override
+  String buddy_voice_recording_timer(int seconds, int maxSeconds) {
+    return '${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String buddy_voice_recording_progress(int seconds, int maxSeconds) {
+    return 'Nahrávání ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_voice_processing => 'Zpracovávám...';
+
+  @override
+  String get buddy_voice_transcribing => 'Přepisuji zvuk...';
 
   @override
   String get security_events_error_unexpected_response => 'Neočekávaná odpověď';

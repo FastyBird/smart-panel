@@ -1,12 +1,13 @@
 import { useContainer } from 'class-validator';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
+import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
-import { API_PREFIX } from './app.constants';
+import { API_PREFIX, MODULES_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
@@ -46,6 +47,28 @@ async function bootstrap() {
 	});
 
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
+
+	// Raise the body-size limit for multipart/form-data routes (audio uploads)
+	// while keeping Fastify's default 1 MiB for JSON endpoints.
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+
+	fastifyInstance.addHook(
+		'onRoute',
+		(routeOptions: { url?: string; path?: string; bodyLimit?: number; method?: string | string[] }) => {
+			// Only raise the limit for routes that explicitly consume multipart
+			const path = routeOptions.url ?? routeOptions.path ?? '';
+
+			if (path === `/api/v1/${MODULES_PREFIX}/buddy/conversations/:id/audio`) {
+				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
+			}
+		},
+	);
+
+	// Register multipart support for file uploads — this adds the content-type
+	// parser that sets req[kMultipart] = true, which req.file() relies on.
+	await app.register(fastifyMultipart, {
+		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
+	});
 
 	const sysLogger = app.get(SystemLoggerService);
 
@@ -101,7 +124,6 @@ async function bootstrap() {
 	swaggerService.setup(app);
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
-	const fastifyInstance = app.getHttpAdapter().getInstance();
 	const oauthCallbackService = app.get(OAuthCallbackService);
 
 	const oauthCallbackHandler = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {

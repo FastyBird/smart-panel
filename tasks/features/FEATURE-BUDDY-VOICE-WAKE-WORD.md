@@ -5,7 +5,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -39,13 +39,13 @@ I want to say a wake word (e.g., "Hey panel") and have the buddy start listening
 
 ## 4. Acceptance criteria
 
-- [ ] Wake word engine runs in background on panel device
-- [ ] Detection triggers: screen wake (if dimmed) + recording start + visual indicator
-- [ ] After wake word: records audio until silence detected (VAD) or timeout (10s)
-- [ ] Recorded audio sent through existing STT → conversation pipeline
-- [ ] Wake word detection is toggleable in panel settings
-- [ ] CPU usage of wake word engine < 5% average
-- [ ] False positive rate < 1 per hour in quiet room
+- [x] Wake word engine runs in background on panel device
+- [x] Detection triggers: screen wake (if dimmed) + recording start + visual indicator
+- [x] After wake word: records audio until silence detected (VAD) or timeout (10s)
+- [x] Recorded audio sent through existing STT → conversation pipeline
+- [x] Wake word detection is toggleable in panel settings
+- [x] CPU usage of wake word engine < 5% average
+- [x] False positive rate < 1 per hour in quiet room
 
 ## 5. Example scenarios
 

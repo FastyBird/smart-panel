@@ -1,4 +1,7 @@
+import { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
+
+export type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 
 export interface ChatMessage {
 	role: MessageRole.USER | MessageRole.ASSISTANT;
@@ -9,6 +12,7 @@ export interface LlmOptions {
 	timeout?: number;
 	model?: string;
 	maxTokens?: number;
+	tools?: ToolDefinition[];
 }
 
 /**
@@ -28,9 +32,11 @@ export interface LlmResponseMeta {
 
 /**
  * Structured response from an LLM provider, containing the message content and metadata.
+ * When the LLM decides to call tools, `toolCalls` will be populated and `content` may be empty.
  */
 export interface LlmResponse {
 	content: string;
+	toolCalls?: LlmToolCall[];
 	meta: LlmResponseMeta;
 }
 
@@ -72,8 +78,14 @@ export interface ILlmProvider {
 	 * @param systemPrompt The system prompt for the conversation
 	 * @param messages The conversation history
 	 * @param model The model to use
-	 * @param options Additional options (timeout, etc.)
+	 * @param options Additional options (timeout, tools, etc.)
 	 * @returns The assistant's response content and metadata
 	 */
 	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<LlmResponse>;
+
+	/**
+	 * Whether this provider supports tool use (function calling).
+	 * Providers that don't support tools will gracefully degrade to text-only responses.
+	 */
+	supportsTools?(): boolean;
 }

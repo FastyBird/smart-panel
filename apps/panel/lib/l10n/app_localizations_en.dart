@@ -667,6 +667,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Maintenance';
 
   @override
+  String get settings_general_settings_button_voice_activation => 'Voice Activation';
+
+  @override
+  String get settings_voice_activation_settings_title => 'Voice activation settings';
+
+  @override
+  String get settings_voice_activation_section_detection => 'Voice Activation Detection';
+
+  @override
+  String get settings_voice_activation_enable_label => 'Enable Voice Activation';
+
+  @override
+  String settings_voice_activation_enable_description(String wakeWord) {
+    return 'Say \"$wakeWord\" to activate voice commands without touching the panel.';
+  }
+
+  @override
+  String get settings_voice_activation_microphone_unavailable => 'Microphone is not available or disabled on this display.';
+
+  @override
+  String get settings_voice_activation_section_sensitivity => 'Sensitivity';
+
+  @override
+  String get settings_voice_activation_sensitivity_label => 'Detection Sensitivity';
+
+  @override
+  String get settings_voice_activation_sensitivity_description => 'Higher sensitivity detects quieter speech but may trigger on background noise.';
+
+  @override
+  String get settings_voice_activation_section_status => 'Status';
+
+  @override
+  String get settings_voice_activation_status_label => 'Engine Status';
+
+  @override
+  String get settings_voice_activation_status_stopped => 'Stopped';
+
+  @override
+  String get settings_voice_activation_status_listening => 'Listening for voice activation...';
+
+  @override
+  String get settings_voice_activation_status_recording => 'Recording speech...';
+
+  @override
+  String get settings_voice_activation_status_processing => 'Processing audio...';
+
+  @override
   String get settings_weather_settings_title => 'Weather Settings';
 
   @override
@@ -3754,6 +3801,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get buddy_error_generic => 'Something went wrong. Please try again.';
+
+  @override
+  String get buddy_hint_recording => 'Recording audio...';
+
+  @override
+  String buddy_recording_progress(int seconds, int maxSeconds) {
+    return 'Recording... ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_recording_cancel => 'Cancel';
+
+  @override
+  String get buddy_recording_too_short => 'Recording too short. Hold longer to record.';
+
+  @override
+  String get buddy_recording_permission_error => 'Could not start recording. Check microphone permissions.';
+
+  @override
+  String get buddy_voice_listening => 'Listening...';
+
+  @override
+  String buddy_voice_recording_timer(int seconds, int maxSeconds) {
+    return '${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String buddy_voice_recording_progress(int seconds, int maxSeconds) {
+    return 'Recording ${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
+  String get buddy_voice_processing => 'Processing...';
+
+  @override
+  String get buddy_voice_transcribing => 'Transcribing audio...';
 
   @override
   String get security_events_error_unexpected_response => 'Unexpected response';

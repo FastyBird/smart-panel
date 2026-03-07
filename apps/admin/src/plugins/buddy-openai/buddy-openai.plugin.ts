@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyOpenaiPluginKey, {
 			type: BUDDY_OPENAI_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-openai',
-			name: 'Buddy OpenAI',
+			name: 'OpenAI',
 			description: 'LLM provider plugin for Buddy module using OpenAI API (GPT models)',
 			links: {
 				documentation: 'https://platform.openai.com/docs',

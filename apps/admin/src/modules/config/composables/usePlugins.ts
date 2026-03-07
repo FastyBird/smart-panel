@@ -14,11 +14,15 @@ export const usePlugins = (): IUsePlugins => {
 	const plugins = computed<IPlugin<IPluginsComponents, IPluginsSchemas>[]>((): IPlugin<IPluginsComponents, IPluginsSchemas>[] => {
 		const plugins = pluginsManager.getPlugins();
 
-		return plugins.filter((plugin) => plugin.modules?.includes(CONFIG_MODULE_NAME));
+		return orderBy(
+			plugins.filter((plugin) => plugin.modules?.includes(CONFIG_MODULE_NAME)),
+			[(plugin) => plugin.name],
+			['asc'],
+		);
 	});
 
 	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>((): { value: IPlugin['type']; label: IPlugin['name'] }[] => {
-		return orderBy<IPlugin>(plugins.value, [(plugin) => plugin.name], ['asc']).map((plugin) => ({
+		return plugins.value.map((plugin) => ({
 			value: plugin.type,
 			label: plugin.name,
 		}));

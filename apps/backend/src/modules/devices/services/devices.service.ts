@@ -4,7 +4,7 @@ import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -35,7 +35,6 @@ export class DevicesService {
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
 		private readonly devicesControlsService: DevicesControlsService,
-		@Inject(forwardRef(() => DeviceZonesService))
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,

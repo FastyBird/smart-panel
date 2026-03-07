@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "ElevenLabs API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your ElevenLabs API key",
+				"description": "Get your API key from elevenlabs.io/app/settings/api-keys"
+			},
+			"voiceId": {
+				"title": "Voice ID",
+				"placeholder": "e.g., 21m00Tcm4TlvDq8ikWAM",
+				"description": "The ElevenLabs voice ID to use for speech synthesis"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "ElevenLabs settings have been updated",
+			"notEdited": "Failed to update ElevenLabs settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your ElevenLabs API settings. You need a valid API key and voice ID to use ElevenLabs as the buddy TTS provider."
+	}
+}

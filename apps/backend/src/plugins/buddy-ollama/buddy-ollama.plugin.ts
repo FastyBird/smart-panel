@@ -54,7 +54,7 @@ export class BuddyOllamaPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_OLLAMA_PLUGIN_NAME,
-			name: 'Buddy Ollama',
+			name: 'Ollama',
 			description: 'LLM provider for Buddy module using local Ollama inference',
 			author: 'FastyBird',
 			readme: `# Buddy Ollama Provider

@@ -100,11 +100,14 @@
 					:is-loading-messages="isLoadingMessages"
 					:has-active-conversation="hasActiveConversation"
 					:is-provider-not-configured="isProviderNotConfigured"
-					:error="error"
 					:selected-provider="selectedProviderStatus"
 					:provider-statuses="providerStatuses"
+					:is-tts-configured="isTtsConfigured"
+					:playing-message-id="playingMessageId"
+					:audio-loading="audioLoading"
 					@send="sendMessage"
-					@dismiss-error="error = null"
+					@play-audio="playMessageAudio"
+					@stop-audio="stopAudio"
 				/>
 			</el-card>
 		</div>
@@ -201,16 +204,21 @@ const {
 	isLoadingConversations,
 	isLoadingMessages,
 	isSending,
-	error,
 	isProviderNotConfigured,
 	providerStatuses,
 	selectedProviderStatus,
+	isTtsConfigured,
+	playingMessageId,
+	audioLoading,
 	fetchConversations,
 	fetchProviderStatuses,
+	fetchTtsProviderStatuses,
 	createConversation,
 	selectConversation,
 	sendMessage,
 	deleteConversation,
+	playMessageAudio,
+	stopAudio,
 } = useBuddyChat();
 
 const activeConversationTitle = computed(() => {
@@ -238,7 +246,7 @@ const onCreateConversation = async (): Promise<void> => {
 };
 
 const loadChatData = async (): Promise<void> => {
-	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchConversations()]);
+	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchTtsProviderStatuses(), fetchConversations()]);
 
 	const first = conversations.value[0];
 

@@ -1,10 +1,8 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
@@ -13,7 +11,8 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SceneActionsController } from './controllers/scene-actions.controller';
@@ -28,6 +27,7 @@ import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
 import { SceneExecutorService } from './services/scene-executor.service';
+import { SceneToolService } from './services/scene-tool.service';
 import { ScenesSeederService } from './services/scenes-seeder.service';
 import { ScenesService } from './services/scenes.service';
 import { SceneExistsConstraintValidator } from './validators/scene-exists-constraint.validator';
@@ -40,12 +40,10 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity]),
-		ConfigModule,
-		ExtensionsModule,
-		forwardRef(() => SystemModule),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => SpacesModule),
-		forwardRef(() => IntentsModule),
+		DevicesModule,
+		SpacesModule,
+		IntentsModule,
+		ToolsModule,
 		WebsocketModule,
 		SeedModule,
 	],
@@ -66,6 +64,8 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		SceneExistsConstraintValidator,
 		// Seeder
 		ScenesSeederService,
+		// Tool provider
+		SceneToolService,
 	],
 	exports: [
 		ScenesService,
@@ -85,9 +85,13 @@ export class ScenesModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly sceneTool: SceneToolService,
 	) {}
 
 	onModuleInit(): void {
+		// Register scene tool provider
+		this.toolProviderRegistry.register(this.sceneTool);
 		// Register seeder (priority 150 - after spaces, before dashboard)
 		this.seedRegistry.register(
 			SCENES_MODULE_NAME,

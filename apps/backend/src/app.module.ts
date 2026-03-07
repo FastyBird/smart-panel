@@ -26,10 +26,13 @@ import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
 import { ENERGY_MODULE_PREFIX } from './modules/energy/energy.constants';
 import { EnergyModule } from './modules/energy/energy.module';
+import { ExtensionRegistryModule } from './modules/extension-registry/extension-registry.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
+import { FactoryResetModule } from './modules/factory-reset/factory-reset.module';
 import { IntentsModule } from './modules/intents/intents.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
+import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
 import { ScenesModule } from './modules/scenes/scenes.module';
@@ -48,16 +51,24 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
-import { BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from './plugins/buddy-claude-oauth/buddy-claude-oauth.constants';
-import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth/buddy-claude-oauth.plugin';
+import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_PREFIX } from './plugins/buddy-claude-setup-token/buddy-claude-setup-token.constants';
+import { BuddyClaudeSetupTokenPlugin } from './plugins/buddy-claude-setup-token/buddy-claude-setup-token.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
+import { BUDDY_ELEVENLABS_PLUGIN_PREFIX } from './plugins/buddy-elevenlabs/buddy-elevenlabs.constants';
+import { BuddyElevenlabsPlugin } from './plugins/buddy-elevenlabs/buddy-elevenlabs.plugin';
 import { BUDDY_OLLAMA_PLUGIN_PREFIX } from './plugins/buddy-ollama/buddy-ollama.constants';
 import { BuddyOllamaPlugin } from './plugins/buddy-ollama/buddy-ollama.plugin';
 import { BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from './plugins/buddy-openai-codex/buddy-openai-codex.constants';
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex/buddy-openai-codex.plugin';
 import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
+import { BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.constants';
+import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.plugin';
+import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy-system-tts.constants';
+import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
+import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
+import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai/buddy-voiceai.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -282,13 +293,32 @@ export class AppModule {
 								module: BuddyOpenaiCodexPlugin,
 							},
 							{
-								path: BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX,
-								module: BuddyClaudeOauthPlugin,
+								path: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_PREFIX,
+								module: BuddyClaudeSetupTokenPlugin,
+							},
+							{
+								path: BUDDY_ELEVENLABS_PLUGIN_PREFIX,
+								module: BuddyElevenlabsPlugin,
+							},
+							{
+								path: BUDDY_VOICEAI_PLUGIN_PREFIX,
+								module: BuddyVoiceaiPlugin,
+							},
+							{
+								path: BUDDY_SYSTEM_TTS_PLUGIN_PREFIX,
+								module: BuddySystemTtsPlugin,
+							},
+							{
+								path: BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX,
+								module: BuddySttWhisperLocalPlugin,
 							},
 							...pluginRoutes,
 						],
 					},
 				]),
+				ModuleRegistryModule,
+				ExtensionRegistryModule,
+				FactoryResetModule,
 				AuthModule,
 				ApiModule,
 				ConfigModule,
@@ -333,8 +363,12 @@ export class AppModule {
 				BuddyOpenaiPlugin,
 				BuddyOpenaiCodexPlugin,
 				BuddyClaudePlugin,
-				BuddyClaudeOauthPlugin,
+				BuddyClaudeSetupTokenPlugin,
+				BuddyElevenlabsPlugin,
 				BuddyOllamaPlugin,
+				BuddyVoiceaiPlugin,
+				BuddySystemTtsPlugin,
+				BuddySttWhisperLocalPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

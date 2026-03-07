@@ -96,7 +96,7 @@
 			>
 				<div ref="messagesContainerRef">
 					<el-empty
-						v-if="messages.length === 0 && !isLoadingMessages && !error"
+						v-if="messages.length === 0 && !isLoadingMessages"
 						:description="t('buddyModule.texts.startConversation')"
 					/>
 
@@ -104,6 +104,11 @@
 						v-for="message in messages"
 						:key="message.id"
 						:message="message"
+						:show-speaker="isTtsConfigured && message.role === 'assistant'"
+						:is-playing="playingMessageId === message.id && !audioLoading"
+						:is-loading-audio="playingMessageId === message.id && audioLoading"
+						@play="emit('play-audio', $event)"
+						@stop="emit('stop-audio')"
 					/>
 
 					<div
@@ -120,15 +125,6 @@
 						</div>
 					</div>
 
-					<el-alert
-						v-if="error"
-						type="error"
-						:title="error"
-						show-icon
-						closable
-						class="mt-2"
-						@close="emit('dismiss-error')"
-					/>
 				</div>
 			</el-scrollbar>
 
@@ -161,7 +157,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElEmpty, ElIcon, ElInput, ElResult, ElScrollbar, ElTag } from 'element-plus';
+import { ElButton, ElEmpty, ElIcon, ElInput, ElResult, ElScrollbar, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -179,14 +175,17 @@ const props = defineProps<{
 	isLoadingMessages: boolean;
 	hasActiveConversation: boolean;
 	isProviderNotConfigured: boolean;
-	error: string | null;
 	selectedProvider?: IProviderStatus;
 	providerStatuses: IProviderStatus[];
+	isTtsConfigured?: boolean;
+	playingMessageId?: string | null;
+	audioLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
 	(e: 'send', content: string): void;
-	(e: 'dismiss-error'): void;
+	(e: 'play-audio', messageId: string): void;
+	(e: 'stop-audio'): void;
 }>();
 
 const { t } = useI18n();
@@ -235,12 +234,4 @@ watch(
 	}
 );
 
-watch(
-	() => props.error,
-	(val: string | null) => {
-		if (val) {
-			scrollToBottom();
-		}
-	}
-);
 </script>

@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import WebSocket from 'ws';
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -89,7 +89,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 
 	constructor(
 		private readonly configService: ConfigService,
-		@Inject(forwardRef(() => HomeAssistantHttpService))
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 	) {}
 

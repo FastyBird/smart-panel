@@ -1,8 +1,4 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-call,
-@typescript-eslint/no-unsafe-assignment
-*/
-/*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */

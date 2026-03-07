@@ -15,6 +15,10 @@ export enum RouteNames {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export const TTS_PLUGIN_NONE = 'none';
+
+export const STT_PLUGIN_NONE = 'none';
+
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.
@@ -25,4 +29,5 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['claude', 'buddy-claude-plugin'],
 	['openai', 'buddy-openai-plugin'],
 	['ollama', 'buddy-ollama-plugin'],
+	['buddy-claude-oauth-plugin', 'buddy-claude-setup-token-plugin'],
 ]);

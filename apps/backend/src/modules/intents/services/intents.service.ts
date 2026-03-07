@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -24,7 +24,6 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 	constructor(
 		private readonly eventEmitter: EventEmitter2,
-		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {}
 

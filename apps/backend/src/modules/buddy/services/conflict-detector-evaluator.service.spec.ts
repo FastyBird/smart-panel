@@ -136,6 +136,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 24 },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -143,6 +144,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -170,6 +172,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 22 },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -177,6 +180,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -196,6 +200,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': false, 'heater.status': false, 'thermostat.temperature': 22 },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -203,6 +208,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -222,6 +228,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.HEATING_UNIT,
 						state: { 'heater.on': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -229,6 +236,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -252,6 +260,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -259,6 +268,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -278,6 +288,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 25 },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -285,6 +296,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -303,6 +315,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'heater.on': true, 'heater.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -310,6 +323,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -336,6 +350,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.AIR_CONDITIONER,
 						state: { 'cooler.on': true, 'cooler.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -343,6 +358,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -367,6 +383,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.AIR_CONDITIONER,
 						state: { 'cooler.on': true, 'cooler.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -374,6 +391,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -393,6 +411,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.AIR_CONDITIONER,
 						state: { 'cooler.on': false, 'cooler.status': false },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -400,6 +419,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -419,6 +439,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.AIR_CONDITIONER,
 						state: { 'cooler.on': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -426,6 +447,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -451,6 +473,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -458,6 +481,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -477,6 +501,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -484,6 +509,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -516,6 +542,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -523,6 +550,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -549,6 +577,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -556,6 +585,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -575,6 +605,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -582,6 +613,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -594,6 +626,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -601,6 +634,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': true },
+						channels: [],
 					},
 				],
 			});
@@ -627,6 +661,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -634,6 +669,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -646,6 +682,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': false },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -653,6 +690,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -674,6 +712,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': false },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -681,6 +720,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -698,6 +738,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 				],
 			});
@@ -717,6 +758,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -724,6 +766,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -745,6 +788,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -752,6 +796,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -783,6 +828,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -790,6 +836,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -817,6 +864,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 24 },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -824,6 +872,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 					{
 						id: 'light-1',
@@ -831,6 +880,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 					{
 						id: 'occupancy-1',
@@ -838,6 +888,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'occupancy.detected': false },
+						channels: [],
 					},
 				],
 			});
@@ -866,6 +917,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'heater.on': true, 'heater.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-1',
@@ -873,6 +925,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 					{
 						id: 'ac-1',
@@ -880,6 +933,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.AIR_CONDITIONER,
 						state: { 'cooler.on': true, 'cooler.status': true },
+						channels: [],
 					},
 					{
 						id: 'contact-2',
@@ -887,6 +941,7 @@ describe('ConflictDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.SENSOR,
 						state: { 'contact.detected': true },
+						channels: [],
 					},
 				],
 			});

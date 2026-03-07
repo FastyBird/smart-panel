@@ -1211,6 +1211,96 @@ abstract class AppLocalizations {
   /// **'Maintenance'**
   String get settings_general_settings_button_maintenance;
 
+  /// Button label for navigating to Voice Activation settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Activation'**
+  String get settings_general_settings_button_voice_activation;
+
+  /// Subtitle for the Voice Activation settings tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice activation settings'**
+  String get settings_voice_activation_settings_title;
+
+  /// Section title for voice activation detection toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Activation Detection'**
+  String get settings_voice_activation_section_detection;
+
+  /// Label for the voice activation enable toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Voice Activation'**
+  String get settings_voice_activation_enable_label;
+
+  /// Description for the voice activation enable toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Say \"{wakeWord}\" to activate voice commands without touching the panel.'**
+  String settings_voice_activation_enable_description(String wakeWord);
+
+  /// Description shown when the display does not support audio input or the microphone is disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone is not available or disabled on this display.'**
+  String get settings_voice_activation_microphone_unavailable;
+
+  /// Section title for voice activation sensitivity settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitivity'**
+  String get settings_voice_activation_section_sensitivity;
+
+  /// Label for the detection sensitivity slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Detection Sensitivity'**
+  String get settings_voice_activation_sensitivity_label;
+
+  /// Description for the detection sensitivity slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher sensitivity detects quieter speech but may trigger on background noise.'**
+  String get settings_voice_activation_sensitivity_description;
+
+  /// Section title for voice activation engine status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get settings_voice_activation_section_status;
+
+  /// Label for the engine status indicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine Status'**
+  String get settings_voice_activation_status_label;
+
+  /// Status text when voice activation is stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get settings_voice_activation_status_stopped;
+
+  /// Status text when listening for voice activation wake word.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for voice activation...'**
+  String get settings_voice_activation_status_listening;
+
+  /// Status text when recording speech after wake word detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording speech...'**
+  String get settings_voice_activation_status_recording;
+
+  /// Status text when processing recorded audio.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing audio...'**
+  String get settings_voice_activation_status_processing;
+
   /// Title for the Weather Settings section.
   ///
   /// In en, this message translates to:
@@ -7048,6 +7138,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get buddy_error_generic;
+
+  /// Input hint shown while recording audio
+  ///
+  /// In en, this message translates to:
+  /// **'Recording audio...'**
+  String get buddy_hint_recording;
+
+  /// Recording progress indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Recording... {seconds}s / {maxSeconds}s'**
+  String buddy_recording_progress(int seconds, int maxSeconds);
+
+  /// Cancel recording button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get buddy_recording_cancel;
+
+  /// Snackbar when recording is too short
+  ///
+  /// In en, this message translates to:
+  /// **'Recording too short. Hold longer to record.'**
+  String get buddy_recording_too_short;
+
+  /// Snackbar when microphone permission denied
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start recording. Check microphone permissions.'**
+  String get buddy_recording_permission_error;
+
+  /// Label shown in voice input overlay while recording
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get buddy_voice_listening;
+
+  /// Recording timer shown in voice input overlay (seconds elapsed / max seconds)
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s / {maxSeconds}s'**
+  String buddy_voice_recording_timer(int seconds, int maxSeconds);
+
+  /// Label shown in voice activation indicator during recording
+  ///
+  /// In en, this message translates to:
+  /// **'Recording {seconds}s / {maxSeconds}s'**
+  String buddy_voice_recording_progress(int seconds, int maxSeconds);
+
+  /// Label shown in voice activation indicator during STT processing
+  ///
+  /// In en, this message translates to:
+  /// **'Processing...'**
+  String get buddy_voice_processing;
+
+  /// Placeholder text shown while audio is being transcribed
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing audio...'**
+  String get buddy_voice_transcribing;
 
   /// Error when security events API returns unexpected data
   ///

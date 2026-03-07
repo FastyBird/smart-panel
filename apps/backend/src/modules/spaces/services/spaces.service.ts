@@ -3,7 +3,7 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, In, Repository } from 'typeorm';
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -40,7 +40,6 @@ export class SpacesService {
 		private readonly deviceRepository: Repository<DeviceEntity>,
 		@InjectRepository(DisplayEntity)
 		private readonly displayRepository: Repository<DisplayEntity>,
-		@Inject(forwardRef(() => DeviceZonesService))
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,

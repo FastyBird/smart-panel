@@ -1,18 +1,18 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
@@ -44,6 +44,7 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
@@ -75,12 +76,11 @@ import { IntentSpecLoaderService } from './spec';
 			ChannelEntity,
 			DisplayEntity,
 		]),
-		forwardRef(() => DevicesModule),
-		forwardRef(() => IntentsModule),
-		forwardRef(() => ExtensionsModule),
-		forwardRef(() => ConfigModule),
-		forwardRef(() => WebsocketModule),
+		DevicesModule,
+		IntentsModule,
+		WebsocketModule,
 		SeedModule,
+		ToolsModule,
 	],
 	controllers: [SpacesController],
 	providers: [
@@ -112,6 +112,7 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketExchangeListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,
+		SpaceLightingToolService,
 	],
 	exports: [
 		SpacesService,
@@ -135,9 +136,14 @@ export class SpacesModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly moduleSeeder: SpacesSeederService,
 		private readonly seedRegistry: SeedRegistryService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
+		// Register space lighting tool provider
+		this.toolProviderRegistry.register(this.spaceLightingTool);
+
 		// Register seeder (priority 120 - after devices, before dashboard)
 		this.seedRegistry.register(
 			SPACES_MODULE_NAME,

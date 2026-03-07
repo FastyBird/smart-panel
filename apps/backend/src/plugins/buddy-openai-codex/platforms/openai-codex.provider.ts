@@ -13,7 +13,6 @@ import {
 	BUDDY_OPENAI_CODEX_BASE_URL,
 	BUDDY_OPENAI_CODEX_DEFAULT_MODEL,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 	BUDDY_OPENAI_CODEX_TOKEN_URL,
 } from '../buddy-openai-codex.constants';
@@ -33,7 +32,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	}
 
 	getName(): string {
-		return BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME;
+		return 'OpenAI Codex';
 	}
 
 	getDescription(): string {

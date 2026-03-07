@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -39,6 +39,53 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"provider","reason":"Provider must be a valid string."}]' })
 	provider?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_plugin',
+		description: 'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
+		type: 'string',
+		example: 'none',
+	})
+	@Expose({ name: 'stt_plugin' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_plugin","reason":"STT plugin must be a valid string."}]' })
+	stt_plugin?: string;
+
+	@ApiPropertyOptional({
+		name: 'voice_enabled',
+		description: 'Master toggle for the voice interface (STT + TTS)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'voice_enabled' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"voice_enabled","reason":"Voice enabled must be a boolean."}]' })
+	voice_enabled?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'tts_plugin',
+		description:
+			'TTS provider plugin type (e.g. buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin, or none)',
+		type: 'string',
+		example: 'none',
+	})
+	@Expose({ name: 'tts_plugin' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"tts_plugin","reason":"TTS plugin must be a valid string."}]' })
+	tts_plugin?: string;
+
+	// Legacy field – voice is now configured per plugin
+	@Expose({ name: 'tts_voice' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"tts_voice","reason":"TTS voice must be a valid string."}]' })
+	tts_voice?: string;
+
+	// Legacy field – speed is now configured per plugin
+	@Expose({ name: 'tts_speed' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"tts_speed","reason":"TTS speed must be a number."}]' })
+	tts_speed?: number;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

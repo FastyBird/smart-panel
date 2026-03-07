@@ -3,6 +3,7 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
@@ -19,6 +20,7 @@ describe('BuddyConversationService', () => {
 	let dataSource: Record<string, jest.Mock>;
 	let llmProvider: Record<string, jest.Mock>;
 	let contextService: Record<string, jest.Mock>;
+	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	const mockConversation: BuddyConversationEntity = {
@@ -69,6 +71,7 @@ describe('BuddyConversationService', () => {
 					cacheWriteTokens: null,
 				},
 			}),
+			supportsTools: jest.fn().mockReturnValue(false),
 		};
 
 		contextService = {
@@ -84,6 +87,11 @@ describe('BuddyConversationService', () => {
 			}),
 		};
 
+		toolProviderRegistry = {
+			getAllToolDefinitions: jest.fn().mockReturnValue([]),
+			executeTool: jest.fn().mockResolvedValue({ success: true, message: 'done' }),
+		};
+
 		eventEmitter = {
 			emit: jest.fn(),
 		} as any;
@@ -94,6 +102,7 @@ describe('BuddyConversationService', () => {
 			dataSource as unknown as OrmDataSource,
 			llmProvider as unknown as LlmProviderService,
 			contextService as unknown as BuddyContextService,
+			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
 		);
 	});
@@ -194,6 +203,7 @@ describe('BuddyConversationService', () => {
 				expect.arrayContaining([
 					expect.objectContaining({ role: MessageRole.USER, content: 'What is the temperature?' }),
 				]),
+				expect.objectContaining({}),
 			);
 		});
 
@@ -400,9 +410,10 @@ describe('BuddyConversationService', () => {
 		});
 
 		it('should load recent message history for LLM context', async () => {
+			// Messages are loaded in DESC order and then reversed
 			const previousMessages: Partial<BuddyMessageEntity>[] = [
-				{ role: MessageRole.USER, content: 'Previous question' },
 				{ role: MessageRole.ASSISTANT, content: 'Previous answer' },
+				{ role: MessageRole.USER, content: 'Previous question' },
 			];
 
 			messageRepo.find.mockResolvedValue(previousMessages);
@@ -416,6 +427,7 @@ describe('BuddyConversationService', () => {
 					expect.objectContaining({ role: MessageRole.ASSISTANT, content: 'Previous answer' }),
 					expect.objectContaining({ role: MessageRole.USER, content: 'Follow-up' }),
 				]),
+				expect.objectContaining({}),
 			);
 		});
 	});

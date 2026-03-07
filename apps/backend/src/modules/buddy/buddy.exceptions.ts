@@ -1,8 +1,11 @@
 import {
+	BadRequestException,
 	GatewayTimeoutException,
 	InternalServerErrorException,
 	NotFoundException,
+	PayloadTooLargeException,
 	ServiceUnavailableException,
+	UnsupportedMediaTypeException,
 } from '@nestjs/common';
 
 export class BuddyProviderNotConfiguredException extends ServiceUnavailableException {
@@ -32,5 +35,71 @@ export class BuddySuggestionNotFoundException extends NotFoundException {
 export class BuddyProviderErrorException extends InternalServerErrorException {
 	constructor(detail?: string) {
 		super(detail ? `AI provider error: ${detail}` : 'AI provider encountered an error. Please try again later.');
+	}
+}
+
+export class BuddyTtsNotConfiguredException extends ServiceUnavailableException {
+	constructor() {
+		super('No TTS provider is configured. Configure a TTS provider in admin settings to enable voice output.');
+	}
+}
+
+export class BuddyMessageNotFoundException extends NotFoundException {
+	constructor(id: string) {
+		super(`Message with ID "${id}" was not found.`);
+	}
+}
+
+export class BuddySttNotConfiguredException extends ServiceUnavailableException {
+	constructor() {
+		super('No STT provider is configured. Configure an STT provider in admin settings to enable voice input.');
+	}
+}
+
+export class BuddyAudioTooLargeException extends PayloadTooLargeException {
+	constructor(maxSizeMb: number) {
+		super(`Audio file exceeds maximum allowed size of ${maxSizeMb} MB.`);
+	}
+}
+
+export class BuddyAudioUnsupportedFormatException extends UnsupportedMediaTypeException {
+	constructor() {
+		super('Unsupported audio format. Accepted formats: WAV, WebM, OGG, MP3.');
+	}
+}
+
+export class BuddyAudioMissingException extends BadRequestException {
+	constructor() {
+		super('No audio file provided. Upload an audio file in the "audio" field.');
+	}
+}
+
+export class BuddyTranscriptionEmptyException extends BadRequestException {
+	constructor() {
+		super('No speech was detected in the audio. Please try again and speak clearly.');
+	}
+}
+
+export class BuddySttProviderErrorException extends InternalServerErrorException {
+	constructor(detail?: string) {
+		super(detail ? `STT provider error: ${detail}` : 'STT provider encountered an error. Please try again later.');
+	}
+}
+
+export class BuddySttProviderTimeoutException extends GatewayTimeoutException {
+	constructor() {
+		super('STT provider timeout. The provider did not respond in time.');
+	}
+}
+
+export class BuddyTtsProviderErrorException extends InternalServerErrorException {
+	constructor(detail?: string) {
+		super(detail ? `TTS provider error: ${detail}` : 'TTS provider encountered an error. Please try again later.');
+	}
+}
+
+export class BuddyTtsProviderTimeoutException extends GatewayTimeoutException {
+	constructor() {
+		super('TTS provider timeout. The provider did not respond in time.');
 	}
 }

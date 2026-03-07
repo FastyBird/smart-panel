@@ -22,7 +22,8 @@
 			"loadMessages": "Failed to load messages",
 			"providerUnavailable": "The AI provider is temporarily unavailable. Please try again later.",
 			"sendMessage": "Failed to send message",
-			"deleteConversation": "Failed to delete conversation"
+			"deleteConversation": "Failed to delete conversation",
+			"audioPlayback": "Failed to play audio"
 		}
 	},
 	"buttons": {
@@ -71,6 +72,32 @@
 				"options": {
 					"none": "None"
 				}
+			},
+			"voiceEnabled": {
+				"title": "Voice Interface",
+				"description": "Enable speech recognition and voice synthesis for hands-free interaction with the assistant"
+			},
+			"sttPlugin": {
+				"title": "Speech Recognition Provider (Speech-to-Text)",
+				"placeholder": "Select a speech recognition provider",
+				"notConfigured": "not configured",
+				"options": {
+					"none": "None"
+				},
+				"tags": {
+					"disabled": "disabled"
+				}
+			},
+			"ttsPlugin": {
+				"title": "Voice Synthesis Provider (Text-to-Speech)",
+				"placeholder": "Select a voice synthesis provider",
+				"notConfigured": "not configured",
+				"options": {
+					"none": "None"
+				},
+				"tags": {
+					"disabled": "disabled"
+				}
 			}
 		},
 		"message": {
@@ -105,6 +132,8 @@
 		"noSpace": "No space",
 		"noActiveConversation": "No conversation selected",
 		"providersFetchFailed": "Failed to load available providers. The provider list may be incomplete.",
+		"sttProvidersFetchFailed": "Failed to load available speech recognition providers. The provider list may be incomplete.",
+		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
 		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},

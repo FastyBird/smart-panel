@@ -56,7 +56,7 @@ export class BuddyOpenaiCodexPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-			name: 'Buddy OpenAI Codex',
+			name: 'OpenAI Codex',
 			description: 'LLM provider for Buddy module using OpenAI Codex with OAuth authentication',
 			author: 'FastyBird',
 			readme: `# Buddy OpenAI Codex Provider
