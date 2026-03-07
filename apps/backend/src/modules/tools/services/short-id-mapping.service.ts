@@ -117,17 +117,19 @@ export class ShortIdMappingService {
 		let result = '';
 		let byteIndex = 0;
 
-		// 248 is the largest multiple of 62 that fits in a byte (62 * 4 = 248)
-		const limit = 248;
+		// Largest multiple of alphabet size that fits in a byte — bytes at or above
+		// this value would introduce modulo bias and are skipped (rejection sampling).
+		const alphabetSize = BASE62_CHARS.length;
+		const limit = 256 - (256 % alphabetSize);
 
 		for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-			// Skip biased bytes (≥248), use next byte from hash
+			// Skip biased bytes (≥limit), use next byte from hash
 			while (byteIndex < hash.length && hash[byteIndex] >= limit) {
 				byteIndex++;
 			}
 
 			if (byteIndex < hash.length) {
-				result += BASE62_CHARS[hash[byteIndex] % BASE62_CHARS.length];
+				result += BASE62_CHARS[hash[byteIndex] % alphabetSize];
 				byteIndex++;
 			} else {
 				// Fallback: extremely unlikely with 32-byte hash and 4-char output
