@@ -4649,6 +4649,14 @@
   "@buddy_voice_listening": {
     "description": "Label shown in voice input overlay while recording"
   },
+  "buddy_voice_recording_timer": "{seconds}s / {maxSeconds}s",
+  "@buddy_voice_recording_timer": {
+    "description": "Recording timer shown in voice input overlay (seconds elapsed / max seconds)",
+    "placeholders": {
+      "seconds": { "type": "int" },
+      "maxSeconds": { "type": "int" }
+    }
+  },
   "buddy_voice_recording_progress": "Recording {seconds}s / {maxSeconds}s",
   "@buddy_voice_recording_progress": {
     "description": "Label shown in voice activation indicator during recording",

@@ -150,11 +150,16 @@ class BuddyService extends ChangeNotifier {
 		return _buddyRepository.sendMessage(conversationId, content);
 	}
 
-	/// Send an audio message in the active conversation
+	/// Send an audio message in the active conversation.
+	///
+	/// [placeholderText] is the optimistic message shown while audio is being
+	/// transcribed. Callers with access to [BuildContext] should pass a
+	/// localized string.
 	Future<BuddyMessageModel?> sendAudioMessage(
 		Uint8List audioBytes,
-		String mimeType,
-	) async {
+		String mimeType, {
+		String placeholderText = 'Transcribing audio...',
+	}) async {
 		final conversationId = _buddyRepository.activeConversationId;
 
 		if (conversationId == null) return null;
@@ -163,6 +168,7 @@ class BuddyService extends ChangeNotifier {
 			conversationId,
 			audioBytes,
 			mimeType,
+			placeholderText: placeholderText,
 		);
 	}
 

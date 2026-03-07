@@ -118,7 +118,13 @@ class _VoiceInputOverlayState extends State<VoiceInputOverlay> {
 			return;
 		}
 
-		final result = await _buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
+		final localizations = AppLocalizations.of(context)!;
+
+		final result = await _buddyService.sendAudioMessage(
+			recorded.bytes,
+			recorded.mimeType,
+			placeholderText: localizations.buddy_voice_transcribing,
+		);
 
 		if (result == null) {
 			if (mounted) _close(false);
@@ -208,7 +214,7 @@ class _VoiceInputOverlayState extends State<VoiceInputOverlay> {
 								children: [
 									SizedBox(height: AppSpacings.pMd),
 									Text(
-										'${seconds}s / ${maxSeconds}s',
+										localizations.buddy_voice_recording_timer(seconds, maxSeconds),
 										style: TextStyle(
 											color: mutedColor,
 											fontSize: AppFontSize.small,

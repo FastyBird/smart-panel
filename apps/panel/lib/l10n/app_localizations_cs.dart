@@ -3844,6 +3844,11 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_voice_listening => 'Naslouchám...';
 
   @override
+  String buddy_voice_recording_timer(int seconds, int maxSeconds) {
+    return '${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
   String buddy_voice_recording_progress(int seconds, int maxSeconds) {
     return 'Nahrávání ${seconds}s / ${maxSeconds}s';
   }

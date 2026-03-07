@@ -384,8 +384,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			audioLoading.value = false;
 
 			await currentAudio.play();
-		} catch (err) {
-			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.audioPlayback'));
+		} catch {
+			flashMessage.error(t('buddyModule.messages.errors.audioPlayback'));
 			stopAudio();
 		}
 	};

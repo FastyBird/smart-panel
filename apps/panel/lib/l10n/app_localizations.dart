@@ -7175,6 +7175,12 @@ abstract class AppLocalizations {
   /// **'Listening...'**
   String get buddy_voice_listening;
 
+  /// Recording timer shown in voice input overlay (seconds elapsed / max seconds)
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s / {maxSeconds}s'**
+  String buddy_voice_recording_timer(int seconds, int maxSeconds);
+
   /// Label shown in voice activation indicator during recording
   ///
   /// In en, this message translates to:

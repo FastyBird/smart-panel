@@ -3823,6 +3823,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buddy_voice_listening => 'Listening...';
 
   @override
+  String buddy_voice_recording_timer(int seconds, int maxSeconds) {
+    return '${seconds}s / ${maxSeconds}s';
+  }
+
+  @override
   String buddy_voice_recording_progress(int seconds, int maxSeconds) {
     return 'Recording ${seconds}s / ${maxSeconds}s';
   }

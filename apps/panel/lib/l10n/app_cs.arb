@@ -1279,6 +1279,7 @@
   "buddy_recording_permission_error": "Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.",
 
   "buddy_voice_listening": "Naslouchám...",
+  "buddy_voice_recording_timer": "{seconds}s / {maxSeconds}s",
   "buddy_voice_recording_progress": "Nahrávání {seconds}s / {maxSeconds}s",
   "buddy_voice_processing": "Zpracovávám...",
   "buddy_voice_transcribing": "Přepisuji zvuk...",

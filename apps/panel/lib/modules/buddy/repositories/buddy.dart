@@ -366,11 +366,16 @@ class BuddyRepository extends ChangeNotifier {
 	}
 
 	/// Send an audio message — uploads audio, backend transcribes and responds.
+	///
+	/// [placeholderText] is the optimistic message shown while audio is being
+	/// transcribed. Callers with access to [BuildContext] should pass a
+	/// localized string; otherwise the default English fallback is used.
 	Future<BuddyMessageModel?> sendAudioMessage(
 		String conversationId,
 		Uint8List audioBytes,
-		String mimeType,
-	) async {
+		String mimeType, {
+		String placeholderText = 'Transcribing audio...',
+	}) async {
 		_activeSendCount++;
 		_sendErrorType = null;
 		_isProviderNotConfiguredSend = false;
@@ -385,7 +390,7 @@ class BuddyRepository extends ChangeNotifier {
 			id: 'pending_audio_${DateTime.now().millisecondsSinceEpoch}',
 			conversationId: conversationId,
 			role: BuddyMessageRole.user,
-			content: 'Transcribing audio...',
+			content: placeholderText,
 			createdAt: DateTime.now(),
 		);
 		_messages.add(userMessage);
