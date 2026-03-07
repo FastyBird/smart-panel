@@ -10,7 +10,11 @@ import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
-import { BUDDY_TELEGRAM_PLUGIN_NAME, TELEGRAM_RETRY_DELAYS_MS } from '../buddy-telegram.constants';
+import {
+	BUDDY_TELEGRAM_PLUGIN_NAME,
+	TELEGRAM_MAX_MESSAGE_LENGTH,
+	TELEGRAM_RETRY_DELAYS_MS,
+} from '../buddy-telegram.constants';
 import { BuddyTelegramConfigModel } from '../models/config.model';
 
 /**
@@ -188,7 +192,11 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 					const conversationId = await this.getOrCreateConversation(userId);
 					const response = await this.conversationService.sendMessage(conversationId, ctx.message.text);
 
-					await this.sendWithRetry(ctx.chat.id, response.content);
+					const chunks = this.splitMessage(response.content);
+
+					for (const chunk of chunks) {
+						await this.sendWithRetry(ctx.chat.id, chunk);
+					}
 				} catch (error) {
 					this.logger.error(`Error processing Telegram message: ${String(error)}`);
 					await ctx.reply('Sorry, I encountered an error processing your message. Please try again.');
@@ -338,6 +346,43 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 				}
 			}
 		}
+	}
+
+	/**
+	 * Split a message into chunks that fit Telegram's character limit.
+	 */
+	private splitMessage(text: string): string[] {
+		if (text.length <= TELEGRAM_MAX_MESSAGE_LENGTH) {
+			return [text];
+		}
+
+		const chunks: string[] = [];
+		let remaining = text;
+
+		while (remaining.length > 0) {
+			if (remaining.length <= TELEGRAM_MAX_MESSAGE_LENGTH) {
+				chunks.push(remaining);
+				break;
+			}
+
+			// Try to split at a newline
+			let splitIndex = remaining.lastIndexOf('\n', TELEGRAM_MAX_MESSAGE_LENGTH);
+
+			if (splitIndex <= 0) {
+				// Fall back to splitting at a space
+				splitIndex = remaining.lastIndexOf(' ', TELEGRAM_MAX_MESSAGE_LENGTH);
+			}
+
+			if (splitIndex <= 0) {
+				// Last resort: hard split
+				splitIndex = TELEGRAM_MAX_MESSAGE_LENGTH;
+			}
+
+			chunks.push(remaining.slice(0, splitIndex));
+			remaining = remaining.slice(splitIndex).trimStart();
+		}
+
+		return chunks;
 	}
 
 	/**

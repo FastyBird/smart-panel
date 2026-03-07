@@ -1,6 +1,8 @@
 import { Controller, Get, HttpCode, Logger, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
 import { BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
 
@@ -18,6 +20,7 @@ export class WhatsAppWebhookController {
 	constructor(private readonly whatsAppProvider: WhatsAppBotProvider) {}
 
 	@Get('status')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Get WhatsApp connection status and QR code',
 		description: 'Returns current connection status and QR code string (only present when status is qr_ready)',
@@ -30,6 +33,7 @@ export class WhatsAppWebhookController {
 	}
 
 	@Post('logout')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@HttpCode(200)
 	@ApiOperation({
 		summary: 'Disconnect WhatsApp and clear session',

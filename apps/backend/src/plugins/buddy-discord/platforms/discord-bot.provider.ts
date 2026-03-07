@@ -310,7 +310,15 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 
 		const isDm = message.channel.type === ChannelType.DM;
 
-		if (!isDm) {
+		if (isDm) {
+			// Block DMs when guild or role restrictions are configured —
+			// we cannot verify guild membership or roles in a DM context
+			if (config.guildId || config.allowedRoleId) {
+				this.logger.debug(`Rejected DM from user ${message.author.id} — guild/role restrictions are active`);
+
+				return;
+			}
+		} else {
 			// Only handle messages from the configured guild
 			if (config.guildId && message.guildId !== config.guildId) {
 				return;

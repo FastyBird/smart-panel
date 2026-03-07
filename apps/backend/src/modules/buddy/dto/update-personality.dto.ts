@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsDefined, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -24,6 +24,7 @@ export class UpdatePersonalityDto {
 export class ReqUpdatePersonalityDto {
 	@ApiProperty({ description: 'Personality update data', type: () => UpdatePersonalityDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Data wrapper is required."}]' })
 	@ValidateNested()
 	@Type(() => UpdatePersonalityDto)
 	data: UpdatePersonalityDto;
