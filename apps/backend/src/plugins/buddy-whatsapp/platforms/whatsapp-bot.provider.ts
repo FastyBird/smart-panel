@@ -161,16 +161,14 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 	/**
 	 * Disconnect and clear authentication state so a new QR code can be generated.
+	 *
+	 * We intentionally do NOT call `this.socket.logout()` because that tells
+	 * WhatsApp servers to invalidate the session. A fresh socket connecting
+	 * shortly after would be immediately rejected with a loggedOut status code.
+	 * Instead we just close the connection and delete the local auth state —
+	 * the old server-side session will expire on its own.
 	 */
 	async logout(): Promise<void> {
-		try {
-			if (this.socket) {
-				await this.socket.logout();
-			}
-		} catch {
-			// Ignore logout errors (e.g., already disconnected)
-		}
-
 		await this.stopBot();
 
 		// Clear auth state so a fresh QR code is generated on next start
