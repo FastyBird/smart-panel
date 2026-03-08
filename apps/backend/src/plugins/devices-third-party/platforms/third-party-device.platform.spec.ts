@@ -19,10 +19,10 @@ describe('ThirdPartyDevicePlatform', () => {
 	let mockDevice: ThirdPartyDeviceEntity;
 	let mockChannel: ChannelEntity;
 	let mockChannelProperty: ChannelPropertyEntity;
-	let loggerErrorSpy: jest.SpyInstance;
-	let loggerWarnSpy: jest.SpyInstance;
-	let loggerLogSpy: jest.SpyInstance;
-	let mockSendCommand: jest.SpyInstance;
+	let loggerErrorSpy: jest.SpiedFunction<any>;
+	let loggerWarnSpy: jest.SpiedFunction<any>;
+	let loggerLogSpy: jest.SpiedFunction<any>;
+	let mockSendCommand: jest.SpiedFunction<any>;
 
 	beforeEach(() => {
 		platform = new ThirdPartyDevicePlatform();

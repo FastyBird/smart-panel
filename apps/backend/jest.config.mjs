@@ -8,6 +8,10 @@ export default {
 	collectCoverageFrom: ['**/*.(t|j)s'],
 	coverageDirectory: '../coverage',
 	testEnvironment: 'node',
+	testEnvironmentOptions: {
+		globalsCleanup: 'off',
+	},
+	transformIgnorePatterns: ['node_modules/(?!(.pnpm|uuid)/)'],
 	moduleNameMapper: {
 		'^inquirer$': '<rootDir>/../test/__mocks__/inquirer.ts',
 	},

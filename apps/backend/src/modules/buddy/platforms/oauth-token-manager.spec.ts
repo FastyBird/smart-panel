@@ -22,7 +22,7 @@ function makeConfig(overrides: Partial<OAuthConfig> = {}): OAuthConfig {
 
 describe('OAuthTokenManager', () => {
 	let manager: OAuthTokenManager;
-	let fetchSpy: jest.SpyInstance;
+	let fetchSpy: jest.SpiedFunction<any>;
 
 	beforeEach(() => {
 		manager = new OAuthTokenManager(makeOptions());

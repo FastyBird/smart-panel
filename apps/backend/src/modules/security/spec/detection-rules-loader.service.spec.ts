@@ -158,7 +158,7 @@ sensors:
 	});
 
 	describe('validation', () => {
-		let loggerWarnSpy: jest.SpyInstance;
+		let loggerWarnSpy: jest.SpiedFunction<any>;
 
 		beforeEach(() => {
 			loggerWarnSpy = jest
