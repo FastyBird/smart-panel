@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_register_displa
 import 'package:fastybird_smart_panel/api/models/displays_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/core/services/error_reporter.dart';
 import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
@@ -286,6 +287,16 @@ class StartupManagerService {
     // This is needed because _initialize() uses DisplaysModuleService
     _registerModules();
 
+    // Connect the error reporter to the API so buffered errors can be flushed
+    ErrorReporter.instance.setApiClient(_apiClient.systemModule);
+
+    try {
+      final version = await AppInfo.getAppVersionInfo();
+      ErrorReporter.instance.setAppVersion(version.toString());
+    } catch (_) {
+      // App version is optional context — ignore failures
+    }
+
     try {
       await _initialize();
     } catch (e) {
@@ -355,6 +366,9 @@ class StartupManagerService {
   /// Unregister modules if they are already registered
   /// This ensures modules are cleaned up on retries or initialization failures
   void _unregisterModulesIfNeeded() {
+    // Disconnect error reporter from the old API client
+    ErrorReporter.instance.clearApiClient();
+
     // Check if any module or repository is registered
     // We check multiple types because registration can fail partway through
     final hasAnyRegistration = locator.isRegistered<ConfigModuleService>() ||
