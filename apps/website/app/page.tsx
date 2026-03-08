@@ -21,7 +21,6 @@ import {
 	mdiBookOpen,
 	mdiRaspberryPi,
 	mdiWifi,
-	mdiShieldCheck,
 	mdiCog,
 	mdiPalette,
 	mdiSpeedometer,
