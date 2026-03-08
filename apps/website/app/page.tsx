@@ -69,7 +69,7 @@ export default function LandingPage() {
 								className="text-4xl md:text-7xl font-bold mb-6 drop-shadow-xl leading-tight"
 							>
 								Control Your Smart Home{" "}
-								<span className="bg-gradient-to-r from-[#d9230f] to-[#ff6b4a] bg-clip-text text-transparent">
+								<span className="bg-gradient-to-r from-primary to-[#ff6b4a] bg-clip-text text-transparent">
 									From the Wall
 								</span>
 							</motion.h1>
@@ -118,7 +118,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24">
 				<div className="max-w-screen-xl mx-auto px-8">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3 text-center">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3 text-center">
 							Features
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4 text-center">
@@ -132,7 +132,7 @@ export default function LandingPage() {
 					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8" staggerDelay={0.1}>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiDevices} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiDevices} size={1.8} className="text-primary" />}
 								title="Easy Integration"
 								description="Quickly connect existing smart home devices with plug-and-play support."
 								variant="light"
@@ -140,7 +140,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiViewDashboardOutline} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiViewDashboardOutline} size={1.8} className="text-primary" />}
 								title="Tile-based UI"
 								description="Arrange elements on a flexible, customizable tile layout."
 								variant="light"
@@ -148,7 +148,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiApi} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiApi} size={1.8} className="text-primary" />}
 								title="Powerful API"
 								description="Communicate with panels programmatically via REST and WebSocket."
 								variant="light"
@@ -156,7 +156,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiMonitorDashboard} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiMonitorDashboard} size={1.8} className="text-primary" />}
 								title="Admin Interface"
 								description="Manage panels through a full-featured web-based dashboard."
 								variant="light"
@@ -170,7 +170,7 @@ export default function LandingPage() {
 			<section className="bg-[#101113] text-white py-24 px-6 overflow-hidden">
 				<div className="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-16">
 					<AnimatedSection className="w-full md:w-1/2">
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Flexible Design
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-6">
@@ -194,7 +194,7 @@ export default function LandingPage() {
 						className="md:w-1/2"
 					>
 						<div className="relative">
-							<div className="absolute -inset-4 bg-gradient-to-r from-[#d9230f]/20 to-[#ff6b4a]/10 rounded-3xl blur-2xl" />
+							<div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-[#ff6b4a]/10 rounded-3xl blur-2xl" />
 							<img
 								src="/landing/tile-layout-preview.png"
 								alt="Tile Layout UI"
@@ -209,7 +209,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24 px-6 overflow-hidden">
 				<div className="max-w-screen-xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-16">
 					<AnimatedSection className="w-full md:w-1/2">
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Admin Panel
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-6">
@@ -233,7 +233,7 @@ export default function LandingPage() {
 						className="md:w-1/2"
 					>
 						<div className="relative">
-							<div className="absolute -inset-4 bg-gradient-to-l from-[#d9230f]/10 to-[#ff6b4a]/5 rounded-3xl blur-2xl" />
+							<div className="absolute -inset-4 bg-gradient-to-l from-primary/10 to-[#ff6b4a]/5 rounded-3xl blur-2xl" />
 							<img
 								src="/landing/devices-preview.png"
 								alt="Device management preview"
@@ -248,7 +248,7 @@ export default function LandingPage() {
 			<section className="bg-[#101113] text-white py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Architecture
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-6">How It Works</h2>
@@ -260,34 +260,34 @@ export default function LandingPage() {
 
 					<StaggerContainer className="flex flex-row justify-items-center items-center justify-center" staggerDelay={0.15}>
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
-								<Icon path={mdiMonitorDashboard} size={2} className="text-[#d9230f]" />
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+								<Icon path={mdiMonitorDashboard} size={2} className="text-primary" />
 							</motion.div>
 							<span className="mt-3 text-white/80 font-medium">Admin Application</span>
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center">
 							<div className="p-4 mb-6 animate-pulse">
-								<Icon path={mdiArrowLeftRight} size={1.5} className="text-[#d9230f]/60" />
+								<Icon path={mdiArrowLeftRight} size={1.5} className="text-primary/60" />
 							</div>
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
-								<Icon path={mdiServer} size={2} className="text-[#d9230f]" />
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+								<Icon path={mdiServer} size={2} className="text-primary" />
 							</motion.div>
 							<span className="mt-3 text-white/80 font-medium">Backend</span>
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center">
 							<div className="p-4 mb-6 animate-pulse">
-								<Icon path={mdiArrowLeftRight} size={1.5} className="text-[#d9230f]/60" />
+								<Icon path={mdiArrowLeftRight} size={1.5} className="text-primary/60" />
 							</div>
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
-								<Icon path={mdiViewDashboardOutline} size={2} className="text-[#d9230f]" />
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+								<Icon path={mdiViewDashboardOutline} size={2} className="text-primary" />
 							</motion.div>
 							<span className="mt-3 text-white/80 font-medium">Display Panel</span>
 						</StaggerItem>
@@ -295,14 +295,14 @@ export default function LandingPage() {
 
 					<div className="flex flex-row justify-items-center items-center justify-center">
 						<div className="px-4 py-8 animate-pulse">
-							<Icon path={mdiArrowUpDown} size={1.5} className="text-[#d9230f]/60" />
+							<Icon path={mdiArrowUpDown} size={1.5} className="text-primary/60" />
 						</div>
 					</div>
 
 					<div className="flex flex-row justify-items-center items-center justify-center">
 						<motion.div whileHover={{ scale: 1.1 }} className="flex flex-col items-center">
-							<div className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
-								<Icon path={mdiDevices} size={2} className="text-[#d9230f]" />
+							<div className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+								<Icon path={mdiDevices} size={2} className="text-primary" />
 							</div>
 							<span className="mt-3 text-white/80 font-medium">Integrations</span>
 						</motion.div>
@@ -312,7 +312,7 @@ export default function LandingPage() {
 						<div className="mt-16 flex flex-col items-center">
 							<div className="bg-gradient-to-r from-white/5 to-white/10 border border-white/10 rounded-2xl px-8 py-6 max-w-xl">
 								<h3 className="text-2xl font-semibold mb-3 flex flex-row items-center justify-center">
-									<Icon path={mdiRaspberryPi} size={1.5} className="mr-2 text-[#d9230f] hidden sm:block" />
+									<Icon path={mdiRaspberryPi} size={1.5} className="mr-2 text-primary hidden sm:block" />
 									Optimized for Embedded Devices
 								</h3>
 								<p className="text-white/60">
@@ -329,7 +329,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Developer Experience
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4">
@@ -344,7 +344,7 @@ export default function LandingPage() {
 					<StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" staggerDelay={0.1}>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiCodeBraces} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiCodeBraces} size={1.8} className="text-primary" />}
 								title="OpenAPI Spec"
 								description="Fully documented backend via OpenAPI — available for introspection, testing, and automation."
 								variant="light"
@@ -352,7 +352,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiLanConnect} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiLanConnect} size={1.8} className="text-primary" />}
 								title="WebSocket Support"
 								description="Real-time device state updates and bi-directional control through modern socket communication."
 								variant="light"
@@ -360,7 +360,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-primary" />}
 								title="Modular Design"
 								description="Create plugins or add features easily using the backend's flexible plugin architecture."
 								variant="light"
@@ -368,7 +368,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiGithub} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiGithub} size={1.8} className="text-primary" />}
 								title="Open Source"
 								description="Explore and contribute on GitHub. The code is transparent, clean, and documented."
 								variant="light"
@@ -398,11 +398,11 @@ export default function LandingPage() {
 			{/* Integrations */}
 			<section className="bg-[#101113] text-white py-24 px-6 relative overflow-hidden">
 				{/* Subtle background glow */}
-				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#d9230f]/5 rounded-full blur-3xl pointer-events-none" />
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
 				<div className="max-w-screen-xl mx-auto text-center relative">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Integrations
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-6">Works With Your Devices</h2>
@@ -415,7 +415,7 @@ export default function LandingPage() {
 					<StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto" staggerDelay={0.15}>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiLanConnect} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiLanConnect} size={1.8} className="text-primary" />}
 								title="Third-Party API Devices"
 								description="Push updates from your system and receive commands back via your API endpoints — a flexible solution for integrators."
 								variant="dark"
@@ -423,7 +423,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiHomeAssistant} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiHomeAssistant} size={1.8} className="text-primary" />}
 								title="Home Assistant"
 								description="Sync with your existing Home Assistant instance and mirror device states, entities, and automations."
 								variant="dark"
@@ -431,7 +431,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<ShellyLogoSmall className="text-[#d9230f] fill-current w-[1.8rem] h-[1.8rem]" />}
+								icon={<ShellyLogoSmall className="text-primary fill-current w-[1.8rem] h-[1.8rem]" />}
 								title="Shelly Next-Generation"
 								description="Native support for Shelly Plus & Pro devices. Real-time control, energy monitoring, and discovery — cloud-free."
 								variant="dark"
@@ -452,7 +452,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Quick Start
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4">
@@ -499,7 +499,7 @@ export default function LandingPage() {
 
 			{/* Join the Community */}
 			<section className="bg-[#101113] text-white py-24 px-6 text-center relative overflow-hidden">
-				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#d9230f]/30 to-transparent" />
+				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
 				<div className="max-w-screen-xl mx-auto relative">
 					<AnimatedSection>
@@ -537,7 +537,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Why Choose Us
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4">
@@ -552,7 +552,7 @@ export default function LandingPage() {
 					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8" staggerDelay={0.08}>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiWifi} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiWifi} size={1.8} className="text-primary" />}
 								title="Offline-first"
 								description="No cloud lock-in. Everything runs locally on your Raspberry Pi."
 								variant="light"
@@ -560,7 +560,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-primary" />}
 								title="Modular Architecture"
 								description="Install only what you need with a clean plugin-based system."
 								variant="light"
@@ -568,7 +568,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiPalette} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiCog} size={1.8} className="text-primary" />}
 								title="Built for Touch"
 								description="Tailored interface for embedded touchscreens and wall-mounted displays."
 								variant="light"
@@ -576,7 +576,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiCog} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiPalette} size={1.8} className="text-primary" />}
 								title="Beautiful UI"
 								description="Designed with elegance and clarity, inspired by modern smart home UIs."
 								variant="light"
@@ -584,7 +584,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiSpeedometer} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiSpeedometer} size={1.8} className="text-primary" />}
 								title="Fast & Lightweight"
 								description="Runs efficiently on small devices with smooth transitions and real-time updates."
 								variant="light"
@@ -592,7 +592,7 @@ export default function LandingPage() {
 						</StaggerItem>
 						<StaggerItem>
 							<FeatureCard
-								icon={<Icon path={mdiOpenSourceInitiative} size={1.8} className="text-[#d9230f]" />}
+								icon={<Icon path={mdiOpenSourceInitiative} size={1.8} className="text-primary" />}
 								title="Open & Extendable"
 								description="Open source, documented APIs, and made for developers to build on."
 								variant="light"
@@ -606,7 +606,7 @@ export default function LandingPage() {
 			<section className="bg-[#101113] text-white py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Tech Stack
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4">
@@ -653,7 +653,7 @@ export default function LandingPage() {
 			<section className="bg-[#f5f5f7] text-black py-24 px-6">
 				<div className="max-w-screen-xl mx-auto text-center">
 					<AnimatedSection>
-						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
 							Roadmap
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-4">What's Next?</h2>
@@ -678,7 +678,7 @@ export default function LandingPage() {
 									className="text-left bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-black/5 transition-shadow"
 								>
 									<div className="flex items-center gap-3 mb-3">
-										<div className="w-2 h-2 rounded-full bg-[#d9230f]" />
+										<div className="w-2 h-2 rounded-full bg-primary" />
 										<h3 className="text-xl font-semibold">{item.title}</h3>
 									</div>
 									<p className="text-gray-600">{item.desc}</p>
@@ -691,12 +691,12 @@ export default function LandingPage() {
 
 			{/* Final CTA */}
 			<section className="relative bg-[#101113] text-white py-28 px-6 overflow-hidden">
-				<div className="absolute inset-0 bg-gradient-to-br from-[#d9230f]/10 via-transparent to-[#d9230f]/5 pointer-events-none" />
-				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#d9230f]/30 to-transparent" />
+				<div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 pointer-events-none" />
+				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
 				<div className="max-w-screen-xl mx-auto text-center relative">
 					<AnimatedSection>
-						<Icon path={mdiRocketLaunch} size={2.5} className="text-[#d9230f] mx-auto mb-6" />
+						<Icon path={mdiRocketLaunch} size={2.5} className="text-primary mx-auto mb-6" />
 						<h2 className="text-4xl md:text-6xl font-bold mb-6">
 							Ready to Build Your Panel?
 						</h2>
