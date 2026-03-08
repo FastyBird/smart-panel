@@ -6,7 +6,7 @@
 
 The **FastyBird Smart Panel Backend** is the core service powering the user interface layer of smart home platforms.
 
-It is responsible for managing **dashboards, pages, tiles, and data sources**—delivering data in real-time and supporting seamless integration with smart home systems like Home Assistant, OpenHAB, and Sonoff.
+It is responsible for managing **dashboards, pages, tiles, and data sources**—delivering data in real-time and supporting seamless integration with smart home systems like Home Assistant, Shelly, Zigbee2MQTT, and WLED.
 
 ---
 
@@ -16,6 +16,9 @@ It is responsible for managing **dashboards, pages, tiles, and data sources**—
 - ✅ **Modular Design** – Cleanly separated `modules/` and `plugins/` to support scalable growth
 - ✅ **Real-Time WebSocket Communication** – Instant updates for connected frontend apps
 - ✅ **Flexible Page Layouts** – Support for tile-based, card-based, and detail-style views
+- ✅ **AI Assistant (Buddy)** – Built-in AI assistant with Claude, OpenAI, and local Ollama support
+- ✅ **Voice AI** – Speech-to-text (Whisper) and text-to-speech (ElevenLabs, system TTS)
+- ✅ **Messaging Bots** – Control your home via Discord, Telegram, or WhatsApp
 - ✅ **Built-In Validation & Error Handling** – Strong type safety and detailed errors
 - ✅ **Database Integration** – Works with relational databases via TypeORM
 
@@ -34,15 +37,19 @@ src/
 ├── modules/                 # Core feature modules
 │   ├── api/                 # API infrastructure
 │   ├── auth/                # Authentication & authorization
+│   ├── buddy/               # AI assistant module
 │   ├── config/              # Configuration management
 │   ├── dashboard/           # Pages, tiles, and data sources
 │   ├── devices/             # Device, channel, and property management
 │   ├── displays/            # Display registration & management
 │   ├── energy/              # Energy tracking and aggregation
+│   ├── extension-registry/  # Extension discovery and registration
 │   ├── extensions/          # Extension system
+│   ├── factory-reset/       # Factory reset functionality
 │   ├── influxdb/            # Time-series database integration
 │   ├── intents/             # Intent and automation system
 │   ├── mdns/                # mDNS discovery
+│   ├── module-registry/     # Module registry management
 │   ├── platform/            # Platform core utilities
 │   ├── scenes/              # Scene management
 │   ├── security/            # Security and alerts
@@ -51,11 +58,30 @@ src/
 │   ├── stats/               # Statistics and timeseries
 │   ├── swagger/             # OpenAPI/Swagger documentation
 │   ├── system/              # System settings and info
+│   ├── tools/               # Shared tools and utilities
 │   ├── users/               # User management
 │   ├── weather/             # Weather data
 │   └── websocket/           # WebSocket gateway
 │
 ├── plugins/                 # Pluggable integrations and features
+│   │
+│   │   # AI & Voice plugins
+│   ├── buddy-claude/              # Claude (Anthropic) AI assistant
+│   ├── buddy-claude-setup-token/  # Claude API token setup
+│   ├── buddy-openai/              # OpenAI AI assistant
+│   ├── buddy-openai-codex/        # OpenAI Codex assistant
+│   ├── buddy-ollama/              # Local Ollama AI assistant
+│   ├── buddy-elevenlabs/          # ElevenLabs text-to-speech
+│   ├── buddy-system-tts/          # System text-to-speech
+│   ├── buddy-stt-whisper-local/   # Local Whisper speech-to-text
+│   ├── buddy-voiceai/             # Voice AI orchestration
+│   │
+│   │   # Messaging channel plugins
+│   ├── buddy-discord/             # Discord bot integration
+│   ├── buddy-telegram/            # Telegram bot integration
+│   ├── buddy-whatsapp/            # WhatsApp integration
+│   │
+│   │   # Device integration plugins
 │   ├── devices-home-assistant/    # Home Assistant integration
 │   ├── devices-shelly-ng/         # Shelly Gen 2+ devices
 │   ├── devices-shelly-v1/         # Shelly Gen 1 devices
@@ -63,6 +89,8 @@ src/
 │   ├── devices-third-party/       # Third-party device support
 │   ├── devices-wled/              # WLED RGB device support
 │   ├── devices-zigbee2mqtt/       # Zigbee2MQTT integration
+│   │
+│   │   # Data source, page, tile, and other plugins
 │   ├── data-sources-device-channel/  # Device channel data sources
 │   ├── data-sources-weather/      # Weather data sources
 │   ├── pages-cards/               # Card-based page layouts

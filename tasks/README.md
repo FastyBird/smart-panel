@@ -96,6 +96,7 @@ tasks/
 ├── plans/       # Architecture and implementation plans
 ├── archive/     # Completed (done) tasks — kept for reference
 ├── _template.md # Task template
+├── ROADMAP.md   # Project roadmap
 └── README.md    # This file
 ```
 
@@ -129,6 +130,5 @@ Recommended workflow:
 
 ## Related Directories
 
-- `/.architecture/` – long-lived architecture & API documentation
 - `/.ai-rules/` – global rules and constraints for AI assistants
-- `/docs/` – public-facing documentation / presentation website for Smart Panel
+- `/docs/` – developer documentation for Smart Panel

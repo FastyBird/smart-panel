@@ -45,6 +45,8 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 
 ## Supported Integrations
 
+### Device Integrations
+
 | Integration | Protocol | Description |
 |-------------|----------|-------------|
 | **Home Assistant** | WebSocket API | Full entity sync with Home Assistant instances |
@@ -53,6 +55,26 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 | **Zigbee2MQTT** | MQTT | Integration with Zigbee devices via Zigbee2MQTT |
 | **WLED** | HTTP | Control WLED-powered RGB/LED devices |
 | **OpenWeatherMap** | HTTP API | Weather data for dashboard tiles |
+
+### AI & Voice Integrations
+
+| Integration | Description |
+|-------------|-------------|
+| **Claude (Anthropic)** | AI-powered smart home assistant via Claude API |
+| **OpenAI** | AI assistant powered by OpenAI models |
+| **OpenAI Codex** | Code-generation AI assistant |
+| **Ollama** | Local AI assistant using self-hosted Ollama models |
+| **ElevenLabs** | High-quality text-to-speech voice synthesis |
+| **System TTS** | Built-in system text-to-speech engine |
+| **Whisper (Local)** | Local speech-to-text transcription |
+
+### Messaging Integrations
+
+| Integration | Description |
+|-------------|-------------|
+| **Discord** | Control your smart home through Discord bot |
+| **Telegram** | Control your smart home through Telegram bot |
+| **WhatsApp** | Control your smart home through WhatsApp |
 
 ---
 
@@ -67,6 +89,9 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 - **Spaces & Rooms** -- Room-first control with domain-based device grouping (lights, climate, media, security)
 - **Scenes** -- Automations and scene presets for one-tap control
 - **Energy Monitoring** -- Track consumption and production across devices and spaces
+- **AI Assistant (Buddy)** -- Built-in AI assistant with support for Claude, OpenAI, and local Ollama models
+- **Voice Control** -- Speech-to-text (Whisper) and text-to-speech (ElevenLabs, system TTS) support
+- **Messaging Bots** -- Control your home via Discord, Telegram, or WhatsApp
 - **Extension SDK** -- Build and distribute custom extensions as npm packages
 
 ---

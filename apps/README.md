@@ -45,6 +45,8 @@ The power of the Smart Panel comes from its **plugin system**, which lets you de
 - Custom pages (like grid layouts or device detail views)
 - Interactive tiles (showing clocks, weather, sensors, etc.)
 - Data source types (such as device channels, third-party APIs, etc.)
+- AI assistant providers and messaging channels (Claude, OpenAI, Ollama, Discord, Telegram, WhatsApp)
+- Voice AI capabilities (speech-to-text, text-to-speech)
 
 Each application supports plugins differently:
 - `backend/`: Loads and registers plugin logic (schemas, DTOs, services)
