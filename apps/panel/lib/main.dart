@@ -11,12 +11,20 @@ void main() async {
   // Capture Flutter framework errors (layout, rendering, etc.)
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    ErrorReporter.instance.reportFlutterError(details);
+    try {
+      ErrorReporter.instance.reportFlutterError(details);
+    } catch (_) {
+      // Never throw from a reporter — avoid infinite recursion.
+    }
   };
 
   // Capture uncaught async / platform errors
   PlatformDispatcher.instance.onError = (error, stack) {
-    ErrorReporter.instance.reportPlatformError(error, stack);
+    try {
+      ErrorReporter.instance.reportPlatformError(error, stack);
+    } catch (_) {
+      // Never throw from a reporter — avoid infinite recursion.
+    }
     return true;
   };
 
