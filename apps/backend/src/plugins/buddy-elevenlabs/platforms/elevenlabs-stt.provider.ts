@@ -45,7 +45,7 @@ export class ElevenLabsSttProvider implements ISttProvider {
 
 		try {
 			const formData = new FormData();
-			formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${extension}`);
+			formData.append('file', new Blob([audioBuffer as BlobPart], { type: mimeType }), `audio.${extension}`);
 			formData.append('model_id', STT_DEFAULT_MODEL);
 
 			if (options?.language) {

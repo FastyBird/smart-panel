@@ -2,10 +2,14 @@
 	"moduleFileExtensions": ["js", "json", "ts"],
 	"rootDir": ".",
 	"testEnvironment": "node",
+	"testEnvironmentOptions": {
+		"globalsCleanup": "off"
+	},
 	"testRegex": "\\.e2e-spec\\.ts$",
 	"transform": {
 		"^.+\\.(t|j)s$": "ts-jest"
 	},
+	"transformIgnorePatterns": ["node_modules/(?!(.pnpm|uuid)/)"],
 	"moduleNameMapper": {
 		"^inquirer$": "<rootDir>/__mocks__/inquirer.ts"
 	},

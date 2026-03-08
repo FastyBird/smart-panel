@@ -29,9 +29,9 @@ const createMockResponse = (body: any, status = 200) => {
 
 describe('HttpDevicePlatform', () => {
 	let platform: TestHttpDevicePlatform;
-	let loggerErrorSpy: jest.SpyInstance;
-	let loggerWarnSpy: jest.SpyInstance;
-	let loggerLogSpy: jest.SpyInstance;
+	let loggerErrorSpy: jest.SpiedFunction<any>;
+	let loggerWarnSpy: jest.SpiedFunction<any>;
+	let loggerLogSpy: jest.SpiedFunction<any>;
 
 	beforeEach(() => {
 		platform = new TestHttpDevicePlatform();

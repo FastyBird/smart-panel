@@ -18,7 +18,7 @@ import { HomeAssistantDevicePlatform } from './home-assistant.device.platform';
 describe('HomeAssistantDevicePlatform', () => {
 	let platform: HomeAssistantDevicePlatform;
 	let mapperService: MapperService;
-	let sendCommandMock: jest.SpyInstance;
+	let sendCommandMock: jest.SpiedFunction<any>;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({

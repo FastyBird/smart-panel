@@ -81,9 +81,9 @@ describe('PropertyCommandService', () => {
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let platformRegistryService: PlatformRegistryService;
 	let mockPlatform: IDevicePlatform;
-	let loggerErrorSpy: jest.SpyInstance;
-	let loggerWarnSpy: jest.SpyInstance;
-	let loggerLogSpy: jest.SpyInstance;
+	let loggerErrorSpy: jest.SpiedFunction<any>;
+	let loggerWarnSpy: jest.SpiedFunction<any>;
+	let loggerLogSpy: jest.SpiedFunction<any>;
 
 	const mockDevice = {
 		id: uuid().toString(),

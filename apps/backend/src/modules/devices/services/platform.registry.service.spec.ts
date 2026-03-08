@@ -14,7 +14,7 @@ import { PlatformRegistryService } from './platform.registry.service';
 
 describe('PlatformRegistryService', () => {
 	let service: PlatformRegistryService;
-	let mockLogger: jest.SpyInstance;
+	let mockLogger: jest.SpiedFunction<any>;
 
 	beforeEach(() => {
 		service = new PlatformRegistryService();
