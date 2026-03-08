@@ -6,8 +6,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { promisify } from 'util';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ITtsProvider,
 	TtsSynthesisOptions,
@@ -23,7 +24,7 @@ const TTS_DEFAULT_SPEED = 1.0;
 
 @Injectable()
 export class SystemTtsProvider implements ITtsProvider {
-	private readonly logger = new Logger(SystemTtsProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_SYSTEM_TTS_PLUGIN_NAME, 'SystemTtsProvider');
 
 	constructor(private readonly configService: ConfigService) {}
 

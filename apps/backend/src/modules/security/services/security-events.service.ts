@@ -1,7 +1,8 @@
 import { FieldType, IPoint } from 'influx';
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { SecurityAlertModel } from '../models/security-status.model';
 import {
@@ -9,6 +10,7 @@ import {
 	ArmedState,
 	SECURITY_EVENTS_DEFAULT_LIMIT,
 	SECURITY_EVENTS_MAX_ROWS,
+	SECURITY_MODULE_NAME,
 	SecurityEventType,
 	Severity,
 } from '../security.constants';
@@ -35,7 +37,7 @@ export interface SecurityEventRecord {
 
 @Injectable()
 export class SecurityEventsService implements OnModuleInit {
-	private readonly logger = new Logger(SecurityEventsService.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityEventsService');
 
 	private lastKnownAlertIds = new Map<string, SecurityAlertModel>();
 	private lastKnownArmedState: ArmedState | null = null;

@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from 'crypto';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+
+import { createExtensionLogger } from '../../../common/logger';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
 export interface OAuthFlowParams {
 	authorizeUrl: string;
@@ -40,7 +43,7 @@ const TOKEN_EXCHANGE_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class OAuthFlowService {
-	private readonly logger = new Logger(OAuthFlowService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'OAuthFlowService');
 	private readonly pendingFlows = new Map<string, PendingFlow>();
 
 	createFlow(params: OAuthFlowParams): OAuthFlowResult {

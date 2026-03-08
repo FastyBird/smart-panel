@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
-import { SceneExecutionStatus } from '../scenes.constants';
+import { SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.constants';
 
 import { SceneExecutorService } from './scene-executor.service';
 import { ScenesService } from './scenes.service';
@@ -16,7 +17,7 @@ const SCENE_TOOLS_PROVIDER = 'scene-tools';
  */
 @Injectable()
 export class SceneToolService extends BaseToolProviderService {
-	protected readonly logger = new Logger(SceneToolService.name);
+	protected readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'SceneToolService');
 
 	constructor(
 		private readonly scenesService: ScenesService,

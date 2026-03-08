@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
@@ -26,7 +27,7 @@ interface CachedAudio {
 
 @Injectable()
 export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
-	private readonly logger = new Logger(TtsProviderService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'TtsProviderService');
 
 	private readonly audioCache = new Map<string, CachedAudio>();
 	private readonly inflightRequests = new Map<string, Promise<{ buffer: Buffer; contentType: string }>>();

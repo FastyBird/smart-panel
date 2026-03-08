@@ -1,4 +1,5 @@
-import { Logger } from '@nestjs/common';
+import { createExtensionLogger } from '../../../common/logger';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
 export interface OAuthConfig {
 	accessToken?: string | null;
@@ -25,7 +26,7 @@ const DEFAULT_REFRESH_TIMEOUT_MS = 10_000;
  * promise deduplication for OAuth-based LLM provider plugins.
  */
 export class OAuthTokenManager {
-	private readonly logger: Logger;
+	private readonly logger: ReturnType<typeof createExtensionLogger>;
 	private readonly providerLabel: string;
 	private readonly tokenUrl: string;
 	private readonly ttlMs: number;
@@ -36,7 +37,7 @@ export class OAuthTokenManager {
 	private inflightRefresh: Promise<string> | null = null;
 
 	constructor(options: OAuthTokenManagerOptions) {
-		this.logger = new Logger(`OAuthTokenManager:${options.providerLabel}`);
+		this.logger = createExtensionLogger(BUDDY_MODULE_NAME, `OAuthTokenManager:${options.providerLabel}`);
 		this.providerLabel = options.providerLabel;
 		this.tokenUrl = options.tokenUrl;
 		this.ttlMs = options.ttlMs ?? DEFAULT_TOKEN_TTL_MS;

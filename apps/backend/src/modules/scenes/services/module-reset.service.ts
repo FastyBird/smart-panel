@@ -1,15 +1,16 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
-import { EventType } from '../scenes.constants';
+import { EventType, SCENES_MODULE_NAME } from '../scenes.constants';
 
 @Injectable()
 export class ScenesModuleResetService {
-	private readonly logger = new Logger(ScenesModuleResetService.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'ScenesModuleResetService');
 
 	constructor(
 		@InjectRepository(SceneEntity)

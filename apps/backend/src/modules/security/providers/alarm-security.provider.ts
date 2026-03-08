@@ -1,12 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { AlarmState, ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
+import {
+	AlarmState,
+	ArmedState,
+	SECURITY_MODULE_NAME,
+	SEVERITY_RANK,
+	SecurityAlertType,
+	Severity,
+} from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 const ALARM_STATE_RANK: Record<AlarmState, number> = {
@@ -34,7 +42,7 @@ interface AlarmDeviceState {
 
 @Injectable()
 export class AlarmSecurityProvider implements SecurityStateProviderInterface {
-	private readonly logger = new Logger(AlarmSecurityProvider.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'AlarmSecurityProvider');
 
 	constructor(private readonly devicesService: DevicesService) {}
 

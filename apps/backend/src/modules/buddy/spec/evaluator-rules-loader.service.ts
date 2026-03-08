@@ -2,9 +2,10 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
-import { SuggestionType } from '../buddy.constants';
+import { createExtensionLogger } from '../../../common/logger';
+import { BUDDY_MODULE_NAME, SuggestionType } from '../buddy.constants';
 
 import {
 	ResolvedAnomalyRule,
@@ -23,7 +24,7 @@ import {
 
 @Injectable()
 export class EvaluatorRulesLoaderService implements OnModuleInit {
-	private readonly logger = new Logger(EvaluatorRulesLoaderService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'EvaluatorRulesLoaderService');
 
 	private anomalyRules: Map<string, ResolvedAnomalyRule> = new Map();
 	private energyRules: Map<string, ResolvedEnergyRule> = new Map();

@@ -2,8 +2,9 @@ import { realpathSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import {
 	BUDDY_DEFAULT_PERSONALITY,
@@ -15,7 +16,7 @@ import { BuddyConfigModel } from '../models/config.model';
 
 @Injectable()
 export class BuddyPersonalityService {
-	private readonly logger = new Logger(BuddyPersonalityService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyPersonalityService');
 
 	private cachedPersonality: string | null = null;
 	private cachedAt = 0;

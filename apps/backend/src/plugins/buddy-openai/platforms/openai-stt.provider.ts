@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ISttProvider, SttTranscriptionOptions } from '../../../modules/buddy/platforms/stt-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_OPENAI_PLUGIN_NAME } from '../buddy-openai.constants';
@@ -13,7 +14,7 @@ const OPENAI_SDK_MODULE = 'openai';
 
 @Injectable()
 export class OpenAiSttProvider implements ISttProvider {
-	private readonly logger = new Logger(OpenAiSttProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_OPENAI_PLUGIN_NAME, 'OpenAiSttProvider');
 
 	constructor(private readonly configService: ConfigService) {}
 

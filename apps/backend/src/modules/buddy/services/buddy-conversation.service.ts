@@ -1,10 +1,11 @@
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
@@ -24,7 +25,7 @@ const MAX_TOOL_ITERATIONS = 5;
 
 @Injectable()
 export class BuddyConversationService {
-	private readonly logger = new Logger(BuddyConversationService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyConversationService');
 
 	constructor(
 		@InjectRepository(BuddyConversationEntity)

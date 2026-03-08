@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
-import { LightColorMode } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, LightColorMode } from '../devices-home-assistant.constants';
 import { HomeAssistantStateModel } from '../models/home-assistant.model';
 
 /**
@@ -66,7 +67,7 @@ export interface LightCapabilities {
 
 @Injectable()
 export class LightCapabilityAnalyzer {
-	private readonly logger = new Logger(LightCapabilityAnalyzer.name);
+	private readonly logger = createExtensionLogger(DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'LightCapabilityAnalyzer');
 
 	/**
 	 * Analyze light entity capabilities from its attributes

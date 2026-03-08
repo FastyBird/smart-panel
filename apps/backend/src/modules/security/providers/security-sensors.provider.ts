@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
@@ -7,7 +8,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
+import { ArmedState, SECURITY_MODULE_NAME, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedPropertyCheck, ResolvedSensorRule } from '../spec/detection-rules.types';
 
@@ -19,7 +20,7 @@ const INTRUSION_ALERT_TYPES: Set<SecurityAlertType> = new Set([
 
 @Injectable()
 export class SecuritySensorsProvider implements SecurityStateProviderInterface {
-	private readonly logger = new Logger(SecuritySensorsProvider.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecuritySensorsProvider');
 
 	constructor(
 		private readonly devicesService: DevicesService,

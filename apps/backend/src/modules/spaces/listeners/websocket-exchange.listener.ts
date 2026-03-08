@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
@@ -11,6 +12,7 @@ import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
+import { SPACES_MODULE_NAME } from '../spaces.constants';
 
 /**
  * WebSocket command event types for spaces module intents
@@ -64,7 +66,7 @@ type UndoIntentPayload = SpaceIntentPayload;
  */
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
-	private readonly logger = new Logger(WebsocketExchangeListener.name);
+	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'WebsocketExchangeListener');
 
 	constructor(
 		private readonly commandEventRegistry: CommandEventRegistryService,

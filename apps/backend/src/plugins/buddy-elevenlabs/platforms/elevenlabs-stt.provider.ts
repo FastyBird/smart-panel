@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ISttProvider, SttTranscriptionOptions } from '../../../modules/buddy/platforms/stt-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_ELEVENLABS_API_BASE, BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
@@ -10,7 +11,7 @@ const DEFAULT_TIMEOUT = 30_000;
 
 @Injectable()
 export class ElevenLabsSttProvider implements ISttProvider {
-	private readonly logger = new Logger(ElevenLabsSttProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_ELEVENLABS_PLUGIN_NAME, 'ElevenLabsSttProvider');
 
 	constructor(private readonly configService: ConfigService) {}
 

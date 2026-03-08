@@ -2,10 +2,11 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
-import { SecurityAlertType, Severity } from '../security.constants';
+import { SECURITY_MODULE_NAME, SecurityAlertType, Severity } from '../security.constants';
 
 import {
 	DetectionOperator,
@@ -20,7 +21,7 @@ const VALID_OPERATORS: DetectionOperator[] = ['eq', 'gt', 'gte', 'in'];
 
 @Injectable()
 export class DetectionRulesLoaderService implements OnModuleInit {
-	private readonly logger = new Logger(DetectionRulesLoaderService.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'DetectionRulesLoaderService');
 
 	private sensorRules: Map<string, ResolvedSensorRule> = new Map();
 

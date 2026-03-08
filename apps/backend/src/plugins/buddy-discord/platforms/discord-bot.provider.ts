@@ -12,9 +12,10 @@ import {
 	type TextChannel,
 } from 'discord.js';
 
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
@@ -39,7 +40,7 @@ import { BuddyDiscordConfigModel } from '../models/config.model';
  */
 @Injectable()
 export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = new Logger(DiscordBotProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_DISCORD_PLUGIN_NAME, 'DiscordBotProvider');
 
 	private client: Client | null = null;
 	private running = false;

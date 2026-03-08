@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
-import { EventType, SceneExecutionStatus } from '../scenes.constants';
+import { EventType, SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.constants';
 import { ScenesExecutionException, ScenesNotTriggerableException } from '../scenes.exceptions';
 
 import { ScenesService } from './scenes.service';
@@ -34,7 +35,7 @@ export interface IScenePlatform {
 
 @Injectable()
 export class SceneExecutorService {
-	private readonly logger = new Logger(SceneExecutorService.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'SceneExecutorService');
 	private readonly platforms = new Map<string, IScenePlatform>();
 
 	constructor(

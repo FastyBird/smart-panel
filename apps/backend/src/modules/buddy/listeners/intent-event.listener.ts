@@ -1,12 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IntentEventType, IntentType } from '../../intents/intents.constants';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { ActionObserverService, ActionRecord } from '../services/action-observer.service';
 
 @Injectable()
 export class IntentEventListener {
-	private readonly logger = new Logger(IntentEventListener.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'IntentEventListener');
 
 	constructor(private readonly actionObserver: ActionObserverService) {}
 

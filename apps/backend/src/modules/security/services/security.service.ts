@@ -1,9 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityStatusModel } from '../models/security-status.model';
-import { EventType } from '../security.constants';
+import { EventType, SECURITY_MODULE_NAME } from '../security.constants';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 import { SecurityAlertAckService } from './security-alert-ack.service';
@@ -11,7 +12,7 @@ import { SecurityEventsService } from './security-events.service';
 
 @Injectable()
 export class SecurityService {
-	private readonly logger = new Logger(SecurityService.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityService');
 
 	constructor(
 		private readonly aggregator: SecurityAggregatorService,

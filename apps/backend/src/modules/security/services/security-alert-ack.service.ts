@@ -1,13 +1,15 @@
 import { In, Not, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
+import { SECURITY_MODULE_NAME } from '../security.constants';
 
 @Injectable()
 export class SecurityAlertAckService {
-	private readonly logger = new Logger(SecurityAlertAckService.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityAlertAckService');
 
 	constructor(
 		@InjectRepository(SecurityAlertAckEntity)

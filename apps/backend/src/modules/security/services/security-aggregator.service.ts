@@ -1,5 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
@@ -7,12 +8,18 @@ import { AggregationResult, SecurityAggregatorInterface } from '../contracts/sec
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityAlertModel, SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
-import { ArmedState, SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
+import {
+	ArmedState,
+	SECURITY_MODULE_NAME,
+	SECURITY_STATE_PROVIDERS,
+	SEVERITY_RANK,
+	Severity,
+} from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
-	private readonly logger = new Logger(SecurityAggregatorService.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityAggregatorService');
 
 	constructor(
 		@Inject(SECURITY_STATE_PROVIDERS)

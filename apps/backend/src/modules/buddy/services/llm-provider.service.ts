@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LEGACY_PROVIDER_MAP } from '../buddy.constants';
 import {
@@ -18,7 +19,7 @@ const DEFAULT_TIMEOUT = 30_000;
 
 @Injectable()
 export class LlmProviderService {
-	private readonly logger = new Logger(LlmProviderService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'LlmProviderService');
 
 	constructor(
 		private readonly configService: ConfigService,

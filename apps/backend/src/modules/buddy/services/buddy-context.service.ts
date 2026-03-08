@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
@@ -10,7 +11,7 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
-import { CONTEXT_CACHE_GLOBAL_KEY } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, CONTEXT_CACHE_GLOBAL_KEY } from '../buddy.constants';
 
 import { ActionObserverService } from './action-observer.service';
 
@@ -85,7 +86,7 @@ const CONTEXT_CACHE_MAX_SIZE = 50;
 
 @Injectable()
 export class BuddyContextService {
-	private readonly logger = new Logger(BuddyContextService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyContextService');
 
 	private contextCache = new Map<string, { context: BuddyContext; expiresAt: number }>();
 

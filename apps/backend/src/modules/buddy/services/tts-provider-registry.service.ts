@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { ITtsProvider } from '../platforms/tts-provider.platform';
 
 @Injectable()
 export class TtsProviderRegistryService {
-	private readonly logger = new Logger(TtsProviderRegistryService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'TtsProviderRegistryService');
 
 	private readonly providers = new Map<string, ITtsProvider>();
 

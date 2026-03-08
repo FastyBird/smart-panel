@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { ILlmProvider } from '../platforms/llm-provider.platform';
 
 @Injectable()
 export class LlmProviderRegistryService {
-	private readonly logger = new Logger(LlmProviderRegistryService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'LlmProviderRegistryService');
 
 	private readonly providers = new Map<string, ILlmProvider>();
 

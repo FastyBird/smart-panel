@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -35,7 +36,7 @@ function isLocalSceneAction(action: SceneActionEntity): action is LocalSceneActi
 
 @Injectable()
 export class LocalScenePlatform implements IScenePlatform {
-	private readonly logger = new Logger(`${SCENES_LOCAL_PLUGIN_NAME}:${LocalScenePlatform.name}`);
+	private readonly logger = createExtensionLogger(SCENES_LOCAL_PLUGIN_NAME, 'LocalScenePlatform');
 
 	constructor(
 		private readonly devicesService: DevicesService,

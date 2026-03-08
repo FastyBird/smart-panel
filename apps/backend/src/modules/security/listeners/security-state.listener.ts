@@ -1,12 +1,13 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { EventType, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
+import { EventType, SECURITY_MODULE_NAME, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityEventsService } from '../services/security-events.service';
@@ -43,7 +44,7 @@ const SECURITY_CHANNEL_CATEGORIES: ChannelCategory[] = [
 
 @Injectable()
 export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
-	private readonly logger = new Logger(SecurityStateListener.name);
+	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityStateListener');
 
 	private debounceTimer: NodeJS.Timeout | null = null;
 	private processingLock: Promise<void> = Promise.resolve();
