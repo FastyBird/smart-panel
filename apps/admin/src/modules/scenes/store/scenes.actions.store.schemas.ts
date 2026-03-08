@@ -12,7 +12,7 @@ export const SceneActionSchema = z
 		draft: z.boolean().default(false),
 		type: z.string().trim().nonempty(),
 		scene: ItemIdSchema,
-		configuration: z.record(z.unknown()).default({}),
+		configuration: z.record(z.string(), z.unknown()).default({}),
 		order: z.number().int().min(0).default(0),
 		enabled: z.boolean().default(true),
 		createdAt: z
@@ -27,7 +27,7 @@ export const SceneActionSchema = z
 			.nullable()
 			.default(null),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const ScenesActionsStateSemaphoreSchema = z.object({
 	fetching: z.object({
@@ -45,7 +45,7 @@ export const ScenesActionsStateSemaphoreSchema = z.object({
 export const ScenesActionsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}).passthrough(),
+	data: z.looseObject({}).catchall(z.unknown()),
 });
 
 export const ScenesActionsSetActionPayloadSchema = z.object({
@@ -54,11 +54,11 @@ export const ScenesActionsSetActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 			scene: ItemIdSchema,
-			configuration: z.record(z.unknown()).default({}),
+			configuration: z.record(z.string(), z.unknown()).default({}),
 			order: z.number().int().min(0).default(0),
 			enabled: z.boolean().default(true),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesActionsUnsetActionPayloadSchema = z.object({
@@ -82,11 +82,11 @@ export const ScenesActionsAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
-			configuration: z.record(z.unknown()).default({}),
+			configuration: z.record(z.string(), z.unknown()).default({}),
 			order: z.number().int().min(0).optional().default(0),
 			enabled: z.boolean().optional().default(true),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesActionsEditActionPayloadSchema = z.object({
@@ -95,11 +95,11 @@ export const ScenesActionsEditActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
-			configuration: z.record(z.unknown()).optional(),
+			configuration: z.record(z.string(), z.unknown()).optional(),
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesActionsSaveActionPayloadSchema = z.object({
@@ -119,30 +119,30 @@ export const SceneActionCreateReqSchema = z
 	.object({
 		id: z.string().uuid().optional(),
 		type: z.string().trim().nonempty(),
-		configuration: z.record(z.unknown()).optional(),
+		configuration: z.record(z.string(), z.unknown()).optional(),
 		order: z.number().int().min(0).optional(),
 		enabled: z.boolean().optional(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const SceneActionUpdateReqSchema = z
 	.object({
 		type: z.string().trim().nonempty(),
-		configuration: z.record(z.unknown()).optional(),
+		configuration: z.record(z.string(), z.unknown()).optional(),
 		order: z.number().int().min(0).optional(),
 		enabled: z.boolean().optional(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const SceneActionResSchema = z
 	.object({
 		id: z.string().uuid(),
 		type: z.string(),
-		configuration: z.record(z.unknown()).optional().default({}),
+		configuration: z.record(z.string(), z.unknown()).optional().default({}),
 		order: z.number(),
 		enabled: z.boolean(),
 		scene: z.string().uuid(),
 		created_at: z.string(),
 		updated_at: z.string().nullable().optional(),
 	})
-	.passthrough();
+	.catchall(z.unknown());

@@ -77,7 +77,7 @@ export const ChannelsPropertiesStateSemaphoreSchema = z.object({
 export const ChannelsPropertiesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ChannelsPropertiesSetActionPayloadSchema = z.object({

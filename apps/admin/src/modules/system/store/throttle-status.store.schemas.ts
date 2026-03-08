@@ -22,7 +22,7 @@ export const ThrottleStatusStateSemaphoreSchema = z.object({
 // =============
 
 export const ThrottleStatusOnEventActionPayloadSchema = z.object({
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ThrottleStatusSetActionPayloadSchema = z.object({

@@ -43,7 +43,8 @@ export const HomeAssistantDiscoveredHelpersGetActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const HomeAssistantDiscoveredHelperResSchema: ZodType = z.object({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const HomeAssistantDiscoveredHelperResSchema: ZodType<any> = z.object({
 	entity_id: z.string().trim().nonempty(),
 	name: z.string().trim(),
 	domain: z.string().trim().nonempty(),

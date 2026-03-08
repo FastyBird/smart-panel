@@ -59,7 +59,7 @@ export const TilesOnEventActionPayloadSchema = z.object({
 		type: z.string().trim().nonempty(),
 	}),
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const TilesSetActionPayloadSchema = z.object({
@@ -77,7 +77,7 @@ export const TilesSetActionPayloadSchema = z.object({
 			colSpan: z.number().default(1),
 			hidden: z.boolean().default(false),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const TilesUnsetActionPayloadSchema = z.object({
@@ -123,7 +123,7 @@ export const TilesAddActionPayloadSchema = z.object({
 			colSpan: z.number().default(1),
 			hidden: z.boolean().default(false),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const TilesEditActionPayloadSchema = z.object({
@@ -141,7 +141,7 @@ export const TilesEditActionPayloadSchema = z.object({
 			colSpan: z.number().optional(),
 			hidden: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const TilesSaveActionPayloadSchema = z.object({

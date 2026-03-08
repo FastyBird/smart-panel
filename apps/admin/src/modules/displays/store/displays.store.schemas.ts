@@ -89,7 +89,7 @@ export const DisplaysStateSemaphoreSchema = z.object({
 
 export const DisplaysOnEventActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const DisplaysSetActionPayloadSchema = z.object({

@@ -351,7 +351,7 @@ export { SpacesModuleDataSensorAdditionalReadingTrend as SpacesModuleDataSensorR
 
 // Device Status Enums
 // ===================
-export { PathsPluginsDevicesSimulatorSimulatorDeviceIdSimulateConnectionPostRequestBodyApplicationJsonDataState as DevicesModuleDeviceConnectionStatus } from './openapi';
+export { PathsPluginsDevicesSimulatorSimulatorDeviceIdSimulateConnectionPostRequestBodyContentApplicationJsonDataState as DevicesModuleDeviceConnectionStatus } from './openapi';
 
 // Config Module Enums
 // ===================

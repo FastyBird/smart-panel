@@ -51,7 +51,7 @@ export const PagesStateSemaphoreSchema = z.object({
 export const PagesOnSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const PagesSetActionPayloadSchema = z.object({
@@ -71,7 +71,7 @@ export const PagesSetActionPayloadSchema = z.object({
 			showTopBar: z.boolean().default(true),
 			displays: z.array(z.string().uuid()).nullable().default(null),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const PagesUnsetActionPayloadSchema = z.object({
@@ -100,7 +100,7 @@ export const PagesAddActionPayloadSchema = z.object({
 			showTopBar: z.boolean().default(true).optional(),
 			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const PagesEditActionPayloadSchema = z.object({
@@ -120,7 +120,7 @@ export const PagesEditActionPayloadSchema = z.object({
 			showTopBar: z.boolean().optional(),
 			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const PagesSaveActionPayloadSchema = z.object({

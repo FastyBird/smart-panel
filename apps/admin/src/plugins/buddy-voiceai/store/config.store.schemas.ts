@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_VOICEAI_PLUGIN_NAME } from '../buddy-voiceai.constants';
@@ -11,7 +11,7 @@ export const VoiceaiConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const VoiceaiConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const VoiceaiConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_VOICEAI_PLUGIN_NAME),
 		api_key: z.string().trim().nullable().optional(),
@@ -19,7 +19,7 @@ export const VoiceaiConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema
 	})
 );
 
-export const VoiceaiConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const VoiceaiConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_VOICEAI_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),

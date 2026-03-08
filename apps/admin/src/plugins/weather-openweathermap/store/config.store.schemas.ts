@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { TemperatureUnit, WEATHER_OPENWEATHERMAP_PLUGIN_NAME } from '../weather-openweathermap.constants';
@@ -11,7 +11,7 @@ export const OpenWeatherMapConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const OpenWeatherMapConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const OpenWeatherMapConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_NAME),
 		api_key: z.string().trim().nullable().optional(),
@@ -19,7 +19,7 @@ export const OpenWeatherMapConfigUpdateReqSchema: ZodType = ConfigPluginUpdateRe
 	})
 );
 
-export const OpenWeatherMapConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const OpenWeatherMapConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),

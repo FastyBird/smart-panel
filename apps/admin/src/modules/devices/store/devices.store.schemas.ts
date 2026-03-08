@@ -63,7 +63,7 @@ export const DevicesStateSemaphoreSchema = z.object({
 export const DevicesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const DevicesSetActionPayloadSchema = z.object({
@@ -88,7 +88,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 				lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().optional(),
 			}),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesUnsetActionPayloadSchema = z.object({
@@ -117,7 +117,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 			enabled: z.boolean().optional(),
 			roomId: z.string().uuid().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesEditActionPayloadSchema = z.object({
@@ -136,7 +136,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 			enabled: z.boolean().optional(),
 			roomId: z.string().uuid().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesSaveActionPayloadSchema = z.object({

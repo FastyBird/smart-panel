@@ -48,7 +48,7 @@ export const CardsStateSemaphoreSchema = z.object({
 
 export const CardsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const CardsSetActionPayloadSchema = z.object({
@@ -67,7 +67,7 @@ export const CardsSetActionPayloadSchema = z.object({
 			rows: z.number().gte(1).nullable().default(null).optional(),
 			cols: z.number().gte(1).nullable().default(null).optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const CardsUnsetActionPayloadSchema = z.object({

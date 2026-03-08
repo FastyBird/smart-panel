@@ -72,6 +72,7 @@ const validChannelCreatePayload: IChannelsPropertiesAddActionPayload['data'] & {
 const validChannelUpdatePayload: IChannelsPropertiesEditActionPayload['data'] = {
 	type: 'some-property',
 	name: 'Channel property title',
+	step: null,
 };
 
 describe('Channels Transformers', (): void => {
@@ -141,6 +142,7 @@ describe('Channels Transformers', (): void => {
 			expect(result).toEqual({
 				type: 'some-property',
 				name: 'Channel property title',
+				step: null,
 			});
 		});
 

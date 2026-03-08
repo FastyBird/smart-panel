@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_OPENAI_PLUGIN_NAME } from '../buddy-openai.constants';
@@ -11,7 +11,7 @@ export const OpenAiConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const OpenAiConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const OpenAiConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OPENAI_PLUGIN_NAME),
 		api_key: z.string().trim().nullable().optional(),
@@ -19,7 +19,7 @@ export const OpenAiConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.
 	})
 );
 
-export const OpenAiConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const OpenAiConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OPENAI_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),

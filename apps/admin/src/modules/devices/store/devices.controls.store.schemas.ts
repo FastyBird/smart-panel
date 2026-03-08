@@ -43,7 +43,7 @@ export const DevicesControlsStateSemaphoreSchema = z.object({
 
 export const DevicesControlsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const DevicesControlsSetActionPayloadSchema = z.object({

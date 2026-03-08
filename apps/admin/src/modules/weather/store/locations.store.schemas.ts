@@ -23,7 +23,7 @@ export const WeatherLocationSchema = z
 			.nullable()
 			.default(null),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const WeatherLocationsStateSemaphoreSchema = z.object({
 	fetching: z.object({
@@ -41,7 +41,7 @@ export const WeatherLocationsStateSemaphoreSchema = z.object({
 export const WeatherLocationsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const WeatherLocationsSetActionPayloadSchema = z.object({
@@ -51,7 +51,7 @@ export const WeatherLocationsSetActionPayloadSchema = z.object({
 			type: z.string().trim().nonempty(),
 			name: z.string().trim().nonempty(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const WeatherLocationsUnsetActionPayloadSchema = z.object({
@@ -70,7 +70,7 @@ export const WeatherLocationsAddActionPayloadSchema = z.object({
 			type: z.string().trim().nonempty(),
 			name: z.string().trim().nonempty(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const WeatherLocationsEditActionPayloadSchema = z.object({
@@ -80,7 +80,7 @@ export const WeatherLocationsEditActionPayloadSchema = z.object({
 			type: z.string().trim().nonempty(),
 			name: z.string().trim().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const WeatherLocationsSaveActionPayloadSchema = z.object({
@@ -100,14 +100,14 @@ export const WeatherLocationCreateReqSchema = z
 		type: z.string().trim().nonempty(),
 		name: z.string().trim().nonempty(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const WeatherLocationUpdateReqSchema = z
 	.object({
 		type: z.string().trim().nonempty(),
 		name: z.string().trim().nonempty().optional(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const WeatherLocationResSchema = z
 	.object({
@@ -118,7 +118,7 @@ export const WeatherLocationResSchema = z
 		created_at: z.string(),
 		updated_at: z.string().nullable(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 // FORMS
 // =====

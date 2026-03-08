@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_WHATSAPP_PLUGIN_NAME } from '../buddy-whatsapp.constants';
@@ -10,7 +10,7 @@ export const WhatsappConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const WhatsappConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const WhatsappConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_WHATSAPP_PLUGIN_NAME),
 		allowed_phone_numbers: z.string().trim().nullable().optional(),

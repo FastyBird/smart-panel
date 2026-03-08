@@ -50,7 +50,7 @@ export const ScenesStateSemaphoreSchema = z.object({
 
 export const ScenesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ScenesSetActionPayloadSchema = z.object({
@@ -72,7 +72,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 			editable: z.boolean(),
 			lastTriggeredAt: z.date().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesUnsetActionPayloadSchema = z.object({
@@ -100,7 +100,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesEditActionPayloadSchema = z.object({
@@ -118,7 +118,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesSaveActionPayloadSchema = z.object({
@@ -132,7 +132,7 @@ export const ScenesRemoveActionPayloadSchema = z.object({
 export const ScenesTriggerActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	source: z.string().optional(),
-	context: z.record(z.unknown()).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
 });
 
 // BACKEND API
@@ -187,7 +187,7 @@ export const SceneResSchema = z.object({
 
 export const SceneTriggerReqSchema = z.object({
 	source: z.string().optional(),
-	context: z.record(z.unknown()).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SceneExecutionResSchema = z.object({

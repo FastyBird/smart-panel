@@ -41,7 +41,7 @@ export const WeatherDayStateSemaphoreSchema = z.object({
 // =============
 
 export const WeatherDayOnEventActionPayloadSchema = z.object({
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const WeatherDaySetActionPayloadSchema = z.object({

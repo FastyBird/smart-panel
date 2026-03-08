@@ -100,7 +100,7 @@ export const LogsEntriesStateSemaphoreSchema = z.object({
 
 export const LogsEntriesOnEventActionPayloadSchema = z.object({
 	id: LogEntryIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const LogsEntriesSetActionPayloadSchema = z.object({

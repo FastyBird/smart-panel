@@ -93,7 +93,7 @@ export default {
 			});
 		}
 
-		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
+		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DEVICES_MODULE_EVENT_PREFIX)) {
 				return;
 			}
@@ -107,7 +107,7 @@ export default {
 				case EventType.DEVICE_UPDATED:
 					devicesStore.onEvent({
 						id: data.payload.id,
-						type: get(data.payload, 'type', 'unknown'),
+						type: String(get(data.payload, 'type', 'unknown')),
 						data: data.payload,
 					});
 					break;
@@ -135,7 +135,7 @@ export default {
 				case EventType.CHANNEL_UPDATED:
 					channelsStore.onEvent({
 						id: data.payload.id,
-						type: get(data.payload, 'type', 'unknown'),
+						type: String(get(data.payload, 'type', 'unknown')),
 						data: data.payload,
 					});
 					break;
@@ -164,7 +164,7 @@ export default {
 				case EventType.CHANNEL_PROPERTY_VALUE_SET:
 					channelsPropertiesStore.onEvent({
 						id: data.payload.id,
-						type: get(data.payload, 'type', 'unknown'),
+						type: String(get(data.payload, 'type', 'unknown')),
 						data: data.payload,
 					});
 					break;
@@ -179,7 +179,7 @@ export default {
 					// Update property value in store when a set command response is received
 					channelsPropertiesStore.onEvent({
 						id: data.payload.id,
-						type: get(data.payload, 'type', 'unknown'),
+						type: String(get(data.payload, 'type', 'unknown')),
 						data: data.payload,
 					});
 					break;

@@ -9,7 +9,7 @@ import { tryOnMounted } from '@vueuse/core';
 import { injectStoresManager } from '../services/store';
 import { listQueryStoreKey } from '../store/keys';
 import { PaginationEntrySchema } from '../store/list.query.store.schemas';
-import type { IPaginationEntry, ISortEntry } from '../store/list.query.store.types';
+import type { IListQueryData, IPaginationEntry, ISortEntry } from '../store/list.query.store.types';
 import { deepClone } from '../utils/objects.utils';
 
 import type { IUseListQuery } from './types';
@@ -261,7 +261,8 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		syncQuery && viewMode && route.query[VIEW_Q] !== undefined ? (normalizedRouteQuery.value[VIEW_Q] as V | undefined) : undefined;
 
 	// Load stored
-	const stored = store.get<StoredShape<FF>>({ key, expectedVersion: version });
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const stored = store.get<any>({ key, expectedVersion: version }) as StoredShape<FF> | undefined;
 
 	const entry = store.entries[key];
 
@@ -331,7 +332,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 			window.clearTimeout(tF);
 
 			tF = window.setTimeout(() => {
-				store.patch({ key, data: { filters: val }, version });
+				store.patch({ key, data: { filters: val as IListQueryData['filters'] }, version });
 			}, debounceMs);
 		},
 		{ deep: true }

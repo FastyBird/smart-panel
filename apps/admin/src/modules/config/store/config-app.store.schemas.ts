@@ -16,8 +16,8 @@ export const ConfigAppSchema = z.object({
 	path: z.string().nonempty(),
 	// Language, weather, and system configs moved to modules (system-module, weather-module)
 	// Use passthrough() to preserve plugin-specific fields (apiKey, hostname, etc.)
-	plugins: z.array(ConfigPluginSchema.passthrough()),
-	modules: z.array(ConfigModuleSchema.passthrough()),
+	plugins: z.array(ConfigPluginSchema.catchall(z.unknown())),
+	modules: z.array(ConfigModuleSchema.catchall(z.unknown())),
 });
 
 export const ConfigAppStateSemaphoreSchema = z.object({
@@ -32,8 +32,8 @@ export const ConfigAppOnEventActionPayloadSchema = z.object({
 		path: z.string().nonempty(),
 		// Language, weather, and system configs moved to modules
 		// Use passthrough() to preserve plugin-specific fields
-		plugins: z.array(ConfigPluginSchema.passthrough()),
-		modules: z.array(ConfigModuleSchema.passthrough()),
+		plugins: z.array(ConfigPluginSchema.catchall(z.unknown())),
+		modules: z.array(ConfigModuleSchema.catchall(z.unknown())),
 	}),
 });
 
@@ -42,8 +42,8 @@ export const ConfigAppSetActionPayloadSchema = z.object({
 		path: z.string().nonempty(),
 		// Language, weather, and system configs moved to modules
 		// Use passthrough() to preserve plugin-specific fields
-		plugins: z.array(ConfigPluginSchema.passthrough()),
-		modules: z.array(ConfigModuleSchema.passthrough()),
+		plugins: z.array(ConfigPluginSchema.catchall(z.unknown())),
+		modules: z.array(ConfigModuleSchema.catchall(z.unknown())),
 	}),
 });
 
@@ -55,6 +55,6 @@ export const ConfigAppSetActionPayloadSchema = z.object({
 export const ConfigAppResSchema: ZodType<ApiConfigApp> = z.object({
 	path: z.string().nonempty(),
 	// Language, weather, and system configs moved to modules - backend may still return them but we ignore them
-	plugins: z.array(z.object({ type: z.string(), enabled: z.boolean() }).passthrough()),
-	modules: z.array(z.object({ type: z.string(), enabled: z.boolean() }).passthrough()),
-}).passthrough(); // Allow extra fields for backward compatibility
+	plugins: z.array(z.object({ type: z.string(), enabled: z.boolean() }).catchall(z.unknown())),
+	modules: z.array(z.object({ type: z.string(), enabled: z.boolean() }).catchall(z.unknown())),
+}).catchall(z.unknown()); // Allow extra fields for backward compatibility

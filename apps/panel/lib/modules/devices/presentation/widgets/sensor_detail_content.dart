@@ -65,7 +65,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     if (prop == null) return false;
     return prop.dataType == DevicesModuleDataType.valueEnum ||
         prop.dataType == DevicesModuleDataType.string ||
-        prop.dataType == DevicesModuleDataType.bool;
+        prop.dataType == DevicesModuleDataType.valueBool;
   }
 
   String get _channelId => _currentSensorData.channel.id;

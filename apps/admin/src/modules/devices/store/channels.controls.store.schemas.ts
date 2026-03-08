@@ -43,7 +43,7 @@ export const ChannelsControlsStateSemaphoreSchema = z.object({
 
 export const ChannelsControlsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ChannelsControlsSetActionPayloadSchema = z.object({

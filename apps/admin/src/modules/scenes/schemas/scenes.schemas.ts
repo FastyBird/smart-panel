@@ -6,21 +6,21 @@ export const SceneActionAddFormSchema = z
 	.object({
 		id: z.string().uuid().optional(),
 		type: z.string().trim().nonempty(),
-		configuration: z.record(z.unknown()).default({}),
+		configuration: z.record(z.string(), z.unknown()).default({}),
 		order: z.number().int().min(0).optional(),
 		enabled: z.boolean().default(true),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const SceneActionEditFormSchema = z
 	.object({
 		id: z.string().uuid(),
 		type: z.string().trim().nonempty(),
-		configuration: z.record(z.unknown()).optional(),
+		configuration: z.record(z.string(), z.unknown()).optional(),
 		order: z.number().int().min(0).optional(),
 		enabled: z.boolean().optional(),
 	})
-	.passthrough();
+	.catchall(z.unknown());
 
 export const SceneAddFormSchema = z.object({
 	id: z.string().uuid().optional(),

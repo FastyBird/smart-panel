@@ -1,22 +1,20 @@
 /*
 eslint-disable @typescript-eslint/no-explicit-any
 */
-import { ZodArray, ZodDefault, ZodEffects, ZodMap, ZodNullable, ZodObject, ZodOptional, ZodRecord, type ZodTypeAny, z } from 'zod';
+import { ZodArray, ZodDefault, ZodMap, ZodNullable, ZodObject, ZodOptional, ZodPipe, ZodRecord, type ZodTypeAny, z } from 'zod';
 
-// unwraps optional/nullable/effects wrappers to the inner schema
+// unwraps optional/nullable/pipe wrappers to the inner schema
 const unwrap = (t: ZodTypeAny): ZodTypeAny => {
-	const def: any = (t as any)._def;
-
-	if (t instanceof ZodEffects) {
-		return unwrap(def.schema);
+	if (t instanceof ZodPipe) {
+		return unwrap((t as any).in);
 	}
 
 	if (t instanceof ZodOptional) {
-		return unwrap(def.innerType);
+		return unwrap((t as any)._zod.def.innerType);
 	}
 
 	if (t instanceof ZodNullable) {
-		return unwrap(def.innerType);
+		return unwrap((t as any)._zod.def.innerType);
 	}
 
 	return t;
@@ -42,8 +40,9 @@ export const getSchemaDefaults = <T extends ZodTypeAny>(schema: T): Partial<z.in
 			const unwrapped = unwrap(field);
 
 			if (unwrapped instanceof ZodDefault) {
-				// Zod stores default as a function (handles dynamic defaults)
-				out[key] = (unwrapped as any)._def.defaultValue();
+				// In Zod v4, default value is stored directly in _zod.def.defaultValue
+				const defaultVal = (unwrapped as any)._zod.def.defaultValue;
+				out[key] = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
 			} else {
 				// recurse to find nested defaults (e.g., nested objects)
 				const nested = getSchemaDefaults(field);
@@ -65,7 +64,8 @@ export const getSchemaDefaults = <T extends ZodTypeAny>(schema: T): Partial<z.in
 
 	// direct default node (rare unless you pass a defaulted primitive schema)
 	if (s instanceof ZodDefault) {
-		return ((s as any)._def.defaultValue() ?? {}) as Partial<z.infer<T>>;
+		const defaultVal = (s as any)._zod.def.defaultValue;
+		return ((typeof defaultVal === 'function' ? defaultVal() : defaultVal) ?? {}) as Partial<z.infer<T>>;
 	}
 
 	// primitives / unions / enums without defaults → nothing to collect

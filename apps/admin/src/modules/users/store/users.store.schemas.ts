@@ -51,7 +51,7 @@ export const UsersStateSemaphoreSchema = z.object({
 
 export const UsersOnEventActionPayloadSchema = z.object({
 	id: UserIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const UsersSetActionPayloadSchema = z.object({
