@@ -1,6 +1,7 @@
 .next
 node_modules
 out
+*.tsbuildinfo
 
 # Generated documentation (from spec/devices/*.yaml)
 app/docs/system-architecture/supported-devices/*-device/
