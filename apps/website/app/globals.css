@@ -7,6 +7,20 @@
 @variant dark (&:where(.dark *));
 
 @theme {
+    --color-primary: #d9230f;
+}
+
+/* Smooth scrolling (respect reduced-motion preference) */
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+/* Better text rendering */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -42,25 +56,25 @@ code.text-\[\.9em\] {
 
 .fb-smart-panel-logo {
     .fb-bird {
-        fill: #d9230f;
+        fill: var(--color-primary);
     }
     .fb-fastybird-smart {
         fill: #43525A;
     }
     .fb-fastybird-panel {
-        fill: #d9230f;
+        fill: var(--color-primary);
     }
 }
 
 .fb-logo {
     .fb-bird {
-        fill: #d9230f;
+        fill: var(--color-primary);
     }
     .fb-fastybird-fasty {
         fill: #43525A;
     }
     .fb-fastybird-bird {
-        fill: #d9230f;
+        fill: var(--color-primary);
     }
 }
 
