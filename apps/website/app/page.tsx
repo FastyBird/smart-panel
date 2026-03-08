@@ -25,7 +25,6 @@ import {
 	mdiChevronDown,
 	mdiRobotHappyOutline,
 	mdiChatProcessingOutline,
-	mdiMicrophone,
 	mdiCreation,
 	mdiHomeAutomation,
 } from "@mdi/js";
