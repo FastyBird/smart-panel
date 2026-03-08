@@ -159,11 +159,12 @@ class ErrorReporter {
     _queue.add(entry);
 
     if (_queue.length >= _maxBatch) {
+      // Cancel any pending delayed flush — we want to flush now.
       _timer?.cancel();
-      _flush();
-    } else {
-      _scheduleFlush();
+      _timer = null;
     }
+
+    _scheduleFlush();
   }
 
   void _scheduleFlush() {
@@ -179,9 +180,10 @@ class ErrorReporter {
       return;
     }
 
-    // Exponential backoff: 2s, 4s, 8s, 16s, … capped at 60s.
+    // Flush immediately when the batch is full and there are no failures,
+    // otherwise apply exponential backoff: 2s, 4s, 8s, 16s, … capped at 60s.
     final delay = _consecutiveFailures == 0
-        ? _flushInterval
+        ? (_queue.length >= _maxBatch ? Duration.zero : _flushInterval)
         : Duration(
             milliseconds: min(
               _flushInterval.inMilliseconds * pow(2, _consecutiveFailures).toInt(),
