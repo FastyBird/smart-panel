@@ -121,12 +121,16 @@ class AppLogger {
     }
 
     // Report to backend
-    ErrorReporter.instance.reportError(
-      message,
-      error: error,
-      stackTrace: stackTrace,
-      tag: module,
-    );
+    try {
+      ErrorReporter.instance.reportError(
+        message,
+        error: error,
+        stackTrace: stackTrace,
+        tag: module,
+      );
+    } catch (_) {
+      // Never throw from a reporter — avoid propagating to callers.
+    }
   }
 
   void _log(LogLevel level, String module, String message) {

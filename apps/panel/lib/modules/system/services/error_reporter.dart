@@ -23,6 +23,12 @@ const int _maxQueueSize = 200;
 /// Maximum length for a single log message (backend enforces 2000).
 const int _maxMessageLength = 2000;
 
+/// Maximum number of consecutive flush failures before giving up.
+const int _maxConsecutiveFailures = 8;
+
+/// Upper bound for the backoff delay.
+const Duration _maxBackoff = Duration(seconds: 60);
+
 /// Reports errors and exceptions to the backend log endpoint.
 ///
 /// The reporter buffers entries in memory and flushes them in batches.
@@ -35,6 +41,7 @@ class ErrorReporter {
   final List<SystemModuleCreateLogEntry> _queue = [];
   Timer? _timer;
   bool _flushing = false;
+  int _consecutiveFailures = 0;
 
   SystemModuleClient? _apiClient;
   String? _appVersion;
@@ -44,6 +51,7 @@ class ErrorReporter {
   /// Connect to the API client. Called after startup initialisation.
   void setApiClient(SystemModuleClient client) {
     _apiClient = client;
+    _consecutiveFailures = 0;
 
     // Kick off a flush for anything that was buffered during startup.
     _scheduleFlush();
@@ -161,7 +169,27 @@ class ErrorReporter {
   void _scheduleFlush() {
     if (_timer != null && _timer!.isActive) return;
 
-    _timer = Timer(_flushInterval, _flush);
+    // Stop retrying after too many consecutive failures.
+    if (_consecutiveFailures >= _maxConsecutiveFailures) {
+      if (kDebugMode) {
+        debugPrint(
+          '[ErrorReporter] Stopped retrying after $_consecutiveFailures consecutive failures',
+        );
+      }
+      return;
+    }
+
+    // Exponential backoff: 2s, 4s, 8s, 16s, … capped at 60s.
+    final delay = _consecutiveFailures == 0
+        ? _flushInterval
+        : Duration(
+            milliseconds: min(
+              _flushInterval.inMilliseconds * pow(2, _consecutiveFailures).toInt(),
+              _maxBackoff.inMilliseconds,
+            ),
+          );
+
+    _timer = Timer(delay, _flush);
   }
 
   Future<void> _flush() async {
@@ -184,12 +212,19 @@ class ErrorReporter {
       await _apiClient!.createSystemModuleLogs(
         body: SystemModuleReqCreateLogEntries(data: batch),
       );
+
+      _consecutiveFailures = 0;
     } catch (e) {
+      _consecutiveFailures++;
+
       // Re-insert at the front so the next flush retries them.
       _queue.insertAll(0, batch);
 
       if (kDebugMode) {
-        debugPrint('[ErrorReporter] Failed to flush error log batch: $e');
+        debugPrint(
+          '[ErrorReporter] Failed to flush error log batch '
+          '(attempt $_consecutiveFailures/$_maxConsecutiveFailures): $e',
+        );
       }
     } finally {
       _flushing = false;
