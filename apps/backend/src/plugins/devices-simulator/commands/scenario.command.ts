@@ -173,7 +173,7 @@ export class ScenarioCommand extends CommandRunner {
 			confirm: boolean;
 		}>([
 			{
-				type: 'list',
+				type: 'select',
 				name: 'scenario',
 				message: 'Select a scenario to load:',
 				choices: scenarios.map((s) => ({

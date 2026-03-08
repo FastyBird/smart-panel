@@ -6,5 +6,8 @@
 	"transform": {
 		"^.+\\.(t|j)s$": "ts-jest"
 	},
+	"moduleNameMapper": {
+		"^inquirer$": "<rootDir>/__mocks__/inquirer.ts"
+	},
 	"setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"]
 }

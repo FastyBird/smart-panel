@@ -8,5 +8,8 @@ export default {
 	collectCoverageFrom: ['**/*.(t|j)s'],
 	coverageDirectory: '../coverage',
 	testEnvironment: 'node',
+	moduleNameMapper: {
+		'^inquirer$': '<rootDir>/../test/__mocks__/inquirer.ts',
+	},
 	setupFilesAfterEnv: ['<rootDir>/../test/jest.setup.ts'],
 };

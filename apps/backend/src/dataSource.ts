@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 const envPaths = [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')];
 
 for (const envPath of envPaths) {
-	dotenv.config({ path: envPath, override: false });
+	dotenv.config({ path: envPath, override: false, quiet: true });
 }
 
 const AppDataSource = new DataSource({
