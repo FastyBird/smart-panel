@@ -343,7 +343,7 @@ describe('DelegatesManagerService', () => {
 			id: 'ch-no-batch',
 		} as unknown as ShellyNgChannelEntity;
 
-		await expect(svc.setChannelValue(device, channel, [])).rejects.toThrowError(
+		await expect(svc.setChannelValue(device, channel, [])).rejects.toThrow(
 			'Multiple property writes are not supported by the component.',
 		);
 	});

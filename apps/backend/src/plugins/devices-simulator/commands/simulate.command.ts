@@ -316,7 +316,7 @@ export class SimulateCommand extends CommandRunner {
 
 		const answers = await inquirer.prompt<{ action: string; deviceIds?: string[] }>([
 			{
-				type: 'list',
+				type: 'select',
 				name: 'action',
 				message: 'What would you like to do?',
 				choices: [

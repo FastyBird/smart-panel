@@ -139,7 +139,7 @@ export class SetConnectionStateCommand extends CommandRunner {
 
 			const stateAnswer = await inquirer.prompt<{ state: ConnectionState }>([
 				{
-					type: 'list',
+					type: 'select',
 					name: 'state',
 					message: 'Select connection state:',
 					choices: stateChoices,

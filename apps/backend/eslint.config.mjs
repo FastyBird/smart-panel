@@ -33,6 +33,8 @@ export default tseslint.config(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'comma-dangle': ['error', 'always-multiline'],
 			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+			'no-useless-assignment': 'warn',
+			'preserve-caught-error': 'warn',
 		},
 	},
 );

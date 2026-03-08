@@ -116,7 +116,7 @@ export class GenerateDeviceCommand extends CommandRunner {
 
 			const answers = await inquirer.prompt<{ category: DeviceCategory; name: string; count: number }>([
 				{
-					type: 'list',
+					type: 'select',
 					name: 'category',
 					message: 'Select device category:',
 					choices: categories.map((cat) => ({
