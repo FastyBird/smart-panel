@@ -23,6 +23,11 @@ import {
 	mdiArrowRight,
 	mdiRocketLaunch,
 	mdiChevronDown,
+	mdiRobotHappyOutline,
+	mdiChatProcessingOutline,
+	mdiMicrophone,
+	mdiCreation,
+	mdiHomeAutomation,
 } from "@mdi/js";
 import { Button } from "./_components/button";
 import { ShellyLogoSmall } from "./_components/shelly_logo_small";
@@ -410,6 +415,67 @@ export default function LandingPage() {
 					<AnimatedSection delay={0.4} className="mt-14">
 						<Button variant={"white"} href={"/docs/plugins/overview"} size={"lg"} className={"text-lg px-8 py-4"}>
 							Learn More About Plugins
+							<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
+						</Button>
+					</AnimatedSection>
+				</div>
+			</section>
+
+			{/* AI Buddy */}
+			<section className="bg-white text-black py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">
+							AI Assistant
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">
+							Meet Your Smart Home Buddy
+						</h2>
+						<p className="text-lg text-gray-600 mb-16 max-w-2xl mx-auto">
+							An AI assistant that lives inside your panel — chat with it, talk to it, and let it learn
+							your routines. It observes your actions, detects patterns, and proactively suggests
+							automations.
+						</p>
+					</AnimatedSection>
+
+					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8" staggerDelay={0.1}>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiChatProcessingOutline} size={1.8} className="text-primary" />}
+								title="Text & Voice Chat"
+								description="Ask questions, control devices, and get suggestions through natural conversation — type or speak."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiCreation} size={1.8} className="text-primary" />}
+								title="Proactive Suggestions"
+								description="Detects patterns like &quot;lights off at 11 PM&quot; and suggests automations, energy tips, and anomaly alerts."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiRobotHappyOutline} size={1.8} className="text-primary" />}
+								title="Multiple AI Providers"
+								description="Works with Claude, OpenAI, or Ollama — or runs fully offline with rule-based intelligence."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiHomeAutomation} size={1.8} className="text-primary" />}
+								title="Multi-Channel Access"
+								description="Chat from the panel display, Telegram, WhatsApp, or Discord — wherever you are."
+								variant="light"
+							/>
+						</StaggerItem>
+					</StaggerContainer>
+
+					<AnimatedSection delay={0.4} className="mt-14">
+						<Button variant={"dark"} href={"/docs/plugins/buddy-module/overview"} size={"lg"} className={"px-8 py-4"}>
+							Learn About AI Buddy
 							<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
 						</Button>
 					</AnimatedSection>
