@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:fastybird_smart_panel/modules/system/services/error_reporter.dart';
+
 /// Log level for filtering messages
 enum LogLevel {
   /// Most detailed logs, for development debugging
@@ -116,6 +118,18 @@ class AppLogger {
       if (stackTrace != null) {
         debugPrint('  Stack: $stackTrace');
       }
+    }
+
+    // Report to backend
+    try {
+      ErrorReporter.instance.reportError(
+        message,
+        error: error,
+        stackTrace: stackTrace,
+        tag: module,
+      );
+    } catch (_) {
+      // Never throw from a reporter — avoid propagating to callers.
     }
   }
 

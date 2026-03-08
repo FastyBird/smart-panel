@@ -4,6 +4,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/platform_actions.dart';
+import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
@@ -59,10 +60,21 @@ class SystemModuleService {
     locator.registerSingleton(_throttleStatusRepository);
 
     locator.registerSingleton(_systemService);
+
+    // Connect the error reporter so buffered errors can be flushed to the backend
+    ErrorReporter.instance.setApiClient(apiClient.systemModule);
   }
 
   Future<void> initialize(String appUid) async {
     _isLoading = true;
+
+    // Set app version on the error reporter for log context
+    try {
+      final version = await AppInfo.getAppVersionInfo();
+      ErrorReporter.instance.setAppVersion(version.toString());
+    } catch (_) {
+      // App version is optional context — ignore failures
+    }
 
     // Register system config model with config module
     final configModule = locator<ConfigModuleService>();
@@ -143,6 +155,8 @@ class SystemModuleService {
       SystemModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    ErrorReporter.instance.clearApiClient();
   }
 
   /// Check if the system is in gateway mode (display is separate from backend)
