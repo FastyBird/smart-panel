@@ -5,7 +5,7 @@ import { ExtensionsModuleServiceState } from '../../../openapi.constants';
 export const ServiceSchema = z.object({
 	pluginName: z.string(),
 	serviceId: z.string(),
-	state: z.enum(ExtensionsModuleServiceState),
+	state: z.nativeEnum(ExtensionsModuleServiceState),
 	enabled: z.boolean(),
 	healthy: z.boolean().optional(),
 	lastStartedAt: z.string().optional(),

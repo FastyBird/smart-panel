@@ -67,7 +67,7 @@ class ValueUtils {
       DevicesModuleDataType.uchar,
       DevicesModuleDataType.short,
       DevicesModuleDataType.ushort,
-      DevicesModuleDataType.int,
+      DevicesModuleDataType.valueInt,
       DevicesModuleDataType.uint
     ].contains(dataType);
   }

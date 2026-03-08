@@ -28,7 +28,7 @@ export const Zigbee2mqttDeviceCreateReqSchema: ZodType<ApiCreateDevice> = Device
 export const Zigbee2mqttDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_ZIGBEE2MQTT_TYPE),
-		category: z.enum(DevicesModuleDeviceCategory).optional(),
+		category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
 	})
 );
 

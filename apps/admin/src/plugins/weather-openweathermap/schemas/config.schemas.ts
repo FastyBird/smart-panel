@@ -5,5 +5,5 @@ import { TemperatureUnit } from '../weather-openweathermap.constants';
 
 export const OpenWeatherMapConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	apiKey: z.string().nullable(),
-	unit: z.enum(TemperatureUnit),
+	unit: z.nativeEnum(TemperatureUnit),
 });

@@ -27,11 +27,11 @@ export const ChannelPropertySchema = z.object({
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
 	channel: ItemIdSchema,
-	category: z.enum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+	category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
 	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nullable(),
-	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-	dataType: z.enum(DevicesModuleChannelPropertyDataType),
+	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable().optional().default(null),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
@@ -47,7 +47,7 @@ export const ChannelPropertySchema = z.object({
 				.object({
 					value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 					lastUpdated: z.string().nullable().optional().default(null),
-					trend: z.enum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+					trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
 				})
 				.nullable(),
 		)
@@ -84,11 +84,11 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.enum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
 		identifier: z.string().trim().nonempty().nullable(),
 		name: z.string().trim().nullable(),
-		permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-		dataType: z.enum(DevicesModuleChannelPropertyDataType),
+		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
@@ -96,7 +96,7 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 			.object({
 				value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 				lastUpdated: z.string().nullable().optional().default(null),
-				trend: z.enum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+				trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
 			})
 			.nullable(),
 	}),
@@ -122,11 +122,11 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 	draft: z.boolean().optional().default(false),
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.enum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable(),
-		permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-		dataType: z.enum(DevicesModuleChannelPropertyDataType),
+		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z
@@ -142,7 +142,7 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 	channelId: ItemIdSchema,
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.enum(DevicesModuleChannelPropertyCategory).optional(),
+		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable().optional(),
 		format: z
@@ -174,11 +174,11 @@ export const ChannelsPropertiesRemoveActionPayloadSchema = z.object({
 export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
-	category: z.enum(DevicesModuleChannelPropertyCategory),
+	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable(),
-	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-	data_type: z.enum(DevicesModuleChannelPropertyDataType),
+	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
@@ -202,11 +202,11 @@ const _ChannelPropertyResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string().trim().nonempty(),
 	channel: z.string().uuid(),
-	category: z.enum(DevicesModuleChannelPropertyCategory),
+	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nullable(),
-	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-	data_type: z.enum(DevicesModuleChannelPropertyDataType),
+	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
@@ -214,7 +214,7 @@ const _ChannelPropertyResSchema = z.object({
 		.object({
 			value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 			last_updated: z.string().nullable().optional(),
-			trend: z.enum(SpacesModuleDataSensorReadingTrend).nullable().optional(),
+			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional(),
 		})
 		.nullable()
 		.optional(),

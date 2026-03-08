@@ -289,7 +289,7 @@ class SensorUtils {
     // otherwise use property from backend → hardcoded fallback by category
     final bool isDiscreteProperty = resolvedIsDetection != null ||
         (resolvedProperty != null &&
-            (resolvedProperty.dataType == DevicesModuleDataType.bool ||
+            (resolvedProperty.dataType == DevicesModuleDataType.valueBool ||
                 resolvedProperty.dataType == DevicesModuleDataType.valueEnum ||
                 resolvedProperty.dataType == DevicesModuleDataType.string));
     final resolvedUnit = isDiscreteProperty
@@ -474,7 +474,7 @@ class SensorUtils {
     final prop = resolvedProperty ?? _resolveProperty(channel);
     if (prop != null &&
         (_binaryPropertyCategories.contains(prop.category) ||
-            prop.dataType == DevicesModuleDataType.bool)) {
+            prop.dataType == DevicesModuleDataType.valueBool)) {
       final value = prop.value;
       if (value is BooleanValueType) return value.value;
       if (value is StringValueType) {

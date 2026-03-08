@@ -13,7 +13,7 @@ export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	primarySpaceId: ItemIdSchema.nullable().default(null),
-	category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
+	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	order: z.number().int().min(0).default(0),
@@ -58,7 +58,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable(),
-			category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -89,7 +89,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable().optional(),
-			category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -141,7 +141,7 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	primary_space_id: z.string().uuid().nullable().optional(),
-	category: z.enum(SceneCategory).optional(),
+	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -156,7 +156,7 @@ export const SceneCreateReqSchema = z.object({
 
 export const SceneUpdateReqSchema = z.object({
 	primary_space_id: z.string().uuid().nullable().optional(),
-	category: z.enum(SceneCategory).optional(),
+	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
 		.string()
@@ -172,7 +172,7 @@ export const SceneUpdateReqSchema = z.object({
 export const SceneResSchema = z.object({
 	id: z.string().uuid(),
 	primary_space_id: z.string().uuid().nullable(),
-	category: z.enum(SceneCategory),
+	category: z.nativeEnum(SceneCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	order: z.number().int().min(0),

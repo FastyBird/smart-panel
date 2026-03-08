@@ -5,7 +5,7 @@ import { TemperatureUnit, WEATHER_OPENWEATHERMAP_PLUGIN_NAME } from '../weather-
 
 export const OpenWeatherMapConfigSchema = ConfigPluginSchema.extend({
 	apiKey: z.string().trim().nullable(),
-	unit: z.enum(TemperatureUnit).default(TemperatureUnit.CELSIUS),
+	unit: z.nativeEnum(TemperatureUnit).default(TemperatureUnit.CELSIUS),
 });
 
 // BACKEND API
@@ -15,7 +15,7 @@ export const OpenWeatherMapConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.an
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_NAME),
 		api_key: z.string().trim().nullable().optional(),
-		unit: z.enum(TemperatureUnit).optional(),
+		unit: z.nativeEnum(TemperatureUnit).optional(),
 	})
 );
 
@@ -23,6 +23,6 @@ export const OpenWeatherMapConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),
-		unit: z.enum(TemperatureUnit),
+		unit: z.nativeEnum(TemperatureUnit),
 	})
 );

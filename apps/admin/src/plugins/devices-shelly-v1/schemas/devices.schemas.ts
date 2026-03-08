@@ -17,7 +17,7 @@ export const ShellyV1SupportedDeviceSchema = z.object({
 	group: z.string(),
 	name: z.string(),
 	models: z.array(z.string()),
-	categories: z.array(z.enum(DevicesModuleDeviceCategory)),
+	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
 });
 
 export const ShellyV1DeviceInfoRequestSchema = z.object({

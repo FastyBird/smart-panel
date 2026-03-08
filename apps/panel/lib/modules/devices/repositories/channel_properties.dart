@@ -95,7 +95,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       return false;
     }
 
-    if (property.dataType != DevicesModuleDataType.bool) {
+    if (property.dataType != DevicesModuleDataType.valueBool) {
       debugPrint(
         '[DEVICES MODULE][CHANNEL PROPERTIES] Only boolean values could be toggled',
       );
@@ -140,7 +140,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       _valueBackup[id] = property.valueState;
     }
 
-    if (property.dataType == DevicesModuleDataType.bool) {
+    if (property.dataType == DevicesModuleDataType.valueBool) {
       try {
         property = property.copyWith(
           valueState: PropertyValueState(value: BooleanValueType(_valueToBoolean(value))),
@@ -155,7 +155,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         property.dataType == DevicesModuleDataType.uchar ||
         property.dataType == DevicesModuleDataType.short ||
         property.dataType == DevicesModuleDataType.ushort ||
-        property.dataType == DevicesModuleDataType.int ||
+        property.dataType == DevicesModuleDataType.valueInt ||
         property.dataType == DevicesModuleDataType.uint ||
         property.dataType == DevicesModuleDataType.float) {
       try {

@@ -13,8 +13,8 @@ export const DevicesFilterSchema = z.object({
 	search: z.string().optional(),
 	types: z.array(z.string()),
 	state: z.enum(['all', 'offline', 'online']).default('all'),
-	states: z.array(z.enum(DevicesModuleDeviceConnectionStatus)),
-	categories: z.array(z.enum(DevicesModuleDeviceCategory)),
+	states: z.array(z.nativeEnum(DevicesModuleDeviceConnectionStatus)),
+	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
 	enabled: z.enum(['all', 'enabled', 'disabled']).default('all'),
 	validation: z.enum(['all', 'valid', 'invalid']).default('all'),
 });
@@ -22,13 +22,13 @@ export const DevicesFilterSchema = z.object({
 export const ChannelsFilterSchema = z.object({
 	search: z.string().optional(),
 	devices: z.array(z.string()),
-	categories: z.array(z.enum(DevicesModuleChannelCategory)),
+	categories: z.array(z.nativeEnum(DevicesModuleChannelCategory)),
 });
 
 export const ChannelsPropertiesFilterSchema = z.object({
 	search: z.string().optional(),
 	channels: z.array(z.string()),
-	categories: z.array(z.enum(DevicesModuleChannelPropertyCategory)),
-	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
-	dataTypes: z.array(z.enum(DevicesModuleChannelPropertyDataType)),
+	categories: z.array(z.nativeEnum(DevicesModuleChannelPropertyCategory)),
+	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	dataTypes: z.array(z.nativeEnum(DevicesModuleChannelPropertyDataType)),
 });

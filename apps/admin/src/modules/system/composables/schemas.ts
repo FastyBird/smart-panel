@@ -4,7 +4,7 @@ import { SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../o
 
 export const SystemLogsFilterSchema = z.object({
 	search: z.string().optional(),
-	levels: z.array(z.enum(SystemModuleLogEntryType)).default([]),
-	sources: z.array(z.enum(SystemModuleLogEntrySource)).default([]),
+	levels: z.array(z.nativeEnum(SystemModuleLogEntryType)).default([]),
+	sources: z.array(z.nativeEnum(SystemModuleLogEntrySource)).default([]),
 	tag: z.string().optional(),
 });

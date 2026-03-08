@@ -5,7 +5,7 @@ import { WeatherOpenweathermapPluginDataLocationLocation_type } from '../../../o
 import { WEATHER_OPENWEATHERMAP_PLUGIN_TYPE } from '../weather-openweathermap.constants';
 
 export const OpenWeatherMapLocationSchema = LocationSchema.extend({
-	locationType: z.enum(WeatherOpenweathermapPluginDataLocationLocation_type),
+	locationType: z.nativeEnum(WeatherOpenweathermapPluginDataLocationLocation_type),
 	latitude: z.number().nullable().optional(),
 	longitude: z.number().nullable().optional(),
 	cityName: z.string().nullable().optional(),
@@ -20,7 +20,7 @@ export const OpenWeatherMapLocationSchema = LocationSchema.extend({
 export const OpenWeatherMapLocationCreateReqSchema = LocationCreateReqSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_TYPE),
-		location_type: z.enum(WeatherOpenweathermapPluginDataLocationLocation_type),
+		location_type: z.nativeEnum(WeatherOpenweathermapPluginDataLocationLocation_type),
 		latitude: z.number().optional(),
 		longitude: z.number().optional(),
 		city_name: z.string().optional(),
@@ -33,7 +33,7 @@ export const OpenWeatherMapLocationCreateReqSchema = LocationCreateReqSchema.and
 export const OpenWeatherMapLocationUpdateReqSchema = LocationUpdateReqSchema.and(
 	z.object({
 		type: z.literal(WEATHER_OPENWEATHERMAP_PLUGIN_TYPE),
-		location_type: z.enum(WeatherOpenweathermapPluginDataLocationLocation_type).optional(),
+		location_type: z.nativeEnum(WeatherOpenweathermapPluginDataLocationLocation_type).optional(),
 		latitude: z.number().optional(),
 		longitude: z.number().optional(),
 		city_name: z.string().optional(),

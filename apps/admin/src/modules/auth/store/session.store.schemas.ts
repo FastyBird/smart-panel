@@ -12,7 +12,7 @@ type ApiTokenPair = AuthModuleTokenPairSchema;
 
 export const TokenPayloadSchema = z.object({
 	sub: z.string().uuid(),
-	role: z.enum(UsersModuleUserRole),
+	role: z.nativeEnum(UsersModuleUserRole),
 	exp: z.number(),
 	iat: z.number(),
 	jti: z.string().uuid(),
@@ -25,7 +25,7 @@ export const TokenPairSchema = z.object({
 	accessToken: z.string().trim().min(1),
 	refreshToken: z.string().trim().min(1),
 	expiration: z.union([z.string(), z.number(), z.date(), z.null()]).transform((val) => (val ? new Date(val) : null)),
-	type: z.enum(AccessTokenType),
+	type: z.nativeEnum(AccessTokenType),
 });
 
 export const SessionStateSemaphoreSchema = z.object({
@@ -82,6 +82,6 @@ export const SessionLoginReqSchema: ZodType<ApiLogin> = z.object({
 export const AuthTokenPairResSchema: ZodType<ApiTokenPair> = z.object({
 	access_token: z.string().trim().min(1),
 	refresh_token: z.string().trim().min(1),
-	type: z.enum(AccessTokenType),
+	type: z.nativeEnum(AccessTokenType),
 	expiration: z.string().date(),
 });

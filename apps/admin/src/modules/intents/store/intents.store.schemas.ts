@@ -14,7 +14,7 @@ export const IntentTargetResultSchema = z.object({
 	channelId: z.string().uuid().nullable(),
 	propertyId: z.string().uuid().nullable(),
 	sceneId: z.string().uuid().nullable(),
-	status: z.enum(IntentTargetStatus),
+	status: z.nativeEnum(IntentTargetStatus),
 	error: z.string().nullable(),
 });
 
@@ -34,11 +34,11 @@ const nullableDate = z.preprocess(
 export const IntentSchema = z.object({
 	id: z.string().uuid(),
 	requestId: z.string().uuid().nullable(),
-	type: z.enum(IntentType),
+	type: z.nativeEnum(IntentType),
 	context: IntentContextSchema,
 	targets: z.array(IntentTargetSchema),
 	value: z.unknown().transform((val) => val ?? null),
-	status: z.enum(IntentStatus),
+	status: z.nativeEnum(IntentStatus),
 	ttlMs: z.number(),
 	createdAt: z.coerce.date(),
 	expiresAt: z.coerce.date(),

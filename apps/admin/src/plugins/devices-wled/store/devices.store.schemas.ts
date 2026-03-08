@@ -30,7 +30,7 @@ export const WledDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCreateR
 export const WledDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_WLED_TYPE),
-		category: z.enum(DevicesModuleDeviceCategory).optional(),
+		category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
 		hostname: z.string().optional(),
 	})
 );
