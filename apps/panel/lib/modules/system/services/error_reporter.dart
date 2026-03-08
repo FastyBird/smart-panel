@@ -54,9 +54,11 @@ class ErrorReporter {
     _appVersion = version;
   }
 
-  /// Disconnect from the API client on teardown.
+  /// Disconnect from the API client and cancel pending timers on teardown.
   void clearApiClient() {
     _apiClient = null;
+    _timer?.cancel();
+    _timer = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -170,18 +172,22 @@ class ErrorReporter {
 
     _flushing = true;
 
+    // Remove the batch from the queue before the async gap so that
+    // concurrent _enqueue calls cannot shift indices under us.
     final count = min(_queue.length, _maxBatch);
-    final batch = _queue.sublist(0, count);
+    final batch = List<SystemModuleCreateLogEntry>.of(
+      _queue.getRange(0, count),
+    );
+    _queue.removeRange(0, count);
 
     try {
       await _apiClient!.createSystemModuleLogs(
         body: SystemModuleReqCreateLogEntries(data: batch),
       );
-
-      // Only remove after a successful send.
-      _queue.removeRange(0, count);
     } catch (e) {
-      // Leave entries in the queue so the next flush retries them.
+      // Re-insert at the front so the next flush retries them.
+      _queue.insertAll(0, batch);
+
       if (kDebugMode) {
         debugPrint('[ErrorReporter] Failed to flush error log batch: $e');
       }
@@ -194,9 +200,4 @@ class ErrorReporter {
     }
   }
 
-  /// Cancel pending timers. Called during app teardown.
-  void dispose() {
-    _timer?.cancel();
-    _timer = null;
-  }
 }
