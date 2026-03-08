@@ -8,7 +8,13 @@ import { AggregationResult, SecurityAggregatorInterface } from '../contracts/sec
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityAlertModel, SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
-import { ArmedState, SECURITY_MODULE_NAME, SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
+import {
+	ArmedState,
+	SECURITY_MODULE_NAME,
+	SECURITY_STATE_PROVIDERS,
+	SEVERITY_RANK,
+	Severity,
+} from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 @Injectable()

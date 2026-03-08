@@ -120,7 +120,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Heartbeat cycle failed: ${err.message}`, err.stack);
+			this.logger.error(`Heartbeat cycle failed: ${err.message}`, { stack: err.stack });
 		} finally {
 			this.running = false;
 		}

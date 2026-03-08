@@ -9,10 +9,10 @@ import { CommandEventRegistryService } from '../../websocket/services/command-ev
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
-import { SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
+import { SPACES_MODULE_NAME } from '../spaces.constants';
 
 /**
  * WebSocket command event types for spaces module intents

@@ -1,5 +1,4 @@
 import { ExtensionLoggerService } from '../../../common/logger';
-
 import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../platforms/tool-provider.platform';
 
 const DEFAULT_TOOL_EXECUTION_TIMEOUT_MS = 5_000;

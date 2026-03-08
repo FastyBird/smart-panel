@@ -7,7 +7,14 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { AlarmState, ArmedState, SECURITY_MODULE_NAME, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
+import {
+	AlarmState,
+	ArmedState,
+	SECURITY_MODULE_NAME,
+	SEVERITY_RANK,
+	SecurityAlertType,
+	Severity,
+} from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 const ALARM_STATE_RANK: Record<AlarmState, number> = {

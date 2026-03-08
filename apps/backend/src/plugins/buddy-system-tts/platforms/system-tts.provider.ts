@@ -8,12 +8,12 @@ import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ITtsProvider,
 	TtsSynthesisOptions,
 	TtsSynthesisResult,
 } from '../../../modules/buddy/platforms/tts-provider.platform';
-import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_SYSTEM_TTS_PLUGIN_NAME } from '../buddy-system-tts.constants';
 import { BuddySystemTtsConfigModel } from '../models/config.model';
