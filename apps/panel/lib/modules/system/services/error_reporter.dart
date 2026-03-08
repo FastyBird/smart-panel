@@ -111,19 +111,6 @@ class ErrorReporter {
     );
   }
 
-  /// Report a warning from application code.
-  void reportWarning(
-    String message, {
-    String? tag,
-  }) {
-    _enqueue(
-      message: message,
-      type: SystemModuleCreateLogEntryType.warn,
-      level: 3,
-      tag: tag,
-    );
-  }
-
   // ---------------------------------------------------------------------------
   // Internals
   // ---------------------------------------------------------------------------
@@ -183,17 +170,18 @@ class ErrorReporter {
 
     _flushing = true;
 
+    final count = min(_queue.length, _maxBatch);
+    final batch = _queue.sublist(0, count);
+
     try {
-      final count = min(_queue.length, _maxBatch);
-      final batch = _queue.sublist(0, count);
-
-      _queue.removeRange(0, count);
-
       await _apiClient!.createSystemModuleLogs(
         body: SystemModuleReqCreateLogEntries(data: batch),
       );
+
+      // Only remove after a successful send.
+      _queue.removeRange(0, count);
     } catch (e) {
-      // Silently swallow send failures to avoid error-reporting loops.
+      // Leave entries in the queue so the next flush retries them.
       if (kDebugMode) {
         debugPrint('[ErrorReporter] Failed to flush error log batch: $e');
       }
