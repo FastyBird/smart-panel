@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -67,9 +67,9 @@ Panel:
 - [x] `MediaCapabilitySummaryModel` derives capabilities from device properties
 - [x] Backend can activate/deactivate media routings
 - [x] Execution plan builds ordered steps for routing activation
-- [ ] Admin can configure media endpoints (API implemented)
-- [ ] Admin can configure media routings (API implemented)
-- [ ] Panel shows activity-first media UI (panel scope)
+- [x] Admin can configure media endpoints (API implemented)
+- [x] Admin can configure media routings (API implemented)
+- [x] Panel shows activity-first media UI (panel scope)
 - [x] Unit tests cover:
   - [x] Endpoint capability detection
   - [x] Routing activation execution

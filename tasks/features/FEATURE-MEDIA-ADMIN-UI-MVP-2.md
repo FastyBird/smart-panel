@@ -42,15 +42,15 @@ I want to activate/deactivate media activities, see live status, and inspect fai
 
 ## 4. Acceptance criteria
 
-- [ ] Admin can activate each activityKey via Run button
+- [x] Admin can activate each activityKey via Run button
 - [ ] Admin can deactivate via global Deactivate button
-- [ ] UI shows current active activity and resolved device composition
-- [ ] UI shows failures with actionable details (step index, device, reason)
-- [ ] Polling fallback refreshes status after activate/deactivate
-- [ ] Clear feedback during activation (loading state, disabled duplicate clicks)
-- [ ] Failures never disappear silently
-- [ ] "Copy debug JSON" available for support/reporting
-- [ ] Store tests for activate/deactivate flows (mock API)
+- [x] UI shows current active activity and resolved device composition
+- [x] UI shows failures with actionable details (step index, device, reason)
+- [x] Polling fallback refreshes status after activate/deactivate
+- [x] Clear feedback during activation (loading state, disabled duplicate clicks)
+- [x] Failures never disappear silently
+- [x] "Copy debug JSON" available for support/reporting
+- [x] Store tests for activate/deactivate flows (mock API)
 - [ ] Component test for rendering failed state and failures list
 
 ## 5. Example scenarios (optional, Gherkin-style)

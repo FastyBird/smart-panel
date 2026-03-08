@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
-Status: in-progress
+Status: done
 
 ## Purpose
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: FEATURE-ENERGY-MODULE-MVP
-Status: review
+Status: done
 
 ## 1. Business goal
 

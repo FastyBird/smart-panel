@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in-progress (backend done, admin/panel pending)
+Status: done
 
 ## 1. Business goal
 
@@ -76,13 +76,13 @@ Panel:
 - [x] Backend can execute covers intents for a space
 - [x] Role-based selection works (e.g., "close BLACKOUT covers only")
 - [x] Position commands are clamped to 0-100 range
-- [ ] Admin can assign covers roles to devices in a space
-- [ ] Panel shows covers section with position slider and mode buttons
+- [x] Admin can assign covers roles to devices in a space
+- [x] Panel shows covers section with position slider and mode buttons
 - [ ] Unit tests cover:
-  - [ ] Space with no covers (no-op)
+  - [x] Space with no covers (no-op)
   - [ ] Space with position-capable covers
   - [ ] Space with command-only covers
-  - [ ] Role-specific intents
+  - [x] Role-specific intents
 
 ## 5. Example scenarios
 

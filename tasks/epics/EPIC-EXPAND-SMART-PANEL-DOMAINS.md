@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -65,10 +65,10 @@ The smart panel should act as a bridge between users and their smart devices. In
 ## 4. Acceptance criteria
 
 ### Domain Completion
-- [ ] Covers domain has space-level intents (open, close, set_position, role_position)
-- [ ] Media domain has space-level intents (power_on, power_off, volume_set, mute)
+- [x] Covers domain has space-level intents (open, close, set_position, role_position)
+- [x] Media domain has space-level intents (power_on, power_off, volume_set, mute)
 - [ ] Security domain has space-level intents (lock_all, unlock_all, arm, disarm)
-- [ ] Each new domain follows the existing role-based architecture
+- [x] Each new domain follows the existing role-based architecture
 
 ### Unified Modes
 - [ ] Activity modes can be defined and assigned to spaces
@@ -174,8 +174,8 @@ SpaceModeService
 ### Phase 1: Domain Completion
 | ID | Task | Size | Status |
 |----|------|------|--------|
-| FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | medium | planned |
-| FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | medium | planned |
+| FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | medium | done |
+| FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | medium | done |
 | FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces | medium | planned |
 
 ### Phase 2: Unified Room Modes

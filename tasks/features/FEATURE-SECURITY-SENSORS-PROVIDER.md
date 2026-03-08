@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -43,17 +43,17 @@ I want the Security module to scan security-relevant sensor devices and produce 
 
 ## 4. Acceptance criteria
 
-- [ ] `SecuritySensorsProvider` registered and invoked by aggregator
-- [ ] Provider maps smoke/CO/leak channels to critical severity
-- [ ] Provider maps motion to warning severity
-- [ ] Provider maps contact (door/window) to info severity
-- [ ] `highestSeverity` reflects max across all active alerts
-- [ ] `activeAlertsCount` sums all active alerts
-- [ ] `hasCriticalAlert` is true when any critical alert exists
-- [ ] `lastEvent` selects newest/highest severity alert deterministically
-- [ ] Provider never throws; returns empty signal on error
-- [ ] `/api/security/status` reflects sensor-driven severity/count
-- [ ] Unit tests cover all mapping rules, determinism, and empty-device case
+- [x]`SecuritySensorsProvider` registered and invoked by aggregator
+- [x]Provider maps smoke/CO/leak channels to critical severity
+- [x]Provider maps motion to warning severity
+- [x]Provider maps contact (door/window) to info severity
+- [x]`highestSeverity` reflects max across all active alerts
+- [x]`activeAlertsCount` sums all active alerts
+- [x]`hasCriticalAlert` is true when any critical alert exists
+- [x]`lastEvent` selects newest/highest severity alert deterministically
+- [x]Provider never throws; returns empty signal on error
+- [x]`/api/security/status` reflects sensor-driven severity/count
+- [x]Unit tests cover all mapping rules, determinism, and empty-device case
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

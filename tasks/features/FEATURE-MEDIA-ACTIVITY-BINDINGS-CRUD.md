@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -39,18 +39,18 @@ I want a persistent per-space mapping of activities (Watch / Listen / Gaming / B
 
 ## 4. Acceptance criteria
 
-- [ ] `SpaceMediaActivityBindingEntity` persists bindings with `(spaceId, activityKey)` unique constraint
-- [ ] Activity keys: `watch`, `listen`, `gaming`, `background`, `off`
-- [ ] Slots store derived endpoint IDs (strings): `displayEndpointId`, `audioEndpointId`, `sourceEndpointId`, `remoteEndpointId`
-- [ ] Overrides: `displayInputId` (string), `audioVolumePreset` (0..100)
-- [ ] `GET /spaces/:spaceId/media/bindings` returns all bindings for space
-- [ ] `GET /spaces/:spaceId/media/bindings/:bindingId` returns single binding
-- [ ] `POST /spaces/:spaceId/media/bindings` creates a binding (validates endpoint IDs and types)
-- [ ] `PATCH /spaces/:spaceId/media/bindings/:bindingId` updates a binding
-- [ ] `DELETE /spaces/:spaceId/media/bindings/:bindingId` deletes a binding
-- [ ] `POST /spaces/:spaceId/media/bindings/apply-defaults` creates missing bindings with heuristic defaults
-- [ ] Endpoint type validation: display slot → display type, audio slot → audio_output type, etc.
-- [ ] Override validation: `displayInputId` only if display has `inputSelect` capability; `audioVolumePreset` only if audio has `volume` capability
+- [x]`SpaceMediaActivityBindingEntity` persists bindings with `(spaceId, activityKey)` unique constraint
+- [x]Activity keys: `watch`, `listen`, `gaming`, `background`, `off`
+- [x]Slots store derived endpoint IDs (strings): `displayEndpointId`, `audioEndpointId`, `sourceEndpointId`, `remoteEndpointId`
+- [x]Overrides: `displayInputId` (string), `audioVolumePreset` (0..100)
+- [x]`GET /spaces/:spaceId/media/bindings` returns all bindings for space
+- [x]`GET /spaces/:spaceId/media/bindings/:bindingId` returns single binding
+- [x]`POST /spaces/:spaceId/media/bindings` creates a binding (validates endpoint IDs and types)
+- [x]`PATCH /spaces/:spaceId/media/bindings/:bindingId` updates a binding
+- [x]`DELETE /spaces/:spaceId/media/bindings/:bindingId` deletes a binding
+- [x]`POST /spaces/:spaceId/media/bindings/apply-defaults` creates missing bindings with heuristic defaults
+- [x]Endpoint type validation: display slot → display type, audio slot → audio_output type, etc.
+- [x]Override validation: `displayInputId` only if display has `inputSelect` capability; `audioVolumePreset` only if audio has `volume` capability
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
