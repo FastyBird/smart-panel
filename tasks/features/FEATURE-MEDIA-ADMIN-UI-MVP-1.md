@@ -39,16 +39,16 @@ I want to view derived media endpoints and edit activity bindings per space
 
 ## 4. Acceptance criteria
 
-- [ ] Admin can see endpoints list with types and capability badges
-- [ ] Admin can edit bindings for each activity and save successfully
-- [ ] Apply defaults fills missing bindings and UI refreshes
-- [ ] Overrides fields appear only when meaningful
-- [ ] Errors from server are shown clearly in the form
-- [ ] No "guessing" in UI (only show what backend supports)
-- [ ] Empty states are informative
-- [ ] Switching activities never loses saved state
+- [x] Admin can see endpoints list with types and capability badges
+- [x] Admin can edit bindings for each activity and save successfully
+- [x] Apply defaults fills missing bindings and UI refreshes
+- [x] Overrides fields appear only when meaningful
+- [x] Errors from server are shown clearly in the form
+- [x] No "guessing" in UI (only show what backend supports)
+- [x] Empty states are informative
+- [x] Switching activities never loses saved state
 - [ ] Component test for Activities editor form rendering + filtering logic
-- [ ] Store tests for fetch/save/apply defaults (mock API)
+- [x] Store tests for fetch/save/apply defaults (mock API)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

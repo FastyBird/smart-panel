@@ -47,11 +47,11 @@ I want clear state feedback, warning/error surfacing, and predictable offline be
 - [x] Activation response and Active state include standardized `warnings[]` and `errors[]`
 - [x] `failed` state only when critical steps fail
 - [x] Deactivate always results in `deactivated` state
-- [x] WS/offline policy is explicit (`requiresRealtime` flag)
+- [ ] WS/offline policy is explicit (`requiresRealtime` flag)
 - [ ] Panel: WS disconnected → blocking overlay appears reliably
 - [x] Panel: Activating/active/failed states are clearly visible (step progress UI in feat/panel-media-activation-preview-steps)
 - [ ] Panel: Warnings vs errors are distinguishable
-- [ ] Panel: Failure details modal shows actionable info + retry/deactivate
+- [x] Panel: Failure details modal shows actionable info + retry/deactivate
 - [x] Admin: Mirrors the same warning/error split
 - [x] Admin: Provides copy-debug and clear lifecycle feedback
 - [x] Unit test for failure categorization (warnings vs errors)

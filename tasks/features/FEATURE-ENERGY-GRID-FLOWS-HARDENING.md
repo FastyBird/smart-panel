@@ -4,7 +4,7 @@ Type: technical
 Scope: backend, admin, panel
 Size: medium
 Parent: FEATURE-ENERGY-GRID-FLOWS
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 

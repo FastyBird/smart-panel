@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: FEATURE-ENERGY-MODULE-MVP
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -47,17 +47,17 @@ I want to see space-level energy totals, time-series charts, and a breakdown of 
 
 ## 4. Acceptance criteria
 
-- [ ] Additional index on `(deviceId, intervalStart)` added to `EnergyDeltaEntity`
-- [ ] Range helper computes today/week/month boundaries in Europe/Prague timezone
-- [ ] `GET /api/v1/modules/energy/spaces/:spaceId/summary?range=today|week|month` returns `totalConsumptionKwh`, `totalProductionKwh`, `netKwh`, `lastUpdatedAt`
-- [ ] `GET /api/v1/modules/energy/spaces/:spaceId/timeseries?range=today|week|month&interval=5m|1h|1d` returns time-series points with zero-filled gaps
-- [ ] `GET /api/v1/modules/energy/spaces/:spaceId/breakdown?range=today&limit=10` returns top devices by consumption
-- [ ] `spaceId=home` aggregates across all spaces
-- [ ] Space summary aggregates deltas from all rooms belonging to the space
-- [ ] Time-series correctly upsamples 5m buckets into 1h and 1d intervals
-- [ ] Breakdown returns devices sorted by consumption descending with limit
-- [ ] Unit tests cover space aggregation, timeseries bucketing, breakdown ordering, and range boundaries
-- [ ] All endpoints follow API conventions (Swagger decorators, response models)
+- [x]Additional index on `(deviceId, intervalStart)` added to `EnergyDeltaEntity`
+- [x]Range helper computes today/week/month boundaries in Europe/Prague timezone
+- [x]`GET /api/v1/modules/energy/spaces/:spaceId/summary?range=today|week|month` returns `totalConsumptionKwh`, `totalProductionKwh`, `netKwh`, `lastUpdatedAt`
+- [x]`GET /api/v1/modules/energy/spaces/:spaceId/timeseries?range=today|week|month&interval=5m|1h|1d` returns time-series points with zero-filled gaps
+- [x]`GET /api/v1/modules/energy/spaces/:spaceId/breakdown?range=today&limit=10` returns top devices by consumption
+- [x]`spaceId=home` aggregates across all spaces
+- [x]Space summary aggregates deltas from all rooms belonging to the space
+- [x]Time-series correctly upsamples 5m buckets into 1h and 1d intervals
+- [x]Breakdown returns devices sorted by consumption descending with limit
+- [x]Unit tests cover space aggregation, timeseries bucketing, breakdown ordering, and range boundaries
+- [x]All endpoints follow API conventions (Swagger decorators, response models)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

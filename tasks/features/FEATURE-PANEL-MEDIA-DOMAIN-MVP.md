@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -48,15 +48,15 @@ I want to see and control media activities (Watch, Listen, Gaming, Background, O
 
 ## 4. Acceptance criteria
 
-- [ ] Activity selector activates and deactivates activities
-- [ ] Active card updates live based on WS events
-- [ ] Controls appear only when capabilities exist
-- [ ] Device list renders devices derived from endpoints
-- [ ] Device detail works and sends commands to backend
-- [ ] "Wow flow": one tap on activity changes the active card and immediately offers relevant controls
-- [ ] No confusing "device switcher only" feeling
-- [ ] Errors and partial failures are visible and actionable
-- [ ] Unit tests for derived helpers (resolve control targets)
+- [x]Activity selector activates and deactivates activities
+- [x]Active card updates live based on WS events
+- [x]Controls appear only when capabilities exist
+- [x]Device list renders devices derived from endpoints
+- [x]Device detail works and sends commands to backend
+- [x]"Wow flow": one tap on activity changes the active card and immediately offers relevant controls
+- [x]No confusing "device switcher only" feeling
+- [x]Errors and partial failures are visible and actionable
+- [x]Unit tests for derived helpers (resolve control targets)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

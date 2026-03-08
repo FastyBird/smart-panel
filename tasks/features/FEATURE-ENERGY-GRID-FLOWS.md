@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: FEATURE-ENERGY-MODULE-MVP
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -51,19 +51,19 @@ I want to see energy imported from and exported to the grid, plus net calculatio
 
 ## 4. Acceptance criteria
 
-- [ ] `electrical_energy` channel in channels.yaml has optional `grid_import` and `grid_export` properties
-- [ ] `PropertyCategory` enum has `GRID_IMPORT` and `GRID_EXPORT` entries
-- [ ] `EnergySourceType` enum has `GRID_IMPORT` and `GRID_EXPORT` entries
-- [ ] Ingestion listener maps `electrical_energy.grid_import` → `EnergySourceType.GRID_IMPORT`
-- [ ] Ingestion listener maps `electrical_energy.grid_export` → `EnergySourceType.GRID_EXPORT`
-- [ ] Space summary API returns `totalGridImportKwh`, `totalGridExportKwh`, `netGridKwh`, `hasGridMetrics`
-- [ ] Timeseries API returns `gridImportDeltaKwh`, `gridExportDeltaKwh` per point
-- [ ] Whole-home summary API returns grid totals
-- [ ] When no grid metrics exist, values are 0 and `hasGridMetrics` is false
-- [ ] Existing fields unchanged (backwards compatible)
-- [ ] Unit tests cover delta computation for grid sources
-- [ ] Unit tests cover API aggregation with/without grid metrics
-- [ ] Spec files regenerated
+- [x]`electrical_energy` channel in channels.yaml has optional `grid_import` and `grid_export` properties
+- [x]`PropertyCategory` enum has `GRID_IMPORT` and `GRID_EXPORT` entries
+- [x]`EnergySourceType` enum has `GRID_IMPORT` and `GRID_EXPORT` entries
+- [x]Ingestion listener maps `electrical_energy.grid_import` → `EnergySourceType.GRID_IMPORT`
+- [x]Ingestion listener maps `electrical_energy.grid_export` → `EnergySourceType.GRID_EXPORT`
+- [x]Space summary API returns `totalGridImportKwh`, `totalGridExportKwh`, `netGridKwh`, `hasGridMetrics`
+- [x]Timeseries API returns `gridImportDeltaKwh`, `gridExportDeltaKwh` per point
+- [x]Whole-home summary API returns grid totals
+- [x]When no grid metrics exist, values are 0 and `hasGridMetrics` is false
+- [x]Existing fields unchanged (backwards compatible)
+- [x]Unit tests cover delta computation for grid sources
+- [x]Unit tests cover API aggregation with/without grid metrics
+- [x]Spec files regenerated
 
 ## 5. Example scenarios
 

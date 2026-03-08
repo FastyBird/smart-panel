@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -36,14 +36,14 @@ I want to have **deterministic simulator scenarios and a comprehensive regressio
 
 ## 4. Acceptance criteria
 
-- [ ] Templates generate deterministic device sets for 4 topologies: tv_only, speaker_only, tv_avr_console_streamer, multi_output
-- [ ] Regression tests cover endpoints derivation (count, types, capabilities)
-- [ ] Regression tests cover default bindings quality (slot assignments, preference heuristics)
-- [ ] Regression tests cover activation behavior (plan execution, state transitions)
-- [ ] Regression tests cover failure model (critical vs non-critical failures)
-- [ ] Regression tests cover WS events (lifecycle event types and payload structure)
-- [ ] Tests run in CI and are stable (no timing flakiness; use mocks)
-- [ ] Adding a new scenario is straightforward (documented)
+- [x]Templates generate deterministic device sets for 4 topologies: tv_only, speaker_only, tv_avr_console_streamer, multi_output
+- [x]Regression tests cover endpoints derivation (count, types, capabilities)
+- [x]Regression tests cover default bindings quality (slot assignments, preference heuristics)
+- [x]Regression tests cover activation behavior (plan execution, state transitions)
+- [x]Regression tests cover failure model (critical vs non-critical failures)
+- [x]Regression tests cover WS events (lifecycle event types and payload structure)
+- [x]Tests run in CI and are stable (no timing flakiness; use mocks)
+- [x]Adding a new scenario is straightforward (documented)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

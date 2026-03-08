@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -52,19 +52,19 @@ I want an Energy domain page that shows today's summary, a timeseries chart, and
 
 ## 4. Acceptance criteria
 
-- [ ] Energy domain page is accessible from the deck (swipeable like other domain pages)
-- [ ] Energy domain uses MdiIcons.flashOutline icon and ThemeColors.info accent
-- [ ] Summary section shows today's total consumption (kWh), production if available, and net if both present
-- [ ] Timeseries bar chart shows consumption (and production if available) for selected range
-- [ ] Top consumers list shows up to 10 devices sorted by consumption
-- [ ] Range switcher (Today / Week / Month) updates summary and chart
-- [ ] Chart interval adjusts: 1h for today, 1h for week, 1d for month
-- [ ] Space header badge shows today's consumption (and production icon if available)
-- [ ] Header badge is hidden or shows "—" when API fails
-- [ ] Loading and error states are consistent with other domain pages
-- [ ] Empty state shown when no energy data exists
-- [ ] i18n labels added for Energy, Consumption, Production, Today, Week, Month, Top consumers
-- [ ] Energy domain is visible when sensor devices exist in the room
+- [x]Energy domain page is accessible from the deck (swipeable like other domain pages)
+- [x]Energy domain uses MdiIcons.flashOutline icon and ThemeColors.info accent
+- [x]Summary section shows today's total consumption (kWh), production if available, and net if both present
+- [x]Timeseries bar chart shows consumption (and production if available) for selected range
+- [x]Top consumers list shows up to 10 devices sorted by consumption
+- [x]Range switcher (Today / Week / Month) updates summary and chart
+- [x]Chart interval adjusts: 1h for today, 1h for week, 1d for month
+- [x]Space header badge shows today's consumption (and production icon if available)
+- [x]Header badge is hidden or shows "—" when API fails
+- [x]Loading and error states are consistent with other domain pages
+- [x]Empty state shown when no energy data exists
+- [x]i18n labels added for Energy, Consumption, Production, Today, Week, Month, Top consumers
+- [x]Energy domain is visible when sensor devices exist in the room
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

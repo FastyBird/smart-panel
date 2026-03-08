@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -46,15 +46,15 @@ I want to ingest cumulative kWh property updates, compute per-interval delta ene
 
 ## 4. Acceptance criteria
 
-- [ ] `EnergyDeltaEntity` created with fields: id, deviceId, roomId, sourceType, deltaKwh, intervalStart, intervalEnd, createdAt
-- [ ] Ingestion service listens for `CHANNEL_PROPERTY_VALUE_SET` and filters for consumption/production properties
-- [ ] Delta computation handles: monotonic increase, reset (value < prev), missing baseline
-- [ ] 5-minute interval bucketing with accumulation for faster-arriving samples
-- [ ] Room ID resolved from device at processing time; null if no room
-- [ ] `GET /api/v1/modules/energy/summary` returns totalConsumptionKwh, totalProductionKwh, lastUpdatedAt
-- [ ] `GET /api/v1/modules/energy/deltas` returns list of interval deltas with filtering by roomId and range
-- [ ] Unit tests cover delta computation edge cases (monotonic, reset, unknown reset, missing prev, bucket accumulation)
-- [ ] Module registered in AppModule
+- [x]`EnergyDeltaEntity` created with fields: id, deviceId, roomId, sourceType, deltaKwh, intervalStart, intervalEnd, createdAt
+- [x]Ingestion service listens for `CHANNEL_PROPERTY_VALUE_SET` and filters for consumption/production properties
+- [x]Delta computation handles: monotonic increase, reset (value < prev), missing baseline
+- [x]5-minute interval bucketing with accumulation for faster-arriving samples
+- [x]Room ID resolved from device at processing time; null if no room
+- [x]`GET /api/v1/modules/energy/summary` returns totalConsumptionKwh, totalProductionKwh, lastUpdatedAt
+- [x]`GET /api/v1/modules/energy/deltas` returns list of interval deltas with filtering by roomId and range
+- [x]Unit tests cover delta computation edge cases (monotonic, reset, unknown reset, missing prev, bucket accumulation)
+- [x]Module registered in AppModule
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: none
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -43,19 +43,19 @@ I want a standalone Energy screen in the deck navigation (like Security) and a c
 
 ## 4. Acceptance criteria
 
-- [ ] `EnergyViewItem` added to `deck_item.dart` with `generateId()` and equality
-- [ ] `DeckItemType.energyView` added to the enum
-- [ ] `EnergyRepository` extends `ChangeNotifier`, caches summary/timeseries/breakdown, exposes `isSupported`
-- [ ] `EnergyModuleService` initializes repository, registers in `locator`
-- [ ] `EnergyScreen` shows: header with title/range selector, summary cards, timeseries chart, breakdown list
-- [ ] Production UI hidden when `hasProduction` is false
-- [ ] Energy deck item registered after Security in `deck_builder.dart`
+- [x] `EnergyViewItem` added to `deck_item.dart` with `generateId()` and equality
+- [x] `DeckItemType.energyView` added to the enum
+- [x] `EnergyRepository` extends `ChangeNotifier`, caches summary/timeseries/breakdown, exposes `isSupported`
+- [x] `EnergyModuleService` initializes repository, registers in `locator`
+- [x] `EnergyScreen` shows: header with title/range selector, summary cards, timeseries chart, breakdown list
+- [x] Production UI hidden when `hasProduction` is false
+- [x] Energy deck item registered after Security in `deck_builder.dart`
 - [ ] Energy item appears in bottom nav bar and more sheet
-- [ ] `buildDeckItemWidget` maps `EnergyViewItem` to `EnergyScreen(embedded: true)`
-- [ ] Space header energy widget shows today consumption (and production if available)
-- [ ] Header widget shows "—" on error, does not crash
-- [ ] Energy screen hidden from deck when support detection returns unsupported
-- [ ] Startup manager registers and unregisters `EnergyModuleService` and `EnergyRepository`
+- [x] `buildDeckItemWidget` maps `EnergyViewItem` to `EnergyScreen(embedded: true)`
+- [x] Space header energy widget shows today consumption (and production if available)
+- [x] Header widget shows "—" on error, does not crash
+- [x] Energy screen hidden from deck when support detection returns unsupported
+- [x] Startup manager registers and unregisters `EnergyModuleService` and `EnergyRepository`
 - [ ] At least one widget test for summary rendering
 
 ## 5. Example scenarios (optional, Gherkin-style)

@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -56,13 +56,13 @@ I want to replace all `forwardRef` usages with small, focused shared registry mo
 
 ## 4. Acceptance criteria
 
-- [ ] **Zero `forwardRef` in the codebase** — `grep -r "forwardRef" apps/backend/src/` returns no results
-- [ ] All existing unit tests pass (`pnpm run test:unit`)
-- [ ] All existing E2E tests pass (`pnpm run test:e2e`)
-- [ ] NestJS application bootstraps without errors (`pnpm run start:dev` starts cleanly)
-- [ ] No new `any` casts introduced except where already present
-- [ ] Each new shared module follows the existing registry pattern (see ToolsModule, SeedModule, StatsModule)
-- [ ] Linting passes (`pnpm run lint:js`)
+- [x]**Zero `forwardRef` in the codebase** — `grep -r "forwardRef" apps/backend/src/` returns no results
+- [x]All existing unit tests pass (`pnpm run test:unit`)
+- [x]All existing E2E tests pass (`pnpm run test:e2e`)
+- [x]NestJS application bootstraps without errors (`pnpm run start:dev` starts cleanly)
+- [x]No new `any` casts introduced except where already present
+- [x]Each new shared module follows the existing registry pattern (see ToolsModule, SeedModule, StatsModule)
+- [x]Linting passes (`pnpm run lint:js`)
 
 ## 5. Phased implementation plan
 

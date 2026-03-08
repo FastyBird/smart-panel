@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: FEATURE-PLUGIN-ZIGBEE2MQTT
-Status: planned
+Status: in-progress
 Created: 2025-12-22
 
 ## 1. Business goal
@@ -66,16 +66,16 @@ I want an improved adoption flow similar to Home Assistant that allows me to sel
 
 ### Backend
 
-- [ ] New endpoint `GET /api/plugins/devices-zigbee2mqtt/discovered-devices` returns:
+- [x] New endpoint `GET /api/plugins/devices-zigbee2mqtt/discovered-devices` returns:
   - List of devices from Z2M bridge not yet adopted in Smart Panel
   - Device info: IEEE address, friendly name, model, vendor, description
   - Available exposes summary
-- [ ] New endpoint `GET /api/plugins/devices-zigbee2mqtt/mapping-preview/:friendlyName` returns:
+- [x] New endpoint `GET /api/plugins/devices-zigbee2mqtt/mapping-preview/:friendlyName` returns:
   - Suggested device category based on primary exposes
   - List of suggested channels with their properties
   - Current state values where available
   - Z2M property mappings for each Smart Panel property
-- [ ] New endpoint `POST /api/plugins/devices-zigbee2mqtt/adopt` accepts:
+- [x] New endpoint `POST /api/plugins/devices-zigbee2mqtt/adopt` accepts:
   - Friendly name of device to adopt
   - Confirmed device category
   - Selected channels and properties to create
@@ -85,26 +85,26 @@ I want an improved adoption flow similar to Home Assistant that allows me to sel
   - [ ] Battery: `charging_state`, `battery_voltage` when available
   - [ ] Climate: `preset_mode`, `fan_mode`, `away_mode` options
   - [ ] Light: `effect`, `transition` when supported
-- [ ] Category inference prioritizes primary exposes (light, switch, climate) over sensors
+- [x] Category inference prioritizes primary exposes (light, switch, climate) over sensors
 - [ ] Unit tests for mapping preview and adoption services
 
 ### Admin UI
 
-- [ ] Discovered devices component shows:
+- [x] Discovered devices component shows:
   - Device IEEE address and friendly name
   - Model and vendor info
   - Number of available exposes/capabilities
   - "Already added" indicator for adopted devices
   - "Add Device" button for each discovered device
-- [ ] Device adoption form includes:
-  - [ ] Device info header (name, model, vendor)
-  - [ ] Category selector with suggested value
-  - [ ] Channel list with checkboxes to include/exclude
-  - [ ] Property list per channel with data types
-  - [ ] Preview of what will be created
-  - [ ] Adopt/Cancel buttons
-- [ ] After adoption, user is redirected to device detail page
-- [ ] Error handling for adoption failures
+- [x] Device adoption form includes:
+  - [x] Device info header (name, model, vendor)
+  - [x] Category selector with suggested value
+  - [x] Channel list with checkboxes to include/exclude
+  - [x] Property list per channel with data types
+  - [x] Preview of what will be created
+  - [x] Adopt/Cancel buttons
+- [x] After adoption, user is redirected to device detail page
+- [x] Error handling for adoption failures
 
 ## 5. Example scenarios
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: FEATURE-DASHBOARD-SPACE-PAGE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -37,13 +37,13 @@ I want to see and control temperature/thermostat devices in the space page clima
 
 ## 4. Acceptance criteria
 
-- [ ] Backend returns climate section in SpacePageReadModel when climate devices exist
-- [ ] Climate devices are grouped by type (thermostat, sensor)
-- [ ] Panel displays current temperature prominently
-- [ ] Panel shows setpoint controls for thermostats with setpoint capability
-- [ ] Missing capabilities degrade gracefully (read-only display)
-- [ ] Empty state when no climate devices in space
-- [ ] Unit tests for climate section logic
+- [x]Backend returns climate section in SpacePageReadModel when climate devices exist
+- [x]Climate devices are grouped by type (thermostat, sensor)
+- [x]Panel displays current temperature prominently
+- [x]Panel shows setpoint controls for thermostats with setpoint capability
+- [x]Missing capabilities degrade gracefully (read-only display)
+- [x]Empty state when no climate devices in space
+- [x]Unit tests for climate section logic
 
 ## 5. Technical constraints
 

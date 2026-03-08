@@ -4,7 +4,7 @@ Type: technical
 Scope: admin
 Size: small
 Parent: FEATURE-MODULE-CONFIG
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -33,10 +33,10 @@ I want unit tests for the admin module configuration stores, composables, and co
 
 ## 4. Acceptance criteria
 
-- [ ] Store tests cover CRUD operations and state management
-- [ ] Composable tests cover data fetching and error handling
-- [ ] Component tests verify form rendering and validation
-- [ ] All tests pass in CI
+- [x]Store tests cover CRUD operations and state management
+- [x]Composable tests cover data fetching and error handling
+- [x]Component tests verify form rendering and validation
+- [x]All tests pass in CI
 
 ## 5. Technical constraints
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: planned
 
 ## 1. Business goal
 

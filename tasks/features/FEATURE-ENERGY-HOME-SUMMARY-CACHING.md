@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -41,17 +41,17 @@ I want a home-level energy aggregate API with short-lived caching to reduce back
 
 ## 4. Acceptance criteria
 
-- [ ] `GET /energy/home/summary?range=today|week|month` returns aggregated consumption, production, grid import/export, net values, `lastUpdatedAt`, and capability flags
-- [ ] `GET /energy/home/timeseries?range=today|week|month&interval=5m|1h|1d` returns zero-filled time-series points
-- [ ] `GET /energy/home/breakdown?range=today&limit=10` returns top consuming devices
-- [ ] Home endpoints include unassigned devices (devices with null roomId) in totals
-- [ ] In-memory cache with configurable TTL (default 30s) is applied to home summary/timeseries
-- [ ] Cache is applied to space summary/timeseries endpoints as well
-- [ ] Second call within TTL returns cached result without hitting the database
-- [ ] Cache expires after TTL and subsequent call fetches fresh data
-- [ ] `lastUpdatedAt` is the latest `intervalEnd` among included deltas (null if no data)
-- [ ] Tests cover home aggregation across multiple spaces/rooms
-- [ ] Tests cover caching behavior (cache hit, cache expiry)
+- [x]`GET /energy/home/summary?range=today|week|month` returns aggregated consumption, production, grid import/export, net values, `lastUpdatedAt`, and capability flags
+- [x]`GET /energy/home/timeseries?range=today|week|month&interval=5m|1h|1d` returns zero-filled time-series points
+- [x]`GET /energy/home/breakdown?range=today&limit=10` returns top consuming devices
+- [x]Home endpoints include unassigned devices (devices with null roomId) in totals
+- [x]In-memory cache with configurable TTL (default 30s) is applied to home summary/timeseries
+- [x]Cache is applied to space summary/timeseries endpoints as well
+- [x]Second call within TTL returns cached result without hitting the database
+- [x]Cache expires after TTL and subsequent call fetches fresh data
+- [x]`lastUpdatedAt` is the latest `intervalEnd` among included deltas (null if no data)
+- [x]Tests cover home aggregation across multiple spaces/rooms
+- [x]Tests cover caching behavior (cache hit, cache expiry)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
