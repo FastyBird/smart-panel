@@ -1,9 +1,10 @@
-import { Controller, Get, HttpCode, Logger, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
-import { BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
+import { BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME, BUDDY_WHATSAPP_PLUGIN_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
 
 /**
@@ -15,7 +16,7 @@ import { WhatsAppBotProvider } from '../platforms/whatsapp-bot.provider';
 @ApiTags(BUDDY_WHATSAPP_PLUGIN_API_TAG_NAME)
 @Controller()
 export class WhatsAppWebhookController {
-	private readonly logger = new Logger(WhatsAppWebhookController.name);
+	private readonly logger = createExtensionLogger(BUDDY_WHATSAPP_PLUGIN_NAME, 'WhatsAppWebhookController');
 
 	constructor(private readonly whatsAppProvider: WhatsAppBotProvider) {}
 

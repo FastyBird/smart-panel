@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
@@ -15,7 +16,7 @@ import { SttProviderRegistryService } from './stt-provider-registry.service';
 
 @Injectable()
 export class SttProviderService {
-	private readonly logger = new Logger(SttProviderService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'SttProviderService');
 
 	constructor(
 		private readonly configService: ConfigService,

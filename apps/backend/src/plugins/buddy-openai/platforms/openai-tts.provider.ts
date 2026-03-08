@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ITtsProvider,
 	TtsSynthesisOptions,
@@ -17,7 +18,7 @@ const OPENAI_SDK_MODULE = 'openai';
 
 @Injectable()
 export class OpenAiTtsProvider implements ITtsProvider {
-	private readonly logger = new Logger(OpenAiTtsProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_OPENAI_PLUGIN_NAME, 'OpenAiTtsProvider');
 
 	constructor(private readonly configService: ConfigService) {}
 

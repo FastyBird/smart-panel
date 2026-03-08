@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IntentType } from '../../intents/intents.constants';
 import { EventType } from '../../spaces/spaces.constants';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { ActionObserverService, ActionRecord } from '../services/action-observer.service';
 
 interface MediaActivityPayload {
@@ -18,7 +20,7 @@ interface MediaActivityPayload {
 
 @Injectable()
 export class MediaActivityEventListener {
-	private readonly logger = new Logger(MediaActivityEventListener.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'MediaActivityEventListener');
 
 	constructor(private readonly actionObserver: ActionObserverService) {}
 

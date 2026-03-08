@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE } from '../buddy.constants';
 import { BuddyConfigModel } from '../models/config.model';
@@ -9,7 +10,7 @@ import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
 @Injectable()
 export class BuddyProviderStatusService {
-	private readonly logger = new Logger(BuddyProviderStatusService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyProviderStatusService');
 
 	constructor(
 		private readonly registry: LlmProviderRegistryService,

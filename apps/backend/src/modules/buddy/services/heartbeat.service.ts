@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { withTimeout } from '../../../common/utils/http.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
@@ -16,7 +17,7 @@ const EVALUATOR_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = new Logger(HeartbeatService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'HeartbeatService');
 	private readonly evaluators: HeartbeatEvaluator[] = [];
 	private running = false;
 

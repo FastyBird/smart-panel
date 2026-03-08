@@ -1,13 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
 import { OAuthFlowService } from './oauth-flow.service';
 
 @Injectable()
 export class OAuthCallbackService {
-	private readonly logger = new Logger(OAuthCallbackService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'OAuthCallbackService');
 
 	constructor(
 		private readonly oauthFlowService: OAuthFlowService,

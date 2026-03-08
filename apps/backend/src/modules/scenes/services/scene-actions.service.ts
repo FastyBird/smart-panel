@@ -3,22 +3,23 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, type FindOptionsOrder, type FindOptionsWhere, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateSceneActionDto } from '../dto/create-scene-action.dto';
 import { UpdateSceneActionDto } from '../dto/update-scene-action.dto';
 import { SceneActionEntity } from '../entities/scenes.entity';
-import { EventType } from '../scenes.constants';
+import { EventType, SCENES_MODULE_NAME } from '../scenes.constants';
 import { ScenesNotFoundException, ScenesValidationException } from '../scenes.exceptions';
 
 import { SceneActionsTypeMapperService } from './scene-actions-type-mapper.service';
 
 @Injectable()
 export class SceneActionsService {
-	private readonly logger = new Logger(SceneActionsService.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'SceneActionsService');
 
 	constructor(
 		@InjectRepository(SceneActionEntity)

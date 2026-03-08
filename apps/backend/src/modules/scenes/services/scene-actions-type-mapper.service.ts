@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { CreateSceneActionDto } from '../dto/create-scene-action.dto';
 import { UpdateSceneActionDto } from '../dto/update-scene-action.dto';
 import { SceneActionEntity } from '../entities/scenes.entity';
+import { SCENES_MODULE_NAME } from '../scenes.constants';
 import { ScenesException } from '../scenes.exceptions';
 
 /**
@@ -25,7 +27,7 @@ export interface SceneActionTypeMapping<
  */
 @Injectable()
 export class SceneActionsTypeMapperService {
-	private readonly logger = new Logger(SceneActionsTypeMapperService.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'SceneActionsTypeMapperService');
 	private readonly mappings = new Map<string, SceneActionTypeMapping<any, any, any>>();
 
 	constructor() {

@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
-import { PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
 import { clusterByTimeOfDay, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 import { ResolvedPatternRule } from '../spec/evaluator-rules.types';
@@ -30,7 +31,7 @@ export interface DetectedSequencePattern {
 @Injectable()
 export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 	readonly name = 'SceneSuggestion';
-	private readonly logger = new Logger(SceneSuggestionEvaluator.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'SceneSuggestionEvaluator');
 	private static readonly CACHE_TTL_MS = 5000;
 	private patternCache: DetectedSequencePattern[] | null = null;
 	private patternCacheTime = 0;

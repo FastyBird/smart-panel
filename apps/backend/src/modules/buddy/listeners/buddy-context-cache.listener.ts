@@ -1,16 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { IntentEventType } from '../../intents/intents.constants';
 import { EventType as ScenesEventType } from '../../scenes/scenes.constants';
 import { EventType as SpacesEventType } from '../../spaces/spaces.constants';
 import { EventType as WeatherEventType } from '../../weather/weather.constants';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { BuddyContextService } from '../services/buddy-context.service';
 
 @Injectable()
 export class BuddyContextCacheListener {
-	private readonly logger = new Logger(BuddyContextCacheListener.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyContextCacheListener');
 
 	constructor(private readonly contextService: BuddyContextService) {}
 

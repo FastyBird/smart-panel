@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
@@ -29,7 +30,7 @@ import { BuddyWhatsappConfigModel } from '../models/config.model';
  */
 @Injectable()
 export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = new Logger(WhatsAppBotProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_WHATSAPP_PLUGIN_NAME, 'WhatsAppBotProvider');
 
 	private socket: import('@whiskeysockets/baileys').WASocket | null = null;
 	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;

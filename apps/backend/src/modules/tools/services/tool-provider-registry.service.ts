@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../platforms/tool-provider.platform';
+import { TOOLS_MODULE_NAME } from '../tools.constants';
 
 @Injectable()
 export class ToolProviderRegistryService {
-	private readonly logger = new Logger(ToolProviderRegistryService.name);
+	private readonly logger = createExtensionLogger(TOOLS_MODULE_NAME, 'ToolProviderRegistryService');
 
 	private readonly providers = new Map<string, IToolProvider>();
 

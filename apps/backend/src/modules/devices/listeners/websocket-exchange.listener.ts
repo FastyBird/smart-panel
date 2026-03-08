@@ -1,9 +1,11 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { PropertyCommandService } from '../services/property-command.service';
 
 /**
@@ -22,7 +24,7 @@ export const DevicesWsHandlerName = {
 
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
-	private readonly logger = new Logger(WebsocketExchangeListener.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'WebsocketExchangeListener');
 
 	constructor(
 		private readonly commandEventRegistry: CommandEventRegistryService,

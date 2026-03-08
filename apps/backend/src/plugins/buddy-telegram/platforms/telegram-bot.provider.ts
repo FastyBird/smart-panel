@@ -1,9 +1,10 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
@@ -28,7 +29,7 @@ import { BuddyTelegramConfigModel } from '../models/config.model';
  */
 @Injectable()
 export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = new Logger(TelegramBotProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_TELEGRAM_PLUGIN_NAME, 'TelegramBotProvider');
 
 	private bot: Telegraf | null = null;
 	private running = false;

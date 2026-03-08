@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { ExtensionLoggerService } from '../../../common/logger';
 
 import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../platforms/tool-provider.platform';
 
@@ -12,7 +12,7 @@ const DEFAULT_TOOL_EXECUTION_TIMEOUT_MS = 5_000;
  * domain-specific `handleToolCall()` method.
  */
 export abstract class BaseToolProviderService implements IToolProvider {
-	protected abstract readonly logger: Logger;
+	protected abstract readonly logger: ExtensionLoggerService;
 
 	protected readonly toolExecutionTimeoutMs: number = DEFAULT_TOOL_EXECUTION_TIMEOUT_MS;
 

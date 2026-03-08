@@ -1,11 +1,12 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
-import { LightingIntentType, LightingMode } from '../spaces.constants';
+import { LightingIntentType, LightingMode, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { SpacesService } from './spaces.service';
 
@@ -20,7 +21,7 @@ const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
  */
 @Injectable()
 export class SpaceLightingToolService extends BaseToolProviderService implements OnModuleInit {
-	protected readonly logger = new Logger(SpaceLightingToolService.name);
+	protected readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceLightingToolService');
 
 	private spaceIntentService: import('./space-intent.service').SpaceIntentService | undefined;
 

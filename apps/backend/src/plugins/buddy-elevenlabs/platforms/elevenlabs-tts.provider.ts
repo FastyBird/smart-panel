@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ITtsProvider,
 	TtsSynthesisOptions,
@@ -18,7 +19,7 @@ interface ElevenLabsVoice {
 
 @Injectable()
 export class ElevenLabsTtsProvider implements ITtsProvider {
-	private readonly logger = new Logger(ElevenLabsTtsProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_ELEVENLABS_PLUGIN_NAME, 'ElevenLabsTtsProvider');
 	private cachedDefaultVoiceId = new Map<string, string>();
 
 	constructor(private readonly configService: ConfigService) {}

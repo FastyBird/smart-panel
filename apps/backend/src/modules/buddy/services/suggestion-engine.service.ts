@@ -1,12 +1,14 @@
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
+	BUDDY_MODULE_NAME,
 	EventType,
 	SUGGESTION_CLEANUP_INTERVAL_MS,
 	SUGGESTION_COOLDOWN_MS,
@@ -31,7 +33,7 @@ export interface BuddySuggestion {
 
 @Injectable()
 export class SuggestionEngineService implements OnModuleDestroy {
-	private readonly logger = new Logger(SuggestionEngineService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'SuggestionEngineService');
 	private readonly suggestions = new Map<string, BuddySuggestion>();
 	private readonly cooldowns = new CooldownManager<SuggestionType>();
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IntentType } from '../../intents/intents.constants';
-import { ACTION_OBSERVER_BUFFER_SIZE } from '../buddy.constants';
+import { ACTION_OBSERVER_BUFFER_SIZE, BUDDY_MODULE_NAME } from '../buddy.constants';
 
 export interface ActionRecord {
 	intentId: string;
@@ -13,7 +14,7 @@ export interface ActionRecord {
 
 @Injectable()
 export class ActionObserverService {
-	private readonly logger = new Logger(ActionObserverService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'ActionObserverService');
 	private readonly buffer: ActionRecord[] = [];
 	private readonly maxSize: number = ACTION_OBSERVER_BUFFER_SIZE;
 

@@ -4,17 +4,18 @@ import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { CreateSceneActionDto } from '../dto/create-scene-action.dto';
 import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
-import { EventType } from '../scenes.constants';
+import { EventType, SCENES_MODULE_NAME } from '../scenes.constants';
 import {
 	ScenesNotEditableException,
 	ScenesNotFoundException,
@@ -26,7 +27,7 @@ import { SceneActionsService } from './scene-actions.service';
 
 @Injectable()
 export class ScenesService {
-	private readonly logger = new Logger(ScenesService.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'ScenesService');
 
 	constructor(
 		@InjectRepository(SceneEntity)

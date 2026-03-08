@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IntentType } from '../../intents/intents.constants';
 import {
+	BUDDY_MODULE_NAME,
 	PATTERN_LOOKBACK_DAYS,
 	PATTERN_MIN_OCCURRENCES,
 	PATTERN_TIME_WINDOW_MINUTES,
@@ -67,7 +69,7 @@ export function patternToEvaluatorResult(
 @Injectable()
 export class PatternDetectorService implements HeartbeatEvaluator {
 	readonly name = 'PatternDetector';
-	private readonly logger = new Logger(PatternDetectorService.name);
+	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'PatternDetectorService');
 	private static readonly CACHE_TTL_MS = 5000;
 	private patternCache: DetectedPattern[] | null = null;
 	private patternCacheTime = 0;

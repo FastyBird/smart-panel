@@ -8,7 +8,6 @@ import {
 	ForbiddenException,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -20,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -38,7 +38,7 @@ import { ReqUpdateSceneDto, UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
 import { SceneExecutionResponseModel, SceneResponseModel, ScenesResponseModel } from '../models/scenes-response.model';
 import { SceneExecutionResultModel } from '../models/scenes.model';
-import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
+import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesException, ScenesNotEditableException, ScenesNotTriggerableException } from '../scenes.exceptions';
 import { SceneExecutorService } from '../services/scene-executor.service';
 import { ScenesService } from '../services/scenes.service';
@@ -46,7 +46,7 @@ import { ScenesService } from '../services/scenes.service';
 @ApiTags(SCENES_MODULE_API_TAG_NAME)
 @Controller('scenes')
 export class ScenesController {
-	private readonly logger = new Logger(ScenesController.name);
+	private readonly logger = createExtensionLogger(SCENES_MODULE_NAME, 'ScenesController');
 
 	constructor(
 		private readonly scenesService: ScenesService,

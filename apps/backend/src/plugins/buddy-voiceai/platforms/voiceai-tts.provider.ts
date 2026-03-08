@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ITtsProvider,
 	TtsSynthesisOptions,
@@ -13,7 +14,7 @@ const TTS_DEFAULT_TIMEOUT = 30_000;
 
 @Injectable()
 export class VoiceaiTtsProvider implements ITtsProvider {
-	private readonly logger = new Logger(VoiceaiTtsProvider.name);
+	private readonly logger = createExtensionLogger(BUDDY_VOICEAI_PLUGIN_NAME, 'VoiceaiTtsProvider');
 
 	constructor(private readonly configService: ConfigService) {}
 
