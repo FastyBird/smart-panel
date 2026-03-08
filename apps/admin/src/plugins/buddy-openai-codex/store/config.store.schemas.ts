@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_OPENAI_CODEX_PLUGIN_NAME } from '../buddy-openai-codex.constants';
@@ -14,7 +14,7 @@ export const OpenAiCodexConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const OpenAiCodexConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const OpenAiCodexConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OPENAI_CODEX_PLUGIN_NAME),
 		client_id: z.string().trim().nullable().optional(),
@@ -25,7 +25,7 @@ export const OpenAiCodexConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSc
 	})
 );
 
-export const OpenAiCodexConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const OpenAiCodexConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OPENAI_CODEX_PLUGIN_NAME),
 		client_id: z.string().trim().nullable(),

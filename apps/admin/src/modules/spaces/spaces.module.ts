@@ -69,7 +69,7 @@ export default {
 		}
 
 		// Set up WebSocket event listeners
-		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
+		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SPACES_MODULE_EVENT_PREFIX)) {
 				return;
 			}

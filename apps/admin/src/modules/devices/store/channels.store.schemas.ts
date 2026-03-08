@@ -24,7 +24,7 @@ export const ChannelSchema = z.object({
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
 	device: ItemIdSchema,
-	category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
+	category: z.enum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
@@ -54,14 +54,14 @@ export const ChannelsStateSemaphoreSchema = z.object({
 export const ChannelsOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ChannelsSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
+		category: z.enum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 		identifier: z.string().trim().nonempty().nullable(),
 		name: z.string().trim().nonempty(),
 		description: z
@@ -94,7 +94,7 @@ export const ChannelsAddActionPayloadSchema = z.object({
 	draft: z.boolean().optional().default(false),
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
+		category: z.enum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nonempty(),
 		description: z
@@ -112,7 +112,7 @@ export const ChannelsEditActionPayloadSchema = z.object({
 	deviceId: ItemIdSchema.optional(),
 	data: z.object({
 		type: z.string().trim().nonempty(),
-		category: z.nativeEnum(DevicesModuleChannelCategory).optional(),
+		category: z.enum(DevicesModuleChannelCategory).optional(),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().optional(),
 		description: z
@@ -142,7 +142,7 @@ export const ChannelCreateReqSchema: ZodType<ApiCreateChannel> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty(),
 	description: z
@@ -173,7 +173,7 @@ export const ChannelResSchema: ZodType<ApiChannel> = z.object({
 	id: z.string().uuid(),
 	type: z.string().trim().nonempty(),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),

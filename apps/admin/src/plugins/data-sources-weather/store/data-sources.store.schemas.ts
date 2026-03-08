@@ -17,7 +17,7 @@ import {
 
 export const CurrentWeatherDataSourceSchema = DataSourceSchema.extend({
 	locationId: z.string().uuid().optional().nullable().default(null),
-	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.TEMPERATURE),
+	field: z.enum(WeatherDataField).default(WeatherDataField.TEMPERATURE),
 	icon: z
 		.string()
 		.trim()
@@ -35,7 +35,7 @@ export const CurrentWeatherDataSourceSchema = DataSourceSchema.extend({
 export const ForecastDayDataSourceSchema = DataSourceSchema.extend({
 	locationId: z.string().uuid().optional().nullable().default(null),
 	dayOffset: z.number().min(0).max(7).default(1),
-	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.TEMPERATURE_MAX),
+	field: z.enum(WeatherDataField).default(WeatherDataField.TEMPERATURE_MAX),
 	icon: z
 		.string()
 		.trim()
@@ -57,7 +57,7 @@ export const CurrentWeatherDataSourceCreateReqSchema = DataSourceCreateReqSchema
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_CURRENT_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
-		field: z.nativeEnum(WeatherDataField),
+		field: z.enum(WeatherDataField),
 		icon: z
 			.string()
 			.trim()
@@ -77,7 +77,7 @@ export const CurrentWeatherDataSourceUpdateReqSchema = DataSourceUpdateReqSchema
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_CURRENT_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
-		field: z.nativeEnum(WeatherDataField).optional(),
+		field: z.enum(WeatherDataField).optional(),
 		icon: z
 			.string()
 			.trim()
@@ -97,7 +97,7 @@ export const CurrentWeatherDataSourceResSchema = DataSourceResSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_CURRENT_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
-		field: z.nativeEnum(WeatherDataField),
+		field: z.enum(WeatherDataField),
 		icon: z.string().nullable(),
 		unit: z.string().nullable(),
 	})
@@ -108,7 +108,7 @@ export const ForecastDayDataSourceCreateReqSchema = DataSourceCreateReqSchema.an
 		type: z.literal(DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
 		day_offset: z.number().min(0).max(7),
-		field: z.nativeEnum(WeatherDataField),
+		field: z.enum(WeatherDataField),
 		icon: z
 			.string()
 			.trim()
@@ -129,7 +129,7 @@ export const ForecastDayDataSourceUpdateReqSchema = DataSourceUpdateReqSchema.an
 		type: z.literal(DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
 		day_offset: z.number().min(0).max(7).optional(),
-		field: z.nativeEnum(WeatherDataField).optional(),
+		field: z.enum(WeatherDataField).optional(),
 		icon: z
 			.string()
 			.trim()
@@ -150,7 +150,7 @@ export const ForecastDayDataSourceResSchema = DataSourceResSchema.and(
 		type: z.literal(DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
 		day_offset: z.number().min(0).max(7),
-		field: z.nativeEnum(WeatherDataField),
+		field: z.enum(WeatherDataField),
 		icon: z.string().nullable(),
 		unit: z.string().nullable(),
 	})

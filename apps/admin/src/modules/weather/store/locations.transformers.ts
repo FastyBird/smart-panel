@@ -27,7 +27,7 @@ export const transformLocationResponse = <TLocation extends IWeatherLocation = I
 	});
 
 	if (!parsed.success) {
-		console.error('[WEATHER_MODULE] Failed to validate location data:', parsed.error.errors);
+		console.error('[WEATHER_MODULE] Failed to validate location data:', parsed.error.issues);
 
 		throw new WeatherValidationException('Failed to validate location data');
 	}
@@ -42,7 +42,7 @@ export const transformLocationCreateRequest = <TRequest extends IWeatherLocation
 	const parsed = schema.safeParse(data);
 
 	if (!parsed.success) {
-		console.error('[WEATHER_MODULE] Failed to validate location create request:', parsed.error.errors);
+		console.error('[WEATHER_MODULE] Failed to validate location create request:', parsed.error.issues);
 
 		throw new WeatherValidationException('Failed to validate location create request');
 	}
@@ -57,7 +57,7 @@ export const transformLocationUpdateRequest = <TRequest extends IWeatherLocation
 	const parsed = schema.safeParse(data);
 
 	if (!parsed.success) {
-		console.error('[WEATHER_MODULE] Failed to validate location update request:', parsed.error.errors);
+		console.error('[WEATHER_MODULE] Failed to validate location update request:', parsed.error.issues);
 
 		throw new WeatherValidationException('Failed to validate location update request');
 	}

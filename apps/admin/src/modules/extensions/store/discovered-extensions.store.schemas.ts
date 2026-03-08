@@ -9,12 +9,12 @@ export const DiscoveredExtensionNameSchema = z.string();
 
 export const DiscoveredExtensionBaseSchema = z.object({
 	name: DiscoveredExtensionNameSchema,
-	kind: z.nativeEnum(ExtensionKind),
-	surface: z.nativeEnum(ExtensionSurface),
+	kind: z.enum(ExtensionKind),
+	surface: z.enum(ExtensionSurface),
 	displayName: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(ExtensionSource),
+	source: z.enum(ExtensionSource),
 });
 
 export const DiscoveredExtensionAdminSchema = DiscoveredExtensionBaseSchema.extend({
@@ -49,24 +49,24 @@ export const DiscoveredExtensionsGetActionPayloadSchema = z.object({
 
 export const DiscoveredExtensionAdminResSchema = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(ExtensionKind),
-	surface: z.nativeEnum(ExtensionSurface),
+	kind: z.enum(ExtensionKind),
+	surface: z.enum(ExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(ExtensionSource),
+	source: z.enum(ExtensionSource),
 	remote_url: z.string(),
 	type: z.literal('admin'),
 });
 
 export const DiscoveredExtensionBackendResSchema = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(ExtensionKind),
-	surface: z.nativeEnum(ExtensionSurface),
+	kind: z.enum(ExtensionKind),
+	surface: z.enum(ExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(ExtensionSource),
+	source: z.enum(ExtensionSource),
 	route_prefix: z.string(),
 	type: z.literal('backend'),
 });

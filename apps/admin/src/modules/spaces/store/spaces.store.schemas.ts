@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { EnergyWidgetRange, StatusWidgetType, SpaceType } from '../spaces.constants';
 
 const EnergyWidgetSettingsSchema = z.object({
-	range: z.nativeEnum(EnergyWidgetRange).optional(),
+	range: z.enum(EnergyWidgetRange).optional(),
 	showProduction: z.boolean().optional(),
 });
 
@@ -19,7 +19,7 @@ export const SpaceSchema = z.object({
 	id: z.string().uuid(),
 	name: z.string().min(1),
 	description: z.string().nullable(),
-	type: z.nativeEnum(SpaceType),
+	type: z.enum(SpaceType),
 	icon: z.string().nullable(),
 	displayOrder: z.number().int().min(0),
 	statusWidgets: z.array(StatusWidgetSchema).nullable(),
@@ -31,7 +31,7 @@ export const SpaceSchema = z.object({
 export const SpaceCreateSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
 	description: z.string().nullable().optional(),
-	type: z.nativeEnum(SpaceType).optional(),
+	type: z.enum(SpaceType).optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).optional(),
 	statusWidgets: z.array(StatusWidgetSchema).nullable().optional(),
@@ -40,7 +40,7 @@ export const SpaceCreateSchema = z.object({
 export const SpaceEditSchema = z.object({
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
-	type: z.nativeEnum(SpaceType).optional(),
+	type: z.enum(SpaceType).optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).optional(),
 	statusWidgets: z.array(StatusWidgetSchema).nullable().optional(),

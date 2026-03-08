@@ -32,7 +32,7 @@ export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCre
 export const ShellyNgDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_NG_TYPE),
-		category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
+		category: z.enum(DevicesModuleDeviceCategory).optional(),
 		password: z.string().nullable().optional(),
 		hostname: z.string().optional(),
 	})

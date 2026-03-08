@@ -29,7 +29,7 @@ export const ConfigModulesStateSemaphoreSchema = z.object({
 
 export const ConfigModulesOnEventActionPayloadSchema = z.object({
 	type: z.string(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ConfigModulesSetActionPayloadSchema = z.object({

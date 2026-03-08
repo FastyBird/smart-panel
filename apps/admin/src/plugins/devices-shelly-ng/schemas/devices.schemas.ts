@@ -17,7 +17,7 @@ export const ShellyNgSupportedDeviceSchema = z.object({
 	group: z.string(),
 	name: z.string(),
 	models: z.array(z.string()),
-	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
+	categories: z.array(z.enum(DevicesModuleDeviceCategory)),
 	components: z.array(
 		z.object({
 			type: z.string(),

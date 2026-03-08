@@ -13,7 +13,7 @@ export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	primarySpaceId: ItemIdSchema.nullable().default(null),
-	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+	category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	order: z.number().int().min(0).default(0),
@@ -50,7 +50,7 @@ export const ScenesStateSemaphoreSchema = z.object({
 
 export const ScenesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const ScenesSetActionPayloadSchema = z.object({
@@ -58,7 +58,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -72,7 +72,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 			editable: z.boolean(),
 			lastTriggeredAt: z.date().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesUnsetActionPayloadSchema = z.object({
@@ -89,7 +89,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable().optional(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.enum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -100,7 +100,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesEditActionPayloadSchema = z.object({
@@ -118,7 +118,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const ScenesSaveActionPayloadSchema = z.object({
@@ -132,7 +132,7 @@ export const ScenesRemoveActionPayloadSchema = z.object({
 export const ScenesTriggerActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	source: z.string().optional(),
-	context: z.record(z.unknown()).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
 });
 
 // BACKEND API
@@ -141,7 +141,7 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	primary_space_id: z.string().uuid().nullable().optional(),
-	category: z.nativeEnum(SceneCategory).optional(),
+	category: z.enum(SceneCategory).optional(),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -156,7 +156,7 @@ export const SceneCreateReqSchema = z.object({
 
 export const SceneUpdateReqSchema = z.object({
 	primary_space_id: z.string().uuid().nullable().optional(),
-	category: z.nativeEnum(SceneCategory).optional(),
+	category: z.enum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
 		.string()
@@ -172,7 +172,7 @@ export const SceneUpdateReqSchema = z.object({
 export const SceneResSchema = z.object({
 	id: z.string().uuid(),
 	primary_space_id: z.string().uuid().nullable(),
-	category: z.nativeEnum(SceneCategory),
+	category: z.enum(SceneCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	order: z.number().int().min(0),
@@ -187,7 +187,7 @@ export const SceneResSchema = z.object({
 
 export const SceneTriggerReqSchema = z.object({
 	source: z.string().optional(),
-	context: z.record(z.unknown()).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SceneExecutionResSchema = z.object({

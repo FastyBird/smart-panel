@@ -26,7 +26,7 @@ export const HomeAssistantChannelCreateReqSchema: ZodType<ApiCreateChannel> = z.
 	id: z.string().uuid().optional(),
 	type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty(),
 	description: z
@@ -51,7 +51,7 @@ export const HomeAssistantChannelResSchema: ZodType<ApiChannel> = z.object({
 	id: z.string().uuid(),
 	type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),

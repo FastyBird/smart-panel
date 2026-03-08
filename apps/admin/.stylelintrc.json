@@ -3,9 +3,7 @@
     "stylelint-config-recommended-scss",
     "stylelint-prettier/recommended"
   ],
-  "syntax": "scss",
   "plugins": [
-    "stylelint-scss",
     "stylelint-prettier"
   ],
   "rules": {
@@ -18,6 +16,7 @@
       {
         "ignorePseudoClasses": ["deep"]
       }
-    ]
+    ],
+    "nesting-selector-no-missing-scoping-root": null
   }
 }

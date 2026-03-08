@@ -23,7 +23,7 @@ export const ShellyV1DeviceCreateReqSchema = DeviceCreateReqSchema.and(
 export const ShellyV1DeviceUpdateReqSchema = DeviceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_V1_TYPE),
-		category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
+		category: z.enum(DevicesModuleDeviceCategory).optional(),
 		password: z.string().nullable().optional(),
 		hostname: z.string().optional(),
 	})

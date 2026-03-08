@@ -12,7 +12,7 @@ export const ExtensionLinksSchema = z.object({
 
 export const ExtensionSchema = z.object({
 	type: z.string(),
-	kind: z.nativeEnum(ExtensionKind),
+	kind: z.enum(ExtensionKind),
 	name: z.string(),
 	description: z.string().optional(),
 	version: z.string().optional(),

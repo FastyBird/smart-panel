@@ -26,7 +26,7 @@ export const DeviceSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
-	category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+	category: z.enum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
@@ -35,7 +35,7 @@ export const DeviceSchema = z.object({
 	zoneIds: z.array(z.string().uuid()).default([]),
 	status: z.object({
 		online: z.boolean().default(false),
-		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
+		status: z.enum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
 		lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().default(null),
 	}),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -63,7 +63,7 @@ export const DevicesStateSemaphoreSchema = z.object({
 export const DevicesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const DevicesSetActionPayloadSchema = z.object({
@@ -71,7 +71,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
-			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+			category: z.enum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			identifier: z.string().trim().nonempty().nullable(),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -84,11 +84,11 @@ export const DevicesSetActionPayloadSchema = z.object({
 			roomId: z.string().uuid().nullable().optional(),
 			status: z.object({
 				online: z.boolean(),
-				status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
+				status: z.enum(DevicesModuleDeviceConnectionStatus),
 				lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().optional(),
 			}),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesUnsetActionPayloadSchema = z.object({
@@ -105,7 +105,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
-			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+			category: z.enum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			identifier: z.string().trim().nonempty().nullable().optional(),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -117,7 +117,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 			enabled: z.boolean().optional(),
 			roomId: z.string().uuid().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesEditActionPayloadSchema = z.object({
@@ -136,7 +136,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 			enabled: z.boolean().optional(),
 			roomId: z.string().uuid().nullable().optional(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DevicesSaveActionPayloadSchema = z.object({
@@ -163,7 +163,7 @@ export const DevicesRemoveZoneActionPayloadSchema = z.object({
 export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
-	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	category: z.enum(DevicesModuleDeviceCategory),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty(),
 	description: z
@@ -180,7 +180,7 @@ export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 
 export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 	type: z.string().trim().nonempty(),
-	category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
+	category: z.enum(DevicesModuleDeviceCategory).optional(),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
@@ -196,7 +196,7 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
-	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	category: z.enum(DevicesModuleDeviceCategory),
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
@@ -205,7 +205,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	zone_ids: z.array(z.string().uuid()),
 	status: z.object({
 		online: z.boolean(),
-		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
+		status: z.enum(DevicesModuleDeviceConnectionStatus),
 		last_changed: z.string().datetime({ offset: true }).nullable().optional(),
 	}),
 	created_at: z.string().date(),

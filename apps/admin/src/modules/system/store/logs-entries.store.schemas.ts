@@ -23,9 +23,9 @@ export const LogEntrySchema = z.object({
 	ts: z.string().datetime(),
 	ingestedAt: z.string().datetime().optional(),
 	seq: z.number().int().min(0).optional(),
-	source: z.nativeEnum(SystemModuleLogEntrySource),
+	source: z.enum(SystemModuleLogEntrySource),
 	level: z.number().int().min(0).max(6),
-	type: z.nativeEnum(SystemModuleLogEntryType),
+	type: z.enum(SystemModuleLogEntryType),
 	tag: z.string().max(128).optional(),
 	resource: z.string().optional(),
 	message: z.string().max(2000).optional(),
@@ -56,7 +56,7 @@ export const LogEntrySchema = z.object({
 export const AddLogEntrySchema = z.object({
 	ts: z.string().datetime(),
 	level: z.number().int().min(0).max(6),
-	type: z.nativeEnum(SystemModuleLogEntryType),
+	type: z.enum(SystemModuleLogEntryType),
 	tag: z.string().max(128).optional(),
 	message: z.string().max(2000).optional(),
 	args: z
@@ -100,7 +100,7 @@ export const LogsEntriesStateSemaphoreSchema = z.object({
 
 export const LogsEntriesOnEventActionPayloadSchema = z.object({
 	id: LogEntryIdSchema,
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const LogsEntriesSetActionPayloadSchema = z.object({
@@ -110,9 +110,9 @@ export const LogsEntriesSetActionPayloadSchema = z.object({
 		ts: z.string().datetime(),
 		ingestedAt: z.string().datetime().optional(),
 		seq: z.number().int().min(0).optional(),
-		source: z.nativeEnum(SystemModuleLogEntrySource),
+		source: z.enum(SystemModuleLogEntrySource),
 		level: z.number().int().min(0).max(6),
-		type: z.nativeEnum(SystemModuleLogEntryType),
+		type: z.enum(SystemModuleLogEntryType),
 		tag: z.string().max(128).optional(),
 		resource: z.string().optional(),
 		message: z.string().max(2000).optional(),
@@ -160,9 +160,9 @@ export const LogsEntriesAddActionPayloadSchema = z.object({
 
 export const LogEntryCreateReqSchema: ZodType<ApiCreateLogEntry> = z.object({
 	ts: z.string(),
-	source: z.nativeEnum(SystemModuleLogEntrySource),
+	source: z.enum(SystemModuleLogEntrySource),
 	level: z.number(),
-	type: z.nativeEnum(SystemModuleLogEntryType),
+	type: z.enum(SystemModuleLogEntryType),
 	tag: z.string().optional(),
 	message: z.string().optional(),
 	args: z
@@ -197,9 +197,9 @@ export const LogEntryResSchema: ZodType<ApiLogEntry> = z.object({
 	ts: z.string(),
 	ingested_at: z.string(),
 	seq: z.number().optional(),
-	source: z.nativeEnum(SystemModuleLogEntrySource),
+	source: z.enum(SystemModuleLogEntrySource),
 	level: z.number(),
-	type: z.nativeEnum(SystemModuleLogEntryType),
+	type: z.enum(SystemModuleLogEntryType),
 	tag: z.string().optional(),
 	resource: z.string().optional(),
 	message: z.string().optional(),

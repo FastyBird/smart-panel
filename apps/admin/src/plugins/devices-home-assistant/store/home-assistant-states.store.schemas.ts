@@ -10,7 +10,7 @@ type ApiState = DevicesHomeAssistantPluginStateSchema;
 export const HomeAssistantStateSchema = z.object({
 	entityId: z.string().trim().nonempty(),
 	state: z.union([z.string(), z.number(), z.boolean()]),
-	attributes: z.record(z.unknown()),
+	attributes: z.record(z.string(), z.unknown()),
 	lastChanged: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date)))
@@ -45,7 +45,7 @@ export const HomeAssistantStatesSetActionPayloadSchema = z.object({
 	entityId: z.string().trim().nonempty(),
 	data: z.object({
 		state: z.union([z.string(), z.number(), z.boolean()]),
-		attributes: z.record(z.unknown()),
+		attributes: z.record(z.string(), z.unknown()),
 		lastChanged: z
 			.union([z.string().datetime({ offset: true }), z.date()])
 			.transform((date) => (date instanceof Date ? date : new Date(date)))
@@ -81,7 +81,7 @@ export const HomeAssistantStatesGetActionPayloadSchema = z.object({
 export const HomeAssistantStateResSchema: ZodType<ApiState> = z.object({
 	entity_id: z.string().trim().nonempty(),
 	state: z.union([z.string(), z.number(), z.boolean()]),
-	attributes: z.record(z.unknown()),
+	attributes: z.record(z.string(), z.unknown()),
 	last_changed: z.string().date().nullable(),
 	last_reported: z.string().date().nullable(),
 	last_updated: z.string().date().nullable(),

@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_CLAUDE_PLUGIN_NAME } from '../buddy-claude.constants';
@@ -11,7 +11,7 @@ export const ClaudeConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const ClaudeConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const ClaudeConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_CLAUDE_PLUGIN_NAME),
 		api_key: z.string().trim().nullable().optional(),
@@ -19,7 +19,7 @@ export const ClaudeConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.
 	})
 );
 
-export const ClaudeConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const ClaudeConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_CLAUDE_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),

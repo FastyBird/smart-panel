@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_DISCORD_PLUGIN_NAME } from '../buddy-discord.constants';
@@ -14,7 +14,7 @@ export const DiscordConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const DiscordConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const DiscordConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_DISCORD_PLUGIN_NAME),
 		bot_token: z.string().trim().nullable().optional(),

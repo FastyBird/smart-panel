@@ -5,7 +5,7 @@ import { StatusWidgetSchema } from '../store/spaces.store.schemas';
 
 export const SpacesFilterSchema = z.object({
 	search: z.string().optional(),
-	type: z.union([z.nativeEnum(SpaceType), z.literal('all')]).default('all'),
+	type: z.union([z.enum(SpaceType), z.literal('all')]).default('all'),
 });
 
 export type SpacesFilterSchemaType = z.infer<typeof SpacesFilterSchema>;
@@ -14,7 +14,7 @@ export type SpacesFilterSchemaType = z.infer<typeof SpacesFilterSchema>;
 const SpaceFormBaseSchema = z.object({
 	name: z.string().min(1),
 	description: z.string().nullable().optional(),
-	category: z.nativeEnum(SpaceCategory).nullable().optional(),
+	category: z.enum(SpaceCategory).nullable().optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).default(0),
 	parentId: z.string().uuid().nullable().optional(),
@@ -23,7 +23,7 @@ const SpaceFormBaseSchema = z.object({
 // Add form schema - includes type selection
 export const SpaceAddFormSchema = SpaceFormBaseSchema.extend({
 	id: z.string().uuid(),
-	type: z.nativeEnum(SpaceType).default(SpaceType.ROOM),
+	type: z.enum(SpaceType).default(SpaceType.ROOM),
 });
 
 export type SpaceAddFormSchemaType = z.infer<typeof SpaceAddFormSchema>;
@@ -31,7 +31,7 @@ export type SpaceAddFormSchemaType = z.infer<typeof SpaceAddFormSchema>;
 // Edit form schema - type is not editable
 export const SpaceEditFormSchema = SpaceFormBaseSchema.extend({
 	id: z.string().uuid(),
-	type: z.nativeEnum(SpaceType),
+	type: z.enum(SpaceType),
 	suggestionsEnabled: z.boolean().default(true),
 	statusWidgets: z.array(StatusWidgetSchema).nullable().optional(),
 });

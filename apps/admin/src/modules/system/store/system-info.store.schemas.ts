@@ -75,7 +75,7 @@ export const SystemInfoStateSemaphoreSchema = z.object({
 // =============
 
 export const SystemInfoOnEventActionPayloadSchema = z.object({
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const SystemInfoSetActionPayloadSchema = z.object({

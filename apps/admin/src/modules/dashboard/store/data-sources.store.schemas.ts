@@ -52,7 +52,7 @@ export const DataSourcesOnEventActionPayloadSchema = z.object({
 		type: z.string().trim().nonempty(),
 	}),
 	type: z.string().trim().nonempty(),
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const DataSourcesSetActionPayloadSchema = z.object({
@@ -65,7 +65,7 @@ export const DataSourcesSetActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DataSourcesUnsetActionPayloadSchema = z.object({
@@ -104,7 +104,7 @@ export const DataSourcesAddActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DataSourcesEditActionPayloadSchema = z.object({
@@ -117,7 +117,7 @@ export const DataSourcesEditActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 		})
-		.passthrough(),
+		.catchall(z.unknown()),
 });
 
 export const DataSourcesSaveActionPayloadSchema = z.object({

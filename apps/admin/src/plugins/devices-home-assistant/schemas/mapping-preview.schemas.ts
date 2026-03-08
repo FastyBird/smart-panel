@@ -14,12 +14,12 @@ import {
 
 export const MappingEntityOverrideSchema = z.object({
 	entityId: z.string(),
-	channelCategory: z.nativeEnum(DevicesModuleChannelCategory).optional(),
+	channelCategory: z.enum(DevicesModuleChannelCategory).optional(),
 	skip: z.boolean().optional(),
 });
 
 export const MappingPreviewRequestSchema = z.object({
-	deviceCategory: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
+	deviceCategory: z.enum(DevicesModuleDeviceCategory).optional(),
 	entityOverrides: z.array(MappingEntityOverrideSchema).optional(),
 });
 
@@ -30,11 +30,11 @@ export const MappingPreviewRequestSchema = z.object({
 export const VirtualPropertyTypeSchema = z.enum(['static', 'derived', 'command']);
 
 export const PropertyMappingPreviewSchema = z.object({
-	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
+	category: z.enum(DevicesModuleChannelPropertyCategory),
 	name: z.string(),
 	haAttribute: z.string(),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
-	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	dataType: z.enum(DevicesModuleChannelPropertyDataType),
+	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
 	format: z
 		.array(z.union([z.string(), z.number()]))
@@ -49,7 +49,7 @@ export const PropertyMappingPreviewSchema = z.object({
 });
 
 export const SuggestedChannelSchema = z.object({
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	name: z.string(),
 	confidence: z.enum(['high', 'medium', 'low']),
 });
@@ -59,12 +59,12 @@ export const EntityMappingPreviewSchema = z.object({
 	domain: z.string(),
 	deviceClass: z.string().nullable(),
 	currentState: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-	attributes: z.record(z.unknown()),
+	attributes: z.record(z.string(), z.unknown()),
 	status: z.enum(['mapped', 'partial', 'unmapped', 'skipped', 'incompatible']),
 	suggestedChannel: SuggestedChannelSchema.nullable(),
 	suggestedProperties: z.array(PropertyMappingPreviewSchema),
 	unmappedAttributes: z.array(z.string()),
-	missingRequiredProperties: z.array(z.nativeEnum(DevicesModuleChannelPropertyCategory)),
+	missingRequiredProperties: z.array(z.enum(DevicesModuleChannelPropertyCategory)),
 	incompatibleReason: z.string().nullable().optional(),
 });
 
@@ -83,7 +83,7 @@ export const MappingWarningSchema = z.object({
 });
 
 export const SuggestedDeviceSchema = z.object({
-	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	category: z.enum(DevicesModuleDeviceCategory),
 	name: z.string(),
 	confidence: z.enum(['high', 'medium', 'low']),
 });
@@ -101,8 +101,8 @@ export const ValidationSummarySchema = z.object({
 	missingPropertiesCount: z.number(),
 	fillableWithVirtualCount: z.number(),
 	missingChannels: z.array(z.string()),
-	missingProperties: z.record(z.array(z.string())),
-	autoFilledVirtual: z.record(z.array(z.string())),
+	missingProperties: z.record(z.string(), z.array(z.string())),
+	autoFilledVirtual: z.record(z.string(), z.array(z.string())),
 	unknownChannels: z.array(z.string()),
 	duplicateChannels: z.array(z.string()),
 	constraintViolations: z.array(z.string()),
@@ -122,10 +122,10 @@ export const MappingPreviewResponseSchema = z.object({
 // ============================================================================
 
 export const AdoptPropertyDefinitionSchema = z.object({
-	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
+	category: z.enum(DevicesModuleChannelPropertyCategory),
 	haAttribute: z.string(),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
-	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
+	dataType: z.enum(DevicesModuleChannelPropertyDataType),
+	permissions: z.array(z.enum(DevicesModuleChannelPropertyPermissions)),
 	format: z
 		.array(z.union([z.string(), z.number()]))
 		.nullable()
@@ -136,7 +136,7 @@ export const AdoptPropertyDefinitionSchema = z.object({
 
 export const AdoptChannelDefinitionSchema = z.object({
 	entityId: z.string(),
-	category: z.nativeEnum(DevicesModuleChannelCategory),
+	category: z.enum(DevicesModuleChannelCategory),
 	name: z.string(),
 	properties: z.array(AdoptPropertyDefinitionSchema),
 });
@@ -144,7 +144,7 @@ export const AdoptChannelDefinitionSchema = z.object({
 export const AdoptDeviceRequestSchema = z.object({
 	haDeviceId: z.string(),
 	name: z.string(),
-	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	category: z.enum(DevicesModuleDeviceCategory),
 	description: z
 		.string()
 		.trim()

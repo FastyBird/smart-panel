@@ -118,7 +118,7 @@ export const StatsStateSemaphoreSchema = z.object({
 // =============
 
 export const StatsOnEventActionPayloadSchema = z.object({
-	data: z.object({}),
+	data: z.looseObject({}),
 });
 
 export const StatsSetActionPayloadSchema = z.object({

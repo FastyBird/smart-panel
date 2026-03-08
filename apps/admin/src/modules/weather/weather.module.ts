@@ -87,7 +87,7 @@ export default {
 			});
 		}
 
-		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
+		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(WEATHER_MODULE_EVENT_PREFIX)) {
 				return;
 			}
@@ -100,7 +100,7 @@ export default {
 				case EventType.WEATHER_INFO:
 					if ('current' in data.payload && typeof data.payload.current === 'object' && data.payload.current !== null) {
 						weatherDayStore.onEvent({
-							data: data.payload.current,
+							data: data.payload.current as Record<string, unknown>,
 						});
 					}
 

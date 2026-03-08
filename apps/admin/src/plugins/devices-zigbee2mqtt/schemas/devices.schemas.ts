@@ -15,7 +15,7 @@ export const Zigbee2mqttDeviceAddMultiStepFormSchema = z.object({
 	type: z.string(),
 	ieeeAddress: z.string().min(1),
 	name: z.string().min(1),
-	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	category: z.enum(DevicesModuleDeviceCategory),
 	description: z
 		.string()
 		.trim()

@@ -20,11 +20,11 @@ import { ItemIdSchema } from './types';
 // ===========
 
 export const ValidationIssueSchema = z.object({
-	type: z.nativeEnum(DevicesModuleDataValidationIssueType),
-	severity: z.nativeEnum(DevicesModuleDataValidationIssueSeverity),
-	channelCategory: z.nativeEnum(DevicesModuleChannelCategory).optional(),
+	type: z.enum(DevicesModuleDataValidationIssueType),
+	severity: z.enum(DevicesModuleDataValidationIssueSeverity),
+	channelCategory: z.enum(DevicesModuleChannelCategory).optional(),
 	channelId: ItemIdSchema.nullable().optional(),
-	propertyCategory: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
+	propertyCategory: z.enum(DevicesModuleChannelPropertyCategory).optional(),
 	propertyId: ItemIdSchema.nullable().optional(),
 	message: z.string().trim().nonempty(),
 	expected: z.string().nullable().optional(),
@@ -35,7 +35,7 @@ export const DeviceValidationResultSchema = z.object({
 	deviceId: ItemIdSchema,
 	deviceIdentifier: z.string().nullable().optional(),
 	deviceName: z.string().trim().nonempty(),
-	deviceCategory: z.nativeEnum(DevicesModuleDeviceCategory),
+	deviceCategory: z.enum(DevicesModuleDeviceCategory),
 	pluginType: z.string().trim().nonempty(),
 	isValid: z.boolean(),
 	issues: z.array(ValidationIssueSchema),
@@ -66,11 +66,11 @@ export const DevicesValidationStateSemaphoreSchema = z.object({
 // =========================================
 
 export const ValidationIssueResSchema: ZodType<ApiValidationIssue> = z.object({
-	type: z.nativeEnum(DevicesModuleDataValidationIssueType),
-	severity: z.nativeEnum(DevicesModuleDataValidationIssueSeverity),
-	channel_category: z.nativeEnum(DevicesModuleChannelCategory).optional(),
+	type: z.enum(DevicesModuleDataValidationIssueType),
+	severity: z.enum(DevicesModuleDataValidationIssueSeverity),
+	channel_category: z.enum(DevicesModuleChannelCategory).optional(),
 	channel_id: z.string().uuid().nullable().optional(),
-	property_category: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
+	property_category: z.enum(DevicesModuleChannelPropertyCategory).optional(),
 	property_id: z.string().uuid().nullable().optional(),
 	message: z.string(),
 	expected: z.string().nullable().optional(),
@@ -81,7 +81,7 @@ export const DeviceValidationResultResSchema: ZodType<ApiDeviceValidationResult>
 	device_id: z.string().uuid(),
 	device_identifier: z.string().nullable().optional(),
 	device_name: z.string(),
-	device_category: z.nativeEnum(DevicesModuleDeviceCategory),
+	device_category: z.enum(DevicesModuleDeviceCategory),
 	plugin_type: z.string(),
 	is_valid: z.boolean(),
 	issues: z.array(ValidationIssueResSchema),

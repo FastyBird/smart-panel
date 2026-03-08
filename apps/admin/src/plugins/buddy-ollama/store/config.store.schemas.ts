@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { BUDDY_OLLAMA_PLUGIN_NAME } from '../buddy-ollama.constants';
@@ -11,7 +11,7 @@ export const OllamaConfigSchema = ConfigPluginSchema.extend({
 // BACKEND API
 // ===========
 
-export const OllamaConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.and(
+export const OllamaConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OLLAMA_PLUGIN_NAME),
 		model: z.string().trim().nullable().optional(),
@@ -19,7 +19,7 @@ export const OllamaConfigUpdateReqSchema: ZodType = ConfigPluginUpdateReqSchema.
 	})
 );
 
-export const OllamaConfigResSchema: ZodType = ConfigPluginResSchema.and(
+export const OllamaConfigResSchema= ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_OLLAMA_PLUGIN_NAME),
 		model: z.string().trim().nullable(),
