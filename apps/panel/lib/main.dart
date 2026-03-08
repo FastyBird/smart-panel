@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:fastybird_smart_panel/app/app.dart';
-import 'package:fastybird_smart_panel/core/services/error_reporter.dart';
+import 'package:fastybird_smart_panel/modules/system/services/error_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

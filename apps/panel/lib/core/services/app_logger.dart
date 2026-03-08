@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:fastybird_smart_panel/core/services/error_reporter.dart';
+import 'package:fastybird_smart_panel/modules/system/services/error_reporter.dart';
 
 /// Log level for filtering messages
 enum LogLevel {
