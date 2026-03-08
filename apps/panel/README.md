@@ -20,6 +20,7 @@ Built with **Flutter**, it’s optimized for **performance**, **simplicity**, an
 - 🌤️ **Weather Forecast** – Integrates with OpenWeather for local conditions
 - 🧩 **Dynamic Tiles** – Modular tile system powered by backend plugins
 - 🧠 **Smart Display Logic** – Automatically refreshes content when data changes
+- 🤖 **AI Assistant** – Integrated Buddy AI assistant for voice and text interaction
 
 ---
 
@@ -45,6 +46,7 @@ lib/
 │   └── settings/          # Application settings screens
 │
 ├── modules/               # Feature modules
+│   ├── buddy/             # AI assistant integration
 │   ├── config/            # Configuration management
 │   ├── dashboard/         # Dashboard data and UI
 │   ├── deck/              # Spaces + Deck navigation system

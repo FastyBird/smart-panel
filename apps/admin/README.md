@@ -6,7 +6,7 @@
 
 The **Smart Panel Admin** is a web-based interface for configuring the **FastyBird Smart Panel**.
 
-It lets you **design dashboards**, manage **tiles, data sources, and pages**, and connect with various **smart home systems** like Home Assistant, OpenHAB, and Sonoff.
+It lets you **design dashboards**, manage **tiles, data sources, and pages**, and connect with various **smart home systems** like Home Assistant, Shelly, Zigbee2MQTT, and WLED.
 
 ---
 
@@ -15,6 +15,7 @@ It lets you **design dashboards**, manage **tiles, data sources, and pages**, an
 - 🧩 **Plugin Support** – Extend UI with custom page, tile, or data source plugins
 - 🧱 **Dashboard Configuration** – Manage layouts using pages, cards, tiles, and more
 - ⚙️ **Device Integration** – Seamless control of devices, channels, and properties
+- 🤖 **AI Assistant (Buddy)** – Configure AI providers (Claude, OpenAI, Ollama) and messaging channels
 - 🔁 **Real-Time Updates** – Powered by WebSockets for instant feedback
 - 📱 **Responsive UI** – Built for desktops and tablets with adaptive layout
 - 🔐 **Authentication Support** – Secure access and user role control
@@ -38,6 +39,7 @@ src/
 │
 ├── modules/              # Feature-based modules
 │   ├── auth/             # Authentication and session management
+│   ├── buddy/            # AI assistant configuration
 │   ├── config/           # Configuration management
 │   ├── dashboard/        # Pages, tiles, and data sources
 │   ├── devices/          # Device, channel, and property management
@@ -56,6 +58,7 @@ src/
 │   └── weather/          # Weather configuration
 │
 ├── plugins/              # Plugin extensions (mirrors backend plugins)
+│   ├── buddy-*/          # AI assistant provider and channel UIs
 │   ├── devices-*/        # Device integration UIs
 │   ├── pages-*/          # Page type configuration
 │   ├── tiles-*/          # Tile type configuration
