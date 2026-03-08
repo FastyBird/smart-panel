@@ -127,8 +127,8 @@ export default function LandingPage() {
 						<StaggerItem>
 							<FeatureCard
 								icon={<Icon path={mdiViewDashboardOutline} size={1.8} className="text-primary" />}
-								title="Tile-based UI"
-								description="Arrange elements on a flexible, customizable tile layout."
+								title="Intent-Driven UI"
+								description="Navigate domains, rooms, and scenes through a swipeable deck with auto-generated views."
 								variant="light"
 							/>
 						</StaggerItem>
@@ -152,7 +152,7 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Extensible Tile Layout */}
+			{/* Deck Navigation */}
 			<section className="bg-[#101113] text-white py-24 px-6 overflow-hidden">
 				<div className="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-16">
 					<AnimatedSection className="w-full md:w-1/2">
@@ -160,11 +160,12 @@ export default function LandingPage() {
 							Flexible Design
 						</p>
 						<h2 className="text-3xl md:text-5xl font-bold mb-6">
-							Extensible Tile Layout
+							Intent-Driven Deck Navigation
 						</h2>
 						<p className="text-lg text-white/70 mb-8 leading-relaxed">
-							Build custom user interfaces by arranging elements on a flexible, tile-based layout. Organize
-							devices, controls, and indicators in the way that makes sense for your environment.
+							Navigate your home through a swipeable deck of views — auto-generated room overviews,
+							domain pages for lights, climate, shading, and media, plus custom dashboard pages
+							with drag-and-drop tiles.
 						</p>
 						<Button variant={"outline"} href={"/docs/plugins/dashboard-module/overview"} size={"md"} className={"px-6 py-3"}>
 							Learn More
@@ -177,7 +178,7 @@ export default function LandingPage() {
 							<div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-[#ff6b4a]/10 rounded-3xl blur-2xl" />
 							<img
 								src="/landing/tile-layout-preview.png"
-								alt="Tile Layout UI"
+								alt="Deck Navigation UI"
 								className="relative w-full h-auto rounded-2xl"
 							/>
 						</div>
