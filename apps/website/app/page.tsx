@@ -1,696 +1,722 @@
+"use client";
+
 import Image from "next/image";
 import Icon from "@mdi/react";
+import { motion } from "framer-motion";
+import GitHubButton from "react-github-btn";
 import {
-  mdiArrowLeftRight,
-  mdiArrowUpDown,
-  mdiDevices,
-  mdiApi,
-  mdiMonitorDashboard,
-  mdiServer,
-  mdiViewDashboardOutline,
-  mdiCodeBraces,
-  mdiLanConnect,
-  mdiPuzzleOutline,
-  mdiGithub,
-  mdiHomeAssistant,
-  mdiForum,
-  mdiBookOpen,
-  mdiRaspberryPi,
+	mdiArrowLeftRight,
+	mdiArrowUpDown,
+	mdiDevices,
+	mdiApi,
+	mdiMonitorDashboard,
+	mdiServer,
+	mdiViewDashboardOutline,
+	mdiCodeBraces,
+	mdiLanConnect,
+	mdiPuzzleOutline,
+	mdiGithub,
+	mdiHomeAssistant,
+	mdiForum,
+	mdiBookOpen,
+	mdiRaspberryPi,
+	mdiWifi,
+	mdiShieldCheck,
+	mdiCog,
+	mdiPalette,
+	mdiSpeedometer,
+	mdiOpenSourceInitiative,
+	mdiArrowRight,
+	mdiRocketLaunch,
+	mdiChevronDown,
 } from "@mdi/js";
 import { Button } from "./_components/button";
 import { ShellyLogoSmall } from "./_components/shelly_logo_small";
+import { AnimatedSection, StaggerContainer, StaggerItem } from "./_components/animated_section";
+import { FeatureCard, NumberStepCard } from "./_components/feature_card";
 
 export default function LandingPage() {
-  return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      <section className="relative h-screen w-full max-w-screen-2xl mx-auto overflow-hidden bg-black">
-        <img
-          src="/landing/smart-panel-hero.png"
-          alt="Smart Panel on wall"
-          className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
-        />
+	return (
+		<div className="min-h-screen bg-black text-white flex flex-col">
+			{/* Hero Section */}
+			<section className="relative h-screen w-full max-w-screen-2xl mx-auto overflow-hidden bg-black">
+				<img
+					src="/landing/smart-panel-hero.png"
+					alt="Smart Panel on wall"
+					className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
+				/>
 
-        <div className="absolute top-0 left-0 h-full w-1/50 bg-gradient-to-l from-transparent to-black/40 z-0" />
+				<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 z-[1]" />
+				<div className="absolute top-0 left-0 h-full w-1/50 bg-gradient-to-l from-transparent to-black/40 z-0" />
+				<div className="absolute top-0 right-0 h-full w-1/50 bg-gradient-to-r from-transparent to-black/40 z-0" />
 
-        <div className="absolute top-0 right-0 h-full w-1/50 bg-gradient-to-r from-transparent to-black/40 z-0" />
+				<div className="relative z-10 h-full flex items-center justify-center">
+					<div className="w-full max-w-screen-xl px-8 flex flex-col md:flex-row items-center justify-between">
+						<div className="text-left text-white max-w-3xl">
+							<motion.div
+								initial={{ opacity: 0, y: 30 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.8, delay: 0.2 }}
+							>
+								<p className="text-sm md:text-base uppercase tracking-[0.3em] text-white/70 mb-4 font-medium">
+									Open Source Smart Home Display
+								</p>
+							</motion.div>
+							<motion.h1
+								initial={{ opacity: 0, y: 30 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.8, delay: 0.4 }}
+								className="text-4xl md:text-7xl font-bold mb-6 drop-shadow-xl leading-tight"
+							>
+								Control Your Smart Home{" "}
+								<span className="bg-gradient-to-r from-[#d9230f] to-[#ff6b4a] bg-clip-text text-transparent">
+									From the Wall
+								</span>
+							</motion.h1>
+							<motion.p
+								initial={{ opacity: 0, y: 30 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.8, delay: 0.6 }}
+								className="text-lg md:text-2xl mb-10 text-white/80 max-w-2xl"
+							>
+								A customizable control panel for lights, sensors, thermostats, and more — all in one
+								intuitive touchscreen interface.
+							</motion.p>
+							<motion.div
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.8, delay: 0.8 }}
+								className="flex flex-wrap gap-4 items-center"
+							>
+								<Button variant={"primary"} href={"/docs/get-started/overview"} size={"lg"} className={"text-lg px-8 py-4"}>
+									Get Started
+									<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
+								</Button>
+								<Button variant={"outline"} href={"https://github.com/fastybird/smart-panel"} size={"lg"} className={"text-lg px-8 py-4"}>
+									<Icon path={mdiGithub} size={1} className="mr-2" />
+									View on GitHub
+								</Button>
+							</motion.div>
+						</div>
+					</div>
+				</div>
 
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <div className="w-full max-w-screen-xl px-8 flex flex-col md:flex-row items-center justify-between">
-            <div className="text-left text-white max-w-3xl">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 drop-shadow-xl">
-                Control Your Smart Home <br />
-                From the Wall
-              </h1>
-              <p className="text-lg md:text-2xl mb-8 text-white/90">
-                A customizable control panel for lights, sensors, thermostats,
-                and more — all in one intuitive touchscreen interface.
-              </p>
-              <Button
-                variant={"white"}
-                href={"/docs/get-started/overview"}
-                size={"lg"}
-                className={"text-lg px-6 py-4"}
-              >
-                Get Started
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+				{/* Scroll indicator */}
+				<motion.div
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					transition={{ delay: 1.5 }}
+					className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
+				>
+					<motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}>
+						<Icon path={mdiChevronDown} size={1.5} className="text-white/50" />
+					</motion.div>
+				</motion.div>
+			</section>
 
-      <section className="bg-[#f5f5f7] text-black py-20">
-        <div className="max-w-screen-xl mx-auto px-8">
-          <h2 className="text-3xl text-center sm:text-left md:text-4xl font-bold mb-12">
-            Key Features
-          </h2>
+			{/* Key Features */}
+			<section className="bg-[#f5f5f7] text-black py-24">
+				<div className="max-w-screen-xl mx-auto px-8">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3 text-center">
+							Features
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4 text-center">
+							Everything You Need
+						</h2>
+						<p className="text-lg text-gray-600 mb-16 text-center max-w-2xl mx-auto">
+							Powerful features designed to make your smart home experience seamless and intuitive.
+						</p>
+					</AnimatedSection>
 
-          <div className="text-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
-            <div className="flex flex-col items-start space-y-4">
-              <Icon
-                path={mdiDevices}
-                size={2}
-                className="text-primary mx-auto"
-              />
-              <h3 className="text-xl font-semibold w-full">Easy Integration</h3>
-              <p className="text-black/70">
-                Quickly connect existing smart home devices.
-              </p>
-            </div>
+					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8" staggerDelay={0.1}>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiDevices} size={1.8} className="text-[#d9230f]" />}
+								title="Easy Integration"
+								description="Quickly connect existing smart home devices with plug-and-play support."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiViewDashboardOutline} size={1.8} className="text-[#d9230f]" />}
+								title="Tile-based UI"
+								description="Arrange elements on a flexible, customizable tile layout."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiApi} size={1.8} className="text-[#d9230f]" />}
+								title="Powerful API"
+								description="Communicate with panels programmatically via REST and WebSocket."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiMonitorDashboard} size={1.8} className="text-[#d9230f]" />}
+								title="Admin Interface"
+								description="Manage panels through a full-featured web-based dashboard."
+								variant="light"
+							/>
+						</StaggerItem>
+					</StaggerContainer>
+				</div>
+			</section>
 
-            <div className="flex flex-col items-start space-y-4">
-              <Icon
-                path={mdiViewDashboardOutline}
-                size={2}
-                className="text-primary mx-auto"
-              />
-              <h3 className="text-xl font-semibold w-full">Tile-based UI</h3>
-              <p className="text-black/70">
-                Arrange elements on a customizable layout.
-              </p>
-            </div>
+			{/* Extensible Tile Layout */}
+			<section className="bg-[#101113] text-white py-24 px-6 overflow-hidden">
+				<div className="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-16">
+					<AnimatedSection className="w-full md:w-1/2">
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Flexible Design
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6">
+							Extensible Tile Layout
+						</h2>
+						<p className="text-lg text-white/70 mb-8 leading-relaxed">
+							Build custom user interfaces by arranging elements on a flexible, tile-based layout. Organize
+							devices, controls, and indicators in the way that makes sense for your environment.
+						</p>
+						<Button variant={"outline"} href={"/docs/plugins/dashboard-module/overview"} size={"md"} className={"px-6 py-3"}>
+							Learn More
+							<Icon path={mdiArrowRight} size={0.8} className="ml-2" />
+						</Button>
+					</AnimatedSection>
 
-            <div className="flex flex-col items-start space-y-4">
-              <Icon path={mdiApi} size={2} className="text-primary mx-auto" />
-              <h3 className="text-xl font-semibold w-full">Powerful API</h3>
-              <p className="text-black/70">
-                Communicate with panels programmatically.
-              </p>
-            </div>
+					<motion.div
+						initial={{ opacity: 0, x: 60 }}
+						whileInView={{ opacity: 1, x: 0 }}
+						viewport={{ once: true }}
+						transition={{ duration: 0.8 }}
+						className="md:w-1/2"
+					>
+						<div className="relative">
+							<div className="absolute -inset-4 bg-gradient-to-r from-[#d9230f]/20 to-[#ff6b4a]/10 rounded-3xl blur-2xl" />
+							<img
+								src="/landing/tile-layout-preview.png"
+								alt="Tile Layout UI"
+								className="relative w-full h-auto rounded-2xl"
+							/>
+						</div>
+					</motion.div>
+				</div>
+			</section>
 
-            <div className="flex flex-col items-start space-y-4">
-              <Icon
-                path={mdiMonitorDashboard}
-                size={2}
-                className="text-primary mx-auto"
-              />
-              <h3 className="text-xl font-semibold w-full">Admin Interface</h3>
-              <p className="text-black/70">
-                Manage panels through a web-based dashboard.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#101113] text-white pt-24 px-6">
-        <div className="max-w-screen-xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-12">
-          <div className="w-full md:w-1/2">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">
-              Extensible Tile Layout
-            </h2>
-            <p className="text-lg text-justify text-white/80 mb-6">
-              Build custom user interfaces by arranging elements on a flexible,
-              tile-based layout. Organize devices, controls, and indicators in
-              the way that makes sense for your environment.
-            </p>
-          </div>
+			{/* Device Management */}
+			<section className="bg-[#f5f5f7] text-black py-24 px-6 overflow-hidden">
+				<div className="max-w-screen-xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-16">
+					<AnimatedSection className="w-full md:w-1/2">
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Admin Panel
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6">
+							Effortless Device Management
+						</h2>
+						<p className="text-lg text-gray-600 mb-8 leading-relaxed">
+							Use the admin interface to organize and manage all your smart panel devices — from adding new
+							devices and defining channels to editing properties and monitoring current status.
+						</p>
+						<Button variant={"dark"} href={"/docs/admin-management/overview"} size={"md"} className={"px-6 py-3"}>
+							Explore Admin
+							<Icon path={mdiArrowRight} size={0.8} className="ml-2" />
+						</Button>
+					</AnimatedSection>
 
-          <div className="md:w-1/2">
-            <img
-              src="/landing/tile-layout-preview.png"
-              alt="Tile Layout UI"
-              className="w-full h-auto"
-            />
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#f5f5f7] text-black py-24 px-6">
-        <div className="max-w-screen-xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-12">
-          <div className="w-full md:w-1/2">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">
-              Effortless Device Management
-            </h2>
-            <p className="text-lg text-justify text-gray-700 mb-6">
-              Use the admin interface to organize and manage all your smart
-              panel devices — from adding new devices and defining channels to
-              editing properties and monitoring current status. Built for
-              structured setup and clear insights, not just control.
-            </p>
-          </div>
+					<motion.div
+						initial={{ opacity: 0, x: -60 }}
+						whileInView={{ opacity: 1, x: 0 }}
+						viewport={{ once: true }}
+						transition={{ duration: 0.8 }}
+						className="md:w-1/2"
+					>
+						<div className="relative">
+							<div className="absolute -inset-4 bg-gradient-to-l from-[#d9230f]/10 to-[#ff6b4a]/5 rounded-3xl blur-2xl" />
+							<img
+								src="/landing/devices-preview.png"
+								alt="Device management preview"
+								className="relative w-full h-auto rounded-2xl"
+							/>
+						</div>
+					</motion.div>
+				</div>
+			</section>
 
-          <div className="md:w-1/2">
-            <img
-              src="/landing/devices-preview.png"
-              alt="Device management preview"
-              className="w-full h-auto"
-            />
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#101113] text-white py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">How It Works</h2>
+			{/* How It Works */}
+			<section className="bg-[#101113] text-white py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Architecture
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6">How It Works</h2>
+						<p className="text-lg text-white/70 mb-16 max-w-2xl mx-auto">
+							The Smart Panel ecosystem is built around a central backend that bridges the configuration
+							interface, real-time display, and third-party integrations.
+						</p>
+					</AnimatedSection>
 
-          <p className="text-lg text-white/80 mb-12 max-w-2xl mx-auto">
-            The Smart Panel ecosystem is built around a central backend that
-            bridges the configuration interface, real-time display, and
-            third-party integrations.
-          </p>
+					<StaggerContainer className="flex flex-row justify-items-center items-center justify-center" staggerDelay={0.15}>
+						<StaggerItem className="flex flex-col items-center w-40">
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
+								<Icon path={mdiMonitorDashboard} size={2} className="text-[#d9230f]" />
+							</motion.div>
+							<span className="mt-3 text-white/80 font-medium">Admin Application</span>
+						</StaggerItem>
 
-          <div className="flex flex-row justify-items-center items-center justify-center">
-            <div className="flex flex-col items-center w-40">
-              <div className="bg-white/10 p-4 rounded-xl">
-                <Icon
-                  path={mdiMonitorDashboard}
-                  size={2}
-                  className="text-primary"
-                />
-              </div>
-              <span className="mt-2 text-white/80">Admin Application</span>
-            </div>
+						<StaggerItem className="flex flex-col items-center">
+							<div className="p-4 mb-6 animate-pulse">
+								<Icon path={mdiArrowLeftRight} size={1.5} className="text-[#d9230f]/60" />
+							</div>
+						</StaggerItem>
 
-            <div className="flex flex-col items-center">
-              <div className="p-4 mb-6 animate-pulse">
-                <Icon
-                  path={mdiArrowLeftRight}
-                  size={1.5}
-                  className="text-primary"
-                />
-              </div>
-            </div>
+						<StaggerItem className="flex flex-col items-center w-40">
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
+								<Icon path={mdiServer} size={2} className="text-[#d9230f]" />
+							</motion.div>
+							<span className="mt-3 text-white/80 font-medium">Backend</span>
+						</StaggerItem>
 
-            <div className="flex flex-col items-center w-40">
-              <div className="bg-white/10 p-4 rounded-xl">
-                <Icon path={mdiServer} size={2} className="text-primary" />
-              </div>
-              <span className="mt-2 text-white/80">Backend</span>
-            </div>
+						<StaggerItem className="flex flex-col items-center">
+							<div className="p-4 mb-6 animate-pulse">
+								<Icon path={mdiArrowLeftRight} size={1.5} className="text-[#d9230f]/60" />
+							</div>
+						</StaggerItem>
 
-            <div className="flex flex-col items-center">
-              <div className="p-4 mb-6 animate-pulse">
-                <Icon
-                  path={mdiArrowLeftRight}
-                  size={1.5}
-                  className="text-primary"
-                />
-              </div>
-            </div>
+						<StaggerItem className="flex flex-col items-center w-40">
+							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
+								<Icon path={mdiViewDashboardOutline} size={2} className="text-[#d9230f]" />
+							</motion.div>
+							<span className="mt-3 text-white/80 font-medium">Display Panel</span>
+						</StaggerItem>
+					</StaggerContainer>
 
-            <div className="flex flex-col items-center w-40">
-              <div className="bg-white/10 p-4 rounded-xl">
-                <Icon
-                  path={mdiViewDashboardOutline}
-                  size={2}
-                  className="text-primary"
-                />
-              </div>
-              <span className="mt-2 text-white/80">Display Panel</span>
-            </div>
-          </div>
+					<div className="flex flex-row justify-items-center items-center justify-center">
+						<div className="px-4 py-8 animate-pulse">
+							<Icon path={mdiArrowUpDown} size={1.5} className="text-[#d9230f]/60" />
+						</div>
+					</div>
 
-          <div className="flex flex-row justify-items-center items-center justify-center">
-            <div className="px-4 py-8 animate-pulse">
-              <Icon path={mdiArrowUpDown} size={1.5} className="text-primary" />
-            </div>
-          </div>
+					<div className="flex flex-row justify-items-center items-center justify-center">
+						<motion.div whileHover={{ scale: 1.1 }} className="flex flex-col items-center">
+							<div className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-[#d9230f]/30 transition-colors">
+								<Icon path={mdiDevices} size={2} className="text-[#d9230f]" />
+							</div>
+							<span className="mt-3 text-white/80 font-medium">Integrations</span>
+						</motion.div>
+					</div>
 
-          <div className="flex flex-row justify-items-center items-center justify-center">
-            <div className="flex flex-col items-center">
-              <div className="bg-white/10 p-4 rounded-xl">
-                <Icon path={mdiDevices} size={2} className="text-primary" />
-              </div>
-              <span className="mt-2 text-white/80">Integrations</span>
-            </div>
-          </div>
+					<AnimatedSection delay={0.3}>
+						<div className="mt-16 flex flex-col items-center">
+							<div className="bg-gradient-to-r from-white/5 to-white/10 border border-white/10 rounded-2xl px-8 py-6 max-w-xl">
+								<h3 className="text-2xl font-semibold mb-3 flex flex-row items-center justify-center">
+									<Icon path={mdiRaspberryPi} size={1.5} className="mr-2 text-[#d9230f] hidden sm:block" />
+									Optimized for Embedded Devices
+								</h3>
+								<p className="text-white/60">
+									Smart Panel is designed to run directly on embedded Linux devices like the Raspberry Pi,
+									paired with touch displays — no cloud required.
+								</p>
+							</div>
+						</div>
+					</AnimatedSection>
+				</div>
+			</section>
 
-          <div className="mt-16 flex flex-col items-center text-white/70 text-base">
-            <h3 className="text-2xl font-semibold mb-4 flex flex-row items-center justify-center">
-              <Icon
-                path={mdiRaspberryPi}
-                size={1.5}
-                className="mr-2 hidden sm:block"
-              />
-              Optimized for Embedded Devices
-            </h3>
-            <p className="max-w-xl text-center">
-              Smart Panel is designed to run directly on embedded Linux devices
-              like the Raspberry Pi, paired with touch displays — no cloud
-              required.
-            </p>
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#f5f5f7] text-black py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Built for Developers
-          </h2>
-          <p className="text-lg text-gray-700 mb-12 max-w-3xl mx-auto">
-            The Smart Panel system is fully open and developer-friendly. With
-            OpenAPI schemas, WebSocket real-time communication, modular
-            architecture, and simple integrations, it's made for builders.
-          </p>
+			{/* Built for Developers */}
+			<section className="bg-[#f5f5f7] text-black py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Developer Experience
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">
+							Built for Developers
+						</h2>
+						<p className="text-lg text-gray-600 mb-16 max-w-3xl mx-auto">
+							Fully open and developer-friendly. With OpenAPI schemas, WebSocket communication, modular
+							architecture, and simple integrations — it's made for builders.
+						</p>
+					</AnimatedSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 text-left">
-            <div className="flex flex-col items-start space-y-4">
-              <div className="text-primary">
-                <Icon path={mdiCodeBraces} size={2} />
-              </div>
-              <h3 className="text-xl font-semibold">OpenAPI Spec</h3>
-              <p className="text-gray-700">
-                The entire backend is documented via OpenAPI and available for
-                introspection, testing, and automation.
-              </p>
-            </div>
+					<StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" staggerDelay={0.1}>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiCodeBraces} size={1.8} className="text-[#d9230f]" />}
+								title="OpenAPI Spec"
+								description="Fully documented backend via OpenAPI — available for introspection, testing, and automation."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiLanConnect} size={1.8} className="text-[#d9230f]" />}
+								title="WebSocket Support"
+								description="Real-time device state updates and bi-directional control through modern socket communication."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-[#d9230f]" />}
+								title="Modular Design"
+								description="Create plugins or add features easily using the backend's flexible plugin architecture."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiGithub} size={1.8} className="text-[#d9230f]" />}
+								title="Open Source"
+								description="Explore and contribute on GitHub. The code is transparent, clean, and documented."
+								variant="light"
+							/>
+						</StaggerItem>
+					</StaggerContainer>
 
-            <div className="flex flex-col items-start space-y-4">
-              <div className="text-primary">
-                <Icon path={mdiLanConnect} size={2} />
-              </div>
-              <h3 className="text-xl font-semibold">WebSocket Support</h3>
-              <p className="text-gray-700">
-                Realtime device state updates and bi-directional control through
-                modern socket communication.
-              </p>
-            </div>
+					<AnimatedSection delay={0.4} className="mt-14 flex flex-wrap items-center justify-center gap-6">
+						<Button variant={"github"} href={"https://github.com/fastybird/smart-panel"} size={"lg"} className={"px-8 py-4"}>
+							<Icon path={mdiGithub} size={1} className="mr-2" />
+							Visit GitHub
+						</Button>
+						<div className="flex items-center pt-1">
+							<GitHubButton
+								href="https://github.com/fastybird/smart-panel"
+								data-size="large"
+								data-show-count="true"
+								aria-label="Star fastybird/smart-panel on GitHub"
+							>
+								Star
+							</GitHubButton>
+						</div>
+					</AnimatedSection>
+				</div>
+			</section>
 
-            <div className="flex flex-col items-start space-y-4">
-              <div className="text-primary">
-                <Icon path={mdiPuzzleOutline} size={2} />
-              </div>
-              <h3 className="text-xl font-semibold">Modular Design</h3>
-              <p className="text-gray-700">
-                Create plugins or add new features easily using the backend’s
-                flexible and modular plugin architecture.
-              </p>
-            </div>
+			{/* Integrations */}
+			<section className="bg-[#101113] text-white py-24 px-6 relative overflow-hidden">
+				{/* Subtle background glow */}
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#d9230f]/5 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="flex flex-col items-start space-y-4">
-              <div className="text-primary">
-                <Icon path={mdiGithub} size={2} />
-              </div>
-              <h3 className="text-xl font-semibold">Open Source</h3>
-              <p className="text-gray-700">
-                Explore and contribute on GitHub. The code is transparent,
-                clean, and documented.
-              </p>
-            </div>
-          </div>
+				<div className="max-w-screen-xl mx-auto text-center relative">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Integrations
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6">Works With Your Devices</h2>
+						<p className="text-lg text-white/70 mb-16 max-w-2xl mx-auto">
+							Out of the box, Smart Panel supports powerful integration plugins — direct API-based devices,
+							Home Assistant, and Shelly devices.
+						</p>
+					</AnimatedSection>
 
-          <div className="mt-12">
-            <Button
-              variant={"github"}
-              href={"https://github.com/fastybird/smart-panel"}
-              size={"lg"}
-              className={"px-6 py-4"}
-            >
-              <Icon path={mdiGithub} size={1} className="mr-2" />
-              Visit GitHub
-            </Button>
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#101113] text-white py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">Integrations</h2>
+					<StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto" staggerDelay={0.15}>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiLanConnect} size={1.8} className="text-[#d9230f]" />}
+								title="Third-Party API Devices"
+								description="Push updates from your system and receive commands back via your API endpoints — a flexible solution for integrators."
+								variant="dark"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiHomeAssistant} size={1.8} className="text-[#d9230f]" />}
+								title="Home Assistant"
+								description="Sync with your existing Home Assistant instance and mirror device states, entities, and automations."
+								variant="dark"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<ShellyLogoSmall className="text-[#d9230f] fill-current w-[1.8rem] h-[1.8rem]" />}
+								title="Shelly Next-Generation"
+								description="Native support for Shelly Plus & Pro devices. Real-time control, energy monitoring, and discovery — cloud-free."
+								variant="dark"
+							/>
+						</StaggerItem>
+					</StaggerContainer>
 
-          <p className="text-lg text-white/80 mb-12 max-w-2xl mx-auto">
-            Out of the box, Smart Panel supports two powerful integration
-            plugins:
-            <br /> direct API-based third-party devices and seamless Home
-            Assistant support.
-          </p>
+					<AnimatedSection delay={0.4} className="mt-14">
+						<Button variant={"white"} href={"/docs/plugins/overview"} size={"lg"} className={"text-lg px-8 py-4"}>
+							Learn More About Plugins
+							<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
+						</Button>
+					</AnimatedSection>
+				</div>
+			</section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-4xl mx-auto">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="bg-white/10 p-6 rounded-xl">
-                <Icon path={mdiLanConnect} size={2} className="text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Third-Party API Devices</h3>
-              <p className="text-white/80">
-                Push updates from your system to Smart Panel and receive
-                commands back via your API endpoints — a flexible solution for
-                integrators.
-              </p>
-            </div>
+			{/* Getting Started */}
+			<section className="bg-[#f5f5f7] text-black py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Quick Start
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">
+							Getting Started Is Easy
+						</h2>
+						<p className="text-lg text-gray-600 mb-16 max-w-2xl mx-auto">
+							Set up your smart panel from scratch — install the apps, connect devices, design your layout,
+							and transform a Raspberry Pi into a powerful control interface.
+						</p>
+					</AnimatedSection>
 
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="bg-white/10 p-6 rounded-xl">
-                <Icon
-                  path={mdiHomeAssistant}
-                  size={2}
-                  className="text-primary"
-                />
-              </div>
-              <h3 className="text-xl font-semibold">Home Assistant</h3>
-              <p className="text-white/80">
-                Sync with your existing Home Assistant instance and mirror
-                device states, entities, and automations directly into the panel
-                UI.
-              </p>
-            </div>
+					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8" staggerDelay={0.12}>
+						<StaggerItem>
+							<NumberStepCard
+								step={1}
+								title="Prepare Your Device"
+								description="Set up your Raspberry Pi with a touch display and install the Smart Panel apps."
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<NumberStepCard
+								step={2}
+								title="Connect Devices"
+								description="Link Home Assistant or configure third-party integrations using the API plugin."
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<NumberStepCard
+								step={3}
+								title="Design the Layout"
+								description="Use the Admin App to create pages and tiles for lights, sensors, climate, and more."
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<NumberStepCard
+								step={4}
+								title="Enjoy the Display"
+								description="The Display App automatically syncs your setup — delivering a smooth wall interface."
+							/>
+						</StaggerItem>
+					</StaggerContainer>
+				</div>
+			</section>
 
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="bg-white/10 p-6 rounded-xl">
-                <ShellyLogoSmall className="text-primary fill-current w-12 h-12" />
-              </div>
-              <h3 className="text-xl font-semibold">Shelly Next-Generation</h3>
-              <p className="text-white/80">
-                Native support for Shelly Plus & Pro devices. Real-time control,
-                energy monitoring, and discovery — all without cloud
-                dependencies.
-              </p>
-            </div>
-          </div>
+			{/* Join the Community */}
+			<section className="bg-[#101113] text-white py-24 px-6 text-center relative overflow-hidden">
+				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#d9230f]/30 to-transparent" />
 
-          <div className="mt-12">
-            <Button
-              variant={"white"}
-              href={"/docs/plugins/overview"}
-              size={"lg"}
-              className={"text-lg px-6 py-4"}
-            >
-              Learn More About Plugins
-            </Button>
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#f5f5f7] text-black py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Getting Started Is Easy
-          </h2>
-          <p className="text-lg text-black/70 mb-12 max-w-2xl mx-auto">
-            Set up your smart panel from scratch — install the apps, connect
-            devices, design your layout, and transform a Raspberry Pi into a
-            powerful control interface.
-          </p>
+				<div className="max-w-screen-xl mx-auto relative">
+					<AnimatedSection>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6">
+							Join the Community
+						</h2>
+						<p className="text-lg text-white/70 mb-10 max-w-2xl mx-auto">
+							Smart Panel is open-source and powered by contributors like you. Dive into the code, suggest
+							features, or ask for help.
+						</p>
+					</AnimatedSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 text-left">
-            <div>
-              <div className="text-primary text-4xl font-bold mb-2">1</div>
-              <h3 className="text-xl font-semibold mb-2">
-                Prepare Your Device
-              </h3>
-              <p className="text-black/70">
-                Set up your Raspberry Pi with a touch display and install the
-                Smart Panel apps: backend, admin, and display.
-              </p>
-            </div>
+					<AnimatedSection delay={0.2} className="flex flex-wrap justify-center gap-5">
+						<Button variant={"githubLight"} href={"https://github.com/fastybird/smart-panel"} size={"lg"} className={"px-8 py-4"}>
+							<Icon path={mdiGithub} size={1} className="mr-2" />
+							GitHub
+						</Button>
+						<Button
+							href={"https://discord.gg/H7pHN3hbqq"}
+							size={"lg"}
+							className={"text-white bg-[#5865F2] hover:bg-[#4752c4] text-lg px-8 py-4"}
+						>
+							<Icon path={mdiForum} size={1} className="mr-2" />
+							Discord
+						</Button>
+						<Button variant={"outline"} href={"/docs"} size={"lg"} className={"px-8 py-4"}>
+							<Icon path={mdiBookOpen} size={1} className="mr-2" />
+							Documentation
+						</Button>
+					</AnimatedSection>
+				</div>
+			</section>
 
-            <div>
-              <div className="text-primary text-4xl font-bold mb-2">2</div>
-              <h3 className="text-xl font-semibold mb-2">Connect Devices</h3>
-              <p className="text-black/70">
-                Link Home Assistant or configure third-party integrations using
-                the API plugin.
-              </p>
-            </div>
+			{/* Why Smart Panel */}
+			<section className="bg-[#f5f5f7] text-black py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Why Choose Us
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">
+							Why Smart Panel?
+						</h2>
+						<p className="text-lg text-gray-600 mb-16 max-w-2xl mx-auto">
+							Designed for embedded devices, optimized for clarity, and built with developer flexibility in
+							mind.
+						</p>
+					</AnimatedSection>
 
-            <div>
-              <div className="text-primary text-4xl font-bold mb-2">3</div>
-              <h3 className="text-xl font-semibold mb-2">Design the Layout</h3>
-              <p className="text-black/70">
-                Use the Admin App to create pages and tiles for lights, sensors,
-                climate, and more.
-              </p>
-            </div>
+					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8" staggerDelay={0.08}>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiWifi} size={1.8} className="text-[#d9230f]" />}
+								title="Offline-first"
+								description="No cloud lock-in. Everything runs locally on your Raspberry Pi."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiPuzzleOutline} size={1.8} className="text-[#d9230f]" />}
+								title="Modular Architecture"
+								description="Install only what you need with a clean plugin-based system."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiPalette} size={1.8} className="text-[#d9230f]" />}
+								title="Built for Touch"
+								description="Tailored interface for embedded touchscreens and wall-mounted displays."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiCog} size={1.8} className="text-[#d9230f]" />}
+								title="Beautiful UI"
+								description="Designed with elegance and clarity, inspired by modern smart home UIs."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiSpeedometer} size={1.8} className="text-[#d9230f]" />}
+								title="Fast & Lightweight"
+								description="Runs efficiently on small devices with smooth transitions and real-time updates."
+								variant="light"
+							/>
+						</StaggerItem>
+						<StaggerItem>
+							<FeatureCard
+								icon={<Icon path={mdiOpenSourceInitiative} size={1.8} className="text-[#d9230f]" />}
+								title="Open & Extendable"
+								description="Open source, documented APIs, and made for developers to build on."
+								variant="light"
+							/>
+						</StaggerItem>
+					</StaggerContainer>
+				</div>
+			</section>
 
-            <div>
-              <div className="text-primary text-4xl font-bold mb-2">4</div>
-              <h3 className="text-xl font-semibold mb-2">
-                Enjoy the Smart Display
-              </h3>
-              <p className="text-black/70">
-                The Display App automatically syncs your setup — delivering a
-                smooth and responsive wall interface.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="bg-[#101113] text-white py-24 px-6 text-center">
-        <div className="max-w-screen-xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Join the Community
-          </h2>
-          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-            Smart Panel is open-source and powered by contributors like you.
-            Dive into the code, suggest features, or ask for help.
-          </p>
+			{/* Open Source Tech Stack */}
+			<section className="bg-[#101113] text-white py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Tech Stack
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">
+							Open Source. Built to Last.
+						</h2>
+						<p className="text-lg text-white/70 mb-16 max-w-2xl mx-auto">
+							Composed of modern, open technologies — easy to extend, contribute to, and run anywhere.
+						</p>
+					</AnimatedSection>
 
-          <div className="flex flex-wrap justify-center gap-6">
-            <Button
-              variant={"githubLight"}
-              href={"https://github.com/fastybird/smart-panel"}
-              size={"lg"}
-              className={"px-6 py-4"}
-            >
-              <Icon path={mdiGithub} size={1} className="mr-2" />
-              GitHub
-            </Button>
-            <Button
-              href={"https://discord.gg/H7pHN3hbqq"}
-              size={"lg"}
-              className={
-                "text-white bg-[#5865F2] hover:bg-[#4752c4] text-lg px-6 py-4"
-              }
-            >
-              <Icon path={mdiForum} size={1} className="mr-2" />
-              Discord
-            </Button>
-            <Button
-              variant={"white"}
-              href={"/docs"}
-              size={"lg"}
-              className={"px-6 py-4"}
-            >
-              <Icon path={mdiBookOpen} size={1} className="mr-2" />
-              Documentation
-            </Button>
-          </div>
-        </div>
-      </section>
+					<StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8" staggerDelay={0.1}>
+						{[
+							{ logo: "/logos/flutter.svg", alt: "Flutter", name: "Display App", desc: "Built with Flutter for fast UI on embedded displays." },
+							{ logo: "/logos/vue.svg", alt: "Vue.js", name: "Admin App", desc: "Vue + Pinia + Vite — for real-time device and layout management." },
+							{ logo: "/logos/nestjs.svg", alt: "NestJS", name: "Backend", desc: "NestJS + SQLite + InfluxDB — modular, fast, and schema-driven." },
+							{ logo: "/logos/openapi.svg", alt: "OpenAPI", name: "API", desc: "OpenAPI + WebSocket support for full integration and control." },
+						].map((item) => (
+							<StaggerItem key={item.alt}>
+								<motion.div
+									whileHover={{ y: -6 }}
+									transition={{ type: "spring", stiffness: 300, damping: 20 }}
+									className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors"
+								>
+									<div className="bg-white rounded-xl p-4 mb-4 w-20 h-20 flex items-center justify-center">
+										<img src={item.logo} alt={item.alt} className="h-12" />
+									</div>
+									<h3 className="text-lg font-semibold mb-2">{item.name}</h3>
+									<p className="text-white/60 text-sm">{item.desc}</p>
+								</motion.div>
+							</StaggerItem>
+						))}
+					</StaggerContainer>
 
-      <section className="bg-[#f5f5f7] text-black py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Why Smart Panel?
-          </h2>
-          <p className="text-lg text-black/70 mb-12 max-w-2xl mx-auto">
-            Designed for embedded devices, optimized for clarity, and built with
-            developer flexibility in mind.
-          </p>
+					<AnimatedSection delay={0.4} className="mt-14">
+						<Button variant={"githubLight"} href={"https://github.com/fastybird/smart-panel"} size={"lg"} className={"px-8 py-4"}>
+							<Icon path={mdiGithub} size={1} className="mr-2" />
+							Browse GitHub Repos
+						</Button>
+					</AnimatedSection>
+				</div>
+			</section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12 text-left">
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Offline-first</h3>
-              <p className="text-black/60">
-                No cloud lock-in. Everything runs locally on your Raspberry Pi.
-              </p>
-            </div>
+			{/* What's Next */}
+			<section className="bg-[#f5f5f7] text-black py-24 px-6">
+				<div className="max-w-screen-xl mx-auto text-center">
+					<AnimatedSection>
+						<p className="text-sm uppercase tracking-[0.2em] text-[#d9230f] font-semibold mb-3">
+							Roadmap
+						</p>
+						<h2 className="text-3xl md:text-5xl font-bold mb-4">What's Next?</h2>
+						<p className="text-lg text-gray-600 mb-16 max-w-2xl mx-auto">
+							The Smart Panel ecosystem is evolving. Here's a glimpse of what's ahead.
+						</p>
+					</AnimatedSection>
 
-            <div>
-              <h3 className="text-xl font-semibold mb-2">
-                Modular Architecture
-              </h3>
-              <p className="text-black/60">
-                Install only what you need with a clean plugin-based system.
-              </p>
-            </div>
+					<StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-8" staggerDelay={0.08}>
+						{[
+							{ title: "More Plugins", desc: "Integrations for Zigbee, Z-Wave, MQTT, and other systems — plus new UI plugins for pages, tiles, and data sources." },
+							{ title: "Multi-Display Management", desc: "Manage multiple panels from a single backend instance — ideal for larger homes or grouped setups." },
+							{ title: "Custom Widgets", desc: "A widget SDK is planned to allow developers to build and share custom tiles and controls." },
+							{ title: "Full Spec Coverage", desc: "Continued work on supporting all device types and capabilities — including advanced sensors and controls." },
+							{ title: "Desktop Admin App", desc: "Explore a standalone cross-platform desktop app for local device management and configuration." },
+							{ title: "Custom Hardware", desc: "A dedicated wall-mounted display powered by open hardware — designed to run Smart Panel out of the box." },
+						].map((item) => (
+							<StaggerItem key={item.title}>
+								<motion.div
+									whileHover={{ y: -4 }}
+									transition={{ type: "spring", stiffness: 300, damping: 20 }}
+									className="text-left bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-black/5 transition-shadow"
+								>
+									<div className="flex items-center gap-3 mb-3">
+										<div className="w-2 h-2 rounded-full bg-[#d9230f]" />
+										<h3 className="text-xl font-semibold">{item.title}</h3>
+									</div>
+									<p className="text-gray-600">{item.desc}</p>
+								</motion.div>
+							</StaggerItem>
+						))}
+					</StaggerContainer>
+				</div>
+			</section>
 
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Built for Touch</h3>
-              <p className="text-black/60">
-                Tailored interface for embedded touchscreens and wall-mounted
-                displays.
-              </p>
-            </div>
+			{/* Final CTA */}
+			<section className="relative bg-[#101113] text-white py-28 px-6 overflow-hidden">
+				<div className="absolute inset-0 bg-gradient-to-br from-[#d9230f]/10 via-transparent to-[#d9230f]/5 pointer-events-none" />
+				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#d9230f]/30 to-transparent" />
 
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Beautiful UI</h3>
-              <p className="text-black/60">
-                Designed with elegance and clarity, inspired by modern smart
-                home UIs.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Fast & Lightweight</h3>
-              <p className="text-black/60">
-                Runs efficiently on small devices with smooth transitions and
-                real-time updates.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Open & Extendable</h3>
-              <p className="text-black/60">
-                Open source, documented APIs, and made for developers to build
-                on.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#101113] text-white py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Open Source. Built to Last.
-          </h2>
-          <p className="text-lg text-white/80 mb-12 max-w-2xl mx-auto">
-            The Smart Panel system is composed of modern, open technologies —
-            easy to extend, contribute to, and run anywhere.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 text-center">
-            <div className="flex flex-col items-center">
-              <div className="bg-white rounded-xl p-4 mb-3 w-20 h-20 flex items-center justify-center">
-                <img src="/logos/flutter.svg" alt="Flutter" className="h-12" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Display App</h3>
-              <p className="text-white/60 text-sm">
-                Built with Flutter for fast UI on embedded displays.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="bg-white rounded-xl p-4 mb-3 w-20 h-20 flex items-center justify-center">
-                <img src="/logos/vue.svg" alt="Vue.js" className="h-12" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Admin App</h3>
-              <p className="text-white/60 text-sm">
-                Vue + Pinia + Vite — for real-time device and layout management.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="bg-white rounded-xl p-4 mb-3 w-20 h-20 flex items-center justify-center">
-                <img src="/logos/nestjs.svg" alt="NestJS" className="h-12" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Backend</h3>
-              <p className="text-white/60 text-sm">
-                NestJS + SQLite + InfluxDB — modular, fast, and schema-driven.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="bg-white rounded-xl p-4 mb-3 w-20 h-20 flex items-center justify-center">
-                <img src="/logos/openapi.svg" alt="OpenAPI" className="h-12" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">API</h3>
-              <p className="text-white/60 text-sm">
-                OpenAPI + WebSocket support for full integration and control.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-12">
-            <Button
-              variant={"githubLight"}
-              href={"https://github.com/fastybird/smart-panel"}
-              size={"lg"}
-              className={"px-6 py-4"}
-            >
-              <Icon path={mdiGithub} size={1} className="mr-2" />
-              Browse GitHub Repos
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#f5f5f7] text-black py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">What's Next?</h2>
-          <p className="text-lg text-black/70 mb-12 max-w-2xl mx-auto">
-            The Smart Panel ecosystem is evolving. Here’s a glimpse of what’s
-            ahead.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
-            <div>
-              <h3 className="text-xl font-semibold mb-2">More Plugins</h3>
-              <p className="text-black/70">
-                Integrations for Zigbee, Z-Wave, MQTT, and other systems — plus
-                new UI plugins for pages, tiles, and data sources.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">
-                Multi-Display Management
-              </h3>
-              <p className="text-black/70">
-                Manage multiple panels from a single backend instance — ideal
-                for larger homes or grouped setups.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Custom Widgets</h3>
-              <p className="text-black/70">
-                A widget SDK is planned to allow developers to build and share
-                custom tiles and controls.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Full Spec Coverage</h3>
-              <p className="text-black/70">
-                Continued work on supporting all device types and capabilities
-                defined in the spec — including advanced sensors and controls.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">Desktop Admin App</h3>
-              <p className="text-black/70">
-                Explore a standalone cross-platform desktop app for local device
-                management and configuration.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold mb-2">
-                Custom Smart Panel Hardware
-              </h3>
-              <p className="text-black/70">
-                A dedicated wall-mounted display powered by open hardware —
-                designed to run the Smart Panel display app out of the box.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#101113] text-white py-24 px-6">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-6">
-            Ready to Build Your Panel?
-          </h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto">
-            Set up your Smart Panel in minutes with our step-by-step guide.
-          </p>
-          <Button
-            variant={"primary"}
-            href={"/docs"}
-            size={"lg"}
-            className={"px-6 py-4"}
-          >
-            Read the Guide
-          </Button>
-        </div>
-      </section>
-    </div>
-  );
+				<div className="max-w-screen-xl mx-auto text-center relative">
+					<AnimatedSection>
+						<Icon path={mdiRocketLaunch} size={2.5} className="text-[#d9230f] mx-auto mb-6" />
+						<h2 className="text-4xl md:text-6xl font-bold mb-6">
+							Ready to Build Your Panel?
+						</h2>
+						<p className="text-lg text-white/70 mb-10 max-w-2xl mx-auto">
+							Set up your Smart Panel in minutes with our step-by-step guide. Join the growing community of
+							smart home enthusiasts.
+						</p>
+						<div className="flex flex-wrap justify-center gap-5">
+							<Button variant={"primary"} href={"/docs/get-started/overview"} size={"lg"} className={"text-lg px-10 py-5"}>
+								Read the Guide
+								<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
+							</Button>
+							<Button variant={"outline"} href={"https://github.com/fastybird/smart-panel"} size={"lg"} className={"text-lg px-10 py-5"}>
+								<Icon path={mdiGithub} size={1} className="mr-2" />
+								Star on GitHub
+							</Button>
+						</div>
+					</AnimatedSection>
+				</div>
+			</section>
+		</div>
+	);
 }

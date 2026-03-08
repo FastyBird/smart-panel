@@ -7,6 +7,18 @@
 @variant dark (&:where(.dark *));
 
 @theme {
+    --color-primary: #d9230f;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Better text rendering */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
