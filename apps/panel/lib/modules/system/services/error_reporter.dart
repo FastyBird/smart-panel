@@ -158,8 +158,9 @@ class ErrorReporter {
 
     _queue.add(entry);
 
-    if (_queue.length >= _maxBatch) {
+    if (_queue.length >= _maxBatch && _consecutiveFailures == 0) {
       // Cancel any pending delayed flush — we want to flush now.
+      // Skip when in backoff so the existing timer is not restarted.
       _timer?.cancel();
       _timer = null;
     }
