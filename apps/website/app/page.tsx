@@ -593,7 +593,7 @@ export default function LandingPage() {
 							{ logo: "/logos/openapi.svg", alt: "OpenAPI", name: "API", desc: "OpenAPI + WebSocket support for full integration and control." },
 						].map((item) => (
 							<StaggerItem key={item.alt}>
-								<HoverLift className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors">
+								<HoverLift className="h-full flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors">
 									<div className="bg-white rounded-xl p-4 mb-4 w-20 h-20 flex items-center justify-center">
 										<img src={item.logo} alt={item.alt} className="h-12" />
 									</div>
@@ -638,7 +638,7 @@ export default function LandingPage() {
 							<StaggerItem key={item.title}>
 								<HoverLift
 									y={-4}
-									className="text-left bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-black/5 transition-shadow"
+									className="h-full text-left bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-black/5 transition-shadow"
 								>
 									<div className="flex items-center gap-3 mb-3">
 										<div className="w-2 h-2 rounded-full bg-primary" />
