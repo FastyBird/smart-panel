@@ -72,3 +72,95 @@ export const StaggerItem = ({ children, className }: StaggerItemProps) => {
 		</motion.div>
 	);
 };
+
+interface FadeInProps {
+	children: ReactNode;
+	className?: string;
+	delay?: number;
+	y?: number;
+}
+
+export const FadeIn = ({ children, className, delay = 0, y = 30 }: FadeInProps) => {
+	return (
+		<motion.div
+			initial={{ opacity: 0, y }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.8, delay }}
+			className={className}
+		>
+			{children}
+		</motion.div>
+	);
+};
+
+interface SlideInViewProps {
+	children: ReactNode;
+	className?: string;
+	x?: number;
+}
+
+export const SlideInView = ({ children, className, x = 60 }: SlideInViewProps) => {
+	return (
+		<motion.div
+			initial={{ opacity: 0, x }}
+			whileInView={{ opacity: 1, x: 0 }}
+			viewport={{ once: true }}
+			transition={{ duration: 0.8 }}
+			className={className}
+		>
+			{children}
+		</motion.div>
+	);
+};
+
+interface HoverScaleProps {
+	children: ReactNode;
+	className?: string;
+	scale?: number;
+}
+
+export const HoverScale = ({ children, className, scale = 1.1 }: HoverScaleProps) => {
+	return (
+		<motion.div whileHover={{ scale }} className={className}>
+			{children}
+		</motion.div>
+	);
+};
+
+interface HoverLiftProps {
+	children: ReactNode;
+	className?: string;
+	y?: number;
+}
+
+export const HoverLift = ({ children, className, y = -6 }: HoverLiftProps) => {
+	return (
+		<motion.div
+			whileHover={{ y }}
+			transition={{ type: "spring", stiffness: 300, damping: 20 }}
+			className={className}
+		>
+			{children}
+		</motion.div>
+	);
+};
+
+interface ScrollIndicatorProps {
+	children: ReactNode;
+	className?: string;
+}
+
+export const ScrollIndicator = ({ children, className }: ScrollIndicatorProps) => {
+	return (
+		<motion.div
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ delay: 1.5 }}
+			className={className}
+		>
+			<motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}>
+				{children}
+			</motion.div>
+		</motion.div>
+	);
+};

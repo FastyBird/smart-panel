@@ -1,9 +1,4 @@
-"use client";
-
-import Image from "next/image";
 import Icon from "@mdi/react";
-import { motion } from "framer-motion";
-import GitHubButton from "react-github-btn";
 import {
 	mdiArrowLeftRight,
 	mdiArrowUpDown,
@@ -31,8 +26,18 @@ import {
 } from "@mdi/js";
 import { Button } from "./_components/button";
 import { ShellyLogoSmall } from "./_components/shelly_logo_small";
-import { AnimatedSection, StaggerContainer, StaggerItem } from "./_components/animated_section";
+import {
+	AnimatedSection,
+	StaggerContainer,
+	StaggerItem,
+	FadeIn,
+	SlideInView,
+	HoverScale,
+	HoverLift,
+	ScrollIndicator,
+} from "./_components/animated_section";
 import { FeatureCard, NumberStepCard } from "./_components/feature_card";
+import { GitHubStarButton } from "./_components/github_star_button";
 
 export default function LandingPage() {
 	return (
@@ -52,41 +57,26 @@ export default function LandingPage() {
 				<div className="relative z-10 h-full flex items-center justify-center">
 					<div className="w-full max-w-screen-xl px-8 flex flex-col md:flex-row items-center justify-between">
 						<div className="text-left text-white max-w-3xl">
-							<motion.div
-								initial={{ opacity: 0, y: 30 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.8, delay: 0.2 }}
-							>
+							<FadeIn delay={0.2}>
 								<p className="text-sm md:text-base uppercase tracking-[0.3em] text-white/70 mb-4 font-medium">
 									Open Source Smart Home Display
 								</p>
-							</motion.div>
-							<motion.h1
-								initial={{ opacity: 0, y: 30 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.8, delay: 0.4 }}
-								className="text-4xl md:text-7xl font-bold mb-6 drop-shadow-xl leading-tight"
-							>
-								Control Your Smart Home{" "}
-								<span className="bg-gradient-to-r from-primary to-[#ff6b4a] bg-clip-text text-transparent">
-									From the Wall
-								</span>
-							</motion.h1>
-							<motion.p
-								initial={{ opacity: 0, y: 30 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.8, delay: 0.6 }}
-								className="text-lg md:text-2xl mb-10 text-white/80 max-w-2xl"
-							>
-								A customizable control panel for lights, sensors, thermostats, and more — all in one
-								intuitive touchscreen interface.
-							</motion.p>
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.8, delay: 0.8 }}
-								className="flex flex-wrap gap-4 items-center"
-							>
+							</FadeIn>
+							<FadeIn delay={0.4}>
+								<h1 className="text-4xl md:text-7xl font-bold mb-6 drop-shadow-xl leading-tight">
+									Control Your Smart Home{" "}
+									<span className="bg-gradient-to-r from-primary to-[#ff6b4a] bg-clip-text text-transparent">
+										From the Wall
+									</span>
+								</h1>
+							</FadeIn>
+							<FadeIn delay={0.6}>
+								<p className="text-lg md:text-2xl mb-10 text-white/80 max-w-2xl">
+									A customizable control panel for lights, sensors, thermostats, and more — all in one
+									intuitive touchscreen interface.
+								</p>
+							</FadeIn>
+							<FadeIn delay={0.8} y={20} className="flex flex-wrap gap-4 items-center">
 								<Button variant={"primary"} href={"/docs/get-started/overview"} size={"lg"} className={"text-lg px-8 py-4"}>
 									Get Started
 									<Icon path={mdiArrowRight} size={0.9} className="ml-2" />
@@ -95,22 +85,15 @@ export default function LandingPage() {
 									<Icon path={mdiGithub} size={1} className="mr-2" />
 									View on GitHub
 								</Button>
-							</motion.div>
+							</FadeIn>
 						</div>
 					</div>
 				</div>
 
 				{/* Scroll indicator */}
-				<motion.div
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					transition={{ delay: 1.5 }}
-					className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
-				>
-					<motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}>
-						<Icon path={mdiChevronDown} size={1.5} className="text-white/50" />
-					</motion.div>
-				</motion.div>
+				<ScrollIndicator className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+					<Icon path={mdiChevronDown} size={1.5} className="text-white/50" />
+				</ScrollIndicator>
 			</section>
 
 			{/* Key Features */}
@@ -185,13 +168,7 @@ export default function LandingPage() {
 						</Button>
 					</AnimatedSection>
 
-					<motion.div
-						initial={{ opacity: 0, x: 60 }}
-						whileInView={{ opacity: 1, x: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8 }}
-						className="md:w-1/2"
-					>
+					<SlideInView x={60} className="md:w-1/2">
 						<div className="relative">
 							<div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-[#ff6b4a]/10 rounded-3xl blur-2xl" />
 							<img
@@ -200,7 +177,7 @@ export default function LandingPage() {
 								className="relative w-full h-auto rounded-2xl"
 							/>
 						</div>
-					</motion.div>
+					</SlideInView>
 				</div>
 			</section>
 
@@ -224,13 +201,7 @@ export default function LandingPage() {
 						</Button>
 					</AnimatedSection>
 
-					<motion.div
-						initial={{ opacity: 0, x: -60 }}
-						whileInView={{ opacity: 1, x: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8 }}
-						className="md:w-1/2"
-					>
+					<SlideInView x={-60} className="md:w-1/2">
 						<div className="relative">
 							<div className="absolute -inset-4 bg-gradient-to-l from-primary/10 to-[#ff6b4a]/5 rounded-3xl blur-2xl" />
 							<img
@@ -239,7 +210,7 @@ export default function LandingPage() {
 								className="relative w-full h-auto rounded-2xl"
 							/>
 						</div>
-					</motion.div>
+					</SlideInView>
 				</div>
 			</section>
 
@@ -259,9 +230,9 @@ export default function LandingPage() {
 
 					<StaggerContainer className="flex flex-row justify-items-center items-center justify-center" staggerDelay={0.15}>
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+							<HoverScale className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
 								<Icon path={mdiMonitorDashboard} size={2} className="text-primary" />
-							</motion.div>
+							</HoverScale>
 							<span className="mt-3 text-white/80 font-medium">Admin Application</span>
 						</StaggerItem>
 
@@ -272,9 +243,9 @@ export default function LandingPage() {
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+							<HoverScale className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
 								<Icon path={mdiServer} size={2} className="text-primary" />
-							</motion.div>
+							</HoverScale>
 							<span className="mt-3 text-white/80 font-medium">Backend</span>
 						</StaggerItem>
 
@@ -285,9 +256,9 @@ export default function LandingPage() {
 						</StaggerItem>
 
 						<StaggerItem className="flex flex-col items-center w-40">
-							<motion.div whileHover={{ scale: 1.1 }} className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
+							<HoverScale className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
 								<Icon path={mdiViewDashboardOutline} size={2} className="text-primary" />
-							</motion.div>
+							</HoverScale>
 							<span className="mt-3 text-white/80 font-medium">Display Panel</span>
 						</StaggerItem>
 					</StaggerContainer>
@@ -299,12 +270,12 @@ export default function LandingPage() {
 					</div>
 
 					<div className="flex flex-row justify-items-center items-center justify-center">
-						<motion.div whileHover={{ scale: 1.1 }} className="flex flex-col items-center">
+						<HoverScale className="flex flex-col items-center">
 							<div className="bg-white/10 p-4 rounded-xl border border-white/10 hover:border-primary/30 transition-colors">
 								<Icon path={mdiDevices} size={2} className="text-primary" />
 							</div>
 							<span className="mt-3 text-white/80 font-medium">Integrations</span>
-						</motion.div>
+						</HoverScale>
 					</div>
 
 					<AnimatedSection delay={0.3}>
@@ -381,14 +352,12 @@ export default function LandingPage() {
 							Visit GitHub
 						</Button>
 						<div className="flex items-center pt-1">
-							<GitHubButton
+							<GitHubStarButton
 								href="https://github.com/fastybird/smart-panel"
-								data-size="large"
-								data-show-count="true"
-								aria-label="Star fastybird/smart-panel on GitHub"
+								ariaLabel="Star fastybird/smart-panel on GitHub"
 							>
 								Star
-							</GitHubButton>
+							</GitHubStarButton>
 						</div>
 					</AnimatedSection>
 				</div>
@@ -624,17 +593,13 @@ export default function LandingPage() {
 							{ logo: "/logos/openapi.svg", alt: "OpenAPI", name: "API", desc: "OpenAPI + WebSocket support for full integration and control." },
 						].map((item) => (
 							<StaggerItem key={item.alt}>
-								<motion.div
-									whileHover={{ y: -6 }}
-									transition={{ type: "spring", stiffness: 300, damping: 20 }}
-									className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors"
-								>
+								<HoverLift className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors">
 									<div className="bg-white rounded-xl p-4 mb-4 w-20 h-20 flex items-center justify-center">
 										<img src={item.logo} alt={item.alt} className="h-12" />
 									</div>
 									<h3 className="text-lg font-semibold mb-2">{item.name}</h3>
 									<p className="text-white/60 text-sm">{item.desc}</p>
-								</motion.div>
+								</HoverLift>
 							</StaggerItem>
 						))}
 					</StaggerContainer>
@@ -671,9 +636,8 @@ export default function LandingPage() {
 							{ title: "Custom Hardware", desc: "A dedicated wall-mounted display powered by open hardware — designed to run Smart Panel out of the box." },
 						].map((item) => (
 							<StaggerItem key={item.title}>
-								<motion.div
-									whileHover={{ y: -4 }}
-									transition={{ type: "spring", stiffness: 300, damping: 20 }}
+								<HoverLift
+									y={-4}
 									className="text-left bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-black/5 transition-shadow"
 								>
 									<div className="flex items-center gap-3 mb-3">
@@ -681,7 +645,7 @@ export default function LandingPage() {
 										<h3 className="text-xl font-semibold">{item.title}</h3>
 									</div>
 									<p className="text-gray-600">{item.desc}</p>
-								</motion.div>
+								</HoverLift>
 							</StaggerItem>
 						))}
 					</StaggerContainer>
