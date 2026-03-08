@@ -220,6 +220,13 @@ class ErrorReporter {
       // Re-insert at the front so the next flush retries them.
       _queue.insertAll(0, batch);
 
+      // Cap the queue by trimming newest entries (tail) so the retry
+      // batch at the front is not immediately evicted by _enqueue's
+      // overflow protection which drops from position 0.
+      if (_queue.length > _maxQueueSize) {
+        _queue.removeRange(_maxQueueSize, _queue.length);
+      }
+
       if (kDebugMode) {
         debugPrint(
           '[ErrorReporter] Failed to flush error log batch '
