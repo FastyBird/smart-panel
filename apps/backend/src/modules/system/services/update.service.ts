@@ -196,7 +196,7 @@ export class UpdateService {
 		assets: Array<{ name: string; browser_download_url: string; size: number }>;
 	}): PanelVersionInfo {
 		const panelAssets = release.assets
-			.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
+			.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk'))
 			.map((a) => ({
 				name: a.name,
 				downloadUrl: a.browser_download_url,
@@ -207,12 +207,5 @@ export class UpdateService {
 			latest: release.tag_name.replace(/^v/, ''),
 			assets: panelAssets,
 		};
-	}
-
-	invalidateCache(): void {
-		this.cachedServerInfo.clear();
-		this.cachedPanelInfo.clear();
-		this.serverCacheTimestamp.clear();
-		this.panelCacheTimestamp.clear();
 	}
 }

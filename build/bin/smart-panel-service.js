@@ -546,7 +546,7 @@ program
 
 				if (answer !== 'yes' && answer !== 'y') {
 					logger.info('Update cancelled.');
-					process.exit(0);
+					return;
 				}
 			}
 
@@ -744,7 +744,7 @@ program
 
 				if (answer !== 'yes' && answer !== 'y') {
 					logger.info('Update cancelled.');
-					process.exit(0);
+					return;
 				}
 			}
 
