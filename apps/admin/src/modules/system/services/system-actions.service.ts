@@ -8,7 +8,7 @@ import type { Client } from 'openapi-fetch';
 
 import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { OpenApiPaths } from '../../../openapi.constants';
-import { MODULES_PREFIX } from '../../../app.constants';
+import { MODULES_PREFIX, RouteNames as AppRouteNames } from '../../../app.constants';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
@@ -131,6 +131,10 @@ export class SystemActionsService {
 		if (accountManager) {
 			await accountManager.signOut();
 		}
+
+		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
+
+		await this.router.push({ name: AppRouteNames.ROOT });
 	}
 
 	private async checkHealth({

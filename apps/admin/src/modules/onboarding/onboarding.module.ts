@@ -24,7 +24,10 @@ export default {
 		// Vue Router beforeEach supports async — this ensures the cache is warm
 		// before onboardingGuard reads it synchronously.
 		options.router.beforeEach(async () => {
-			const { fetchStatus } = useOnboardingStatus();
+			const { isOnboardingCompleted, fetchStatus } = useOnboardingStatus();
+
+			// Once onboarding is known complete, skip fetching entirely
+			if (isOnboardingCompleted.value) return;
 
 			try {
 				await fetchStatus();

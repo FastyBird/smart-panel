@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		confirm: vi.fn(),
-		routerPush: vi.fn(),
 		service: vi.fn((options) => {
 			closedCallback = options.closed;
 			return {
@@ -23,17 +22,6 @@ const mocks = vi.hoisted(() => {
 					closedCallback?.();
 				},
 			};
-		}),
-	};
-});
-
-vi.mock('vue-router', async () => {
-	const actual = await vi.importActual('vue-router');
-
-	return {
-		...actual,
-		useRouter: () => ({
-			push: mocks.routerPush,
 		}),
 	};
 });

@@ -1,9 +1,7 @@
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
 import { ElMessageBox } from 'element-plus';
 
-import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { useFlashMessage, useSockets } from '../../../common';
 import { useConfigModule } from '../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../displays/store/config.store.types';
@@ -17,7 +15,6 @@ export const useSystemActions = (): IUseSystemActions => {
 	const systemActions = injectSystemActionsService();
 
 	const { t } = useI18n();
-	const router = useRouter();
 	const { sendCommand } = useSockets();
 	const flashMessage = useFlashMessage();
 	const { invalidate: invalidateOnboarding } = useOnboardingStatus();
@@ -129,13 +126,9 @@ export const useSystemActions = (): IUseSystemActions => {
 						return;
 					}
 
-					await systemActions.factoryResetDone();
-
 					invalidateOnboarding();
 
-					await router.push({ name: AppRouteNames.ROOT });
-
-					flashMessage.success(t('systemModule.messages.manage.factoryResetSuccess'));
+					await systemActions.factoryResetDone();
 				} catch {
 					systemActions.factoryReset('err', 'action');
 
