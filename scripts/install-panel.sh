@@ -153,17 +153,17 @@ get_latest_release_tag() {
 	local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases"
 
 	if [[ "$BETA" == true ]]; then
-		# Get latest pre-release (must filter out stable releases)
+		# Get latest beta pre-release (filter by prerelease flag AND beta tag pattern)
 		local json
 		json=$(curl -sL "$api_url?per_page=20")
 
 		if command -v jq &>/dev/null; then
-			echo "$json" | jq -r '[.[] | select(.prerelease == true)][0].tag_name // empty'
+			echo "$json" | jq -r '[.[] | select(.prerelease == true and (.tag_name | test("-beta")))][0].tag_name // empty'
 		else
 			echo "$json" | python3 -c "
 import sys, json
 for r in json.load(sys.stdin):
-    if r.get('prerelease'):
+    if r.get('prerelease') and '-beta' in r.get('tag_name', ''):
         print(r['tag_name']); break
 " 2>/dev/null
 		fi

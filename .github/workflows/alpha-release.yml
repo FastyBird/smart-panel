@@ -314,7 +314,7 @@ jobs:
       - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
           tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-armv7.txt
+          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v4"
@@ -322,7 +322,7 @@ jobs:
           name: "flutter-assets"
           path: |
             smart-panel-display-armv7.tar.gz
-            SHASUMS256-armv7.txt
+            SHASUMS256-display-armv7.txt
 
       - name: "Build ARM64 Flutter Bundle for (64-bit)"
         env:

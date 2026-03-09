@@ -71,6 +71,7 @@ COPY spec/ spec/
 
 # Generate specs and build
 RUN pnpm run generate:spec && \
+	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-extension-sdk build && \
 	pnpm --filter @fastybird/smart-panel-backend build
 
