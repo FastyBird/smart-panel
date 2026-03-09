@@ -647,6 +647,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		final success = await _repository.setTemperatureUnit(unit);
 
+		if (!context.mounted) return;
+
 		_revertOnFailure(context, success, () {
 			_temperatureUnit = backup;
 		});
@@ -664,6 +666,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		});
 
 		final success = await _repository.setWindSpeedUnit(unit);
+
+		if (!context.mounted) return;
 
 		_revertOnFailure(context, success, () {
 			_windSpeedUnit = backup;
@@ -683,6 +687,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		final success = await _repository.setPressureUnit(unit);
 
+		if (!context.mounted) return;
+
 		_revertOnFailure(context, success, () {
 			_pressureUnit = backup;
 		});
@@ -701,6 +707,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		final success = await _repository.setPrecipitationUnit(unit);
 
+		if (!context.mounted) return;
+
 		_revertOnFailure(context, success, () {
 			_precipitationUnit = backup;
 		});
@@ -718,6 +726,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		});
 
 		final success = await _repository.setDistanceUnit(unit);
+
+		if (!context.mounted) return;
 
 		_revertOnFailure(context, success, () {
 			_distanceUnit = backup;
