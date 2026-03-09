@@ -1,9 +1,11 @@
 <template>
+	<!-- eslint-disable vue/no-v-html -- content is sanitized by DOMPurify -->
 	<div
 		class="markdown-renderer"
 		:class="props.class"
 		v-html="sanitizedHtml"
 	/>
+	<!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup lang="ts">

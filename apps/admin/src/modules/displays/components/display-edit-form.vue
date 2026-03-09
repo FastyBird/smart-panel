@@ -194,6 +194,7 @@
 						show-icon
 					>
 						<template #title>
+							<!-- eslint-disable-next-line vue/no-v-html -- trusted i18n string -->
 							<span v-html="t('displaysModule.edit.sections.homePage.autoRoomHint')" />
 						</template>
 					</el-alert>

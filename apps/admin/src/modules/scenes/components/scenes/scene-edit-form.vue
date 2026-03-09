@@ -26,6 +26,7 @@
 						class="!mb-4"
 					>
 						<template #title>
+							<!-- eslint-disable-next-line vue/no-v-html -- trusted i18n string -->
 							<span v-html="t('scenes.edit.sections.general.hint')" />
 						</template>
 					</el-alert>

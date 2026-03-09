@@ -127,6 +127,7 @@ const props = withDefaults(
 		remoteFormChanged?: boolean;
 	}>(),
 	{
+		id: undefined,
 		remoteFormChanged: false,
 	}
 );
