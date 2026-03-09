@@ -94,6 +94,19 @@ program
 			}
 			spinner.succeed('Prerequisites check passed');
 
+			// Check for port conflicts
+			const targetPort = parseInt(options.port, 10);
+			try {
+				const ssOutput = execFileSync('ss', ['-tlnp'], { encoding: 'utf-8' });
+				const portInUse = ssOutput.split('\n').some((line) => line.includes(`:${targetPort} `));
+				if (portInUse) {
+					logger.warning(`Port ${targetPort} is already in use by another process`);
+					logger.info('Use --port to specify a different port, or stop the conflicting service');
+				}
+			} catch {
+				// Ignore - ss may not be available
+			}
+
 			// Validate admin options
 			if (options.adminUsername && !options.adminPassword) {
 				spinner.fail('--admin-password is required when using --admin-username');
@@ -522,6 +535,214 @@ program
 
 			process.exit(1);
 		}
+	});
+
+// ============================================================================
+// Doctor Command
+// ============================================================================
+program
+	.command('doctor')
+	.description('Diagnose system health and check for common issues')
+	.action(async () => {
+		console.log();
+		console.log(chalk.bold.cyan('  Smart Panel Doctor'));
+		console.log(chalk.gray('  ──────────────────'));
+		console.log();
+
+		const installer = getInstaller();
+		let issues = 0;
+		let warnings = 0;
+
+		const ok = (msg) => console.log(`  ${chalk.green('✓')} ${msg}`);
+		const warn = (msg) => { console.log(`  ${chalk.yellow('!')} ${msg}`); warnings++; };
+		const fail = (msg) => { console.log(`  ${chalk.red('✗')} ${msg}`); issues++; };
+		const info = (msg) => console.log(`    ${chalk.gray(msg)}`);
+
+		// 1. OS & Architecture
+		console.log(chalk.bold('  System'));
+		const distro = getDistroInfo();
+		const arch = getArch();
+		ok(`OS: ${distro?.name || 'Linux'} ${distro?.version || ''} (${arch})`);
+
+		if (process.platform !== 'linux') {
+			fail('Only Linux is supported');
+		} else {
+			ok('Platform: Linux');
+		}
+
+		// 2. Systemd
+		if (hasSystemd()) {
+			ok('systemd: available');
+		} else {
+			fail('systemd: not detected');
+			info('Smart Panel requires systemd for service management');
+		}
+
+		// 3. Node.js version
+		console.log();
+		console.log(chalk.bold('  Node.js'));
+		const nodeVersion = process.versions.node;
+		const nodeMajor = parseInt(nodeVersion.split('.')[0], 10);
+
+		if (nodeMajor >= 20) {
+			ok(`Node.js: v${nodeVersion} (>= 20 required)`);
+		} else {
+			fail(`Node.js: v${nodeVersion} (>= 20 required)`);
+			info('Update Node.js: https://nodejs.org/en/download/');
+		}
+
+		// 4. Disk space
+		console.log();
+		console.log(chalk.bold('  Disk Space'));
+		try {
+			const dfOutput = execFileSync('df', ['-BM', '/var/lib'], { encoding: 'utf-8' });
+			const lines = dfOutput.trim().split('\n');
+			if (lines.length >= 2) {
+				const parts = lines[1].split(/\s+/);
+				const availMB = parseInt(parts[3], 10);
+				if (availMB >= 500) {
+					ok(`Available: ${availMB} MB (>= 500 MB recommended)`);
+				} else if (availMB >= 200) {
+					warn(`Available: ${availMB} MB (>= 500 MB recommended)`);
+					info('Low disk space may cause issues during updates');
+				} else {
+					fail(`Available: ${availMB} MB (>= 500 MB recommended)`);
+					info('Insufficient disk space for reliable operation');
+				}
+			}
+		} catch {
+			warn('Could not check disk space');
+		}
+
+		// 5. Port check
+		console.log();
+		console.log(chalk.bold('  Network'));
+		const config = installer.getInstalledConfig();
+		const port = 3000; // Default port
+
+		try {
+			const envFile = '/etc/smart-panel/environment';
+			if (existsSync(envFile)) {
+				const envContent = readFileSync(envFile, 'utf-8');
+				const portMatch = envContent.match(/FB_BACKEND_PORT=(\d+)/);
+				if (portMatch) {
+					const configuredPort = parseInt(portMatch[1], 10);
+					try {
+						const ssOutput = execFileSync('ss', ['-tlnp'], { encoding: 'utf-8' });
+						const portInUse = ssOutput.split('\n').some((line) =>
+							line.includes(`:${configuredPort} `) && !line.includes('smart-panel') && !line.includes('node')
+						);
+						if (portInUse) {
+							warn(`Port ${configuredPort}: in use by another process`);
+							info('Another application may conflict with Smart Panel');
+						} else {
+							ok(`Port ${configuredPort}: available`);
+						}
+					} catch {
+						warn(`Port ${configuredPort}: could not verify`);
+					}
+				}
+			} else {
+				// Check default port
+				try {
+					const ssOutput = execFileSync('ss', ['-tlnp'], { encoding: 'utf-8' });
+					const portInUse = ssOutput.split('\n').some((line) => line.includes(`:${port} `));
+					if (portInUse) {
+						warn(`Port ${port} (default): already in use`);
+						info('Use --port flag during install to use a different port');
+					} else {
+						ok(`Port ${port} (default): available`);
+					}
+				} catch {
+					warn('Could not check port availability');
+				}
+			}
+		} catch {
+			warn('Could not check network configuration');
+		}
+
+		// 6. Service status
+		console.log();
+		console.log(chalk.bold('  Service'));
+		try {
+			const status = await installer.status();
+
+			if (status.installed) {
+				ok('Installed: yes');
+
+				if (status.running) {
+					ok('Running: yes');
+					if (status.uptime !== undefined) {
+						const hours = Math.floor(status.uptime / 3600);
+						const minutes = Math.floor((status.uptime % 3600) / 60);
+						ok(`Uptime: ${hours}h ${minutes}m`);
+					}
+					if (status.memoryMB !== undefined) {
+						if (status.memoryMB > 512) {
+							warn(`Memory: ${status.memoryMB} MB (high usage)`);
+						} else {
+							ok(`Memory: ${status.memoryMB} MB`);
+						}
+					}
+				} else {
+					warn('Running: no');
+					info('Start with: sudo smart-panel-service start');
+				}
+
+				if (status.enabled) {
+					ok('Auto-start: enabled');
+				} else {
+					warn('Auto-start: disabled');
+					info('Enable with: sudo systemctl enable smart-panel');
+				}
+			} else {
+				warn('Service not installed');
+				info('Install with: sudo smart-panel-service install');
+			}
+		} catch {
+			warn('Could not check service status');
+		}
+
+		// 7. Data directory permissions
+		console.log();
+		console.log(chalk.bold('  Data'));
+		const dataDir = config?.dataDir || '/var/lib/smart-panel';
+		if (existsSync(dataDir)) {
+			ok(`Data directory: ${dataDir}`);
+
+			const dbPath = join(dataDir, 'data');
+			if (existsSync(dbPath)) {
+				ok('Database directory exists');
+			} else {
+				warn('Database directory missing');
+			}
+
+			const configPath = join(dataDir, 'config');
+			if (existsSync(configPath)) {
+				ok('Config directory exists');
+			} else {
+				warn('Config directory missing');
+			}
+		} else {
+			warn(`Data directory not found: ${dataDir}`);
+			info('This is normal before first installation');
+		}
+
+		// Summary
+		console.log();
+		console.log(chalk.gray('  ──────────────────'));
+
+		if (issues === 0 && warnings === 0) {
+			console.log(`  ${chalk.green.bold('All checks passed!')}`);
+		} else if (issues === 0) {
+			console.log(`  ${chalk.yellow.bold(`${warnings} warning(s), no critical issues`)}`);
+		} else {
+			console.log(`  ${chalk.red.bold(`${issues} issue(s)`)}${warnings > 0 ? chalk.yellow(`, ${warnings} warning(s)`) : ''}`);
+		}
+
+		console.log();
+
+		process.exit(issues > 0 ? 1 : 0);
 	});
 
 // Parse and run

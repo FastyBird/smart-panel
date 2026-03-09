@@ -750,8 +750,48 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 
+  build-docker:
+    needs: "sync-versions"
+    name: "Build & Push Docker Image"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Set up Docker Buildx"
+        uses: "docker/setup-buildx-action@v3"
+
+      - name: "Set up QEMU"
+        uses: "docker/setup-qemu-action@v3"
+
+      - name: "Login to GitHub Container Registry"
+        uses: "docker/login-action@v3"
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and Push Docker Image"
+        uses: "docker/build-push-action@v6"
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/fastybird/smart-panel:alpha
+            ghcr.io/fastybird/smart-panel:${{ needs.sync-versions.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   release-to-discord:
-    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-application", "pre-release-alpha" ]
+    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-application", "pre-release-alpha", "build-docker" ]
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"
 

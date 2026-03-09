@@ -2,7 +2,7 @@
  * Linux installer using systemd for service management
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, unlinkSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,6 +62,30 @@ export class LinuxInstaller implements BaseInstaller {
 
 		if (!existsSync(getNodePath())) {
 			errors.push('Node.js executable not found');
+		}
+
+		// Check Node.js version (>= 20 required)
+		const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+
+		if (nodeMajor < 20) {
+			errors.push(`Node.js >= 20 is required (found v${process.versions.node})`);
+		}
+
+		// Check disk space (need at least 200 MB)
+		try {
+			const dfOutput = execSync('df -BM /var/lib 2>/dev/null', { encoding: 'utf-8' });
+			const lines = dfOutput.trim().split('\n');
+
+			if (lines.length >= 2) {
+				const parts = lines[1].split(/\s+/);
+				const availMB = parseInt(parts[3], 10);
+
+				if (availMB < 200) {
+					errors.push(`Insufficient disk space: ${availMB} MB available (200 MB minimum required)`);
+				}
+			}
+		} catch {
+			// Ignore - non-critical check
 		}
 
 		return errors;
