@@ -2,9 +2,10 @@
  * Compare two semver version strings.
  * Returns -1 if a < b, 0 if a === b, 1 if a > b.
  *
- * IMPORTANT: This file must be kept in sync with apps/backend/src/common/utils/semver.ts.
- * Both files exist because `build/` and `apps/backend/` are separate compilation units
- * that cannot share TypeScript sources at runtime. Any change here must be replicated there.
+ * NOTE: The core comparison logic is shared with apps/backend/src/common/utils/semver.ts.
+ * The backend copy additionally exports getUpdateType and comparePrereleaseIdentifiers
+ * which are only needed there. If you change the comparison logic here, update the
+ * backend copy as well.
  */
 export function compareSemver(a: string, b: string): number {
 	const parseVersion = (v: string) => {
@@ -38,7 +39,7 @@ export function compareSemver(a: string, b: string): number {
 	return 0;
 }
 
-export function comparePrereleaseIdentifiers(current: string, latest: string): number {
+function comparePrereleaseIdentifiers(current: string, latest: string): number {
 	const currentParts = current.split('.');
 	const latestParts = latest.split('.');
 
@@ -73,16 +74,4 @@ export function comparePrereleaseIdentifiers(current: string, latest: string): n
 	}
 
 	return 0;
-}
-
-export function getUpdateType(current: string, latest: string): 'patch' | 'minor' | 'major' {
-	const cleanVersion = (v: string) => v.replace(/^v/, '').split('-')[0];
-
-	const currentParts = cleanVersion(current).split('.').map(Number);
-	const latestParts = cleanVersion(latest).split('.').map(Number);
-
-	if ((latestParts[0] || 0) !== (currentParts[0] || 0)) return 'major';
-	if ((latestParts[1] || 0) !== (currentParts[1] || 0)) return 'minor';
-
-	return 'patch';
 }

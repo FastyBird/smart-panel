@@ -35,6 +35,7 @@ export class UpdateServerCommand extends CommandRunner {
 		const skipConfirm = options?.yes ?? false;
 		const allowMajor = options?.allowMajor ?? false;
 		const skipRestart = options?.skipRestart ?? false;
+		let majorConfirmed = false;
 
 		console.log('\n\x1b[36m  FastyBird Smart Panel - Server Update\x1b[0m');
 		console.log('\x1b[90m  ──────────────────────────────────────\x1b[0m\n');
@@ -68,7 +69,7 @@ export class UpdateServerCommand extends CommandRunner {
 				console.log('     Major updates may contain breaking changes.');
 				console.log('     Use \x1b[36m--allow-major\x1b[0m to proceed.\n');
 
-				if (!skipConfirm) {
+				if (!skipConfirm && !majorConfirmed) {
 					const { proceed } = await inquirer.prompt<{ proceed: boolean }>([
 						{
 							type: 'confirm',
@@ -83,6 +84,8 @@ export class UpdateServerCommand extends CommandRunner {
 
 						return;
 					}
+
+					majorConfirmed = true;
 				} else {
 					console.log('  Update cancelled. Use --allow-major to allow major updates.\n');
 
@@ -93,8 +96,8 @@ export class UpdateServerCommand extends CommandRunner {
 			console.log(`  Target version:   \x1b[37m${targetVersion}\x1b[0m`);
 		}
 
-		// Confirmation
-		if (!skipConfirm) {
+		// Confirmation (skip if user already confirmed the major update prompt)
+		if (!skipConfirm && !majorConfirmed) {
 			console.log();
 
 			const { proceed } = await inquirer.prompt<{ proceed: boolean }>([

@@ -2,9 +2,10 @@
  * Compare two semver version strings.
  * Returns -1 if a < b, 0 if a === b, 1 if a > b.
  *
- * IMPORTANT: This file must be kept in sync with build/src/utils/version.ts.
- * Both files exist because `build/` and `apps/backend/` are separate compilation units
- * that cannot share TypeScript sources at runtime. Any change here must be replicated there.
+ * NOTE: The core comparison logic is shared with build/src/utils/version.ts.
+ * This file additionally exports getUpdateType and comparePrereleaseIdentifiers
+ * which are only needed in the backend. If you change the comparison logic here,
+ * update the build copy as well.
  */
 export function compareSemver(a: string, b: string): number {
 	const parseVersion = (v: string) => {

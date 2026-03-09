@@ -748,6 +748,7 @@ program
 				}
 			}
 
+			let serviceStopped = false;
 			if (platform === 'android') {
 				// Android: download and install via ADB
 				try {
@@ -798,6 +799,7 @@ program
 				} catch {
 					stopSpinner.warn('Display service not running');
 				}
+				serviceStopped = true;
 
 				// Download
 				const dlSpinner = ora(`Downloading ${asset.name}...`).start();
@@ -855,7 +857,7 @@ program
 			spinner.fail('Update failed');
 			logger.error(error instanceof Error ? error.message : String(error));
 			// Try to restart display service if it was stopped before the failure
-			try { execFileSync('systemctl', ['start', DISPLAY_SERVICE], { stdio: 'pipe' }); } catch {}
+			if (serviceStopped) { try { execFileSync('systemctl', ['start', DISPLAY_SERVICE], { stdio: 'pipe' }); } catch {} }
 			process.exit(1);
 		}
 	});
