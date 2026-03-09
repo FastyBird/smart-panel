@@ -1,6 +1,89 @@
 {
+	"wizard": {
+		"title": "Smart Panel Setup",
+		"steps": {
+			"welcome": "Welcome",
+			"account": "Account",
+			"location": "Location",
+			"complete": "Complete"
+		},
+		"buttons": {
+			"getStarted": "Get Started",
+			"next": "Next",
+			"back": "Back",
+			"skip": "Skip",
+			"finishSetup": "Finish Setup"
+		}
+	},
 	"welcome": {
 		"title": "Welcome to Smart Panel",
-		"description": "Let's set up your smart home. This wizard will guide you through the initial configuration."
+		"description": "Let's set up your smart home. This wizard will guide you through the initial configuration.",
+		"steps": {
+			"account": "Create Account",
+			"accountDescription": "Set up your administrator account",
+			"location": "Set Location",
+			"locationDescription": "Configure your location for weather data",
+			"finish": "Start Using",
+			"finishDescription": "Your smart panel is ready to go"
+		}
+	},
+	"account": {
+		"description": "Create your administrator account. This will be the owner of the smart panel.",
+		"created": "Account created successfully! You are now logged in.",
+		"fields": {
+			"firstName": "First Name",
+			"lastName": "Last Name",
+			"email": "Email",
+			"username": "Username",
+			"password": "Password"
+		},
+		"placeholders": {
+			"firstName": "Enter your first name",
+			"lastName": "Enter your last name",
+			"email": "Enter your email address",
+			"username": "Choose a username",
+			"password": "Choose a password"
+		},
+		"validation": {
+			"firstNameRequired": "First name is required",
+			"lastNameRequired": "Last name is required",
+			"emailRequired": "Email is required",
+			"emailInvalid": "Please enter a valid email address",
+			"usernameRequired": "Username is required",
+			"passwordRequired": "Password is required",
+			"passwordMin": "Password must be at least 6 characters"
+		},
+		"buttons": {
+			"create": "Create Account"
+		},
+		"messages": {
+			"created": "Your account has been created and you are now logged in."
+		}
+	},
+	"location": {
+		"description": "Set your location for weather information and other location-based features. You can skip this step and configure it later.",
+		"fields": {
+			"city": "City Name",
+			"latitude": "Latitude",
+			"longitude": "Longitude"
+		},
+		"placeholders": {
+			"city": "e.g. Prague",
+			"latitude": "e.g. 50.0755",
+			"longitude": "e.g. 14.4378"
+		},
+		"hint": "You can configure your location later in the Weather settings."
+	},
+	"complete": {
+		"title": "You're All Set!",
+		"description": "Your Smart Panel is configured and ready to use. You can now start adding devices, creating spaces, and customizing your dashboard.",
+		"summary": {
+			"accountCreated": "Administrator account created",
+			"locationConfigured": "Weather location configured",
+			"locationSkipped": "Weather location skipped (can be configured later)"
+		},
+		"messages": {
+			"finished": "Setup complete! Welcome to Smart Panel."
+		}
 	}
 }

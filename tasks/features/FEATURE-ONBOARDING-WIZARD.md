@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-APP-ONBOARDING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -53,17 +53,17 @@ The admin app needs a dedicated onboarding module with a multi-step wizard inter
 
 ## 4. Acceptance criteria
 
-- [ ] Onboarding module follows existing module structure patterns
-- [ ] Welcome step displays introduction and allows proceeding
-- [ ] Account step validates input and creates owner via API
-- [ ] Location step allows city search or manual coordinates entry
-- [ ] Location step can be skipped
-- [ ] Complete step shows summary of configured items
-- [ ] Clicking "Get Started" marks onboarding complete and redirects to dashboard
-- [ ] User is automatically logged in after account creation
-- [ ] Wizard state persists during navigation between steps
-- [ ] Back navigation works correctly
-- [ ] Responsive design for different screen sizes
+- [x] Onboarding module follows existing module structure patterns
+- [x] Welcome step displays introduction and allows proceeding
+- [x] Account step validates input and creates owner via API
+- [x] Location step allows city search or manual coordinates entry
+- [x] Location step can be skipped
+- [x] Complete step shows summary of configured items
+- [x] Clicking "Get Started" marks onboarding complete and redirects to dashboard
+- [x] User is automatically logged in after account creation
+- [x] Wizard state persists during navigation between steps
+- [x] Back navigation works correctly
+- [x] Responsive design for different screen sizes
 
 ## 5. Example scenarios
 
