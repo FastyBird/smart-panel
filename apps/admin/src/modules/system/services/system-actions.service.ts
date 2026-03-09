@@ -123,6 +123,10 @@ export class SystemActionsService {
 	}
 
 	async factoryResetDone(): Promise<void> {
+		// Guard against duplicate execution from both action response and WS event
+		if (this.factoryResetTriggeredBy === null) return;
+		this.factoryResetTriggeredBy = null;
+
 		this.factoryResetLoading?.close();
 		this.factoryResetLoading = null;
 
