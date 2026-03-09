@@ -88,7 +88,7 @@ export class SetConnectionStateCommand extends CommandRunner {
 			return;
 		}
 
-		let devicesToUpdate: SimulatorDeviceEntity[] = [];
+		let devicesToUpdate: SimulatorDeviceEntity[];
 		let connectionState: ConnectionState | undefined = options?.state;
 
 		if (options?.all) {

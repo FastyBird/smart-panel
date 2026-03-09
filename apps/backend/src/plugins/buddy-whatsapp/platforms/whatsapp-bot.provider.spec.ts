@@ -1,5 +1,7 @@
 import { SuggestionType } from '../../../modules/buddy/buddy.constants';
-import { BuddySuggestion } from '../../../modules/buddy/services/suggestion-engine.service';
+import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
+import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_WHATSAPP_PLUGIN_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { BuddyWhatsappConfigModel } from '../models/config.model';
 
@@ -65,7 +67,11 @@ describe('WhatsAppBotProvider', () => {
 			recordFeedback: jest.fn().mockReturnValue({ success: true }),
 		};
 
-		provider = new WhatsAppBotProvider(configService as any, conversationService as any, suggestionEngine as any);
+		provider = new WhatsAppBotProvider(
+			configService as unknown as ConfigService,
+			conversationService as unknown as BuddyConversationService,
+			suggestionEngine as unknown as SuggestionEngineService,
+		);
 	});
 
 	afterEach(() => {

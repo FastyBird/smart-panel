@@ -73,7 +73,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue(mockCityApiResponse),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCoordinatesByCity('London');
 
@@ -98,7 +98,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue([]),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCoordinatesByCity('UnknownCity');
 
@@ -109,7 +109,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue({ invalid: 'response' }),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCoordinatesByCity('London');
 
@@ -130,7 +130,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue(mockZipApiResponse),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCoordinatesByZip('10001,US');
 
@@ -155,7 +155,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: false,
 				json: jest.fn().mockResolvedValue({}),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCoordinatesByZip('00000,XX');
 
@@ -176,7 +176,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue(mockCityApiResponse),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCityByCoordinates(51.5074, -0.1278);
 
@@ -199,7 +199,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue([]),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCityByCoordinates(0, 0);
 
@@ -210,7 +210,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: jest.fn().mockResolvedValue({ invalid: 'response' }),
-			} as any);
+			} as unknown as Response);
 
 			const result = await service.getCityByCoordinates(51.5074, -0.1278);
 

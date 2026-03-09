@@ -69,7 +69,10 @@ export class OpenWeatherMapOneCallGeolocationService {
 				}),
 			);
 		} catch (error) {
-			this.logger.error(`[GEOLOCATION] Failed to fetch coordinates for city=${city}`, error);
+			this.logger.error(
+				`[GEOLOCATION] Failed to fetch coordinates for city=${city}`,
+				error instanceof Error ? error : String(error),
+			);
 			return null;
 		}
 	}
@@ -101,7 +104,10 @@ export class OpenWeatherMapOneCallGeolocationService {
 				country: data.country,
 			});
 		} catch (error) {
-			this.logger.error(`[GEOLOCATION] Failed to fetch coordinates for zip=${zip}`, error);
+			this.logger.error(
+				`[GEOLOCATION] Failed to fetch coordinates for zip=${zip}`,
+				error instanceof Error ? error : String(error),
+			);
 			return null;
 		}
 	}
@@ -140,7 +146,10 @@ export class OpenWeatherMapOneCallGeolocationService {
 				}),
 			);
 		} catch (error) {
-			this.logger.error(`[GEOLOCATION] Failed to fetch city for coordinates lat=${lat}, lon=${lon}`, error);
+			this.logger.error(
+				`[GEOLOCATION] Failed to fetch city for coordinates lat=${lat}, lon=${lon}`,
+				error instanceof Error ? error : String(error),
+			);
 			return null;
 		}
 	}

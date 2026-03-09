@@ -14,6 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '../../config/services/config.service';
 import { WeatherLocationEntity } from '../entities/locations.entity';
 import { WeatherConfigModel } from '../models/config.model';
+import { LocationWeatherModel } from '../models/weather.model';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherNotFoundException } from '../weather.exceptions';
 
@@ -157,7 +158,7 @@ describe('WeatherService', () => {
 				location: { id: mockLocation.id, name: mockLocation.name },
 				current: null,
 				forecast: [],
-			} as any);
+			} as LocationWeatherModel);
 
 			await service.getPrimaryWeather();
 

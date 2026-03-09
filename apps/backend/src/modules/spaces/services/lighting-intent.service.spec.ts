@@ -4,10 +4,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, ConnectionState, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { LightingIntentType, LightingRole } from '../spaces.constants';
 import { IntentSpecLoaderService } from '../spec';
 
@@ -152,7 +154,7 @@ describe('LightingIntentService', () => {
 			const onlineDevice = createMockDeviceWithLightChannel('online-device', true, ConnectionState.CONNECTED);
 			const offlineDevice = createMockDeviceWithLightChannel('offline-device', false, ConnectionState.DISCONNECTED);
 
-			spacesService.findDevicesBySpace.mockResolvedValue([onlineDevice, offlineDevice] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([onlineDevice, offlineDevice] as unknown as DeviceEntity[]);
 
 			const intent: LightingIntentDto = {
 				type: LightingIntentType.ON,
@@ -168,7 +170,7 @@ describe('LightingIntentService', () => {
 		it('returns early when all devices are offline', async () => {
 			const offlineDevice = createMockDeviceWithLightChannel('offline-device', false, ConnectionState.DISCONNECTED);
 
-			spacesService.findDevicesBySpace.mockResolvedValue([offlineDevice] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([offlineDevice] as unknown as DeviceEntity[]);
 
 			const intent: LightingIntentDto = {
 				type: LightingIntentType.ON,
@@ -185,7 +187,7 @@ describe('LightingIntentService', () => {
 		it('treats UNKNOWN status as offline', async () => {
 			const unknownStatusDevice = createMockDeviceWithLightChannel('unknown-device', false, ConnectionState.UNKNOWN);
 
-			spacesService.findDevicesBySpace.mockResolvedValue([unknownStatusDevice] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([unknownStatusDevice] as unknown as DeviceEntity[]);
 
 			const intent: LightingIntentDto = {
 				type: LightingIntentType.ON,
@@ -220,7 +222,11 @@ describe('LightingIntentService', () => {
 				LightingRole.ACCENT,
 			);
 
-			spacesService.findDevicesBySpace.mockResolvedValue([onlineMain, offlineMain, offlineAccent] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([
+				onlineMain,
+				offlineMain,
+				offlineAccent,
+			] as unknown as DeviceEntity[]);
 
 			// Set up role map (key format: deviceId:channelId, value: entity with role property)
 			lightingRoleService.getRoleMap.mockResolvedValue(
@@ -228,7 +234,7 @@ describe('LightingIntentService', () => {
 					[`online-main:channel-online-main`, { role: LightingRole.MAIN }],
 					[`offline-main:channel-offline-main`, { role: LightingRole.MAIN }],
 					[`offline-accent:channel-offline-accent`, { role: LightingRole.ACCENT }],
-				]) as any,
+				]) as Map<string, SpaceLightingRoleEntity>,
 			);
 
 			const intent: LightingIntentDto = {
@@ -258,14 +264,14 @@ describe('LightingIntentService', () => {
 				LightingRole.ACCENT,
 			);
 
-			spacesService.findDevicesBySpace.mockResolvedValue([offlineMain, onlineAccent] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([offlineMain, onlineAccent] as unknown as DeviceEntity[]);
 
 			// Set up role map (key format: deviceId:channelId, value: entity with role property)
 			lightingRoleService.getRoleMap.mockResolvedValue(
 				new Map([
 					[`offline-main:channel-offline-main`, { role: LightingRole.MAIN }],
 					[`online-accent:channel-online-accent`, { role: LightingRole.ACCENT }],
-				]) as any,
+				]) as Map<string, SpaceLightingRoleEntity>,
 			);
 
 			const intent: LightingIntentDto = {
@@ -311,7 +317,7 @@ describe('LightingIntentService', () => {
 				],
 			};
 
-			spacesService.findDevicesBySpace.mockResolvedValue([multiChannelDevice] as any);
+			spacesService.findDevicesBySpace.mockResolvedValue([multiChannelDevice] as unknown as DeviceEntity[]);
 
 			const intent: LightingIntentDto = {
 				type: LightingIntentType.ON,

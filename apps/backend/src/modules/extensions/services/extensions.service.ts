@@ -241,7 +241,7 @@ export class ExtensionsService {
 		const isCore = this.bundledService.isCore(type);
 
 		// Check if the DTO supports enabled property
-		let canToggleEnabled = false;
+		let canToggleEnabled: boolean;
 		try {
 			const mapping = this.pluginsMapperService.getMapping(type);
 			canToggleEnabled = this.hasEnabledProperty(mapping.configDto);
@@ -251,7 +251,7 @@ export class ExtensionsService {
 		}
 
 		// Get enabled status from config
-		let enabled = true;
+		let enabled: boolean;
 		try {
 			const pluginConfig = this.configService.getPluginConfig(type);
 			enabled = pluginConfig.enabled ?? true;

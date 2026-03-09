@@ -39,8 +39,8 @@ export class DeviceConnectivityService {
 			return;
 		}
 
-		let channel: ChannelEntity | null = null;
-		let property: ChannelPropertyEntity | null = null;
+		let channel: ChannelEntity;
+		let property: ChannelPropertyEntity;
 
 		try {
 			channel = await this.findOrCreateConnectionChannel(device, true);

@@ -37,7 +37,7 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 						timestamp: new Date(),
 					},
 				])
-				.catch((err) => this.logger.error('heartbeat write failed', err));
+				.catch((err: unknown) => this.logger.error('heartbeat write failed', err instanceof Error ? err : undefined));
 		}, 10_000).unref();
 
 		// clients gauge every 60s
@@ -54,7 +54,9 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 						timestamp: new Date(),
 					},
 				])
-				.catch((err) => this.logger.error('clients gauge write failed', err));
+				.catch((err: unknown) =>
+					this.logger.error('clients gauge write failed', err instanceof Error ? err : undefined),
+				);
 		}, 60_000).unref();
 	}
 

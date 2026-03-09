@@ -173,7 +173,7 @@ export class AuthService {
 	}
 
 	async refreshAccessToken(token: string): Promise<RefreshTokenModel> {
-		let payload: { sub?: string; role: string } | null = null;
+		let payload: { sub?: string; role: string };
 
 		try {
 			payload = await this.jwtService.verifyAsync(token);

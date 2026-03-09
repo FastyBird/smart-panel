@@ -1,3 +1,4 @@
+import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
@@ -46,7 +47,7 @@ describe('TtsProviderService', () => {
 		};
 
 		service = new TtsProviderService(
-			configService as any,
+			configService as unknown as ConfigService,
 			ttsProviderRegistry as unknown as TtsProviderRegistryService,
 		);
 	});

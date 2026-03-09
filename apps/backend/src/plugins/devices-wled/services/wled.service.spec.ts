@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -15,13 +15,16 @@ import { PluginServiceManagerService } from '../../../modules/extensions/service
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
+	RegisteredWledDevice,
+	WledAdapterCallbacks,
 	WledDeviceConnectedEvent,
 	WledDeviceDisconnectedEvent,
 	WledDeviceStateChangedEvent,
 	WledInfo,
+	WledMdnsCallbacks,
 	WledMdnsDiscoveredDevice,
+	WledState,
 } from '../interfaces/wled.interface';
-import { WledAdapterCallbacks, WledMdnsCallbacks } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
 
 import { WledDeviceMapperService } from './device-mapper.service';
@@ -201,7 +204,7 @@ describe('WledService', () => {
 					effects: [],
 					palettes: [],
 				},
-			} as any);
+			} as RegisteredWledDevice);
 			deviceMapper.updateDeviceState.mockResolvedValue(undefined);
 			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
@@ -347,7 +350,7 @@ describe('WledService', () => {
 				identifier: 'wled-test',
 				connected: true,
 				enabled: true,
-			} as any);
+			} as RegisteredWledDevice);
 
 			await adapterCallbacks.onDeviceConnected?.(event);
 
@@ -369,7 +372,7 @@ describe('WledService', () => {
 		it('should update device state via mapper on state changed', async () => {
 			const event: WledDeviceStateChangedEvent = {
 				host: '192.168.1.100',
-				state: { on: true, brightness: 200, segments: [] } as any,
+				state: { on: true, brightness: 200, segments: [] } as WledState,
 			};
 
 			wledAdapter.getDevice.mockReturnValue({
@@ -377,7 +380,7 @@ describe('WledService', () => {
 				identifier: 'wled-test',
 				connected: true,
 				enabled: true,
-			} as any);
+			} as RegisteredWledDevice);
 
 			await adapterCallbacks.onDeviceStateChanged?.(event);
 
@@ -413,7 +416,7 @@ describe('WledService', () => {
 					effects: [],
 					palettes: [],
 				},
-			} as any);
+			} as RegisteredWledDevice);
 
 			await mdnsCallbacks.onDeviceDiscovered?.(discoveredDevice);
 
@@ -493,8 +496,8 @@ describe('WledService', () => {
 				{ host: '192.168.1.101', identifier: 'wled-2', connected: true, enabled: true },
 			];
 
-			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as any[]);
-			wledAdapter.refreshState.mockResolvedValue({ on: true, brightness: 128 } as any);
+			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as RegisteredWledDevice[]);
+			wledAdapter.refreshState.mockResolvedValue({ on: true, brightness: 128 } as WledState);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
 			mdnsDiscoverer.start.mockImplementation(() => undefined);
@@ -515,7 +518,7 @@ describe('WledService', () => {
 		it('should not poll disabled devices', async () => {
 			const mockRegisteredDevices = [{ host: '192.168.1.100', identifier: 'wled-1', connected: true, enabled: false }];
 
-			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as any[]);
+			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as RegisteredWledDevice[]);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
 			mdnsDiscoverer.start.mockImplementation(() => undefined);
@@ -534,7 +537,7 @@ describe('WledService', () => {
 		it('should not poll disconnected devices', async () => {
 			const mockRegisteredDevices = [{ host: '192.168.1.100', identifier: 'wled-1', connected: false, enabled: true }];
 
-			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as any[]);
+			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as RegisteredWledDevice[]);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
 			mdnsDiscoverer.start.mockImplementation(() => undefined);

@@ -36,7 +36,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		this.commandEventRegistry.register(
 			DevicesWsEventType.SET_PROPERTY,
 			DevicesWsHandlerName.SET_PROPERTY,
-			this.handleSetProperty.bind(this),
+			(user, payload) => this.handleSetProperty(user, payload),
 		);
 
 		this.logger.log('Devices WebSocket exchange listener initialized');
@@ -65,14 +65,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	 */
 	private async handleSetProperty(
 		user: ClientUserDto | undefined,
-		payload: object | undefined,
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const result = await this.propertyCommandService.handleInternal(user, payload);
+			const result = await this.propertyCommandService.handleInternal(user, payload as object | undefined);
 
 			return {
 				success: result.success,

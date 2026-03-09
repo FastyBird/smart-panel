@@ -75,7 +75,10 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		try {
 			return this.configService.getModuleConfig<InfluxDbConfigModel>(INFLUXDB_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('Failed to load InfluxDB configuration, using defaults', error);
+			this.logger.warn(
+				'Failed to load InfluxDB configuration, using defaults',
+				error instanceof Error ? error : String(error),
+			);
 
 			// Return default configuration
 			const defaultConfig = new InfluxDbConfigModel();

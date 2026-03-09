@@ -180,7 +180,10 @@ export class ConfigService {
 				try {
 					this.saveConfig(appConfigInstance);
 				} catch (error) {
-					this.logger.warn('[MIGRATION] Failed to save migrated configuration', error);
+					this.logger.warn(
+						'[MIGRATION] Failed to save migrated configuration',
+						error instanceof Error ? error : String(error),
+					);
 				} finally {
 					this.isSaving = false;
 				}

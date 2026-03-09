@@ -711,7 +711,7 @@ export class DeviceValidationService {
 		issues: ValidationIssue[],
 	): void {
 		// Validate data type
-		let dataTypeValid = false;
+		let dataTypeValid: boolean;
 		let expectedDataTypes: string;
 
 		if (spec.hasMultipleDataTypes && spec.dataTypeVariants && spec.dataTypeVariants.length > 0) {
@@ -1171,7 +1171,7 @@ export class DeviceValidationService {
 	): void {
 		// Validate data type if provided
 		if (property.dataType) {
-			let dataTypeValid = false;
+			let dataTypeValid: boolean;
 			let expectedDataTypes: string;
 
 			if (spec.hasMultipleDataTypes && spec.dataTypeVariants && spec.dataTypeVariants.length > 0) {

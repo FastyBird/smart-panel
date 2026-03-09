@@ -293,7 +293,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		const candidates = SENSOR_PRIMARY_PROPERTY_CANDIDATES[channel.category];
 
 		let primaryProperty: ChannelPropertyEntity | undefined;
-		let unit: string | null = null;
+		let unit: string | null;
 
 		if (candidates) {
 			const result = this.findPrimaryProperty(properties, candidates);
@@ -433,7 +433,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		// Determine if sensor is triggered based on value type and channel category
-		let triggered = false;
+		let triggered: boolean;
 
 		if (typeof value === 'number') {
 			// For numeric sensors (CO ppm, gas ppm), check against safety thresholds

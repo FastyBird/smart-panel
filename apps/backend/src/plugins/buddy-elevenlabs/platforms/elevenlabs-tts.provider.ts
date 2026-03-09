@@ -124,12 +124,12 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			this.cachedDefaultVoiceId.set(apiKey, firstVoice.voice_id);
 
 			return firstVoice.voice_id;
-		} catch (error) {
-			const err = error as Error;
+		} catch (error: unknown) {
+			const err = error instanceof Error ? error : new Error('Unknown error');
 
 			this.logger.error(`Failed to discover ElevenLabs voices: ${err.message}`);
 
-			throw new Error('ElevenLabs voice_id is not configured and auto-discovery failed');
+			throw new Error('ElevenLabs voice_id is not configured and auto-discovery failed', { cause: error });
 		}
 	}
 

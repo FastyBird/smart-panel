@@ -422,10 +422,10 @@ export class Z2mMqttClientAdapterService {
 
 			if (this.bridgeOnline && !wasOnline) {
 				this.logger.log('Zigbee2MQTT bridge is online');
-				this.callbacks.onBridgeOnline?.();
+				void this.callbacks.onBridgeOnline?.();
 			} else if (!this.bridgeOnline && wasOnline) {
 				this.logger.warn('Zigbee2MQTT bridge is offline');
-				this.callbacks.onBridgeOffline?.();
+				void this.callbacks.onBridgeOffline?.();
 			}
 		} catch {
 			// Try legacy format (just "online" or "offline" string)
@@ -435,10 +435,10 @@ export class Z2mMqttClientAdapterService {
 			if (this.bridgeOnline !== wasOnline) {
 				if (this.bridgeOnline) {
 					this.logger.log('Zigbee2MQTT bridge is online');
-					this.callbacks.onBridgeOnline?.();
+					void this.callbacks.onBridgeOnline?.();
 				} else {
 					this.logger.warn('Zigbee2MQTT bridge is offline');
-					this.callbacks.onBridgeOffline?.();
+					void this.callbacks.onBridgeOffline?.();
 				}
 			}
 		}
@@ -523,7 +523,7 @@ export class Z2mMqttClientAdapterService {
 					d.supported &&
 					!d.disabled,
 			);
-			this.callbacks.onDevicesReceived?.(filteredDevices);
+			void this.callbacks.onDevicesReceived?.(filteredDevices);
 		} catch (error) {
 			this.logger.error('Failed to parse bridge/devices message', {
 				message: error instanceof Error ? error.message : String(error),
@@ -558,7 +558,7 @@ export class Z2mMqttClientAdapterService {
 				case 'device_joined':
 				case 'device_announce':
 					this.logger.log(`Device joined: ${event.data.friendly_name}`);
-					this.callbacks.onDeviceJoined?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
+					void this.callbacks.onDeviceJoined?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
 					break;
 
 				case 'device_leave':
@@ -569,7 +569,7 @@ export class Z2mMqttClientAdapterService {
 						this.deviceRegistry.delete(event.data.friendly_name);
 					}
 
-					this.callbacks.onDeviceLeft?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
+					void this.callbacks.onDeviceLeft?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
 					break;
 
 				case 'device_interview':
@@ -612,7 +612,7 @@ export class Z2mMqttClientAdapterService {
 			}
 
 			// Invoke callback for state change
-			this.callbacks.onDeviceStateChanged?.(friendlyName, state);
+			void this.callbacks.onDeviceStateChanged?.(friendlyName, state);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -645,7 +645,7 @@ export class Z2mMqttClientAdapterService {
 			}
 
 			// Invoke callback for availability change
-			this.callbacks.onDeviceAvailabilityChanged?.(friendlyName, available);
+			void this.callbacks.onDeviceAvailabilityChanged?.(friendlyName, available);
 		} catch (error) {
 			this.logger.warn(`Failed to parse availability for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),

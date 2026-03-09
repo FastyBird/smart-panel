@@ -1,5 +1,7 @@
 import { SuggestionType } from '../../../modules/buddy/buddy.constants';
-import { BuddySuggestion } from '../../../modules/buddy/services/suggestion-engine.service';
+import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
+import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_TELEGRAM_PLUGIN_NAME } from '../buddy-telegram.constants';
 import { BuddyTelegramConfigModel } from '../models/config.model';
 
@@ -54,7 +56,11 @@ describe('TelegramBotProvider', () => {
 			recordFeedback: jest.fn().mockReturnValue({ success: true }),
 		};
 
-		provider = new TelegramBotProvider(configService as any, conversationService as any, suggestionEngine as any);
+		provider = new TelegramBotProvider(
+			configService as unknown as ConfigService,
+			conversationService as unknown as BuddyConversationService,
+			suggestionEngine as unknown as SuggestionEngineService,
+		);
 	});
 
 	afterEach(() => {

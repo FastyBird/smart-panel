@@ -8,6 +8,7 @@
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"target": "ES2021",
+		"lib": ["ES2022", "DOM"],
 		"sourceMap": true,
 		"outDir": "./dist",
 		"baseUrl": "./",

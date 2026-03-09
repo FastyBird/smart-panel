@@ -105,7 +105,7 @@ export class AuthGuard implements CanActivate {
 	}
 
 	private async validateToken(request: AuthenticatedRequest, token: string): Promise<boolean> {
-		let payload: { sub?: string; type?: string; role?: string } | null = null;
+		let payload: { sub?: string; type?: string; role?: string };
 
 		try {
 			payload = await this.jwtService.verifyAsync(token);

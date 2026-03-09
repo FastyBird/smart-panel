@@ -257,10 +257,10 @@ export class TransformerRegistry {
 		const monitored = new MonitoredTransformer(
 			transformer,
 			name,
-			this.handleReadError.bind(this),
-			this.handleWriteError.bind(this),
-			this.handleRead.bind(this),
-			this.handleWrite.bind(this),
+			(n, e, v) => this.handleReadError(n, e, v),
+			(n, e, v) => this.handleWriteError(n, e, v),
+			() => this.handleRead(),
+			() => this.handleWrite(),
 		);
 
 		this.monitoredCache.set(name, monitored);
@@ -283,10 +283,10 @@ export class TransformerRegistry {
 		const monitored = new MonitoredTransformer(
 			transformer,
 			transformerName,
-			this.handleReadError.bind(this),
-			this.handleWriteError.bind(this),
-			this.handleRead.bind(this),
-			this.handleWrite.bind(this),
+			(n, e, v) => this.handleReadError(n, e, v),
+			(n, e, v) => this.handleWriteError(n, e, v),
+			() => this.handleRead(),
+			() => this.handleWrite(),
 		);
 
 		this.monitoredCache.set(transformerName, monitored);

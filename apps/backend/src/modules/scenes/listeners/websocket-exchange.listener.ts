@@ -36,7 +36,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		this.commandEventRegistry.register(
 			ScenesWsEventType.TRIGGER_SCENE,
 			ScenesWsHandlerName.TRIGGER_SCENE,
-			this.handleTriggerScene.bind(this),
+			(user, payload) => this.handleTriggerScene(user, payload),
 		);
 
 		this.logger.log('Scenes WebSocket exchange listener initialized');
@@ -62,14 +62,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 	private async handleTriggerScene(
 		user: ClientUserDto | undefined,
-		payload: { sceneId: string },
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const { sceneId } = payload;
+			const { sceneId } = payload as { sceneId: string };
 
 			if (!sceneId) {
 				return { success: false, reason: 'Scene ID is required' };

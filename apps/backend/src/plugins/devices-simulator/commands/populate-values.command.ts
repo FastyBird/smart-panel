@@ -91,7 +91,7 @@ export class PopulateValuesCommand extends CommandRunner {
 			return;
 		}
 
-		let devicesToPopulate: SimulatorDeviceEntity[] = [];
+		let devicesToPopulate: SimulatorDeviceEntity[];
 
 		if (options?.all) {
 			// Populate all devices

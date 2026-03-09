@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { DataSource, Repository, UpdateQueryBuilder, UpdateResult } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder, UpdateQueryBuilder, UpdateResult } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -217,8 +217,12 @@ describe('SpacesService', () => {
 				execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),
 			};
 
-			deviceRepository.createQueryBuilder.mockReturnValue(deviceQueryBuilder as any);
-			displayRepository.createQueryBuilder.mockReturnValue(displayQueryBuilder as any);
+			deviceRepository.createQueryBuilder.mockReturnValue(
+				deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+			);
+			displayRepository.createQueryBuilder.mockReturnValue(
+				displayQueryBuilder as unknown as SelectQueryBuilder<DisplayEntity>,
+			);
 
 			const result = await service.bulkAssign(roomId, {
 				deviceIds,
@@ -251,7 +255,9 @@ describe('SpacesService', () => {
 				execute: jest.fn().mockResolvedValue({ affected: 3 } as UpdateResult),
 			};
 
-			deviceRepository.createQueryBuilder.mockReturnValue(deviceQueryBuilder as any);
+			deviceRepository.createQueryBuilder.mockReturnValue(
+				deviceQueryBuilder as unknown as SelectQueryBuilder<DeviceEntity>,
+			);
 
 			const result = await service.bulkAssign(roomId, {
 				deviceIds,

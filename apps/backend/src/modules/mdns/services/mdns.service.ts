@@ -41,7 +41,10 @@ export class MdnsService implements OnApplicationShutdown {
 		try {
 			return this.configService.getModuleConfig<MdnsConfigModel>(MDNS_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('Failed to load mDNS configuration, using defaults', error);
+			this.logger.warn(
+				'Failed to load mDNS configuration, using defaults',
+				error instanceof Error ? error : String(error),
+			);
 
 			// Return default configuration
 			const defaultConfig = new MdnsConfigModel();

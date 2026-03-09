@@ -474,7 +474,7 @@ export class DeviceAdoptionService {
 				} catch (error) {
 					this.logger.error(
 						`[DEVICE ADOPTION] Failed to add property ${propDef.category} to channel ${channelId}:`,
-						error,
+						error instanceof Error ? error : String(error),
 					);
 				}
 			}
@@ -544,7 +544,10 @@ export class DeviceAdoptionService {
 			try {
 				await this.channelsPropertiesService.create(channelId, createPropertyDto);
 			} catch (error) {
-				this.logger.error(`[DEVICE ADOPTION] Failed to add base property ${category} to channel ${channelId}:`, error);
+				this.logger.error(
+					`[DEVICE ADOPTION] Failed to add base property ${category} to channel ${channelId}:`,
+					error instanceof Error ? error : String(error),
+				);
 			}
 		}
 	}
@@ -731,7 +734,7 @@ export class DeviceAdoptionService {
 					// Validate data type using schema utils which handles multi-datatype properties
 					const propertyMetadata = getPropertyMetadata(ChannelCategory.DEVICE_INFORMATION, propDef.category);
 					if (propertyMetadata && propDef.dataType) {
-						let dataTypeValid = false;
+						let dataTypeValid: boolean;
 						let expectedDataTypes: string;
 
 						if (
@@ -804,7 +807,7 @@ export class DeviceAdoptionService {
 				// Validate property data type matches spec using schema utils for multi-datatype support
 				const propertyMetadata = getPropertyMetadata(channelDef.category, propDef.category);
 				if (propertyMetadata && propDef.dataType) {
-					let dataTypeValid = false;
+					let dataTypeValid: boolean;
 					let expectedDataTypes: string;
 
 					if (
@@ -1066,7 +1069,7 @@ export class DeviceAdoptionService {
 				// Validate property data type matches spec using schema utils for multi-datatype support
 				const propertyMetadata = getPropertyMetadata(channel.category, property.category);
 				if (propertyMetadata && property.dataType) {
-					let dataTypeValid = false;
+					let dataTypeValid: boolean;
 					let expectedDataTypes: string;
 
 					if (

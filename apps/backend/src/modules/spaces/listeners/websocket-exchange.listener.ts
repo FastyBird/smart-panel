@@ -80,28 +80,28 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		this.commandEventRegistry.register(
 			SpacesWsEventType.LIGHTING_INTENT,
 			SpacesWsHandlerName.LIGHTING_INTENT,
-			this.handleLightingIntent.bind(this),
+			(user, payload) => this.handleLightingIntent(user, payload),
 		);
 
 		// Register command handler for climate intents
 		this.commandEventRegistry.register(
 			SpacesWsEventType.CLIMATE_INTENT,
 			SpacesWsHandlerName.CLIMATE_INTENT,
-			this.handleClimateIntent.bind(this),
+			(user, payload) => this.handleClimateIntent(user, payload),
 		);
 
 		// Register command handler for covers intents
 		this.commandEventRegistry.register(
 			SpacesWsEventType.COVERS_INTENT,
 			SpacesWsHandlerName.COVERS_INTENT,
-			this.handleCoversIntent.bind(this),
+			(user, payload) => this.handleCoversIntent(user, payload),
 		);
 
 		// Register command handler for undo
 		this.commandEventRegistry.register(
 			SpacesWsEventType.UNDO_INTENT,
 			SpacesWsHandlerName.UNDO_INTENT,
-			this.handleUndoIntent.bind(this),
+			(user, payload) => this.handleUndoIntent(user, payload),
 		);
 
 		this.logger.log('Spaces WebSocket exchange listener initialized');
@@ -130,14 +130,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	 */
 	private async handleLightingIntent(
 		user: ClientUserDto | undefined,
-		payload: LightingIntentPayload,
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const { spaceId, intent } = payload;
+			const { spaceId, intent } = payload as LightingIntentPayload;
 
 			if (!spaceId) {
 				return { success: false, reason: 'Space ID is required' };
@@ -185,14 +185,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	 */
 	private async handleClimateIntent(
 		user: ClientUserDto | undefined,
-		payload: ClimateIntentPayload,
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const { spaceId, intent } = payload;
+			const { spaceId, intent } = payload as ClimateIntentPayload;
 
 			if (!spaceId) {
 				return { success: false, reason: 'Space ID is required' };
@@ -243,14 +243,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	 */
 	private async handleCoversIntent(
 		user: ClientUserDto | undefined,
-		payload: CoversIntentPayload,
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const { spaceId, intent } = payload;
+			const { spaceId, intent } = payload as CoversIntentPayload;
 
 			if (!spaceId) {
 				return { success: false, reason: 'Space ID is required' };
@@ -299,14 +299,14 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	 */
 	private async handleUndoIntent(
 		user: ClientUserDto | undefined,
-		payload: UndoIntentPayload,
+		payload: unknown,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
 			if (!this.isAuthorized(user)) {
 				return { success: false, reason: 'Unauthorized: insufficient permissions' };
 			}
 
-			const { spaceId } = payload;
+			const { spaceId } = payload as UndoIntentPayload;
 
 			if (!spaceId) {
 				return { success: false, reason: 'Space ID is required' };

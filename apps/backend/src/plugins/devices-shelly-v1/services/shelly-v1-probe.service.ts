@@ -35,8 +35,8 @@ export class ShellyV1ProbeService {
 			host,
 		};
 
-		let shellyInfo: ShellyInfoResponse | null = null;
-		let statusInfo: ShellyStatusResponse | null = null;
+		let shellyInfo: ShellyInfoResponse;
+		let statusInfo: ShellyStatusResponse;
 
 		// Step 1: Try to fetch /shelly endpoint (no auth required)
 		try {

@@ -33,7 +33,7 @@ export class EnergyCleanupService {
 	async runCleanup(): Promise<void> {
 		const startTime = Date.now();
 
-		let totalDeleted = 0;
+		let totalDeleted: number;
 
 		try {
 			const retentionDays = this.getRetentionDays();

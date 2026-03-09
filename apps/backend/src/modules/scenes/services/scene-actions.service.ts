@@ -1,7 +1,14 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, EntityManager, type FindOptionsOrder, type FindOptionsWhere, Repository } from 'typeorm';
+import {
+	DataSource,
+	type DeepPartial,
+	EntityManager,
+	type FindOptionsOrder,
+	type FindOptionsWhere,
+	Repository,
+} from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -190,7 +197,7 @@ export class SceneActionsService {
 			return newValue !== existingValue;
 		});
 
-		const mergedAction = repository.merge(existingAction, filteredUpdate as any);
+		const mergedAction = repository.merge(existingAction, filteredUpdate as DeepPartial<TAction>);
 		mergedAction.updatedAt = new Date();
 
 		const savedAction = await repository.save(mergedAction);

@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 import { ClientUserDto } from '../dto/client-user.dto';
 
-type CommandEventHandler = (user: ClientUserDto, payload: any) => Promise<{ success: boolean; reason?: string } | null>;
+type CommandEventHandler = (
+	user: ClientUserDto,
+	payload: unknown,
+) => Promise<{ success: boolean; reason?: string } | null>;
 
 @Injectable()
 export class CommandEventRegistryService {

@@ -29,7 +29,10 @@ export class RegistrationGuard implements CanActivate {
 		try {
 			return this.configService.getModuleConfig<DisplaysConfigModel>(DISPLAYS_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('Failed to load displays configuration, using defaults', error);
+			this.logger.warn(
+				'Failed to load displays configuration, using defaults',
+				error instanceof Error ? error : String(error),
+			);
 
 			// Return default configuration
 			const defaultConfig = new DisplaysConfigModel();

@@ -178,11 +178,17 @@ export class Z2mDeviceAdoptionService {
 			return await this.devicesService.findOne<Zigbee2mqttDeviceEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
 		} catch (error) {
 			// Cleanup on failure
-			this.logger.error(`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`, error);
+			this.logger.error(
+				`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`,
+				error instanceof Error ? error : String(error),
+			);
 			try {
 				await this.devicesService.remove(device.id);
 			} catch (cleanupError) {
-				this.logger.error(`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`, cleanupError);
+				this.logger.error(
+					`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`,
+					cleanupError instanceof Error ? cleanupError : String(cleanupError),
+				);
 			}
 			throw error;
 		}

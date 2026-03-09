@@ -10,8 +10,16 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
+import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
+import { ReqCreateSpaceDto } from '../dto/create-space.dto';
+import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
+import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
+import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
@@ -529,7 +537,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.create(createDto as any);
+			const result = await controller.create(createDto as ReqCreateSpaceDto);
 
 			expect(result.data).toEqual(toInstance(SpaceEntity, mockSpace));
 			expect(spacesService.create).toHaveBeenCalledWith(createDto.data);
@@ -545,7 +553,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.create(createDto as any)).rejects.toThrow(SpacesValidationException);
+			await expect(controller.create(createDto as ReqCreateSpaceDto)).rejects.toThrow(SpacesValidationException);
 		});
 	});
 
@@ -557,7 +565,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.update(mockSpace.id, updateDto as any);
+			const result = await controller.update(mockSpace.id, updateDto as ReqUpdateSpaceDto);
 
 			expect(result.data).toEqual(toInstance(SpaceEntity, mockSpace));
 			expect(spacesService.update).toHaveBeenCalledWith(mockSpace.id, updateDto.data);
@@ -572,7 +580,9 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.update('non-existent-id', updateDto as any)).rejects.toThrow(SpacesNotFoundException);
+			await expect(controller.update('non-existent-id', updateDto as ReqUpdateSpaceDto)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
 		});
 	});
 
@@ -643,7 +653,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.bulkAssign(mockSpace.id, assignDto as any);
+			const result = await controller.bulkAssign(mockSpace.id, assignDto as ReqBulkAssignDto);
 
 			expect(result.data.success).toBe(true);
 			expect(result.data.devicesAssigned).toBe(2);
@@ -660,7 +670,9 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.bulkAssign('non-existent-id', assignDto as any)).rejects.toThrow(SpacesNotFoundException);
+			await expect(controller.bulkAssign('non-existent-id', assignDto as ReqBulkAssignDto)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
 		});
 	});
 
@@ -672,7 +684,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.executeLightingIntent(mockSpace.id, intentDto as any);
+			const result = await controller.executeLightingIntent(mockSpace.id, intentDto as ReqLightingIntentDto);
 
 			expect(result.data.success).toBe(true);
 			expect(result.data.affectedDevices).toBe(2);
@@ -687,7 +699,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await controller.executeLightingIntent(mockSpace.id, intentDto as any);
+			await controller.executeLightingIntent(mockSpace.id, intentDto as ReqLightingIntentDto);
 
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
 		});
@@ -700,7 +712,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await controller.executeLightingIntent(mockSpace.id, intentDto as any);
+			await controller.executeLightingIntent(mockSpace.id, intentDto as ReqLightingIntentDto);
 
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
 		});
@@ -716,9 +728,9 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.executeLightingIntent('non-existent-id', intentDto as any)).rejects.toThrow(
-				SpacesNotFoundException,
-			);
+			await expect(
+				controller.executeLightingIntent('non-existent-id', intentDto as ReqLightingIntentDto),
+			).rejects.toThrow(SpacesNotFoundException);
 		});
 
 		it('should throw NotFoundException when space not found (null return)', async () => {
@@ -730,9 +742,9 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.executeLightingIntent('non-existent-id', intentDto as any)).rejects.toThrow(
-				SpacesNotFoundException,
-			);
+			await expect(
+				controller.executeLightingIntent('non-existent-id', intentDto as ReqLightingIntentDto),
+			).rejects.toThrow(SpacesNotFoundException);
 		});
 
 		it('should return result with failed devices on partial failure', async () => {
@@ -748,7 +760,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.executeLightingIntent(mockSpace.id, intentDto as any);
+			const result = await controller.executeLightingIntent(mockSpace.id, intentDto as ReqLightingIntentDto);
 
 			expect(result.data.affectedDevices).toBe(1);
 			expect(result.data.failedDevices).toBe(1);
@@ -1037,7 +1049,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.executeClimateIntent(mockSpace.id, intentDto as any);
+			const result = await controller.executeClimateIntent(mockSpace.id, intentDto as ReqClimateIntentDto);
 
 			expect(result.data.success).toBe(true);
 			expect(result.data.heatingSetpoint).toBe(22.0);
@@ -1054,9 +1066,9 @@ describe('SpacesController', () => {
 				},
 			};
 
-			await expect(controller.executeClimateIntent('non-existent-id', intentDto as any)).rejects.toThrow(
-				SpacesNotFoundException,
-			);
+			await expect(
+				controller.executeClimateIntent('non-existent-id', intentDto as ReqClimateIntentDto),
+			).rejects.toThrow(SpacesNotFoundException);
 		});
 	});
 
@@ -1106,13 +1118,13 @@ describe('SpacesController', () => {
 				channelId: uuid(),
 				role: LightingRole.AMBIENT,
 				priority: 2,
-				space: null as any,
-				device: null as any,
-				channel: null as any,
+				space: null as unknown as SpaceEntity,
+				device: null as unknown as DeviceEntity,
+				channel: null as unknown as ChannelEntity,
 				createdAt: new Date(),
 				updatedAt: null,
 			};
-			jest.spyOn(spaceLightingRoleService, 'setRole').mockResolvedValue(mockRole as any);
+			jest.spyOn(spaceLightingRoleService, 'setRole').mockResolvedValue(mockRole as SpaceLightingRoleEntity);
 
 			const roleDto = {
 				data: {
@@ -1122,7 +1134,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.setLightingRole(mockSpace.id, roleDto as any);
+			const result = await controller.setLightingRole(mockSpace.id, roleDto as ReqSetLightingRoleDto);
 
 			expect(result.data).toEqual(mockRole);
 			expect(spaceLightingRoleService.setRole).toHaveBeenCalledWith(mockSpace.id, roleDto.data);
@@ -1178,7 +1190,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.bulkSetLightingRoles(mockSpace.id, rolesDto as any);
+			const result = await controller.bulkSetLightingRoles(mockSpace.id, rolesDto as ReqBulkSetLightingRolesDto);
 
 			expect(result.data.success).toBe(true);
 			expect(result.data.totalCount).toBe(3);
@@ -1303,7 +1315,7 @@ describe('SpacesController', () => {
 				},
 			};
 
-			const result = await controller.submitSuggestionFeedback(mockSpace.id, feedbackDto as any);
+			const result = await controller.submitSuggestionFeedback(mockSpace.id, feedbackDto as ReqSuggestionFeedbackDto);
 
 			expect(result.data.success).toBe(true);
 			expect(result.data.intentExecuted).toBe(true);
