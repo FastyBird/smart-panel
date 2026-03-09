@@ -717,7 +717,7 @@ jobs:
             SHASUMS256-arm64.txt
 
   attach-artifacts:
-    needs: ["tag", "sync-versions", "publish-backend", "publish-admin", "publish-main-package", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
+    needs: ["tag", "sync-versions", "publish-backend", "publish-admin", "publish-main-package", "build-display", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
     name: "Attach Artifacts ${{ needs.tag.outputs.version }}"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -762,6 +762,30 @@ jobs:
         uses: "AButler/upload-release-assets@v3.0"
         with:
           files: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "flutter-assets"
+
+      - name: "Attach ARMv7 Display Assets (flutter-pi 32-bit)"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-armv7.tar.gz;SHASUMS256-armv7.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "flutter-assets-arm64"
+
+      - name: "Attach ARM64 Display Assets (flutter-pi 64-bit)"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-arm64.tar.gz;SHASUMS256-arm64.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.tag.outputs.version }}
 
