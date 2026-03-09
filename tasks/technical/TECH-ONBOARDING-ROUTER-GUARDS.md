@@ -4,7 +4,7 @@ Type: technical
 Scope: admin
 Size: small
 Parent: EPIC-APP-ONBOARDING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -53,12 +53,12 @@ The admin app needs to detect fresh installations and redirect users to the onbo
 
 ## 4. Acceptance criteria
 
-- [ ] Fresh installation redirects to `/onboarding` from any route
-- [ ] After owner exists, normal auth flow applies
-- [ ] Onboarding route is not accessible after completion
-- [ ] Onboarding status is cached to avoid repeated API calls
-- [ ] Cache is invalidated after account creation
-- [ ] Guard works correctly on page refresh
+- [x] Fresh installation redirects to `/onboarding` from any route
+- [x] After owner exists, normal auth flow applies
+- [x] Onboarding route is not accessible after completion
+- [x] Onboarding status is cached to avoid repeated API calls
+- [x] Cache is invalidated after account creation
+- [x] Guard works correctly on page refresh
 
 ## 5. Example scenarios
 

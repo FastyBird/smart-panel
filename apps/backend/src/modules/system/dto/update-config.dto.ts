@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -162,4 +162,17 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		message: '[{"field":"house_mode","reason":"House mode must be a valid value (home, away, night)."}]',
 	})
 	house_mode?: HouseMode;
+
+	@ApiPropertyOptional({
+		description: 'Marks the initial onboarding wizard as completed.',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({
+		message: '[{"field":"onboarding_completed","reason":"Onboarding completed must be a boolean."}]',
+	})
+	onboarding_completed?: boolean;
 }

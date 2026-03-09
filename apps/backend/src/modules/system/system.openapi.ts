@@ -3,9 +3,11 @@
  */
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
+import { OnboardingStatusModel } from './models/onboarding.model';
 import {
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
+	OnboardingStatusResponseModel,
 	SystemHealthResponseModel,
 	SystemInfoResponseModel,
 	SystemModuleLogIngestResult,
@@ -40,10 +42,13 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
+	OnboardingStatusResponseModel,
 	SystemHealthResponseModel,
 	SystemInfoResponseModel,
 	ThrottleStatusResponseModel,
 	SystemModuleLogIngestResult,
+	// Onboarding models
+	OnboardingStatusModel,
 	// Data models
 	SystemHealthModel,
 	SystemInfoModel,

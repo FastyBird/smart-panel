@@ -8,7 +8,9 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { OnboardingStatusModel } from '../models/onboarding.model';
 import { SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
+import { OnboardingService } from '../services/onboarding.service';
 import { SystemService } from '../services/system.service';
 
 import { SystemController } from './system.controller';
@@ -16,6 +18,7 @@ import { SystemController } from './system.controller';
 describe('SystemController', () => {
 	let controller: SystemController;
 	let service: SystemService;
+	let onboardingService: OnboardingService;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -28,11 +31,19 @@ describe('SystemController', () => {
 						getThrottleStatus: jest.fn(),
 					},
 				},
+				{
+					provide: OnboardingService,
+					useValue: {
+						getStatus: jest.fn(),
+						markComplete: jest.fn(),
+					},
+				},
 			],
 		}).compile();
 
 		controller = module.get<SystemController>(SystemController);
 		service = module.get<SystemService>(SystemService);
+		onboardingService = module.get<OnboardingService>(OnboardingService);
 	});
 
 	afterEach(() => {
@@ -42,6 +53,7 @@ describe('SystemController', () => {
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(service).toBeDefined();
+		expect(onboardingService).toBeDefined();
 	});
 
 	describe('getSystemInfo', () => {
@@ -99,6 +111,64 @@ describe('SystemController', () => {
 			expect(result.data).toEqual(toInstance(SystemInfoModel, mockSystemInfo));
 			expect(result.data.cpuLoad).toBe(mockSystemInfo.cpuLoad);
 			expect(service.getSystemInfo).toHaveBeenCalled();
+		});
+	});
+
+	describe('getOnboardingStatus', () => {
+		it('should return onboarding status for fresh installation', async () => {
+			const mockStatus = {
+				hasOwner: false,
+				onboardingCompleted: false,
+				devicesCount: 0,
+				spacesCount: 0,
+				displaysCount: 0,
+			};
+
+			jest.spyOn(onboardingService, 'getStatus').mockResolvedValue(toInstance(OnboardingStatusModel, mockStatus));
+
+			const result = await controller.getOnboardingStatus();
+
+			expect(result.data.hasOwner).toBe(false);
+			expect(result.data.onboardingCompleted).toBe(false);
+			expect(result.data.devicesCount).toBe(0);
+			expect(onboardingService.getStatus).toHaveBeenCalled();
+		});
+
+		it('should return onboarding status with owner', async () => {
+			const mockStatus = {
+				hasOwner: true,
+				onboardingCompleted: false,
+				devicesCount: 5,
+				spacesCount: 3,
+				displaysCount: 1,
+			};
+
+			jest.spyOn(onboardingService, 'getStatus').mockResolvedValue(toInstance(OnboardingStatusModel, mockStatus));
+
+			const result = await controller.getOnboardingStatus();
+
+			expect(result.data.hasOwner).toBe(true);
+			expect(result.data.devicesCount).toBe(5);
+		});
+	});
+
+	describe('completeOnboarding', () => {
+		it('should mark onboarding as complete and return status', async () => {
+			const mockStatus = {
+				hasOwner: true,
+				onboardingCompleted: true,
+				devicesCount: 5,
+				spacesCount: 3,
+				displaysCount: 1,
+			};
+
+			jest.spyOn(onboardingService, 'markComplete').mockResolvedValue(undefined);
+			jest.spyOn(onboardingService, 'getStatus').mockResolvedValue(toInstance(OnboardingStatusModel, mockStatus));
+
+			const result = await controller.completeOnboarding();
+
+			expect(onboardingService.markComplete).toHaveBeenCalled();
+			expect(result.data.onboardingCompleted).toBe(true);
 		});
 	});
 

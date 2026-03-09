@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-APP-ONBOARDING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -44,13 +44,13 @@ The admin app needs to determine if it should show the onboarding wizard or the 
 
 ## 4. Acceptance criteria
 
-- [ ] `GET /system/onboarding` returns onboarding status without authentication
-- [ ] Response includes `hasOwner` boolean (true if owner account exists)
-- [ ] Response includes `onboardingCompleted` boolean (from system config)
-- [ ] Response includes `devicesCount`, `spacesCount`, `displaysCount` integers
-- [ ] `POST /system/onboarding/complete` marks onboarding as completed (requires auth)
-- [ ] Endpoint is properly documented in OpenAPI spec
-- [ ] Unit tests cover the new functionality
+- [x] `GET /system/onboarding` returns onboarding status without authentication
+- [x] Response includes `hasOwner` boolean (true if owner account exists)
+- [x] Response includes `onboardingCompleted` boolean (from system config)
+- [x] Response includes `devicesCount`, `spacesCount`, `displaysCount` integers
+- [x] `POST /system/onboarding/complete` marks onboarding as completed (requires auth)
+- [x] Endpoint is properly documented in OpenAPI spec
+- [x] Unit tests cover the new functionality
 
 ## 5. Example scenarios
 

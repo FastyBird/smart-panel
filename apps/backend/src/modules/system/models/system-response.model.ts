@@ -4,6 +4,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 
 import { BaseSuccessResponseModel, SuccessPaginatedMetadataModel } from '../../api/models/api-response.model';
 
+import { OnboardingStatusModel } from './onboarding.model';
 import {
 	LogEntryAcceptedModel,
 	LogEntryModel,
@@ -44,6 +45,19 @@ export class LogEntryAcceptedResponseModel extends BaseSuccessResponseModel<LogE
 	})
 	@Expose()
 	declare data: LogEntryAcceptedModel;
+}
+
+/**
+ * Response wrapper for OnboardingStatusModel
+ */
+@ApiSchema({ name: 'SystemModuleResOnboardingStatus' })
+export class OnboardingStatusResponseModel extends BaseSuccessResponseModel<OnboardingStatusModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => OnboardingStatusModel,
+	})
+	@Expose()
+	declare data: OnboardingStatusModel;
 }
 
 /**

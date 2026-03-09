@@ -4,6 +4,8 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.mod
 import { AuthModule } from '../auth/auth.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
+import { DisplaysModule } from '../displays/displays.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
@@ -12,6 +14,7 @@ import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { UsersModule } from '../users/users.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
@@ -26,6 +29,7 @@ import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
 import { DisplayCommandService } from './services/display-command.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
+import { OnboardingService } from './services/onboarding.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
@@ -46,7 +50,18 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, PlatformModule, WebsocketModule, AuthModule, InfluxDbModule, StatsModule, SpacesModule],
+	imports: [
+		NestConfigModule,
+		PlatformModule,
+		WebsocketModule,
+		AuthModule,
+		InfluxDbModule,
+		StatsModule,
+		SpacesModule,
+		UsersModule,
+		DevicesModule,
+		DisplaysModule,
+	],
 	providers: [
 		SystemService,
 		SystemCommandService,
@@ -54,6 +69,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		SystemLoggerService,
 		SystemStatsProvider,
 		HouseModeActionsService,
+		OnboardingService,
 		UpdateService,
 		UpdateCheckCommand,
 		UpdateServerCommand,

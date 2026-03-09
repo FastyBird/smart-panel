@@ -35,6 +35,7 @@ import { provideLogger } from './common';
 import CommonModule from './common/common.module';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
+import { OnboardingModule } from './modules/onboarding';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
@@ -148,6 +149,7 @@ const moduleOptions: IModuleOptions = {
 
 app.use(SystemModule, moduleOptions);
 app.use(ConfigModule, moduleOptions);
+app.use(OnboardingModule, moduleOptions);
 app.use(AuthModule, moduleOptions);
 app.use(DashboardModule, moduleOptions);
 app.use(DevicesModule, moduleOptions);

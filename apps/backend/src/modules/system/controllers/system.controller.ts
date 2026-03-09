@@ -5,7 +5,10 @@ import {
 	BadRequestException,
 	Controller,
 	Get,
+	HttpCode,
+	HttpStatus,
 	InternalServerErrorException,
+	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -25,11 +28,13 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import {
+	OnboardingStatusResponseModel,
 	SystemHealthResponseModel,
 	SystemInfoResponseModel,
 	ThrottleStatusResponseModel,
 } from '../models/system-response.model';
 import { SystemHealthModel } from '../models/system.model';
+import { OnboardingService } from '../services/onboarding.service';
 import { SystemService } from '../services/system.service';
 import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
@@ -38,7 +43,10 @@ import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.consta
 export class SystemController {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemController');
 
-	constructor(private readonly systemService: SystemService) {}
+	constructor(
+		private readonly systemService: SystemService,
+		private readonly onboardingService: OnboardingService,
+	) {}
 
 	@ApiOperation({
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
@@ -124,6 +132,57 @@ export class SystemController {
 			return response;
 		} catch (error) {
 			this.handleError(error, 'Failed to retrieve throttle status');
+		}
+	}
+
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get onboarding status',
+		description: 'Retrieve the current onboarding status including whether an owner exists and setup statistics',
+		operationId: 'get-system-module-onboarding-status',
+	})
+	@ApiSuccessResponse(OnboardingStatusResponseModel, 'Onboarding status retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Public()
+	@Get('onboarding')
+	async getOnboardingStatus(): Promise<OnboardingStatusResponseModel> {
+		this.logger.debug('Fetching onboarding status');
+
+		try {
+			const status = await this.onboardingService.getStatus();
+
+			const response = new OnboardingStatusResponseModel();
+			response.data = status;
+
+			return response;
+		} catch (error) {
+			this.handleError(error, 'Failed to retrieve onboarding status');
+		}
+	}
+
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Mark onboarding as complete',
+		description: 'Mark the initial onboarding wizard as completed',
+		operationId: 'post-system-module-onboarding-complete',
+	})
+	@ApiSuccessResponse(OnboardingStatusResponseModel, 'Onboarding marked as complete')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(HttpStatus.OK)
+	@Post('onboarding/complete')
+	async completeOnboarding(): Promise<OnboardingStatusResponseModel> {
+		this.logger.debug('Marking onboarding as complete');
+
+		try {
+			await this.onboardingService.markComplete();
+			const status = await this.onboardingService.getStatus();
+
+			const response = new OnboardingStatusResponseModel();
+			response.data = status;
+
+			return response;
+		} catch (error) {
+			this.handleError(error, 'Failed to mark onboarding as complete');
 		}
 	}
 

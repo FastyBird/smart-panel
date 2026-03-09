@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsEnum, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -133,4 +133,15 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@Expose({ name: 'house_mode' })
 	@IsEnum(HouseMode)
 	houseMode: HouseMode = HouseMode.HOME;
+
+	@ApiProperty({
+		name: 'onboarding_completed',
+		description: 'Whether the initial onboarding wizard has been completed',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'onboarding_completed' })
+	@IsOptional()
+	@IsBoolean()
+	onboardingCompleted: boolean = false;
 }
