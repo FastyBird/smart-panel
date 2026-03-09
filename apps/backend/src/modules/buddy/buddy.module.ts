@@ -11,6 +11,7 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
@@ -38,6 +39,7 @@ import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
 import { LlmProviderRegistryService } from './services/llm-provider-registry.service';
 import { LlmProviderService } from './services/llm-provider.service';
+import { BuddyModuleResetService } from './services/module-reset.service';
 import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
@@ -101,6 +103,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
+		BuddyModuleResetService,
 	],
 	exports: [
 		ActionObserverService,
@@ -127,6 +130,8 @@ export class BuddyModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly moduleReset: BuddyModuleResetService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly heartbeatService: HeartbeatService,
 		private readonly patternDetector: PatternDetectorService,
 		private readonly anomalyDetector: AnomalyDetectorEvaluator,
@@ -136,6 +141,15 @@ export class BuddyModule implements OnModuleInit {
 	) {}
 
 	onModuleInit() {
+		// Register factory reset handler
+		this.factoryResetRegistry.register(
+			BUDDY_MODULE_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+			310,
+		);
+
 		this.heartbeatService.registerEvaluator(this.patternDetector);
 		this.heartbeatService.registerEvaluator(this.anomalyDetector);
 		this.heartbeatService.registerEvaluator(this.energyEvaluator);

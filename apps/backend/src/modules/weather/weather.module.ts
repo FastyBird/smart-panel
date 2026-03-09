@@ -9,6 +9,7 @@ import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 
 import { HistoryController } from './controllers/history.controller';
 import { LocationsController } from './controllers/locations.controller';
@@ -18,6 +19,7 @@ import { WeatherLocationEntity } from './entities/locations.entity';
 import { WeatherConfigModel } from './models/config.model';
 import { LocationsTypeMapperService } from './services/locations-type-mapper.service';
 import { LocationsService } from './services/locations.service';
+import { WeatherModuleResetService } from './services/module-reset.service';
 import { WeatherHistoryService } from './services/weather-history.service';
 import { WeatherProviderRegistryService } from './services/weather-provider-registry.service';
 import { WeatherSeederService } from './services/weather-seeder.service';
@@ -44,6 +46,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 		WeatherProviderRegistryService,
 		WeatherHistoryService,
 		WeatherSeederService,
+		WeatherModuleResetService,
 	],
 	exports: [
 		WeatherService,
@@ -59,10 +62,21 @@ export class WeatherModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly moduleSeeder: WeatherSeederService,
+		private readonly moduleReset: WeatherModuleResetService,
 		private readonly seedRegistry: SeedRegistryService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit() {
+		// Register factory reset handler
+		this.factoryResetRegistry.register(
+			WEATHER_MODULE_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+			350,
+		);
+
 		// Register seeder (priority 250 - after dashboard)
 		this.seedRegistry.register(
 			WEATHER_MODULE_NAME,

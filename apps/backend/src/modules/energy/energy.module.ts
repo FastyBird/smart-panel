@@ -10,6 +10,7 @@ import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 
 import { EnergyHomeController } from './controllers/energy-home.controller';
 import { EnergySpacesController } from './controllers/energy-spaces.controller';
@@ -25,6 +26,7 @@ import { EnergyCacheService } from './services/energy-cache.service';
 import { EnergyCleanupService } from './services/energy-cleanup.service';
 import { EnergyDataService } from './services/energy-data.service';
 import { EnergyMetricsService } from './services/energy-metrics.service';
+import { EnergyModuleResetService } from './services/module-reset.service';
 
 @ApiTag({
 	tagName: ENERGY_MODULE_NAME,
@@ -45,6 +47,7 @@ import { EnergyMetricsService } from './services/energy-metrics.service';
 		EnergyCacheService,
 		EnergyIngestionListener,
 		EnergyCleanupService,
+		EnergyModuleResetService,
 	],
 	controllers: [EnergyController, EnergySpacesController, EnergyHomeController],
 	exports: [EnergyDataService],
@@ -56,9 +59,20 @@ export class EnergyModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly moduleReset: EnergyModuleResetService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit(): void {
+		// Register factory reset handler
+		this.factoryResetRegistry.register(
+			ENERGY_MODULE_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+			180,
+		);
+
 		this.modulesMapperService.registerMapping<EnergyConfigModel, UpdateEnergyConfigDto>({
 			type: ENERGY_MODULE_NAME,
 			class: EnergyConfigModel,

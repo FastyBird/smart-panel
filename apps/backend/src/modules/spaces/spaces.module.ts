@@ -11,6 +11,7 @@ import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
@@ -51,6 +52,7 @@ import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
+import { SpacesModuleResetService } from './services/module-reset.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
@@ -113,6 +115,7 @@ import { IntentSpecLoaderService } from './spec';
 		IntentSpecLoaderService,
 		SpacesSeederService,
 		SpaceLightingToolService,
+		SpacesModuleResetService,
 	],
 	exports: [
 		SpacesService,
@@ -135,12 +138,23 @@ export class SpacesModule implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly moduleSeeder: SpacesSeederService,
+		private readonly moduleReset: SpacesModuleResetService,
 		private readonly seedRegistry: SeedRegistryService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
+		// Register factory reset handler
+		this.factoryResetRegistry.register(
+			SPACES_MODULE_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+			280,
+		);
+
 		// Register space lighting tool provider
 		this.toolProviderRegistry.register(this.spaceLightingTool);
 
