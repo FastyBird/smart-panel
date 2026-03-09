@@ -70,6 +70,24 @@ scripts:
     exec: FB_FLUTTERPI_ARCH=arm64 FB_FLUTTERPI_RELEASE=1 melos run build-panel
     description: Builds Flutter Pi app for ARM64 (64-bit) in release mode.
 
+  build-panel-apk:
+    run: |
+      echo "🤖 Building Android APK..." && \
+      cd ./apps/panel && \
+      flutter build apk --release \
+        --dart-define=APP_VERSION=${FB_PANEL_APP_VERSION:-1.0.0} \
+        --dart-define=APP_BUILD=${FB_PANEL_APP_BUILD:-1}
+    description: Builds Android APK in release mode.
+
+  build-panel-linux:
+    run: |
+      echo "🐧 Building Linux desktop app..." && \
+      cd ./apps/panel && \
+      flutter build linux --release \
+        --dart-define=APP_VERSION=${FB_PANEL_APP_VERSION:-1.0.0} \
+        --dart-define=APP_BUILD=${FB_PANEL_APP_BUILD:-1}
+    description: Builds Linux x64 desktop app in release mode.
+
 command:
   bootstrap:
     runPubGetInParallel: false
