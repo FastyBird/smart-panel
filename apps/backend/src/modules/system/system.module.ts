@@ -16,6 +16,9 @@ import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 
+import { UpdateCheckCommand } from './commands/update-check.command';
+import { UpdatePanelCommand } from './commands/update-panel.command';
+import { UpdateServerCommand } from './commands/update-server.command';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
@@ -26,6 +29,7 @@ import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
+import { UpdateService } from './services/update.service';
 import {
 	EventHandlerName,
 	EventType,
@@ -50,6 +54,10 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		SystemLoggerService,
 		SystemStatsProvider,
 		HouseModeActionsService,
+		UpdateService,
+		UpdateCheckCommand,
+		UpdateServerCommand,
+		UpdatePanelCommand,
 	],
 	controllers: [SystemController, LogsController],
 	exports: [SystemService, SystemLoggerService],

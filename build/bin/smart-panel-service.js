@@ -430,11 +430,53 @@ program
 // ============================================================================
 program
 	.command('update')
-	.description('Update Smart Panel to the latest version')
+	.description('Update Smart Panel server to the latest version')
 	.option('--version <version>', 'Update to a specific version')
 	.option('--beta', 'Update to the latest beta version')
+	.option('--check', 'Only check for updates without installing')
+	.option('-y, --yes', 'Skip confirmation prompts')
 	.action(async (options) => {
 		console.log();
+
+		const NPM_REGISTRY_URL = 'https://registry.npmjs.org/@fastybird/smart-panel';
+
+		// --check mode: just display version info
+		if (options.check) {
+			const spinner = ora('Checking for updates...').start();
+
+			try {
+				const currentVersion = packageJson.version;
+				const channel = options.beta ? 'beta' : 'latest';
+
+				const response = await fetch(NPM_REGISTRY_URL);
+				const data = await response.json();
+				const latestVersion = data['dist-tags']?.[channel];
+
+				spinner.stop();
+
+				console.log(chalk.bold('  Smart Panel Update Check'));
+				console.log(chalk.gray('  ────────────────────────'));
+				console.log();
+				console.log('  Current version:', chalk.white(currentVersion));
+				console.log('  Latest version: ', latestVersion ? chalk.white(latestVersion) : chalk.yellow('unknown'));
+
+				if (latestVersion && latestVersion !== currentVersion) {
+					console.log();
+					logger.info(`Update available! Run ${chalk.cyan('sudo smart-panel-service update')} to install.`);
+				} else if (latestVersion) {
+					console.log();
+					logger.success('Server is up to date.');
+				}
+
+				console.log();
+			} catch (error) {
+				spinner.fail('Failed to check for updates');
+				logger.error(error instanceof Error ? error.message : String(error));
+				process.exit(1);
+			}
+
+			return;
+		}
 
 		if (!isRoot()) {
 			logger.error('This command must be run as root. Please use sudo.');
@@ -466,7 +508,47 @@ program
 				versionArg = '@beta';
 			}
 
-			logger.info(`Updating Smart Panel${versionArg ? ` to ${versionArg}` : ''}...`);
+			// Check what version we'd update to
+			const currentVersion = packageJson.version;
+			let targetVersion = options.version || null;
+
+			if (!targetVersion) {
+				try {
+					const response = await fetch(NPM_REGISTRY_URL);
+					const data = await response.json();
+					targetVersion = data['dist-tags']?.[tag];
+				} catch {
+					// Continue anyway
+				}
+			}
+
+			if (targetVersion && targetVersion === currentVersion) {
+				logger.success('Server is already up to date.');
+				console.log();
+				return;
+			}
+
+			logger.info(`Updating Smart Panel${targetVersion ? ` to ${targetVersion}` : ''}...`);
+
+			// Confirmation
+			if (!options.yes) {
+				const readline = await import('node:readline');
+				const rl = readline.createInterface({
+					input: process.stdin,
+					output: process.stdout,
+				});
+
+				const answer = await new Promise((resolve) => {
+					rl.question(chalk.yellow('Do you want to proceed? (yes/no): '), resolve);
+				});
+				rl.close();
+
+				if (answer !== 'yes' && answer !== 'y') {
+					logger.info('Update cancelled.');
+					process.exit(0);
+				}
+			}
+
 			console.log();
 
 			// Stop service if running
@@ -533,6 +615,241 @@ program
 				}
 			}
 
+			process.exit(1);
+		}
+	});
+
+// ============================================================================
+// Update Panel Command
+// ============================================================================
+program
+	.command('update-panel')
+	.description('Update the Smart Panel display app')
+	.option('--platform <platform>', 'Panel platform: flutter-pi, elinux, linux, android')
+	.option('--version <version>', 'Install specific version')
+	.option('--beta', 'Install latest beta release')
+	.option('-d, --install-dir <dir>', 'Installation directory', '/opt/smart-panel-display')
+	.option('-y, --yes', 'Skip confirmation prompts')
+	.action(async (options) => {
+		console.log();
+
+		const GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
+		const DISPLAY_SERVICE = 'smart-panel-display';
+		const installDir = options.installDir || '/opt/smart-panel-display';
+
+		// Detect platform
+		let platform = options.platform;
+
+		if (!platform) {
+			const arch = getArch();
+
+			if (existsSync('/proc/device-tree/model')) {
+				try {
+					const model = readFileSync('/proc/device-tree/model', 'utf-8').toLowerCase();
+					if (model.includes('raspberry')) {
+						platform = 'flutter-pi';
+					}
+				} catch {
+					// Ignore
+				}
+			}
+
+			if (!platform) {
+				if (arch === 'armv7' || arch === 'arm64') {
+					platform = 'flutter-pi';
+				} else if (arch === 'x64') {
+					platform = 'elinux';
+				} else {
+					logger.error('Could not detect platform. Use --platform to specify.');
+					process.exit(1);
+				}
+			}
+		}
+
+		logger.info(`Platform: ${platform}`);
+
+		// Get release info
+		const spinner = ora('Checking for panel releases...').start();
+
+		try {
+			let releaseUrl = options.beta
+				? `${GITHUB_API_URL}?per_page=10`
+				: options.version
+					? `${GITHUB_API_URL}/tags/v${options.version}`
+					: `${GITHUB_API_URL}/latest`;
+
+			const response = await fetch(releaseUrl, {
+				headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'FastyBird-SmartPanel' },
+			});
+
+			if (!response.ok) {
+				throw new Error(`GitHub API returned ${response.status}`);
+			}
+
+			let release;
+
+			if (options.beta) {
+				const releases = await response.json();
+				release = releases.find((r) => r.prerelease);
+
+				if (!release) {
+					spinner.fail('No beta release found');
+					process.exit(1);
+				}
+			} else {
+				release = await response.json();
+			}
+
+			// Asset pattern matching
+			const assetPatterns = {
+				'flutter-pi': /smart-panel-display-(armv7|arm64)\.tar\.gz/,
+				elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
+				linux: /smart-panel-display-linux-x64\.tar\.gz/,
+				android: /smart-panel-display\.apk/,
+			};
+
+			const pattern = assetPatterns[platform];
+
+			if (!pattern) {
+				spinner.fail(`Unsupported platform: ${platform}`);
+				process.exit(1);
+			}
+
+			const asset = release.assets?.find((a) => pattern.test(a.name));
+
+			if (!asset) {
+				spinner.fail(`No build found for platform '${platform}' in release ${release.tag_name}`);
+				process.exit(1);
+			}
+
+			const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
+			spinner.succeed(`Found: ${release.tag_name} - ${asset.name} (${sizeMB} MB)`);
+
+			// Confirmation
+			if (!options.yes) {
+				const readline = await import('node:readline');
+				const rl = readline.createInterface({
+					input: process.stdin,
+					output: process.stdout,
+				});
+
+				const answer = await new Promise((resolve) => {
+					rl.question(chalk.yellow(`Update panel (${platform}) to ${release.tag_name}? (yes/no): `), resolve);
+				});
+				rl.close();
+
+				if (answer !== 'yes' && answer !== 'y') {
+					logger.info('Update cancelled.');
+					process.exit(0);
+				}
+			}
+
+			if (platform === 'android') {
+				// Android: download and install via ADB
+				try {
+					execFileSync('which', ['adb'], { stdio: 'pipe' });
+				} catch {
+					logger.error('ADB is required. Install with: apt-get install android-tools-adb');
+					process.exit(1);
+				}
+
+				const tmpFile = '/tmp/smart-panel-display.apk';
+				const dlSpinner = ora('Downloading APK...').start();
+
+				const dlResponse = await fetch(asset.browser_download_url, {
+					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+					redirect: 'follow',
+				});
+
+				if (!dlResponse.ok || !dlResponse.body) {
+					dlSpinner.fail('Download failed');
+					process.exit(1);
+				}
+
+				const { createWriteStream: cws } = await import('node:fs');
+				const { Readable } = await import('node:stream');
+				const { pipeline } = await import('node:stream/promises');
+				const fileStream = cws(tmpFile);
+				const nodeStream = Readable.fromWeb(dlResponse.body);
+				await pipeline(nodeStream, fileStream);
+				dlSpinner.succeed('Downloaded');
+
+				const installSpinner = ora('Installing via ADB...').start();
+				execFileSync('adb', ['install', '-r', tmpFile], { stdio: 'inherit' });
+				installSpinner.succeed('APK installed');
+
+				try { execFileSync('rm', ['-f', tmpFile], { stdio: 'pipe' }); } catch {}
+			} else {
+				// Linux platforms: stop service, download, extract, restart
+				if (!isRoot()) {
+					logger.error('This command must be run as root. Please use sudo.');
+					process.exit(1);
+				}
+
+				// Stop display service
+				const stopSpinner = ora('Stopping display service...').start();
+				try {
+					execFileSync('systemctl', ['stop', DISPLAY_SERVICE], { stdio: 'pipe' });
+					stopSpinner.succeed('Display service stopped');
+				} catch {
+					stopSpinner.warn('Display service not running');
+				}
+
+				// Download
+				const dlSpinner = ora(`Downloading ${asset.name}...`).start();
+				const tmpFile = `/tmp/${asset.name}`;
+
+				const dlResponse = await fetch(asset.browser_download_url, {
+					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+					redirect: 'follow',
+				});
+
+				if (!dlResponse.ok || !dlResponse.body) {
+					dlSpinner.fail('Download failed');
+					// Try to restart
+					try { execFileSync('systemctl', ['start', DISPLAY_SERVICE], { stdio: 'pipe' }); } catch {}
+					process.exit(1);
+				}
+
+				const { createWriteStream: cws } = await import('node:fs');
+				const { Readable } = await import('node:stream');
+				const { pipeline } = await import('node:stream/promises');
+				const fileStream = cws(tmpFile);
+				const nodeStream = Readable.fromWeb(dlResponse.body);
+				await pipeline(nodeStream, fileStream);
+				dlSpinner.succeed('Downloaded');
+
+				// Extract
+				const extractSpinner = ora('Extracting...').start();
+				execFileSync('mkdir', ['-p', installDir], { stdio: 'pipe' });
+				execFileSync('tar', ['-xzf', tmpFile, '-C', installDir], { stdio: 'pipe' });
+
+				// Make binary executable
+				try {
+					execFileSync('chmod', ['+x', join(installDir, 'fastybird_smart_panel')], { stdio: 'pipe' });
+				} catch {}
+
+				extractSpinner.succeed('Extracted');
+
+				// Cleanup
+				try { execFileSync('rm', ['-f', tmpFile], { stdio: 'pipe' }); } catch {}
+
+				// Start display service
+				const startSpinner = ora('Starting display service...').start();
+				try {
+					execFileSync('systemctl', ['start', DISPLAY_SERVICE], { stdio: 'pipe' });
+					startSpinner.succeed('Display service started');
+				} catch {
+					startSpinner.warn('Could not start display service. Start manually: sudo systemctl start ' + DISPLAY_SERVICE);
+				}
+			}
+
+			console.log();
+			logger.success(`Panel (${platform}) updated to ${release.tag_name}!`);
+			console.log();
+		} catch (error) {
+			spinner.fail('Update failed');
+			logger.error(error instanceof Error ? error.message : String(error));
 			process.exit(1);
 		}
 	});
