@@ -1,8 +1,8 @@
 <template>
-	<div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+	<div class="fixed inset-0 flex items-center justify-center bg-gray-100 p-4">
 		<el-card
 			shadow="always"
-			class="w-full max-w-2xl"
+			class="w-full max-w-2xl max-h-full overflow-auto"
 			body-class="p-0!"
 		>
 			<template #header>
@@ -20,6 +20,8 @@
 						<el-step :title="t('onboardingModule.wizard.steps.welcome')" />
 						<el-step :title="t('onboardingModule.wizard.steps.account')" />
 						<el-step :title="t('onboardingModule.wizard.steps.location')" />
+						<el-step :title="t('onboardingModule.wizard.steps.spaces')" />
+						<el-step :title="t('onboardingModule.wizard.steps.integrations')" />
 						<el-step :title="t('onboardingModule.wizard.steps.complete')" />
 					</el-steps>
 				</div>
@@ -30,10 +32,14 @@
 
 				<step-account
 					v-if="currentStep === OnboardingStep.ACCOUNT"
-					@create-account="handleCreateAccount"
+					ref="stepAccountEl"
 				/>
 
 				<step-location v-if="currentStep === OnboardingStep.LOCATION" />
+
+				<step-spaces v-if="currentStep === OnboardingStep.SPACES" />
+
+				<step-integrations v-if="currentStep === OnboardingStep.INTEGRATIONS" />
 
 				<step-complete
 					v-if="currentStep === OnboardingStep.COMPLETE"
@@ -52,8 +58,8 @@
 
 				<div class="flex gap-2">
 					<el-button
-						v-if="currentStep === OnboardingStep.LOCATION"
-						@click="handleSkipLocation"
+						v-if="currentStep === OnboardingStep.LOCATION || currentStep === OnboardingStep.SPACES || currentStep === OnboardingStep.INTEGRATIONS"
+						@click="nextStep"
 					>
 						{{ t('onboardingModule.wizard.buttons.skip') }}
 					</el-button>
@@ -67,17 +73,10 @@
 					</el-button>
 
 					<el-button
-						v-else-if="currentStep === OnboardingStep.ACCOUNT && !accountCreated"
+						v-else-if="currentStep === OnboardingStep.ACCOUNT"
 						type="primary"
-						disabled
-					>
-						{{ t('onboardingModule.wizard.buttons.next') }}
-					</el-button>
-
-					<el-button
-						v-else-if="currentStep === OnboardingStep.ACCOUNT && accountCreated"
-						type="primary"
-						@click="nextStep"
+						:loading="isLoading"
+						@click="handleAccountNext"
 					>
 						{{ t('onboardingModule.wizard.buttons.next') }}
 					</el-button>
@@ -86,6 +85,23 @@
 						v-else-if="currentStep === OnboardingStep.LOCATION"
 						type="primary"
 						:disabled="!locationData.city && (locationData.latitude === null || locationData.longitude === null)"
+						@click="nextStep"
+					>
+						{{ t('onboardingModule.wizard.buttons.next') }}
+					</el-button>
+
+					<el-button
+						v-else-if="currentStep === OnboardingStep.SPACES"
+						type="primary"
+						:disabled="spacesToCreate.length === 0"
+						@click="nextStep"
+					>
+						{{ t('onboardingModule.wizard.buttons.next') }}
+					</el-button>
+
+					<el-button
+						v-else-if="currentStep === OnboardingStep.INTEGRATIONS"
+						type="primary"
 						@click="nextStep"
 					>
 						{{ t('onboardingModule.wizard.buttons.next') }}
@@ -106,13 +122,15 @@
 </template>
 
 <script setup lang="ts">
+import { type ComponentPublicInstance, ref } from 'vue';
+
 import { ElButton, ElCard, ElStep, ElSteps, vLoading } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useFlashMessage } from '../../../common';
 import { RouteNames as AppRouteNames } from '../../../app.constants';
-import { StepAccount, StepComplete, StepLocation, StepWelcome } from '../components/components';
+import { StepAccount, StepComplete, StepIntegrations, StepLocation, StepSpaces, StepWelcome } from '../components/components';
 import { useAppOnboarding } from '../composables/composables';
 import { OnboardingStep } from '../onboarding.constants';
 
@@ -124,12 +142,15 @@ const { t } = useI18n();
 const router = useRouter();
 const flashMessage = useFlashMessage();
 
+const stepAccountEl = ref<ComponentPublicInstance<{ validate: () => Promise<boolean> }> | null>(null);
+
 const {
 	currentStep,
 	isLoading,
 	accountCreated,
 	locationConfigured,
 	locationData,
+	spacesToCreate,
 	isFirstStep,
 	isLastStep,
 	nextStep,
@@ -139,20 +160,23 @@ const {
 	reset,
 } = useAppOnboarding();
 
-const handleCreateAccount = async (): Promise<void> => {
+const handleAccountNext = async (): Promise<void> => {
+	if (accountCreated.value) {
+		nextStep();
+		return;
+	}
+
+	if (!stepAccountEl.value) return;
+
+	const valid = await stepAccountEl.value.validate();
+	if (!valid) return;
+
 	const success = await createAccount();
 
 	if (success) {
 		flashMessage.success(t('onboardingModule.account.messages.created'));
+		nextStep();
 	}
-};
-
-const handleSkipLocation = (): void => {
-	locationData.city = '';
-	locationData.latitude = null;
-	locationData.longitude = null;
-	locationData.timezone = '';
-	nextStep();
 };
 
 const handleFinish = async (): Promise<void> => {

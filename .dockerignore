@@ -9,7 +9,11 @@ node_modules
 **/.nyc_output
 apps/panel
 apps/website
-.docker
+# Exclude .docker except entrypoint script needed by Dockerfiles
+.docker/*
+!.docker/dev
+.docker/dev/*
+!.docker/dev/entrypoint.sh
 .github
 .ai-rules
 tasks

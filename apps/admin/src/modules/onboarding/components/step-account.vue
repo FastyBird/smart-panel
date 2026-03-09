@@ -20,12 +20,12 @@
 				:rules="rules"
 				label-position="top"
 				status-icon
-				@submit.prevent="onSubmit"
 			>
 				<div class="flex flex-row flex-nowrap gap-5">
 					<el-form-item
 						:label="t('onboardingModule.account.fields.firstName')"
 						prop="firstName"
+						class="flex-1"
 					>
 						<el-input
 							v-model="accountData.firstName"
@@ -37,6 +37,7 @@
 					<el-form-item
 						:label="t('onboardingModule.account.fields.lastName')"
 						prop="lastName"
+						class="flex-1"
 					>
 						<el-input
 							v-model="accountData.lastName"
@@ -81,16 +82,6 @@
 						show-password
 					/>
 				</el-form-item>
-
-				<el-button
-					type="primary"
-					size="large"
-					class="block w-full mt-4!"
-					:loading="isLoading"
-					@click="onSubmit"
-				>
-					{{ t('onboardingModule.account.buttons.create') }}
-				</el-button>
 			</el-form>
 		</template>
 	</div>
@@ -100,7 +91,7 @@
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
 
 import { type IAccountData, useAppOnboarding } from '../composables/composables';
 
@@ -108,13 +99,9 @@ defineOptions({
 	name: 'StepAccount',
 });
 
-const emit = defineEmits<{
-	(e: 'create-account'): void;
-}>();
-
 const { t } = useI18n();
 
-const { accountData, accountCreated, isLoading } = useAppOnboarding();
+const { accountData, accountCreated } = useAppOnboarding();
 
 const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -132,13 +119,16 @@ const rules = reactive<FormRules<IAccountData>>({
 	],
 });
 
-const onSubmit = async (): Promise<void> => {
-	if (!formEl.value) return;
+const validate = async (): Promise<boolean> => {
+	if (!formEl.value) return false;
 
-	await formEl.value.validate(async (valid: boolean): Promise<void> => {
-		if (valid) {
-			emit('create-account');
-		}
-	});
+	try {
+		await formEl.value.validate();
+		return true;
+	} catch {
+		return false;
+	}
 };
+
+defineExpose({ validate });
 </script>

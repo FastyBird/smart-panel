@@ -10,6 +10,8 @@ export enum OnboardingStep {
 	WELCOME = 0,
 	ACCOUNT = 1,
 	LOCATION = 2,
-	COMPLETE = 3,
+	SPACES = 3,
+	INTEGRATIONS = 4,
+	COMPLETE = 5,
 }
 

@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n';
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { sessionStoreKey } from '../../auth/store/keys';
+import { spacesStoreKey } from '../../spaces/store/keys';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { OnboardingStep } from '../onboarding.constants';
 import { useOnboardingStatus } from './useOnboardingStatus';
 
@@ -22,10 +24,17 @@ export interface ILocationData {
 	timezone: string;
 }
 
+export interface ISpaceToCreate {
+	name: string;
+	category: string | null;
+	icon: string | null;
+}
+
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
 const accountCreated = ref(false);
 const locationConfigured = ref(false);
+const spacesCreated = ref(false);
 
 const accountData = reactive<IAccountData>({
 	username: '',
@@ -42,12 +51,15 @@ const locationData = reactive<ILocationData>({
 	timezone: '',
 });
 
+const spacesToCreate = reactive<ISpaceToCreate[]>([]);
+
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
 	const storesManager = injectStoresManager();
 	const sessionStore = storesManager.getStore(sessionStoreKey);
+	const spacesStore = storesManager.getStore(spacesStoreKey);
 	const { invalidate, markComplete } = useOnboardingStatus();
 
 	const isFirstStep = computed(() => currentStep.value === OnboardingStep.WELCOME);
@@ -147,6 +159,33 @@ export const useAppOnboarding = () => {
 		}
 	};
 
+	const saveSpaces = async (): Promise<boolean> => {
+		if (spacesCreated.value) return true;
+
+		if (spacesToCreate.length === 0) {
+			return true;
+		}
+
+		try {
+			for (const space of spacesToCreate) {
+				await spacesStore.add({
+					data: {
+						name: space.name,
+						type: SpaceType.ROOM,
+						category: space.category as never,
+						icon: space.icon,
+					},
+				});
+			}
+
+			spacesCreated.value = true;
+
+			return true;
+		} catch {
+			return false;
+		}
+	};
+
 	const completeOnboarding = async (): Promise<boolean> => {
 		isLoading.value = true;
 
@@ -157,6 +196,16 @@ export const useAppOnboarding = () => {
 
 				if (!locationSaved) {
 					flashMessage.error(t('onboardingModule.location.messages.error'));
+					return false;
+				}
+			}
+
+			// Save spaces if any were added
+			if (spacesToCreate.length > 0) {
+				const spacesSaved = await saveSpaces();
+
+				if (!spacesSaved) {
+					flashMessage.error(t('onboardingModule.spaces.messages.error'));
 					return false;
 				}
 			}
@@ -182,6 +231,7 @@ export const useAppOnboarding = () => {
 		currentStep.value = OnboardingStep.WELCOME;
 		accountCreated.value = false;
 		locationConfigured.value = false;
+		spacesCreated.value = false;
 		accountData.username = '';
 		accountData.password = '';
 		accountData.email = '';
@@ -191,6 +241,7 @@ export const useAppOnboarding = () => {
 		locationData.latitude = null;
 		locationData.longitude = null;
 		locationData.timezone = '';
+		spacesToCreate.splice(0);
 	};
 
 	return {
@@ -199,14 +250,17 @@ export const useAppOnboarding = () => {
 		accountCreated,
 		locationConfigured,
 		hasLocationData,
+		spacesCreated,
 		accountData,
 		locationData,
+		spacesToCreate,
 		isFirstStep,
 		isLastStep,
 		nextStep,
 		prevStep,
 		createAccount,
 		saveLocation,
+		saveSpaces,
 		completeOnboarding,
 		reset,
 	};

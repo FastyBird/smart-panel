@@ -47,6 +47,32 @@
 					:size="24"
 					class="text-primary shrink-0"
 				>
+					<icon icon="mdi:floor-plan" />
+				</el-icon>
+				<div>
+					<div class="font-medium">{{ t('onboardingModule.welcome.steps.spaces') }}</div>
+					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.spacesDescription') }}</div>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 text-left p-3 rounded-lg bg-gray-50">
+				<el-icon
+					:size="24"
+					class="text-primary shrink-0"
+				>
+					<icon icon="mdi:puzzle" />
+				</el-icon>
+				<div>
+					<div class="font-medium">{{ t('onboardingModule.welcome.steps.integrations') }}</div>
+					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.integrationsDescription') }}</div>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 text-left p-3 rounded-lg bg-gray-50">
+				<el-icon
+					:size="24"
+					class="text-primary shrink-0"
+				>
 					<icon icon="mdi:check-circle" />
 				</el-icon>
 				<div>
