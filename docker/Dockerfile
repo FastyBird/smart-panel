@@ -16,7 +16,7 @@
 # ============================================================
 FROM node:22-alpine AS admin-builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /build
 
@@ -49,7 +49,7 @@ RUN pnpm run generate:spec && \
 # ============================================================
 FROM node:22-alpine AS backend-builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /build
 

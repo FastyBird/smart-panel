@@ -344,11 +344,14 @@ EOF
 create_systemd_service_elinux() {
 	local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
 
-	# Find the executable name (it's the binary in the bundle root)
-	local exec_name
-	exec_name=$(find "${INSTALL_DIR}" -maxdepth 1 -type f -executable | head -1)
+	# Find the main executable (ELF binary, not data files)
+	local exec_name="${INSTALL_DIR}/fastybird_smart_panel"
+	if [[ ! -x "$exec_name" ]]; then
+		exec_name=$(find "${INSTALL_DIR}" -maxdepth 1 -type f -executable -exec file {} \; | grep -i 'elf' | head -1 | cut -d: -f1)
+	fi
 	if [[ -z "$exec_name" ]]; then
-		exec_name="${INSTALL_DIR}/fastybird_smart_panel"
+		print_error "Could not find executable in ${INSTALL_DIR}"
+		exit 1
 	fi
 
 	cat > "$service_file" << EOF
@@ -586,7 +589,7 @@ main() {
 			install_elinux_deps
 
 			download_and_extract "$tag" "smart-panel-display-elinux-x64.tar.gz" "$INSTALL_DIR"
-			chmod +x "${INSTALL_DIR}"/* 2>/dev/null || true
+			chmod +x "${INSTALL_DIR}/fastybird_smart_panel" 2>/dev/null || true
 			configure_backend_url
 			create_systemd_service_elinux
 
