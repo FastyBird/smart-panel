@@ -522,7 +522,7 @@ program
 				}
 			}
 
-			if (targetVersion && targetVersion === currentVersion) {
+			if (targetVersion && compareSemver(currentVersion, targetVersion) >= 0) {
 				logger.success('Server is already up to date.');
 				console.log();
 				return;

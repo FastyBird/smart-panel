@@ -2,8 +2,9 @@
  * Compare two semver version strings.
  * Returns -1 if a < b, 0 if a === b, 1 if a > b.
  *
- * NOTE: This logic is duplicated in build/src/utils/version.ts.
- * If you change it here, update the other copy as well.
+ * IMPORTANT: This file must be kept in sync with build/src/utils/version.ts.
+ * Both files exist because `build/` and `apps/backend/` are separate compilation units
+ * that cannot share TypeScript sources at runtime. Any change here must be replicated there.
  */
 export function compareSemver(a: string, b: string): number {
 	const parseVersion = (v: string) => {
@@ -80,8 +81,8 @@ export function getUpdateType(current: string, latest: string): 'patch' | 'minor
 	const currentParts = cleanVersion(current).split('.').map(Number);
 	const latestParts = cleanVersion(latest).split('.').map(Number);
 
-	if ((latestParts[0] || 0) > (currentParts[0] || 0)) return 'major';
-	if ((latestParts[1] || 0) > (currentParts[1] || 0)) return 'minor';
+	if ((latestParts[0] || 0) !== (currentParts[0] || 0)) return 'major';
+	if ((latestParts[1] || 0) !== (currentParts[1] || 0)) return 'minor';
 
 	return 'patch';
 }
