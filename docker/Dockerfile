@@ -117,4 +117,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Run migrations then start the server
-CMD ["sh", "-c", "node dist/main.js"]
+CMD ["sh", "-c", "node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js && node dist/main.js"]

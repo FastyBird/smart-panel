@@ -2,7 +2,7 @@
  * Linux installer using systemd for service management
  */
 
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, unlinkSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,7 +73,7 @@ export class LinuxInstaller implements BaseInstaller {
 
 		// Check disk space (need at least 200 MB)
 		try {
-			const dfOutput = execSync('df -BM /var/lib 2>/dev/null', { encoding: 'utf-8' });
+			const dfOutput = execFileSync('df', ['-BM', '/var/lib'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
 			const lines = dfOutput.trim().split('\n');
 
 			if (lines.length >= 2) {
