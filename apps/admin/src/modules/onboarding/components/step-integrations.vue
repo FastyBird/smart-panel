@@ -33,7 +33,7 @@
 				<el-switch
 					:model-value="integration.enabled"
 					:disabled="!integration.canToggleEnabled"
-					@update:model-value="(val: boolean) => onToggle(integration.type, val)"
+					@update:model-value="(val: string | number | boolean) => onToggle(integration.type, !!val)"
 				/>
 			</div>
 

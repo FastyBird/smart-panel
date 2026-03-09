@@ -51,7 +51,7 @@
 			<template #footer>
 				<div class="flex justify-between">
 					<el-button
-						v-if="!isFirstStep && currentStep !== OnboardingStep.ACCOUNT"
+						v-if="currentStep > OnboardingStep.LOCATION"
 						@click="prevStep"
 					>
 						{{ t('onboardingModule.wizard.buttons.back') }}
@@ -186,9 +186,9 @@ const handleFinish = async (): Promise<void> => {
 	const success = await completeOnboarding();
 
 	if (success) {
-		reset();
 		flashMessage.success(t('onboardingModule.complete.messages.finished'));
-		router.push({ name: AppRouteNames.ROOT });
+		await router.push({ name: AppRouteNames.ROOT });
+		reset();
 	}
 };
 </script>

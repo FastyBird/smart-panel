@@ -32,6 +32,7 @@ export interface ISpaceToCreate {
 
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
+const accountRegistered = ref(false);
 const accountCreated = ref(false);
 const locationConfigured = ref(false);
 const spacesCreated = ref(false);
@@ -83,16 +84,20 @@ export const useAppOnboarding = () => {
 		isLoading.value = true;
 
 		try {
-			// Register the account
-			await sessionStore.register({
-				data: {
-					username: accountData.username,
-					password: accountData.password,
-					firstName: accountData.firstName,
-					lastName: accountData.lastName,
-					email: accountData.email,
-				},
-			});
+			// Register the account (skip if already registered from a previous partial attempt)
+			if (!accountRegistered.value) {
+				await sessionStore.register({
+					data: {
+						username: accountData.username,
+						password: accountData.password,
+						firstName: accountData.firstName,
+						lastName: accountData.lastName,
+						email: accountData.email,
+					},
+				});
+
+				accountRegistered.value = true;
+			}
 
 			// Auto-login after registration
 			await sessionStore.create({
@@ -229,6 +234,7 @@ export const useAppOnboarding = () => {
 
 	const reset = (): void => {
 		currentStep.value = OnboardingStep.WELCOME;
+		accountRegistered.value = false;
 		accountCreated.value = false;
 		locationConfigured.value = false;
 		spacesCreated.value = false;

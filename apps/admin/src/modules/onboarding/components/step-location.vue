@@ -52,7 +52,7 @@
 					class="flex-1"
 				>
 					<el-input
-						v-model="locationData.latitude"
+						v-model="latitudeModel"
 						:placeholder="t('onboardingModule.location.placeholders.latitude')"
 						name="latitude"
 						type="number"
@@ -66,7 +66,7 @@
 				>
 					<el-input
 						ref="longitudeInputEl"
-						v-model="locationData.longitude"
+						v-model="longitudeModel"
 						:placeholder="t('onboardingModule.location.placeholders.longitude')"
 						name="longitude"
 						type="number"
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput, type InputInstance } from 'element-plus';
@@ -127,6 +127,30 @@ const { searchCities, isSearching } = useGeolocation();
 const { locationData } = useAppOnboarding();
 
 const longitudeInputEl = ref<InputInstance | undefined>(undefined);
+
+const latitudeModel = computed({
+	get: () => (locationData.latitude !== null ? String(locationData.latitude) : ''),
+	set: (val: string) => {
+		if (val === '') {
+			locationData.latitude = null;
+			return;
+		}
+		const num = Number(val);
+		locationData.latitude = isNaN(num) ? null : num;
+	},
+});
+
+const longitudeModel = computed({
+	get: () => (locationData.longitude !== null ? String(locationData.longitude) : ''),
+	set: (val: string) => {
+		if (val === '') {
+			locationData.longitude = null;
+			return;
+		}
+		const num = Number(val);
+		locationData.longitude = isNaN(num) ? null : num;
+	},
+});
 
 const searchQuery = ref('');
 const isGettingLocation = ref(false);
