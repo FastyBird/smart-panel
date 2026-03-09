@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: FEATURE-LINUX-DEVICE-INSTALLATION
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -87,15 +87,15 @@ The project already has a basic update mechanism via the CLI:
 
 ### 4.1 Backend - Update Service
 
-- [ ] Create `UpdateService` in system module to manage update operations
-- [ ] Implement npm registry query to check for latest version (`https://registry.npmjs.org/@fastybird/smart-panel`)
-- [ ] Compare current version with latest available using semver
-- [ ] Cache version check results (refresh every 6 hours or on demand)
-- [ ] Detect update type (patch, minor, major) and include in response
+- [x] Create `UpdateService` in system module to manage update operations
+- [x] Implement npm registry query to check for latest version (`https://registry.npmjs.org/@fastybird/smart-panel`)
+- [x] Compare current version with latest available using semver
+- [x] Cache version check results (refresh every 6 hours or on demand)
+- [x] Detect update type (patch, minor, major) and include in response
 - [ ] Fetch release notes/changelog from GitHub releases API
 - [ ] Track update status (idle, checking, downloading, installing, migrating, restarting, complete, failed)
 - [ ] Implement update lock to prevent concurrent updates
-- [ ] Log all update operations for debugging
+- [x] Log all update operations for debugging
 
 ### 4.2 Backend - REST API Endpoints
 
@@ -128,13 +128,13 @@ The project already has a basic update mechanism via the CLI:
 
 ### 4.5 CLI - Enhanced Update Command
 
-- [ ] Add `--check` flag to only check for updates without installing
+- [x] Add `--check` flag to only check for updates without installing
 - [ ] Add `--changelog` flag to display release notes
-- [ ] Add `--yes` / `-y` flag to skip confirmation prompts
-- [ ] Display update type (patch/minor/major) with appropriate warnings
-- [ ] Show progress with spinner and phase information
-- [ ] Add `--allow-major` flag to explicitly allow major version updates
-- [ ] Default behavior: Prompt for confirmation on major updates
+- [x] Add `--yes` / `-y` flag to skip confirmation prompts
+- [x] Display update type (patch/minor/major) with appropriate warnings
+- [x] Show progress with spinner and phase information
+- [x] Add `--allow-major` flag to explicitly allow major version updates
+- [x] Default behavior: Prompt for confirmation on major updates
 
 ### 4.6 Admin - Update Status Display
 
