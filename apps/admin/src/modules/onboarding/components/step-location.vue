@@ -131,6 +131,7 @@ const longitudeInputEl = ref<InputInstance | undefined>(undefined);
 const latitudeModel = computed({
 	get: () => (locationData.latitude !== null ? String(locationData.latitude) : ''),
 	set: (val: string) => {
+		locationData.city = '';
 		if (val === '') {
 			locationData.latitude = null;
 			return;
@@ -143,6 +144,7 @@ const latitudeModel = computed({
 const longitudeModel = computed({
 	get: () => (locationData.longitude !== null ? String(locationData.longitude) : ''),
 	set: (val: string) => {
+		locationData.city = '';
 		if (val === '') {
 			locationData.longitude = null;
 			return;

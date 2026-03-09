@@ -103,7 +103,6 @@
 						<el-button
 							v-else-if="currentStep === OnboardingStep.SPACES"
 							type="primary"
-							:disabled="spacesToCreate.length === 0"
 							@click="nextStep"
 						>
 							{{ t('onboardingModule.wizard.buttons.next') }}
@@ -153,7 +152,6 @@ const {
 	accountCreated,
 	hasLocationData,
 	locationData,
-	spacesToCreate,
 	isLastStep,
 	nextStep,
 	prevStep,
