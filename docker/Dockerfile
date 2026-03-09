@@ -100,6 +100,7 @@ RUN mkdir -p /data/db /data/config
 
 # Environment defaults
 ENV NODE_ENV=production \
+	NODE_PATH=/app/root_node_modules \
 	FB_BACKEND_PORT=3000 \
 	FB_ADMIN_UI_PATH=/app/static \
 	FB_DB_PATH=/data/db \

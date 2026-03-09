@@ -153,8 +153,20 @@ get_latest_release_tag() {
 	local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases"
 
 	if [[ "$BETA" == true ]]; then
-		# Get latest pre-release
-		curl -sL "$api_url" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4
+		# Get latest pre-release (must filter out stable releases)
+		local json
+		json=$(curl -sL "$api_url?per_page=20")
+
+		if command -v jq &>/dev/null; then
+			echo "$json" | jq -r '[.[] | select(.prerelease == true)][0].tag_name'
+		else
+			echo "$json" | python3 -c "
+import sys, json
+for r in json.load(sys.stdin):
+    if r.get('prerelease'):
+        print(r['tag_name']); break
+" 2>/dev/null
+		fi
 	elif [[ -n "$VERSION" ]]; then
 		echo "v${VERSION}"
 	else
