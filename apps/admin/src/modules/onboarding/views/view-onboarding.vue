@@ -85,7 +85,7 @@
 					<el-button
 						v-else-if="currentStep === OnboardingStep.LOCATION"
 						type="primary"
-						:disabled="!locationData.city && locationData.latitude === null"
+						:disabled="!locationData.city && (locationData.latitude === null || locationData.longitude === null)"
 						@click="nextStep"
 					>
 						{{ t('onboardingModule.wizard.buttons.next') }}

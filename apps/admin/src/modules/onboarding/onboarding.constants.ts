@@ -13,9 +13,3 @@ export enum OnboardingStep {
 	COMPLETE = 3,
 }
 
-export const ONBOARDING_STEPS = [
-	OnboardingStep.WELCOME,
-	OnboardingStep.ACCOUNT,
-	OnboardingStep.LOCATION,
-	OnboardingStep.COMPLETE,
-] as const;
