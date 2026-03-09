@@ -1,18 +1,17 @@
 import { execFileSync } from 'child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
-import { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
 import inquirer from 'inquirer';
 import { Command, CommandRunner, Option } from 'nest-commander';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { PanelReleaseAsset, UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
-import { PanelReleaseAsset, UpdateService } from '../services/update.service';
-
-type PanelPlatform = 'flutter-pi' | 'elinux' | 'linux' | 'android';
+type PanelPlatform = 'flutter-pi-armv7' | 'flutter-pi-arm64' | 'elinux' | 'linux' | 'android';
 
 interface UpdatePanelOptions {
 	platform?: string;
@@ -23,7 +22,8 @@ interface UpdatePanelOptions {
 }
 
 const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
-	'flutter-pi': /smart-panel-display-(armv7|arm64)\.tar\.gz/,
+	'flutter-pi-armv7': /smart-panel-display-armv7\.tar\.gz/,
+	'flutter-pi-arm64': /smart-panel-display-arm64\.tar\.gz/,
 	elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
 	linux: /smart-panel-display-linux-x64\.tar\.gz/,
 	android: /smart-panel-display\.apk/,
@@ -81,7 +81,9 @@ export class UpdatePanelCommand extends CommandRunner {
 		const matchingAsset = panelInfo.assets.find((a) => pattern.test(a.name));
 
 		if (!matchingAsset) {
-			console.log(`\n  \x1b[31m✗\x1b[0m No build found for platform \x1b[1m${platform}\x1b[0m in release ${panelInfo.latest}.`);
+			console.log(
+				`\n  \x1b[31m✗\x1b[0m No build found for platform \x1b[1m${platform}\x1b[0m in release ${panelInfo.latest}.`,
+			);
 
 			if (panelInfo.assets.length > 0) {
 				console.log('\n  Available builds:');
@@ -135,10 +137,10 @@ export class UpdatePanelCommand extends CommandRunner {
 
 	@Option({
 		flags: '-p, --platform <platform>',
-		description: 'Panel platform: flutter-pi, elinux, linux, android',
+		description: 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, elinux, linux, android',
 	})
 	parsePlatform(val: string): string {
-		const allowed: PanelPlatform[] = ['flutter-pi', 'elinux', 'linux', 'android'];
+		const allowed: PanelPlatform[] = ['flutter-pi-armv7', 'flutter-pi-arm64', 'elinux', 'linux', 'android'];
 
 		if (!allowed.includes(val as PanelPlatform)) {
 			console.error(`\x1b[31m❌ Invalid platform: ${val}. Allowed: ${allowed.join(', ')}\x1b[0m`);
@@ -190,7 +192,8 @@ export class UpdatePanelCommand extends CommandRunner {
 				name: 'platform',
 				message: 'Select the panel platform to update:',
 				choices: [
-					{ name: 'Raspberry Pi (flutter-pi)', value: 'flutter-pi' },
+					{ name: 'Raspberry Pi - ARM 32-bit (flutter-pi-armv7)', value: 'flutter-pi-armv7' },
+					{ name: 'Raspberry Pi - ARM 64-bit (flutter-pi-arm64)', value: 'flutter-pi-arm64' },
 					{ name: 'Embedded Linux - DRM/GBM (elinux)', value: 'elinux' },
 					{ name: 'Linux Desktop (linux)', value: 'linux' },
 					{ name: 'Android (android)', value: 'android' },
@@ -211,13 +214,17 @@ export class UpdatePanelCommand extends CommandRunner {
 				const model = readFileSync(modelPath, 'utf-8').toLowerCase();
 
 				if (model.includes('raspberry')) {
-					return 'flutter-pi';
+					return arch === 'arm64' ? 'flutter-pi-arm64' : 'flutter-pi-armv7';
 				}
 			}
 
-			// ARM devices default to flutter-pi
-			if (arch === 'arm' || arch === 'arm64') {
-				return 'flutter-pi';
+			// ARM devices default to flutter-pi with correct arch
+			if (arch === 'arm64') {
+				return 'flutter-pi-arm64';
+			}
+
+			if (arch === 'arm') {
+				return 'flutter-pi-armv7';
 			}
 
 			// x64 Linux - check if display service exists
@@ -231,7 +238,11 @@ export class UpdatePanelCommand extends CommandRunner {
 		return null;
 	}
 
-	private async updateLinuxPanel(asset: PanelReleaseAsset, installDir: string, platform: PanelPlatform): Promise<void> {
+	private async updateLinuxPanel(
+		asset: PanelReleaseAsset,
+		installDir: string,
+		_platform: PanelPlatform,
+	): Promise<void> {
 		// Stop the display service
 		this.printStep('Stopping display service...');
 
@@ -322,10 +333,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		// Check for connected devices
 		try {
 			const output = execFileSync('adb', ['devices'], { encoding: 'utf-8' });
-			const deviceLines = output
-				.split('\n')
-				.filter((line) => line.includes('\tdevice'))
-				.length;
+			const deviceLines = output.split('\n').filter((line) => line.includes('\tdevice')).length;
 
 			if (deviceLines === 0) {
 				this.printError('No Android device connected via ADB.');
@@ -394,7 +402,9 @@ export class UpdatePanelCommand extends CommandRunner {
 			execFileSync('systemctl', ['start', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
 			this.printSuccess('Display service started');
 		} catch {
-			this.printWarning(`Could not start display service. Start manually: sudo systemctl start ${DISPLAY_SERVICE_NAME}`);
+			this.printWarning(
+				`Could not start display service. Start manually: sudo systemctl start ${DISPLAY_SERVICE_NAME}`,
+			);
 		}
 	}
 

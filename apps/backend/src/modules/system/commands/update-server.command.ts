@@ -5,9 +5,8 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { SYSTEM_MODULE_NAME } from '../system.constants';
-
 import { UpdateService } from '../services/update.service';
+import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 interface UpdateServerOptions {
 	version?: string;

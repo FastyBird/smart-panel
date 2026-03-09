@@ -625,7 +625,7 @@ program
 program
 	.command('update-panel')
 	.description('Update the Smart Panel display app')
-	.option('--platform <platform>', 'Panel platform: flutter-pi, elinux, linux, android')
+	.option('--platform <platform>', 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, elinux, linux, android')
 	.option('--version <version>', 'Install specific version')
 	.option('--beta', 'Install latest beta release')
 	.option('-d, --install-dir <dir>', 'Installation directory', '/opt/smart-panel-display')
@@ -647,7 +647,7 @@ program
 				try {
 					const model = readFileSync('/proc/device-tree/model', 'utf-8').toLowerCase();
 					if (model.includes('raspberry')) {
-						platform = 'flutter-pi';
+						platform = arch === 'arm64' ? 'flutter-pi-arm64' : 'flutter-pi-armv7';
 					}
 				} catch {
 					// Ignore
@@ -655,8 +655,10 @@ program
 			}
 
 			if (!platform) {
-				if (arch === 'armv7' || arch === 'arm64') {
-					platform = 'flutter-pi';
+				if (arch === 'arm64') {
+					platform = 'flutter-pi-arm64';
+				} else if (arch === 'armv7') {
+					platform = 'flutter-pi-armv7';
 				} else if (arch === 'x64') {
 					platform = 'elinux';
 				} else {
@@ -702,7 +704,8 @@ program
 
 			// Asset pattern matching
 			const assetPatterns = {
-				'flutter-pi': /smart-panel-display-(armv7|arm64)\.tar\.gz/,
+				'flutter-pi-armv7': /smart-panel-display-armv7\.tar\.gz/,
+				'flutter-pi-arm64': /smart-panel-display-arm64\.tar\.gz/,
 				elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
 				linux: /smart-panel-display-linux-x64\.tar\.gz/,
 				android: /smart-panel-display\.apk/,

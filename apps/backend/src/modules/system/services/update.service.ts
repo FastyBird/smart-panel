@@ -33,14 +33,15 @@ export class UpdateService {
 
 	private cachedServerInfo: VersionInfo | null = null;
 	private cachedPanelInfo: PanelVersionInfo | null = null;
-	private cacheTimestamp: number = 0;
+	private serverCacheTimestamp: number = 0;
+	private panelCacheTimestamp: number = 0;
 	private readonly CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 	getCurrentVersion(): string {
 		try {
-			const pkgJson = JSON.parse(
-				readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8'),
-			) as { version: string };
+			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')) as {
+				version: string;
+			};
 
 			return pkgJson.version;
 		} catch {
@@ -49,7 +50,7 @@ export class UpdateService {
 	}
 
 	async checkServerUpdate(channel: 'latest' | 'beta' | 'alpha' = 'latest'): Promise<VersionInfo> {
-		if (this.cachedServerInfo && Date.now() - this.cacheTimestamp < this.CACHE_TTL_MS) {
+		if (this.cachedServerInfo && Date.now() - this.serverCacheTimestamp < this.CACHE_TTL_MS) {
 			return this.cachedServerInfo;
 		}
 
@@ -84,7 +85,7 @@ export class UpdateService {
 				updateType,
 			};
 
-			this.cacheTimestamp = Date.now();
+			this.serverCacheTimestamp = Date.now();
 
 			return this.cachedServerInfo;
 		} catch (error) {
@@ -102,7 +103,7 @@ export class UpdateService {
 	}
 
 	async checkPanelUpdate(prerelease: boolean = false): Promise<PanelVersionInfo> {
-		if (this.cachedPanelInfo && Date.now() - this.cacheTimestamp < this.CACHE_TTL_MS) {
+		if (this.cachedPanelInfo && Date.now() - this.panelCacheTimestamp < this.CACHE_TTL_MS) {
 			return this.cachedPanelInfo;
 		}
 
@@ -135,10 +136,7 @@ export class UpdateService {
 			}
 
 			const panelAssets = release.assets
-				.filter(
-					(a) =>
-						a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'),
-				)
+				.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
 				.map((a) => ({
 					name: a.name,
 					downloadUrl: a.browser_download_url,
@@ -150,7 +148,7 @@ export class UpdateService {
 				assets: panelAssets,
 			};
 
-			this.cacheTimestamp = Date.now();
+			this.panelCacheTimestamp = Date.now();
 
 			return this.cachedPanelInfo;
 		} catch (error) {
@@ -165,29 +163,77 @@ export class UpdateService {
 	invalidateCache(): void {
 		this.cachedServerInfo = null;
 		this.cachedPanelInfo = null;
-		this.cacheTimestamp = 0;
+		this.serverCacheTimestamp = 0;
+		this.panelCacheTimestamp = 0;
 	}
 
 	private compareVersions(current: string, latest: string): number {
-		const cleanVersion = (v: string) => v.replace(/^v/, '').split('-')[0];
+		const parseVersion = (v: string) => {
+			const cleaned = v.replace(/^v/, '');
+			const [base, ...prereleaseParts] = cleaned.split('-');
+			const parts = base.split('.').map(Number);
+			const prerelease = prereleaseParts.length > 0 ? prereleaseParts.join('-') : null;
 
-		const currentParts = cleanVersion(current).split('.').map(Number);
-		const latestParts = cleanVersion(latest).split('.').map(Number);
+			return { parts, prerelease };
+		};
 
+		const currentParsed = parseVersion(current);
+		const latestParsed = parseVersion(latest);
+
+		// Compare base version (major.minor.patch)
 		for (let i = 0; i < 3; i++) {
-			const c = currentParts[i] || 0;
-			const l = latestParts[i] || 0;
+			const c = currentParsed.parts[i] || 0;
+			const l = latestParsed.parts[i] || 0;
 
 			if (c < l) return -1;
 			if (c > l) return 1;
 		}
 
 		// If base versions are equal, a pre-release version is less than the release version
-		const currentPrerelease = current.includes('-');
-		const latestPrerelease = latest.includes('-');
+		if (currentParsed.prerelease && !latestParsed.prerelease) return -1;
+		if (!currentParsed.prerelease && latestParsed.prerelease) return 1;
 
-		if (currentPrerelease && !latestPrerelease) return -1;
-		if (!currentPrerelease && latestPrerelease) return 1;
+		// Both are pre-releases with the same base version - compare pre-release identifiers
+		if (currentParsed.prerelease && latestParsed.prerelease) {
+			return this.comparePrereleaseIdentifiers(currentParsed.prerelease, latestParsed.prerelease);
+		}
+
+		return 0;
+	}
+
+	private comparePrereleaseIdentifiers(current: string, latest: string): number {
+		const currentParts = current.split('.');
+		const latestParts = latest.split('.');
+
+		const maxLength = Math.max(currentParts.length, latestParts.length);
+
+		for (let i = 0; i < maxLength; i++) {
+			// Fewer identifiers = lower precedence (per semver spec)
+			if (i >= currentParts.length) return -1;
+			if (i >= latestParts.length) return 1;
+
+			const cPart = currentParts[i];
+			const lPart = latestParts[i];
+
+			const cNum = Number(cPart);
+			const lNum = Number(lPart);
+
+			const cIsNum = !isNaN(cNum);
+			const lIsNum = !isNaN(lNum);
+
+			// Numeric identifiers have lower precedence than string identifiers
+			if (cIsNum && !lIsNum) return -1;
+			if (!cIsNum && lIsNum) return 1;
+
+			if (cIsNum && lIsNum) {
+				if (cNum < lNum) return -1;
+				if (cNum > lNum) return 1;
+			} else {
+				// Both are strings - compare lexically
+				if (cPart < lPart) return -1;
+				if (cPart > lPart) return 1;
+			}
+		}
 
 		return 0;
 	}
