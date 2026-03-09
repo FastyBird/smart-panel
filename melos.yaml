@@ -92,19 +92,23 @@ scripts:
     run: |
       echo "🐧 Building eLinux app (DRM-GBM backend)..." && \
       cd ./apps/panel && \
-      flutter-elinux build elinux \
-        --target-backend-type=gbm
+      flutter-elinux build elinux --release \
+        --target-backend-type=gbm \
+        --dart-define=APP_VERSION=${FB_PANEL_APP_VERSION:-1.0.0} \
+        --dart-define=APP_BUILD=${FB_PANEL_APP_BUILD:-1}
     description: Builds eLinux x64 app with DRM-GBM backend (no GUI required).
 
   build-panel-elinux-arm64:
     run: |
       echo "🐧 Building eLinux arm64 app (DRM-GBM backend)..." && \
       cd ./apps/panel && \
-      flutter-elinux build elinux \
+      flutter-elinux build elinux --release \
         --target-backend-type=gbm \
         --target-arch=arm64 \
         --target-compiler-triple=aarch64-linux-gnu \
-        --target-sysroot=/usr/aarch64-linux-gnu
+        --target-sysroot=/usr/aarch64-linux-gnu \
+        --dart-define=APP_VERSION=${FB_PANEL_APP_VERSION:-1.0.0} \
+        --dart-define=APP_BUILD=${FB_PANEL_APP_BUILD:-1}
     description: Builds eLinux arm64 app with DRM-GBM backend (cross-compiled).
 
 command:
