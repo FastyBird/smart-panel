@@ -47,11 +47,11 @@
 					:size="24"
 					class="text-primary shrink-0"
 				>
-					<icon icon="mdi:floor-plan" />
+					<icon icon="mdi:puzzle" />
 				</el-icon>
 				<div>
-					<div class="font-medium">{{ t('onboardingModule.welcome.steps.spaces') }}</div>
-					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.spacesDescription') }}</div>
+					<div class="font-medium">{{ t('onboardingModule.welcome.steps.integrations') }}</div>
+					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.integrationsDescription') }}</div>
 				</div>
 			</div>
 
@@ -60,11 +60,11 @@
 					:size="24"
 					class="text-primary shrink-0"
 				>
-					<icon icon="mdi:puzzle" />
+					<icon icon="mdi:floor-plan" />
 				</el-icon>
 				<div>
-					<div class="font-medium">{{ t('onboardingModule.welcome.steps.integrations') }}</div>
-					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.integrationsDescription') }}</div>
+					<div class="font-medium">{{ t('onboardingModule.welcome.steps.spaces') }}</div>
+					<div class="text-sm text-gray-400">{{ t('onboardingModule.welcome.steps.spacesDescription') }}</div>
 				</div>
 			</div>
 

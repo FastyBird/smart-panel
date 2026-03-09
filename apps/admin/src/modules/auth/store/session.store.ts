@@ -104,8 +104,16 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		} else {
 			try {
 				// Access token is missing, need to refresh tokens
-				await refresh();
+				const refreshed = await refresh();
+
+				if (!refreshed) {
+					clear();
+
+					return false;
+				}
 			} catch (error: unknown) {
+				clear();
+
 				if (error instanceof AuthApiException) {
 					throw error;
 				}

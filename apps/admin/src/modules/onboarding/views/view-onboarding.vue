@@ -2,8 +2,8 @@
 	<div class="fixed inset-0 flex items-center justify-center bg-gray-100 p-4">
 		<el-card
 			shadow="always"
-			class="w-full max-w-2xl max-h-full overflow-auto"
-			body-class="p-0!"
+			class="w-full max-w-2xl max-h-full flex flex-col overflow-hidden"
+			body-class="p-0! flex-1 overflow-auto"
 		>
 			<template #header>
 				<div class="flex flex-col items-center gap-4">
@@ -20,8 +20,8 @@
 						<el-step :title="t('onboardingModule.wizard.steps.welcome')" />
 						<el-step :title="t('onboardingModule.wizard.steps.account')" />
 						<el-step :title="t('onboardingModule.wizard.steps.location')" />
-						<el-step :title="t('onboardingModule.wizard.steps.spaces')" />
 						<el-step :title="t('onboardingModule.wizard.steps.integrations')" />
+						<el-step :title="t('onboardingModule.wizard.steps.spaces')" />
 						<el-step :title="t('onboardingModule.wizard.steps.complete')" />
 					</el-steps>
 				</div>
@@ -37,86 +37,88 @@
 
 				<step-location v-if="currentStep === OnboardingStep.LOCATION" />
 
-				<step-spaces v-if="currentStep === OnboardingStep.SPACES" />
-
 				<step-integrations v-if="currentStep === OnboardingStep.INTEGRATIONS" />
+
+				<step-spaces v-if="currentStep === OnboardingStep.SPACES" />
 
 				<step-complete
 					v-if="currentStep === OnboardingStep.COMPLETE"
-					:location-configured="locationConfigured"
+					:location-configured="hasLocationData"
 				/>
 			</div>
 
-			<div class="flex justify-between p-4 border-t border-gray-200">
-				<el-button
-					v-if="!isFirstStep && currentStep !== OnboardingStep.ACCOUNT"
-					@click="prevStep"
-				>
-					{{ t('onboardingModule.wizard.buttons.back') }}
-				</el-button>
-				<div v-else />
-
-				<div class="flex gap-2">
+			<template #footer>
+				<div class="flex justify-between">
 					<el-button
-						v-if="currentStep === OnboardingStep.LOCATION || currentStep === OnboardingStep.SPACES || currentStep === OnboardingStep.INTEGRATIONS"
-						@click="nextStep"
+						v-if="!isFirstStep && currentStep !== OnboardingStep.ACCOUNT"
+						@click="prevStep"
 					>
-						{{ t('onboardingModule.wizard.buttons.skip') }}
+						{{ t('onboardingModule.wizard.buttons.back') }}
 					</el-button>
+					<div v-else />
 
-					<el-button
-						v-if="currentStep === OnboardingStep.WELCOME"
-						type="primary"
-						@click="nextStep"
-					>
-						{{ t('onboardingModule.wizard.buttons.getStarted') }}
-					</el-button>
+					<div class="flex gap-2">
+						<el-button
+							v-if="currentStep === OnboardingStep.LOCATION || currentStep === OnboardingStep.SPACES || currentStep === OnboardingStep.INTEGRATIONS"
+							@click="nextStep"
+						>
+							{{ t('onboardingModule.wizard.buttons.skip') }}
+						</el-button>
 
-					<el-button
-						v-else-if="currentStep === OnboardingStep.ACCOUNT"
-						type="primary"
-						:loading="isLoading"
-						@click="handleAccountNext"
-					>
-						{{ t('onboardingModule.wizard.buttons.next') }}
-					</el-button>
+						<el-button
+							v-if="currentStep === OnboardingStep.WELCOME"
+							type="primary"
+							@click="nextStep"
+						>
+							{{ t('onboardingModule.wizard.buttons.getStarted') }}
+						</el-button>
 
-					<el-button
-						v-else-if="currentStep === OnboardingStep.LOCATION"
-						type="primary"
-						:disabled="!locationData.city && (locationData.latitude === null || locationData.longitude === null)"
-						@click="nextStep"
-					>
-						{{ t('onboardingModule.wizard.buttons.next') }}
-					</el-button>
+						<el-button
+							v-else-if="currentStep === OnboardingStep.ACCOUNT"
+							type="primary"
+							:loading="isLoading"
+							@click="handleAccountNext"
+						>
+							{{ t('onboardingModule.wizard.buttons.next') }}
+						</el-button>
 
-					<el-button
-						v-else-if="currentStep === OnboardingStep.SPACES"
-						type="primary"
-						:disabled="spacesToCreate.length === 0"
-						@click="nextStep"
-					>
-						{{ t('onboardingModule.wizard.buttons.next') }}
-					</el-button>
+						<el-button
+							v-else-if="currentStep === OnboardingStep.LOCATION"
+							type="primary"
+							:disabled="!locationData.city && (locationData.latitude === null || locationData.longitude === null)"
+							@click="nextStep"
+						>
+							{{ t('onboardingModule.wizard.buttons.next') }}
+						</el-button>
 
-					<el-button
-						v-else-if="currentStep === OnboardingStep.INTEGRATIONS"
-						type="primary"
-						@click="nextStep"
-					>
-						{{ t('onboardingModule.wizard.buttons.next') }}
-					</el-button>
+						<el-button
+							v-else-if="currentStep === OnboardingStep.INTEGRATIONS"
+							type="primary"
+							@click="nextStep"
+						>
+							{{ t('onboardingModule.wizard.buttons.next') }}
+						</el-button>
 
-					<el-button
-						v-else-if="isLastStep"
-						type="primary"
-						:loading="isLoading"
-						@click="handleFinish"
-					>
-						{{ t('onboardingModule.wizard.buttons.finishSetup') }}
-					</el-button>
+						<el-button
+							v-else-if="currentStep === OnboardingStep.SPACES"
+							type="primary"
+							:disabled="spacesToCreate.length === 0"
+							@click="nextStep"
+						>
+							{{ t('onboardingModule.wizard.buttons.next') }}
+						</el-button>
+
+						<el-button
+							v-else-if="isLastStep"
+							type="primary"
+							:loading="isLoading"
+							@click="handleFinish"
+						>
+							{{ t('onboardingModule.wizard.buttons.finishSetup') }}
+						</el-button>
+					</div>
 				</div>
-			</div>
+			</template>
 		</el-card>
 	</div>
 </template>
@@ -148,7 +150,7 @@ const {
 	currentStep,
 	isLoading,
 	accountCreated,
-	locationConfigured,
+	hasLocationData,
 	locationData,
 	spacesToCreate,
 	isFirstStep,

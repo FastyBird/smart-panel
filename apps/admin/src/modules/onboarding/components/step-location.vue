@@ -136,16 +136,19 @@ interface ISearchSuggestion extends IGeolocationCity {
 	value: string;
 }
 
-const setMarker = (lat: number, lon: number): void => {
+const setMarker = (lat: number, lon: number, adjustZoom = false): void => {
 	marker.value = [lat, lon];
 	center.value = [lat, lon];
-	zoom.value = 12;
+
+	if (adjustZoom) {
+		zoom.value = 12;
+	}
 };
 
 const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
 	const { lat, lng } = e.latlng;
 
-	setMarker(lat, lng);
+	marker.value = [lat, lng];
 
 	locationData.latitude = lat;
 	locationData.longitude = lng;
@@ -183,7 +186,7 @@ const handleCitySelect = (item: Record<string, unknown>): void => {
 	locationData.longitude = suggestion.lon;
 	searchQuery.value = '';
 
-	setMarker(suggestion.lat, suggestion.lon);
+	setMarker(suggestion.lat, suggestion.lon, true);
 };
 
 const getMyLocation = (): void => {
@@ -202,7 +205,7 @@ const getMyLocation = (): void => {
 			locationData.latitude = lat;
 			locationData.longitude = lng;
 
-			setMarker(lat, lng);
+			setMarker(lat, lng, true);
 
 			isGettingLocation.value = false;
 		},
