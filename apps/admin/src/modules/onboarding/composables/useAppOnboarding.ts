@@ -48,21 +48,6 @@ export const useAppOnboarding = () => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);
 	const { invalidate, markComplete } = useOnboardingStatus();
 
-	const canProceed = computed((): boolean => {
-		switch (currentStep.value) {
-			case OnboardingStep.WELCOME:
-				return true;
-			case OnboardingStep.ACCOUNT:
-				return accountCreated.value;
-			case OnboardingStep.LOCATION:
-				return true; // Location is optional
-			case OnboardingStep.COMPLETE:
-				return true;
-			default:
-				return false;
-		}
-	});
-
 	const isFirstStep = computed(() => currentStep.value === OnboardingStep.WELCOME);
 	const isLastStep = computed(() => currentStep.value === OnboardingStep.COMPLETE);
 
@@ -211,7 +196,6 @@ export const useAppOnboarding = () => {
 		hasLocationData,
 		accountData,
 		locationData,
-		canProceed,
 		isFirstStep,
 		isLastStep,
 		nextStep,

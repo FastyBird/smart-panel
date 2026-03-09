@@ -136,6 +136,7 @@ const {
 	prevStep,
 	createAccount,
 	completeOnboarding,
+	reset,
 } = useAppOnboarding();
 
 const handleCreateAccount = async (): Promise<void> => {
@@ -158,6 +159,7 @@ const handleFinish = async (): Promise<void> => {
 	const success = await completeOnboarding();
 
 	if (success) {
+		reset();
 		flashMessage.success(t('onboardingModule.complete.messages.finished'));
 		router.push({ name: AppRouteNames.ROOT });
 	}
