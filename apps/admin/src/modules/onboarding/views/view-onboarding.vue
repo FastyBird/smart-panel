@@ -37,7 +37,7 @@
 
 				<step-complete
 					v-if="currentStep === OnboardingStep.COMPLETE"
-					:location-configured="locationConfigured"
+					:location-configured="hasLocationData"
 				/>
 			</div>
 
@@ -128,7 +128,7 @@ const {
 	currentStep,
 	isLoading,
 	accountCreated,
-	locationConfigured,
+	hasLocationData,
 	locationData,
 	isFirstStep,
 	isLastStep,

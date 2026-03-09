@@ -117,12 +117,14 @@ export const useAppOnboarding = () => {
 		}
 	};
 
+	const hasLocationData = computed(() => !!(locationData.city || locationData.latitude !== null));
+
 	const saveLocation = async (): Promise<boolean> => {
+		if (locationConfigured.value) return true;
+
 		if (!locationData.city && locationData.latitude === null) {
 			return true;
 		}
-
-		isLoading.value = true;
 
 		try {
 			const locationBody: Record<string, unknown> = {
@@ -152,8 +154,6 @@ export const useAppOnboarding = () => {
 			return true;
 		} catch {
 			return false;
-		} finally {
-			isLoading.value = false;
 		}
 	};
 
@@ -163,7 +163,12 @@ export const useAppOnboarding = () => {
 		try {
 			// Save location if configured
 			if (locationData.city || locationData.latitude !== null) {
-				await saveLocation();
+				const locationSaved = await saveLocation();
+
+				if (!locationSaved) {
+					flashMessage.error('Failed to save location.');
+					return false;
+				}
 			}
 
 			// Mark onboarding as complete
@@ -203,6 +208,7 @@ export const useAppOnboarding = () => {
 		isLoading,
 		accountCreated,
 		locationConfigured,
+		hasLocationData,
 		accountData,
 		locationData,
 		canProceed,
