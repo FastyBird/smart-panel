@@ -31,10 +31,10 @@ export class UpdateService {
 	private readonly NPM_REGISTRY_URL = 'https://registry.npmjs.org/@fastybird/smart-panel';
 	private readonly GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
 
-	private cachedServerInfo: VersionInfo | null = null;
-	private cachedPanelInfo: PanelVersionInfo | null = null;
-	private serverCacheTimestamp: number = 0;
-	private panelCacheTimestamp: number = 0;
+	private cachedServerInfo: Map<string, VersionInfo> = new Map();
+	private cachedPanelInfo: Map<string, PanelVersionInfo> = new Map();
+	private serverCacheTimestamp: Map<string, number> = new Map();
+	private panelCacheTimestamp: Map<string, number> = new Map();
 	private readonly CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 	getCurrentVersion(): string {
@@ -50,8 +50,11 @@ export class UpdateService {
 	}
 
 	async checkServerUpdate(channel: 'latest' | 'beta' | 'alpha' = 'latest'): Promise<VersionInfo> {
-		if (this.cachedServerInfo && Date.now() - this.serverCacheTimestamp < this.CACHE_TTL_MS) {
-			return this.cachedServerInfo;
+		const cached = this.cachedServerInfo.get(channel);
+		const cacheTime = this.serverCacheTimestamp.get(channel) ?? 0;
+
+		if (cached && Date.now() - cacheTime < this.CACHE_TTL_MS) {
+			return cached;
 		}
 
 		const currentVersion = this.getCurrentVersion();
@@ -78,16 +81,17 @@ export class UpdateService {
 				}
 			}
 
-			this.cachedServerInfo = {
+			const result: VersionInfo = {
 				current: currentVersion,
 				latest: latestVersion,
 				updateAvailable,
 				updateType,
 			};
 
-			this.serverCacheTimestamp = Date.now();
+			this.cachedServerInfo.set(channel, result);
+			this.serverCacheTimestamp.set(channel, Date.now());
 
-			return this.cachedServerInfo;
+			return result;
 		} catch (error) {
 			const err = error as Error;
 
@@ -103,8 +107,12 @@ export class UpdateService {
 	}
 
 	async checkPanelUpdate(prerelease: boolean = false): Promise<PanelVersionInfo> {
-		if (this.cachedPanelInfo && Date.now() - this.panelCacheTimestamp < this.CACHE_TTL_MS) {
-			return this.cachedPanelInfo;
+		const cacheKey = prerelease ? 'prerelease' : 'stable';
+		const cached = this.cachedPanelInfo.get(cacheKey);
+		const cacheTime = this.panelCacheTimestamp.get(cacheKey) ?? 0;
+
+		if (cached && Date.now() - cacheTime < this.CACHE_TTL_MS) {
+			return cached;
 		}
 
 		try {
@@ -143,14 +151,15 @@ export class UpdateService {
 					size: a.size,
 				}));
 
-			this.cachedPanelInfo = {
+			const result: PanelVersionInfo = {
 				latest: release.tag_name.replace(/^v/, ''),
 				assets: panelAssets,
 			};
 
-			this.panelCacheTimestamp = Date.now();
+			this.cachedPanelInfo.set(cacheKey, result);
+			this.panelCacheTimestamp.set(cacheKey, Date.now());
 
-			return this.cachedPanelInfo;
+			return result;
 		} catch (error) {
 			const err = error as Error;
 
@@ -161,10 +170,10 @@ export class UpdateService {
 	}
 
 	invalidateCache(): void {
-		this.cachedServerInfo = null;
-		this.cachedPanelInfo = null;
-		this.serverCacheTimestamp = 0;
-		this.panelCacheTimestamp = 0;
+		this.cachedServerInfo.clear();
+		this.cachedPanelInfo.clear();
+		this.serverCacheTimestamp.clear();
+		this.panelCacheTimestamp.clear();
 	}
 
 	private compareVersions(current: string, latest: string): number {

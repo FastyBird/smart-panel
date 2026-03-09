@@ -31,6 +31,65 @@ const distPath = join(__dirname, '..', 'dist');
 const { getInstaller } = await import(join(distPath, 'installers', 'index.js'));
 const { logger, isRoot, hasSystemd, getArch, getDistroInfo } = await import(join(distPath, 'utils', 'index.js'));
 
+/**
+ * Compare two semver version strings.
+ * Returns -1 if a < b, 0 if a === b, 1 if a > b.
+ */
+function compareSemver(a, b) {
+	const parseVersion = (v) => {
+		const cleaned = v.replace(/^v/, '');
+		const [base, ...prereleaseParts] = cleaned.split('-');
+		const parts = base.split('.').map(Number);
+		const prerelease = prereleaseParts.length > 0 ? prereleaseParts.join('-') : null;
+
+		return { parts, prerelease };
+	};
+
+	const aParsed = parseVersion(a);
+	const bParsed = parseVersion(b);
+
+	for (let i = 0; i < 3; i++) {
+		const av = aParsed.parts[i] || 0;
+		const bv = bParsed.parts[i] || 0;
+
+		if (av < bv) return -1;
+		if (av > bv) return 1;
+	}
+
+	// Pre-release version has lower precedence than the release version
+	if (aParsed.prerelease && !bParsed.prerelease) return -1;
+	if (!aParsed.prerelease && bParsed.prerelease) return 1;
+
+	if (aParsed.prerelease && bParsed.prerelease) {
+		const aParts = aParsed.prerelease.split('.');
+		const bParts = bParsed.prerelease.split('.');
+		const maxLen = Math.max(aParts.length, bParts.length);
+
+		for (let i = 0; i < maxLen; i++) {
+			if (i >= aParts.length) return -1;
+			if (i >= bParts.length) return 1;
+
+			const aNum = Number(aParts[i]);
+			const bNum = Number(bParts[i]);
+			const aIsNum = !isNaN(aNum);
+			const bIsNum = !isNaN(bNum);
+
+			if (aIsNum && !bIsNum) return -1;
+			if (!aIsNum && bIsNum) return 1;
+
+			if (aIsNum && bIsNum) {
+				if (aNum < bNum) return -1;
+				if (aNum > bNum) return 1;
+			} else {
+				if (aParts[i] < bParts[i]) return -1;
+				if (aParts[i] > bParts[i]) return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 // Get package version
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
@@ -460,7 +519,7 @@ program
 				console.log('  Current version:', chalk.white(currentVersion));
 				console.log('  Latest version: ', latestVersion ? chalk.white(latestVersion) : chalk.yellow('unknown'));
 
-				if (latestVersion && latestVersion !== currentVersion) {
+				if (latestVersion && compareSemver(currentVersion, latestVersion) < 0) {
 					console.log();
 					logger.info(`Update available! Run ${chalk.cyan('sudo smart-panel-service update')} to install.`);
 				} else if (latestVersion) {
@@ -853,6 +912,8 @@ program
 		} catch (error) {
 			spinner.fail('Update failed');
 			logger.error(error instanceof Error ? error.message : String(error));
+			// Try to restart display service if it was stopped before the failure
+			try { execFileSync('systemctl', ['start', DISPLAY_SERVICE], { stdio: 'pipe' }); } catch {}
 			process.exit(1);
 		}
 	});
