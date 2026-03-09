@@ -31,6 +31,7 @@ const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
 
 const DEFAULT_INSTALL_DIR = '/opt/smart-panel-display';
 const DISPLAY_SERVICE_NAME = 'smart-panel-display';
+const GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
 
 @Command({
 	name: 'system:update:panel',
@@ -66,7 +67,13 @@ export class UpdatePanelCommand extends CommandRunner {
 		// Check for updates
 		console.log('  Checking for releases...\n');
 
-		const panelInfo = await this.updateService.checkPanelUpdate(prerelease);
+		let panelInfo: { latest: string | null; assets: PanelReleaseAsset[] };
+
+		if (options?.version) {
+			panelInfo = await this.fetchSpecificRelease(options.version);
+		} else {
+			panelInfo = await this.updateService.checkPanelUpdate(prerelease);
+		}
 
 		if (!panelInfo.latest) {
 			console.log('  \x1b[33m!\x1b[0m Could not determine latest panel release.\n');
@@ -177,6 +184,55 @@ export class UpdatePanelCommand extends CommandRunner {
 		return val;
 	}
 
+	@Option({
+		flags: '-v, --version <version>',
+		description: 'Install a specific release version (e.g. 1.2.3)',
+	})
+	parseVersion(val: string): string {
+		return val;
+	}
+
+	private async fetchSpecificRelease(version: string): Promise<{ latest: string | null; assets: PanelReleaseAsset[] }> {
+		try {
+			const response = await fetch(`${GITHUB_API_URL}/tags/v${version}`, {
+				headers: {
+					Accept: 'application/vnd.github.v3+json',
+					'User-Agent': 'FastyBird-SmartPanel',
+				},
+			});
+
+			if (!response.ok) {
+				this.logger.error(`GitHub API returned ${response.status} for version ${version}`);
+
+				return { latest: null, assets: [] };
+			}
+
+			const release = (await response.json()) as {
+				tag_name: string;
+				assets: Array<{ name: string; browser_download_url: string; size: number }>;
+			};
+
+			const panelAssets = release.assets
+				.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
+				.map((a) => ({
+					name: a.name,
+					downloadUrl: a.browser_download_url,
+					size: a.size,
+				}));
+
+			return {
+				latest: release.tag_name.replace(/^v/, ''),
+				assets: panelAssets,
+			};
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to fetch release ${version}: ${err.message}`);
+
+			return { latest: null, assets: [] };
+		}
+	}
+
 	private async detectOrAskPlatform(): Promise<PanelPlatform> {
 		// Try to auto-detect
 		const detected = this.detectPlatform();
@@ -253,12 +309,12 @@ export class UpdatePanelCommand extends CommandRunner {
 			this.printWarning('Could not stop display service (may not be running)');
 		}
 
-		// Download the archive
 		const tmpFile = `/tmp/${asset.name}`;
 
-		this.printStep(`Downloading ${asset.name}...`);
-
 		try {
+			// Download the archive
+			this.printStep(`Downloading ${asset.name}...`);
+
 			const response = await fetch(asset.downloadUrl, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
 				redirect: 'follow',
@@ -276,19 +332,10 @@ export class UpdatePanelCommand extends CommandRunner {
 			await pipeline(nodeStream, fileStream);
 
 			this.printSuccess('Download complete');
-		} catch (error) {
-			const err = error as Error;
 
-			this.printError(`Download failed: ${err.message}`);
-			this.startDisplayService();
+			// Extract the archive
+			this.printStep('Extracting update...');
 
-			process.exit(1);
-		}
-
-		// Extract the archive
-		this.printStep('Extracting update...');
-
-		try {
 			mkdirSync(installDir, { recursive: true });
 
 			execFileSync('tar', ['-xzf', tmpFile, '-C', installDir], { stdio: 'pipe' });
@@ -304,7 +351,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(`Extraction failed: ${err.message}`);
+			this.printError(err.message);
 			this.startDisplayService();
 
 			process.exit(1);
@@ -347,12 +394,12 @@ export class UpdatePanelCommand extends CommandRunner {
 			process.exit(1);
 		}
 
-		// Download the APK
 		const tmpFile = '/tmp/smart-panel-display.apk';
 
-		this.printStep('Downloading APK...');
-
 		try {
+			// Download the APK
+			this.printStep('Downloading APK...');
+
 			const response = await fetch(asset.downloadUrl, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
 				redirect: 'follow',
@@ -368,23 +415,16 @@ export class UpdatePanelCommand extends CommandRunner {
 			await pipeline(nodeStream, fileStream);
 
 			this.printSuccess('Download complete');
-		} catch (error) {
-			const err = error as Error;
 
-			this.printError(`Download failed: ${err.message}`);
-			process.exit(1);
-		}
+			// Install via ADB
+			this.printStep('Installing APK via ADB...');
 
-		// Install via ADB
-		this.printStep('Installing APK via ADB...');
-
-		try {
 			execFileSync('adb', ['install', '-r', tmpFile], { stdio: 'inherit' });
 			this.printSuccess('APK installed');
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(`ADB install failed: ${err.message}`);
+			this.printError(err.message);
 			process.exit(1);
 		} finally {
 			try {
