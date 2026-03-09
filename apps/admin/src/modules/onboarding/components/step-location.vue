@@ -178,6 +178,7 @@ const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
 
 	marker.value = [lat, lng];
 
+	locationData.city = '';
 	locationData.latitude = lat;
 	locationData.longitude = lng;
 };
@@ -185,6 +186,7 @@ const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
 const onMarkerMoveEnd = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
 	const { lat, lng } = e.target.getLatLng();
 
+	locationData.city = '';
 	locationData.latitude = lat;
 	locationData.longitude = lng;
 	marker.value = [lat, lng];

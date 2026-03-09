@@ -63,7 +63,6 @@ export const useAppOnboarding = () => {
 	const spacesStore = storesManager.getStore(spacesStoreKey);
 	const { invalidate, markComplete } = useOnboardingStatus();
 
-	const isFirstStep = computed(() => currentStep.value === OnboardingStep.WELCOME);
 	const isLastStep = computed(() => currentStep.value === OnboardingStep.COMPLETE);
 
 	const nextStep = (): void => {
@@ -261,7 +260,6 @@ export const useAppOnboarding = () => {
 		locationData,
 		spacesToCreate,
 		savedSpacesCount,
-		isFirstStep,
 		isLastStep,
 		nextStep,
 		prevStep,
