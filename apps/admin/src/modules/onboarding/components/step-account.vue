@@ -102,23 +102,19 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
 
-import type { IAccountData } from '../composables/composables';
+import { type IAccountData, useAppOnboarding } from '../composables/composables';
 
 defineOptions({
 	name: 'StepAccount',
 });
-
-const props = defineProps<{
-	accountData: IAccountData;
-	accountCreated: boolean;
-	isLoading: boolean;
-}>();
 
 const emit = defineEmits<{
 	(e: 'create-account'): void;
 }>();
 
 const { t } = useI18n();
+
+const { accountData, accountCreated, isLoading } = useAppOnboarding();
 
 const formEl = ref<FormInstance | undefined>(undefined);
 

@@ -59,15 +59,13 @@
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import type { ILocationData } from '../composables/composables';
+import { useAppOnboarding } from '../composables/composables';
 
 defineOptions({
 	name: 'StepLocation',
 });
 
-defineProps<{
-	locationData: ILocationData;
-}>();
-
 const { t } = useI18n();
+
+const { locationData } = useAppOnboarding();
 </script>

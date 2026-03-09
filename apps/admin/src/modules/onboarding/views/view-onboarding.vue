@@ -30,16 +30,10 @@
 
 				<step-account
 					v-if="currentStep === OnboardingStep.ACCOUNT"
-					:account-data="accountData"
-					:account-created="accountCreated"
-					:is-loading="isLoading"
 					@create-account="handleCreateAccount"
 				/>
 
-				<step-location
-					v-if="currentStep === OnboardingStep.LOCATION"
-					:location-data="locationData"
-				/>
+				<step-location v-if="currentStep === OnboardingStep.LOCATION" />
 
 				<step-complete
 					v-if="currentStep === OnboardingStep.COMPLETE"
@@ -112,7 +106,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue';
 import { ElButton, ElCard, ElStep, ElSteps, vLoading } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -136,7 +129,6 @@ const {
 	isLoading,
 	accountCreated,
 	locationConfigured,
-	accountData,
 	locationData,
 	isFirstStep,
 	isLastStep,
