@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: FEATURE-LINUX-DEVICE-INSTALLATION
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -44,10 +44,10 @@ I want enhanced setup automation, ARM tarball builds for production releases, an
 
 ### 4.1 ARM Tarball Builds for Production
 
-- [ ] Copy ARM build jobs from beta-release.yml to release.yml
-- [ ] Build ARMv7 (32-bit) tarball for production releases
-- [ ] Build ARM64 (64-bit) tarball for production releases
-- [ ] Attach ARM tarballs to GitHub releases
+- [x] Copy ARM build jobs from beta-release.yml to release.yml
+- [x] Build ARMv7 (32-bit) tarball for production releases
+- [x] Build ARM64 (64-bit) tarball for production releases
+- [x] Attach ARM tarballs to GitHub releases
 - [ ] Update documentation with manual tarball installation
 
 ### 4.2 Docker Support
