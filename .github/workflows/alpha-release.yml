@@ -464,6 +464,61 @@ jobs:
             smart-panel-display-linux-x64.tar.gz
             SHASUMS256-linux-x64.txt
 
+  build-elinux:
+    needs: "sync-versions"
+    name: "Build eLinux App (DRM-GBM)"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Setup flutter-elinux"
+        uses: "./.github/actions/setup-flutter-elinux"
+        with:
+          target-arch: "x64"
+
+      - name: "Build eLinux x64 App"
+        run: "melos build-panel-elinux"
+
+      - name: "Archive eLinux App"
+        run: |
+          tar -czvf smart-panel-display-elinux-x64.tar.gz -C ./apps/panel/build/elinux/x64/release/bundle .
+          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
+
+      - name: "Upload eLinux Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "elinux-x64"
+          path: |
+            smart-panel-display-elinux-x64.tar.gz
+            SHASUMS256-elinux-x64.txt
+
   build-application:
     needs: ["sync-versions", "build-display", "publish-admin", "publish-backend"]
     name: "Pre-Build Application"
@@ -585,7 +640,7 @@ jobs:
             SHASUMS256-arm64.txt
 
   pre-release-alpha:
-    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application", "build-android", "build-linux-desktop"]
+    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
     name: "Create Alpha Pre Release"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -666,6 +721,18 @@ jobs:
         uses: "AButler/upload-release-assets@v3.0"
         with:
           files: "smart-panel-display-linux-x64.tar.gz;SHASUMS256-linux-x64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
+
+      - name: "Download eLinux Build"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "elinux-x64"
+
+      - name: "Attach eLinux Build"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-elinux-x64.tar.gz;SHASUMS256-elinux-x64.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 

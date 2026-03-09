@@ -88,6 +88,25 @@ scripts:
         --dart-define=APP_BUILD=${FB_PANEL_APP_BUILD:-1}
     description: Builds Linux x64 desktop app in release mode.
 
+  build-panel-elinux:
+    run: |
+      echo "🐧 Building eLinux app (DRM-GBM backend)..." && \
+      cd ./apps/panel && \
+      flutter-elinux build elinux \
+        --target-backend-type=gbm
+    description: Builds eLinux x64 app with DRM-GBM backend (no GUI required).
+
+  build-panel-elinux-arm64:
+    run: |
+      echo "🐧 Building eLinux arm64 app (DRM-GBM backend)..." && \
+      cd ./apps/panel && \
+      flutter-elinux build elinux \
+        --target-backend-type=gbm \
+        --target-arch=arm64 \
+        --target-compiler-triple=aarch64-linux-gnu \
+        --target-sysroot=/usr/aarch64-linux-gnu
+    description: Builds eLinux arm64 app with DRM-GBM backend (cross-compiled).
+
 command:
   bootstrap:
     runPubGetInParallel: false
