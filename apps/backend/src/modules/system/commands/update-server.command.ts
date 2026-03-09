@@ -201,6 +201,13 @@ export class UpdateServerCommand extends CommandRunner {
 		defaultValue: 'latest',
 	})
 	parseChannel(val: string): string {
+		const allowed = ['latest', 'beta', 'alpha'];
+
+		if (!allowed.includes(val)) {
+			console.error(`\x1b[31m❌ Invalid channel: ${val}. Allowed: ${allowed.join(', ')}\x1b[0m`);
+			process.exit(1);
+		}
+
 		return val;
 	}
 
