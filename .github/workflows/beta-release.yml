@@ -333,7 +333,7 @@ jobs:
       - name: "Archive ARM64 Flutter Assets for (64-bit)"
         run: |
           tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-arm64.txt
+          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
 
       - name: "Upload ARM64 Artifact for (64-bit)"
         uses: "actions/upload-artifact@v4"
@@ -341,7 +341,7 @@ jobs:
           name: "flutter-assets-arm64"
           path: |
             smart-panel-display-arm64.tar.gz
-            SHASUMS256-arm64.txt
+            SHASUMS256-display-arm64.txt
 
   build-android:
     needs: "sync-versions"
