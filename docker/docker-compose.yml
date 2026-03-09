@@ -1,0 +1,60 @@
+#
+# FastyBird Smart Panel - Production Docker Compose
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# With InfluxDB (for time-series data):
+#   docker compose -f docker/docker-compose.yml --profile influxdb up -d
+#
+# Environment variables (set in .env or export):
+#   FB_BACKEND_PORT  - Backend port (default: 3000)
+#   FB_TOKEN_SECRET  - JWT secret (REQUIRED - generate with: openssl rand -base64 32)
+#
+
+services:
+  smart-panel:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ghcr.io/fastybird/smart-panel:latest
+    container_name: smart-panel
+    restart: unless-stopped
+    ports:
+      - "${FB_BACKEND_PORT:-3000}:3000"
+    volumes:
+      - smart-panel-data:/data
+    environment:
+      NODE_ENV: production
+      FB_BACKEND_PORT: 3000
+      FB_TOKEN_SECRET: "${FB_TOKEN_SECRET:?Set FB_TOKEN_SECRET (openssl rand -base64 32)}"
+      FB_DB_PATH: /data/db
+      FB_CONFIG_PATH: /data/config
+      FB_ADMIN_UI_PATH: /app/static
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # Optional: InfluxDB for time-series data (energy monitoring, property history)
+  influxdb:
+    image: influxdb:1.8
+    container_name: smart-panel-influxdb
+    restart: unless-stopped
+    profiles:
+      - influxdb
+    ports:
+      - "${INFLUXDB_PORT:-8086}:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    environment:
+      INFLUXDB_DB: smart_panel
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+
+volumes:
+  smart-panel-data:
+    name: smart-panel-data
+  influxdb-data:
+    name: smart-panel-influxdb-data

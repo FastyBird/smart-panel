@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: FEATURE-LINUX-DEVICE-INSTALLATION
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -44,30 +44,34 @@ I want enhanced setup automation, ARM tarball builds for production releases, an
 
 ### 4.1 ARM Tarball Builds for Production
 
-- [ ] Copy ARM build jobs from beta-release.yml to release.yml
-- [ ] Build ARMv7 (32-bit) tarball for production releases
-- [ ] Build ARM64 (64-bit) tarball for production releases
-- [ ] Attach ARM tarballs to GitHub releases
+- [x] Copy ARM build jobs from beta-release.yml to release.yml
+- [x] Build ARMv7 (32-bit) tarball for production releases
+- [x] Build ARM64 (64-bit) tarball for production releases
+- [x] Attach ARM tarballs to GitHub releases
 - [ ] Update documentation with manual tarball installation
 
 ### 4.2 Docker Support
 
-- [ ] Create `Dockerfile` for Smart Panel
-- [ ] Create `docker-compose.yml` with backend + admin
-- [ ] Include InfluxDB service in docker-compose (optional)
+- [x] Create `Dockerfile` for Smart Panel
+- [x] Create `docker-compose.yml` with backend + admin
+- [x] Include InfluxDB service in docker-compose (optional)
 - [ ] Document Docker installation method
-- [ ] Publish Docker image to GitHub Container Registry
-- [ ] Add Docker build to release workflows
+- [x] Publish Docker image to GitHub Container Registry
+- [x] Add Docker build to release workflows
 
 ### 4.3 Seed Data
 
-- [ ] Create seed data for example devices
-- [ ] Create seed data for example dashboard layout
-- [ ] Add `--seed` flag to `smart-panel-service install`
-- [ ] Implement `smart-panel-service seed` command
-- [ ] Document available seed data options
+> **Skipped** – A demo plugin (`apps/backend/src/plugins/`) already provides demo devices and spaces for new users. Seed data is not needed as a separate feature.
+
+- [ ] ~Create seed data for example devices~
+- [ ] ~Create seed data for example dashboard layout~
+- [ ] ~Add `--seed` flag to `smart-panel-service install`~
+- [ ] ~Implement `smart-panel-service seed` command~
+- [ ] ~Document available seed data options~
 
 ### 4.4 Interactive Setup Wizard
+
+> **Deferred** – Will be implemented as part of the onboarding wizard task.
 
 - [ ] Add `--interactive` flag to install command
 - [ ] Prompt for port number
@@ -77,11 +81,11 @@ I want enhanced setup automation, ARM tarball builds for production releases, an
 
 ### 4.5 Error Handling Improvements
 
-- [ ] Add recovery suggestions for common errors
-- [ ] Implement `smart-panel-service doctor` command
-- [ ] Check for port conflicts before installation
-- [ ] Verify disk space requirements
-- [ ] Test Node.js version compatibility
+- [x] Add recovery suggestions for common errors
+- [x] Implement `smart-panel-service doctor` command
+- [x] Check for port conflicts before installation
+- [x] Verify disk space requirements
+- [x] Test Node.js version compatibility
 
 ## 5. Example scenarios
 

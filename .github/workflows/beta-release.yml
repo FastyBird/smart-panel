@@ -81,7 +81,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Build Extension SDK"
-        run: "pnpm --filter @fastybird/smart-panel-extension-sdk"
+        run: "pnpm --filter @fastybird/smart-panel-extension-sdk build"
 
       - name: "Publish To NPM"
         uses: "./.github/actions/publish-npm-package"
@@ -314,7 +314,7 @@ jobs:
       - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
           tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-armv7.txt
+          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v4"
@@ -322,7 +322,7 @@ jobs:
           name: "flutter-assets"
           path: |
             smart-panel-display-armv7.tar.gz
-            SHASUMS256-armv7.txt
+            SHASUMS256-display-armv7.txt
 
       - name: "Build ARM64 Flutter Bundle for (64-bit)"
         env:
@@ -333,7 +333,7 @@ jobs:
       - name: "Archive ARM64 Flutter Assets for (64-bit)"
         run: |
           tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-arm64.txt
+          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
 
       - name: "Upload ARM64 Artifact for (64-bit)"
         uses: "actions/upload-artifact@v4"
@@ -341,7 +341,186 @@ jobs:
           name: "flutter-assets-arm64"
           path: |
             smart-panel-display-arm64.tar.gz
-            SHASUMS256-arm64.txt
+            SHASUMS256-display-arm64.txt
+
+  build-android:
+    needs: "sync-versions"
+    name: "Build Android APK"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        java-version: [ "17" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Java"
+        uses: "actions/setup-java@v4"
+        with:
+          distribution: "temurin"
+          java-version: "${{ matrix.java-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Build Android APK"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-apk"
+
+      - name: "Rename APK"
+        run: |
+          cp ./apps/panel/build/app/outputs/flutter-apk/app-release.apk smart-panel-display.apk
+          shasum -a 256 smart-panel-display.apk > SHASUMS256-android.txt
+
+      - name: "Upload Android Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "android-apk"
+          path: |
+            smart-panel-display.apk
+            SHASUMS256-android.txt
+
+  build-linux-desktop:
+    needs: "sync-versions"
+    name: "Build Linux Desktop App"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Install Linux Build Dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Enable Linux Desktop"
+        run: flutter config --enable-linux-desktop
+
+      - name: "Build Linux Desktop App"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-linux"
+
+      - name: "Archive Linux Desktop App"
+        run: |
+          tar -czvf smart-panel-display-linux-x64.tar.gz -C ./apps/panel/build/linux/x64/release/bundle .
+          shasum -a 256 smart-panel-display-linux-x64.tar.gz > SHASUMS256-linux-x64.txt
+
+      - name: "Upload Linux Desktop Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "linux-desktop"
+          path: |
+            smart-panel-display-linux-x64.tar.gz
+            SHASUMS256-linux-x64.txt
+
+  build-elinux:
+    needs: "sync-versions"
+    name: "Build eLinux App (DRM-GBM)"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Setup flutter-elinux"
+        uses: "./.github/actions/setup-flutter-elinux"
+        with:
+          target-arch: "x64"
+
+      - name: "Build eLinux x64 App"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-elinux"
+
+      - name: "Archive eLinux App"
+        run: |
+          tar -czvf smart-panel-display-elinux-x64.tar.gz -C ./apps/panel/build/elinux/x64/release/bundle .
+          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
+
+      - name: "Upload eLinux Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "elinux-x64"
+          path: |
+            smart-panel-display-elinux-x64.tar.gz
+            SHASUMS256-elinux-x64.txt
 
   build-application:
     needs: ["sync-versions", "build-display", "publish-admin", "publish-backend"]
@@ -464,7 +643,7 @@ jobs:
             SHASUMS256-arm64.txt
 
   pre-release-beta:
-    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application"]
+    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
     name: "Create Beta Pre Release"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -524,8 +703,98 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 
+      - name: "Download Android APK"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "android-apk"
+
+      - name: "Attach Android APK"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display.apk;SHASUMS256-android.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
+
+      - name: "Download Linux Desktop Build"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "linux-desktop"
+
+      - name: "Attach Linux Desktop Build"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-linux-x64.tar.gz;SHASUMS256-linux-x64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
+
+      - name: "Download eLinux Build"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "elinux-x64"
+
+      - name: "Attach eLinux Build"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-elinux-x64.tar.gz;SHASUMS256-elinux-x64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
+
+      - name: "Prepare Installation Scripts"
+        run: |
+          chmod +x scripts/install.sh
+          cp scripts/install.sh install.sh
+          chmod +x scripts/install-panel.sh
+          cp scripts/install-panel.sh install-panel.sh
+
+      - name: "Attach Installation Scripts"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "install.sh;install-panel.sh"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
+
+  build-docker:
+    needs: "sync-versions"
+    name: "Build & Push Docker Image"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Set up Docker Buildx"
+        uses: "docker/setup-buildx-action@v3"
+
+      - name: "Set up QEMU"
+        uses: "docker/setup-qemu-action@v3"
+
+      - name: "Login to GitHub Container Registry"
+        uses: "docker/login-action@v3"
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and Push Docker Image"
+        uses: "docker/build-push-action@v6"
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/fastybird/smart-panel:beta
+            ghcr.io/fastybird/smart-panel:${{ needs.sync-versions.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   release-to-discord:
-    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-application", "pre-release-beta" ]
+    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-application", "pre-release-beta", "build-docker" ]
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"
 

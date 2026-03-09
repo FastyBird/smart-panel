@@ -1,0 +1,44 @@
+# .github/actions/setup-flutter-elinux/action.yml
+
+name: "Setup Flutter eLinux"
+
+description: "Install flutter-elinux tool and dependencies for building embedded Linux apps (DRM-GBM backend)"
+
+inputs:
+  target-arch:
+    description: "Target architecture: x64 or arm64"
+    default: "x64"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Install eLinux Build Dependencies"
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang cmake pkg-config \
+          libegl1-mesa-dev libgles2-mesa-dev \
+          libxkbcommon-dev \
+          libdrm-dev libgbm-dev \
+          libinput-dev libudev-dev libsystemd-dev
+      shell: bash
+
+    - name: "Install Cross-Compilation Tools (ARM64)"
+      if: inputs.target-arch == 'arm64'
+      run: |
+        sudo apt-get install -y \
+          gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+          libstdc++-12-dev-arm64-cross
+      shell: bash
+
+    - name: "Install flutter-elinux"
+      run: |
+        git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
+        sudo mv /tmp/flutter-elinux /opt/flutter-elinux
+        echo "/opt/flutter-elinux/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: "Verify flutter-elinux"
+      run: flutter-elinux doctor
+      shell: bash

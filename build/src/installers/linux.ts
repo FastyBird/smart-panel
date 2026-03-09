@@ -64,6 +64,30 @@ export class LinuxInstaller implements BaseInstaller {
 			errors.push('Node.js executable not found');
 		}
 
+		// Check Node.js version (>= 20 required)
+		const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+
+		if (nodeMajor < 20) {
+			errors.push(`Node.js >= 20 is required (found v${process.versions.node})`);
+		}
+
+		// Check disk space (need at least 200 MB)
+		try {
+			const dfOutput = execFileSync('df', ['-BM', '/var/lib'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+			const lines = dfOutput.trim().split('\n');
+
+			if (lines.length >= 2) {
+				const parts = lines[1].split(/\s+/);
+				const availMB = parseInt(parts[3], 10);
+
+				if (availMB < 200) {
+					errors.push(`Insufficient disk space: ${availMB} MB available (200 MB minimum required)`);
+				}
+			}
+		} catch {
+			// Ignore - non-critical check
+		}
+
 		return errors;
 	}
 

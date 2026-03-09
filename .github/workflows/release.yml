@@ -154,7 +154,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Build Extension SDK"
-        run: "pnpm --filter @fastybird/smart-panel-extension-sdk"
+        run: "pnpm --filter @fastybird/smart-panel-extension-sdk build"
 
       - name: "Publish To NPM"
         uses: "./.github/actions/publish-npm-package"
@@ -345,9 +345,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-flutter:
+  build-display:
     needs: [ "tag", "sync-versions", "changelog" ]
-    name: "Build Flutter Display App"
+    name: "Build Flutter Display App (flutter-pi)"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -379,25 +379,345 @@ jobs:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
 
-      - name: "Build Flutter Bundle"
-        working-directory: "./apps/panel"
-        run: "flutter build bundle"
+      - name: "Build ARMv7 Flutter Bundle (32-bit)"
+        env:
+          FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-arm-release"
 
-      - name: "Archive Flutter Assets"
+      - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
-          tar -czvf smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz > SHASUMS256.txt
+          tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
 
-      - name: "Upload Artifact"
+      - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v4"
         with:
           name: "flutter-assets"
           path: |
-            smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz
+            smart-panel-display-armv7.tar.gz
+            SHASUMS256-display-armv7.txt
+
+      - name: "Build ARM64 Flutter Bundle (64-bit)"
+        env:
+          FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-arm64-release"
+
+      - name: "Archive ARM64 Flutter Assets (64-bit)"
+        run: |
+          tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
+
+      - name: "Upload ARM64 Artifact (64-bit)"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "flutter-assets-arm64"
+          path: |
+            smart-panel-display-arm64.tar.gz
+            SHASUMS256-display-arm64.txt
+
+  build-android:
+    needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Build Android APK"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        java-version: [ "17" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Java"
+        uses: "actions/setup-java@v4"
+        with:
+          distribution: "temurin"
+          java-version: "${{ matrix.java-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Build Android APK"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-apk"
+
+      - name: "Rename APK"
+        run: |
+          cp ./apps/panel/build/app/outputs/flutter-apk/app-release.apk smart-panel-display.apk
+          shasum -a 256 smart-panel-display.apk > SHASUMS256-android.txt
+
+      - name: "Upload Android Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "android-apk"
+          path: |
+            smart-panel-display.apk
+            SHASUMS256-android.txt
+
+  build-linux-desktop:
+    needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Build Linux Desktop App"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Install Linux Build Dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Enable Linux Desktop"
+        run: flutter config --enable-linux-desktop
+
+      - name: "Build Linux Desktop App"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-linux"
+
+      - name: "Archive Linux Desktop App"
+        run: |
+          tar -czvf smart-panel-display-linux-x64.tar.gz -C ./apps/panel/build/linux/x64/release/bundle .
+          shasum -a 256 smart-panel-display-linux-x64.tar.gz > SHASUMS256-linux-x64.txt
+
+      - name: "Upload Linux Desktop Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "linux-desktop"
+          path: |
+            smart-panel-display-linux-x64.tar.gz
+            SHASUMS256-linux-x64.txt
+
+  build-elinux:
+    needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Build eLinux App (DRM-GBM)"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Setup flutter-elinux"
+        uses: "./.github/actions/setup-flutter-elinux"
+        with:
+          target-arch: "x64"
+
+      - name: "Build eLinux x64 App"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: "melos build-panel-elinux"
+
+      - name: "Archive eLinux App"
+        run: |
+          tar -czvf smart-panel-display-elinux-x64.tar.gz -C ./apps/panel/build/elinux/x64/release/bundle .
+          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
+
+      - name: "Upload eLinux Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "elinux-x64"
+          path: |
+            smart-panel-display-elinux-x64.tar.gz
+            SHASUMS256-elinux-x64.txt
+
+  build-application:
+    needs: ["tag", "sync-versions", "build-display", "publish-admin", "publish-backend"]
+    name: "Build Full Application"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Remove Monorepo Configuration"
+        run: |
+          rm ./package.json
+          rm ./pnpm-lock.yaml
+          rm ./pnpm-workspace.yaml
+
+      - name: "Download Display Assets (32-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: flutter-assets
+
+      - name: "Extract Flutter Assets to /build-armv7/display"
+        run: |
+          mkdir -p ./build-armv7/display
+          tar -xzf ./smart-panel-display-armv7.tar.gz -C ./build-armv7/display
+
+      - name: "Prepare Build Folder (32-bit)"
+        run: |
+          cp ./build/package.json ./build-armv7/
+          cp ./build/.env.local ./build-armv7/
+          cp .env ./build-armv7/
+          cp -r var ./build-armv7/
+
+      - name: "Build ARMv7 App (32-bit)"
+        uses: "pguyot/arm-runner-action@v2"
+        with:
+          base_image: "raspios_lite:latest"
+          cpu: "cortex-a7"
+          cpu_info: "cpuinfo/raspberrypi_zero2_w"
+          image_additional_mb: "4096"
+          copy_repository_path: "/opt/smart-panel"
+          copy_artifact_path: "smart-panel.tar.gz;SHASUMS256.txt"
+          copy_artifact_dest: "."
+          commands: |
+            apt-get update
+            apt-get install -y curl git
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            apt-get install -y nodejs
+            cd /opt/smart-panel/build-armv7
+            npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
+            npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
+            npm install --omit=dev
+            cd /opt/smart-panel
+            tar -czvf smart-panel.tar.gz -C ./build-armv7 .
+            shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
+
+      - name: "Upload ARMv7 Artifact (32-bit)"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "application-build-armv7"
+          path: |
+            smart-panel.tar.gz
             SHASUMS256.txt
 
+      - name: "Download Display Assets (64-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "flutter-assets-arm64"
+
+      - name: "Extract Flutter Assets to /build-arm64/display"
+        run: |
+          mkdir -p ./build-arm64/display
+          tar -xzf ./smart-panel-display-arm64.tar.gz -C ./build-arm64/display
+
+      - name: "Prepare Build Folder (64-bit)"
+        run: |
+          cp ./build/package.json ./build-arm64/
+          cp ./build/.env.local ./build-arm64/
+          cp .env ./build-arm64/
+          cp -r var ./build-arm64/
+
+      - name: "Build ARM64 App (64-bit)"
+        uses: "pguyot/arm-runner-action@v2"
+        with:
+          base_image: "raspios_lite_arm64:latest"
+          cpu: "cortex-a53"
+          cpu_info: "cpuinfo/raspberrypi_zero2_w_arm64"
+          image_additional_mb: "4096"
+          copy_repository_path: "/opt/smart-panel"
+          copy_artifact_path: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
+          copy_artifact_dest: "."
+          commands: |
+            apt-get update
+            apt-get install -y curl git
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            apt-get install -y nodejs
+            cd /opt/smart-panel/build-arm64
+            npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
+            npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
+            npm install --omit=dev
+            cd /opt/smart-panel
+            tar -czvf smart-panel-arm64.tar.gz -C ./build-arm64 .
+            shasum -a 256 smart-panel-arm64.tar.gz > SHASUMS256-arm64.txt
+
+      - name: "Upload ARM64 Artifact (64-bit)"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "application-build-arm64"
+          path: |
+            smart-panel-arm64.tar.gz
+            SHASUMS256-arm64.txt
+
   attach-artifacts:
-    needs: ["tag", "publish-backend", "publish-admin", "publish-main-package", "build-flutter"]
+    needs: ["tag", "sync-versions", "publish-backend", "publish-admin", "publish-main-package", "build-display", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
     name: "Attach Artifacts ${{ needs.tag.outputs.version }}"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -414,25 +734,153 @@ jobs:
       - name: "Pull Updated Branch"
         run: git pull origin ${{ github.ref_name }}
 
-      - name: "Download Flutter Assets"
+      - name: "Summary"
+        run: |
+          echo "### Release v${{ needs.tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin App: v${{ needs.publish-admin.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: "Download ARMv7 Application Build (32-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "application-build-armv7"
+
+      - name: "Attach ARMv7 Application Build (32-bit)"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel.tar.gz;SHASUMS256.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download ARM64 Application Build (64-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "application-build-arm64"
+
+      - name: "Attach ARM64 Application Build (64-bit)"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
         uses: "actions/download-artifact@v4"
         with:
           name: "flutter-assets"
 
-      - name: "Prepare Installation Script"
-        run: |
-          chmod +x scripts/install.sh
-          cp scripts/install.sh install.sh
-
-      - name: "Attach Flutter Assets"
+      - name: "Attach ARMv7 Display Assets (flutter-pi 32-bit)"
         uses: "AButler/upload-release-assets@v3.0"
         with:
-          files: "smart-panel-display-${{ needs.tag.outputs.version }}.tar.gz;SHASUMS256.txt;install.sh"
+          files: "smart-panel-display-armv7.tar.gz;SHASUMS256-display-armv7.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.tag.outputs.version }}
 
+      - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "flutter-assets-arm64"
+
+      - name: "Attach ARM64 Display Assets (flutter-pi 64-bit)"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-arm64.tar.gz;SHASUMS256-display-arm64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download Android APK"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "android-apk"
+
+      - name: "Attach Android APK"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display.apk;SHASUMS256-android.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download Linux Desktop Build"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "linux-desktop"
+
+      - name: "Attach Linux Desktop Build"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-linux-x64.tar.gz;SHASUMS256-linux-x64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Download eLinux Build"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "elinux-x64"
+
+      - name: "Attach eLinux Build"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "smart-panel-display-elinux-x64.tar.gz;SHASUMS256-elinux-x64.txt"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+      - name: "Prepare Installation Scripts"
+        run: |
+          chmod +x scripts/install.sh
+          cp scripts/install.sh install.sh
+          chmod +x scripts/install-panel.sh
+          cp scripts/install-panel.sh install-panel.sh
+
+      - name: "Attach Installation Scripts"
+        uses: "AButler/upload-release-assets@v3.0"
+        with:
+          files: "install.sh;install-panel.sh"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: v${{ needs.tag.outputs.version }}
+
+  build-docker:
+    needs: ["tag", "sync-versions", "changelog"]
+    name: "Build & Push Docker Image"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Set up Docker Buildx"
+        uses: "docker/setup-buildx-action@v3"
+
+      - name: "Set up QEMU"
+        uses: "docker/setup-qemu-action@v3"
+
+      - name: "Login to GitHub Container Registry"
+        uses: "docker/login-action@v3"
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and Push Docker Image"
+        uses: "docker/build-push-action@v6"
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/fastybird/smart-panel:latest
+            ghcr.io/fastybird/smart-panel:${{ needs.sync-versions.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   release-to-discord:
-    needs: "attach-artifacts"
+    needs: ["attach-artifacts", "build-docker"]
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"
 

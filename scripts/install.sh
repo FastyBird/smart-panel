@@ -7,6 +7,7 @@
 #   curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
 #
 # Options:
+#   --alpha   Install alpha (dev) version
 #   --beta    Install beta version
 #   --version Install specific version (e.g., --version 1.0.0)
 #   --port    Set HTTP port (default: 3000)
@@ -29,11 +30,16 @@ DEFAULT_PORT=3000
 
 # Parse arguments
 VERSION=""
+ALPHA=false
 BETA=false
 PORT=$DEFAULT_PORT
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
+		--alpha)
+			ALPHA=true
+			shift
+			;;
 		--beta)
 			BETA=true
 			shift
@@ -178,6 +184,8 @@ install_smart_panel() {
 
 	if [[ -n "$VERSION" ]]; then
 		install_cmd="npm install -g $PACKAGE_NAME@$VERSION"
+	elif [[ "$ALPHA" == true ]]; then
+		install_cmd="npm install -g $PACKAGE_NAME@alpha"
 	elif [[ "$BETA" == true ]]; then
 		install_cmd="npm install -g $PACKAGE_NAME@beta"
 	fi
