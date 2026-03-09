@@ -35,6 +35,7 @@ const isLoading = ref(false);
 const accountRegistered = ref(false);
 const accountCreated = ref(false);
 const locationConfigured = ref(false);
+const savedSpacesCount = ref(0);
 
 const accountData = reactive<IAccountData>({
 	username: '',
@@ -181,7 +182,8 @@ export const useAppOnboarding = () => {
 					},
 				});
 
-				// Remove saved space so retries don't create duplicates
+				// Track saved count for summary display, then remove to prevent duplicates on retry
+				savedSpacesCount.value++;
 				spacesToCreate.splice(0, 1);
 			}
 
@@ -237,6 +239,7 @@ export const useAppOnboarding = () => {
 		accountRegistered.value = false;
 		accountCreated.value = false;
 		locationConfigured.value = false;
+		savedSpacesCount.value = 0;
 		accountData.username = '';
 		accountData.password = '';
 		accountData.email = '';
@@ -257,6 +260,7 @@ export const useAppOnboarding = () => {
 		accountData,
 		locationData,
 		spacesToCreate,
+		savedSpacesCount,
 		isFirstStep,
 		isLastStep,
 		nextStep,

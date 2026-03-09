@@ -131,9 +131,9 @@ defineProps<{
 const { t } = useI18n();
 const storesManager = injectStoresManager();
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
-const { spacesToCreate } = useAppOnboarding();
+const { spacesToCreate, savedSpacesCount } = useAppOnboarding();
 
-const spacesCount = computed(() => spacesToCreate.length);
+const spacesCount = computed(() => savedSpacesCount.value + spacesToCreate.length);
 
 const integrationsCount = computed(() => {
 	return Object.values(extensionsStore.data)

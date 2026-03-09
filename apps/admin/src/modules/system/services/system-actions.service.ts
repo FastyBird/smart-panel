@@ -122,14 +122,14 @@ export class SystemActionsService {
 		}
 	}
 
-	factoryResetDone(): void {
+	async factoryResetDone(): Promise<void> {
 		this.factoryResetLoading?.close();
 		this.factoryResetLoading = null;
 
 		const accountManager = injectAccountManager(this.app);
 
 		if (accountManager) {
-			accountManager.signOut();
+			await accountManager.signOut();
 		}
 	}
 

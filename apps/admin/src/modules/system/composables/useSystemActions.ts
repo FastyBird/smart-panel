@@ -129,7 +129,7 @@ export const useSystemActions = (): IUseSystemActions => {
 						return;
 					}
 
-					systemActions.factoryResetDone();
+					await systemActions.factoryResetDone();
 
 					invalidateOnboarding();
 
