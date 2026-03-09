@@ -678,7 +678,7 @@ program
 			let releaseUrl = options.beta
 				? `${GITHUB_API_URL}?per_page=10`
 				: options.version
-					? `${GITHUB_API_URL}/tags/v${options.version}`
+					? `${GITHUB_API_URL}/tags/v${options.version.replace(/^v/, '')}`
 					: `${GITHUB_API_URL}/latest`;
 
 			const response = await fetch(releaseUrl, {

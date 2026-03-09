@@ -33,7 +33,6 @@ const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
 
 const DEFAULT_INSTALL_DIR = '/opt/smart-panel-display';
 const DISPLAY_SERVICE_NAME = 'smart-panel-display';
-const GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
 
 @Command({
 	name: 'system:update:panel',
@@ -72,7 +71,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		let panelInfo: { latest: string | null; assets: PanelReleaseAsset[] };
 
 		if (options?.version) {
-			panelInfo = await this.fetchSpecificRelease(options.version);
+			panelInfo = await this.updateService.fetchPanelRelease(options.version);
 		} else {
 			panelInfo = await this.updateService.checkPanelUpdate(prerelease);
 		}
@@ -192,47 +191,6 @@ export class UpdatePanelCommand extends CommandRunner {
 	})
 	parseVersion(val: string): string {
 		return val;
-	}
-
-	private async fetchSpecificRelease(version: string): Promise<{ latest: string | null; assets: PanelReleaseAsset[] }> {
-		try {
-			const response = await fetch(`${GITHUB_API_URL}/tags/v${version}`, {
-				headers: {
-					Accept: 'application/vnd.github.v3+json',
-					'User-Agent': 'FastyBird-SmartPanel',
-				},
-			});
-
-			if (!response.ok) {
-				this.logger.error(`GitHub API returned ${response.status} for version ${version}`);
-
-				return { latest: null, assets: [] };
-			}
-
-			const release = (await response.json()) as {
-				tag_name: string;
-				assets: Array<{ name: string; browser_download_url: string; size: number }>;
-			};
-
-			const panelAssets = release.assets
-				.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
-				.map((a) => ({
-					name: a.name,
-					downloadUrl: a.browser_download_url,
-					size: a.size,
-				}));
-
-			return {
-				latest: release.tag_name.replace(/^v/, ''),
-				assets: panelAssets,
-			};
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to fetch release ${version}: ${err.message}`);
-
-			return { latest: null, assets: [] };
-		}
 	}
 
 	private async detectOrAskPlatform(): Promise<PanelPlatform> {

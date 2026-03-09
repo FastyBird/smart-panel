@@ -144,18 +144,7 @@ export class UpdateService {
 				release = (await response.json()) as typeof release;
 			}
 
-			const panelAssets = release.assets
-				.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
-				.map((a) => ({
-					name: a.name,
-					downloadUrl: a.browser_download_url,
-					size: a.size,
-				}));
-
-			const result: PanelVersionInfo = {
-				latest: release.tag_name.replace(/^v/, ''),
-				assets: panelAssets,
-			};
+			const result = this.mapReleaseAssets(release);
 
 			this.cachedPanelInfo.set(cacheKey, result);
 			this.panelCacheTimestamp.set(cacheKey, Date.now());
@@ -168,6 +157,56 @@ export class UpdateService {
 
 			return { latest: null, assets: [] };
 		}
+	}
+
+	async fetchPanelRelease(version: string): Promise<PanelVersionInfo> {
+		const cleanVersion = version.replace(/^v/, '');
+
+		try {
+			const response = await fetch(`${this.GITHUB_API_URL}/tags/v${cleanVersion}`, {
+				headers: {
+					Accept: 'application/vnd.github.v3+json',
+					'User-Agent': 'FastyBird-SmartPanel',
+				},
+			});
+
+			if (!response.ok) {
+				this.logger.error(`GitHub API returned ${response.status} for version ${cleanVersion}`);
+
+				return { latest: null, assets: [] };
+			}
+
+			const release = (await response.json()) as {
+				tag_name: string;
+				assets: Array<{ name: string; browser_download_url: string; size: number }>;
+			};
+
+			return this.mapReleaseAssets(release);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to fetch panel release ${cleanVersion}: ${err.message}`);
+
+			return { latest: null, assets: [] };
+		}
+	}
+
+	private mapReleaseAssets(release: {
+		tag_name: string;
+		assets: Array<{ name: string; browser_download_url: string; size: number }>;
+	}): PanelVersionInfo {
+		const panelAssets = release.assets
+			.filter((a) => a.name.startsWith('smart-panel-display') || a.name.endsWith('.apk') || a.name.includes('panel'))
+			.map((a) => ({
+				name: a.name,
+				downloadUrl: a.browser_download_url,
+				size: a.size,
+			}));
+
+		return {
+			latest: release.tag_name.replace(/^v/, ''),
+			assets: panelAssets,
+		};
 	}
 
 	invalidateCache(): void {
