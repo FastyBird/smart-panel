@@ -511,6 +511,7 @@ program
 			// Check what version we'd update to
 			const currentVersion = packageJson.version;
 			let targetVersion = options.version || null;
+			const isExplicitVersion = !!targetVersion;
 
 			if (!targetVersion) {
 				try {
@@ -522,7 +523,7 @@ program
 				}
 			}
 
-			if (targetVersion && compareSemver(currentVersion, targetVersion) >= 0) {
+			if (!isExplicitVersion && targetVersion && compareSemver(currentVersion, targetVersion) >= 0) {
 				logger.success('Server is already up to date.');
 				console.log();
 				return;

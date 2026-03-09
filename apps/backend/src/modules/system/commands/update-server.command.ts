@@ -8,6 +8,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
+import { printError, printStep, printSuccess, printWarning } from './command.utils';
+
 interface UpdateServerOptions {
 	version?: string;
 	channel?: string;
@@ -115,29 +117,29 @@ export class UpdateServerCommand extends CommandRunner {
 
 		// Stop the service
 		if (!skipRestart) {
-			this.printStep('Stopping service...');
+			printStep('Stopping service...');
 
 			try {
 				execFileSync('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
-				this.printSuccess('Service stopped');
+				printSuccess('Service stopped');
 			} catch {
-				this.printWarning('Could not stop service (may not be running as systemd service)');
+				printWarning('Could not stop service (may not be running as systemd service)');
 			}
 		}
 
 		// Install the update via npm
-		this.printStep('Installing update...');
+		printStep('Installing update...');
 
 		try {
 			const packageSpec = `@fastybird/smart-panel@${targetVersion}`;
 
 			execFileSync('npm', ['install', '-g', packageSpec], { stdio: 'inherit' });
 
-			this.printSuccess('Package updated');
+			printSuccess('Package updated');
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(`Failed to install update: ${err.message}`);
+			printError(`Failed to install update: ${err.message}`);
 			this.logger.error(`Server update failed during npm install: ${err.message}`);
 
 			// Try to restart if we stopped it
@@ -149,7 +151,7 @@ export class UpdateServerCommand extends CommandRunner {
 		}
 
 		// Run database migrations
-		this.printStep('Running database migrations...');
+		printStep('Running database migrations...');
 
 		try {
 			const dataDir = process.env.FB_DB_PATH || process.env.FB_DATA_DIR || '/var/lib/smart-panel';
@@ -160,18 +162,18 @@ export class UpdateServerCommand extends CommandRunner {
 				{
 					env: {
 						...process.env,
-						FB_DB_PATH: dataDir.includes('/data') ? dataDir : `${dataDir}/data`,
+						FB_DB_PATH: dataDir.endsWith('/data') ? dataDir : `${dataDir}/data`,
 						NODE_ENV: 'production',
 					},
 					stdio: 'inherit',
 				},
 			);
 
-			this.printSuccess('Migrations complete');
+			printSuccess('Migrations complete');
 		} catch (error) {
 			const err = error as Error;
 
-			this.printWarning(`Migration warning: ${err.message}`);
+			printWarning(`Migration warning: ${err.message}`);
 			this.logger.warn(`Migration had issues: ${err.message}`);
 		}
 
@@ -230,29 +232,13 @@ export class UpdateServerCommand extends CommandRunner {
 	}
 
 	private restartService(): void {
-		this.printStep('Starting service...');
+		printStep('Starting service...');
 
 		try {
 			execFileSync('systemctl', ['start', 'smart-panel'], { stdio: 'pipe' });
-			this.printSuccess('Service started');
+			printSuccess('Service started');
 		} catch {
-			this.printWarning('Could not start service. Start manually: sudo systemctl start smart-panel');
+			printWarning('Could not start service. Start manually: sudo systemctl start smart-panel');
 		}
-	}
-
-	private printStep(msg: string): void {
-		console.log(`  \x1b[34m→\x1b[0m ${msg}`);
-	}
-
-	private printSuccess(msg: string): void {
-		console.log(`  \x1b[32m✓\x1b[0m ${msg}`);
-	}
-
-	private printWarning(msg: string): void {
-		console.log(`  \x1b[33m!\x1b[0m ${msg}`);
-	}
-
-	private printError(msg: string): void {
-		console.log(`  \x1b[31m✗\x1b[0m ${msg}`);
 	}
 }

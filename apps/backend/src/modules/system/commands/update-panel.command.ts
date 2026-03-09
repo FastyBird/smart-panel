@@ -11,6 +11,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { PanelReleaseAsset, UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
+import { printError, printStep, printSuccess, printWarning } from './command.utils';
+
 type PanelPlatform = 'flutter-pi-armv7' | 'flutter-pi-arm64' | 'elinux' | 'linux' | 'android';
 
 interface UpdatePanelOptions {
@@ -300,20 +302,20 @@ export class UpdatePanelCommand extends CommandRunner {
 		_platform: PanelPlatform,
 	): Promise<void> {
 		// Stop the display service
-		this.printStep('Stopping display service...');
+		printStep('Stopping display service...');
 
 		try {
 			execFileSync('systemctl', ['stop', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
-			this.printSuccess('Display service stopped');
+			printSuccess('Display service stopped');
 		} catch {
-			this.printWarning('Could not stop display service (may not be running)');
+			printWarning('Could not stop display service (may not be running)');
 		}
 
 		const tmpFile = `/tmp/${asset.name}`;
 
 		try {
 			// Download the archive
-			this.printStep(`Downloading ${asset.name}...`);
+			printStep(`Downloading ${asset.name}...`);
 
 			const response = await fetch(asset.downloadUrl, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
@@ -331,10 +333,10 @@ export class UpdatePanelCommand extends CommandRunner {
 
 			await pipeline(nodeStream, fileStream);
 
-			this.printSuccess('Download complete');
+			printSuccess('Download complete');
 
 			// Extract the archive
-			this.printStep('Extracting update...');
+			printStep('Extracting update...');
 
 			mkdirSync(installDir, { recursive: true });
 
@@ -347,11 +349,11 @@ export class UpdatePanelCommand extends CommandRunner {
 				execFileSync('chmod', ['+x', binaryPath], { stdio: 'pipe' });
 			}
 
-			this.printSuccess('Extraction complete');
+			printSuccess('Extraction complete');
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(err.message);
+			printError(err.message);
 			this.startDisplayService();
 
 			process.exit(1);
@@ -373,7 +375,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		try {
 			execFileSync('which', ['adb'], { stdio: 'pipe' });
 		} catch {
-			this.printError('ADB is not installed. Install with: apt-get install android-tools-adb');
+			printError('ADB is not installed. Install with: apt-get install android-tools-adb');
 			process.exit(1);
 		}
 
@@ -383,14 +385,14 @@ export class UpdatePanelCommand extends CommandRunner {
 			const deviceLines = output.split('\n').filter((line) => line.includes('\tdevice')).length;
 
 			if (deviceLines === 0) {
-				this.printError('No Android device connected via ADB.');
-				this.printError('Connect your device and enable USB debugging.');
+				printError('No Android device connected via ADB.');
+				printError('Connect your device and enable USB debugging.');
 				process.exit(1);
 			}
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(`ADB error: ${err.message}`);
+			printError(`ADB error: ${err.message}`);
 			process.exit(1);
 		}
 
@@ -398,7 +400,7 @@ export class UpdatePanelCommand extends CommandRunner {
 
 		try {
 			// Download the APK
-			this.printStep('Downloading APK...');
+			printStep('Downloading APK...');
 
 			const response = await fetch(asset.downloadUrl, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
@@ -414,17 +416,17 @@ export class UpdatePanelCommand extends CommandRunner {
 
 			await pipeline(nodeStream, fileStream);
 
-			this.printSuccess('Download complete');
+			printSuccess('Download complete');
 
 			// Install via ADB
-			this.printStep('Installing APK via ADB...');
+			printStep('Installing APK via ADB...');
 
 			execFileSync('adb', ['install', '-r', tmpFile], { stdio: 'inherit' });
-			this.printSuccess('APK installed');
+			printSuccess('APK installed');
 		} catch (error) {
 			const err = error as Error;
 
-			this.printError(err.message);
+			printError(err.message);
 			process.exit(1);
 		} finally {
 			try {
@@ -436,31 +438,13 @@ export class UpdatePanelCommand extends CommandRunner {
 	}
 
 	private startDisplayService(): void {
-		this.printStep('Starting display service...');
+		printStep('Starting display service...');
 
 		try {
 			execFileSync('systemctl', ['start', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
-			this.printSuccess('Display service started');
+			printSuccess('Display service started');
 		} catch {
-			this.printWarning(
-				`Could not start display service. Start manually: sudo systemctl start ${DISPLAY_SERVICE_NAME}`,
-			);
+			printWarning(`Could not start display service. Start manually: sudo systemctl start ${DISPLAY_SERVICE_NAME}`);
 		}
-	}
-
-	private printStep(msg: string): void {
-		console.log(`  \x1b[34m→\x1b[0m ${msg}`);
-	}
-
-	private printSuccess(msg: string): void {
-		console.log(`  \x1b[32m✓\x1b[0m ${msg}`);
-	}
-
-	private printWarning(msg: string): void {
-		console.log(`  \x1b[33m!\x1b[0m ${msg}`);
-	}
-
-	private printError(msg: string): void {
-		console.log(`  \x1b[31m✗\x1b[0m ${msg}`);
 	}
 }
