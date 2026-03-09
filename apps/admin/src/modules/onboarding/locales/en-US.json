@@ -56,8 +56,7 @@
 			"emailRequired": "Email is required",
 			"emailInvalid": "Please enter a valid email address",
 			"usernameRequired": "Username is required",
-			"passwordRequired": "Password is required",
-			"passwordMin": "Password must be at least 6 characters"
+			"passwordRequired": "Password is required"
 		},
 		"messages": {
 			"created": "Your account has been created and you are now logged in.",

@@ -113,10 +113,7 @@ const rules = reactive<FormRules<IAccountData>>({
 	firstName: [{ required: true, message: t('onboardingModule.account.validation.firstNameRequired'), trigger: 'change' }],
 	lastName: [{ required: true, message: t('onboardingModule.account.validation.lastNameRequired'), trigger: 'change' }],
 	username: [{ required: true, message: t('onboardingModule.account.validation.usernameRequired'), trigger: 'change' }],
-	password: [
-		{ required: true, message: t('onboardingModule.account.validation.passwordRequired'), trigger: 'change' },
-		{ min: 6, message: t('onboardingModule.account.validation.passwordMin'), trigger: 'change' },
-	],
+	password: [{ required: true, message: t('onboardingModule.account.validation.passwordRequired'), trigger: 'change' }],
 });
 
 const validate = async (): Promise<boolean> => {

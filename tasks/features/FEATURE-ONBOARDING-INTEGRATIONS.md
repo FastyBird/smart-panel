@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-APP-ONBOARDING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -49,13 +49,13 @@ During onboarding, users should be able to see what integrations are available (
 
 ## 4. Acceptance criteria
 
-- [ ] Step shows cards for each available device integration plugin
-- [ ] Each card has plugin name, icon, and brief description
-- [ ] User can toggle integrations on/off
-- [ ] Enabled integrations are persisted to plugin config
-- [ ] Step can be skipped entirely
-- [ ] At least 3 integrations shown: Home Assistant, Shelly, Zigbee2MQTT
-- [ ] Visual indication of which integrations are enabled
+- [x] Step shows cards for each available device integration plugin
+- [x] Each card has plugin name, icon, and brief description
+- [x] User can toggle integrations on/off
+- [x] Enabled integrations are persisted to plugin config
+- [x] Step can be skipped entirely
+- [x] At least 3 integrations shown: Home Assistant, Shelly, Zigbee2MQTT
+- [x] Visual indication of which integrations are enabled
 
 ## 5. Example scenarios
 

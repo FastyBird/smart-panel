@@ -153,30 +153,26 @@ export class SystemCommandService implements OnModuleInit {
 				}
 			}
 
-			await this.platformService.reboot();
-
 			this.eventEmitter.emit(EventType.SYSTEM_FACTORY_RESET, {
 				triggered_by: user.id,
 				status: 'ok',
 			});
 
+			// Reboot is best-effort — the reset already succeeded at this point
+			try {
+				await this.platformService.reboot();
+			} catch (rebootError) {
+				if (rebootError instanceof PlatformNotSupportedException) {
+					this.logger.warn('Reboot not supported on this platform after factory reset');
+				} else {
+					this.logger.warn(`Failed to reboot after factory reset: ${(rebootError as Error).message}`);
+				}
+			}
+
 			return {
 				success: true,
 			};
 		} catch (error) {
-			if (error instanceof PlatformNotSupportedException) {
-				this.eventEmitter.emit(EventType.SYSTEM_FACTORY_RESET, {
-					triggered_by: user.id,
-					status: 'err',
-					reason: 'no supported',
-				});
-
-				return {
-					success: false,
-					reason: 'This action is not supported by this platform',
-				};
-			}
-
 			this.eventEmitter.emit(EventType.SYSTEM_FACTORY_RESET, {
 				triggered_by: user.id,
 				status: 'err',
@@ -185,7 +181,7 @@ export class SystemCommandService implements OnModuleInit {
 
 			return {
 				success: false,
-				reason: 'Unknown error',
+				reason: error instanceof Error ? error.message : 'Unknown error',
 			};
 		}
 	}

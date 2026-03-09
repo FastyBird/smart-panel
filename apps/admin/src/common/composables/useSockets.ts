@@ -17,12 +17,17 @@ export const useSockets = (): IUseSockets => {
 		return sockets.active;
 	});
 
-	const sendCommand = async <Payload extends object>(event: string, payload: Payload | null, handler: string): Promise<true | string> => {
+	const sendCommand = async <Payload extends object>(
+		event: string,
+		payload: Payload | null,
+		handler: string,
+		timeout = 1000,
+	): Promise<true | string> => {
 		// Generate a unique request ID for tracking this command through the intent system
 		const requestId = uuid();
 
 		const response: { status: 'ok' | 'err'; message: string; results: { handler: string; success: boolean; reason?: string }[] } | undefined =
-			await sockets.timeout(1000).emitWithAck('command', {
+			await sockets.timeout(timeout).emitWithAck('command', {
 				event,
 				payload: payload !== null ? { ...payload, request_id: requestId } : { request_id: requestId },
 			});

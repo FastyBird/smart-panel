@@ -83,7 +83,13 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_RESET)
-	async handlePropertyChanged(property: ChannelPropertyEntity): Promise<void> {
+	async handlePropertyChanged(property: ChannelPropertyEntity | null): Promise<void> {
+		if (!property) {
+			this.scheduleStateRecalculation();
+
+			return;
+		}
+
 		try {
 			await this.processPropertyChange(property);
 		} catch (error) {

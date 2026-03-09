@@ -1,10 +1,13 @@
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
 import { ElMessageBox } from 'element-plus';
 
+import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { useFlashMessage, useSockets } from '../../../common';
 import { useConfigModule } from '../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../displays/store/config.store.types';
+import { useOnboardingStatus } from '../../onboarding/composables/composables';
 import { injectSystemActionsService } from '../services/system-actions.service';
 import { EventHandlerName, EventType } from '../system.constants';
 
@@ -14,8 +17,10 @@ export const useSystemActions = (): IUseSystemActions => {
 	const systemActions = injectSystemActionsService();
 
 	const { t } = useI18n();
+	const router = useRouter();
 	const { sendCommand } = useSockets();
 	const flashMessage = useFlashMessage();
+	const { invalidate: invalidateOnboarding } = useOnboardingStatus();
 
 	const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
 
@@ -114,7 +119,7 @@ export const useSystemActions = (): IUseSystemActions => {
 				systemActions.factoryReset('in-progress', 'action');
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
 
 					if (response !== true) {
 						systemActions.factoryReset('err', 'action');
@@ -124,7 +129,13 @@ export const useSystemActions = (): IUseSystemActions => {
 						return;
 					}
 
-					systemActions.factoryReset('ok', 'action');
+					systemActions.factoryResetDone();
+
+					invalidateOnboarding();
+
+					await router.push({ name: AppRouteNames.ROOT });
+
+					flashMessage.success(t('systemModule.messages.manage.factoryResetSuccess'));
 				} catch {
 					systemActions.factoryReset('err', 'action');
 

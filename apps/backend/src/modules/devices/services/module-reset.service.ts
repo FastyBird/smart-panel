@@ -38,11 +38,11 @@ export class ModuleResetService {
 		try {
 			await this.channelsPropertiesRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
 
 			await this.channelsControlsRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.DEVICE_CONTROL_RESET, null);
+			this.eventEmitter.emit(EventType.CHANNEL_CONTROL_RESET, null);
 
 			await this.channelsRepository.deleteAll();
 
@@ -50,11 +50,11 @@ export class ModuleResetService {
 
 			await this.devicesControlsRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.CHANNEL_CONTROL_RESET, null);
+			this.eventEmitter.emit(EventType.DEVICE_CONTROL_RESET, null);
 
 			await this.devicesRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
+			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
 
 			await this.influxDbService.dropMeasurement('property_value');
 			await this.influxDbService.dropMeasurement('device_state');
