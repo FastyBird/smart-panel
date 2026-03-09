@@ -158,7 +158,7 @@ get_latest_release_tag() {
 		json=$(curl -sL "$api_url?per_page=20")
 
 		if command -v jq &>/dev/null; then
-			echo "$json" | jq -r '[.[] | select(.prerelease == true)][0].tag_name'
+			echo "$json" | jq -r '[.[] | select(.prerelease == true)][0].tag_name // empty'
 		else
 			echo "$json" | python3 -c "
 import sys, json

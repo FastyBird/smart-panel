@@ -504,6 +504,9 @@ jobs:
           target-arch: "x64"
 
       - name: "Build eLinux x64 App"
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
         run: "melos build-panel-elinux"
 
       - name: "Archive eLinux App"
