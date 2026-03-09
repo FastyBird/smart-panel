@@ -57,7 +57,8 @@
 			"create": "Create Account"
 		},
 		"messages": {
-			"created": "Your account has been created and you are now logged in."
+			"created": "Your account has been created and you are now logged in.",
+			"error": "Failed to create account. Please try again."
 		}
 	},
 	"location": {
@@ -72,7 +73,10 @@
 			"latitude": "e.g. 50.0755",
 			"longitude": "e.g. 14.4378"
 		},
-		"hint": "You can configure your location later in the Weather settings."
+		"hint": "You can configure your location later in the Weather settings.",
+		"messages": {
+			"error": "Failed to save location."
+		}
 	},
 	"complete": {
 		"title": "You're All Set!",
@@ -83,7 +87,8 @@
 			"locationSkipped": "Weather location skipped (can be configured later)"
 		},
 		"messages": {
-			"finished": "Setup complete! Welcome to Smart Panel."
+			"finished": "Setup complete! Welcome to Smart Panel.",
+			"error": "Failed to complete onboarding."
 		}
 	}
 }

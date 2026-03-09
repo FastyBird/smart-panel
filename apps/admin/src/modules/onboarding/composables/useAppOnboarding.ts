@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -42,6 +43,7 @@ const locationData = reactive<ILocationData>({
 });
 
 export const useAppOnboarding = () => {
+	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
 	const storesManager = injectStoresManager();
@@ -95,7 +97,7 @@ export const useAppOnboarding = () => {
 
 			return true;
 		} catch {
-			flashMessage.error('Failed to create account. Please try again.');
+			flashMessage.error(t('onboardingModule.account.messages.error'));
 			return false;
 		} finally {
 			isLoading.value = false;
@@ -151,7 +153,7 @@ export const useAppOnboarding = () => {
 				const locationSaved = await saveLocation();
 
 				if (!locationSaved) {
-					flashMessage.error('Failed to save location.');
+					flashMessage.error(t('onboardingModule.location.messages.error'));
 					return false;
 				}
 			}
@@ -160,13 +162,13 @@ export const useAppOnboarding = () => {
 			const success = await markComplete();
 
 			if (!success) {
-				flashMessage.error('Failed to complete onboarding.');
+				flashMessage.error(t('onboardingModule.complete.messages.error'));
 				return false;
 			}
 
 			return true;
 		} catch {
-			flashMessage.error('Failed to complete onboarding.');
+			flashMessage.error(t('onboardingModule.complete.messages.error'));
 			return false;
 		} finally {
 			isLoading.value = false;
@@ -192,7 +194,6 @@ export const useAppOnboarding = () => {
 		currentStep,
 		isLoading,
 		accountCreated,
-		locationConfigured,
 		hasLocationData,
 		accountData,
 		locationData,
