@@ -236,6 +236,7 @@ const getMyLocation = (): void => {
 			const lat = position.coords.latitude;
 			const lng = position.coords.longitude;
 
+			locationData.city = '';
 			locationData.latitude = lat;
 			locationData.longitude = lng;
 
@@ -268,13 +269,14 @@ const getMyLocation = (): void => {
 	);
 };
 
-// Sync map marker when lat/lon fields change manually
+// Sync map marker when lat/lon fields change manually or on remount
 watch(
 	() => [locationData.latitude, locationData.longitude],
 	() => {
 		if (locationData.latitude !== null && locationData.longitude !== null) {
 			setMarker(locationData.latitude, locationData.longitude);
 		}
-	}
+	},
+	{ immediate: true }
 );
 </script>
