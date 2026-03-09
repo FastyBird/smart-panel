@@ -31,6 +31,7 @@
 							v-model="accountData.firstName"
 							:placeholder="t('onboardingModule.account.placeholders.firstName')"
 							name="firstName"
+							@keyup.enter="lastNameInputEl?.focus()"
 						/>
 					</el-form-item>
 
@@ -40,9 +41,11 @@
 						class="flex-1"
 					>
 						<el-input
+							ref="lastNameInputEl"
 							v-model="accountData.lastName"
 							:placeholder="t('onboardingModule.account.placeholders.lastName')"
 							name="lastName"
+							@keyup.enter="emailInputEl?.focus()"
 						/>
 					</el-form-item>
 				</div>
@@ -52,10 +55,12 @@
 					prop="email"
 				>
 					<el-input
+						ref="emailInputEl"
 						v-model="accountData.email"
 						:placeholder="t('onboardingModule.account.placeholders.email')"
 						name="email"
 						type="email"
+						@keyup.enter="usernameInputEl?.focus()"
 					/>
 				</el-form-item>
 
@@ -64,9 +69,11 @@
 					prop="username"
 				>
 					<el-input
+						ref="usernameInputEl"
 						v-model="accountData.username"
 						:placeholder="t('onboardingModule.account.placeholders.username')"
 						name="username"
+						@keyup.enter="passwordInputEl?.focus()"
 					/>
 				</el-form-item>
 
@@ -75,11 +82,13 @@
 					prop="password"
 				>
 					<el-input
+						ref="passwordInputEl"
 						v-model="accountData.password"
 						:placeholder="t('onboardingModule.account.placeholders.password')"
 						name="password"
 						type="password"
 						show-password
+						@keyup.enter="emit('submit')"
 					/>
 				</el-form-item>
 			</el-form>
@@ -91,7 +100,7 @@
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules, type InputInstance } from 'element-plus';
 
 import { type IAccountData, useAppOnboarding } from '../composables/composables';
 
@@ -99,11 +108,19 @@ defineOptions({
 	name: 'StepAccount',
 });
 
+const emit = defineEmits<{
+	(e: 'submit'): void;
+}>();
+
 const { t } = useI18n();
 
 const { accountData, accountCreated } = useAppOnboarding();
 
 const formEl = ref<FormInstance | undefined>(undefined);
+const lastNameInputEl = ref<InputInstance | undefined>(undefined);
+const emailInputEl = ref<InputInstance | undefined>(undefined);
+const usernameInputEl = ref<InputInstance | undefined>(undefined);
+const passwordInputEl = ref<InputInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<IAccountData>>({
 	email: [

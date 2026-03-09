@@ -33,6 +33,7 @@
 				<step-account
 					v-if="currentStep === OnboardingStep.ACCOUNT"
 					ref="stepAccountEl"
+					@submit="handleAccountNext"
 				/>
 
 				<step-location v-if="currentStep === OnboardingStep.LOCATION" />

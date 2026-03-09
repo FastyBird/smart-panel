@@ -57,6 +57,7 @@
 						name="latitude"
 						type="number"
 						step="0.0001"
+						@keyup.enter="longitudeInputEl?.focus()"
 					/>
 				</el-form-item>
 				<el-form-item
@@ -64,6 +65,7 @@
 					class="flex-1"
 				>
 					<el-input
+						ref="longitudeInputEl"
 						v-model="locationData.longitude"
 						:placeholder="t('onboardingModule.location.placeholders.longitude')"
 						name="longitude"
@@ -106,7 +108,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput } from 'element-plus';
+import { ElAlert, ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput, type InputInstance } from 'element-plus';
 import { Icon } from '@iconify/vue';
 import 'leaflet/dist/leaflet.css';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
@@ -123,6 +125,8 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { searchCities, isSearching } = useGeolocation();
 const { locationData } = useAppOnboarding();
+
+const longitudeInputEl = ref<InputInstance | undefined>(undefined);
 
 const searchQuery = ref('');
 const isGettingLocation = ref(false);
