@@ -1,4 +1,4 @@
-import { ref, computed, type ComputedRef, type Ref, watch, onUnmounted } from 'vue';
+import { ref, computed, type ComputedRef, type Ref, watch, onScopeDispose } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -292,8 +292,8 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		stopTimer();
 	});
 
-	// Clean up timer on unmount and prevent new timers from being created
-	onUnmounted(() => {
+	// Clean up timer when scope is disposed (component unmount or effect scope stop)
+	onScopeDispose(() => {
 		isUnmounted = true;
 		stopTimer();
 	});

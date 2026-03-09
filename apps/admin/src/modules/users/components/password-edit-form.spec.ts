@@ -1,7 +1,7 @@
 import { type ComponentPublicInstance, reactive, ref } from 'vue';
 
 import { ElForm, ElFormItem, ElInput } from 'element-plus';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
@@ -37,6 +37,7 @@ type PasswordEditFormInstance = ComponentPublicInstance<IPasswordEditFormProps>;
 
 describe('PasswordEditForm', (): void => {
 	let wrapper: VueWrapper<PasswordEditFormInstance>;
+	let consoleWarnSpy: MockInstance;
 
 	const mockUser = {
 		id: '1',
@@ -63,10 +64,12 @@ describe('PasswordEditForm', (): void => {
 	};
 
 	beforeEach((): void => {
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		createWrapper();
 	});
 
 	afterEach((): void => {
+		consoleWarnSpy.mockRestore();
 		wrapper.unmount();
 	});
 

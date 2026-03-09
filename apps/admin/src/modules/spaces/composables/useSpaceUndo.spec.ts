@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { type EffectScope, effectScope, ref, nextTick } from 'vue';
 
 import { useSpaceUndo } from './useSpaceUndo';
 
@@ -16,12 +16,16 @@ vi.mock('../../../common', () => ({
 }));
 
 describe('useSpaceUndo', () => {
+	let scope: EffectScope;
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
+		scope = effectScope();
 	});
 
 	afterEach(() => {
+		scope.stop();
 		vi.useRealTimers();
 	});
 
@@ -55,7 +59,8 @@ describe('useSpaceUndo', () => {
 	describe('initial state', () => {
 		it('should have correct initial state', () => {
 			const spaceId = ref<string | undefined>(undefined);
-			const { undoState, canUndo, isLoading, isExecuting, error } = useSpaceUndo(spaceId);
+
+			const { undoState, canUndo, isLoading, isExecuting, error } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			expect(undoState.value).toBeNull();
 			expect(canUndo.value).toBe(false);
@@ -68,7 +73,7 @@ describe('useSpaceUndo', () => {
 	describe('fetchUndoState', () => {
 		it('should return null when spaceId is undefined', async () => {
 			const spaceId = ref<string | undefined>(undefined);
-			const { fetchUndoState } = useSpaceUndo(spaceId);
+			const { fetchUndoState } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const result = await fetchUndoState();
 
@@ -80,7 +85,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, undoState, canUndo, isLoading } = useSpaceUndo(spaceId);
+			const { fetchUndoState, undoState, canUndo, isLoading } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const resultPromise = fetchUndoState();
 			expect(isLoading.value).toBe(true);
@@ -100,7 +105,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse({ can_undo: false }));
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, canUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, canUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 
@@ -114,7 +119,7 @@ describe('useSpaceUndo', () => {
 			});
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, error } = useSpaceUndo(spaceId);
+			const { fetchUndoState, error } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const result = await fetchUndoState();
 
@@ -126,7 +131,7 @@ describe('useSpaceUndo', () => {
 	describe('executeUndo', () => {
 		it('should return null when spaceId is undefined', async () => {
 			const spaceId = ref<string | undefined>(undefined);
-			const { executeUndo } = useSpaceUndo(spaceId);
+			const { executeUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const result = await executeUndo();
 
@@ -138,7 +143,7 @@ describe('useSpaceUndo', () => {
 			mockPost.mockResolvedValueOnce(createMockUndoResultResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { executeUndo, isExecuting } = useSpaceUndo(spaceId);
+			const { executeUndo, isExecuting } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const resultPromise = executeUndo();
 			expect(isExecuting.value).toBe(true);
@@ -156,7 +161,7 @@ describe('useSpaceUndo', () => {
 			mockPost.mockResolvedValueOnce(createMockUndoResultResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, executeUndo, undoState, canUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, executeUndo, undoState, canUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 			expect(undoState.value).not.toBeNull();
@@ -174,7 +179,7 @@ describe('useSpaceUndo', () => {
 			});
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { executeUndo, error } = useSpaceUndo(spaceId);
+			const { executeUndo, error } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const result = await executeUndo();
 
@@ -188,7 +193,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse({ expires_in_seconds: 30 }));
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, remainingSeconds } = useSpaceUndo(spaceId);
+			const { fetchUndoState, remainingSeconds } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 
@@ -204,7 +209,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse({ expires_in_seconds: 5 }));
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, canUndo, remainingSeconds } = useSpaceUndo(spaceId);
+			const { fetchUndoState, canUndo, remainingSeconds } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 			expect(canUndo.value).toBe(true);
@@ -222,7 +227,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, undoState, canUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, undoState, canUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 			expect(undoState.value).not.toBeNull();
@@ -242,7 +247,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockReturnValueOnce(pendingPromise);
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, undoState } = useSpaceUndo(spaceId);
+			const { fetchUndoState, undoState } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			const fetchPromise = fetchUndoState();
 
@@ -262,7 +267,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, invalidateUndoState, undoState, canUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, invalidateUndoState, undoState, canUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 			expect(undoState.value).not.toBeNull();
@@ -279,7 +284,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse({ intent_category: 'lighting' }));
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, isLightingUndo, isClimateUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, isLightingUndo, isClimateUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 
@@ -291,7 +296,7 @@ describe('useSpaceUndo', () => {
 			mockGet.mockResolvedValueOnce(createMockUndoStateResponse({ intent_category: 'climate' }));
 
 			const spaceId = ref<string | undefined>('space-123');
-			const { fetchUndoState, isLightingUndo, isClimateUndo } = useSpaceUndo(spaceId);
+			const { fetchUndoState, isLightingUndo, isClimateUndo } = scope.run(() => useSpaceUndo(spaceId))!;
 
 			await fetchUndoState();
 

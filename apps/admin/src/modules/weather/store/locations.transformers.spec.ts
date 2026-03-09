@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WeatherValidationException } from '../weather.exceptions';
 
@@ -25,6 +25,16 @@ const mockTransformedLocation = {
 };
 
 describe('Weather Locations Transformers', () => {
+	let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		consoleErrorSpy.mockRestore();
+	});
+
 	describe('transformLocationResponse', () => {
 		it('should transform location response successfully', () => {
 			const result = transformLocationResponse(mockLocationRes);

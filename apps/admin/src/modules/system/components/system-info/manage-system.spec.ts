@@ -18,6 +18,12 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		push: vi.fn(),
+	}),
+}));
+
 vi.mock('../../composables/composables', () => ({
 	useSystemActions: () => ({
 		onRestart,

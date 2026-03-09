@@ -1,7 +1,7 @@
 import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
 
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
@@ -70,6 +70,7 @@ type UserEditFormInstance = ComponentPublicInstance<IUserEditFormProps> & {
 
 describe('UserEditForm', (): void => {
 	let wrapper: VueWrapper<UserEditFormInstance>;
+	let consoleWarnSpy: MockInstance;
 
 	const mockUser = {
 		id: '1',
@@ -95,7 +96,12 @@ describe('UserEditForm', (): void => {
 		}) as unknown as VueWrapper<UserEditFormInstance>;
 	};
 
+	beforeEach((): void => {
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
 	afterEach((): void => {
+		consoleWarnSpy.mockRestore();
 		wrapper.unmount();
 	});
 

@@ -1,7 +1,7 @@
 import { nextTick } from 'vue';
 
 import { ElButton, ElForm, ElFormItem, ElInput } from 'element-plus';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
@@ -29,6 +29,7 @@ vi.mock('../../../../common', () => ({
 
 describe('SignInForm', (): void => {
 	let wrapper: VueWrapper;
+	let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 	const mockSessionStore: SessionStore = {
 		create: vi.fn(),
@@ -36,6 +37,7 @@ describe('SignInForm', (): void => {
 
 	beforeEach((): void => {
 		vi.clearAllMocks();
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		(injectStoresManager as Mock).mockReturnValue({
 			getStore: vi.fn(() => mockSessionStore),
@@ -92,6 +94,10 @@ describe('SignInForm', (): void => {
 		await flushPromises();
 
 		expect(mockFlashMessage.error).toHaveBeenCalled();
+	});
+
+	afterEach((): void => {
+		consoleWarnSpy.mockRestore();
 	});
 
 	it('resets form when remoteFormReset is set to true', async (): Promise<void> => {

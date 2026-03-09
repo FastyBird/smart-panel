@@ -1,7 +1,7 @@
 import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
 
 import { ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
@@ -48,6 +48,11 @@ type UserAddFormInstance = ComponentPublicInstance<IUserAddFormProps> & {
 
 describe('UserAddForm', (): void => {
 	let wrapper: VueWrapper<UserAddFormInstance>;
+	let consoleWarnSpy: MockInstance;
+
+	beforeEach((): void => {
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
 
 	const createWrapper = (props: Partial<IUserAddFormProps> = {}): void => {
 		wrapper = mount(UserAddForm, {
@@ -61,6 +66,7 @@ describe('UserAddForm', (): void => {
 	};
 
 	afterEach((): void => {
+		consoleWarnSpy.mockRestore();
 		wrapper.unmount();
 	});
 

@@ -2,7 +2,7 @@ import { type ComponentPublicInstance } from 'vue';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { v4 as uuid } from 'uuid';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
@@ -35,6 +35,7 @@ vi.mock('../../../../common', () => ({
 
 describe('SettingsPasswordForm', (): void => {
 	let wrapper: VueWrapper<SettingsPasswordFormInstance>;
+	let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 	const mockSessionStore: SessionStore = {
 		edit: vi.fn(),
@@ -42,6 +43,7 @@ describe('SettingsPasswordForm', (): void => {
 
 	beforeEach((): void => {
 		vi.clearAllMocks();
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		(injectStoresManager as Mock).mockReturnValue({
 			getStore: vi.fn(() => mockSessionStore),
@@ -67,6 +69,10 @@ describe('SettingsPasswordForm', (): void => {
 				},
 			},
 		}) as VueWrapper<SettingsPasswordFormInstance>;
+	});
+
+	afterEach((): void => {
+		consoleWarnSpy.mockRestore();
 	});
 
 	it('renders the form correctly', (): void => {

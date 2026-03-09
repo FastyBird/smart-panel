@@ -36,8 +36,8 @@ vi.mock('../composables/useDeviceAddForm', () => ({
 			{ value: 'generic', label: 'Generic' },
 			{ value: 'lighting', label: 'Lighting' },
 		],
-		devicesOptions: [],
-		devicesOptionsLoading: ref(false),
+		itemsOptions: [],
+		itemsOptionsLoading: ref(false),
 		entityOverrides: ref([]),
 		model: {
 			id: 'abc123',
