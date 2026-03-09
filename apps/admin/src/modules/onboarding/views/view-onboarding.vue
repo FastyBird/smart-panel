@@ -154,7 +154,6 @@ const {
 	hasLocationData,
 	locationData,
 	spacesToCreate,
-	isFirstStep,
 	isLastStep,
 	nextStep,
 	prevStep,

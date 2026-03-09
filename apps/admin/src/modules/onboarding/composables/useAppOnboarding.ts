@@ -35,7 +35,6 @@ const isLoading = ref(false);
 const accountRegistered = ref(false);
 const accountCreated = ref(false);
 const locationConfigured = ref(false);
-const spacesCreated = ref(false);
 
 const accountData = reactive<IAccountData>({
 	username: '',
@@ -165,14 +164,14 @@ export const useAppOnboarding = () => {
 	};
 
 	const saveSpaces = async (): Promise<boolean> => {
-		if (spacesCreated.value) return true;
-
 		if (spacesToCreate.length === 0) {
 			return true;
 		}
 
 		try {
-			for (const space of spacesToCreate) {
+			while (spacesToCreate.length > 0) {
+				const space = spacesToCreate[0];
+
 				await spacesStore.add({
 					data: {
 						name: space.name,
@@ -181,9 +180,10 @@ export const useAppOnboarding = () => {
 						icon: space.icon,
 					},
 				});
-			}
 
-			spacesCreated.value = true;
+				// Remove saved space so retries don't create duplicates
+				spacesToCreate.splice(0, 1);
+			}
 
 			return true;
 		} catch {
@@ -237,7 +237,6 @@ export const useAppOnboarding = () => {
 		accountRegistered.value = false;
 		accountCreated.value = false;
 		locationConfigured.value = false;
-		spacesCreated.value = false;
 		accountData.username = '';
 		accountData.password = '';
 		accountData.email = '';
@@ -254,9 +253,7 @@ export const useAppOnboarding = () => {
 		currentStep,
 		isLoading,
 		accountCreated,
-		locationConfigured,
 		hasLocationData,
-		spacesCreated,
 		accountData,
 		locationData,
 		spacesToCreate,
