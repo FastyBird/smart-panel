@@ -10,6 +10,11 @@ import {
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
 } from './models/config-response.model';
+import {
+	ConfigModuleResPluginConfigValidation,
+	ConfigValidationErrorModel,
+	ConfigValidationResultModel,
+} from './models/config-validation-response.model';
 import { AppConfigModel, ModuleConfigModel } from './models/config.model';
 
 export const CONFIG_SWAGGER_EXTRA_MODELS = [
@@ -27,4 +32,8 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	// Data models
 	ModuleConfigModel,
 	AppConfigModel,
+	// Validation models
+	ConfigModuleResPluginConfigValidation,
+	ConfigValidationResultModel,
+	ConfigValidationErrorModel,
 ];

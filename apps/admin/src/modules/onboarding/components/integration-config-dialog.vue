@@ -26,10 +26,44 @@
 				/>
 			</div>
 		</el-scrollbar>
+		<!-- Validation result -->
+		<div
+			v-if="validationResult"
+			class="mt-3 px-1"
+		>
+			<el-alert
+				:type="validationResult.valid ? 'success' : 'error'"
+				:title="validationResult.valid ? t('onboardingModule.integrations.configDialog.messages.validationSuccess') : t('onboardingModule.integrations.configDialog.messages.validationFailed')"
+				:closable="true"
+				show-icon
+				@close="validationResult = null"
+			>
+				<template
+					v-if="!validationResult.valid && validationResult.errors?.length"
+					#default
+				>
+					<ul class="list-disc pl-4 mt-1 text-xs">
+						<li
+							v-for="(err, idx) in validationResult.errors"
+							:key="idx"
+						>
+							<span v-if="err.field">{{ err.field }}: </span>{{ err.message }}
+						</li>
+					</ul>
+				</template>
+			</el-alert>
+		</div>
 		<template #footer>
 			<div class="flex justify-end gap-2">
 				<el-button @click="emit('update:visible', false)">
 					{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
+				</el-button>
+				<el-button
+					:loading="isValidating"
+					:disabled="!remoteFormChanged"
+					@click="handleValidate"
+				>
+					{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
 				</el-button>
 				<el-button
 					type="primary"
@@ -48,12 +82,13 @@
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import type { IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
 
 defineOptions({
@@ -78,6 +113,8 @@ const { getByName } = usePlugins();
 
 const isLoading = ref(false);
 const isSaving = ref(false);
+const isValidating = ref(false);
+const validationResult = ref<IConfigPluginValidationResult | null>(null);
 const remoteFormSubmit = ref(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref(false);
@@ -131,6 +168,28 @@ const handleSave = (): void => {
 			isSaving.value = false;
 		}
 	}, 5000);
+};
+
+const handleValidate = async (): Promise<void> => {
+	if (!configPlugin.value) return;
+
+	isValidating.value = true;
+	validationResult.value = null;
+
+	try {
+		const result = await configPluginsStore.validateConfig({
+			data: { ...configPlugin.value },
+		});
+
+		validationResult.value = result;
+	} catch {
+		validationResult.value = {
+			valid: false,
+			errors: [{ message: t('onboardingModule.integrations.configDialog.messages.validationError') }],
+		};
+	} finally {
+		isValidating.value = false;
+	}
 };
 
 watch(
