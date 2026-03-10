@@ -98,17 +98,44 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 
 ## Quick Start (Production)
 
-Install Smart Panel on a Linux device (Raspberry Pi, etc.):
+Smart Panel supports three deployment scenarios. Choose the one that fits your setup:
+
+### All-in-One (Server + Display on One Device)
+
+The simplest setup — ideal for a standalone Raspberry Pi with a touchscreen:
 
 ```bash
-# Install globally
-sudo npm install -g @fastybird/smart-panel
+# Install the server (backend + admin interface)
+curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
 
-# Install and start as a service
+# Install the display app with kiosk mode
+curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash -s -- --backend http://localhost:3000 --kiosk
+```
+
+### Server Only
+
+Run just the backend and admin interface on a central device. Display panels connect remotely:
+
+```bash
+# Option A: One-liner install script
+curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
+
+# Option B: NPM global install
+sudo npm install -g @fastybird/smart-panel
 sudo smart-panel-service install
 ```
 
-For detailed installation instructions, see [`build/docs/INSTALLATION.md`](build/docs/INSTALLATION.md).
+### Display Only
+
+Install the panel app on a device that connects to an existing server:
+
+```bash
+curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash -s -- --backend http://YOUR_SERVER_IP:3000
+```
+
+Supports Raspberry Pi (flutter-pi), Linux x64 (eLinux DRM or GTK desktop), and Android (APK via ADB).
+
+For detailed installation instructions, see the [Installation Guide](build/docs/INSTALLATION.md) or the [online documentation](https://smart-panel.fastybird.com/docs/get-started/installation).
 
 ---
 
@@ -187,6 +214,7 @@ build/                 Production build and installation tools
 
 - [Project Website](https://smart-panel.fastybird.com)
 - [User Documentation](https://smart-panel.fastybird.com/docs)
+- [Installation Guide](build/docs/INSTALLATION.md) - Server, display, and all-in-one setup
 - [Architecture Overview](docs/architecture.md)
 - [Extensions Guide](docs/extensions.md)
 - [Extension SDK](packages/extension-sdk/README.md)
