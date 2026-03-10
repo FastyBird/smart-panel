@@ -121,9 +121,29 @@
 		}
 	},
 	"integrations": {
-		"description": "Enable device integrations to connect your smart home platforms. You can configure connection details later.",
+		"description": "Enable device integrations to connect your smart home platforms. Toggle on the ones you use and configure their connection settings.",
 		"noPlugins": "No device integrations available.",
 		"hint": "You can enable or disable integrations later in the Extensions settings.",
+		"searching": "Searching for devices...",
+		"devicesFound": "{count} device found | {count} device found | {count} devices found",
+		"noDevicesYet": "No devices found yet - configure connection to discover devices",
+		"enabled": "Integration enabled",
+		"configure": "Configure",
+		"configRequired": "Configuration required to connect",
+		"setupNow": "Set up now",
+		"summary": "{count} integration enabled | {count} integration enabled | {count} integrations enabled",
+		"totalDevices": "{count} device found | {count} device found | {count} devices found",
+		"configDialog": {
+			"title": "Configure {name}",
+			"noConfig": "No configuration options available for this integration.",
+			"buttons": {
+				"cancel": "Cancel",
+				"save": "Save Configuration"
+			},
+			"messages": {
+				"saved": "Configuration saved successfully."
+			}
+		},
 		"messages": {
 			"error": "Failed to update integrations."
 		}
