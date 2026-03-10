@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-ONBOARDING-DEVICE-SETUP
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
