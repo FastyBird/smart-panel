@@ -22,7 +22,7 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 
 	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
 		const hostname = config['hostname'] as string | undefined;
-		const apiKey = config['apiKey'] as string | undefined;
+		const apiKey = config['api_key'] as string | undefined;
 
 		if (!hostname) {
 			return { valid: false, errors: [{ message: 'Hostname is required', field: 'hostname' }] };
@@ -32,12 +32,54 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 			return { valid: false, errors: [{ message: 'API key is required', field: 'api_key' }] };
 		}
 
-		const url = `http://${hostname}/api/`;
+		// Try HTTP first, fall back to HTTPS if connection fails
+		const protocols = hostname.startsWith('http://') || hostname.startsWith('https://') ? [''] : ['http://', 'https://'];
+
+		let lastError: Error | null = null;
+
+		for (const protocol of protocols) {
+			const url = `${protocol}${hostname}/api/`;
+
+			try {
+				const result = await this.tryConnect(url, apiKey);
+
+				if (result) {
+					return result;
+				}
+
+				return { valid: true };
+			} catch (error) {
+				lastError = error as Error;
+
+				// Only retry with next protocol on network errors, not on HTTP errors
+				if (lastError.name === 'AbortError' && protocols.length > 1) {
+					continue;
+				}
+
+				break;
+			}
+		}
+
+		this.logger.error(`Connection test failed: ${lastError?.message}`);
+
+		if (lastError?.name === 'AbortError') {
+			return {
+				valid: false,
+				errors: [{ message: 'Connection timed out — check hostname and network', field: 'hostname' }],
+			};
+		}
+
+		return {
+			valid: false,
+			errors: [{ message: `Cannot connect to Home Assistant: ${lastError?.message}`, field: 'hostname' }],
+		};
+	}
+
+	private async tryConnect(url: string, apiKey: string): Promise<IConfigValidationResult | null> {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 10000);
 
 		try {
-			const controller = new AbortController();
-			const timeout = setTimeout(() => controller.abort(), 10000);
-
 			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
@@ -50,7 +92,7 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 			clearTimeout(timeout);
 
 			if (response.ok) {
-				return { valid: true };
+				return null; // Success — caller returns { valid: true }
 			}
 
 			if (response.status === 401) {
@@ -62,21 +104,9 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 				errors: [{ message: `Home Assistant returned status ${response.status}`, field: 'hostname' }],
 			};
 		} catch (error) {
-			const err = error as Error;
+			clearTimeout(timeout);
 
-			this.logger.error(`Connection test failed: ${err.message}`);
-
-			if (err.name === 'AbortError') {
-				return {
-					valid: false,
-					errors: [{ message: 'Connection timed out — check hostname and network', field: 'hostname' }],
-				};
-			}
-
-			return {
-				valid: false,
-				errors: [{ message: `Cannot connect to Home Assistant: ${err.message}`, field: 'hostname' }],
-			};
+			throw error;
 		}
 	}
 }

@@ -249,10 +249,11 @@ export class ConfigController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		// Run plugin-specific config validation (connection tests, etc.) before persisting
+		// Run plugin-specific config validation (connection tests, etc.) before persisting.
+		// Pass the DTO instance (not raw body) so validators get consistent property names.
 		const validationResult = await this.pluginConfigValidator.validate(
 			plugin,
-			pluginConfig.data as Record<string, unknown>,
+			dtoInstance as unknown as Record<string, unknown>,
 		);
 
 		if (!validationResult.valid) {
@@ -332,8 +333,9 @@ export class ConfigController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		// Plugin-specific validation (connection tests, credential checks, etc.)
-		const result = await this.pluginConfigValidator.validate(plugin, pluginConfig.data as Record<string, unknown>);
+		// Plugin-specific validation (connection tests, credential checks, etc.).
+		// Pass the DTO instance (not raw body) so validators get consistent property names.
+		const result = await this.pluginConfigValidator.validate(plugin, dtoInstance as unknown as Record<string, unknown>);
 
 		const resultModel = new ConfigValidationResultModel();
 		resultModel.valid = result.valid;
