@@ -89,18 +89,25 @@ export class DiscordBotProvider implements IManagedPluginService {
 			allowedRoleId: config?.allowedRoleId ?? null,
 		};
 
-		if (config?.botToken) {
-			await this.startBot(config as BuddyDiscordConfigModel & { botToken: string });
+		if (!config?.botToken) {
+			this.state = 'stopped';
+
+			throw new Error('Discord bot token is not configured');
 		}
+
+		await this.startBot(config as BuddyDiscordConfigModel & { botToken: string });
 	}
 
 	/**
 	 * Stop the Discord bot service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve channelConversations across restarts so users don't lose
+	 * their active conversations after a config change. The map is in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
 	async stop(): Promise<void> {
 		await this.stopBot();
-		this.channelConversations.clear();
 	}
 
 	/**

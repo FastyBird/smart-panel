@@ -80,11 +80,12 @@ describe('DiscordBotProvider', () => {
 	});
 
 	describe('start', () => {
-		it('should not start bot when token is missing', async () => {
+		it('should throw when token is missing', async () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: true, botToken: null }));
 
-			await provider.start();
+			await expect(provider.start()).rejects.toThrow('Discord bot token is not configured');
 
+			expect(provider.getState()).toBe('stopped');
 			expect(provider.isRunning()).toBe(false);
 		});
 	});
@@ -106,14 +107,14 @@ describe('DiscordBotProvider', () => {
 	});
 
 	describe('getPluginConfig fallback', () => {
-		it('should return null when config service throws', async () => {
+		it('should throw when config service throws (no token available)', async () => {
 			configService.getPluginConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
 
-			// Should not throw - falls back to null config, bot stays stopped
-			await provider.start();
+			await expect(provider.start()).rejects.toThrow('Discord bot token is not configured');
 
+			expect(provider.getState()).toBe('stopped');
 			expect(provider.isRunning()).toBe(false);
 		});
 	});

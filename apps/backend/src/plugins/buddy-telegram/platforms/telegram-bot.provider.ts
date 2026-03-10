@@ -72,20 +72,26 @@ export class TelegramBotProvider implements IManagedPluginService {
 			allowedUserIds: config?.allowedUserIds ?? null,
 		};
 
-		if (config?.botToken) {
-			await this.startBot(config as BuddyTelegramConfigModel & { botToken: string });
+		if (!config?.botToken) {
+			this.state = 'stopped';
+
+			throw new Error('Telegram bot token is not configured');
 		}
+
+		await this.startBot(config as BuddyTelegramConfigModel & { botToken: string });
 	}
 
 	/**
 	 * Stop the Telegram bot service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve registeredChats and userConversations across restarts so users
+	 * don't need to re-message after a config change. The maps are in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async stop(): Promise<void> {
 		this.stopBot();
-		this.registeredChats.clear();
-		this.userConversations.clear();
 	}
 
 	/**

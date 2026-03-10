@@ -84,12 +84,14 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	/**
 	 * Stop the WhatsApp bot service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve jidConversations and registeredJids across restarts so users
+	 * don't need to re-message after a config change. The maps are in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async stop(): Promise<void> {
 		this.stopBot();
-		this.jidConversations.clear();
-		this.registeredJids.clear();
 	}
 
 	/**
