@@ -63,51 +63,36 @@ describe('TelegramBotProvider', () => {
 		);
 	});
 
-	afterEach(() => {
-		provider.onModuleDestroy();
+	afterEach(async () => {
+		await provider.stop();
 	});
 
-	describe('onApplicationBootstrap', () => {
-		it('should not start bot when plugin is disabled', () => {
-			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-
-			provider.onApplicationBootstrap();
-
-			expect(provider.isRunning()).toBe(false);
+	describe('IManagedPluginService interface', () => {
+		it('should have correct pluginName and serviceId', () => {
+			expect(provider.pluginName).toBe(BUDDY_TELEGRAM_PLUGIN_NAME);
+			expect(provider.serviceId).toBe('bot');
 		});
 
-		it('should not start bot when token is missing', () => {
+		it('should return stopped state by default', () => {
+			expect(provider.getState()).toBe('stopped');
+		});
+	});
+
+	describe('start', () => {
+		it('should not start bot when token is missing', async () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: true, botToken: null }));
 
-			provider.onApplicationBootstrap();
+			await provider.start();
 
 			expect(provider.isRunning()).toBe(false);
 		});
 	});
 
-	describe('onConfigUpdated', () => {
-		it('should stop bot when plugin is disabled on config update', async () => {
-			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
+	describe('onConfigChanged', () => {
+		it('should return restartRequired false when not started', async () => {
+			const result = await provider.onConfigChanged();
 
-			await provider.onConfigUpdated();
-
-			expect(provider.isRunning()).toBe(false);
-		});
-
-		it('should not restart bot when unrelated config changes', async () => {
-			// First init with disabled config (sets activeConfig snapshot)
-			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-			await provider.onConfigUpdated();
-
-			// Simulate unrelated config change — same telegram config returned
-			const stopSpy = jest.spyOn(provider as any, 'stopBot');
-
-			await provider.onConfigUpdated();
-
-			// stopBot should not be called because config hasn't changed
-			expect(stopSpy).not.toHaveBeenCalled();
-
-			stopSpy.mockRestore();
+			expect(result).toEqual({ restartRequired: false });
 		});
 	});
 
@@ -120,13 +105,13 @@ describe('TelegramBotProvider', () => {
 	});
 
 	describe('getPluginConfig fallback', () => {
-		it('should return null when config service throws', () => {
+		it('should return null when config service throws', async () => {
 			configService.getPluginConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
 
 			// Should not throw - falls back to null config, bot stays stopped
-			provider.onApplicationBootstrap();
+			await provider.start();
 
 			expect(provider.isRunning()).toBe(false);
 		});

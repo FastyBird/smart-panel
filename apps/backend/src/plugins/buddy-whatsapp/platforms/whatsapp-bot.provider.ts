@@ -1,15 +1,19 @@
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
 	WHATSAPP_AUTH_DIR,
@@ -29,10 +33,14 @@ import { BuddyWhatsappConfigModel } from '../models/config.model';
  * - Enforces a phone number whitelist for security
  */
 @Injectable()
-export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
+export class WhatsAppBotProvider implements IManagedPluginService {
 	private readonly logger = createExtensionLogger(BUDDY_WHATSAPP_PLUGIN_NAME, 'WhatsAppBotProvider');
 
+	readonly pluginName = BUDDY_WHATSAPP_PLUGIN_NAME;
+	readonly serviceId = 'bot';
+
 	private socket: import('@whiskeysockets/baileys').WASocket | null = null;
+	private state: ServiceState = 'stopped';
 	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;
 	private currentQr: string | null = null;
 	private reconnecting = false;
@@ -40,7 +48,6 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
-		enabled: boolean;
 		allowedPhoneNumbers: string | null;
 	} | null = null;
 
@@ -56,56 +63,64 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	onApplicationBootstrap(): void {
-		if (process.env.FB_CLI === 'on') {
+	/**
+	 * Start the WhatsApp bot service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
 			return;
 		}
 
 		const config = this.getPluginConfig();
 
 		this.activeConfig = {
-			enabled: config?.enabled ?? false,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
-		if (config?.enabled) {
-			void this.startBot();
-		}
+		await this.startBot();
 	}
 
-	onModuleDestroy(): void {
+	/**
+	 * Stop the WhatsApp bot service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async stop(): Promise<void> {
 		this.stopBot();
 		this.jidConversations.clear();
 		this.registeredJids.clear();
 	}
 
 	/**
-	 * Restart bot when WhatsApp plugin configuration changes.
+	 * Get the current service state.
 	 */
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	onConfigUpdated(): void {
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		if (this.state !== 'started' || !this.activeConfig) {
+			return Promise.resolve({ restartRequired: false });
+		}
+
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
-			enabled: config?.enabled ?? false,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
-		if (
-			this.activeConfig &&
-			this.activeConfig.enabled === newSnapshot.enabled &&
-			this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers
-		) {
-			return;
+		if (this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers) {
+			return Promise.resolve({ restartRequired: false });
 		}
 
-		this.stopBot();
+		this.logger.log('Config changed, restart required');
 
-		this.activeConfig = newSnapshot;
-
-		if (config?.enabled) {
-			void this.startBot();
-		}
+		return Promise.resolve({ restartRequired: true });
 	}
 
 	/**
@@ -185,6 +200,8 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			return;
 		}
 
+		this.state = 'starting';
+
 		try {
 			this.status = WhatsAppConnectionStatus.CONNECTING;
 
@@ -251,6 +268,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 				if (connection === 'open') {
 					this.currentQr = null;
 					this.status = WhatsAppConnectionStatus.CONNECTED;
+					this.state = 'started';
 					this.reconnecting = false;
 					this.reconnectAttempts = 0;
 					this.logger.log('WhatsApp bot connected');
@@ -268,6 +286,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 					if (this.reconnecting) {
 						// Intentional disconnect (stopBot was called) — do not auto-reconnect
 						this.status = WhatsAppConnectionStatus.DISCONNECTED;
+						this.state = 'stopped';
 					} else {
 						// Unexpected disconnect — clear auth state and reconnect with backoff
 						const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
@@ -282,6 +301,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 								`WhatsApp reconnect limit reached (${WHATSAPP_MAX_RECONNECT_ATTEMPTS} attempts), giving up`,
 							);
 							this.status = WhatsAppConnectionStatus.DISCONNECTED;
+							this.state = 'error';
 
 							return;
 						}
@@ -324,10 +344,12 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			this.logger.error(`Failed to start WhatsApp bot: ${String(error)}`);
 			this.socket = null;
 			this.status = WhatsAppConnectionStatus.DISCONNECTED;
+			this.state = 'error';
 		}
 	}
 
 	private stopBot(): void {
+		this.state = 'stopping';
 		this.reconnecting = false;
 		this.reconnectAttempts = 0;
 
@@ -338,6 +360,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		this.status = WhatsAppConnectionStatus.DISCONNECTED;
 		this.currentQr = null;
+		this.state = 'stopped';
 	}
 
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {

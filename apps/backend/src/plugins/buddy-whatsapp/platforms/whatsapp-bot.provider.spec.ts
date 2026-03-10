@@ -74,33 +74,18 @@ describe('WhatsAppBotProvider', () => {
 		);
 	});
 
-	afterEach(() => {
-		provider.onModuleDestroy();
+	afterEach(async () => {
+		await provider.stop();
 	});
 
-	describe('onApplicationBootstrap', () => {
-		it('should initialize with disabled config', () => {
-			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-
-			provider.onApplicationBootstrap();
-
-			expect(provider.getConnectionStatus()).toBe(WhatsAppConnectionStatus.DISCONNECTED);
+	describe('IManagedPluginService interface', () => {
+		it('should have correct pluginName and serviceId', () => {
+			expect(provider.pluginName).toBe(BUDDY_WHATSAPP_PLUGIN_NAME);
+			expect(provider.serviceId).toBe('bot');
 		});
-	});
 
-	describe('onConfigUpdated', () => {
-		it('should not restart when config has not changed', () => {
-			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
-
-			provider.onApplicationBootstrap();
-
-			const stopSpy = jest.spyOn(provider as any, 'stopBot');
-
-			provider.onConfigUpdated();
-
-			expect(stopSpy).not.toHaveBeenCalled();
-
-			stopSpy.mockRestore();
+		it('should return stopped state by default', () => {
+			expect(provider.getState()).toBe('stopped');
 		});
 	});
 
@@ -131,12 +116,12 @@ describe('WhatsAppBotProvider', () => {
 	});
 
 	describe('getPluginConfig fallback', () => {
-		it('should handle config service throwing', () => {
+		it('should handle config service throwing', async () => {
 			configService.getPluginConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
 
-			provider.onApplicationBootstrap();
+			await provider.start();
 
 			expect(provider.getConnectionStatus()).toBe(WhatsAppConnectionStatus.DISCONNECTED);
 		});
