@@ -33,7 +33,8 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 		}
 
 		// Try HTTP first, fall back to HTTPS if connection fails
-		const protocols = hostname.startsWith('http://') || hostname.startsWith('https://') ? [''] : ['http://', 'https://'];
+		const hasProtocol = hostname.startsWith('http://') || hostname.startsWith('https://');
+		const protocols = hasProtocol ? [''] : ['http://', 'https://'];
 
 		let lastError: Error | null = null;
 

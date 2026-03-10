@@ -249,19 +249,10 @@ export class ConfigController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		// Run plugin-specific config validation (connection tests, etc.) before persisting.
-		// Pass the DTO instance (not raw body) so validators get consistent property names.
-		const validationResult = await this.pluginConfigValidator.validate(
-			plugin,
-			dtoInstance as unknown as Record<string, unknown>,
-		);
-
-		if (!validationResult.valid) {
-			const reasons = (validationResult.errors ?? []).map((e) => JSON.stringify({ field: e.field, reason: e.message }));
-
-			throw new BadRequestException(reasons.length > 0 ? reasons : ['Plugin configuration validation failed']);
-		}
-
+		// Plugin-specific validation (connection tests) is NOT run here — it would
+		// block saves when the target service is temporarily unreachable. Users must
+		// be able to pre-configure credentials before the service is online.
+		// Use POST plugin/:plugin/validate for explicit validation.
 		this.service.setPluginConfig(plugin, dtoInstance);
 
 		const config = this.service.getPluginConfig(plugin);
