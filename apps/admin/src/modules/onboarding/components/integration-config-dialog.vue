@@ -181,11 +181,15 @@ const handleValidate = async (): Promise<void> => {
 		} else {
 			validationResult.value = result;
 
-			// Show generic errors (without field) as flash message
-			const genericErrors = (result.errors ?? []).filter((err) => !err.field);
+			// Flash errors that have no field (can't be shown inline)
+			// or all errors when none could be mapped to form fields
+			const allErrors = result.errors ?? [];
+			const unmappedErrors = allErrors.filter((err) => !err.field);
 
-			if (genericErrors.length > 0) {
-				flashMessage.error(genericErrors.map((err) => err.message).join('; '));
+			if (unmappedErrors.length > 0 || formFieldErrors.value.length === 0) {
+				const toShow = unmappedErrors.length > 0 ? unmappedErrors : allErrors;
+
+				flashMessage.error(toShow.map((err) => err.message).join('; '));
 			}
 		}
 	} catch {
