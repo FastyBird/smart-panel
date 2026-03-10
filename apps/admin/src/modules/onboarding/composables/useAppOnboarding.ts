@@ -141,7 +141,7 @@ export const useAppOnboarding = () => {
 						password: accountData.password,
 						firstName: accountData.firstName,
 						lastName: accountData.lastName,
-						email: accountData.email,
+						email: accountData.email || undefined,
 					},
 				});
 
