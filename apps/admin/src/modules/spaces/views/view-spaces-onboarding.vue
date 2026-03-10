@@ -812,7 +812,8 @@ import {
 	RouteNames,
 	SpaceType,
 	isValidCategoryForType,
-	type SpaceCategory,
+	type SpaceRoomCategory,
+	type SpaceZoneCategory,
 } from '../spaces.constants';
 
 const { t } = useI18n();
@@ -1073,7 +1074,7 @@ const handleDiscardCustomNameEdit = (index: number): void => {
 // Category helpers from composable
 const { getCategoryOptions, getCategoryGroups, getCategoryTemplates } = useSpaceCategories();
 
-const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceCategory | null; description: string | null }): void => {
+const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceRoomCategory | SpaceZoneCategory | null; description: string | null }): void => {
 	// Clear category if it's no longer valid for the new type
 	if (space.category && !isValidCategoryForType(space.category, space.type)) {
 		space.category = null;
@@ -1081,7 +1082,7 @@ const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceCategory | n
 	}
 };
 
-const onCategoryChange = (space: { type: SpaceType; category: SpaceCategory | null; description: string | null }): void => {
+const onCategoryChange = (space: { type: SpaceType; category: SpaceRoomCategory | SpaceZoneCategory | null; description: string | null }): void => {
 	// Update description from category template when category changes
 	if (space.category) {
 		const templates = getCategoryTemplates(space.type);

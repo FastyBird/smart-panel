@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { StatusWidgetSchema } from '../store/spaces.store.schemas';
 
 export const SpacesFilterSchema = z.object({
@@ -14,7 +14,7 @@ export type SpacesFilterSchemaType = z.infer<typeof SpacesFilterSchema>;
 const SpaceFormBaseSchema = z.object({
 	name: z.string().min(1),
 	description: z.string().nullable().optional(),
-	category: z.nativeEnum(SpaceCategory).nullable().optional(),
+	category: z.union([z.nativeEnum(SpaceRoomCategory), z.nativeEnum(SpaceZoneCategory)]).nullable().optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).default(0),
 	parentId: z.string().uuid().nullable().optional(),

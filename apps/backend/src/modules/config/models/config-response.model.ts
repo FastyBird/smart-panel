@@ -72,16 +72,3 @@ export class ConfigModuleResModules extends BaseSuccessResponseModel<ModuleConfi
 	@Expose()
 	declare data: ModuleConfigModel[];
 }
-
-/**
- * Response wrapper for section config (deprecated - section endpoints are deprecated)
- * @deprecated Use module endpoints instead (/config/module/:module)
- */
-@ApiSchema({ name: 'ConfigModuleResSection' })
-export class ConfigModuleResSection extends BaseSuccessResponseModel<unknown> {
-	@ApiProperty({
-		description: 'Single configuration section payload (deprecated)',
-	})
-	@Expose()
-	declare data: unknown;
-}

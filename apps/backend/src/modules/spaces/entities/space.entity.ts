@@ -5,7 +5,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
@@ -47,19 +47,19 @@ export class SpaceEntity extends BaseEntity {
 
 	@ApiPropertyOptional({
 		description: 'Space category (room type template)',
-		enum: SpaceCategory,
+		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
-		example: SpaceCategory.LIVING_ROOM,
+		example: SpaceRoomCategory.LIVING_ROOM,
 	})
 	@Expose()
 	@IsOptional()
-	@IsEnum(SpaceCategory)
+	@IsEnum({ ...SpaceRoomCategory, ...SpaceZoneCategory })
 	@Column({
 		type: 'varchar',
 		nullable: true,
 		default: null,
 	})
-	category: SpaceCategory | null;
+	category: SpaceRoomCategory | SpaceZoneCategory | null;
 
 	@ApiPropertyOptional({
 		name: 'parent_id',

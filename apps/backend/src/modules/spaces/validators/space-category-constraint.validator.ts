@@ -6,13 +6,7 @@ import {
 	registerDecorator,
 } from 'class-validator';
 
-import {
-	ALL_SPACE_CATEGORIES,
-	LEGACY_OUTDOOR_CATEGORY,
-	SPACE_ROOM_CATEGORIES,
-	SPACE_ZONE_CATEGORIES,
-	SpaceType,
-} from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SPACE_ROOM_CATEGORIES, SPACE_ZONE_CATEGORIES, SpaceType } from '../spaces.constants';
 
 /**
  * Interface for DTOs that have both type and category fields
@@ -30,8 +24,6 @@ interface SpaceTypeCategory {
  * - If type is provided as ROOM, category must be in SpaceRoomCategory
  * - If type is provided as ZONE, category must be in SpaceZoneCategory
  * - If type is not provided (update case), category must exist in either enum
- * - Legacy 'outdoor' value is accepted for ZONE type (for backward compatibility)
- *
  * Note: For updates where type is not provided, the service layer performs
  * additional validation against the existing space's type.
  */
@@ -49,16 +41,7 @@ export class SpaceCategoryConstraintValidator implements ValidatorConstraintInte
 		// If type is not provided (update case), accept any valid category
 		// The service layer will validate against the existing type
 		if (type === undefined) {
-			// Accept legacy 'outdoor' value
-			if (category === LEGACY_OUTDOOR_CATEGORY) {
-				return true;
-			}
 			return ALL_SPACE_CATEGORIES.includes(category as (typeof ALL_SPACE_CATEGORIES)[number]);
-		}
-
-		// Handle legacy 'outdoor' value for zones
-		if (category === LEGACY_OUTDOOR_CATEGORY && type === SpaceType.ZONE) {
-			return true;
 		}
 
 		// Validate category based on provided type
@@ -97,7 +80,7 @@ export class SpaceCategoryConstraintValidator implements ValidatorConstraintInte
  * Usage:
  * ```typescript
  * @IsValidSpaceCategory()
- * category?: SpaceCategory | null;
+ * category?: SpaceRoomCategory | SpaceZoneCategory | null;
  * ```
  */
 export function IsValidSpaceCategory(validationOptions?: ValidationOptions) {

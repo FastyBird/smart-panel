@@ -14,7 +14,7 @@ import {
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
-import { ClimateState } from './space-climate-state.service';
+import { ClimateState, SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
@@ -109,6 +109,7 @@ export class SpaceContextSnapshotService implements OnModuleInit {
 		private readonly moduleRef: ModuleRef,
 		private readonly lightingRoleService: SpaceLightingRoleService,
 		private readonly coversRoleService: SpaceCoversRoleService,
+		private readonly climateStateService: SpaceClimateStateService,
 	) {}
 
 	async onModuleInit(): Promise<void> {
@@ -136,8 +137,10 @@ export class SpaceContextSnapshotService implements OnModuleInit {
 		// Capture climate state (reuse existing method from intent service)
 		const climateState = await this.spaceIntentService.getClimateState(spaceId);
 
-		// Get primary thermostat ID from intent service (uses same logic as executeClimateIntent)
-		const primaryThermostatId = await this.spaceIntentService.getPrimaryThermostatId(spaceId);
+		// Get primary thermostat ID from climate state service
+		const primaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
+		const primaryThermostatId =
+			primaryDevices.find((d) => d.heaterSetpointProperty || d.coolerSetpointProperty)?.device.id ?? null;
 
 		// Default climate state when null (space exists but no climate devices)
 		const defaultClimateState: ClimateState = {

@@ -77,17 +77,6 @@ export class SpaceIntentService {
 		return this.climateIntentService.executeClimateIntent(spaceId, intent);
 	}
 
-	/**
-	 * Get the primary thermostat device ID for a space.
-	 *
-	 * @param spaceId - The UUID of the space
-	 * @returns The primary thermostat device ID, or null if no thermostat exists
-	 * @deprecated Use ClimateIntentService.getPrimaryThermostatId instead
-	 */
-	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
-		return this.climateIntentService.getPrimaryThermostatId(spaceId);
-	}
-
 	// =====================
 	// Covers Methods
 	// =====================

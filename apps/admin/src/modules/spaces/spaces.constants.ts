@@ -97,21 +97,6 @@ export enum SpaceZoneCategory {
 }
 
 /**
- * Combined SpaceCategory type for backward compatibility
- * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
- */
-export type SpaceCategory = SpaceRoomCategory | SpaceZoneCategory;
-
-/**
- * SpaceCategory enum for backward compatibility with existing code
- * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
- */
-export const SpaceCategory = {
-	...SpaceRoomCategory,
-	...SpaceZoneCategory,
-} as const;
-
-/**
  * Array of all room category values
  */
 export const SPACE_ROOM_CATEGORIES = Object.values(SpaceRoomCategory);
@@ -245,7 +230,7 @@ export function getGroupedCategoriesForType(type: SpaceType): CategoryGroup[] | 
  * Template definition for a space category
  */
 export interface SpaceCategoryTemplate {
-	category: SpaceCategory;
+	category: SpaceRoomCategory | SpaceZoneCategory;
 	icon: string;
 	description: string;
 }
@@ -412,10 +397,9 @@ export const SPACE_ZONE_CATEGORY_TEMPLATES: Record<SpaceZoneCategory, Omit<Space
 };
 
 /**
- * Combined templates for all space categories (room + zone)
- * For backward compatibility
+ * Merged room + zone category templates (computed once)
  */
-export const SPACE_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate, 'category'>> = {
+export const SPACE_ALL_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate, 'category'>> = {
 	...SPACE_ROOM_CATEGORY_TEMPLATES,
 	...SPACE_ZONE_CATEGORY_TEMPLATES,
 };
@@ -432,7 +416,21 @@ export function getTemplatesForType(
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORY_TEMPLATES;
 	}
-	return SPACE_CATEGORY_TEMPLATES;
+	return SPACE_ALL_CATEGORY_TEMPLATES;
+}
+
+/**
+ * Get an icon for a space based on its custom icon, category template, or type default
+ */
+export function getSpaceIcon(space: { icon: string | null; category: SpaceRoomCategory | SpaceZoneCategory | null; type: SpaceType }): string {
+	if (space.icon) {
+		return space.icon;
+	}
+	const categoryTemplate = space.category ? SPACE_ALL_CATEGORY_TEMPLATES[space.category] : undefined;
+	if (categoryTemplate) {
+		return categoryTemplate.icon;
+	}
+	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
 }
 
 // Re-export role enums from OpenAPI-generated types (single source of truth)

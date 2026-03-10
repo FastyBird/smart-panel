@@ -427,20 +427,10 @@ export class Z2mMqttClientAdapterService {
 				this.logger.warn('Zigbee2MQTT bridge is offline');
 				void this.callbacks.onBridgeOffline?.();
 			}
-		} catch {
-			// Try legacy format (just "online" or "offline" string)
-			const wasOnline = this.bridgeOnline;
-			this.bridgeOnline = message === 'online';
-
-			if (this.bridgeOnline !== wasOnline) {
-				if (this.bridgeOnline) {
-					this.logger.log('Zigbee2MQTT bridge is online');
-					void this.callbacks.onBridgeOnline?.();
-				} else {
-					this.logger.warn('Zigbee2MQTT bridge is offline');
-					void this.callbacks.onBridgeOffline?.();
-				}
-			}
+		} catch (error) {
+			this.logger.warn('Failed to parse bridge/state message', {
+				message: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

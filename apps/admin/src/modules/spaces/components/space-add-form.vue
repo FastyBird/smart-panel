@@ -200,8 +200,9 @@ import { useSpaceAddForm, useSpaceCategories, useSpaces } from '../composables';
 import {
 	FormResult,
 	isValidCategoryForType,
-	type SpaceCategory,
+	type SpaceRoomCategory,
 	SpaceType,
+	type SpaceZoneCategory,
 } from '../spaces.constants';
 
 import { type ISpaceAddFormProps, spaceAddFormEmits } from './space-add-form.types';
@@ -281,7 +282,7 @@ watch(
 );
 
 // Handle category change - auto-populate icon and description from template
-const onCategoryChange = (category: SpaceCategory | null): void => {
+const onCategoryChange = (category: SpaceRoomCategory | SpaceZoneCategory | null): void => {
 	if (category && currentTemplates.value[category]) {
 		const template = currentTemplates.value[category];
 		// Only auto-populate if the field is empty or matches our tracked auto-populated value

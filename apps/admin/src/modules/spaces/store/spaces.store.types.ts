@@ -1,13 +1,13 @@
 import type { Ref } from 'vue';
 
-import type { IStatusWidget, SpaceCategory, SpaceType } from '../spaces.constants';
+import type { IStatusWidget, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 
 export interface ISpace {
 	id: string;
 	name: string;
 	description: string | null;
 	type: SpaceType;
-	category: SpaceCategory | null;
+	category: SpaceRoomCategory | SpaceZoneCategory | null;
 	icon: string | null;
 	displayOrder: number;
 	parentId: string | null;
@@ -23,7 +23,7 @@ export interface ISpaceEditData {
 	name: string;
 	description?: string | null;
 	type?: SpaceType;
-	category?: SpaceCategory | null;
+	category?: SpaceRoomCategory | SpaceZoneCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
 	parentId?: string | null;
@@ -35,7 +35,7 @@ export interface ISpaceCreateData {
 	name: string;
 	description?: string | null;
 	type?: SpaceType;
-	category?: SpaceCategory | null;
+	category?: SpaceRoomCategory | SpaceZoneCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
 	parentId?: string | null;

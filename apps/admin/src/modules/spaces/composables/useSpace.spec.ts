@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
 import { useSpace } from './useSpace';
@@ -41,7 +41,7 @@ describe('useSpace', () => {
 		name: 'Test Space',
 		description: null,
 		type: SpaceType.ROOM,
-		category: SpaceCategory.LIVING_ROOM,
+		category: SpaceRoomCategory.LIVING_ROOM,
 		icon: null,
 		displayOrder: 0,
 		parentId: null,

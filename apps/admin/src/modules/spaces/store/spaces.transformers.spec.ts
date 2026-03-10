@@ -5,14 +5,14 @@ import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceStatus_widgetsSettingsRange,
 	SpacesModuleCreateSpaceType,
-	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 import {
 	ENERGY_WIDGET_DEFAULTS,
 	EnergyWidgetRange,
 	StatusWidgetType,
-	SpaceCategory,
+	SpaceRoomCategory,
 	SpaceType,
+	SpaceZoneCategory,
 } from '../spaces.constants';
 
 import type { ISpaceCreateData, ISpaceEditData } from './spaces.store.types';
@@ -41,7 +41,7 @@ const validRoomResponse: ApiSpace = {
 	name: 'Living Room',
 	description: 'Main living area',
 	type: SpacesModuleCreateSpaceType.room,
-	category: SpacesModuleDataSpaceCategory.living_room,
+	category: SpacesModuleCreateSpaceCategory.living_room,
 	icon: 'mdi:sofa',
 	display_order: 1,
 	parent_id: parentId.toString(),
@@ -55,7 +55,7 @@ const validZoneResponse: ApiSpace = {
 	name: 'Ground Floor',
 	description: 'First level of the house',
 	type: SpacesModuleCreateSpaceType.zone,
-	category: SpacesModuleDataSpaceCategory.floor_ground,
+	category: SpacesModuleCreateSpaceCategory.floor_ground,
 	icon: 'mdi:home-floor-0',
 	display_order: 0,
 	parent_id: null,
@@ -68,7 +68,7 @@ const validSpaceCreatePayload: ISpaceCreateData = {
 	name: 'New Room',
 	description: 'A new room',
 	type: SpaceType.ROOM,
-	category: SpaceCategory.BEDROOM,
+	category: SpaceRoomCategory.BEDROOM,
 	icon: 'mdi:bed',
 	displayOrder: 5,
 	parentId: parentId.toString(),
@@ -79,7 +79,7 @@ const validSpaceEditPayload: ISpaceEditData = {
 	name: 'Updated Room',
 	description: 'Updated description',
 	type: SpaceType.ROOM,
-	category: SpaceCategory.OFFICE,
+	category: SpaceRoomCategory.OFFICE,
 	icon: 'mdi:desk',
 	displayOrder: 10,
 	suggestionsEnabled: false,
@@ -95,7 +95,7 @@ describe('Spaces Transformers', (): void => {
 				name: 'Living Room',
 				description: 'Main living area',
 				type: SpaceType.ROOM,
-				category: SpaceCategory.LIVING_ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
 				icon: 'mdi:sofa',
 				displayOrder: 1,
 				parentId: parentId.toString(),
@@ -111,7 +111,7 @@ describe('Spaces Transformers', (): void => {
 			const result = transformSpaceResponse(validZoneResponse);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceCategory.FLOOR_GROUND);
+			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
 			expect(result.parentId).toBeNull();
 			expect(result.updatedAt).toBeNull();
 			expect(result.draft).toBe(false);
@@ -162,7 +162,7 @@ describe('Spaces Transformers', (): void => {
 			const zonePayload: ISpaceCreateData = {
 				name: 'New Zone',
 				type: SpaceType.ZONE,
-				category: SpaceCategory.FLOOR_FIRST,
+				category: SpaceZoneCategory.FLOOR_FIRST,
 			};
 
 			const result = transformSpaceCreateRequest(zonePayload);

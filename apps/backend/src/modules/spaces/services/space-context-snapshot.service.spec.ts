@@ -10,7 +10,7 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceEntity } from '../entities/space.entity';
 import { ClimateMode, LightingRole, SpaceType } from '../spaces.constants';
 
-import { ClimateState } from './space-climate-state.service';
+import { ClimateState, SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceIntentService } from './space-intent.service';
@@ -23,6 +23,7 @@ describe('SpaceContextSnapshotService', () => {
 	let spaceIntentService: jest.Mocked<SpaceIntentService>;
 	let lightingRoleService: jest.Mocked<SpaceLightingRoleService>;
 	let coversRoleService: jest.Mocked<SpaceCoversRoleService>;
+	let climateStateService: jest.Mocked<SpaceClimateStateService>;
 
 	const createSpace = (id: string, name: string): SpaceEntity => ({
 		id,
@@ -152,7 +153,6 @@ describe('SpaceContextSnapshotService', () => {
 	beforeEach(async () => {
 		spaceIntentService = {
 			getClimateState: jest.fn(),
-			getPrimaryThermostatId: jest.fn(),
 		} as unknown as jest.Mocked<SpaceIntentService>;
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -183,6 +183,12 @@ describe('SpaceContextSnapshotService', () => {
 						getRoleMap: jest.fn(),
 					},
 				},
+				{
+					provide: SpaceClimateStateService,
+					useValue: {
+						getPrimaryClimateDevicesInSpace: jest.fn().mockResolvedValue([]),
+					},
+				},
 			],
 		}).compile();
 
@@ -190,6 +196,7 @@ describe('SpaceContextSnapshotService', () => {
 		spacesService = module.get(SpacesService);
 		lightingRoleService = module.get(SpaceLightingRoleService);
 		coversRoleService = module.get(SpaceCoversRoleService);
+		climateStateService = module.get(SpaceClimateStateService);
 
 		// Simulate onModuleInit which resolves SpaceIntentService lazily
 		await service.onModuleInit();
@@ -351,7 +358,7 @@ describe('SpaceContextSnapshotService', () => {
 			lightingRoleService.getRoleMap.mockResolvedValue(new Map());
 			coversRoleService.getRoleMap.mockResolvedValue(new Map());
 			spaceIntentService.getClimateState.mockResolvedValue(null);
-			spaceIntentService.getPrimaryThermostatId.mockResolvedValue(null);
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([]);
 
 			const result = await service.captureSnapshot(spaceId);
 

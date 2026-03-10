@@ -42,8 +42,6 @@ describe('ConfigController', () => {
 					provide: ConfigService,
 					useValue: {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
-						getConfigSection: jest.fn((key: keyof AppConfigModel) => mockConfig[key]),
-						setConfigSection: jest.fn(),
 						getModulesConfig: jest.fn().mockReturnValue(mockConfig.modules),
 						getModuleConfig: jest.fn((_module: string) => mockConfig.modules[0]),
 						setModuleConfig: jest.fn(),
@@ -94,13 +92,6 @@ describe('ConfigController', () => {
 			expect(result).toHaveProperty('data');
 			expect(result.data).toEqual(mockConfig);
 			expect(configService.getConfig).toHaveBeenCalled();
-		});
-	});
-
-	describe('getConfigSection', () => {
-		it('should throw BadRequestException for deprecated section endpoints', () => {
-			expect(() => controller.getConfigSection('language' as keyof AppConfigModel)).toThrow(BadRequestException);
-			expect(() => controller.getConfigSection('system' as keyof AppConfigModel)).toThrow(BadRequestException);
 		});
 	});
 

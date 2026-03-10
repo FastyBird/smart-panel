@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
 import { useSpaces } from './useSpaces';
@@ -40,7 +40,7 @@ describe('useSpaces', () => {
 		name: 'Test Space',
 		description: null,
 		type: SpaceType.ROOM,
-		category: SpaceCategory.LIVING_ROOM,
+		category: SpaceRoomCategory.LIVING_ROOM,
 		icon: null,
 		displayOrder: 0,
 		parentId: null,
@@ -58,9 +58,9 @@ describe('useSpaces', () => {
 		mockData = [
 			createMockSpace({ id: 'room-1', name: 'Living Room', type: SpaceType.ROOM }),
 			createMockSpace({ id: 'room-2', name: 'Bedroom', type: SpaceType.ROOM, draft: true }),
-			createMockSpace({ id: 'zone-1', name: 'Ground Floor', type: SpaceType.ZONE, category: SpaceCategory.FLOOR_GROUND }),
-			createMockSpace({ id: 'zone-2', name: 'First Floor', type: SpaceType.ZONE, category: SpaceCategory.FLOOR_FIRST }),
-			createMockSpace({ id: 'zone-3', name: 'Backyard', type: SpaceType.ZONE, category: SpaceCategory.OUTDOOR_BACKYARD }),
+			createMockSpace({ id: 'zone-1', name: 'Ground Floor', type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_GROUND }),
+			createMockSpace({ id: 'zone-2', name: 'First Floor', type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_FIRST }),
+			createMockSpace({ id: 'zone-3', name: 'Backyard', type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BACKYARD }),
 		];
 
 		firstLoad = ref(false);

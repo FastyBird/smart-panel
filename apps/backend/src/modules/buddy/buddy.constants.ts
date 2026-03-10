@@ -53,19 +53,6 @@ export const BUDDY_PERSONALITY_MAX_LENGTH = 2000;
 
 export const BUDDY_DEFAULT_PERSONALITY_PATH = 'var/buddy/personality.md';
 
-/**
- * Maps legacy enum-based provider values (from pre-plugin configs)
- * to the new plugin-based provider names.
- *
- * IMPORTANT: Keep in sync with apps/admin/src/modules/buddy/buddy.constants.ts
- */
-export const LEGACY_PROVIDER_MAP = new Map<string, string>([
-	['claude', 'buddy-claude-plugin'],
-	['openai', 'buddy-openai-plugin'],
-	['ollama', 'buddy-ollama-plugin'],
-	['buddy-claude-oauth-plugin', 'buddy-claude-setup-token-plugin'],
-]);
-
 export enum MessageRole {
 	USER = 'user',
 	ASSISTANT = 'assistant',

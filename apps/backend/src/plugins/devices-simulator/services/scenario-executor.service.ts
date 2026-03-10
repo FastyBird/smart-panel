@@ -25,7 +25,7 @@ import {
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { SpaceCategory, SpaceType } from '../../../modules/spaces/spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
@@ -119,7 +119,7 @@ export class ScenarioExecutorService {
 					const room = await this.spacesService.create({
 						name: roomDef.name,
 						type: spaceType,
-						...(roomDef.category ? { category: roomDef.category as SpaceCategory } : {}),
+						...(roomDef.category ? { category: roomDef.category as SpaceRoomCategory | SpaceZoneCategory } : {}),
 					});
 
 					roomIdMap.set(roomDef.id, room.id);

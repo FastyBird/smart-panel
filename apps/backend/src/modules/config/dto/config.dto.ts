@@ -3,22 +3,6 @@ import { IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-// UpdateLanguageConfigDto and UpdateSystemConfigDto moved to system module
-// Section-based DTOs are deprecated - use module DTOs instead
-
-/**
- * @deprecated Section-based update DTO is deprecated. Use ReqUpdateModuleDto instead.
- */
-@ApiSchema({ name: 'ConfigModuleReqUpdateSection' })
-export class ReqUpdateSectionDto {
-	@ApiProperty({
-		description: 'Configuration section data (deprecated - section endpoints are deprecated)',
-	})
-	@Expose()
-	@ValidateNested()
-	data: unknown;
-}
-
 @ApiSchema({ name: 'ConfigModuleUpdatePlugin' })
 export class UpdatePluginConfigDto {
 	@ApiProperty({

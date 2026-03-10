@@ -1,4 +1,4 @@
-import { Expose, Transform } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -65,26 +65,6 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsString()
 	provider: string = LLM_PROVIDER_NONE;
 
-	// Legacy fields – kept so existing YAML configs pass forbidNonWhitelisted validation.
-	// Values are discarded on read; provider-specific settings now live in each plugin's config.
-	@Expose({ name: 'api_key' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	apiKey?: string;
-
-	@Expose()
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	model?: string;
-
-	@Expose({ name: 'ollama_url' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	ollamaUrl?: string;
-
 	@ApiPropertyOptional({
 		name: 'voice_enabled',
 		description: 'Master toggle for the voice interface (STT + TTS). When false, audio endpoints are disabled.',
@@ -92,25 +72,6 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		example: false,
 	})
 	@Expose({ name: 'voice_enabled' })
-	@Transform(
-		({ value, obj }): boolean => {
-			// If explicitly set, honour the value
-			if (typeof value === 'boolean') {
-				return value;
-			}
-
-			// Backward compatibility: infer true when STT or TTS was already configured
-			// but the config predates the voice_enabled field.
-			const raw = obj as Record<string, unknown>;
-			const stt = raw['stt_plugin'] ?? raw['sttPlugin'] ?? raw['stt_provider'] ?? raw['sttProvider'];
-			const tts = raw['tts_plugin'] ?? raw['ttsPlugin'] ?? raw['tts_provider'] ?? raw['ttsProvider'];
-			const hasStt = typeof stt === 'string' && stt !== '' && stt !== STT_PLUGIN_NONE;
-			const hasTts = typeof tts === 'string' && tts !== '' && tts !== TTS_PLUGIN_NONE;
-
-			return hasStt || hasTts;
-		},
-		{ toClassOnly: true },
-	)
 	@IsOptional()
 	@IsBoolean()
 	voiceEnabled: boolean = false;
@@ -122,58 +83,9 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		example: STT_PLUGIN_NONE,
 	})
 	@Expose({ name: 'stt_plugin' })
-	@Transform(
-		({ value, obj }): string => {
-			// If stt_plugin is already set, use it
-			if (typeof value === 'string' && value !== '') {
-				return value;
-			}
-
-			// Backward compatibility: map legacy stt_provider enum values to plugin names
-			const raw = obj as Record<string, unknown>;
-			const legacy = (raw['stt_provider'] ?? raw['sttProvider']) as string | undefined;
-
-			if (legacy === 'whisper_api') {
-				return 'buddy-openai-plugin';
-			}
-
-			if (legacy === 'whisper_local') {
-				return 'buddy-stt-whisper-local-plugin';
-			}
-
-			return STT_PLUGIN_NONE;
-		},
-		{ toClassOnly: true },
-	)
 	@IsOptional()
 	@IsString()
 	sttPlugin: string = STT_PLUGIN_NONE;
-
-	// Legacy fields – kept so existing YAML configs pass forbidNonWhitelisted validation.
-	// Values are discarded on read; STT settings now live in each plugin's config.
-	@Expose({ name: 'stt_provider' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	sttProvider?: string;
-
-	@Expose({ name: 'stt_api_key' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	sttApiKey?: string;
-
-	@Expose({ name: 'stt_model' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	sttModel?: string;
-
-	@Expose({ name: 'stt_language' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	sttLanguage?: string;
 
 	@ApiPropertyOptional({
 		name: 'tts_plugin',
@@ -186,35 +98,6 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	ttsPlugin: string = TTS_PLUGIN_NONE;
-
-	// Legacy field – kept so existing YAML configs pass forbidNonWhitelisted validation.
-	// Value is discarded on read; TTS API keys now live in each plugin's config.
-	@Expose({ name: 'tts_api_key' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	ttsApiKey?: string;
-
-	// Legacy field – kept for backwards compatibility
-	@Expose({ name: 'tts_provider' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	ttsProvider?: string;
-
-	// Legacy field – voice is now configured per plugin
-	@Expose({ name: 'tts_voice' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsString()
-	ttsVoice?: string;
-
-	// Legacy field – speed is now configured per plugin
-	@Expose({ name: 'tts_speed' })
-	@Transform(() => undefined, { toClassOnly: true })
-	@IsOptional()
-	@IsNumber()
-	ttsSpeed?: number;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

@@ -19,12 +19,10 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	EventType,
 	SPACES_MODULE_NAME,
-	type SpaceCategory,
 	SpaceRoomCategory,
 	SpaceType,
 	SpaceZoneCategory,
 	isValidCategoryForType,
-	normalizeCategoryValue,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
@@ -110,12 +108,11 @@ export class SpacesService {
 			return existingSpace;
 		}
 
-		// Normalize legacy category values (e.g., 'outdoor' -> 'outdoor_garden' for zones)
 		const type = dtoInstance.type;
-		const normalizedCategory = normalizeCategoryValue(dtoInstance.category ?? null, type);
+		const category = dtoInstance.category ?? null;
 
 		// Zones must have a category
-		if (type === SpaceType.ZONE && normalizedCategory === null) {
+		if (type === SpaceType.ZONE && category === null) {
 			this.logger.error('Zone must have a category');
 			throw new SpacesValidationException('Category is required for zones.');
 		}
@@ -126,7 +123,7 @@ export class SpacesService {
 		const space = this.repository.create(
 			toInstance(SpaceEntity, {
 				...dtoInstance,
-				category: normalizedCategory,
+				category,
 			}),
 		);
 
@@ -178,14 +175,9 @@ export class SpacesService {
 		const effectiveParentId = dtoInstance.parent_id !== undefined ? dtoInstance.parent_id : space.parentId;
 		await this.validateParentAssignment(effectiveType, effectiveParentId ?? null, id);
 
-		// Normalize legacy category values
-		const normalizedCategory =
-			dtoInstance.category !== undefined ? normalizeCategoryValue(dtoInstance.category, effectiveType) : undefined;
-
 		// Build the update object
 		const updateData = {
 			...dtoInstance,
-			...(normalizedCategory !== undefined ? { category: normalizedCategory } : {}),
 		};
 
 		// Get the fields to update from DTO (excluding undefined values)
@@ -456,12 +448,18 @@ export class SpacesService {
 	}
 
 	async proposeSpaces(): Promise<
-		{ name: string; type: SpaceType; category: SpaceCategory | null; deviceIds: string[]; deviceCount: number }[]
+		{
+			name: string;
+			type: SpaceType;
+			category: SpaceRoomCategory | SpaceZoneCategory | null;
+			deviceIds: string[];
+			deviceCount: number;
+		}[]
 	> {
 		this.logger.debug('Proposing spaces based on device names');
 
 		// Token to (type, category) mapping for intelligent space proposals
-		const tokenMapping: Record<string, { type: SpaceType; category: SpaceCategory | null }> = {
+		const tokenMapping: Record<string, { type: SpaceType; category: SpaceRoomCategory | SpaceZoneCategory | null }> = {
 			// Room tokens
 			'living room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
 			bedroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },

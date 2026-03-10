@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME, LEGACY_PROVIDER_MAP } from '../buddy.constants';
+import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import {
 	BuddyProviderErrorException,
 	BuddyProviderNotConfiguredException,
@@ -28,7 +28,7 @@ export class LlmProviderService {
 
 	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<LlmResponse> {
 		const config = this.getConfig();
-		const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
+		const providerName = config.provider;
 
 		if (!providerName || providerName === 'none') {
 			throw new BuddyProviderNotConfiguredException();
@@ -61,7 +61,7 @@ export class LlmProviderService {
 	supportsTools(): boolean {
 		try {
 			const config = this.getConfig();
-			const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
+			const providerName = config.provider;
 
 			if (!providerName || providerName === 'none') {
 				return false;

@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
+import { SpaceType, getSpaceIcon } from '../../spaces/spaces.constants';
 import { SceneAddFormSchema } from '../schemas/scenes.schemas';
 import type { ISceneActionAddForm, ISceneAddForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
@@ -45,20 +45,6 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 			icon: SCENE_CATEGORY_ICONS[value],
 		}))
 	);
-
-	const getSpaceIcon = (space: (typeof spaces.value)[0]): string => {
-		// Use custom icon if available
-		if (space.icon) {
-			return space.icon;
-		}
-		// Use category template icon if category is set
-		const categoryTemplate = space.category ? SPACE_CATEGORY_TEMPLATES[space.category] : undefined;
-		if (categoryTemplate) {
-			return categoryTemplate.icon;
-		}
-		// Default icons based on type
-		return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
-	};
 
 	const spacesOptionsGrouped = computed<ISpaceOptionGroup[]>(() => {
 		const rooms = spaces.value

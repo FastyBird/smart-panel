@@ -56,8 +56,9 @@ void main() {
 				'activity_key': 'listen',
 				'state': 'failed',
 				'last_result': {
-					'success_count': 1,
-					'failure_count': 2,
+					'steps_total': 3,
+					'steps_succeeded': 1,
+					'steps_failed': 2,
 					'failures': ['TV power on failed', 'Audio switch failed'],
 				},
 			};
@@ -65,7 +66,7 @@ void main() {
 			final state = MediaActiveStateModel.fromJson(json, spaceId: spaceId);
 			expect(state.isFailed, true);
 			expect(state.hasFailures, true);
-			expect(state.lastResult!.failureCount, 2);
+			expect(state.lastResult!.stepsFailed, 2);
 			expect(state.lastResult!.failures.length, 2);
 		});
 
@@ -180,8 +181,9 @@ void main() {
 					'audio_device_id': 'dev-2',
 				},
 				'summary': {
-					'success_count': 3,
-					'failure_count': 0,
+					'steps_total': 3,
+					'steps_succeeded': 3,
+					'steps_failed': 0,
 					'failures': [],
 				},
 				'warnings': [],
@@ -192,8 +194,8 @@ void main() {
 			expect(result.activityKey, MediaActivityKey.watch);
 			expect(result.state, MediaActivationState.active);
 			expect(result.resolved?.displayDeviceId, 'dev-1');
-			expect(result.summary?.successCount, 3);
-			expect(result.summary?.failureCount, 0);
+			expect(result.summary?.stepsSucceeded, 3);
+			expect(result.summary?.stepsFailed, 0);
 		});
 	});
 

@@ -2,19 +2,15 @@ import type { operations } from '../../../openapi';
 import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceType,
-	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 
-import { type IStatusWidget, SpaceCategory, SpaceType } from '../spaces.constants';
+import { type IStatusWidget, type SpaceRoomCategory, SpaceType, type SpaceZoneCategory } from '../spaces.constants';
 
 import type { ISpace, ISpaceCreateData, ISpaceEditData } from './spaces.store.types';
 
 export type ApiSpace = NonNullable<operations['get-spaces-module-spaces']['responses']['200']['content']['application/json']['data']>[number];
 type ApiSpaceCreate = operations['create-spaces-module-space']['requestBody']['content']['application/json']['data'];
 type ApiSpaceUpdate = NonNullable<operations['update-spaces-module-space']['requestBody']>['content']['application/json']['data'];
-
-// Union type for API category (covers both response and request types)
-type ApiSpaceCategory = SpacesModuleCreateSpaceCategory | SpacesModuleDataSpaceCategory;
 
 const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
 	switch (apiType) {
@@ -38,18 +34,18 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 	}
 };
 
-const apiCategoryToSpaceCategory = (apiCategory: ApiSpaceCategory | null | undefined): SpaceCategory | null => {
+const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory | null | undefined): SpaceRoomCategory | SpaceZoneCategory | null => {
 	if (!apiCategory) return null;
-	// API category values match SpaceCategory values (both are snake_case strings)
-	return apiCategory as unknown as SpaceCategory;
+	// API category values match SpaceRoomCategory/SpaceZoneCategory values (both are snake_case strings)
+	return apiCategory as unknown as SpaceRoomCategory | SpaceZoneCategory;
 };
 
 const spaceCategoryToApiCategory = (
-	category: SpaceCategory | null | undefined
+	category: SpaceRoomCategory | SpaceZoneCategory | null | undefined
 ): SpacesModuleCreateSpaceCategory | null | undefined => {
 	if (category === undefined) return undefined;
 	if (category === null) return null;
-	// SpaceCategory values match API category values (both are snake_case strings)
+	// SpaceRoomCategory/SpaceZoneCategory values match API category values (both are snake_case strings)
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
 
