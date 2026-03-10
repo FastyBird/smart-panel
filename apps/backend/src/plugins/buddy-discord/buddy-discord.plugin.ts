@@ -5,6 +5,7 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -32,8 +33,10 @@ import { DiscordBotProvider } from './platforms/discord-bot.provider';
 export class BuddyDiscordPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
+		private readonly discordBotProvider: DiscordBotProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -84,5 +87,9 @@ Discord bot adapter plugin for the Buddy module. Enables remote conversations an
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.discordBotProvider);
 	}
 }

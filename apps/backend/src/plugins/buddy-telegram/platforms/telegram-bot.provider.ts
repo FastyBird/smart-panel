@@ -1,15 +1,19 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_TELEGRAM_PLUGIN_NAME,
@@ -28,14 +32,17 @@ import { BuddyTelegramConfigModel } from '../models/config.model';
  * - Enforces a user whitelist for security
  */
 @Injectable()
-export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
+export class TelegramBotProvider implements IManagedPluginService {
 	private readonly logger = createExtensionLogger(BUDDY_TELEGRAM_PLUGIN_NAME, 'TelegramBotProvider');
 
+	readonly pluginName = BUDDY_TELEGRAM_PLUGIN_NAME;
+	readonly serviceId = 'bot';
+
 	private bot: Telegraf | null = null;
-	private running = false;
+	private state: ServiceState = 'stopped';
 
 	/** Snapshot of the last applied config to detect actual changes */
-	private activeConfig: { enabled: boolean; botToken: string | null; allowedUserIds: string | null } | null = null;
+	private activeConfig: { botToken: string | null; allowedUserIds: string | null } | null = null;
 
 	/** Telegram user ID → active buddy conversation ID */
 	private readonly userConversations = new Map<number, string>();
@@ -49,61 +56,77 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	onApplicationBootstrap(): void {
-		if (process.env.FB_CLI === 'on') {
+	/**
+	 * Start the Telegram bot service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
 			return;
 		}
 
 		const config = this.getPluginConfig();
 
-		// Record config snapshot eagerly so that CONFIG_UPDATED events
-		// for unrelated plugins are correctly ignored even while startBot is in progress.
 		this.activeConfig = {
-			enabled: config?.enabled ?? false,
 			botToken: config?.botToken ?? null,
 			allowedUserIds: config?.allowedUserIds ?? null,
 		};
 
-		if (config?.enabled && config.botToken) {
-			void this.startBot(config);
-		}
-	}
+		if (!config?.botToken) {
+			this.state = 'stopped';
 
-	onModuleDestroy(): void {
-		this.stopBot();
-		this.registeredChats.clear();
-		this.userConversations.clear();
+			throw new Error('Telegram bot token is not configured');
+		}
+
+		await this.startBot(config as BuddyTelegramConfigModel & { botToken: string });
 	}
 
 	/**
-	 * Restart bot only when Telegram plugin configuration actually changes.
+	 * Stop the Telegram bot service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve registeredChats and userConversations across restarts so users
+	 * don't need to re-message after a config change. The maps are in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async onConfigUpdated(): Promise<void> {
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async stop(): Promise<void> {
+		this.stopBot();
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		if (this.state !== 'started' || !this.activeConfig) {
+			return Promise.resolve({ restartRequired: false });
+		}
+
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
-			enabled: config?.enabled ?? false,
 			botToken: config?.botToken ?? null,
 			allowedUserIds: config?.allowedUserIds ?? null,
 		};
 
 		if (
-			this.activeConfig &&
-			this.activeConfig.enabled === newSnapshot.enabled &&
 			this.activeConfig.botToken === newSnapshot.botToken &&
 			this.activeConfig.allowedUserIds === newSnapshot.allowedUserIds
 		) {
-			return;
+			return Promise.resolve({ restartRequired: false });
 		}
 
-		this.stopBot();
+		this.logger.log('Config changed, restart required');
 
-		this.activeConfig = newSnapshot;
-
-		if (config?.enabled && config.botToken) {
-			await this.startBot(config);
-		}
+		return Promise.resolve({ restartRequired: true });
 	}
 
 	/**
@@ -112,7 +135,7 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 	 */
 	@OnEvent(EventType.SUGGESTION_CREATED)
 	async onSuggestionCreated(suggestion: BuddySuggestion): Promise<void> {
-		if (!this.bot || !this.running) {
+		if (!this.bot || this.state !== 'started') {
 			return;
 		}
 
@@ -145,10 +168,12 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 	}
 
 	isRunning(): boolean {
-		return this.running;
+		return this.state === 'started';
 	}
 
 	private async startBot(config: BuddyTelegramConfigModel & { botToken: string }): Promise<void> {
+		this.state = 'starting';
+
 		try {
 			this.bot = new Telegraf(config.botToken);
 
@@ -253,27 +278,33 @@ export class TelegramBotProvider implements OnApplicationBootstrap, OnModuleDest
 			});
 
 			await this.bot.launch({ dropPendingUpdates: true });
-			this.running = true;
+			this.state = 'started';
 
 			this.logger.log('Telegram bot started (long polling)');
 		} catch (error) {
 			this.logger.error(`Failed to start Telegram bot: ${String(error)}`);
 			this.bot = null;
-			this.running = false;
+			this.state = 'error';
+
+			throw error;
 		}
 	}
 
 	private stopBot(): void {
 		if (this.bot) {
-			if (this.running) {
+			const wasStarted = this.state === 'started';
+
+			this.state = 'stopping';
+
+			if (wasStarted) {
 				this.bot.stop('reconfigure');
 			}
 
 			this.bot = null;
-			this.running = false;
-			// Preserve registeredChats and userConversations across restarts
-			// so users don't need to re-message after a config change.
+			this.state = 'stopped';
 			this.logger.log('Telegram bot stopped');
+		} else {
+			this.state = 'stopped';
 		}
 	}
 

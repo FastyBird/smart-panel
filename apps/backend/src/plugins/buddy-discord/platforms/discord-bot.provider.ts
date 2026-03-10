@@ -12,15 +12,19 @@ import {
 	type TextChannel,
 } from 'discord.js';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_DISCORD_PLUGIN_NAME,
@@ -39,15 +43,17 @@ import { BuddyDiscordConfigModel } from '../models/config.model';
  * - Enforces role-based access control
  */
 @Injectable()
-export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
+export class DiscordBotProvider implements IManagedPluginService {
 	private readonly logger = createExtensionLogger(BUDDY_DISCORD_PLUGIN_NAME, 'DiscordBotProvider');
 
+	readonly pluginName = BUDDY_DISCORD_PLUGIN_NAME;
+	readonly serviceId = 'bot';
+
 	private client: Client | null = null;
-	private running = false;
+	private state: ServiceState = 'stopped';
 
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
-		enabled: boolean;
 		botToken: string | null;
 		guildId: string | null;
 		generalChannelId: string | null;
@@ -64,17 +70,18 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 		private readonly suggestionEngine: SuggestionEngineService,
 	) {}
 
-	onApplicationBootstrap(): void {
-		if (process.env.FB_CLI === 'on') {
+	/**
+	 * Start the Discord bot service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
 			return;
 		}
 
 		const config = this.getPluginConfig();
 
-		// Record config snapshot eagerly so that CONFIG_UPDATED events
-		// for unrelated plugins are correctly ignored even while startBot is in progress.
 		this.activeConfig = {
-			enabled: config?.enabled ?? false,
 			botToken: config?.botToken ?? null,
 			guildId: config?.guildId ?? null,
 			generalChannelId: config?.generalChannelId ?? null,
@@ -82,25 +89,46 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			allowedRoleId: config?.allowedRoleId ?? null,
 		};
 
-		if (config?.enabled && config.botToken) {
-			void this.startBot(config);
-		}
-	}
+		if (!config?.botToken) {
+			this.state = 'stopped';
 
-	async onModuleDestroy(): Promise<void> {
-		await this.stopBot();
-		this.channelConversations.clear();
+			throw new Error('Discord bot token is not configured');
+		}
+
+		await this.startBot(config as BuddyDiscordConfigModel & { botToken: string });
 	}
 
 	/**
-	 * Restart bot only when Discord plugin configuration actually changes.
+	 * Stop the Discord bot service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve channelConversations across restarts so users don't lose
+	 * their active conversations after a config change. The map is in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async onConfigUpdated(): Promise<void> {
+	async stop(): Promise<void> {
+		await this.stopBot();
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		if (this.state !== 'started' || !this.activeConfig) {
+			return Promise.resolve({ restartRequired: false });
+		}
+
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
-			enabled: config?.enabled ?? false,
 			botToken: config?.botToken ?? null,
 			guildId: config?.guildId ?? null,
 			generalChannelId: config?.generalChannelId ?? null,
@@ -109,24 +137,18 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 		};
 
 		if (
-			this.activeConfig &&
-			this.activeConfig.enabled === newSnapshot.enabled &&
 			this.activeConfig.botToken === newSnapshot.botToken &&
 			this.activeConfig.guildId === newSnapshot.guildId &&
 			this.activeConfig.generalChannelId === newSnapshot.generalChannelId &&
 			this.activeConfig.spaceChannelMappings === newSnapshot.spaceChannelMappings &&
 			this.activeConfig.allowedRoleId === newSnapshot.allowedRoleId
 		) {
-			return;
+			return Promise.resolve({ restartRequired: false });
 		}
 
-		await this.stopBot();
+		this.logger.log('Config changed, restart required');
 
-		this.activeConfig = newSnapshot;
-
-		if (config?.enabled && config.botToken) {
-			await this.startBot(config);
-		}
+		return Promise.resolve({ restartRequired: true });
 	}
 
 	/**
@@ -134,7 +156,7 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 	 */
 	@OnEvent(EventType.SUGGESTION_CREATED)
 	async onSuggestionCreated(suggestion: BuddySuggestion): Promise<void> {
-		if (!this.client || !this.running) {
+		if (!this.client || this.state !== 'started') {
 			return;
 		}
 
@@ -179,10 +201,12 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 	}
 
 	isRunning(): boolean {
-		return this.running;
+		return this.state === 'started';
 	}
 
 	private async startBot(config: BuddyDiscordConfigModel & { botToken: string }): Promise<void> {
+		this.state = 'starting';
+
 		try {
 			this.client = new Client({
 				intents: [
@@ -204,22 +228,27 @@ export class DiscordBotProvider implements OnApplicationBootstrap, OnModuleDestr
 			});
 
 			await this.client.login(config.botToken);
-			this.running = true;
+			this.state = 'started';
 
 			this.logger.log('Discord bot started (gateway)');
 		} catch (error) {
 			this.logger.error(`Failed to start Discord bot: ${String(error)}`);
 			this.client = null;
-			this.running = false;
+			this.state = 'error';
+
+			throw error;
 		}
 	}
 
 	private async stopBot(): Promise<void> {
 		if (this.client) {
+			this.state = 'stopping';
 			await this.client.destroy();
 			this.client = null;
-			this.running = false;
+			this.state = 'stopped';
 			this.logger.log('Discord bot stopped');
+		} else {
+			this.state = 'stopped';
 		}
 	}
 

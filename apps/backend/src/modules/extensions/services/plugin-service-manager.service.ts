@@ -505,6 +505,41 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			currentState = registration.service.getState();
 		}
 
+		// If state is still transitional after timeout, force-stop when the service
+		// should not be running (e.g., WhatsApp stuck in 'starting' during QR scan
+		// while the admin disables the plugin).
+		if (!shouldBeRunning && (currentState === 'starting' || currentState === 'stopping')) {
+			this.logger.log(
+				`Plugin ${registration.pluginName} disabled while ${registration.serviceId} still in '${currentState}', forcing stop`,
+			);
+
+			// Call stop() directly instead of stopService() because stopService()
+			// has a guard that returns early when state is 'stopping'.
+			try {
+				await registration.service.stop();
+
+				const runtime = this.runtimeInfo.get(key);
+
+				if (runtime) {
+					runtime.lastStoppedAt = new Date();
+				}
+
+				this.logger.log(`Service force-stopped successfully: ${key}`);
+			} catch (error) {
+				const err = error as Error;
+
+				const runtime = this.runtimeInfo.get(key);
+
+				if (runtime) {
+					runtime.lastError = err.message;
+				}
+
+				this.logger.error(`Failed to force-stop service ${key}: ${err.message}`, err.stack);
+			}
+
+			return;
+		}
+
 		if (shouldBeRunning && currentState === 'stopped') {
 			this.logger.log(`Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
 

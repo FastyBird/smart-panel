@@ -1,15 +1,20 @@
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
 	WHATSAPP_AUTH_DIR,
@@ -29,10 +34,14 @@ import { BuddyWhatsappConfigModel } from '../models/config.model';
  * - Enforces a phone number whitelist for security
  */
 @Injectable()
-export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDestroy {
+export class WhatsAppBotProvider implements IManagedPluginService {
 	private readonly logger = createExtensionLogger(BUDDY_WHATSAPP_PLUGIN_NAME, 'WhatsAppBotProvider');
 
+	readonly pluginName = BUDDY_WHATSAPP_PLUGIN_NAME;
+	readonly serviceId = 'bot';
+
 	private socket: import('@whiskeysockets/baileys').WASocket | null = null;
+	private state: ServiceState = 'stopped';
 	private status: WhatsAppConnectionStatus = WhatsAppConnectionStatus.DISCONNECTED;
 	private currentQr: string | null = null;
 	private reconnecting = false;
@@ -40,7 +49,6 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 	/** Snapshot of the last applied config to detect actual changes */
 	private activeConfig: {
-		enabled: boolean;
 		allowedPhoneNumbers: string | null;
 	} | null = null;
 
@@ -54,58 +62,74 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 		private readonly configService: ConfigService,
 		private readonly conversationService: BuddyConversationService,
 		private readonly suggestionEngine: SuggestionEngineService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
-	onApplicationBootstrap(): void {
-		if (process.env.FB_CLI === 'on') {
+	/**
+	 * Start the WhatsApp bot service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
 			return;
 		}
 
 		const config = this.getPluginConfig();
 
 		this.activeConfig = {
-			enabled: config?.enabled ?? false,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
-		if (config?.enabled) {
-			void this.startBot();
-		}
-	}
-
-	onModuleDestroy(): void {
-		this.stopBot();
-		this.jidConversations.clear();
-		this.registeredJids.clear();
+		await this.startBot();
 	}
 
 	/**
-	 * Restart bot when WhatsApp plugin configuration changes.
+	 * Stop the WhatsApp bot service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 *
+	 * Preserve jidConversations and registeredJids across restarts so users
+	 * don't need to re-message after a config change. The maps are in-memory
+	 * and will be garbage-collected on full shutdown anyway.
 	 */
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	onConfigUpdated(): void {
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async stop(): Promise<void> {
+		this.stopBot();
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * Unlike Discord/Telegram, WhatsApp's start() returns while still in
+	 * 'starting' state (before the QR code is scanned and the connection
+	 * opens). We must signal restart for the 'starting' state too so the
+	 * manager can stop the service if the plugin gets disabled mid-scan.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		if ((this.state !== 'started' && this.state !== 'starting') || !this.activeConfig) {
+			return Promise.resolve({ restartRequired: false });
+		}
+
 		const config = this.getPluginConfig();
 
 		const newSnapshot = {
-			enabled: config?.enabled ?? false,
 			allowedPhoneNumbers: config?.allowedPhoneNumbers ?? null,
 		};
 
-		if (
-			this.activeConfig &&
-			this.activeConfig.enabled === newSnapshot.enabled &&
-			this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers
-		) {
-			return;
+		if (this.activeConfig.allowedPhoneNumbers === newSnapshot.allowedPhoneNumbers) {
+			return Promise.resolve({ restartRequired: false });
 		}
 
-		this.stopBot();
+		this.logger.log('Config changed, restart required');
 
-		this.activeConfig = newSnapshot;
-
-		if (config?.enabled) {
-			void this.startBot();
-		}
+		return Promise.resolve({ restartRequired: true });
 	}
 
 	/**
@@ -173,17 +197,16 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			rmSync(authDir, { recursive: true, force: true });
 		}
 
-		const config = this.getPluginConfig();
-
-		if (config?.enabled) {
-			void this.startBot();
-		}
+		// Delegate restart to the manager so runtime tracking stays in sync
+		void this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
 	}
 
 	private async startBot(): Promise<void> {
 		if (this.socket) {
 			return;
 		}
+
+		this.state = 'starting';
 
 		try {
 			this.status = WhatsAppConnectionStatus.CONNECTING;
@@ -251,6 +274,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 				if (connection === 'open') {
 					this.currentQr = null;
 					this.status = WhatsAppConnectionStatus.CONNECTED;
+					this.state = 'started';
 					this.reconnecting = false;
 					this.reconnectAttempts = 0;
 					this.logger.log('WhatsApp bot connected');
@@ -268,6 +292,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 					if (this.reconnecting) {
 						// Intentional disconnect (stopBot was called) — do not auto-reconnect
 						this.status = WhatsAppConnectionStatus.DISCONNECTED;
+						this.state = 'stopped';
 					} else {
 						// Unexpected disconnect — clear auth state and reconnect with backoff
 						const authDir = join(process.cwd(), WHATSAPP_AUTH_DIR);
@@ -282,6 +307,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 								`WhatsApp reconnect limit reached (${WHATSAPP_MAX_RECONNECT_ATTEMPTS} attempts), giving up`,
 							);
 							this.status = WhatsAppConnectionStatus.DISCONNECTED;
+							this.state = 'error';
 
 							return;
 						}
@@ -290,6 +316,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 						const delay = WHATSAPP_RECONNECT_DELAYS_MS[delayIndex];
 
 						this.reconnectAttempts++;
+						this.state = 'starting';
 						this.status = WhatsAppConnectionStatus.CONNECTING;
 						this.reconnecting = true;
 						this.logger.log(
@@ -324,10 +351,14 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 			this.logger.error(`Failed to start WhatsApp bot: ${String(error)}`);
 			this.socket = null;
 			this.status = WhatsAppConnectionStatus.DISCONNECTED;
+			this.state = 'error';
+
+			throw error;
 		}
 	}
 
 	private stopBot(): void {
+		this.state = 'stopping';
 		this.reconnecting = false;
 		this.reconnectAttempts = 0;
 
@@ -338,6 +369,7 @@ export class WhatsAppBotProvider implements OnApplicationBootstrap, OnModuleDest
 
 		this.status = WhatsAppConnectionStatus.DISCONNECTED;
 		this.currentQr = null;
+		this.state = 'stopped';
 	}
 
 	private async handleMessage(msg: { key: { remoteJid?: string | null }; message?: object | null }): Promise<void> {
