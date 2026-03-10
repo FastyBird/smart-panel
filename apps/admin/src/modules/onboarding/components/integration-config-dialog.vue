@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, watch } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElEmpty, vLoading } from 'element-plus';
@@ -106,23 +106,54 @@ const fetchConfig = async (): Promise<void> => {
 	}
 };
 
+let saveFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+const clearSaveFallback = (): void => {
+	if (saveFallbackTimer !== undefined) {
+		clearTimeout(saveFallbackTimer);
+		saveFallbackTimer = undefined;
+	}
+};
+
 const handleSave = (): void => {
 	isSaving.value = true;
 	remoteFormSubmit.value = true;
+
+	// Fallback: the child form's submit() can throw on validation failure
+	// without setting formResult to ERROR (it stays at WORKING forever).
+	// Use a safety timer to reset the saving state if no result arrives.
+	clearSaveFallback();
+
+	saveFallbackTimer = setTimeout(() => {
+		if (isSaving.value) {
+			isSaving.value = false;
+		}
+	}, 5000);
 };
 
 watch(
 	() => remoteFormResult.value,
 	(val: FormResultType) => {
 		if (val === FormResult.OK) {
+			clearSaveFallback();
 			isSaving.value = false;
 			emit('saved');
 			emit('update:visible', false);
 		} else if (val === FormResult.ERROR) {
+			clearSaveFallback();
+			isSaving.value = false;
+		} else if (val === FormResult.NONE && isSaving.value) {
+			// FormResult transitions back to NONE via the composable's clear() timer
+			// after both OK and ERROR states. Also catches edge cases.
+			clearSaveFallback();
 			isSaving.value = false;
 		}
 	}
 );
+
+onBeforeUnmount(() => {
+	clearSaveFallback();
+});
 
 watch(
 	() => props.visible,
