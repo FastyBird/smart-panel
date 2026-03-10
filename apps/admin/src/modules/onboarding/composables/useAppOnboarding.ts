@@ -63,6 +63,7 @@ const spacesToCreate = reactive<ISpaceToCreate[]>([]);
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const devicesFetched = ref(false);
+const spacesSuggested = ref(false);
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -206,30 +207,34 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	const ROOM_TOKENS = [
-		'Living Room',
-		'Bedroom',
-		'Kitchen',
-		'Bathroom',
-		'Office',
-		'Garage',
-		'Garden',
-		'Hallway',
-		'Dining Room',
-		'Basement',
-		'Attic',
-		'Laundry',
-		'Nursery',
-		'Guest Room',
-		'Patio',
+	const ROOM_TOKENS: { name: string; category: string; icon: string }[] = [
+		{ name: 'Living Room', category: 'living_room', icon: 'mdi:sofa' },
+		{ name: 'Bedroom', category: 'bedroom', icon: 'mdi:bed' },
+		{ name: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop' },
+		{ name: 'Bathroom', category: 'bathroom', icon: 'mdi:shower' },
+		{ name: 'Office', category: 'office', icon: 'mdi:desk' },
+		{ name: 'Garage', category: 'garage', icon: 'mdi:garage' },
+		{ name: 'Garden', category: null as never, icon: 'mdi:flower' },
+		{ name: 'Hallway', category: 'hallway', icon: 'mdi:door-open' },
+		{ name: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife' },
+		{ name: 'Basement', category: null as never, icon: 'mdi:stairs-down' },
+		{ name: 'Attic', category: null as never, icon: 'mdi:stairs-up' },
+		{ name: 'Laundry', category: null as never, icon: 'mdi:washing-machine' },
+		{ name: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage' },
+		{ name: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline' },
+		{ name: 'Patio', category: null as never, icon: 'mdi:deck' },
 	];
 
-	const suggestRoom = (deviceName: string): string | null => {
+	const suggestRoom = (deviceName: string): (typeof ROOM_TOKENS)[number] | null => {
 		const lower = deviceName.toLowerCase();
-		return ROOM_TOKENS.find((room) => lower.includes(room.toLowerCase())) ?? null;
+		return ROOM_TOKENS.find((room) => lower.includes(room.name.toLowerCase())) ?? null;
 	};
 
 	const suggestSpacesFromDevices = (): void => {
+		if (spacesSuggested.value) return;
+
+		spacesSuggested.value = true;
+
 		const existingNames = new Set(spacesToCreate.map((s) => s.name.toLowerCase()));
 
 		for (const device of discoveredDevices) {
@@ -238,14 +243,18 @@ export const useAppOnboarding = () => {
 			if (!suggested) continue;
 
 			// Add the suggested space if not already in the list
-			if (!existingNames.has(suggested.toLowerCase())) {
-				spacesToCreate.push({ name: suggested, category: null, icon: null });
-				existingNames.add(suggested.toLowerCase());
+			if (!existingNames.has(suggested.name.toLowerCase())) {
+				spacesToCreate.push({
+					name: suggested.name,
+					category: suggested.category || null,
+					icon: suggested.icon || null,
+				});
+				existingNames.add(suggested.name.toLowerCase());
 			}
 
-			// Auto-assign device to the suggested space
-			if (!deviceAssignments[device.id]) {
-				deviceAssignments[device.id] = suggested;
+			// Auto-assign device to the suggested space (only on first run)
+			if (!(device.id in deviceAssignments) || deviceAssignments[device.id] === undefined) {
+				deviceAssignments[device.id] = suggested.name;
 			}
 		}
 	};
@@ -390,6 +399,7 @@ export const useAppOnboarding = () => {
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		devicesFetched.value = false;
+		spacesSuggested.value = false;
 	};
 
 	return {

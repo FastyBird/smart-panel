@@ -76,6 +76,7 @@
 							{{ space.category }}
 						</el-tag>
 						<el-tag
+							v-if="discoveredDevices.length > 0"
 							size="small"
 							type="success"
 						>
@@ -289,22 +290,20 @@ const quickCategories = [
 	{ value: 'dining_room', label: t('onboardingModule.spaces.categories.diningRoom'), icon: 'mdi:silverware-fork-knife' },
 ];
 
+const findCategoryMeta = (category: string): { label: string; icon: string } | undefined => {
+	return quickCategories.find((c) => c.value === category);
+};
+
 const hasCategory = (category: string): boolean => {
-	return spacesToCreate.some((s) => s.category === category);
-};
-
-const categoryToName = (category: string): string => {
-	const cat = quickCategories.find((c) => c.value === category);
-	return cat?.label ?? category;
-};
-
-const categoryToIcon = (category: string): string => {
-	const cat = quickCategories.find((c) => c.value === category);
-	return cat?.icon ?? 'mdi:home';
+	const meta = findCategoryMeta(category);
+	return spacesToCreate.some((s) => s.category === category || (meta && s.name.toLowerCase() === meta.label.toLowerCase()));
 };
 
 const toggleCategory = (category: string): void => {
-	const existingIndex = spacesToCreate.findIndex((s) => s.category === category);
+	const meta = findCategoryMeta(category);
+	const existingIndex = spacesToCreate.findIndex(
+		(s) => s.category === category || (meta && s.name.toLowerCase() === meta.label.toLowerCase()),
+	);
 
 	if (existingIndex >= 0) {
 		const spaceName = spacesToCreate[existingIndex].name;
@@ -315,9 +314,9 @@ const toggleCategory = (category: string): void => {
 		clearAssignmentsForSpace(spaceName);
 	} else {
 		spacesToCreate.push({
-			name: categoryToName(category),
+			name: meta?.label ?? category,
 			category,
-			icon: categoryToIcon(category),
+			icon: meta?.icon ?? 'mdi:home',
 		});
 	}
 };
