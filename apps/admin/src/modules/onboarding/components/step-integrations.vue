@@ -336,6 +336,19 @@ const startDiscovery = async (type: string): Promise<void> => {
 	}
 };
 
+const removePluginDevices = async (type: string): Promise<void> => {
+	const pluginPrefix = type.replace('-plugin', '');
+	const pluginDevices = devicesStore.findAll().filter((d) => d.type.startsWith(pluginPrefix));
+
+	for (const device of pluginDevices) {
+		try {
+			await devicesStore.remove({ id: device.id });
+		} catch {
+			// Best-effort removal — continue with remaining devices
+		}
+	}
+};
+
 const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 	togglingPlugins.add(type);
 
@@ -358,6 +371,9 @@ const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 			discoveredPlugins.delete(type);
 			delete deviceCounts[type];
 			configuredPlugins.delete(type);
+
+			// Remove discovered devices belonging to this plugin
+			await removePluginDevices(type);
 		}
 	} catch {
 		// Store handles errors internally
