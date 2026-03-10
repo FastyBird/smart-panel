@@ -1,424 +1,68 @@
-import { Callout, Steps } from 'nextra/components'
+import { Callout, Cards } from 'nextra/components'
 
 # Installation
 
-Now that your Raspberry Pi is set up, it’s time to install the software that powers your Smart Panel: the backend and the panel UI.
+Now that your device is set up, it's time to install the Smart Panel software. Depending on your setup,
+you can choose one of three deployment scenarios.
+
+All installation methods use **pre-built distribution packages** published automatically by our CI pipeline
+to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 
 ---
 
-<Steps>
-	## Connect to your Pi via SSH
-
-	If you’re setting up your Smart Panel without a monitor and keyboard, the easiest way to access your Raspberry Pi is
-	over the network using SSH.
-
-	You can do this from another computer on the same network:
-
-	```bash copy
-	ssh pi@smart-panel.local
-	```
-
-	<Callout>
-		Default password: **raspberry**
-	</Callout>
-
-	<Callout type="info">
-		This works because you set the hostname as **smart-panel** during the OS flashing step. If you used a different hostname,
-		replace it accordingly (e.g. `pi@your-name.local`).
-	</Callout>
-
-	<Callout type="info">
-		If `.local` domains don't work on your system (e.g. Windows without Bonjour), you can find the IP address of your Pi
-		from your router’s interface and connect like this:
-	</Callout>
-
-	```bash copy
-	ssh pi@192.168.x.x
-	```
-
-	<Callout>
-		If you’re using a monitor and keyboard directly connected to the Pi, you can skip this step and run all commands in
-		the terminal.
-	</Callout>
-
-	## Update Your System
-
-	Before installing the Smart Panel, it’s a good idea to make sure your Raspberry Pi is up to date:
-
-	```bash copy
-	sudo apt update & sudo apt upgrade -y
-	```
-
-	<Callout type="info">
-		This updates all system packages to their latest versions, which helps ensure compatibility and security.
-	</Callout>
-
-	## Install Git
-
-	Git is a version control tool used to download and manage the Smart Panel’s source code. We’ll use it to clone the
-	project repository from GitHub.
-
-	To install Git on your Raspberry Pi:
-
-	```bash copy
-	sudo apt install git -y
-	```
-
-	## Install Node.js
-
-	Node.js powers the backend and admin interface. Use the official NodeSource setup script to install the latest **LTS** version of Node.js:
-
-	```bash copy
-	curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-	sudo apt install -y nodejs
-	```
-
-	<Callout type="info">
-		This installs both node and npm.
-	</Callout>
-
-	## Install flutter-pi
-
-	The Smart Panel UI is written in Flutter and runs on your Raspberry Pi using [flutter-pi](https://github.com/ardera/flutter-pi),
-	a lightweight runtime that doesn’t require **X11** or **Wayland**.
-
-	### Install Required Dependencies
-
-	```bash copy
-	sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
-	libdrm-dev libgbm-dev ttf-mscorefonts-installer fontconfig libsystemd-dev \
-	libinput-dev libudev-dev  libxkbcommon-dev -y
-	```
-
-	{<h4>Update the system fonts</h4>}
-
-	```bash copy
-	sudo fc-cache
-	```
-
-	### Build and Install flutter-pi
-
-	First, create a directory where flutter-pi will live and make sure your user owns it:
-
-	```bash copy
-	sudo mkdir /opt/flutter-pi
-	sudo chown -R ${USER}: /opt/flutter-pi
-	```
-
-	Now clone the flutter-pi repository:
-
-	```bash copy
-	git clone https://github.com/ardera/flutter-pi.git /opt/flutter-pi
-	```
-
-	Install build dependencies and compile flutter-pi (run as user pi):
-
-	```bash copy
-	cd /opt/flutter-pi
-	mkdir build && cd build
-	cmake ..
-	make -j`nproc`
-	sudo make install
-	```
-
-	Give the **pi** permission to use 3D acceleration:
-
-	<Callout type="warning">
-		Potential security hazard. If you don't want to do this, launch Smart Panel UI using sudo instead.
-	</Callout>
-
-	```bash copy
-	sudo usermod -a -G render pi
-	```
-
-	<Callout type="info">
-		Once installed, you’ll be able to run the Smart Panel UI directly from the console using the *flutter-pi* command.
-	</Callout>
-
-	### Enable KMS/DRM
-
-	To ensure proper display rendering, your Raspberry Pi must use the KMS (Kernel Mode Setting) graphics driver. This is
-	required for flutter-pi to access the display via DRM.
-
-	Open the boot config file:
-
-	```bash copy
-	sudo nano /boot/firmware/config.txt
-	```
-
-	Look for this line and make sure it is **enabled** (not commented out):
-
-	```bash copy
-	dtoverlay=vc4-kms-v3d
-	```
-
-	<Callout type="info">
-		If it’s not present, add it at the bottom of the file.
-	</Callout>
-
-	Reboot to apply changes:
-
-	```bash copy
-	sudo reboot
-	```
-
-	<Callout type="info">
-		If you previously had `dtoverlay=vc4-fkms-v3d` (the fake KMS driver), it should be **removed or commented out**.
-	</Callout>
-
-	## Install InfluxDB
-
-	The Smart Panel backend uses **InfluxDB** to store time-series data like temperature, humidity, or power usage.
-
-	To install InfluxDB v1.8:
-
-	```bash copy
-	wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo tee /etc/apt/trusted.gpg.d/influxdata.asc
-	```
-
-	```bash copy
-	echo "deb https://repos.influxdata.com/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/influxdata.list
-	```
-
-	```bash copy
-	sudo apt install influxdb=1.8.10-1 -y
-	```
-
-	Then enable and start the service:
-
-	```bash copy
-	sudo systemctl enable influxdb
-	```
-
-	```bash copy
-	sudo systemctl start influxdb
-	```
-
-	To verify that InfluxDB is running:
-
-	```bash copy
-	influxd version
-	```
-
-	You should see:
-
-	```bash
-	InfluxDB v1.8.10 (git: ...)
-	```
-
-	<Callout type="warning">
-		Make sure you're using InfluxDB **v1.8**. Installing **InfluxDB 2.x** will not work.
-	</Callout>
-
-    ## Allow Reboot & Power Off Commands
-
-    To allow the Smart Panel backend to reboot or shut down the Raspberry Pi, you need to give it
-    permission to execute system commands without a password.
-
-    The backend uses the following commands internally:
-
-    - `sudo /sbin/reboot`
-    - `sudo /sbin/poweroff`
-
-    By default, these require elevated privileges and will prompt for a password — which is not
-    suitable for automated use.
-
-
-    ### Grant Password-less Access for the `pi` User
-
-    Edit the `sudoers` file using the safe `visudo` tool:
-
-    ```bash copy
-    sudo visudo
-    ```
-
-    Then add this line at the bottom:
-
-    ```bash copy
-    pi ALL=(ALL) NOPASSWD: /sbin/reboot, /sbin/poweroff
-    ```
-
-    This gives the default pi user permission to execute reboot and poweroff without entering a password.
-
-    <Callout type="warning">
-        Only allow specific commands like `reboot` and `poweroff`. Never use `NOPASSWD: ALL`, as it poses a security risk.
-    </Callout>
-
-	## Install the Smart Panel Application
-
-	To get the full Smart Panel software—including the backend, admin UI, and the display app—you’ll need to download and
-	unpack the latest release.
-
-	Create the target directory and give your user ownership:
-
-	```bash copy
-	sudo mkdir -p /opt/smart-panel
-	sudo chown -R ${USER}:${USER} /opt/smart-panel
-	```
-
-	Create the storage directory and give your user ownership:
-
-	```bash copy
-	sudo mkdir -p /var/smart-panel
-	sudo chown -R ${USER}:${USER} /var/smart-panel
-	```
-
-	Move into the project directory:
-
-	```bash copy
-	cd /opt/smart-panel
-	```
-
-	Download and Unpack the Latest Release:
-
-	```bash copy
-	curl --http1.1 -L -C - -o smart-panel.tar.gz https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
-	tar -xzf smart-panel.tar.gz -C .
-	rm smart-panel.tar.gz
-	```
-
-	<Callout type="info">
-		This archive contains everything you need: backend, admin UI, and the prebuilt display app.
-	</Callout>
-
-	<Callout type="tip">
-		Running this on a Raspberry Pi Zero 2W?
-		Because of the device's limited network and CPU performance, the download may take several minutes or could be interrupted.
-		To avoid starting over, the `-C -` flag in the `curl` command tells it to **resume** the download if it gets interrupted.
-		If your connection drops, simply run the same command again and it will pick up where it left off.
-	</Callout>
-
-	<Callout type="warning">
-		Make sure you have at least **300 MB of free space** on your SD card before starting the download and extraction process.
-	</Callout>
-
-	Optional: Verify Download Integrity
-
-	To ensure your downloaded archive is not corrupted, you can optionally verify the SHA-256 checksum:
-
-	Download the checksum file:
-
-	```bash copy
-	curl -LO https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.sha256
-	```
-
-	Verify the archive:
-
-	```bash copy
-	sha256sum -c smart-panel.sha256
-	```
-
-	<Callout type="info">
-		If the archive is valid, the output will show:
-		<code>smart-panel.tar.gz: OK</code>
-	</Callout>
-
-	Run the database migrations to initialize the database:
-
-	```bash copy
-	npm run migration:run
-	```
-
-	<Callout type="info">
-		This creates all required tables in the application database so your Smart Panel can start working right away.
-	</Callout>
-
-	## Run Backend, Admin & Display as Services
-
-	You’ll want your Smart Panel to automatically launch on boot. Here’s how to set up systemd services for both backend and display:
-
-	### Backend & Admin Service
-
-	Create a service file:
-
-	```bash copy
-	sudo nano /etc/systemd/system/smart-panel-backend.service
-	```
-
-	Paste this:
-
-	```bash copy
-	[Unit]
-	Description=Smart Panel Backend & Admin Service
-	After=network.target
-
-	[Service]
-	User=pi
-	WorkingDirectory=/opt/smart-panel
-	ExecStart=npm start
-	Restart=always
-	Environment=NODE_ENV=production
-
-	[Install]
-	WantedBy=multi-user.target
-	```
-
-	Enable and start the service:
-
-	```bash copy
-	sudo systemctl enable smart-panel-backend
-	sudo systemctl start smart-panel-backend
-	```
-
-	<Callout type="info">
-		The **Admin Interface** is already bundled and served through the backend — you don’t need to run it separately.
-	</Callout>
-
-	### Display Service
-
-	Create the display service file:
-
-	```bash copy
-	sudo nano /etc/systemd/system/smart-panel-display.service
-	```
-
-	Paste this:
-
-	```bash copy
-	[Unit]
-	Description=Smart Panel Display App
-	After=network.target
-	Requires=smart-panel-backend.service
-
-	[Service]
-	User=pi
-	WorkingDirectory=/opt/smart-panel/display
-	ExecStart=/usr/local/bin/flutter-pi --release .
-	Restart=always
-
-	[Install]
-	WantedBy=multi-user.target
-	```
-
-	<Callout type="default">
-		Want to rotate the display? Add the `-r` (physical rotation) flag to the `ExecStart` line. For example:
-
-		```bash copy
-		ExecStart=/usr/local/bin/flutter-pi -r 270 --release .
-		```
-
-		Valid rotation values: `0`, `90`, `180`, `270`
-	</Callout>
-
-	Enable and start the service:
-
-	```bash copy
-	sudo systemctl enable smart-panel-display
-	sudo systemctl start smart-panel-display
-	```
-
-	---
-
-	Now, all three apps — **backend**, **admin**, and **display** — will automatically launch on boot and restart if they crash.
-</Steps>
+## Deployment Scenarios
+
+<Cards>
+	<Cards.Card title="Server Only" href="/docs/get-started/installation/server-only">
+		Install just the backend and admin interface on a server or headless device. Display panels connect remotely.
+	</Cards.Card>
+	<Cards.Card title="Display Only" href="/docs/get-started/installation/display-only">
+		Install the panel app on a display device that connects to an existing Smart Panel server on your network.
+	</Cards.Card>
+	<Cards.Card title="All-in-One" href="/docs/get-started/installation/all-in-one">
+		Run the server and display on the same device — ideal for a standalone Raspberry Pi smart panel.
+	</Cards.Card>
+</Cards>
 
 ---
 
-## What’s Next?
+## Which Scenario Is Right for You?
 
-Your Smart Panel is now fully running — including the **backend**, **admin interface**, and the **display UI**.
+| Scenario | Best For | Example Hardware |
+|----------|----------|-----------------|
+| **Server Only** | Centralized setup with multiple displays | Raspberry Pi 4, mini PC, NAS, any Linux server |
+| **Display Only** | Adding a screen to an existing server | Raspberry Pi Zero 2W + touchscreen, Android tablet |
+| **All-in-One** | Single standalone smart panel | Raspberry Pi 3B+/4 with DSI touchscreen |
 
-Now it’s time to **pair your devices**, **customize your dashboard**, and start building the smart display you’ve always wanted.
+<Callout type="info">
+	Not sure which to pick? If you have **one Raspberry Pi with a display**, go with
+	[All-in-One](/docs/get-started/installation/all-in-one). If you plan to have **multiple displays
+	around your home**, start with [Server Only](/docs/get-started/installation/server-only) on a central
+	device, then add displays using [Display Only](/docs/get-started/installation/display-only).
+</Callout>
 
-👉 Head over to the next section: **[Onboarding](/docs/get-started/onboarding)** — where we’ll guide you through device
-pairing and initial setup.
+---
+
+## System Requirements
+
+### Server (Backend + Admin)
+
+- **OS**: Linux with systemd (Raspberry Pi OS, Debian, Ubuntu, Fedora, etc.)
+- **Node.js**: Version 20 or higher
+- **Architecture**: ARM (32-bit), ARM64 (64-bit), or x64
+- **RAM**: 512 MB minimum, 1 GB recommended
+- **Storage**: 300 MB free space minimum
+
+### Display (Panel App)
+
+- **Raspberry Pi**: flutter-pi runtime (no desktop environment needed)
+- **Linux x64**: eLinux DRM-GBM mode (no desktop required) or Linux desktop with GTK3
+- **Android**: Android 5.0+ (sideloaded via ADB or APK)
+
+---
+
+## What's Next?
+
+Choose your deployment scenario above and follow the step-by-step guide. After installation, proceed
+to [**Onboarding**](/docs/get-started/onboarding) to create your admin account and start configuring
+your smart panel.

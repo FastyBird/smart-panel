@@ -1,0 +1,314 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Server Only Installation
+
+This guide walks you through installing just the **Smart Panel backend and admin interface** on a server
+or headless device. Display panels on other devices will connect to this server over your local network.
+
+This is the ideal setup when you want a **central server** with one or more displays around your home.
+
+---
+
+## Prerequisites
+
+- A Linux device with systemd (Raspberry Pi, mini PC, NAS, VM, etc.)
+- Network connectivity (Wi-Fi or Ethernet)
+- SSH access to the device (or a local terminal)
+
+---
+
+## Option 1: One-Liner Install Script (Recommended)
+
+The fastest way to get started. This script handles everything — installs Node.js if needed, downloads
+the Smart Panel package, and configures the systemd service.
+
+```bash copy
+curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
+```
+
+<Callout type="info">
+	The script supports several options. You can customize the port or install a specific version:
+
+	```bash copy
+	curl -fsSL https://get.smart-panel.fastybird.com | sudo bash -s -- --port 8080
+	```
+
+	Available flags: `--port <port>`, `--version <ver>`, `--beta`, `--alpha`
+</Callout>
+
+That's it! Skip ahead to [Post-Installation](#post-installation) below.
+
+---
+
+## Option 2: Manual NPM Install
+
+If you prefer more control over the installation process, follow these steps.
+
+<Steps>
+	## Install Node.js
+
+	The backend requires **Node.js 20** or higher. Use the official NodeSource setup script:
+
+	```bash copy
+	curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+	sudo apt install -y nodejs
+	```
+
+	Verify the installation:
+
+	```bash copy
+	node --version
+	```
+
+	<Callout type="warning">
+		The output should show `v20.x.x` or higher. If you see an older version, remove it and
+		reinstall using the commands above.
+	</Callout>
+
+	## Install Smart Panel
+
+	Install the Smart Panel package globally via npm:
+
+	```bash copy
+	sudo npm install -g @fastybird/smart-panel
+	```
+
+	## Configure and Start the Service
+
+	Use the built-in service manager to install and start Smart Panel as a systemd service:
+
+	```bash copy
+	sudo smart-panel-service install
+	```
+
+	This will:
+	- Create a dedicated system user (`smart-panel`)
+	- Set up data directories at `/var/lib/smart-panel/`
+	- Create configuration at `/etc/smart-panel/`
+	- Register and start a systemd service
+
+	<Callout type="info">
+		You can customize the installation with options:
+
+		```bash copy
+		sudo smart-panel-service install \
+			--port 8080 \
+			--admin-username admin \
+			--admin-password mysecurepassword
+		```
+
+		Run `smart-panel-service install --help` for all available options.
+	</Callout>
+</Steps>
+
+---
+
+## Option 3: Manual Tarball Install
+
+For environments where npm is not available or you prefer a self-contained installation.
+
+<Steps>
+	## Install Node.js
+
+	Follow the same Node.js installation as in Option 2 above.
+
+	## Download the Release Package
+
+	Create the installation directory and download the latest release:
+
+	```bash copy
+	sudo mkdir -p /opt/smart-panel
+	sudo chown -R ${USER}:${USER} /opt/smart-panel
+	cd /opt/smart-panel
+	```
+
+	```bash copy
+	curl --http1.1 -L -C - -o smart-panel.tar.gz \
+		https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+	tar -xzf smart-panel.tar.gz -C .
+	rm smart-panel.tar.gz
+	```
+
+	<Callout type="tip">
+		Running this on a Raspberry Pi Zero 2W? The `-C -` flag tells curl to **resume** the download
+		if it gets interrupted. If your connection drops, simply run the same command again.
+	</Callout>
+
+	### Optional: Verify Download Integrity
+
+	```bash copy
+	curl -LO https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.sha256
+	sha256sum -c smart-panel.sha256
+	```
+
+	## Create Data Directory
+
+	```bash copy
+	sudo mkdir -p /var/smart-panel
+	sudo chown -R ${USER}:${USER} /var/smart-panel
+	```
+
+	## Run Database Migrations
+
+	```bash copy
+	cd /opt/smart-panel
+	npm run migration:run
+	```
+
+	## Create a Systemd Service
+
+	Create the service file:
+
+	```bash copy
+	sudo nano /etc/systemd/system/smart-panel-backend.service
+	```
+
+	Paste this configuration:
+
+	```ini copy
+	[Unit]
+	Description=Smart Panel Backend & Admin Service
+	After=network.target
+
+	[Service]
+	User=pi
+	WorkingDirectory=/opt/smart-panel
+	ExecStart=npm start
+	Restart=always
+	Environment=NODE_ENV=production
+
+	[Install]
+	WantedBy=multi-user.target
+	```
+
+	Enable and start the service:
+
+	```bash copy
+	sudo systemctl enable smart-panel-backend
+	sudo systemctl start smart-panel-backend
+	```
+</Steps>
+
+---
+
+## Optional: Install InfluxDB
+
+If you want to store **time-series data** (temperature history, energy usage, etc.), install InfluxDB v1.8:
+
+```bash copy
+wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo tee /etc/apt/trusted.gpg.d/influxdata.asc
+echo "deb https://repos.influxdata.com/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/influxdata.list
+sudo apt update
+sudo apt install influxdb=1.8.10-1 -y
+sudo systemctl enable influxdb
+sudo systemctl start influxdb
+```
+
+<Callout type="warning">
+	Make sure you install InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
+</Callout>
+
+Then configure the connection in your Smart Panel environment:
+
+```bash copy
+sudo nano /etc/smart-panel/environment
+```
+
+Add:
+
+```bash
+FB_INFLUXDB_URL=http://localhost:8086
+FB_INFLUXDB_DATABASE=smart_panel
+```
+
+Restart the service to apply:
+
+```bash copy
+sudo smart-panel-service restart
+```
+
+---
+
+## Optional: Allow Reboot & Power Off
+
+To allow the backend to reboot or shut down the device without a password prompt:
+
+```bash copy
+sudo visudo
+```
+
+Add this line at the bottom:
+
+```bash copy
+pi ALL=(ALL) NOPASSWD: /sbin/reboot, /sbin/poweroff
+```
+
+<Callout type="warning">
+	Only allow specific commands. Never use `NOPASSWD: ALL`.
+</Callout>
+
+---
+
+## Post-Installation
+
+### Verify the Service
+
+```bash copy
+sudo smart-panel-service status
+```
+
+You should see the service running with its PID, uptime, and memory usage.
+
+### Access the Admin Interface
+
+Open a browser and navigate to:
+
+```
+http://<device-ip>:3000
+```
+
+<Callout type="info">
+	If you enabled mDNS (default), you can also use `http://smart-panel.local:3000`.
+</Callout>
+
+### Service Management
+
+```bash copy
+# Check status
+sudo smart-panel-service status
+
+# View logs
+sudo smart-panel-service logs -f
+
+# Restart
+sudo smart-panel-service restart
+
+# Update to latest version
+sudo smart-panel-service update
+```
+
+---
+
+## Configuration
+
+Environment variables are stored in `/etc/smart-panel/environment`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_BACKEND_PORT` | `3000` | HTTP server port |
+| `FB_JWT_SECRET` | Auto-generated | JWT authentication secret |
+| `FB_DB_PATH` | `/var/lib/smart-panel/data` | Database directory |
+| `FB_CONFIG_PATH` | `/var/lib/smart-panel/config` | Config directory |
+| `FB_MDNS_ENABLED` | `true` | Enable mDNS discovery |
+| `FB_INFLUXDB_URL` | - | InfluxDB connection URL |
+| `FB_INFLUXDB_DATABASE` | - | InfluxDB database name |
+| `FB_OPENWEATHERMAP_API_KEY` | - | OpenWeatherMap API key |
+
+---
+
+## What's Next?
+
+Your server is running. Now either:
+
+- **Add display panels** by following the [Display Only](/docs/get-started/installation/display-only) guide on your display devices
+- **Create your admin account** by following the [Onboarding](/docs/get-started/onboarding) guide
