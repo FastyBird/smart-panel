@@ -659,27 +659,66 @@ The Flutter-based panel app is designed for wall-mounted touch displays with an 
 ### Features
 
 #### Deck Navigation
-- Swipeable deck-based navigation between dashboard pages
-- Page indicator dots
-- Smooth page transitions
-- Touch-optimized gestures
+- Swipeable deck-based navigation between dashboard pages and domain control screens
+- Bottom navigation bar (portrait) or side dock (landscape) for quick access
+- "More" sheet for accessing all available deck items
+- Smooth crossfade animation for distant page jumps
+- Touch-optimized gestures with swipe blocking during active interaction
 
-#### Device Discovery
-- Automatic discovery of new devices on the network
-- mDNS service scanning
-- Device adoption workflow
+#### Domain Control Pages
+Purpose-built control screens for each smart home domain within a space:
+
+- **Lights Domain** - Lighting control with role grouping (main, task, ambient, accent, night) and mode presets (off/work/relax/night)
+- **Climate Domain** - Thermostat dial interface with mode selector (heat/cool/off), auxiliary device management, and sensor data display
+- **Media Domain** - Media activity and playback controls with source selection, volume, and remote emulation
+- **Sensors Domain** - Environmental sensor readings with time-series charts (temperature, humidity, pressure, air quality)
+- **Shading Domain** - Window covering control with position sliders and tilt adjustment
+- **Energy Domain** - Real-time power consumption with historical charts, time range selection, and top consumer breakdown
+
+#### Sky Visualization
+- Dynamic sky gradient backgrounds that reflect the actual time of day
+- Animated cloud layers based on real weather conditions
+- Celestial elements (sun/moon positioning based on astronomical data)
+- Glass-card UI overlays on top of the sky scene
+- Weather overlays (rain, snow, fog effects)
+
+#### Backend Discovery
+- Automatic discovery of Smart Panel backend servers via mDNS
+- Manual URL entry with IP address and hostname validation
+- Animated discovery interface with pulse rings
+- Connection error handling with retry UI
 
 #### Overlay System
-- Modal overlays for device detail views
-- Climate control overlay with temperature wheel
-- Media control overlay
-- Device control panels
+- Stacked overlay system for multiple simultaneous notifications
+- Connection status overlay (online/offline detection)
+- Security alert overlays (alarm triggered, armed state changes)
+- System action confirmations (reboot, factory reset)
+- Inactivity overlay with lock screen and PIN entry
+
+#### Device Detail Pages
+31 device-specific detail screens with contextual controls:
+- **Lighting**: RGB/brightness/color temperature control with preset buttons
+- **Climate**: Thermostat dial, heating unit, air conditioner, water heater controls
+- **Media**: Television, speaker, AV receiver, projector, streaming service, set-top box controls with playback, volume, source selection, and remote emulation
+- **Environmental**: Sensor charts, air purifier, humidifier, dehumidifier, fan controls
+- **Window Treatments**: Position slider and tilt control
+- **Security**: Lock, door, doorbell, alarm controls
+- **Automation**: Switcher, outlet, robot vacuum, pump, sprinkler, valve controls
+
+#### Screen Saver & Lock Screen
+- Customizable screen saver with time, weather, and status display
+- PIN-based lock screen with numeric keypad
+- Configurable inactivity timeout
 
 #### Settings
-- Panel display configuration
-- Network settings
-- Backend connection configuration
-- Display brightness and timeout
+- General settings (home page, theme mode)
+- Display settings (brightness, screen saver, lock timeout)
+- Audio settings (volume, audio device selection)
+- Weather settings (provider, units, location)
+- Voice activation settings (wake word, sensitivity)
+- Language selection
+- Maintenance (reboot, factory reset, firmware updates)
+- About screen (version, build info, licenses)
 
 ### Optimistic UI Pattern
 
