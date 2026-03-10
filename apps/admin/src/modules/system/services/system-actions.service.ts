@@ -8,7 +8,8 @@ import type { Client } from 'openapi-fetch';
 
 import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { OpenApiPaths } from '../../../openapi.constants';
-import { MODULES_PREFIX, RouteNames as AppRouteNames } from '../../../app.constants';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { invalidateOnboardingStatus } from '../../onboarding/composables/useOnboardingStatus';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
@@ -122,6 +123,10 @@ export class SystemActionsService {
 		}
 	}
 
+	isFactoryResetDone(): boolean {
+		return this.factoryResetTriggeredBy === null && this.factoryResetLoading === null;
+	}
+
 	async factoryResetDone(): Promise<void> {
 		// Guard against duplicate execution from both action response and WS event
 		if (this.factoryResetTriggeredBy === null) return;
@@ -136,9 +141,13 @@ export class SystemActionsService {
 			await accountManager.signOut();
 		}
 
+		// Clear cached onboarding status so the onboarding guard doesn't
+		// redirect away based on stale "onboarding completed" data.
+		invalidateOnboardingStatus();
+
 		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 
-		await this.router.push({ name: AppRouteNames.ROOT });
+		await this.router.push({ name: 'onboarding_module-onboarding' });
 	}
 
 	private async checkHealth({

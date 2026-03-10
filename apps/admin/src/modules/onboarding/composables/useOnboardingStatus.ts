@@ -17,6 +17,16 @@ const lastFetched = ref<number | null>(null);
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Standalone cache invalidation — safe to call outside Vue setup context.
+ * Use this when you need to clear the onboarding status cache from services
+ * that don't have access to the composable (e.g. SystemActionsService).
+ */
+export const invalidateOnboardingStatus = (): void => {
+	status.value = null;
+	lastFetched.value = null;
+};
+
 export const useOnboardingStatus = () => {
 	const backend = useBackend();
 

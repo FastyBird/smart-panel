@@ -8,6 +8,7 @@ import { TokensService } from '../../auth/services/tokens.service';
 import { DeploymentMode } from '../../displays/displays.constants';
 import { DisplaysService } from '../../displays/services/displays.service';
 import { PermitJoinService } from '../../displays/services/permit-join.service';
+import { PluginServiceManagerService } from '../../extensions/services/plugin-service-manager.service';
 import { PlatformNotSupportedException } from '../../platform/platform.exceptions';
 import { PlatformService } from '../../platform/services/platform.service';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
@@ -25,6 +26,7 @@ export class SystemCommandService implements OnModuleInit {
 	constructor(
 		private readonly moduleRef: ModuleRef,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly platformService: PlatformService,
 		private readonly tokensService: TokensService,
 		private readonly eventEmitter: EventEmitter2,
@@ -136,6 +138,9 @@ export class SystemCommandService implements OnModuleInit {
 			if (deploymentMode !== DeploymentMode.ALL_IN_ONE) {
 				await this.cascadeFactoryResetToDisplays(user);
 			}
+
+			// Stop all plugin services before wiping data
+			await this.pluginServiceManager.stopAllServices();
 
 			// Sort seeders by priority (lower first)
 			const handlers = this.factoryResetRegistry.get().sort((a, b) => a.priority - b.priority);

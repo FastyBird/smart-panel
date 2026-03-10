@@ -6,6 +6,7 @@ import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { DisplaysModule } from '../displays/displays.module';
+import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
@@ -61,6 +62,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		UsersModule,
 		DevicesModule,
 		DisplaysModule,
+		ExtensionsModule,
 	],
 	providers: [
 		SystemService,
