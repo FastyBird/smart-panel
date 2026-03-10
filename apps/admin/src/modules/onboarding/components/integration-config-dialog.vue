@@ -9,7 +9,7 @@
 		<el-scrollbar max-height="60vh">
 			<div
 				v-loading="isLoading"
-				class="min-h-[120px]"
+				class="min-h-[120px] overflow-x-hidden"
 			>
 				<component
 					:is="configFormComponent"
