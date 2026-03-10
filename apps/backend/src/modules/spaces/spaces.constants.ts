@@ -161,20 +161,6 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 }
 
 /**
- * Normalize category values for a given space type
- */
-export function normalizeCategoryValue(
-	category: string | null,
-	_type: SpaceType,
-): SpaceRoomCategory | SpaceZoneCategory | null {
-	if (category === null) {
-		return null;
-	}
-
-	return category as SpaceRoomCategory | SpaceZoneCategory;
-}
-
-/**
  * Template definition for a space category
  */
 export interface SpaceCategoryTemplate {

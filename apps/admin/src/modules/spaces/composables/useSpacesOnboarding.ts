@@ -4,12 +4,10 @@ import { injectBackendClient, useUuid } from '../../../common';
 import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceType,
-	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 import {
 	ASSIGNABLE_ZONE_CATEGORIES,
-	SPACE_ROOM_CATEGORY_TEMPLATES,
-	SPACE_ZONE_CATEGORY_TEMPLATES,
+	SPACE_ALL_CATEGORY_TEMPLATES,
 	type SpaceRoomCategory,
 	SpaceType,
 	type SpaceZoneCategory,
@@ -108,7 +106,7 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 };
 
 const apiCategoryToSpaceCategory = (
-	apiCategory: SpacesModuleCreateSpaceCategory | SpacesModuleDataSpaceCategory | null | undefined
+	apiCategory: SpacesModuleCreateSpaceCategory | null | undefined
 ): SpaceRoomCategory | SpaceZoneCategory | null => {
 	if (!apiCategory) return null;
 	return apiCategory as unknown as SpaceRoomCategory | SpaceZoneCategory;
@@ -210,8 +208,7 @@ export const useSpacesOnboarding = () => {
 			const allProposals = response.data.data.map((p) => {
 				const category = apiCategoryToSpaceCategory(p.category);
 				// Get default description and icon from category template
-				const allTemplates: Record<string, { icon: string; description: string }> = { ...SPACE_ROOM_CATEGORY_TEMPLATES, ...SPACE_ZONE_CATEGORY_TEMPLATES };
-				const template = category ? allTemplates[category] : null;
+				const template = category ? SPACE_ALL_CATEGORY_TEMPLATES[category] : null;
 				const defaultDescription = template?.description ?? null;
 				const defaultIcon = template?.icon ?? null;
 				const name = p.name ?? '';

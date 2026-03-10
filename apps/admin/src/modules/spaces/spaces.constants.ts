@@ -397,6 +397,14 @@ export const SPACE_ZONE_CATEGORY_TEMPLATES: Record<SpaceZoneCategory, Omit<Space
 };
 
 /**
+ * Merged room + zone category templates (computed once)
+ */
+export const SPACE_ALL_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate, 'category'>> = {
+	...SPACE_ROOM_CATEGORY_TEMPLATES,
+	...SPACE_ZONE_CATEGORY_TEMPLATES,
+};
+
+/**
  * Get templates for a given space type
  */
 export function getTemplatesForType(
@@ -408,7 +416,21 @@ export function getTemplatesForType(
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORY_TEMPLATES;
 	}
-	return { ...SPACE_ROOM_CATEGORY_TEMPLATES, ...SPACE_ZONE_CATEGORY_TEMPLATES };
+	return SPACE_ALL_CATEGORY_TEMPLATES;
+}
+
+/**
+ * Get an icon for a space based on its custom icon, category template, or type default
+ */
+export function getSpaceIcon(space: { icon: string | null; category: SpaceRoomCategory | SpaceZoneCategory | null; type: SpaceType }): string {
+	if (space.icon) {
+		return space.icon;
+	}
+	const categoryTemplate = space.category ? SPACE_ALL_CATEGORY_TEMPLATES[space.category] : undefined;
+	if (categoryTemplate) {
+		return categoryTemplate.icon;
+	}
+	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
 }
 
 // Re-export role enums from OpenAPI-generated types (single source of truth)

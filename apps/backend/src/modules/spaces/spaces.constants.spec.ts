@@ -1,10 +1,4 @@
-import {
-	SpaceRoomCategory,
-	SpaceType,
-	SpaceZoneCategory,
-	isValidCategoryForType,
-	normalizeCategoryValue,
-} from './spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory, isValidCategoryForType } from './spaces.constants';
 
 describe('spaces.constants helper functions', () => {
 	describe('isValidCategoryForType', () => {
@@ -46,36 +40,6 @@ describe('spaces.constants helper functions', () => {
 			it('should reject completely invalid category values', () => {
 				expect(isValidCategoryForType('invalid_category', SpaceType.ROOM)).toBe(false);
 				expect(isValidCategoryForType('invalid_category', SpaceType.ZONE)).toBe(false);
-			});
-		});
-	});
-
-	describe('normalizeCategoryValue', () => {
-		describe('with ROOM type', () => {
-			it('should return room category unchanged', () => {
-				expect(normalizeCategoryValue(SpaceRoomCategory.LIVING_ROOM, SpaceType.ROOM)).toBe(
-					SpaceRoomCategory.LIVING_ROOM,
-				);
-				expect(normalizeCategoryValue(SpaceRoomCategory.BEDROOM, SpaceType.ROOM)).toBe(SpaceRoomCategory.BEDROOM);
-			});
-
-			it('should return null unchanged', () => {
-				expect(normalizeCategoryValue(null, SpaceType.ROOM)).toBeNull();
-			});
-		});
-
-		describe('with ZONE type', () => {
-			it('should return zone category unchanged', () => {
-				expect(normalizeCategoryValue(SpaceZoneCategory.FLOOR_GROUND, SpaceType.ZONE)).toBe(
-					SpaceZoneCategory.FLOOR_GROUND,
-				);
-				expect(normalizeCategoryValue(SpaceZoneCategory.OUTDOOR_GARDEN, SpaceType.ZONE)).toBe(
-					SpaceZoneCategory.OUTDOOR_GARDEN,
-				);
-			});
-
-			it('should return null unchanged', () => {
-				expect(normalizeCategoryValue(null, SpaceType.ZONE)).toBeNull();
 			});
 		});
 	});

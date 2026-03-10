@@ -5,7 +5,6 @@ import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceStatus_widgetsSettingsRange,
 	SpacesModuleCreateSpaceType,
-	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 import {
 	ENERGY_WIDGET_DEFAULTS,
@@ -42,7 +41,7 @@ const validRoomResponse: ApiSpace = {
 	name: 'Living Room',
 	description: 'Main living area',
 	type: SpacesModuleCreateSpaceType.room,
-	category: SpacesModuleDataSpaceCategory.living_room,
+	category: SpacesModuleCreateSpaceCategory.living_room,
 	icon: 'mdi:sofa',
 	display_order: 1,
 	parent_id: parentId.toString(),
@@ -56,7 +55,7 @@ const validZoneResponse: ApiSpace = {
 	name: 'Ground Floor',
 	description: 'First level of the house',
 	type: SpacesModuleCreateSpaceType.zone,
-	category: SpacesModuleDataSpaceCategory.floor_ground,
+	category: SpacesModuleCreateSpaceCategory.floor_ground,
 	icon: 'mdi:home-floor-0',
 	display_order: 0,
 	parent_id: null,
