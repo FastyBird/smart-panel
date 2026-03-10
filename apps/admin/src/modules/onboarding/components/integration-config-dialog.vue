@@ -54,17 +54,21 @@
 			</el-alert>
 		</div>
 		<template #footer>
-			<div class="flex justify-between">
-				<el-button @click="emit('update:visible', false)">
-					{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
+			<div class="flex justify-between items-center">
+				<el-button
+					:loading="isValidating"
+					:disabled="!remoteFormChanged"
+					link
+					@click="handleValidate"
+				>
+					{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
 				</el-button>
-				<div class="flex gap-2">
+				<div class="flex gap-2 items-center">
 					<el-button
-						:loading="isValidating"
-						:disabled="!remoteFormChanged"
-						@click="handleValidate"
+						link
+						@click="emit('update:visible', false)"
 					>
-						{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
+						{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
 					</el-button>
 					<el-button
 						type="primary"
