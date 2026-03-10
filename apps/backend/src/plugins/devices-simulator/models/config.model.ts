@@ -21,11 +21,11 @@ export class SimulatorConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Whether the plugin is enabled',
 		type: 'boolean',
-		example: true,
+		example: false,
 	})
 	@Expose()
 	@IsBoolean()
-	enabled: boolean = true;
+	enabled: boolean = false;
 
 	@ApiProperty({
 		description: 'Whether to simulate device values when the service starts',
