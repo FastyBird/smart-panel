@@ -159,7 +159,7 @@
 			"buttons": {
 				"cancel": "Cancel",
 				"validate": "Validate",
-				"save": "Save Configuration"
+				"save": "Save"
 			},
 			"messages": {
 				"saved": "Configuration saved successfully.",
