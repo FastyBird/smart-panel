@@ -210,7 +210,7 @@ import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, El
 
 import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
+import { LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { useBuddyPersonality } from '../composables/useBuddyPersonality';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import { useBuddySttProviders } from '../composables/useBuddySttProviders';
@@ -240,15 +240,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-// Normalize legacy provider values before initializing the form so the
-// initial snapshot already contains the mapped value (avoids false dirty state).
-const normalizedConfig = { ...props.config } as Record<string, unknown>;
-const rawProvider = normalizedConfig.provider as string | undefined;
-
-if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
-	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
-}
-
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
 const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
@@ -259,7 +250,7 @@ onBeforeMount(async (): Promise<void> => {
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
-	config: normalizedConfig as typeof props.config,
+	config: props.config,
 	messages: {
 		success: t('buddyModule.messages.config.edited'),
 		error: t('buddyModule.messages.config.notEdited'),

@@ -19,7 +19,6 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	EventType,
 	SPACES_MODULE_NAME,
-	type SpaceCategory,
 	SpaceRoomCategory,
 	SpaceType,
 	SpaceZoneCategory,
@@ -456,12 +455,18 @@ export class SpacesService {
 	}
 
 	async proposeSpaces(): Promise<
-		{ name: string; type: SpaceType; category: SpaceCategory | null; deviceIds: string[]; deviceCount: number }[]
+		{
+			name: string;
+			type: SpaceType;
+			category: SpaceRoomCategory | SpaceZoneCategory | null;
+			deviceIds: string[];
+			deviceCount: number;
+		}[]
 	> {
 		this.logger.debug('Proposing spaces based on device names');
 
 		// Token to (type, category) mapping for intelligent space proposals
-		const tokenMapping: Record<string, { type: SpaceType; category: SpaceCategory | null }> = {
+		const tokenMapping: Record<string, { type: SpaceType; category: SpaceRoomCategory | SpaceZoneCategory | null }> = {
 			// Room tokens
 			'living room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
 			bedroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },

@@ -1,5 +1,4 @@
 import {
-	LEGACY_OUTDOOR_CATEGORY,
 	SpaceRoomCategory,
 	SpaceType,
 	SpaceZoneCategory,
@@ -21,10 +20,6 @@ describe('spaces.constants helper functions', () => {
 				expect(isValidCategoryForType(SpaceZoneCategory.OUTDOOR_GARDEN, SpaceType.ROOM)).toBe(false);
 			});
 
-			it('should reject legacy outdoor value', () => {
-				expect(isValidCategoryForType(LEGACY_OUTDOOR_CATEGORY, SpaceType.ROOM)).toBe(false);
-			});
-
 			it('should accept null', () => {
 				expect(isValidCategoryForType(null, SpaceType.ROOM)).toBe(true);
 			});
@@ -40,10 +35,6 @@ describe('spaces.constants helper functions', () => {
 			it('should reject room categories', () => {
 				expect(isValidCategoryForType(SpaceRoomCategory.LIVING_ROOM, SpaceType.ZONE)).toBe(false);
 				expect(isValidCategoryForType(SpaceRoomCategory.BEDROOM, SpaceType.ZONE)).toBe(false);
-			});
-
-			it('should accept legacy outdoor value', () => {
-				expect(isValidCategoryForType(LEGACY_OUTDOOR_CATEGORY, SpaceType.ZONE)).toBe(true);
 			});
 
 			it('should accept null', () => {
@@ -71,11 +62,6 @@ describe('spaces.constants helper functions', () => {
 			it('should return null unchanged', () => {
 				expect(normalizeCategoryValue(null, SpaceType.ROOM)).toBeNull();
 			});
-
-			it('should not normalize legacy outdoor for ROOM (not applicable)', () => {
-				// Legacy outdoor is only valid for zones, so normalization shouldn't happen for rooms
-				expect(normalizeCategoryValue(LEGACY_OUTDOOR_CATEGORY, SpaceType.ROOM)).toBe(LEGACY_OUTDOOR_CATEGORY);
-			});
 		});
 
 		describe('with ZONE type', () => {
@@ -90,10 +76,6 @@ describe('spaces.constants helper functions', () => {
 
 			it('should return null unchanged', () => {
 				expect(normalizeCategoryValue(null, SpaceType.ZONE)).toBeNull();
-			});
-
-			it('should normalize legacy outdoor to outdoor_garden', () => {
-				expect(normalizeCategoryValue(LEGACY_OUTDOOR_CATEGORY, SpaceType.ZONE)).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
 			});
 		});
 	});

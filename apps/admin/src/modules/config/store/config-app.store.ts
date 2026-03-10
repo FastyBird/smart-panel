@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore, storeToRefs } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import type { ConfigModuleGetConfigSectionOperation } from '../../../openapi.constants';
+import type { ConfigModuleGetConfigOperation } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
@@ -152,7 +152,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 				let errorReason: string | null = 'Failed to fetch app config.';
 
 				if (error) {
-					errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleGetConfigOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

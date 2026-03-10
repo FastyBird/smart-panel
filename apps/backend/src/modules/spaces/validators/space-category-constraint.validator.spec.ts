@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { LEGACY_OUTDOOR_CATEGORY, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 
 import { IsValidSpaceCategory } from './space-category-constraint.validator';
 
@@ -48,25 +48,6 @@ describe('SpaceCategoryConstraintValidator', () => {
 			const dto = new TestCreateDto();
 			dto.type = SpaceType.ZONE;
 			dto.category = SpaceRoomCategory.LIVING_ROOM;
-
-			const errors = await validate(dto);
-			expect(errors.length).toBe(1);
-			expect(errors[0].property).toBe('category');
-		});
-
-		it('should accept ZONE with legacy outdoor value', async () => {
-			const dto = new TestCreateDto();
-			dto.type = SpaceType.ZONE;
-			dto.category = LEGACY_OUTDOOR_CATEGORY;
-
-			const errors = await validate(dto);
-			expect(errors.length).toBe(0);
-		});
-
-		it('should reject ROOM with legacy outdoor value', async () => {
-			const dto = new TestCreateDto();
-			dto.type = SpaceType.ROOM;
-			dto.category = LEGACY_OUTDOOR_CATEGORY;
 
 			const errors = await validate(dto);
 			expect(errors.length).toBe(1);
@@ -124,14 +105,6 @@ describe('SpaceCategoryConstraintValidator', () => {
 		it('should accept zone category when type is not provided', async () => {
 			const dto = new TestCreateDto();
 			dto.category = SpaceZoneCategory.OUTDOOR_GARDEN;
-
-			const errors = await validate(dto);
-			expect(errors.length).toBe(0);
-		});
-
-		it('should accept legacy outdoor value when type is not provided', async () => {
-			const dto = new TestCreateDto();
-			dto.category = LEGACY_OUTDOOR_CATEGORY;
 
 			const errors = await validate(dto);
 			expect(errors.length).toBe(0);

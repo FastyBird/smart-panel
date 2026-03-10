@@ -467,10 +467,6 @@ class MediaActivityLastResultModel {
 		this.errorCount = 0,
 	});
 
-	/// Legacy compat getters
-	int get successCount => stepsSucceeded;
-	int get failureCount => stepsFailed;
-
 	bool get hasWarnings => warnings.isNotEmpty;
 	bool get hasErrors => errors.isNotEmpty;
 
@@ -487,13 +483,10 @@ class MediaActivityLastResultModel {
 			return [];
 		}
 
-		final legacySuccess = json['success_count'] as int? ?? 0;
-		final legacyFailure = json['failure_count'] as int? ?? 0;
-
 		return MediaActivityLastResultModel(
-			stepsTotal: json['steps_total'] as int? ?? (legacySuccess + legacyFailure),
-			stepsSucceeded: json['steps_succeeded'] as int? ?? legacySuccess,
-			stepsFailed: json['steps_failed'] as int? ?? legacyFailure,
+			stepsTotal: json['steps_total'] as int? ?? 0,
+			stepsSucceeded: json['steps_succeeded'] as int? ?? 0,
+			stepsFailed: json['steps_failed'] as int? ?? 0,
 			failures: parseFailures(json['failures']),
 			warnings: parseFailures(json['warnings']),
 			errors: parseFailures(json['errors']),
@@ -534,7 +527,7 @@ class MediaActiveStateModel {
 	bool get isDeactivated => state == MediaActivationState.deactivated;
 	bool get hasWarnings => warnings.isNotEmpty || (lastResult?.hasWarnings ?? false);
 	bool get hasErrors => lastResult?.hasErrors ?? false;
-	bool get hasFailures => lastResult != null && lastResult!.failureCount > 0;
+	bool get hasFailures => lastResult != null && lastResult!.stepsFailed > 0;
 	bool get isActiveWithWarnings => isActive && hasWarnings && !hasErrors;
 
 	factory MediaActiveStateModel.fromJson(Map<String, dynamic> json, {required String spaceId}) {

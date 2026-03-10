@@ -107,7 +107,6 @@ describe('SpaceIntentService', () => {
 		mockClimateIntentService = {
 			getClimateState: jest.fn(),
 			executeClimateIntent: jest.fn(),
-			getPrimaryThermostatId: jest.fn(),
 		} as unknown as jest.Mocked<ClimateIntentService>;
 
 		mockCoversIntentService = {
@@ -258,26 +257,6 @@ describe('SpaceIntentService', () => {
 
 			expect(mockClimateIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpaceId, intent);
 			expect(result.heatingSetpoint).toBe(25.0);
-		});
-	});
-
-	describe('getPrimaryThermostatId', () => {
-		it('should delegate to ClimateIntentService', async () => {
-			const expectedId = 'thermostat-123';
-			mockClimateIntentService.getPrimaryThermostatId.mockResolvedValue(expectedId);
-
-			const result = await service.getPrimaryThermostatId(mockSpaceId);
-
-			expect(mockClimateIntentService.getPrimaryThermostatId).toHaveBeenCalledWith(mockSpaceId);
-			expect(result).toBe(expectedId);
-		});
-
-		it('should return null when no thermostat exists', async () => {
-			mockClimateIntentService.getPrimaryThermostatId.mockResolvedValue(null);
-
-			const result = await service.getPrimaryThermostatId(mockSpaceId);
-
-			expect(result).toBeNull();
 		});
 	});
 

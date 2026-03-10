@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
+import { SPACE_ROOM_CATEGORY_TEMPLATES, SPACE_ZONE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
 import { SceneAddFormSchema } from '../schemas/scenes.schemas';
 import type { ISceneActionAddForm, ISceneAddForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
@@ -52,7 +52,8 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 			return space.icon;
 		}
 		// Use category template icon if category is set
-		const categoryTemplate = space.category ? SPACE_CATEGORY_TEMPLATES[space.category] : undefined;
+		const allTemplates: Record<string, { icon: string; description: string }> = { ...SPACE_ROOM_CATEGORY_TEMPLATES, ...SPACE_ZONE_CATEGORY_TEMPLATES };
+		const categoryTemplate = space.category ? allTemplates[space.category] : undefined;
 		if (categoryTemplate) {
 			return categoryTemplate.icon;
 		}

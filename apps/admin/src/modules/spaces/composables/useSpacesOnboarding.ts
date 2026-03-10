@@ -6,7 +6,14 @@ import {
 	SpacesModuleCreateSpaceType,
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
-import { ASSIGNABLE_ZONE_CATEGORIES, SpaceCategory, SpaceType, SPACE_CATEGORY_TEMPLATES } from '../spaces.constants';
+import {
+	ASSIGNABLE_ZONE_CATEGORIES,
+	SPACE_ROOM_CATEGORY_TEMPLATES,
+	SPACE_ZONE_CATEGORY_TEMPLATES,
+	type SpaceRoomCategory,
+	SpaceType,
+	type SpaceZoneCategory,
+} from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
@@ -20,7 +27,7 @@ interface ProposedSpace {
 	deviceCount: number;
 	selected: boolean;
 	type: SpaceType;
-	category: SpaceCategory | null;
+	category: SpaceRoomCategory | SpaceZoneCategory | null;
 	draftId: string; // Pre-generated UUID for draft space
 	editing: boolean; // Is name being edited inline
 	editName: string; // Temporary edit value
@@ -32,7 +39,7 @@ interface CustomSpace {
 	icon: string | null;
 	selected: boolean;
 	type: SpaceType;
-	category: SpaceCategory | null;
+	category: SpaceRoomCategory | SpaceZoneCategory | null;
 	draftId: string; // Pre-generated UUID for draft space
 	editing: boolean; // Is name being edited inline
 	editName: string; // Temporary edit value
@@ -102,12 +109,12 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 
 const apiCategoryToSpaceCategory = (
 	apiCategory: SpacesModuleCreateSpaceCategory | SpacesModuleDataSpaceCategory | null | undefined
-): SpaceCategory | null => {
+): SpaceRoomCategory | SpaceZoneCategory | null => {
 	if (!apiCategory) return null;
-	return apiCategory as unknown as SpaceCategory;
+	return apiCategory as unknown as SpaceRoomCategory | SpaceZoneCategory;
 };
 
-const spaceCategoryToApiCategory = (category: SpaceCategory | null | undefined): SpacesModuleCreateSpaceCategory | undefined => {
+const spaceCategoryToApiCategory = (category: SpaceRoomCategory | SpaceZoneCategory | null | undefined): SpacesModuleCreateSpaceCategory | undefined => {
 	if (!category) return undefined;
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
@@ -157,7 +164,7 @@ export const useSpacesOnboarding = () => {
 			(space) =>
 				space.type === SpaceType.ZONE &&
 				space.category &&
-				(ASSIGNABLE_ZONE_CATEGORIES as readonly SpaceCategory[]).includes(space.category)
+				(ASSIGNABLE_ZONE_CATEGORIES as readonly (SpaceRoomCategory | SpaceZoneCategory)[]).includes(space.category)
 		)
 	);
 
@@ -203,7 +210,8 @@ export const useSpacesOnboarding = () => {
 			const allProposals = response.data.data.map((p) => {
 				const category = apiCategoryToSpaceCategory(p.category);
 				// Get default description and icon from category template
-				const template = category ? SPACE_CATEGORY_TEMPLATES[category] : null;
+				const allTemplates: Record<string, { icon: string; description: string }> = { ...SPACE_ROOM_CATEGORY_TEMPLATES, ...SPACE_ZONE_CATEGORY_TEMPLATES };
+				const template = category ? allTemplates[category] : null;
 				const defaultDescription = template?.description ?? null;
 				const defaultIcon = template?.icon ?? null;
 				const name = p.name ?? '';

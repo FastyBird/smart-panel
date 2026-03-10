@@ -17,7 +17,6 @@ import { ConfigException } from '../config.exceptions';
 import {
 	ReqUpdateModuleDto,
 	ReqUpdatePluginDto,
-	ReqUpdateSectionDto,
 	UpdateModuleConfigDto,
 	UpdatePluginConfigDto,
 } from '../dto/config.dto';
@@ -27,13 +26,12 @@ import {
 	ConfigModuleResModules,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
-	ConfigModuleResSection,
 } from '../models/config-response.model';
 import {
 	ConfigModuleResPluginConfigValidation,
 	ConfigValidationResultModel,
 } from '../models/config-validation-response.model';
-import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
+import { ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginConfigValidatorService } from '../services/plugin-config-validator.service';
@@ -69,74 +67,6 @@ export class ConfigController {
 		this.logger.debug(`Retrieved application configuration`);
 
 		const response = new ConfigModuleResAppConfig();
-		response.data = config;
-		return response;
-	}
-
-	@Get(':section')
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Get configuration section',
-		description: 'Retrieve a specific configuration section',
-		operationId: 'get-config-module-config-section',
-	})
-	@ApiParam({
-		name: 'section',
-		description: 'Configuration section identifier (deprecated - use /config/module/:module instead)',
-		type: 'string',
-		example: 'language',
-	})
-	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration retrieved successfully')
-	@ApiBadRequestResponse('Invalid section identifier')
-	@ApiNotFoundResponse('Configuration section not found')
-	@ApiInternalServerErrorResponse('Internal server error')
-	getConfigSection(@Param('section') section: keyof AppConfigModel): ConfigModuleResSection {
-		this.logger.debug(`Fetching configuration section=${section}`);
-
-		// Section-based endpoints are deprecated - use module endpoints instead
-		throw new BadRequestException([
-			JSON.stringify({
-				field: 'section',
-				reason: `Requested configuration section: ${section as string} not found. Use /config/module/:module instead.`,
-			}),
-		]);
-	}
-
-	@Patch(':section')
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update configuration section',
-		description: 'Update a specific configuration section',
-		operationId: 'update-config-module-config-section',
-	})
-	@ApiParam({
-		name: 'section',
-		description: 'Configuration section identifier (deprecated - use /config/module/:module instead)',
-		type: 'string',
-		example: 'language',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'Configuration section data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration updated successfully')
-	@ApiBadRequestResponse('Invalid section identifier or configuration data')
-	@ApiNotFoundResponse('Configuration section not found')
-	@ApiInternalServerErrorResponse('Internal server error')
-	updateConfigSection(
-		@Param('section') section: keyof AppConfigModel,
-		@Body() _dto: ReqUpdateSectionDto,
-	): ConfigModuleResSection {
-		this.logger.debug(`Incoming update request for section=${section}`);
-
-		// Section-based endpoints are deprecated - use module endpoints instead
-		throw new BadRequestException([
-			JSON.stringify({
-				field: 'section',
-				reason: `Requested configuration section: ${section as string} not found. Use /config/module/:module instead.`,
-			}),
-		]);
-	}
-
-	private createSectionResponse(config: ConfigModuleResSection['data']): ConfigModuleResSection {
-		const response = new ConfigModuleResSection();
 		response.data = config;
 		return response;
 	}

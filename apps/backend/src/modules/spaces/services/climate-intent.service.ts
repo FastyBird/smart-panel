@@ -282,23 +282,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		return Object.keys(value).length > 0 ? value : null;
 	}
 
-	/**
-	 * Get the primary thermostat device ID for a space (legacy method for undo service).
-	 * @deprecated Use SpaceClimateStateService.getPrimaryClimateDevicesInSpace instead
-	 */
-	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
-		const primaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
-
-		// Return first device that supports setpoint control
-		for (const device of primaryDevices) {
-			if (device.heaterSetpointProperty || device.coolerSetpointProperty) {
-				return device.device.id;
-			}
-		}
-
-		return null;
-	}
-
 	// =====================
 	// Private Methods
 	// =====================

@@ -239,9 +239,6 @@ describe('ConfigService', () => {
 		});
 	});
 
-	// getConfigSection and setConfigSection tests removed - section-based endpoints are deprecated
-	// Use module endpoints instead (/config/module/:module)
-
 	describe('getPluginConfig', () => {
 		it('should return a valid plugin configuration', () => {
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);

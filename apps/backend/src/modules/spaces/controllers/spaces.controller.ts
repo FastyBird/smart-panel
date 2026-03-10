@@ -146,7 +146,8 @@ import {
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
 	SPACE_CATEGORY_TEMPLATES,
-	SpaceCategory,
+	SpaceRoomCategory,
+	SpaceZoneCategory,
 } from '../spaces.constants';
 import { SpacesNotFoundException } from '../spaces.exceptions';
 import { IntentSpecLoaderService } from '../spec';
@@ -263,7 +264,7 @@ export class SpacesController {
 
 		const templates = Object.entries(SPACE_CATEGORY_TEMPLATES).map(([category, template]) => {
 			const model = new CategoryTemplateDataModel();
-			model.category = category as SpaceCategory;
+			model.category = category as SpaceRoomCategory | SpaceZoneCategory;
 			model.icon = template.icon;
 			model.description = template.description;
 			return model;

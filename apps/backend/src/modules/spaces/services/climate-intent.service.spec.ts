@@ -368,29 +368,6 @@ describe('ClimateIntentService', () => {
 		});
 	});
 
-	describe('getPrimaryThermostatId', () => {
-		it('should return first device ID', async () => {
-			const deviceId = uuid();
-			const device = createMockPrimaryClimateDevice({
-				device: { id: deviceId } as DeviceEntity,
-				deviceCategory: DeviceCategory.THERMOSTAT,
-			});
-			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
-
-			const result = await service.getPrimaryThermostatId(mockSpaceId);
-
-			expect(result).toBe(deviceId);
-		});
-
-		it('should return null when no devices exist', async () => {
-			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([]);
-
-			const result = await service.getPrimaryThermostatId(mockSpaceId);
-
-			expect(result).toBeNull();
-		});
-	});
-
 	describe('offline device handling', () => {
 		it('skips offline devices and reports them in result', async () => {
 			const onlineDevice = createMockPrimaryClimateDevice({

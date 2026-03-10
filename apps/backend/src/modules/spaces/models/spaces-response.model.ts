@@ -16,6 +16,7 @@ import type {
 	SpaceLightingState,
 } from '../services/space-lighting-state.service';
 import {
+	ALL_SPACE_CATEGORIES,
 	ClimateMode,
 	ClimateRole,
 	CoversMode,
@@ -25,8 +26,9 @@ import {
 	LightingRole,
 	QuickActionType,
 	SensorRole,
-	SpaceCategory,
+	SpaceRoomCategory,
 	SpaceType,
+	SpaceZoneCategory,
 	SuggestionType,
 } from '../spaces.constants';
 
@@ -152,12 +154,12 @@ export class ProposedSpaceDataModel {
 
 	@ApiPropertyOptional({
 		description: 'Proposed space category (based on detected room/zone type)',
-		enum: SpaceCategory,
+		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
-		example: SpaceCategory.LIVING_ROOM,
+		example: SpaceRoomCategory.LIVING_ROOM,
 	})
 	@Expose()
-	category: SpaceCategory | null;
+	category: SpaceRoomCategory | SpaceZoneCategory | null;
 
 	@ApiProperty({
 		name: 'device_ids',
@@ -1895,11 +1897,11 @@ export class SuggestionFeedbackResponseModel extends BaseSuccessResponseModel<Su
 export class CategoryTemplateDataModel {
 	@ApiProperty({
 		description: 'Category identifier',
-		enum: SpaceCategory,
-		example: SpaceCategory.LIVING_ROOM,
+		enum: ALL_SPACE_CATEGORIES,
+		example: SpaceRoomCategory.LIVING_ROOM,
 	})
 	@Expose()
-	category: SpaceCategory;
+	category: SpaceRoomCategory | SpaceZoneCategory;
 
 	@ApiProperty({
 		description: 'Suggested icon for the category',

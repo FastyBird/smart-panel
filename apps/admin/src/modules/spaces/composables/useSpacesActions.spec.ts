@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
 import { useSpacesActions } from './useSpacesActions';
@@ -10,7 +10,7 @@ const createMockSpace = (overrides: Partial<ISpace> = {}): ISpace => ({
 	name: 'Test Space',
 	description: null,
 	type: SpaceType.ROOM,
-	category: SpaceCategory.LIVING_ROOM,
+	category: SpaceRoomCategory.LIVING_ROOM,
 	icon: null,
 	displayOrder: 0,
 	parentId: null,

@@ -269,7 +269,6 @@ export type DashboardModuleDeleteDataSourceOperation = operations['delete-dashbo
 
 // Config Module Operations
 // Language, Weather, and System section operations removed - these configs are now accessed via modules
-export type ConfigModuleGetConfigSectionOperation = operations['get-config-module-config-section']; // Deprecated but kept for backward compatibility
 export type ConfigModuleGetConfigPluginOperation = operations['get-config-module-config-plugin'];
 export type ConfigModuleUpdateConfigPluginOperation = operations['update-config-module-config-plugin'];
 export type ConfigModuleGetConfigModuleOperation = operations['get-config-module-config-module'];

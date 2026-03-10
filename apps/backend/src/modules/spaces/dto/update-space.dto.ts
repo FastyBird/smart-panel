@@ -15,7 +15,7 @@ import {
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ALL_SPACE_CATEGORIES, SpaceCategory, SpaceType } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { IsValidSpaceCategory } from '../validators/space-category-constraint.validator';
 
 import { StatusWidgetDto } from './status-widget.dto';
@@ -69,7 +69,7 @@ export class UpdateSpaceDto {
 	)
 	@IsNotEmpty({ message: '[{"field":"category","reason":"Category is required for zones."}]' })
 	@IsValidSpaceCategory()
-	category?: SpaceCategory | null;
+	category?: SpaceRoomCategory | SpaceZoneCategory | null;
 
 	@ApiPropertyOptional({
 		description: 'Icon identifier for the space',

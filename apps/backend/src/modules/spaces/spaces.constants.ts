@@ -104,29 +104,6 @@ export enum SpaceZoneCategory {
 }
 
 /**
- * Legacy category value that needs normalization.
- * Maps to SpaceZoneCategory.OUTDOOR_GARDEN for backward compatibility.
- */
-export const LEGACY_OUTDOOR_CATEGORY = 'outdoor';
-
-/**
- * Combined SpaceCategory type for entity compatibility
- * The actual validation is done based on SpaceType
- * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
- */
-export type SpaceCategory = SpaceRoomCategory | SpaceZoneCategory;
-
-/**
- * SpaceCategory enum for backward compatibility with existing code
- * Contains all values from both room and zone categories
- * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
- */
-export const SpaceCategory = {
-	...SpaceRoomCategory,
-	...SpaceZoneCategory,
-} as const;
-
-/**
  * Array of all room category values for validation
  */
 export const SPACE_ROOM_CATEGORIES = Object.values(SpaceRoomCategory);
@@ -172,11 +149,6 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 		return true; // null is always valid
 	}
 
-	// Handle legacy 'outdoor' value for zones
-	if (category === LEGACY_OUTDOOR_CATEGORY && type === SpaceType.ZONE) {
-		return true;
-	}
-
 	if (type === SpaceType.ROOM) {
 		return SPACE_ROOM_CATEGORIES.includes(category as SpaceRoomCategory);
 	}
@@ -189,27 +161,24 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 }
 
 /**
- * Normalize legacy category values to current enum values
- * Currently handles 'outdoor' -> 'outdoor_garden' for zones
+ * Normalize category values for a given space type
  */
-export function normalizeCategoryValue(category: string | null, type: SpaceType): SpaceCategory | null {
+export function normalizeCategoryValue(
+	category: string | null,
+	_type: SpaceType,
+): SpaceRoomCategory | SpaceZoneCategory | null {
 	if (category === null) {
 		return null;
 	}
 
-	// Normalize legacy 'outdoor' to 'outdoor_garden' for zones
-	if (category === LEGACY_OUTDOOR_CATEGORY && type === SpaceType.ZONE) {
-		return SpaceZoneCategory.OUTDOOR_GARDEN;
-	}
-
-	return category as SpaceCategory;
+	return category as SpaceRoomCategory | SpaceZoneCategory;
 }
 
 /**
  * Template definition for a space category
  */
 export interface SpaceCategoryTemplate {
-	category: SpaceCategory;
+	category: SpaceRoomCategory | SpaceZoneCategory;
 	icon: string;
 	description: string;
 }

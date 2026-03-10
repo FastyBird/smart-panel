@@ -160,7 +160,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { useSpaces } from '../../../spaces/composables';
-import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../../spaces/spaces.constants';
+import { SPACE_ROOM_CATEGORY_TEMPLATES, SPACE_ZONE_CATEGORY_TEMPLATES, SpaceType } from '../../../spaces/spaces.constants';
 import type { ISpace } from '../../../spaces/store/spaces.store.types';
 import type { IScenesFilter } from '../../composables/types';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes.constants';
@@ -191,7 +191,8 @@ const getSpaceIcon = (space: ISpace): string => {
 		return space.icon;
 	}
 	// Use category template icon if category is set
-	const categoryTemplate = space.category ? SPACE_CATEGORY_TEMPLATES[space.category] : undefined;
+	const allTemplates: Record<string, { icon: string; description: string }> = { ...SPACE_ROOM_CATEGORY_TEMPLATES, ...SPACE_ZONE_CATEGORY_TEMPLATES };
+	const categoryTemplate = space.category ? allTemplates[space.category] : undefined;
 	if (categoryTemplate) {
 		return categoryTemplate.icon;
 	}

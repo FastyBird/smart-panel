@@ -370,32 +370,6 @@ describe('SpacesService', () => {
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
 		});
 
-		it('should accept ZONE with legacy outdoor value and normalize to outdoor_garden', async () => {
-			const createDto = {
-				name: 'Garden',
-				type: SpaceType.ZONE,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				category: 'outdoor' as any, // Legacy value
-			};
-
-			const savedSpace = {
-				...mockSpace,
-				id: uuid(),
-				name: 'Garden',
-				type: SpaceType.ZONE,
-				category: SpaceZoneCategory.OUTDOOR_GARDEN, // Normalized
-			};
-
-			spaceRepository.save.mockResolvedValue(savedSpace);
-			spaceRepository.findOne.mockResolvedValue(savedSpace);
-
-			// The service should normalize the legacy value
-			const result = await service.create(createDto);
-
-			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
-		});
-
 		it('should accept null category for both types', async () => {
 			const createDto = {
 				name: 'Custom Space',
@@ -592,26 +566,6 @@ describe('SpacesService', () => {
 
 			expect(result.type).toBe(SpaceType.ZONE);
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
-		});
-
-		it('should normalize legacy outdoor value on update', async () => {
-			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
-
-			const updateDto = {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				category: 'outdoor' as any, // Legacy value
-			};
-
-			const updatedSpace = {
-				...existingZoneSpace,
-				category: SpaceZoneCategory.OUTDOOR_GARDEN,
-			};
-
-			spaceRepository.save.mockResolvedValue(updatedSpace);
-
-			const result = await service.update(existingZoneSpace.id, updateDto);
-
-			expect(result.category).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
 		});
 
 		it('should accept setting category to null for a ROOM', async () => {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
@@ -216,9 +216,10 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 							? (transformedValue as Record<string, unknown>)
 							: (transformedValue as string | number | boolean);
 				} else {
-					// Fallback to using identifier as z2m property (legacy behavior)
-					z2mProperty = property.identifier;
-					convertedValue = this.convertValue(property, value);
+					this.logger.warn(
+						`No write mapping found for channel=${channel.category} property=${property.category} (${property.identifier}), skipping`,
+					);
+					continue;
 				}
 			}
 
@@ -252,96 +253,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		}
 
 		return success;
-	}
-
-	/**
-	 * Convert value to appropriate format for Z2M
-	 */
-	private convertValue(
-		property: Zigbee2mqttChannelPropertyEntity,
-		value: string | number | boolean,
-	): string | number | boolean | Record<string, unknown> {
-		// Handle special property types by category FIRST
-		// This must happen before format check to ensure proper range conversion
-
-		// Brightness: convert from spec range (0-100%) to Z2M range (0-254)
-		if (property.category === PropertyCategory.BRIGHTNESS) {
-			const percentage = this.coerceNumber(value, 0, 100);
-			const z2mValue = Math.round((percentage / 100) * 254);
-			return z2mValue;
-		}
-
-		// Color temperature: convert from spec Kelvin to Z2M mired
-		// Conversion: mired = 1,000,000 / Kelvin
-		if (property.category === PropertyCategory.COLOR_TEMPERATURE) {
-			// Get device-specific Kelvin range from property format
-			const propFormat = property.format;
-			const minKelvin = Array.isArray(propFormat) && typeof propFormat[0] === 'number' ? propFormat[0] : 2000;
-			const maxKelvin = Array.isArray(propFormat) && typeof propFormat[1] === 'number' ? propFormat[1] : 6500;
-
-			const kelvin = this.coerceNumber(value, minKelvin, maxKelvin);
-			const mired = Math.round(1000000 / kelvin);
-			return mired;
-		}
-
-		// Check if property has special format (e.g., ON/OFF values for binary, or [min, max] for numeric)
-		const format = property.format;
-
-		if (format && Array.isArray(format) && format.length === 2) {
-			// Binary with custom on/off values
-			if (typeof format[0] === 'string' && typeof format[1] === 'string') {
-				const boolValue = this.coerceBoolean(value);
-				return boolValue ? format[0] : format[1];
-			}
-			// Numeric with [min, max] range
-			if (typeof format[0] === 'number' && typeof format[1] === 'number') {
-				return this.coerceNumber(value, format[0], format[1]);
-			}
-		}
-
-		// Handle special property types by identifier
-		const z2mProperty = property.identifier;
-
-		if (z2mProperty === 'state') {
-			// Convert boolean to ON/OFF
-			const boolValue = this.coerceBoolean(value);
-			return boolValue ? 'ON' : 'OFF';
-		}
-
-		if (z2mProperty?.startsWith('color')) {
-			// Try to parse color value
-			if (typeof value === 'string' && value.startsWith('{')) {
-				try {
-					return JSON.parse(value) as Record<string, unknown>;
-				} catch {
-					// Return as-is
-				}
-			}
-		}
-
-		// Return value as-is for most cases
-		if (typeof value === 'boolean') {
-			return value;
-		}
-		if (typeof value === 'number') {
-			return value;
-		}
-		if (typeof value === 'string') {
-			// Try to parse as number if appropriate
-			const num = parseFloat(value);
-			if (!isNaN(num) && property.dataType !== DataTypeType.STRING) {
-				return num;
-			}
-			// Try to parse as boolean
-			if (value.toLowerCase() === 'true' || value.toLowerCase() === 'on') {
-				return true;
-			}
-			if (value.toLowerCase() === 'false' || value.toLowerCase() === 'off') {
-				return false;
-			}
-		}
-
-		return value;
 	}
 
 	/**
