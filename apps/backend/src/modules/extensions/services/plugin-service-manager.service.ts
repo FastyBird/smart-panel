@@ -181,6 +181,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			await this.stopService(registration);
 		}
 
+		this.shutdownInProgress = false;
+
 		this.logger.log('All services stopped for factory reset');
 	}
 

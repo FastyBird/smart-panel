@@ -147,7 +147,6 @@ import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-// @ts-expect-error imported SVG files are without TS
 import Logo from '../../../assets/images/fb_bird.svg?component';
 import { useBreakpoints } from '../../../common';
 import { RouteNames } from '../auth.constants';

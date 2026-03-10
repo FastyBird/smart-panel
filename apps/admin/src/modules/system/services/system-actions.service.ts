@@ -10,6 +10,7 @@ import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { OpenApiPaths } from '../../../openapi.constants';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { invalidateOnboardingStatus } from '../../onboarding/composables/useOnboardingStatus';
+import { RouteNames as OnboardingRouteNames } from '../../onboarding/onboarding.constants';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
@@ -147,7 +148,7 @@ export class SystemActionsService {
 
 		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 
-		await this.router.push({ name: 'onboarding_module-onboarding' });
+		await this.router.push({ name: OnboardingRouteNames.ONBOARDING });
 	}
 
 	private async checkHealth({
