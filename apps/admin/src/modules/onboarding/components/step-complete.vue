@@ -79,6 +79,32 @@
 				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.spacesSkipped') }}</span>
 			</div>
 
+			<!-- Devices assigned -->
+			<div
+				v-if="assignedDevicesCount > 0"
+				class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+			>
+				<el-icon
+					:size="20"
+					class="text-green-500 shrink-0"
+				>
+					<icon icon="mdi:check" />
+				</el-icon>
+				<span>{{ t('onboardingModule.complete.summary.devicesAssigned', { count: assignedDevicesCount }) }}</span>
+			</div>
+			<div
+				v-else-if="discoveredDevices.length > 0"
+				class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+			>
+				<el-icon
+					:size="20"
+					class="text-gray-400 shrink-0"
+				>
+					<icon icon="mdi:minus" />
+				</el-icon>
+				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.devicesSkipped') }}</span>
+			</div>
+
 			<!-- Integrations -->
 			<div
 				v-if="integrationsCount > 0"
@@ -131,9 +157,13 @@ defineProps<{
 const { t } = useI18n();
 const storesManager = injectStoresManager();
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
-const { spacesToCreate, savedSpacesCount } = useAppOnboarding();
+const { spacesToCreate, savedSpacesCount, discoveredDevices, deviceAssignments } = useAppOnboarding();
 
 const spacesCount = computed(() => savedSpacesCount.value + spacesToCreate.length);
+
+const assignedDevicesCount = computed(() => {
+	return Object.values(deviceAssignments).filter((v) => v !== null).length;
+});
 
 const integrationsCount = computed(() => {
 	return Object.values(extensionsStore.data)

@@ -30,6 +30,13 @@ export interface ISpaceToCreate {
 	icon: string | null;
 }
 
+export interface IDeviceInfo {
+	id: string;
+	name: string;
+	description: string | null;
+	roomId: string | null;
+}
+
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
 const accountRegistered = ref(false);
@@ -53,6 +60,9 @@ const locationData = reactive<ILocationData>({
 });
 
 const spacesToCreate = reactive<ISpaceToCreate[]>([]);
+const discoveredDevices = reactive<IDeviceInfo[]>([]);
+const deviceAssignments = reactive<Record<string, string | null>>({});
+const devicesFetched = ref(false);
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -163,6 +173,86 @@ export const useAppOnboarding = () => {
 		}
 	};
 
+	const fetchDevices = async (): Promise<boolean> => {
+		if (devicesFetched.value) return true;
+
+		try {
+			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/devices/devices` as never);
+
+			if (error || !data) return false;
+
+			const items = (data as { data: { id: string; name: string; description: string | null; room_id: string | null }[] }).data;
+
+			discoveredDevices.splice(0, discoveredDevices.length);
+
+			for (const d of items) {
+				discoveredDevices.push({
+					id: d.id,
+					name: d.name,
+					description: d.description ?? null,
+					roomId: d.room_id ?? null,
+				});
+				// Initialize assignment (null = unassigned)
+				if (!(d.id in deviceAssignments)) {
+					deviceAssignments[d.id] = null;
+				}
+			}
+
+			devicesFetched.value = true;
+
+			return true;
+		} catch {
+			return false;
+		}
+	};
+
+	const ROOM_TOKENS = [
+		'Living Room',
+		'Bedroom',
+		'Kitchen',
+		'Bathroom',
+		'Office',
+		'Garage',
+		'Garden',
+		'Hallway',
+		'Dining Room',
+		'Basement',
+		'Attic',
+		'Laundry',
+		'Nursery',
+		'Guest Room',
+		'Patio',
+	];
+
+	const suggestRoom = (deviceName: string): string | null => {
+		const lower = deviceName.toLowerCase();
+		return ROOM_TOKENS.find((room) => lower.includes(room.toLowerCase())) ?? null;
+	};
+
+	const suggestSpacesFromDevices = (): void => {
+		const existingNames = new Set(spacesToCreate.map((s) => s.name.toLowerCase()));
+
+		for (const device of discoveredDevices) {
+			const suggested = suggestRoom(device.name);
+
+			if (!suggested) continue;
+
+			// Add the suggested space if not already in the list
+			if (!existingNames.has(suggested.toLowerCase())) {
+				spacesToCreate.push({ name: suggested, category: null, icon: null });
+				existingNames.add(suggested.toLowerCase());
+			}
+
+			// Auto-assign device to the suggested space
+			if (!deviceAssignments[device.id]) {
+				deviceAssignments[device.id] = suggested;
+			}
+		}
+	};
+
+	// Map of space name → created space ID (populated during save)
+	const createdSpaceNameToId: Record<string, string> = {};
+
 	const saveSpaces = async (): Promise<boolean> => {
 		if (spacesToCreate.length === 0) {
 			return true;
@@ -172,7 +262,7 @@ export const useAppOnboarding = () => {
 			while (spacesToCreate.length > 0) {
 				const space = spacesToCreate[0];
 
-				await spacesStore.add({
+				const created = await spacesStore.add({
 					data: {
 						name: space.name,
 						type: SpaceType.ROOM,
@@ -180,6 +270,9 @@ export const useAppOnboarding = () => {
 						icon: space.icon,
 					},
 				});
+
+				// Track name→id mapping for device assignment
+				createdSpaceNameToId[space.name] = created.id;
 
 				// Track saved count for summary display, then remove to prevent duplicates on retry
 				savedSpacesCount.value++;
@@ -190,6 +283,39 @@ export const useAppOnboarding = () => {
 		} catch {
 			return false;
 		}
+	};
+
+	const saveDeviceAssignments = async (): Promise<boolean> => {
+		// Group device IDs by target space ID
+		const spaceDevices: Record<string, string[]> = {};
+
+		for (const [deviceId, spaceName] of Object.entries(deviceAssignments)) {
+			if (!spaceName) continue;
+
+			const spaceId = createdSpaceNameToId[spaceName];
+			if (!spaceId) continue;
+
+			if (!spaceDevices[spaceId]) {
+				spaceDevices[spaceId] = [];
+			}
+			spaceDevices[spaceId].push(deviceId);
+		}
+
+		for (const [spaceId, deviceIds] of Object.entries(spaceDevices)) {
+			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/spaces/spaces/{id}/assign` as never, {
+				params: { path: { id: spaceId } },
+				body: {
+					data: {
+						device_ids: deviceIds,
+						display_ids: [],
+					},
+				},
+			} as never);
+
+			if (error) return false;
+		}
+
+		return true;
 	};
 
 	const completeOnboarding = async (): Promise<boolean> => {
@@ -212,6 +338,18 @@ export const useAppOnboarding = () => {
 
 				if (!spacesSaved) {
 					flashMessage.error(t('onboardingModule.spaces.messages.error'));
+					return false;
+				}
+			}
+
+			// Save device-to-space assignments if any exist
+			const hasAssignments = Object.values(deviceAssignments).some((v) => v !== null);
+
+			if (hasAssignments) {
+				const assignmentsSaved = await saveDeviceAssignments();
+
+				if (!assignmentsSaved) {
+					flashMessage.error(t('onboardingModule.spaces.messages.assignmentError'));
 					return false;
 				}
 			}
@@ -249,6 +387,9 @@ export const useAppOnboarding = () => {
 		locationData.longitude = null;
 		locationData.timezone = '';
 		spacesToCreate.splice(0);
+		discoveredDevices.splice(0);
+		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
+		devicesFetched.value = false;
 	};
 
 	return {
@@ -259,6 +400,9 @@ export const useAppOnboarding = () => {
 		accountData,
 		locationData,
 		spacesToCreate,
+		discoveredDevices,
+		deviceAssignments,
+		devicesFetched,
 		savedSpacesCount,
 		isLastStep,
 		nextStep,
@@ -266,6 +410,8 @@ export const useAppOnboarding = () => {
 		createAccount,
 		saveLocation,
 		saveSpaces,
+		fetchDevices,
+		suggestSpacesFromDevices,
 		completeOnboarding,
 		reset,
 	};
