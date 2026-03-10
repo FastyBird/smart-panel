@@ -368,7 +368,7 @@ export class DevicesService {
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {
 		const device = await this.findOne(id);
 
-		if (!id) {
+		if (!device) {
 			this.logger.error(`Device with id=${id} not found`);
 
 			throw new DevicesNotFoundException('Device does not exist');
