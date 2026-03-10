@@ -174,7 +174,7 @@ export class SystemController {
 		this.logger.debug('Marking onboarding as complete');
 
 		try {
-			await this.onboardingService.markComplete();
+			this.onboardingService.markComplete();
 			const status = await this.onboardingService.getStatus();
 
 			const response = new OnboardingStatusResponseModel();

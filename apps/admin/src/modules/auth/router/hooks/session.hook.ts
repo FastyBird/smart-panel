@@ -12,7 +12,19 @@ import type { ITokenPayload } from '../../store/session.store.types';
 const sessionHook = async (storesManager: IStoresManager, logger: ConsolaInstance): Promise<boolean | RouteLocation | undefined> => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);
 
-	await sessionStore.initialize();
+	try {
+		await sessionStore.initialize();
+	} catch (error: unknown) {
+		sessionStore.clear();
+
+		if (import.meta.env.PROD) {
+			Sentry.captureException(error);
+		} else {
+			logger.debug('ROUTE GUARD: Session initialization failed');
+		}
+
+		return;
+	}
 
 	// ///////////////////////////////
 	// Both tokens cookies are present

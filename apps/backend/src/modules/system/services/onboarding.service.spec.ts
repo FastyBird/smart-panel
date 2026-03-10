@@ -130,8 +130,8 @@ describe('OnboardingService', () => {
 	});
 
 	describe('markComplete', () => {
-		it('should set onboarding_completed in config', async () => {
-			await service.markComplete();
+		it('should set onboarding_completed in config', () => {
+			service.markComplete();
 
 			expect(configService.setModuleConfig).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, {
 				type: SYSTEM_MODULE_NAME,

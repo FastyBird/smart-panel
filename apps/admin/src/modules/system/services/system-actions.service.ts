@@ -8,8 +8,8 @@ import type { Client } from 'openapi-fetch';
 
 import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { OpenApiPaths } from '../../../openapi.constants';
+import { MODULES_PREFIX, RouteNames as AppRouteNames } from '../../../app.constants';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
-import { MODULES_PREFIX } from '../../../app.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
 
@@ -108,7 +108,7 @@ export class SystemActionsService {
 		}
 	}
 
-	factoryReset(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
+	factoryReset(state: 'in-progress' | 'err', trigger: 'action' | 'event'): void {
 		if (this.factoryResetLoading === null && state === 'in-progress') {
 			this.factoryResetTriggeredBy = trigger;
 
@@ -116,27 +116,29 @@ export class SystemActionsService {
 				lock: true,
 				text: this.t('systemModule.texts.manage.factoryResetInProcess'),
 			});
-		} else if (this.factoryResetTriggeredBy === trigger && this.factoryResetLoading !== null && (state === 'err' || state === 'ok')) {
-			setTimeout(() => {
-				this.factoryResetLoading?.close();
-
-				this.factoryResetLoading = null;
-
-				if (state === 'ok') {
-					void (async () => {
-						const accountManager = injectAccountManager(this.app);
-
-						if (accountManager) {
-							await accountManager.signOut();
-
-							await this.router.push({ name: accountManager.routes.signIn });
-
-							ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
-						}
-					})();
-				}
-			}, 1000);
+		} else if (this.factoryResetTriggeredBy === trigger && this.factoryResetLoading !== null && state === 'err') {
+			this.factoryResetLoading?.close();
+			this.factoryResetLoading = null;
 		}
+	}
+
+	async factoryResetDone(): Promise<void> {
+		// Guard against duplicate execution from both action response and WS event
+		if (this.factoryResetTriggeredBy === null) return;
+		this.factoryResetTriggeredBy = null;
+
+		this.factoryResetLoading?.close();
+		this.factoryResetLoading = null;
+
+		const accountManager = injectAccountManager(this.app);
+
+		if (accountManager) {
+			await accountManager.signOut();
+		}
+
+		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
+
+		await this.router.push({ name: AppRouteNames.ROOT });
 	}
 
 	private async checkHealth({

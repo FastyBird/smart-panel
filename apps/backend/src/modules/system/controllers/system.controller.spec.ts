@@ -162,7 +162,7 @@ describe('SystemController', () => {
 				displaysCount: 1,
 			};
 
-			jest.spyOn(onboardingService, 'markComplete').mockResolvedValue(undefined);
+			jest.spyOn(onboardingService, 'markComplete').mockReturnValue(undefined);
 			jest.spyOn(onboardingService, 'getStatus').mockResolvedValue(toInstance(OnboardingStatusModel, mockStatus));
 
 			const result = await controller.completeOnboarding();

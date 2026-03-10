@@ -5,6 +5,7 @@ import { ElMessageBox } from 'element-plus';
 import { useFlashMessage, useSockets } from '../../../common';
 import { useConfigModule } from '../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../displays/store/config.store.types';
+import { useOnboardingStatus } from '../../onboarding/composables/composables';
 import { injectSystemActionsService } from '../services/system-actions.service';
 import { EventHandlerName, EventType } from '../system.constants';
 
@@ -16,6 +17,7 @@ export const useSystemActions = (): IUseSystemActions => {
 	const { t } = useI18n();
 	const { sendCommand } = useSockets();
 	const flashMessage = useFlashMessage();
+	const { invalidate: invalidateOnboarding } = useOnboardingStatus();
 
 	const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
 
@@ -114,7 +116,7 @@ export const useSystemActions = (): IUseSystemActions => {
 				systemActions.factoryReset('in-progress', 'action');
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
 
 					if (response !== true) {
 						systemActions.factoryReset('err', 'action');
@@ -124,7 +126,9 @@ export const useSystemActions = (): IUseSystemActions => {
 						return;
 					}
 
-					systemActions.factoryReset('ok', 'action');
+					invalidateOnboarding();
+
+					await systemActions.factoryResetDone();
 				} catch {
 					systemActions.factoryReset('err', 'action');
 

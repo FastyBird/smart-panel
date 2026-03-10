@@ -9,6 +9,7 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 
 import { SecurityAlertsController } from './controllers/security-alerts.controller';
 import { SecurityEventsController } from './controllers/security-events.controller';
@@ -27,6 +28,7 @@ import {
 	SECURITY_STATE_PROVIDERS,
 } from './security.constants';
 import { SECURITY_SWAGGER_EXTRA_MODELS } from './security.openapi';
+import { SecurityModuleResetService } from './services/module-reset.service';
 import { SecurityAggregatorService } from './services/security-aggregator.service';
 import { SecurityAlertAckService } from './services/security-alert-ack.service';
 import { SecurityEventsService } from './services/security-events.service';
@@ -65,6 +67,7 @@ import { DetectionRulesLoaderService } from './spec/detection-rules-loader.servi
 		SecurityAggregatorService,
 		SecurityService,
 		SecurityStateListener,
+		SecurityModuleResetService,
 	],
 	exports: [SecurityService, SECURITY_STATE_PROVIDERS],
 })
@@ -73,9 +76,20 @@ export class SecurityModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly moduleReset: SecurityModuleResetService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit() {
+		// Register factory reset handler
+		this.factoryResetRegistry.register(
+			SECURITY_MODULE_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+			170,
+		);
+
 		for (const model of SECURITY_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}

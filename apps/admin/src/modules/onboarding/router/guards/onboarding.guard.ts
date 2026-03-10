@@ -4,18 +4,19 @@ import type { IAppUser } from '../../../../app.types';
 import { RouteNames } from '../../onboarding.constants';
 import { useOnboardingStatus } from '../../composables/composables';
 
-export const onboardingGuard = async (
+export const onboardingGuard = (
 	_appUser: IAppUser | undefined,
 	route: RouteRecordRaw,
-): Promise<boolean | { name: string }> => {
+): boolean | { name: string } => {
 	const { needsOnboarding, isOnboardingCompleted, fetchStatus } = useOnboardingStatus();
 
-	try {
-		await fetchStatus();
-	} catch {
-		// If backend is unreachable, allow navigation
-		return true;
-	}
+	// Trigger a background fetch to keep the cache warm.
+	// The guard uses the cached value synchronously; on the very first
+	// load (cache empty) status is null so both computed flags are false
+	// and we fall through to `return true`, which lets the normal auth
+	// flow proceed. Once the fetch resolves the next navigation will
+	// have a populated cache.
+	void fetchStatus();
 
 	const isOnboardingRoute = route.name === RouteNames.ONBOARDING;
 

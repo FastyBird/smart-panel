@@ -4,7 +4,7 @@ Type: epic
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -46,7 +46,7 @@ Currently, the application requires manual CLI commands to create the first user
 **Out of scope**
 
 - Panel app onboarding (future consideration)
-- Device discovery during onboarding (handled by existing spaces onboarding wizard)
+- Device discovery during onboarding (see child epic: EPIC-ONBOARDING-DEVICE-SETUP)
 - Dashboard auto-generation (handled by existing dashboard features)
 - Multi-user onboarding (only owner account in initial setup)
 
@@ -145,7 +145,8 @@ And the onboarding wizard is not shown
 |----|-------|-------|------|
 | FEATURE-ONBOARDING-BACKEND | Onboarding status backend API | backend | small |
 | FEATURE-ONBOARDING-WIZARD | Onboarding wizard UI | admin | medium |
-| FEATURE-ONBOARDING-INTEGRATIONS | Integrations discovery step | backend, admin | medium |
+| FEATURE-ONBOARDING-INTEGRATIONS | Integrations discovery step | backend, admin | medium | done |
+| EPIC-ONBOARDING-DEVICE-SETUP | Device discovery & spaces setup | backend, admin | large | planned |
 | TECH-ONBOARDING-ROUTER-GUARDS | Router guards for onboarding flow | admin | small |
 
 ## 9. AI instructions

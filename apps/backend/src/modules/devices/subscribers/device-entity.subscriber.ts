@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { DeviceEntity } from '../entities/devices.entity';
+import { DeviceConnectionStatus, DeviceEntity } from '../entities/devices.entity';
 import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 
 @Injectable()
@@ -24,6 +24,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 
 	async afterLoad(entity: DeviceEntity): Promise<void> {
 		try {
+			if (!entity.status) {
+				entity.status = new DeviceConnectionStatus();
+			}
+
 			const connectionState = await this.deviceStatusService.readLatest(entity);
 
 			entity.status.online = connectionState.online;

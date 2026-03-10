@@ -144,7 +144,7 @@ export default {
 						} else if (data.payload.status === 'err') {
 							systemActions.factoryReset('err', 'event');
 						} else if (data.payload.status === 'ok') {
-							systemActions.factoryReset('ok', 'event');
+							void systemActions.factoryResetDone();
 						}
 					}
 					break;

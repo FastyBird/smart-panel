@@ -44,7 +44,7 @@ export class OnboardingService {
 		});
 	}
 
-	async markComplete(): Promise<void> {
+	markComplete(): void {
 		this.logger.log('Marking onboarding as completed');
 
 		this.configService.setModuleConfig(SYSTEM_MODULE_NAME, {

@@ -39,7 +39,7 @@ export class RegisterDto {
 	role?: UserRole;
 
 	@ApiProperty({
-		description: "User's password. Must be at least 6 characters long.",
+		description: "User's password.",
 		type: 'string',
 		format: 'password',
 		example: 'superstrongpassword',

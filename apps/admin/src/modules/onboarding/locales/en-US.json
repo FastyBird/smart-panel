@@ -1,6 +1,148 @@
 {
+	"wizard": {
+		"title": "Smart Panel Setup",
+		"steps": {
+			"welcome": "Welcome",
+			"account": "Account",
+			"location": "Location",
+			"spaces": "Spaces",
+			"integrations": "Integrations",
+			"complete": "Complete"
+		},
+		"buttons": {
+			"getStarted": "Get Started",
+			"next": "Next",
+			"back": "Back",
+			"skip": "Skip",
+			"finishSetup": "Finish Setup"
+		}
+	},
 	"welcome": {
 		"title": "Welcome to Smart Panel",
-		"description": "Let's set up your smart home. This wizard will guide you through the initial configuration."
+		"description": "Let's set up your smart home. This wizard will guide you through the initial configuration.",
+		"steps": {
+			"account": "Create Account",
+			"accountDescription": "Set up your administrator account",
+			"location": "Set Location",
+			"locationDescription": "Configure your location for weather data",
+			"spaces": "Create Spaces",
+			"spacesDescription": "Add rooms and areas to organize your devices",
+			"integrations": "Enable Integrations",
+			"integrationsDescription": "Connect your smart home platforms",
+			"finish": "Start Using",
+			"finishDescription": "Your smart panel is ready to go"
+		}
+	},
+	"account": {
+		"description": "Create your administrator account. This will be the owner of the smart panel.",
+		"created": "Account created successfully! You are now logged in.",
+		"fields": {
+			"firstName": "First Name",
+			"lastName": "Last Name",
+			"email": "Email",
+			"username": "Username",
+			"password": "Password"
+		},
+		"placeholders": {
+			"firstName": "Enter your first name",
+			"lastName": "Enter your last name",
+			"email": "Enter your email address",
+			"username": "Choose a username",
+			"password": "Choose a password"
+		},
+		"validation": {
+			"firstNameRequired": "First name is required",
+			"lastNameRequired": "Last name is required",
+			"emailRequired": "Email is required",
+			"emailInvalid": "Please enter a valid email address",
+			"usernameRequired": "Username is required",
+			"passwordRequired": "Password is required"
+		},
+		"messages": {
+			"created": "Your account has been created and you are now logged in.",
+			"error": "Failed to create account. Please try again."
+		}
+	},
+	"location": {
+		"description": "Set your location for weather information and other location-based features. You can skip this step and configure it later.",
+		"fields": {
+			"citySearch": "Search City",
+			"latitude": "Latitude",
+			"longitude": "Longitude"
+		},
+		"placeholders": {
+			"citySearch": "Type a city name to search...",
+			"latitude": "e.g. 50.0755",
+			"longitude": "e.g. 14.4378"
+		},
+		"buttons": {
+			"myLocation": "My Location"
+		},
+		"orEnterManually": "Or enter coordinates manually",
+		"hint": "You can configure your location later in the Weather settings.",
+		"messages": {
+			"error": "Failed to save location.",
+			"geolocationNotSupported": "Geolocation is not supported by your browser.",
+			"geolocationDenied": "Location access was denied. Please allow location access in your browser settings.",
+			"geolocationUnavailable": "Location information is currently unavailable.",
+			"geolocationTimeout": "Location request timed out. Please try again.",
+			"geolocationError": "An error occurred while getting your location."
+		}
+	},
+	"spaces": {
+		"description": "Create rooms and areas to organize your devices. You can add more spaces later.",
+		"quickAdd": "Quick add common rooms",
+		"orAddCustom": "Or add custom room",
+		"fields": {
+			"name": "Room Name"
+		},
+		"placeholders": {
+			"name": "e.g. Master Bedroom"
+		},
+		"buttons": {
+			"add": "Add"
+		},
+		"roomsToCreate": "Rooms to create ({count})",
+		"categories": {
+			"livingRoom": "Living Room",
+			"bedroom": "Bedroom",
+			"kitchen": "Kitchen",
+			"bathroom": "Bathroom",
+			"office": "Office",
+			"hallway": "Hallway",
+			"garage": "Garage",
+			"nursery": "Nursery",
+			"guestRoom": "Guest Room",
+			"diningRoom": "Dining Room"
+		},
+		"hint": "You can add, rename, or reorganize spaces later in the Spaces settings.",
+		"messages": {
+			"error": "Failed to create spaces."
+		}
+	},
+	"integrations": {
+		"description": "Enable device integrations to connect your smart home platforms. You can configure connection details later.",
+		"noPlugins": "No device integrations available.",
+		"hint": "You can enable or disable integrations later in the Extensions settings.",
+		"messages": {
+			"error": "Failed to update integrations."
+		}
+	},
+	"complete": {
+		"title": "You're All Set!",
+		"description": "Your Smart Panel is configured and ready to use. You can now start adding devices, creating spaces, and customizing your dashboard.",
+		"summary": {
+			"accountCreated": "Administrator account created",
+			"locationConfigured": "Weather location configured",
+			"locationSkipped": "Weather location skipped (can be configured later)",
+			"spacesCreated": "{count} room(s) will be created | {count} room will be created | {count} rooms will be created",
+			"spacesSkipped": "No rooms added (can be created later)",
+			"integrationsEnabled": "{count} integration(s) enabled | {count} integration enabled | {count} integrations enabled",
+			"integrationsSkipped": "No integrations enabled (can be configured later)"
+		},
+		"messages": {
+			"finished": "Setup complete! Welcome to Smart Panel.",
+			"error": "Failed to complete onboarding."
+		}
 	}
 }

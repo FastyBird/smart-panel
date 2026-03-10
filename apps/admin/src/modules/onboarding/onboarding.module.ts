@@ -5,6 +5,7 @@ import { defaultsDeep } from 'lodash';
 import type { IModuleOptions } from '../../app.types';
 import { injectRouterGuard } from '../../common';
 
+import { useOnboardingStatus } from './composables/composables';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes, onboardingGuard } from './router';
 
@@ -18,6 +19,22 @@ export default {
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
+
+		// Pre-fetch onboarding status before the synchronous guard chain runs.
+		// Vue Router beforeEach supports async — this ensures the cache is warm
+		// before onboardingGuard reads it synchronously.
+		options.router.beforeEach(async () => {
+			const { isOnboardingCompleted, fetchStatus } = useOnboardingStatus();
+
+			// Once onboarding is known complete, skip fetching entirely
+			if (isOnboardingCompleted.value) return;
+
+			try {
+				await fetchStatus();
+			} catch {
+				// If backend is unreachable, allow navigation
+			}
+		});
 
 		// Register onboarding guard — runs BEFORE auth guards since this module is installed first
 		routerGuard.register(onboardingGuard);

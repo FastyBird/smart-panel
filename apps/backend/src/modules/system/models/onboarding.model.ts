@@ -2,7 +2,7 @@ import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'SystemModuleOnboardingStatus' })
+@ApiSchema({ name: 'SystemModuleDataOnboardingStatus' })
 export class OnboardingStatusModel {
 	@ApiProperty({
 		name: 'has_owner',

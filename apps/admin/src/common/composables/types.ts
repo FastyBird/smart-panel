@@ -71,7 +71,7 @@ export interface IUseSockets {
 	sockets: Socket;
 	connected: ComputedRef<boolean>;
 	active: ComputedRef<boolean>;
-	sendCommand: <Payload extends object>(event: string, payload: Payload | null, handler: string) => Promise<true | string>;
+	sendCommand: <Payload extends object>(event: string, payload: Payload | null, handler: string, timeout?: number) => Promise<true | string>;
 }
 
 export interface IUseUuid {
