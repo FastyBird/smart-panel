@@ -19,6 +19,7 @@
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
 					:config="configPlugin"
+					:remote-form-errors="formFieldErrors"
 				/>
 				<el-empty
 					v-else-if="!isLoading"
@@ -26,33 +27,6 @@
 				/>
 			</div>
 		</el-scrollbar>
-		<!-- Validation errors -->
-		<div
-			v-if="validationResult && !validationResult.valid"
-			class="mt-3 px-1"
-		>
-			<el-alert
-				type="error"
-				:title="t('onboardingModule.integrations.configDialog.messages.validationFailed')"
-				:closable="true"
-				show-icon
-				@close="validationResult = null"
-			>
-				<template
-					v-if="validationResult.errors?.length"
-					#default
-				>
-					<ul class="list-disc pl-4 mt-1 text-xs">
-						<li
-							v-for="(err, idx) in validationResult.errors"
-							:key="idx"
-						>
-							<span v-if="err.field">{{ err.field }}: </span>{{ err.message }}
-						</li>
-					</ul>
-				</template>
-			</el-alert>
-		</div>
 		<template #footer>
 			<div class="flex justify-between items-center">
 				<el-button
@@ -87,7 +61,7 @@
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
@@ -125,6 +99,21 @@ const remoteFormSubmit = ref(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref(false);
 const remoteFormChanged = ref(false);
+
+const snakeToCamel = (str: string): string => {
+	return str
+		.split('.')
+		.map((segment) => segment.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()))
+		.join('.');
+};
+
+const formFieldErrors = computed(() => {
+	if (!validationResult.value || validationResult.value.valid) return [];
+
+	return (validationResult.value.errors ?? [])
+		.filter((err) => err.field)
+		.map((err) => ({ field: snakeToCamel(err.field!), message: err.message }));
+});
 
 const plugin = computed(() => getByName(props.pluginType));
 
@@ -191,6 +180,13 @@ const handleValidate = async (): Promise<void> => {
 			flashMessage.success(t('onboardingModule.integrations.configDialog.messages.validationSuccess'));
 		} else {
 			validationResult.value = result;
+
+			// Show generic errors (without field) as flash message
+			const genericErrors = (result.errors ?? []).filter((err) => !err.field);
+
+			if (genericErrors.length > 0) {
+				flashMessage.error(genericErrors.map((err) => err.message).join('; '));
+			}
 		}
 	} catch {
 		validationResult.value = {
@@ -218,6 +214,16 @@ watch(
 			// after both OK and ERROR states. Also catches edge cases.
 			clearSaveFallback();
 			isSaving.value = false;
+		}
+	}
+);
+
+// Clear validation errors when user modifies the form
+watch(
+	() => remoteFormChanged.value,
+	(val: boolean) => {
+		if (val && validationResult.value) {
+			validationResult.value = null;
 		}
 	}
 );
