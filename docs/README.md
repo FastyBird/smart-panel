@@ -20,6 +20,10 @@ docs/
 
 ## Quick Links
 
+### For Users
+
+- [Installation Guide](../build/docs/INSTALLATION.md) - Server, display, and all-in-one installation
+
 ### For Developers
 
 - [Architecture Overview](./architecture.md) - System design and module structure
