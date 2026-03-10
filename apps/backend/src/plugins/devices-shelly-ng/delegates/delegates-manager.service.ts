@@ -79,6 +79,13 @@ export class DelegatesManagerService {
 
 	private readonly delegateDeviceIds: Map<string, string> = new Map();
 
+	/**
+	 * Generation counter per device ID. Incremented at the start of each insert(),
+	 * reset on remove(). Allows in-progress insert() to detect that the device was
+	 * removed (or re-inserted) mid-operation and bail out early.
+	 */
+	private readonly insertGeneration: Map<string, number> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -100,6 +107,10 @@ export class DelegatesManagerService {
 				return this.delegates.get(shelly.id);
 			}
 		}
+
+		// Increment generation so any previous in-progress insert for this device bails out.
+		const generation = (this.insertGeneration.get(shelly.id) ?? 0) + 1;
+		this.insertGeneration.set(shelly.id, generation);
 
 		const delegate = new ShellyDeviceDelegate(shelly);
 
@@ -142,6 +153,13 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
+
+		// Check if this insert was superseded by a remove or a newer insert
+		if (this.insertGeneration.get(shelly.id) !== generation) {
+			this.logger.warn(`Insert for device=${shelly.id} cancelled (device removed or re-inserted)`);
+
+			return delegate;
+		}
 
 		const deviceInformation = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 			'category',
@@ -206,6 +224,8 @@ export class DelegatesManagerService {
 				// Property may not be created yet - this is expected during device initialization
 			}
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.switches.values()) {
 			const switcher = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -374,6 +394,8 @@ export class DelegatesManagerService {
 			}
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		for (const comp of delegate.covers.values()) {
 			const cover = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -488,6 +510,8 @@ export class DelegatesManagerService {
 			);
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		for (const comp of delegate.lights.values()) {
 			const light = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -583,6 +607,8 @@ export class DelegatesManagerService {
 				);
 			}
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.rgb.values()) {
 			const rgb = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -839,6 +865,8 @@ export class DelegatesManagerService {
 				return true;
 			});
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.rgbw.values()) {
 			const rgbw = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -1148,6 +1176,8 @@ export class DelegatesManagerService {
 			});
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		for (const comp of delegate.cct.values()) {
 			const cct = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -1317,6 +1347,8 @@ export class DelegatesManagerService {
 			});
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		for (const comp of delegate.humidity.values()) {
 			const humidity = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -1354,6 +1386,8 @@ export class DelegatesManagerService {
 			});
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		for (const comp of delegate.temperature.values()) {
 			const temperature = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -1385,6 +1419,8 @@ export class DelegatesManagerService {
 				);
 			});
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.devPwr.values()) {
 			const devicePower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -1424,6 +1460,8 @@ export class DelegatesManagerService {
 				});
 			}
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.pm1.values()) {
 			const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -1522,6 +1560,8 @@ export class DelegatesManagerService {
 				}
 			}
 		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		const valueHandler = (compKey: string, attr: string, val: CharacteristicValue): void => {
 			const handler = this.changeHandlers.get(`${delegate.id}|${compKey}|${attr}`);
@@ -1653,6 +1693,9 @@ export class DelegatesManagerService {
 
 		this.delegateDeviceIds.delete(deviceId);
 
+		// Invalidate any in-progress insert so it bails out at its next check point.
+		this.insertGeneration.delete(deviceId);
+
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
@@ -1778,7 +1821,18 @@ export class DelegatesManagerService {
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean | null,
 	): Promise<void> {
-		await this.writeValueToProperty(property, value);
+		try {
+			await this.writeValueToProperty(property, value);
+		} catch (error) {
+			// Property may have been deleted by a concurrent createOrUpdate cleanup.
+			// This is expected during rapid mDNS attach/detach cycles — log and continue.
+			this.logger.warn(
+				`Skipping default value write for property=${property.id} (entity may have been removed)`,
+				{ resource: deviceId, message: (error as Error).message },
+			);
+
+			return;
+		}
 
 		let set = this.propertiesMap.get(deviceId);
 

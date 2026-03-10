@@ -14,6 +14,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
@@ -56,7 +57,6 @@ export class DeviceManagerService {
 		'DeviceManagerService',
 	);
 
-	private readonly provisionLocks: Map<string, Promise<unknown>> = new Map();
 	private readonly defaultManager: EntityManager | undefined = ((): EntityManager | undefined => {
 		// Reuse any available manager to avoid spawning new transactions for cleanup paths.
 		const candidate =
@@ -79,6 +79,7 @@ export class DeviceManagerService {
 		private readonly mappingLoaderService: MappingLoaderService,
 		private readonly transformerRegistry: TransformerRegistry,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
+		private readonly provisionQueue: DeviceProvisionQueueService,
 	) {}
 
 	async getDeviceInfo(
@@ -149,7 +150,7 @@ export class DeviceManagerService {
 	}
 
 	async createOrUpdate(id: string): Promise<ShellyNgDeviceEntity> {
-		return this.enqueueProvision(id, async () => {
+		return this.provisionQueue.enqueue(id, async () => {
 			const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
 
 			if (device === null) {
@@ -1780,20 +1781,6 @@ export class DeviceManagerService {
 			}
 
 			return device;
-		});
-	}
-
-	private enqueueProvision<T>(deviceId: string, task: () => Promise<T>): Promise<T> {
-		const previous = this.provisionLocks.get(deviceId) ?? Promise.resolve();
-
-		const chained = previous.catch(() => undefined).then(task);
-
-		this.provisionLocks.set(deviceId, chained);
-
-		return chained.finally(() => {
-			if (this.provisionLocks.get(deviceId) === chained) {
-				this.provisionLocks.delete(deviceId);
-			}
 		});
 	}
 

@@ -10,9 +10,13 @@
 		/>
 
 		<template v-else>
-			<p class="text-gray-500 mb-6">
-				{{ t('onboardingModule.account.description') }}
-			</p>
+			<el-alert
+				type="info"
+				:title="t('onboardingModule.account.description')"
+				:closable="false"
+				show-icon
+				class="mb-6!"
+			/>
 
 			<el-form
 				ref="formEl"

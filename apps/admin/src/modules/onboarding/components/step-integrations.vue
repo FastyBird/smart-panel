@@ -1,144 +1,150 @@
 <template>
 	<div class="py-4 px-4 max-w-lg mx-auto">
-		<p class="text-gray-500 mb-4">
-			{{ t('onboardingModule.integrations.description') }}
-		</p>
+		<el-alert
+			type="info"
+			:title="t('onboardingModule.integrations.description')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
 
-		<div
-			v-loading="isFetching"
-			class="flex flex-col gap-3"
-		>
+		<el-scrollbar max-height="40vh">
 			<div
-				v-for="integration in devicePlugins"
-				:key="integration.type"
-				class="rounded-lg border transition-all duration-300"
-				:class="integration.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+				v-loading="isFetching"
+				class="flex flex-col gap-3"
 			>
-				<div class="flex items-center gap-4 p-3">
-					<el-icon
-						:size="32"
-						class="shrink-0"
-						:class="integration.enabled ? 'text-primary' : 'text-gray-400'"
-					>
-						<icon :icon="getPluginIcon(integration.type)" />
-					</el-icon>
-					<div class="flex-1 min-w-0">
-						<div class="font-medium">{{ integration.name }}</div>
-						<div
-							v-if="integration.description"
-							class="text-xs text-gray-500 truncate"
-						>
-							{{ integration.description }}
-						</div>
-					</div>
-					<el-switch
-						:model-value="integration.enabled"
-						:disabled="!integration.canToggleEnabled || isToggling(integration.type)"
-						:loading="isToggling(integration.type)"
-						@update:model-value="(val: string | number | boolean) => onToggle(integration.type, !!val)"
-					/>
-				</div>
-
-				<!-- Expanded section when enabled -->
 				<div
-					v-if="integration.enabled"
-					class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+					v-for="integration in devicePlugins"
+					:key="integration.type"
+					class="rounded-lg border transition-all duration-300"
+					:class="integration.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
 				>
-					<div class="flex items-center gap-2 text-xs min-w-0">
-						<template v-if="isDiscovering(integration.type)">
-							<el-icon
-								:size="14"
-								class="text-primary is-loading"
+					<div class="flex items-center gap-4 p-3">
+						<el-icon
+							:size="32"
+							class="shrink-0"
+							:class="integration.enabled ? 'text-primary' : 'text-gray-400'"
+						>
+							<icon :icon="getPluginIcon(integration.type)" />
+						</el-icon>
+						<div class="flex-1 min-w-0">
+							<div class="font-medium">{{ integration.name }}</div>
+							<div
+								v-if="integration.description"
+								class="text-xs text-gray-500 truncate"
 							>
-								<icon icon="mdi:loading" />
-							</el-icon>
-							<span class="text-gray-500">
-								{{ t('onboardingModule.integrations.searching') }}
-							</span>
-						</template>
-						<template v-else-if="getDeviceCount(integration.type) > 0">
-							<el-icon
-								:size="14"
-								class="text-green-500"
-							>
-								<icon icon="mdi:check-circle" />
-							</el-icon>
-							<span class="text-green-600">
-								{{ t('onboardingModule.integrations.devicesFound', { count: getDeviceCount(integration.type) }) }}
-							</span>
-						</template>
-						<template v-else-if="discoveryFinished(integration.type)">
-							<el-icon
-								:size="14"
-								class="text-gray-400"
-							>
-								<icon icon="mdi:information-outline" />
-							</el-icon>
-							<span class="text-gray-500">
-								{{ t('onboardingModule.integrations.noDevicesYet') }}
-							</span>
-						</template>
-						<template v-else>
-							<el-icon
-								:size="14"
-								class="text-blue-400"
-							>
-								<icon icon="mdi:power-plug-outline" />
-							</el-icon>
-							<span class="text-gray-500">
-								{{ t('onboardingModule.integrations.enabled') }}
-							</span>
-						</template>
+								{{ integration.description }}
+							</div>
+						</div>
+						<el-switch
+							:model-value="integration.enabled"
+							:disabled="!integration.canToggleEnabled || isToggling(integration.type)"
+							:loading="isToggling(integration.type)"
+							@update:model-value="(val: string | number | boolean) => onToggle(integration.type, !!val)"
+						/>
 					</div>
-					<el-button
-						v-if="hasConfigForm(integration.type)"
-						size="small"
-						text
-						type="primary"
-						@click="openConfigDialog(integration.type, integration.name)"
+
+					<!-- Expanded section when enabled -->
+					<div
+						v-if="integration.enabled"
+						class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+					>
+						<div class="flex items-center gap-2 text-xs min-w-0">
+							<template v-if="isDiscovering(integration.type)">
+								<el-icon
+									:size="14"
+									class="text-primary is-loading"
+								>
+									<icon icon="mdi:loading" />
+								</el-icon>
+								<span class="text-gray-500">
+									{{ t('onboardingModule.integrations.searching') }}
+								</span>
+							</template>
+							<template v-else-if="getDeviceCount(integration.type) > 0">
+								<el-icon
+									:size="14"
+									class="text-green-500"
+								>
+									<icon icon="mdi:check-circle" />
+								</el-icon>
+								<span class="text-green-600">
+									{{ t('onboardingModule.integrations.devicesFound', { count: getDeviceCount(integration.type) }) }}
+								</span>
+							</template>
+							<template v-else-if="discoveryFinished(integration.type)">
+								<el-icon
+									:size="14"
+									class="text-gray-400"
+								>
+									<icon icon="mdi:information-outline" />
+								</el-icon>
+								<span class="text-gray-500">
+									{{ t('onboardingModule.integrations.noDevicesYet') }}
+								</span>
+							</template>
+							<template v-else>
+								<el-icon
+									:size="14"
+									class="text-blue-400"
+								>
+									<icon icon="mdi:power-plug-outline" />
+								</el-icon>
+								<span class="text-gray-500">
+									{{ t('onboardingModule.integrations.enabled') }}
+								</span>
+							</template>
+						</div>
+						<el-button
+							v-if="hasConfigForm(integration.type)"
+							size="small"
+							text
+							type="primary"
+							@click="openConfigDialog(integration.type, integration.name)"
+						>
+							<el-icon
+								:size="14"
+								class="mr-1"
+							>
+								<icon icon="mdi:cog-outline" />
+							</el-icon>
+							{{ t('onboardingModule.integrations.configure') }}
+						</el-button>
+					</div>
+
+					<!-- Configuration required badge -->
+					<div
+						v-if="integration.enabled && requiresConfiguration(integration.type) && !isConfigured(integration.type)"
+						class="border-t border-orange-200 bg-orange-50 px-3 py-2 flex items-center gap-2"
 					>
 						<el-icon
 							:size="14"
-							class="mr-1"
+							class="text-orange-500"
 						>
-							<icon icon="mdi:cog-outline" />
+							<icon icon="mdi:alert-circle-outline" />
 						</el-icon>
-						{{ t('onboardingModule.integrations.configure') }}
-					</el-button>
+						<span class="text-xs text-orange-600">
+							{{ t('onboardingModule.integrations.configRequired') }}
+						</span>
+						<el-button
+							size="small"
+							text
+							type="warning"
+							@click="openConfigDialog(integration.type, integration.name)"
+						>
+							{{ t('onboardingModule.integrations.setupNow') }}
+						</el-button>
+					</div>
 				</div>
 
-				<!-- Configuration required badge -->
 				<div
-					v-if="integration.enabled && requiresConfiguration(integration.type) && !isConfigured(integration.type)"
-					class="border-t border-orange-200 bg-orange-50 px-3 py-2 flex items-center gap-2"
+					v-if="devicePlugins.length === 0 && !isFetching"
+					class="text-center text-gray-400 py-4"
 				>
-					<el-icon
-						:size="14"
-						class="text-orange-500"
-					>
-						<icon icon="mdi:alert-circle-outline" />
-					</el-icon>
-					<span class="text-xs text-orange-600">
-						{{ t('onboardingModule.integrations.configRequired') }}
-					</span>
-					<el-button
-						size="small"
-						text
-						type="warning"
-						@click="openConfigDialog(integration.type, integration.name)"
-					>
-						{{ t('onboardingModule.integrations.setupNow') }}
-					</el-button>
+					{{ t('onboardingModule.integrations.noPlugins') }}
 				</div>
 			</div>
-
-			<div
-				v-if="devicePlugins.length === 0 && !isFetching"
-				class="text-center text-gray-400 py-4"
-			>
-				{{ t('onboardingModule.integrations.noPlugins') }}
-			</div>
-		</div>
+		</el-scrollbar>
 
 		<!-- Summary bar -->
 		<div
@@ -183,7 +189,7 @@
 import { computed, onBeforeMount, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElIcon, ElSwitch, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElIcon, ElScrollbar, ElSwitch, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';

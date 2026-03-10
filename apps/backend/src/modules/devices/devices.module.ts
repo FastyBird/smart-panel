@@ -57,6 +57,7 @@ import { ChannelsService } from './services/channels.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DeviceControlToolService } from './services/device-control-tool.service';
+import { DeviceProvisionQueueService } from './services/device-provision-queue.service';
 import { DeviceValidationService } from './services/device-validation.service';
 import { DeviceZonesService } from './services/device-zones.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
@@ -133,6 +134,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ModuleResetService,
 		DevicesStatsProvider,
 		DeviceConnectivityService,
+		DeviceProvisionQueueService,
 		WebsocketExchangeListener,
 	],
 	controllers: [
@@ -161,6 +163,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceConnectivityService,
+		DeviceProvisionQueueService,
 		DeviceValidationService,
 	],
 })

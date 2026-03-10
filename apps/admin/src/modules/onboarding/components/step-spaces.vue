@@ -1,8 +1,12 @@
 <template>
 	<div class="py-4 px-4 max-w-lg mx-auto">
-		<p class="text-gray-500 mb-4">
-			{{ t('onboardingModule.spaces.description') }}
-		</p>
+		<el-alert
+			type="info"
+			:title="t('onboardingModule.spaces.description')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
 
 		<!-- Quick add by category -->
 		<div class="mb-4">

@@ -1,11 +1,6 @@
 <template>
 	<div class="flex flex-col items-center text-center py-8 px-4">
-		<el-icon
-			:size="80"
-			class="mb-6 text-primary"
-		>
-			<icon icon="mdi:home-automation" />
-		</el-icon>
+		<logo class="w-[5rem] mb-4 fill-brand-primary" />
 
 		<h2 class="text-2xl font-bold mb-4">
 			{{ t('onboardingModule.welcome.title') }}
@@ -88,6 +83,8 @@
 import { Icon } from '@iconify/vue';
 import { ElIcon } from 'element-plus';
 import { useI18n } from 'vue-i18n';
+
+import Logo from '../../../assets/images/fb_bird.svg?component';
 
 defineOptions({
 	name: 'StepWelcome',

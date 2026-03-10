@@ -1,8 +1,12 @@
 <template>
 	<div class="py-4 px-4 max-w-lg mx-auto">
-		<p class="text-gray-500 mb-4">
-			{{ t('onboardingModule.location.description') }}
-		</p>
+		<el-alert
+			type="info"
+			:title="t('onboardingModule.location.description')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
 
 		<!-- City Search with My Location button -->
 		<el-form

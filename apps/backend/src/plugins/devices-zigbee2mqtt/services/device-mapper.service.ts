@@ -12,6 +12,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
@@ -60,9 +61,6 @@ export class Z2mDeviceMapperService {
 		'DeviceMapper',
 	);
 
-	// Per-device locks to prevent concurrent mapping of the same device
-	private readonly deviceLocks = new Map<string, Promise<Zigbee2mqttDeviceEntity | null>>();
-
 	// Property ID → transformer info mapping for applying transformers during state updates and writes
 	private readonly propertyTransformers = new Map<string, { transformerName: string; z2mProperty: string }>();
 
@@ -76,6 +74,7 @@ export class Z2mDeviceMapperService {
 		private readonly mappingLoader: MappingLoaderService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly transformerRegistry: TransformerRegistry,
+		private readonly provisionQueue: DeviceProvisionQueueService,
 	) {}
 
 	/**
@@ -218,20 +217,7 @@ export class Z2mDeviceMapperService {
 	): Promise<Zigbee2mqttDeviceEntity | null> {
 		const friendlyName = 'friendly_name' in z2mDevice ? z2mDevice.friendly_name : z2mDevice.friendlyName;
 
-		// Use per-device lock to prevent concurrent mapping of the same device
-		const existingLock = this.deviceLocks.get(friendlyName);
-		if (existingLock !== undefined) {
-			return existingLock;
-		}
-
-		const mappingPromise = this.doMapDevice(z2mDevice, createIfNotExists);
-		this.deviceLocks.set(friendlyName, mappingPromise);
-
-		try {
-			return await mappingPromise;
-		} finally {
-			this.deviceLocks.delete(friendlyName);
-		}
+		return this.provisionQueue.enqueue(friendlyName, () => this.doMapDevice(z2mDevice, createIfNotExists));
 	}
 
 	/**
