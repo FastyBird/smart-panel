@@ -63,16 +63,14 @@ export const ROOM_DEFINITIONS: IRoomDefinition[] = [
 	{ searchToken: 'Toilet', category: 'toilet', icon: 'mdi:toilet', i18nKey: 'toilet' },
 	{ searchToken: 'Office', category: 'office', icon: 'mdi:desk', i18nKey: 'office' },
 	{ searchToken: 'Garage', category: 'garage', icon: 'mdi:garage', i18nKey: 'garage' },
-	{ searchToken: 'Garden', category: 'garden', icon: 'mdi:flower', i18nKey: 'garden' },
 	{ searchToken: 'Hallway', category: 'hallway', icon: 'mdi:door-open', i18nKey: 'hallway' },
-	{ searchToken: 'Entry Hall', category: 'entry_hall', icon: 'mdi:door-sliding', i18nKey: 'entryHall' },
+	{ searchToken: 'Entryway', category: 'entryway', icon: 'mdi:door-sliding', i18nKey: 'entryway' },
 	{ searchToken: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife', i18nKey: 'diningRoom' },
-	{ searchToken: 'Basement', category: 'basement', icon: 'mdi:stairs-down', i18nKey: 'basement' },
-	{ searchToken: 'Attic', category: 'attic', icon: 'mdi:stairs-up', i18nKey: 'attic' },
 	{ searchToken: 'Laundry', category: 'laundry', icon: 'mdi:washing-machine', i18nKey: 'laundry' },
 	{ searchToken: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage', i18nKey: 'nursery' },
 	{ searchToken: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline', i18nKey: 'guestRoom' },
-	{ searchToken: 'Patio', category: 'patio', icon: 'mdi:table-furniture', i18nKey: 'patio' },
+	{ searchToken: 'Storage', category: 'storage', icon: 'mdi:package-variant-closed', i18nKey: 'storage' },
+	{ searchToken: 'Workshop', category: 'workshop', icon: 'mdi:hammer-wrench', i18nKey: 'workshop' },
 ];
 
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);

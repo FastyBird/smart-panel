@@ -111,16 +111,14 @@
 			"toilet": "Toilet",
 			"office": "Office",
 			"hallway": "Hallway",
-			"entryHall": "Entry Hall",
+			"entryway": "Entryway",
 			"garage": "Garage",
-			"garden": "Garden",
 			"diningRoom": "Dining Room",
-			"basement": "Basement",
-			"attic": "Attic",
 			"laundry": "Laundry",
 			"nursery": "Nursery",
 			"guestRoom": "Guest Room",
-			"patio": "Patio"
+			"storage": "Storage",
+			"workshop": "Workshop"
 		},
 		"devices": {
 			"title": "Assign devices to rooms",
@@ -158,10 +156,14 @@
 			"noConfig": "No configuration options available for this integration.",
 			"buttons": {
 				"cancel": "Cancel",
-				"save": "Save Configuration"
+				"validate": "Validate",
+				"save": "Save"
 			},
 			"messages": {
-				"saved": "Configuration saved successfully."
+				"saved": "Configuration saved successfully.",
+				"validationSuccess": "Configuration is valid.",
+				"validationFailed": "Configuration validation failed.",
+				"validationError": "Unable to validate configuration."
 			}
 		},
 		"messages": {

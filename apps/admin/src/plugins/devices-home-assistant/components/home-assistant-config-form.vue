@@ -28,6 +28,7 @@
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.apiKey.title')"
 			prop="apiKey"
+			:error="fieldErrors['apiKey']"
 		>
 			<el-input
 				v-model="model.apiKey"
@@ -41,6 +42,7 @@
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.hostname.title')"
 			prop="hostname"
+			:error="fieldErrors['hostname']"
 		>
 			<div class="flex gap-2 w-full">
 				<el-autocomplete
@@ -116,6 +118,7 @@ const props = withDefaults(defineProps<IHomeAssistantConfigFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	remoteFormErrors: () => [],
 	layout: Layout.DEFAULT,
 });
 
@@ -134,6 +137,16 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 		success: t('devicesHomeAssistantPlugin.messages.config.edited'),
 		error: t('devicesHomeAssistantPlugin.messages.config.notEdited'),
 	},
+});
+
+const fieldErrors = computed<Record<string, string | undefined>>(() => {
+	const errors: Record<string, string | undefined> = {};
+
+	for (const err of props.remoteFormErrors) {
+		errors[err.field] = err.message;
+	}
+
+	return errors;
 });
 
 const { instances, isLoading: isLoadingInstances, fetchInstances, refreshInstances } = useDiscoveredInstances();

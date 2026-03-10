@@ -21,6 +21,7 @@ import type {
 	IConfigPlugin,
 	IConfigPluginRes,
 	IConfigPluginUpdateReq,
+	IConfigPluginValidationResult,
 	IConfigPluginsEditActionPayload,
 	IConfigPluginsGetActionPayload,
 	IConfigPluginsOnEventActionPayload,
@@ -28,6 +29,7 @@ import type {
 	IConfigPluginsStateSemaphore,
 	IConfigPluginsStoreActions,
 	IConfigPluginsStoreState,
+	IConfigPluginsValidateActionPayload,
 } from './config-plugins.store.types';
 import { transformConfigPluginResponse, transformConfigPluginUpdateRequest } from './config-plugins.transformers';
 
@@ -292,6 +294,46 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			}
 		};
 
+		const validateConfig = async (payload: IConfigPluginsValidateActionPayload): Promise<IConfigPluginValidationResult> => {
+			const element = getPluginElement(payload.data.type);
+
+			const parsedConfig = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({
+				...data.value[payload.data.type],
+				...omitBy(payload.data, isUndefined),
+			});
+
+			if (!parsedConfig.success) {
+				return { valid: false, errors: [{ message: 'Local schema validation failed' }] };
+			}
+
+			const { data: responseData, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}/validate` as never,
+				{
+					params: { path: { plugin: payload.data.type } },
+					body: {
+						data: transformConfigPluginUpdateRequest<IConfigPluginUpdateReq>(
+							parsedConfig.data,
+							element?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema,
+						),
+					},
+				} as never,
+			);
+
+			if (responseData) {
+				const result = responseData as { data: IConfigPluginValidationResult };
+
+				return result.data;
+			}
+
+			if (error) {
+				const errorReason = getErrorReason<ConfigModuleUpdateConfigPluginOperation>(error as never, 'Validation request failed.');
+
+				return { valid: false, errors: [{ message: errorReason ?? 'Validation request failed' }] };
+			}
+
+			return { valid: false, errors: [{ message: 'Validation request failed' }] };
+		};
+
 		return {
 			semaphore,
 			firstLoad,
@@ -307,6 +349,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			get,
 			fetch,
 			edit,
+			validateConfig,
 		};
 	}
 );

@@ -7,6 +7,7 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { PluginConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 import {
@@ -53,6 +54,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly nestConfigService: NestConfigService,
+		private readonly pluginConfigValidator: PluginConfigValidatorService,
 	) {
 		this.isCliMode = getEnvValue<string>(this.nestConfigService, 'FB_CLI', null) === 'on';
 	}
@@ -459,6 +461,32 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		this.logger.log(`Starting service: ${key}`);
+
+		// Run config validation before starting (skip filling logs with errors from bad config)
+		if (this.pluginConfigValidator.hasValidator(registration.pluginName)) {
+			const config = this.getPluginConfig(registration.pluginName);
+
+			if (config) {
+				const validationResult = await this.pluginConfigValidator.validate(
+					registration.pluginName,
+					config as unknown as Record<string, unknown>,
+				);
+
+				if (!validationResult.valid) {
+					const errors = (validationResult.errors ?? []).map((e) => e.message).join('; ');
+
+					this.logger.warn(`Skipping service ${key}: config validation failed — ${errors}`);
+
+					const runtime = this.runtimeInfo.get(key);
+
+					if (runtime) {
+						runtime.lastError = `Config validation failed: ${errors}`;
+					}
+
+					return;
+				}
+			}
+		}
 
 		try {
 			await registration.service.start();

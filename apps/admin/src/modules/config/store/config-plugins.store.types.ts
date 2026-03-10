@@ -33,6 +33,23 @@ export type IConfigPluginsGetActionPayload = z.infer<typeof ConfigPluginsGetActi
 
 export type IConfigPluginsEditActionPayload = z.infer<typeof ConfigPluginsEditActionPayloadSchema>;
 
+export interface IConfigPluginsValidateActionPayload {
+	data: {
+		type: string;
+		[key: string]: unknown;
+	};
+}
+
+export interface IConfigPluginValidationError {
+	message: string;
+	field?: string;
+}
+
+export interface IConfigPluginValidationResult {
+	valid: boolean;
+	errors?: IConfigPluginValidationError[];
+}
+
 // STORE
 // =====
 
@@ -56,6 +73,7 @@ export interface IConfigPluginsStoreActions {
 	get: (payload: IConfigPluginsGetActionPayload) => Promise<IConfigPlugin>;
 	fetch: () => Promise<IConfigPlugin[]>;
 	edit: (payload: IConfigPluginsEditActionPayload) => Promise<IConfigPlugin>;
+	validateConfig: (payload: IConfigPluginsValidateActionPayload) => Promise<IConfigPluginValidationResult>;
 }
 
 export type ConfigPluginsStoreSetup = IConfigPluginsStoreState & IConfigPluginsStoreActions;

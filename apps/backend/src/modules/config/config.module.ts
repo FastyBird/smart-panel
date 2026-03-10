@@ -17,6 +17,7 @@ import { UpdateConfigModuleConfigDto } from './dto/update-module-config.dto';
 import { ConfigModuleConfigModel } from './models/module-config.model';
 import { ConfigService } from './services/config.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
+import { PluginConfigValidatorService } from './services/plugin-config-validator.service';
 
 @ApiTag({
 	tagName: CONFIG_MODULE_NAME,
@@ -26,9 +27,9 @@ import { ModulesTypeMapperService } from './services/modules-type-mapper.service
 @Global()
 @Module({
 	imports: [NestConfigModule, PlatformModule, SwaggerModule],
-	providers: [ConfigService, GenerateAdminExtensionsCommand],
+	providers: [ConfigService, PluginConfigValidatorService, GenerateAdminExtensionsCommand],
 	controllers: [ConfigController],
-	exports: [ConfigService],
+	exports: [ConfigService, PluginConfigValidatorService],
 })
 export class ConfigModule implements OnModuleInit {
 	constructor(

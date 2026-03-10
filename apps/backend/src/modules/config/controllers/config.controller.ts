@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { BadRequestException, Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -29,9 +29,14 @@ import {
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
 } from '../models/config-response.model';
+import {
+	ConfigModuleResPluginConfigValidation,
+	ConfigValidationResultModel,
+} from '../models/config-validation-response.model';
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
+import { PluginConfigValidatorService } from '../services/plugin-config-validator.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 @ApiTags(CONFIG_MODULE_API_TAG_NAME)
@@ -43,6 +48,7 @@ export class ConfigController {
 		private readonly service: ConfigService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly pluginConfigValidator: PluginConfigValidatorService,
 	) {}
 
 	@Get()
@@ -243,6 +249,10 @@ export class ConfigController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
+		// Plugin-specific validation (connection tests) is NOT run here — it would
+		// block saves when the target service is temporarily unreachable. Users must
+		// be able to pre-configure credentials before the service is online.
+		// Use POST plugin/:plugin/validate for explicit validation.
 		this.service.setPluginConfig(plugin, dtoInstance);
 
 		const config = this.service.getPluginConfig(plugin);
@@ -251,6 +261,79 @@ export class ConfigController {
 
 		const response = new ConfigModuleResPluginConfig();
 		response.data = config;
+		return response;
+	}
+
+	@Post('plugin/:plugin/validate')
+	@ApiOperation({
+		tags: [CONFIG_MODULE_API_TAG_NAME],
+		summary: 'Validate plugin configuration',
+		description:
+			'Validate plugin configuration without persisting. Returns validation result with optional field-level errors.',
+		operationId: 'validate-config-module-config-plugin',
+	})
+	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
+	@ApiBody({
+		type: ReqUpdatePluginDto,
+		description: 'Plugin configuration data to validate',
+	})
+	@ApiSuccessResponse(ConfigModuleResPluginConfigValidation, 'Plugin configuration validation result')
+	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
+	@ApiInternalServerErrorResponse('Internal server error')
+	async validatePluginConfig(
+		@Param('plugin') plugin: string,
+		@Body() pluginConfig: { data: object },
+	): Promise<ConfigModuleResPluginConfigValidation> {
+		this.logger.debug(`Incoming validate request for plugin=${plugin}`);
+
+		let mapping: PluginTypeMapping<PluginConfigModel, UpdatePluginConfigDto>;
+
+		try {
+			mapping = this.pluginsMapperService.getMapping<PluginConfigModel, UpdatePluginConfigDto>(plugin);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[ERROR] Unsupported plugin type for validation: ${plugin}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			if (error instanceof ConfigException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'type', reason: `Unsupported plugin type: ${plugin}` }),
+				]);
+			}
+
+			throw error;
+		}
+
+		// DTO schema validation (field types, required fields, etc.)
+		const dtoInstance = toInstance(mapping.configDto, pluginConfig.data, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION FAILED] Schema validation failed for plugin validation plugin=${plugin}`);
+
+			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		// Plugin-specific validation (connection tests, credential checks, etc.).
+		// Pass the DTO instance (not raw body) so validators get consistent property names.
+		const result = await this.pluginConfigValidator.validate(plugin, dtoInstance as unknown as Record<string, unknown>);
+
+		const resultModel = new ConfigValidationResultModel();
+		resultModel.valid = result.valid;
+		resultModel.errors = result.errors;
+
+		const response = new ConfigModuleResPluginConfigValidation();
+		response.data = resultModel;
 		return response;
 	}
 

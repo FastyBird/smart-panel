@@ -9,7 +9,7 @@
 		<el-scrollbar max-height="60vh">
 			<div
 				v-loading="isLoading"
-				class="min-h-[120px]"
+				class="min-h-[120px] overflow-x-hidden"
 			>
 				<component
 					:is="configFormComponent"
@@ -19,6 +19,7 @@
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
 					:config="configPlugin"
+					:remote-form-errors="formFieldErrors"
 				/>
 				<el-empty
 					v-else-if="!isLoading"
@@ -27,18 +28,30 @@
 			</div>
 		</el-scrollbar>
 		<template #footer>
-			<div class="flex justify-end gap-2">
-				<el-button @click="emit('update:visible', false)">
-					{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
-				</el-button>
+			<div class="flex justify-between items-center">
 				<el-button
-					type="primary"
-					:loading="isSaving"
+					:loading="isValidating"
 					:disabled="!remoteFormChanged"
-					@click="handleSave"
+					@click="handleValidate"
 				>
-					{{ t('onboardingModule.integrations.configDialog.buttons.save') }}
+					{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
 				</el-button>
+				<div class="flex gap-2 items-center">
+					<el-button
+						link
+						@click="emit('update:visible', false)"
+					>
+						{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
+					</el-button>
+					<el-button
+						type="primary"
+						:loading="isSaving"
+						:disabled="!remoteFormChanged"
+						@click="handleSave"
+					>
+						{{ t('onboardingModule.integrations.configDialog.buttons.save') }}
+					</el-button>
+				</div>
 			</div>
 		</template>
 	</el-dialog>
@@ -50,10 +63,11 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import type { IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
 
 defineOptions({
@@ -72,16 +86,34 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const { getByName } = usePlugins();
 
 const isLoading = ref(false);
 const isSaving = ref(false);
+const isValidating = ref(false);
+const validationResult = ref<IConfigPluginValidationResult | null>(null);
 const remoteFormSubmit = ref(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref(false);
 const remoteFormChanged = ref(false);
+
+const snakeToCamel = (str: string): string => {
+	return str
+		.split('.')
+		.map((segment) => segment.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()))
+		.join('.');
+};
+
+const formFieldErrors = computed(() => {
+	if (!validationResult.value || validationResult.value.valid) return [];
+
+	return (validationResult.value.errors ?? [])
+		.filter((err) => err.field)
+		.map((err) => ({ field: snakeToCamel(err.field!), message: err.message }));
+});
 
 const plugin = computed(() => getByName(props.pluginType));
 
@@ -133,6 +165,43 @@ const handleSave = (): void => {
 	}, 5000);
 };
 
+const handleValidate = async (): Promise<void> => {
+	if (!configPlugin.value) return;
+
+	isValidating.value = true;
+	validationResult.value = null;
+
+	try {
+		const result = await configPluginsStore.validateConfig({
+			data: { ...configPlugin.value },
+		});
+
+		if (result.valid) {
+			flashMessage.success(t('onboardingModule.integrations.configDialog.messages.validationSuccess'));
+		} else {
+			validationResult.value = result;
+
+			// Flash errors that have no field (can't be shown inline)
+			// or all errors when none could be mapped to form fields
+			const allErrors = result.errors ?? [];
+			const unmappedErrors = allErrors.filter((err) => !err.field);
+
+			if (unmappedErrors.length > 0 || formFieldErrors.value.length === 0) {
+				const toShow = unmappedErrors.length > 0 ? unmappedErrors : allErrors;
+
+				flashMessage.error(toShow.map((err) => err.message).join('; '));
+			}
+		}
+	} catch {
+		validationResult.value = {
+			valid: false,
+			errors: [{ message: t('onboardingModule.integrations.configDialog.messages.validationError') }],
+		};
+	} finally {
+		isValidating.value = false;
+	}
+};
+
 watch(
 	() => remoteFormResult.value,
 	(val: FormResultType) => {
@@ -149,6 +218,16 @@ watch(
 			// after both OK and ERROR states. Also catches edge cases.
 			clearSaveFallback();
 			isSaving.value = false;
+		}
+	}
+);
+
+// Clear validation errors when user modifies the form
+watch(
+	() => remoteFormChanged.value,
+	(val: boolean) => {
+		if (val && validationResult.value) {
+			validationResult.value = null;
 		}
 	}
 );

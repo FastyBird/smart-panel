@@ -1,4 +1,4 @@
-import type { FormResultType, LayoutType } from '../../../modules/config';
+import type { FormResultType, IConfigFormFieldError, LayoutType } from '../../../modules/config';
 import type { IConfigPlugin } from '../../../modules/config/store/config-plugins.store.types';
 
 export interface IZigbee2mqttConfigFormProps {
@@ -7,5 +7,6 @@ export interface IZigbee2mqttConfigFormProps {
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
 	remoteFormChanged?: boolean;
+	remoteFormErrors?: IConfigFormFieldError[];
 	layout?: LayoutType;
 }

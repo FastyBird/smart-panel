@@ -11,6 +11,11 @@ import type { IConfigPlugin } from './store/config-plugins.store.types';
 import { ConfigModuleSchema, ConfigModuleUpdateReqSchema } from './store/config-modules.store.schemas';
 import type { IConfigModule } from './store/config-modules.store.types';
 
+export interface IConfigFormFieldError {
+	field: string;
+	message: string;
+}
+
 export interface IPluginConfigEditFormProps {
 	config: IConfigPlugin;
 	remoteFormSubmit?: boolean;

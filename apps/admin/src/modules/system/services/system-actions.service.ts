@@ -148,7 +148,12 @@ export class SystemActionsService {
 
 		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 
-		await this.router.push({ name: OnboardingRouteNames.ONBOARDING });
+		// Full page reload to guarantee all Pinia stores and in-memory state
+		// are cleared after factory reset. A simple router push would leave
+		// stale data in every store.
+		const route = this.router.resolve({ name: OnboardingRouteNames.ONBOARDING });
+
+		window.location.href = route.href;
 	}
 
 	private async checkHealth({

@@ -45,6 +45,7 @@
 				<el-form-item
 					:label="t('devicesZigbee2mqttPlugin.fields.config.mqtt.host.title')"
 					prop="mqtt.host"
+					:error="fieldErrors['mqtt.host']"
 				>
 					<el-input
 						v-model="model.mqtt.host"
@@ -80,6 +81,7 @@
 				<el-form-item
 					:label="t('devicesZigbee2mqttPlugin.fields.config.mqtt.username.title')"
 					prop="mqtt.username"
+					:error="fieldErrors['mqtt.username']"
 				>
 					<el-input
 						v-model="model.mqtt.username"
@@ -306,7 +308,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -336,6 +338,7 @@ const props = withDefaults(defineProps<IZigbee2mqttConfigFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	remoteFormErrors: () => [],
 	layout: Layout.DEFAULT,
 });
 
@@ -354,6 +357,16 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 		success: t('devicesZigbee2mqttPlugin.messages.config.edited'),
 		error: t('devicesZigbee2mqttPlugin.messages.config.notEdited'),
 	},
+});
+
+const fieldErrors = computed<Record<string, string | undefined>>(() => {
+	const errors: Record<string, string | undefined> = {};
+
+	for (const err of props.remoteFormErrors) {
+		errors[err.field] = err.message;
+	}
+
+	return errors;
 });
 
 const rules = reactive<FormRules<IZigbee2mqttConfigEditForm>>({

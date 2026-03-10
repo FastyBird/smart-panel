@@ -13,6 +13,7 @@ import { UpdateModuleConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModulesTypeMapperService } from '../services/modules-type-mapper.service';
+import { PluginConfigValidatorService } from '../services/plugin-config-validator.service';
 import { PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 import { ConfigController } from './config.controller';
@@ -62,6 +63,13 @@ describe('ConfigController', () => {
 							class: ModuleConfigModel,
 							configDto: UpdateModuleConfigDto,
 						})),
+					},
+				},
+				{
+					provide: PluginConfigValidatorService,
+					useValue: {
+						validate: jest.fn().mockResolvedValue({ valid: true }),
+						hasValidator: jest.fn().mockReturnValue(false),
 					},
 				},
 			],
