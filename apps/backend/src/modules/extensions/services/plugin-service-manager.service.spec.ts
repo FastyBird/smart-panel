@@ -1,6 +1,7 @@
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { ConfigService } from '../../config/services/config.service';
+
 import { IManagedPluginService, ServiceState } from './managed-plugin-service.interface';
 import { PluginServiceManagerService } from './plugin-service-manager.service';
 
@@ -16,11 +17,15 @@ function createMockService(
 		pluginName,
 		serviceId,
 		_state: initialState,
-		start: jest.fn(async () => {
+		start: jest.fn(() => {
 			svc._state = 'started';
+
+			return Promise.resolve();
 		}),
-		stop: jest.fn(async () => {
+		stop: jest.fn(() => {
 			svc._state = 'stopped';
+
+			return Promise.resolve();
 		}),
 		getState: jest.fn(() => svc._state),
 	};
@@ -75,6 +80,7 @@ describe('PluginServiceManagerService', () => {
 			await promise;
 
 			// The manager should have called stop() to force the service down
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(service.stop).toHaveBeenCalled();
 		});
 
@@ -93,6 +99,7 @@ describe('PluginServiceManagerService', () => {
 			await promise;
 
 			// stop() should NOT have been called
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(service.stop).not.toHaveBeenCalled();
 		});
 
@@ -103,8 +110,13 @@ describe('PluginServiceManagerService', () => {
 
 			configService.getPluginConfig.mockReturnValue({ enabled: false });
 
-			await manager.handleConfigUpdated();
+			const promise = manager.handleConfigUpdated();
 
+			await jest.advanceTimersByTimeAsync(11_000);
+
+			await promise;
+
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(service.stop).toHaveBeenCalled();
 		});
 	});

@@ -513,7 +513,29 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				`Plugin ${registration.pluginName} disabled while ${registration.serviceId} still in '${currentState}', forcing stop`,
 			);
 
-			await this.stopService(registration);
+			// Call stop() directly instead of stopService() because stopService()
+			// has a guard that returns early when state is 'stopping'.
+			try {
+				await registration.service.stop();
+
+				const runtime = this.runtimeInfo.get(key);
+
+				if (runtime) {
+					runtime.lastStoppedAt = new Date();
+				}
+
+				this.logger.log(`Service force-stopped successfully: ${key}`);
+			} catch (error) {
+				const err = error as Error;
+
+				const runtime = this.runtimeInfo.get(key);
+
+				if (runtime) {
+					runtime.lastError = err.message;
+				}
+
+				this.logger.error(`Failed to force-stop service ${key}: ${err.message}`, err.stack);
+			}
 
 			return;
 		}

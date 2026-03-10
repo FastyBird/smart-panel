@@ -156,9 +156,7 @@ describe('WhatsAppBotProvider', () => {
 			expect(provider.getState()).toBe('starting');
 
 			// Now change the config (different allowedPhoneNumbers)
-			configService.getPluginConfig.mockReturnValue(
-				makeConfig({ allowedPhoneNumbers: '+1234567890' }),
-			);
+			configService.getPluginConfig.mockReturnValue(makeConfig({ allowedPhoneNumbers: '+1234567890' }));
 
 			const result = await provider.onConfigChanged();
 
