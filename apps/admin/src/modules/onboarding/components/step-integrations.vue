@@ -80,7 +80,7 @@
 									<icon icon="mdi:information-outline" />
 								</el-icon>
 								<span class="text-gray-500">
-									{{ t('onboardingModule.integrations.noDevicesYet') }}
+									{{ hasConfigForm(integration.type) ? t('onboardingModule.integrations.noDevicesYet') : t('onboardingModule.integrations.noDevicesFound') }}
 								</span>
 							</template>
 							<template v-else>

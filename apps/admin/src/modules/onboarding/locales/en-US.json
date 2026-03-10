@@ -146,6 +146,7 @@
 		"searching": "Searching for devices...",
 		"devicesFound": "{count} device found | {count} device found | {count} devices found",
 		"noDevicesYet": "No devices found yet - configure connection to discover devices",
+		"noDevicesFound": "No devices found yet",
 		"enabled": "Integration enabled",
 		"configure": "Configure",
 		"configRequired": "Configuration required to connect",
