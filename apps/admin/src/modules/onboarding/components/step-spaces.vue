@@ -76,7 +76,7 @@
 							{{ space.category }}
 						</el-tag>
 						<el-tag
-							v-if="discoveredDevices.length > 0"
+							v-if="devicesForSpace(space.name).length > 0"
 							size="small"
 							type="success"
 						>

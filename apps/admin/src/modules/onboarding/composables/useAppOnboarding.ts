@@ -64,6 +64,7 @@ const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const devicesFetched = ref(false);
 const spacesSuggested = ref(false);
+const createdSpaceNameToId: Record<string, string> = {};
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -259,9 +260,6 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	// Map of space name → created space ID (populated during save)
-	const createdSpaceNameToId: Record<string, string> = {};
-
 	const saveSpaces = async (): Promise<boolean> => {
 		if (spacesToCreate.length === 0) {
 			return true;
@@ -398,6 +396,7 @@ export const useAppOnboarding = () => {
 		spacesToCreate.splice(0);
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
+		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
 		devicesFetched.value = false;
 		spacesSuggested.value = false;
 	};
