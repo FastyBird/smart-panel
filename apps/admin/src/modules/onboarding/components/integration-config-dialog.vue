@@ -26,20 +26,20 @@
 				/>
 			</div>
 		</el-scrollbar>
-		<!-- Validation result -->
+		<!-- Validation errors -->
 		<div
-			v-if="validationResult"
+			v-if="validationResult && !validationResult.valid"
 			class="mt-3 px-1"
 		>
 			<el-alert
-				:type="validationResult.valid ? 'success' : 'error'"
-				:title="validationResult.valid ? t('onboardingModule.integrations.configDialog.messages.validationSuccess') : t('onboardingModule.integrations.configDialog.messages.validationFailed')"
+				type="error"
+				:title="t('onboardingModule.integrations.configDialog.messages.validationFailed')"
 				:closable="true"
 				show-icon
 				@close="validationResult = null"
 			>
 				<template
-					v-if="!validationResult.valid && validationResult.errors?.length"
+					v-if="validationResult.errors?.length"
 					#default
 				>
 					<ul class="list-disc pl-4 mt-1 text-xs">
@@ -54,25 +54,27 @@
 			</el-alert>
 		</div>
 		<template #footer>
-			<div class="flex justify-end gap-2">
+			<div class="flex justify-between">
 				<el-button @click="emit('update:visible', false)">
 					{{ t('onboardingModule.integrations.configDialog.buttons.cancel') }}
 				</el-button>
-				<el-button
-					:loading="isValidating"
-					:disabled="!remoteFormChanged"
-					@click="handleValidate"
-				>
-					{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
-				</el-button>
-				<el-button
-					type="primary"
-					:loading="isSaving"
-					:disabled="!remoteFormChanged"
-					@click="handleSave"
-				>
-					{{ t('onboardingModule.integrations.configDialog.buttons.save') }}
-				</el-button>
+				<div class="flex gap-2">
+					<el-button
+						:loading="isValidating"
+						:disabled="!remoteFormChanged"
+						@click="handleValidate"
+					>
+						{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
+					</el-button>
+					<el-button
+						type="primary"
+						:loading="isSaving"
+						:disabled="!remoteFormChanged"
+						@click="handleSave"
+					>
+						{{ t('onboardingModule.integrations.configDialog.buttons.save') }}
+					</el-button>
+				</div>
 			</div>
 		</template>
 	</el-dialog>
@@ -84,7 +86,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
@@ -107,6 +109,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const { getByName } = usePlugins();
@@ -181,7 +184,11 @@ const handleValidate = async (): Promise<void> => {
 			data: { ...configPlugin.value },
 		});
 
-		validationResult.value = result;
+		if (result.valid) {
+			flashMessage.success(t('onboardingModule.integrations.configDialog.messages.validationSuccess'));
+		} else {
+			validationResult.value = result;
+		}
 	} catch {
 		validationResult.value = {
 			valid: false,
