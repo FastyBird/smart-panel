@@ -252,8 +252,8 @@ export const useAppOnboarding = () => {
 				existingNames.add(suggested.name.toLowerCase());
 			}
 
-			// Auto-assign device to the suggested space (only on first run)
-			if (!(device.id in deviceAssignments) || deviceAssignments[device.id] === undefined) {
+			// Auto-assign device to the suggested space (only on first run, guarded by spacesSuggested flag)
+			if (!deviceAssignments[device.id]) {
 				deviceAssignments[device.id] = suggested.name;
 			}
 		}
