@@ -208,22 +208,22 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	const ROOM_TOKENS: { name: string; category: string; icon: string }[] = [
+	const ROOM_TOKENS: { name: string; category: string | null; icon: string }[] = [
 		{ name: 'Living Room', category: 'living_room', icon: 'mdi:sofa' },
 		{ name: 'Bedroom', category: 'bedroom', icon: 'mdi:bed' },
 		{ name: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop' },
 		{ name: 'Bathroom', category: 'bathroom', icon: 'mdi:shower' },
 		{ name: 'Office', category: 'office', icon: 'mdi:desk' },
 		{ name: 'Garage', category: 'garage', icon: 'mdi:garage' },
-		{ name: 'Garden', category: null as never, icon: 'mdi:flower' },
+		{ name: 'Garden', category: null, icon: 'mdi:flower' },
 		{ name: 'Hallway', category: 'hallway', icon: 'mdi:door-open' },
 		{ name: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife' },
-		{ name: 'Basement', category: null as never, icon: 'mdi:stairs-down' },
-		{ name: 'Attic', category: null as never, icon: 'mdi:stairs-up' },
-		{ name: 'Laundry', category: null as never, icon: 'mdi:washing-machine' },
+		{ name: 'Basement', category: null, icon: 'mdi:stairs-down' },
+		{ name: 'Attic', category: null, icon: 'mdi:stairs-up' },
+		{ name: 'Laundry', category: null, icon: 'mdi:washing-machine' },
 		{ name: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage' },
 		{ name: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline' },
-		{ name: 'Patio', category: null as never, icon: 'mdi:deck' },
+		{ name: 'Patio', category: null, icon: 'mdi:deck' },
 	];
 
 	const suggestRoom = (deviceName: string): (typeof ROOM_TOKENS)[number] | null => {

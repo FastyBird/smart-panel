@@ -349,6 +349,11 @@ const clearAssignmentsForSpace = (spaceName: string): void => {
 			deviceAssignments[deviceId] = null;
 		}
 	}
+
+	// Clear bulk-assign dropdown if it pointed to the removed space
+	if (bulkAssignTarget.value === spaceName) {
+		bulkAssignTarget.value = '';
+	}
 };
 
 const devicesForSpace = (spaceName: string): string[] => {
