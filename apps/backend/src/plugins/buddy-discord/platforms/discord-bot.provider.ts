@@ -235,6 +235,8 @@ export class DiscordBotProvider implements IManagedPluginService {
 			this.logger.error(`Failed to start Discord bot: ${String(error)}`);
 			this.client = null;
 			this.state = 'error';
+
+			throw error;
 		}
 	}
 

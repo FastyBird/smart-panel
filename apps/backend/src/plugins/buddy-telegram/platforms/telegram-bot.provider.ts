@@ -285,6 +285,8 @@ export class TelegramBotProvider implements IManagedPluginService {
 			this.logger.error(`Failed to start Telegram bot: ${String(error)}`);
 			this.bot = null;
 			this.state = 'error';
+
+			throw error;
 		}
 	}
 

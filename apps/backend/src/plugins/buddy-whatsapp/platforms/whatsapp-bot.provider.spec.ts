@@ -121,8 +121,9 @@ describe('WhatsAppBotProvider', () => {
 				throw new Error('Config not found');
 			});
 
-			await provider.start();
+			await expect(provider.start()).rejects.toThrow();
 
+			expect(provider.getState()).toBe('error');
 			expect(provider.getConnectionStatus()).toBe(WhatsAppConnectionStatus.DISCONNECTED);
 		});
 	});

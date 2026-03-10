@@ -347,6 +347,8 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 			this.socket = null;
 			this.status = WhatsAppConnectionStatus.DISCONNECTED;
 			this.state = 'error';
+
+			throw error;
 		}
 	}
 
