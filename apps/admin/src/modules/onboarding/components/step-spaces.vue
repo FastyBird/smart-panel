@@ -257,7 +257,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElButton, ElCheckbox, ElDivider, ElFormItem, ElInput, ElOption, ElSelect, ElTag } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
-import { useAppOnboarding } from '../composables/composables';
+import { ROOM_DEFINITIONS, useAppOnboarding } from '../composables/composables';
 
 defineOptions({
 	name: 'StepSpaces',
@@ -277,18 +277,11 @@ const customName = ref('');
 const selectedDeviceIds = ref<string[]>([]);
 const bulkAssignTarget = ref<string>('');
 
-const quickCategories = [
-	{ value: 'living_room', label: t('onboardingModule.spaces.categories.livingRoom'), icon: 'mdi:sofa' },
-	{ value: 'bedroom', label: t('onboardingModule.spaces.categories.bedroom'), icon: 'mdi:bed' },
-	{ value: 'kitchen', label: t('onboardingModule.spaces.categories.kitchen'), icon: 'mdi:countertop' },
-	{ value: 'bathroom', label: t('onboardingModule.spaces.categories.bathroom'), icon: 'mdi:shower' },
-	{ value: 'office', label: t('onboardingModule.spaces.categories.office'), icon: 'mdi:desk' },
-	{ value: 'hallway', label: t('onboardingModule.spaces.categories.hallway'), icon: 'mdi:door-open' },
-	{ value: 'garage', label: t('onboardingModule.spaces.categories.garage'), icon: 'mdi:garage' },
-	{ value: 'nursery', label: t('onboardingModule.spaces.categories.nursery'), icon: 'mdi:baby-carriage' },
-	{ value: 'guest_room', label: t('onboardingModule.spaces.categories.guestRoom'), icon: 'mdi:bed-outline' },
-	{ value: 'dining_room', label: t('onboardingModule.spaces.categories.diningRoom'), icon: 'mdi:silverware-fork-knife' },
-];
+const quickCategories = ROOM_DEFINITIONS.filter((r) => r.category !== null && r.i18nKey !== null).map((r) => ({
+	value: r.category!,
+	label: t(`onboardingModule.spaces.categories.${r.i18nKey}`),
+	icon: r.icon,
+}));
 
 const findCategoryMeta = (category: string): { label: string; icon: string } | undefined => {
 	return quickCategories.find((c) => c.value === category);

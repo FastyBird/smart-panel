@@ -37,6 +37,40 @@ export interface IDeviceInfo {
 	roomId: string | null;
 }
 
+export interface IRoomDefinition {
+	searchToken: string;
+	category: string | null;
+	icon: string;
+	i18nKey: string | null;
+}
+
+/**
+ * Single source of truth for room definitions used by both the heuristic
+ * suggestion logic and the quick-add category buttons in the UI.
+ *
+ * - searchToken: English name used to match against device names
+ * - category: quick-add category key (null = no quick-add button)
+ * - icon: Iconify icon identifier
+ * - i18nKey: translation key under onboardingModule.spaces.categories (null = use searchToken)
+ */
+export const ROOM_DEFINITIONS: IRoomDefinition[] = [
+	{ searchToken: 'Living Room', category: 'living_room', icon: 'mdi:sofa', i18nKey: 'livingRoom' },
+	{ searchToken: 'Bedroom', category: 'bedroom', icon: 'mdi:bed', i18nKey: 'bedroom' },
+	{ searchToken: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop', i18nKey: 'kitchen' },
+	{ searchToken: 'Bathroom', category: 'bathroom', icon: 'mdi:shower', i18nKey: 'bathroom' },
+	{ searchToken: 'Office', category: 'office', icon: 'mdi:desk', i18nKey: 'office' },
+	{ searchToken: 'Garage', category: 'garage', icon: 'mdi:garage', i18nKey: 'garage' },
+	{ searchToken: 'Garden', category: null, icon: 'mdi:flower', i18nKey: null },
+	{ searchToken: 'Hallway', category: 'hallway', icon: 'mdi:door-open', i18nKey: 'hallway' },
+	{ searchToken: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife', i18nKey: 'diningRoom' },
+	{ searchToken: 'Basement', category: null, icon: 'mdi:stairs-down', i18nKey: null },
+	{ searchToken: 'Attic', category: null, icon: 'mdi:stairs-up', i18nKey: null },
+	{ searchToken: 'Laundry', category: null, icon: 'mdi:washing-machine', i18nKey: null },
+	{ searchToken: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage', i18nKey: 'nursery' },
+	{ searchToken: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline', i18nKey: 'guestRoom' },
+	{ searchToken: 'Patio', category: null, icon: 'mdi:deck', i18nKey: null },
+];
+
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
 const accountRegistered = ref(false);
@@ -208,27 +242,13 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	const ROOM_TOKENS: { name: string; category: string | null; icon: string }[] = [
-		{ name: 'Living Room', category: 'living_room', icon: 'mdi:sofa' },
-		{ name: 'Bedroom', category: 'bedroom', icon: 'mdi:bed' },
-		{ name: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop' },
-		{ name: 'Bathroom', category: 'bathroom', icon: 'mdi:shower' },
-		{ name: 'Office', category: 'office', icon: 'mdi:desk' },
-		{ name: 'Garage', category: 'garage', icon: 'mdi:garage' },
-		{ name: 'Garden', category: null, icon: 'mdi:flower' },
-		{ name: 'Hallway', category: 'hallway', icon: 'mdi:door-open' },
-		{ name: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife' },
-		{ name: 'Basement', category: null, icon: 'mdi:stairs-down' },
-		{ name: 'Attic', category: null, icon: 'mdi:stairs-up' },
-		{ name: 'Laundry', category: null, icon: 'mdi:washing-machine' },
-		{ name: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage' },
-		{ name: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline' },
-		{ name: 'Patio', category: null, icon: 'mdi:deck' },
-	];
+	const resolveRoomLabel = (room: IRoomDefinition): string => {
+		return room.i18nKey ? t(`onboardingModule.spaces.categories.${room.i18nKey}`) : room.searchToken;
+	};
 
-	const suggestRoom = (deviceName: string): (typeof ROOM_TOKENS)[number] | null => {
+	const suggestRoom = (deviceName: string): IRoomDefinition | null => {
 		const lower = deviceName.toLowerCase();
-		return ROOM_TOKENS.find((room) => lower.includes(room.name.toLowerCase())) ?? null;
+		return ROOM_DEFINITIONS.find((room) => lower.includes(room.searchToken.toLowerCase())) ?? null;
 	};
 
 	const suggestSpacesFromDevices = (): void => {
@@ -243,19 +263,21 @@ export const useAppOnboarding = () => {
 
 			if (!suggested) continue;
 
+			const label = resolveRoomLabel(suggested);
+
 			// Add the suggested space if not already in the list
-			if (!existingNames.has(suggested.name.toLowerCase())) {
+			if (!existingNames.has(label.toLowerCase())) {
 				spacesToCreate.push({
-					name: suggested.name,
-					category: suggested.category || null,
-					icon: suggested.icon || null,
+					name: label,
+					category: suggested.category,
+					icon: suggested.icon,
 				});
-				existingNames.add(suggested.name.toLowerCase());
+				existingNames.add(label.toLowerCase());
 			}
 
 			// Auto-assign device to the suggested space (only on first run, guarded by spacesSuggested flag)
 			if (!deviceAssignments[device.id]) {
-				deviceAssignments[device.id] = suggested.name;
+				deviceAssignments[device.id] = label;
 			}
 		}
 	};
