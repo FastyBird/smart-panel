@@ -108,12 +108,19 @@
 			"bedroom": "Bedroom",
 			"kitchen": "Kitchen",
 			"bathroom": "Bathroom",
+			"toilet": "Toilet",
 			"office": "Office",
 			"hallway": "Hallway",
+			"entryHall": "Entry Hall",
 			"garage": "Garage",
+			"garden": "Garden",
+			"diningRoom": "Dining Room",
+			"basement": "Basement",
+			"attic": "Attic",
+			"laundry": "Laundry",
 			"nursery": "Nursery",
 			"guestRoom": "Guest Room",
-			"diningRoom": "Dining Room"
+			"patio": "Patio"
 		},
 		"devices": {
 			"title": "Assign devices to rooms",
