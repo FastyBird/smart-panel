@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { createExtensionLogger, ExtensionLoggerService } from '../../../common/logger';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 /**

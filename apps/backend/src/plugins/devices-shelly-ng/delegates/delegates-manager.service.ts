@@ -1826,10 +1826,10 @@ export class DelegatesManagerService {
 		} catch (error) {
 			// Property may have been deleted by a concurrent createOrUpdate cleanup.
 			// This is expected during rapid mDNS attach/detach cycles — log and continue.
-			this.logger.warn(
-				`Skipping default value write for property=${property.id} (entity may have been removed)`,
-				{ resource: deviceId, message: (error as Error).message },
-			);
+			this.logger.warn(`Skipping default value write for property=${property.id} (entity may have been removed)`, {
+				resource: deviceId,
+				message: (error as Error).message,
+			});
 
 			return;
 		}

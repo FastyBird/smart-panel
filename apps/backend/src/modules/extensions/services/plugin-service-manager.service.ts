@@ -159,6 +159,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	 * plugin services are cleaned up before data is wiped.
 	 */
 	async stopAllServices(): Promise<void> {
+		this.shutdownInProgress = true;
+
 		this.logger.log('Stopping all managed services for factory reset');
 
 		const sorted = this.getSortedServices().reverse();

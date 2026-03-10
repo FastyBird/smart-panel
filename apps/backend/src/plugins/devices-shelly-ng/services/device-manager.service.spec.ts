@@ -14,9 +14,8 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
-
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
+import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
 import { DeviceManagerService } from './device-manager.service';
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
