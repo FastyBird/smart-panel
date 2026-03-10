@@ -1,6 +1,7 @@
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { ConfigService } from '../../config/services/config.service';
+import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
 
 import { IManagedPluginService, ServiceState } from './managed-plugin-service.interface';
 import { PluginServiceManagerService } from './plugin-service-manager.service';
@@ -37,6 +38,7 @@ describe('PluginServiceManagerService', () => {
 	let manager: PluginServiceManagerService;
 	let configService: { getPluginConfig: jest.Mock };
 	let nestConfigService: { get: jest.Mock };
+	let pluginConfigValidator: { hasValidator: jest.Mock; validate: jest.Mock };
 
 	beforeEach(() => {
 		jest.useFakeTimers();
@@ -49,9 +51,15 @@ describe('PluginServiceManagerService', () => {
 			get: jest.fn().mockReturnValue(null), // not CLI mode
 		};
 
+		pluginConfigValidator = {
+			hasValidator: jest.fn().mockReturnValue(false),
+			validate: jest.fn().mockResolvedValue({ valid: true }),
+		};
+
 		manager = new PluginServiceManagerService(
 			configService as unknown as ConfigService,
 			nestConfigService as unknown as NestConfigService,
+			pluginConfigValidator as unknown as PluginConfigValidatorService,
 		);
 
 		// Mark startup as complete so handleConfigUpdated processes events

@@ -54,6 +54,7 @@ import { Z2mExposesMapperService } from './services/exposes-mapper.service';
 import { Z2mMappingPreviewService } from './services/mapping-preview.service';
 import { Z2mMqttClientAdapterService } from './services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from './services/virtual-property.service';
+import { Zigbee2mqttConfigValidatorService } from './services/zigbee2mqtt-config-validator.service';
 import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 
 @ApiTag({
@@ -75,6 +76,7 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		MappingLoaderService,
 		ConfigDrivenConverter,
 		// Core services
+		Zigbee2mqttConfigValidatorService,
 		Z2mMqttClientAdapterService,
 		Z2mExposesMapperService,
 		Z2mDeviceMapperService,
