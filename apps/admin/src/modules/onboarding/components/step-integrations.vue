@@ -215,6 +215,12 @@ const discoveredPlugins = reactive<Set<string>>(new Set());
 const deviceCounts = reactive<Record<string, number>>({});
 const configuredPlugins = reactive<Set<string>>(new Set());
 
+// Tracks the latest discovery generation per plugin so stale completions are discarded.
+// Incremented each time startDiscovery is called; the callback checks its generation
+// against the current value and bails if a newer discovery has been launched or the
+// plugin was disabled (generation reset to 0).
+const discoveryGeneration = reactive<Record<string, number>>({});
+
 // Config dialog state
 const configDialogVisible = ref(false);
 const configDialogPluginType = ref('');
@@ -287,6 +293,9 @@ const onConfigSaved = (): void => {
 };
 
 const startDiscovery = async (type: string): Promise<void> => {
+	const generation = (discoveryGeneration[type] ?? 0) + 1;
+	discoveryGeneration[type] = generation;
+
 	discoveringPlugins.add(type);
 	discoveredPlugins.delete(type);
 
@@ -294,8 +303,13 @@ const startDiscovery = async (type: string): Promise<void> => {
 		// Wait a moment for the backend to start the plugin
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 
+		// Bail if a newer discovery was started or plugin was disabled
+		if (discoveryGeneration[type] !== generation) return;
+
 		// Fetch devices to get counts
 		await devicesStore.fetch();
+
+		if (discoveryGeneration[type] !== generation) return;
 
 		const allDevices = devicesStore.findAll();
 		const pluginPrefix = type.replace('-plugin', '');
@@ -303,11 +317,16 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 		deviceCounts[type] = count;
 	} catch {
+		if (discoveryGeneration[type] !== generation) return;
+
 		// Discovery may fail if plugin isn't fully started yet
 		deviceCounts[type] = 0;
 	} finally {
-		discoveringPlugins.delete(type);
-		discoveredPlugins.add(type);
+		// Only update state if this is still the current discovery
+		if (discoveryGeneration[type] === generation) {
+			discoveringPlugins.delete(type);
+			discoveredPlugins.add(type);
+		}
 	}
 };
 
@@ -326,7 +345,9 @@ const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 			// Check if plugin config exists
 			checkPluginConfig(type);
 		} else {
-			// Clean up state when disabled
+			// Clean up state when disabled. Reset generation so any in-flight
+			// discovery from the previous enable cycle discards its results.
+			discoveryGeneration[type] = 0;
 			discoveringPlugins.delete(type);
 			discoveredPlugins.delete(type);
 			delete deviceCounts[type];
