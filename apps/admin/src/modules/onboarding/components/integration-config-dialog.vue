@@ -58,7 +58,6 @@
 				<el-button
 					:loading="isValidating"
 					:disabled="!remoteFormChanged"
-					link
 					@click="handleValidate"
 				>
 					{{ t('onboardingModule.integrations.configDialog.buttons.validate') }}
