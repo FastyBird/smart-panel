@@ -387,14 +387,26 @@ export class ShellyNgService implements IManagedPluginService {
 	 * Handles 'remove' events from the shellies-ng library
 	 */
 	protected handleRemovedDevice = (device: Device): void => {
-		this.delegatesRegistryService.remove(device.id);
+		this.delegatesRegistryService.remove(device.id).catch((err: Error): void => {
+			this.logger.error(`Failed to remove Shelly device delegate for device=${device.id}`, {
+				resource: device.id,
+				message: err.message,
+				stack: err.stack,
+			});
+		});
 	};
 
 	/**
 	 * Handles 'exclude' events from the shellies-ng library
 	 */
 	protected handleExcludedDevice = (deviceId: DeviceId): void => {
-		this.delegatesRegistryService.remove(deviceId);
+		this.delegatesRegistryService.remove(deviceId).catch((err: Error): void => {
+			this.logger.error(`Failed to remove excluded Shelly device delegate for device=${deviceId}`, {
+				resource: deviceId,
+				message: err.message,
+				stack: err.stack,
+			});
+		});
 	};
 
 	/**

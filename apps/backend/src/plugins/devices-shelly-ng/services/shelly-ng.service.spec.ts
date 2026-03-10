@@ -104,7 +104,7 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 	}),
 });
 
-const mockDelegates = () => ({ insert: jest.fn(), remove: jest.fn(), detach: jest.fn() });
+const mockDelegates = () => ({ insert: jest.fn(), remove: jest.fn().mockResolvedValue(undefined), detach: jest.fn() });
 
 const mockDevicesService = (devices: any[] = []) => ({
 	findAll: jest.fn().mockResolvedValue(devices),

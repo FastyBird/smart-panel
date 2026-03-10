@@ -234,14 +234,28 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	/**
 	 * Handle configuration updates.
 	 * Starts/stops services based on new enabled state.
+	 *
+	 * When the event includes a source plugin name, only services belonging
+	 * to that plugin are synced. Module config changes are ignored because
+	 * they never affect plugin service lifecycle.
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async handleConfigUpdated(): Promise<void> {
+	async handleConfigUpdated(payload?: { source: string; type: 'plugin' | 'module' | 'section' }): Promise<void> {
 		if (this.shutdownInProgress || !this.startupComplete) {
 			return;
 		}
 
+		// Module config changes do not affect plugin services — skip entirely.
+		if (payload?.type === 'module') {
+			return;
+		}
+
 		for (const registration of this.services.values()) {
+			// When we know which plugin changed, only sync that plugin's services.
+			if (payload?.type === 'plugin' && registration.pluginName !== payload.source) {
+				continue;
+			}
+
 			await this.syncServiceState(registration);
 		}
 	}
