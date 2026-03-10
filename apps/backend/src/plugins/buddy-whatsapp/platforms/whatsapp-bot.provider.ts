@@ -14,6 +14,7 @@ import {
 	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
 	WHATSAPP_AUTH_DIR,
@@ -61,6 +62,7 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		private readonly configService: ConfigService,
 		private readonly conversationService: BuddyConversationService,
 		private readonly suggestionEngine: SuggestionEngineService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	/**
@@ -190,11 +192,8 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 			rmSync(authDir, { recursive: true, force: true });
 		}
 
-		const config = this.getPluginConfig();
-
-		if (config?.enabled) {
-			void this.startBot();
-		}
+		// Delegate restart to the manager so runtime tracking stays in sync
+		void this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
 	}
 
 	private async startBot(): Promise<void> {
@@ -312,6 +311,7 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 						const delay = WHATSAPP_RECONNECT_DELAYS_MS[delayIndex];
 
 						this.reconnectAttempts++;
+						this.state = 'starting';
 						this.status = WhatsAppConnectionStatus.CONNECTING;
 						this.reconnecting = true;
 						this.logger.log(
