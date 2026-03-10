@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-ONBOARDING-DEVICE-SETUP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -48,15 +48,15 @@ This task enhances the spaces step to:
 
 ## 4. Acceptance criteria
 
-- [ ] Spaces step shows discovered devices (from previous discovery step)
-- [ ] Devices without a clear room name appear in "Unassigned" section
-- [ ] Heuristic suggests spaces from device names (e.g., "Living Room Light" → "Living Room")
-- [ ] User can assign devices to spaces via dropdown or drag-and-drop
-- [ ] User can bulk-select devices and assign to a space
-- [ ] Each space card shows count of assigned devices
-- [ ] Quick-add category buttons still work alongside device assignment
-- [ ] Step works correctly even with no discovered devices (graceful degradation to current behavior)
-- [ ] Assignments are saved during `completeOnboarding()`
+- [x] Spaces step shows discovered devices (from previous discovery step)
+- [x] Devices without a clear room name appear in "Unassigned" section
+- [x] Heuristic suggests spaces from device names (e.g., "Living Room Light" → "Living Room")
+- [x] User can assign devices to spaces via dropdown or drag-and-drop
+- [x] User can bulk-select devices and assign to a space
+- [x] Each space card shows count of assigned devices
+- [x] Quick-add category buttons still work alongside device assignment
+- [x] Step works correctly even with no discovered devices (graceful degradation to current behavior)
+- [x] Assignments are saved during `completeOnboarding()`
 
 ## 5. Example scenarios
 

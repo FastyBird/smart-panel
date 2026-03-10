@@ -115,9 +115,21 @@
 			"guestRoom": "Guest Room",
 			"diningRoom": "Dining Room"
 		},
+		"devices": {
+			"title": "Assign devices to rooms",
+			"count": "devices",
+			"unassigned": "Unassigned devices ({count})",
+			"assigned": "Assigned devices ({count})",
+			"selected": "{count} selected",
+			"assignTo": "Assign to room...",
+			"assign": "Assign",
+			"clearSelection": "Clear",
+			"selectSpace": "Select room..."
+		},
 		"hint": "You can add, rename, or reorganize spaces later in the Spaces settings.",
 		"messages": {
-			"error": "Failed to create spaces."
+			"error": "Failed to create spaces.",
+			"assignmentError": "Failed to assign devices to spaces."
 		}
 	},
 	"integrations": {
@@ -157,6 +169,8 @@
 			"locationSkipped": "Weather location skipped (can be configured later)",
 			"spacesCreated": "{count} room(s) will be created | {count} room will be created | {count} rooms will be created",
 			"spacesSkipped": "No rooms added (can be created later)",
+			"devicesAssigned": "{count} device(s) assigned to rooms | {count} device assigned to a room | {count} devices assigned to rooms",
+			"devicesSkipped": "No devices assigned to rooms",
 			"integrationsEnabled": "{count} integration(s) enabled | {count} integration enabled | {count} integrations enabled",
 			"integrationsSkipped": "No integrations enabled (can be configured later)"
 		},

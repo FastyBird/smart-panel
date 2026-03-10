@@ -30,6 +30,47 @@ export interface ISpaceToCreate {
 	icon: string | null;
 }
 
+export interface IDeviceInfo {
+	id: string;
+	name: string;
+	description: string | null;
+	roomId: string | null;
+}
+
+export interface IRoomDefinition {
+	searchToken: string;
+	category: string | null;
+	icon: string;
+	i18nKey: string | null;
+}
+
+/**
+ * Single source of truth for room definitions used by both the heuristic
+ * suggestion logic and the quick-add category buttons in the UI.
+ *
+ * - searchToken: English name used to match against device names
+ * - category: quick-add category key (null = no quick-add button)
+ * - icon: Iconify icon identifier
+ * - i18nKey: translation key under onboardingModule.spaces.categories (null = use searchToken)
+ */
+export const ROOM_DEFINITIONS: IRoomDefinition[] = [
+	{ searchToken: 'Living Room', category: 'living_room', icon: 'mdi:sofa', i18nKey: 'livingRoom' },
+	{ searchToken: 'Bedroom', category: 'bedroom', icon: 'mdi:bed', i18nKey: 'bedroom' },
+	{ searchToken: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop', i18nKey: 'kitchen' },
+	{ searchToken: 'Bathroom', category: 'bathroom', icon: 'mdi:shower', i18nKey: 'bathroom' },
+	{ searchToken: 'Office', category: 'office', icon: 'mdi:desk', i18nKey: 'office' },
+	{ searchToken: 'Garage', category: 'garage', icon: 'mdi:garage', i18nKey: 'garage' },
+	{ searchToken: 'Garden', category: null, icon: 'mdi:flower', i18nKey: null },
+	{ searchToken: 'Hallway', category: 'hallway', icon: 'mdi:door-open', i18nKey: 'hallway' },
+	{ searchToken: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife', i18nKey: 'diningRoom' },
+	{ searchToken: 'Basement', category: null, icon: 'mdi:stairs-down', i18nKey: null },
+	{ searchToken: 'Attic', category: null, icon: 'mdi:stairs-up', i18nKey: null },
+	{ searchToken: 'Laundry', category: null, icon: 'mdi:washing-machine', i18nKey: null },
+	{ searchToken: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage', i18nKey: 'nursery' },
+	{ searchToken: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline', i18nKey: 'guestRoom' },
+	{ searchToken: 'Patio', category: null, icon: 'mdi:deck', i18nKey: null },
+];
+
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
 const accountRegistered = ref(false);
@@ -53,6 +94,11 @@ const locationData = reactive<ILocationData>({
 });
 
 const spacesToCreate = reactive<ISpaceToCreate[]>([]);
+const discoveredDevices = reactive<IDeviceInfo[]>([]);
+const deviceAssignments = reactive<Record<string, string | null>>({});
+const devicesFetched = ref(false);
+const spacesSuggested = ref(false);
+const createdSpaceNameToId: Record<string, string> = {};
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -163,6 +209,79 @@ export const useAppOnboarding = () => {
 		}
 	};
 
+	const fetchDevices = async (): Promise<boolean> => {
+		if (devicesFetched.value) return true;
+
+		try {
+			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/devices/devices` as never);
+
+			if (error || !data) return false;
+
+			const items = (data as { data: { id: string; name: string; description: string | null; room_id: string | null }[] }).data;
+
+			discoveredDevices.splice(0, discoveredDevices.length);
+
+			for (const d of items) {
+				discoveredDevices.push({
+					id: d.id,
+					name: d.name,
+					description: d.description ?? null,
+					roomId: d.room_id ?? null,
+				});
+				// Initialize assignment (null = unassigned)
+				if (!(d.id in deviceAssignments)) {
+					deviceAssignments[d.id] = null;
+				}
+			}
+
+			devicesFetched.value = true;
+
+			return true;
+		} catch {
+			return false;
+		}
+	};
+
+	const resolveRoomLabel = (room: IRoomDefinition): string => {
+		return room.i18nKey ? t(`onboardingModule.spaces.categories.${room.i18nKey}`) : room.searchToken;
+	};
+
+	const suggestRoom = (deviceName: string): IRoomDefinition | null => {
+		const lower = deviceName.toLowerCase();
+		return ROOM_DEFINITIONS.find((room) => lower.includes(room.searchToken.toLowerCase())) ?? null;
+	};
+
+	const suggestSpacesFromDevices = (): void => {
+		if (spacesSuggested.value) return;
+
+		spacesSuggested.value = true;
+
+		const existingNames = new Set(spacesToCreate.map((s) => s.name.toLowerCase()));
+
+		for (const device of discoveredDevices) {
+			const suggested = suggestRoom(device.name);
+
+			if (!suggested) continue;
+
+			const label = resolveRoomLabel(suggested);
+
+			// Add the suggested space if not already in the list
+			if (!existingNames.has(label.toLowerCase())) {
+				spacesToCreate.push({
+					name: label,
+					category: suggested.category,
+					icon: suggested.icon,
+				});
+				existingNames.add(label.toLowerCase());
+			}
+
+			// Auto-assign device to the suggested space (only on first run, guarded by spacesSuggested flag)
+			if (!deviceAssignments[device.id]) {
+				deviceAssignments[device.id] = label;
+			}
+		}
+	};
+
 	const saveSpaces = async (): Promise<boolean> => {
 		if (spacesToCreate.length === 0) {
 			return true;
@@ -172,7 +291,7 @@ export const useAppOnboarding = () => {
 			while (spacesToCreate.length > 0) {
 				const space = spacesToCreate[0];
 
-				await spacesStore.add({
+				const created = await spacesStore.add({
 					data: {
 						name: space.name,
 						type: SpaceType.ROOM,
@@ -180,6 +299,9 @@ export const useAppOnboarding = () => {
 						icon: space.icon,
 					},
 				});
+
+				// Track name→id mapping for device assignment
+				createdSpaceNameToId[space.name] = created.id;
 
 				// Track saved count for summary display, then remove to prevent duplicates on retry
 				savedSpacesCount.value++;
@@ -190,6 +312,39 @@ export const useAppOnboarding = () => {
 		} catch {
 			return false;
 		}
+	};
+
+	const saveDeviceAssignments = async (): Promise<boolean> => {
+		// Group device IDs by target space ID
+		const spaceDevices: Record<string, string[]> = {};
+
+		for (const [deviceId, spaceName] of Object.entries(deviceAssignments)) {
+			if (!spaceName) continue;
+
+			const spaceId = createdSpaceNameToId[spaceName];
+			if (!spaceId) continue;
+
+			if (!spaceDevices[spaceId]) {
+				spaceDevices[spaceId] = [];
+			}
+			spaceDevices[spaceId].push(deviceId);
+		}
+
+		for (const [spaceId, deviceIds] of Object.entries(spaceDevices)) {
+			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/spaces/spaces/{id}/assign` as never, {
+				params: { path: { id: spaceId } },
+				body: {
+					data: {
+						device_ids: deviceIds,
+						display_ids: [],
+					},
+				},
+			} as never);
+
+			if (error) return false;
+		}
+
+		return true;
 	};
 
 	const completeOnboarding = async (): Promise<boolean> => {
@@ -212,6 +367,18 @@ export const useAppOnboarding = () => {
 
 				if (!spacesSaved) {
 					flashMessage.error(t('onboardingModule.spaces.messages.error'));
+					return false;
+				}
+			}
+
+			// Save device-to-space assignments if any exist
+			const hasAssignments = Object.values(deviceAssignments).some((v) => v !== null);
+
+			if (hasAssignments) {
+				const assignmentsSaved = await saveDeviceAssignments();
+
+				if (!assignmentsSaved) {
+					flashMessage.error(t('onboardingModule.spaces.messages.assignmentError'));
 					return false;
 				}
 			}
@@ -249,6 +416,11 @@ export const useAppOnboarding = () => {
 		locationData.longitude = null;
 		locationData.timezone = '';
 		spacesToCreate.splice(0);
+		discoveredDevices.splice(0);
+		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
+		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
+		devicesFetched.value = false;
+		spacesSuggested.value = false;
 	};
 
 	return {
@@ -259,6 +431,9 @@ export const useAppOnboarding = () => {
 		accountData,
 		locationData,
 		spacesToCreate,
+		discoveredDevices,
+		deviceAssignments,
+		devicesFetched,
 		savedSpacesCount,
 		isLastStep,
 		nextStep,
@@ -266,6 +441,8 @@ export const useAppOnboarding = () => {
 		createAccount,
 		saveLocation,
 		saveSpaces,
+		fetchDevices,
+		suggestSpacesFromDevices,
 		completeOnboarding,
 		reset,
 	};
