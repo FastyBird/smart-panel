@@ -505,6 +505,19 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			currentState = registration.service.getState();
 		}
 
+		// If state is still transitional after timeout, force-stop when the service
+		// should not be running (e.g., WhatsApp stuck in 'starting' during QR scan
+		// while the admin disables the plugin).
+		if (!shouldBeRunning && (currentState === 'starting' || currentState === 'stopping')) {
+			this.logger.log(
+				`Plugin ${registration.pluginName} disabled while ${registration.serviceId} still in '${currentState}', forcing stop`,
+			);
+
+			await this.stopService(registration);
+
+			return;
+		}
+
 		if (shouldBeRunning && currentState === 'stopped') {
 			this.logger.log(`Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
 

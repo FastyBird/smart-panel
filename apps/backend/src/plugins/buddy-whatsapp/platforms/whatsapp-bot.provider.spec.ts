@@ -134,4 +134,57 @@ describe('WhatsAppBotProvider', () => {
 			expect(provider.getConnectionStatus()).toBe(WhatsAppConnectionStatus.DISCONNECTED);
 		});
 	});
+
+	describe('onConfigChanged while starting', () => {
+		it('should signal restart when config changes during starting state (QR scan)', async () => {
+			// Setup: makeWASocket returns a mock that never fires connection=open,
+			// so start() resolves while state is still 'starting'
+			const mockSocket = {
+				ev: {
+					on: jest.fn(),
+				},
+				end: jest.fn(),
+			};
+
+			const baileys = await import('@whiskeysockets/baileys');
+
+			(baileys.default as jest.Mock).mockReturnValue(mockSocket);
+
+			await provider.start();
+
+			// After start(), state should be 'starting' (no connection.update fired)
+			expect(provider.getState()).toBe('starting');
+
+			// Now change the config (different allowedPhoneNumbers)
+			configService.getPluginConfig.mockReturnValue(
+				makeConfig({ allowedPhoneNumbers: '+1234567890' }),
+			);
+
+			const result = await provider.onConfigChanged();
+
+			expect(result).toEqual({ restartRequired: true });
+		});
+
+		it('should not signal restart when config is unchanged during starting state', async () => {
+			const mockSocket = {
+				ev: {
+					on: jest.fn(),
+				},
+				end: jest.fn(),
+			};
+
+			const baileys = await import('@whiskeysockets/baileys');
+
+			(baileys.default as jest.Mock).mockReturnValue(mockSocket);
+
+			await provider.start();
+
+			expect(provider.getState()).toBe('starting');
+
+			// Config hasn't changed (allowedPhoneNumbers is still null)
+			const result = await provider.onConfigChanged();
+
+			expect(result).toEqual({ restartRequired: false });
+		});
+	});
 });

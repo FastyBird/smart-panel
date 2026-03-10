@@ -106,9 +106,14 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 	/**
 	 * Handle configuration changes.
 	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * Unlike Discord/Telegram, WhatsApp's start() returns while still in
+	 * 'starting' state (before the QR code is scanned and the connection
+	 * opens). We must signal restart for the 'starting' state too so the
+	 * manager can stop the service if the plugin gets disabled mid-scan.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		if (this.state !== 'started' || !this.activeConfig) {
+		if ((this.state !== 'started' && this.state !== 'starting') || !this.activeConfig) {
 			return Promise.resolve({ restartRequired: false });
 		}
 
