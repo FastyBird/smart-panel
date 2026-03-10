@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-ONBOARDING-DEVICE-SETUP
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -63,18 +63,18 @@ Admin:
 
 ## 4. Acceptance criteria
 
-- [ ] New onboarding step appears after "Integrations" when at least one auto-discoverable integration is enabled
-- [ ] Shelly devices are discovered via mDNS when Shelly plugin is enabled
-- [ ] WLED devices are discovered via mDNS when WLED plugin is enabled
-- [ ] Discovery results appear in real-time (< 2s latency from detection to display)
-- [ ] Each integration shows its own discovery status (scanning, found X devices, complete, error)
+- [ ] New onboarding step appears after "Integrations" when at least one auto-discoverable integration is enabled — discovery is inline in the integrations step instead
+- [x] Shelly devices are discovered via mDNS when Shelly plugin is enabled — via plugin auto-start + device store fetch
+- [x] WLED devices are discovered via mDNS when WLED plugin is enabled — via plugin auto-start + device store fetch
+- [ ] Discovery results appear in real-time (< 2s latency from detection to display) — uses 2s delay + polling
+- [x] Each integration shows its own discovery status (scanning, found X devices, complete, error)
 - [ ] Discovery has a configurable timeout (default 30s) with visual countdown
 - [ ] User can stop discovery early
-- [ ] User can retry discovery for a specific integration
-- [ ] Step can be skipped entirely
-- [ ] Integrations requiring configuration show "Configuration required" status with link/button
-- [ ] Backend discovery endpoints are protected by authentication
-- [ ] WebSocket events follow existing event patterns
+- [ ] User can retry discovery for a specific integration — config save retriggers discovery
+- [x] Step can be skipped entirely
+- [x] Integrations requiring configuration show "Configuration required" status with link/button
+- [ ] Backend discovery endpoints are protected by authentication — no dedicated endpoints (simplified approach)
+- [ ] WebSocket events follow existing event patterns — not used (simplified approach)
 
 ## 5. Example scenarios
 
