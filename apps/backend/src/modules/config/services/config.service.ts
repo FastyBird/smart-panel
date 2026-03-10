@@ -741,6 +741,8 @@ export class ConfigService {
 	}
 
 	async resetConfig(): Promise<void> {
+		this.config = null;
+
 		await fs.promises.unlink(path.resolve(this.configPath, this.filename));
 
 		this.eventEmitter.emit(EventType.CONFIG_RESET, null);
