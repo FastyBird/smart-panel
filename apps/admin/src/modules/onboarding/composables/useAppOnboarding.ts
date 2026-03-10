@@ -33,6 +33,8 @@ export interface ISpaceToCreate {
 export interface IDeviceInfo {
 	id: string;
 	name: string;
+	type: string;
+	category: string;
 	description: string | null;
 	roomId: string | null;
 }
@@ -217,7 +219,7 @@ export const useAppOnboarding = () => {
 
 			if (error || !data) return false;
 
-			const items = (data as { data: { id: string; name: string; description: string | null; room_id: string | null }[] }).data;
+			const items = (data as { data: { id: string; name: string; type: string; category: string; description: string | null; room_id: string | null }[] }).data;
 
 			discoveredDevices.splice(0, discoveredDevices.length);
 
@@ -225,6 +227,8 @@ export const useAppOnboarding = () => {
 				discoveredDevices.push({
 					id: d.id,
 					name: d.name,
+					type: d.type,
+					category: d.category ?? 'generic',
 					description: d.description ?? null,
 					roomId: d.room_id ?? null,
 				});
