@@ -28,6 +28,15 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@IsString()
 	type: string = SYSTEM_MODULE_NAME;
 
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
+
 	// Language settings
 	@ApiProperty({
 		description: 'Application language',

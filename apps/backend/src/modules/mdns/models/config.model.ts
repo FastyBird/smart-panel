@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsBoolean, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -16,6 +16,15 @@ export class MdnsConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	type: string = MDNS_MODULE_NAME;
+
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
 
 	@ApiProperty({
 		name: 'service_name',

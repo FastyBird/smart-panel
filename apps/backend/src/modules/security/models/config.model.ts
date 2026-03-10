@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsBoolean, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -17,15 +17,12 @@ export class SecurityConfigModel extends ModuleConfigModel {
 	@IsString()
 	type: string = SECURITY_MODULE_NAME;
 
-	/**
-	 * Security is a core module and cannot be disabled.
-	 * Always returns true regardless of configuration.
-	 */
 	@ApiProperty({
-		description: 'Module enabled state (always true for core modules)',
+		description: 'Module enabled state',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose()
+	@IsBoolean()
 	override enabled: boolean = true;
 }

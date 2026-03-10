@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -16,6 +16,15 @@ export class WeatherConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	type: string = WEATHER_MODULE_NAME;
+
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
 
 	@ApiPropertyOptional({
 		name: 'primary_location_id',

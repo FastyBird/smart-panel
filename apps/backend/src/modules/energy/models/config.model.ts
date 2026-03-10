@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -21,6 +21,15 @@ export class EnergyConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	type: string = ENERGY_MODULE_NAME;
+
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
 
 	@ApiProperty({
 		name: 'retention_days',

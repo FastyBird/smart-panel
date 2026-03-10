@@ -22,6 +22,15 @@ export class ScenesConfigModel extends ModuleConfigModel {
 	type: string = SCENES_MODULE_NAME;
 
 	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
+
+	@ApiProperty({
 		name: 'execution_timeout_ms',
 		description: 'Timeout in milliseconds for scene execution',
 		type: 'integer',

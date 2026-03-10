@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -17,16 +17,13 @@ export class InfluxDbConfigModel extends ModuleConfigModel {
 	@IsString()
 	type: string = INFLUXDB_MODULE_NAME;
 
-	/**
-	 * InfluxDB is a core module and cannot be disabled.
-	 * Always returns true regardless of configuration.
-	 */
 	@ApiProperty({
-		description: 'Module enabled state (always true for core modules)',
+		description: 'Module enabled state',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose()
+	@IsBoolean()
 	override enabled: boolean = true;
 
 	@ApiProperty({
