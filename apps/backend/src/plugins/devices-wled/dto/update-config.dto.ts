@@ -93,7 +93,7 @@ export class WledUpdateMdnsDto {
 
 	@ApiPropertyOptional({
 		description: 'Automatically add discovered devices to the system',
-		example: false,
+		example: true,
 		name: 'auto_add',
 	})
 	@Expose({ name: 'auto_add' })

@@ -229,6 +229,7 @@ export class DevicesSimulatorPlugin {
 			type: DEVICES_SIMULATOR_PLUGIN_NAME,
 			name: 'Device Simulator',
 			description: 'Plugin for creating simulated devices for testing and development',
+			defaultEnabled: false,
 			author: 'FastyBird',
 			readme: `# Device Simulator Plugin
 
