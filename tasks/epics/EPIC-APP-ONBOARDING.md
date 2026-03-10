@@ -4,7 +4,7 @@ Type: epic
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -52,15 +52,15 @@ Currently, the application requires manual CLI commands to create the first user
 
 ## 4. Acceptance criteria
 
-- [ ] Fresh installation shows onboarding wizard instead of login page
-- [ ] User can create owner account through wizard
-- [ ] User can configure location for weather
-- [ ] User can see and enable available integrations
-- [ ] Onboarding can be skipped with minimal setup (just account creation)
-- [ ] After onboarding, user is automatically logged in
-- [ ] Subsequent visits show normal login page (not onboarding)
-- [ ] Backend provides public endpoint to check onboarding status
-- [ ] Admin app properly detects and routes to onboarding
+- [x] Fresh installation shows onboarding wizard instead of login page
+- [x] User can create owner account through wizard
+- [x] User can configure location for weather
+- [x] User can see and enable available integrations
+- [x] Onboarding can be skipped with minimal setup (just account creation)
+- [x] After onboarding, user is automatically logged in
+- [x] Subsequent visits show normal login page (not onboarding)
+- [x] Backend provides public endpoint to check onboarding status
+- [x] Admin app properly detects and routes to onboarding
 
 ## 5. Example scenarios
 

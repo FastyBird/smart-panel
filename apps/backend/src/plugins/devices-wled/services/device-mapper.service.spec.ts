@@ -11,6 +11,7 @@ import { ChannelCategory, ConnectionState, DeviceCategory } from '../../../modul
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_WLED_TYPE, WLED_CHANNEL_IDENTIFIERS } from '../devices-wled.constants';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
@@ -192,6 +193,7 @@ describe('WledDeviceMapperService', () => {
 						setConnectionState: jest.fn(),
 					},
 				},
+				DeviceProvisionQueueService,
 			],
 		}).compile();
 

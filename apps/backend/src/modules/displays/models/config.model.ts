@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsEnum, IsInt, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -16,6 +16,15 @@ export class DisplaysConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	type: string = DISPLAYS_MODULE_NAME;
+
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	override enabled: boolean = true;
 
 	@ApiProperty({
 		name: 'deployment_mode',

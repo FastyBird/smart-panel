@@ -24,5 +24,5 @@ export class ExtensionsConfigModel extends ModuleConfigModel {
 	})
 	@Expose()
 	@IsBoolean()
-	enabled: boolean = true;
+	override enabled: boolean = true;
 }

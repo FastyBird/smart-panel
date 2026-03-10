@@ -33,6 +33,8 @@ export interface ISpaceToCreate {
 export interface IDeviceInfo {
 	id: string;
 	name: string;
+	type: string;
+	category: string;
 	description: string | null;
 	roomId: string | null;
 }
@@ -58,17 +60,19 @@ export const ROOM_DEFINITIONS: IRoomDefinition[] = [
 	{ searchToken: 'Bedroom', category: 'bedroom', icon: 'mdi:bed', i18nKey: 'bedroom' },
 	{ searchToken: 'Kitchen', category: 'kitchen', icon: 'mdi:countertop', i18nKey: 'kitchen' },
 	{ searchToken: 'Bathroom', category: 'bathroom', icon: 'mdi:shower', i18nKey: 'bathroom' },
+	{ searchToken: 'Toilet', category: 'toilet', icon: 'mdi:toilet', i18nKey: 'toilet' },
 	{ searchToken: 'Office', category: 'office', icon: 'mdi:desk', i18nKey: 'office' },
 	{ searchToken: 'Garage', category: 'garage', icon: 'mdi:garage', i18nKey: 'garage' },
-	{ searchToken: 'Garden', category: null, icon: 'mdi:flower', i18nKey: null },
+	{ searchToken: 'Garden', category: 'garden', icon: 'mdi:flower', i18nKey: 'garden' },
 	{ searchToken: 'Hallway', category: 'hallway', icon: 'mdi:door-open', i18nKey: 'hallway' },
+	{ searchToken: 'Entry Hall', category: 'entry_hall', icon: 'mdi:door-sliding', i18nKey: 'entryHall' },
 	{ searchToken: 'Dining Room', category: 'dining_room', icon: 'mdi:silverware-fork-knife', i18nKey: 'diningRoom' },
-	{ searchToken: 'Basement', category: null, icon: 'mdi:stairs-down', i18nKey: null },
-	{ searchToken: 'Attic', category: null, icon: 'mdi:stairs-up', i18nKey: null },
-	{ searchToken: 'Laundry', category: null, icon: 'mdi:washing-machine', i18nKey: null },
+	{ searchToken: 'Basement', category: 'basement', icon: 'mdi:stairs-down', i18nKey: 'basement' },
+	{ searchToken: 'Attic', category: 'attic', icon: 'mdi:stairs-up', i18nKey: 'attic' },
+	{ searchToken: 'Laundry', category: 'laundry', icon: 'mdi:washing-machine', i18nKey: 'laundry' },
 	{ searchToken: 'Nursery', category: 'nursery', icon: 'mdi:baby-carriage', i18nKey: 'nursery' },
 	{ searchToken: 'Guest Room', category: 'guest_room', icon: 'mdi:bed-outline', i18nKey: 'guestRoom' },
-	{ searchToken: 'Patio', category: null, icon: 'mdi:deck', i18nKey: null },
+	{ searchToken: 'Patio', category: 'patio', icon: 'mdi:table-furniture', i18nKey: 'patio' },
 ];
 
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
@@ -137,7 +141,7 @@ export const useAppOnboarding = () => {
 						password: accountData.password,
 						firstName: accountData.firstName,
 						lastName: accountData.lastName,
-						email: accountData.email,
+						email: accountData.email || undefined,
 					},
 				});
 
@@ -217,7 +221,7 @@ export const useAppOnboarding = () => {
 
 			if (error || !data) return false;
 
-			const items = (data as { data: { id: string; name: string; description: string | null; room_id: string | null }[] }).data;
+			const items = (data as { data: { id: string; name: string; type: string; category: string; description: string | null; room_id: string | null }[] }).data;
 
 			discoveredDevices.splice(0, discoveredDevices.length);
 
@@ -225,6 +229,8 @@ export const useAppOnboarding = () => {
 				discoveredDevices.push({
 					id: d.id,
 					name: d.name,
+					type: d.type,
+					category: d.category ?? 'generic',
 					description: d.description ?? null,
 					roomId: d.room_id ?? null,
 				});

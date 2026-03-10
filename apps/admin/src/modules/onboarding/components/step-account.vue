@@ -10,9 +10,13 @@
 		/>
 
 		<template v-else>
-			<p class="text-gray-500 mb-6">
-				{{ t('onboardingModule.account.description') }}
-			</p>
+			<el-alert
+				type="info"
+				:title="t('onboardingModule.account.description')"
+				:closable="false"
+				show-icon
+				class="mb-6!"
+			/>
 
 			<el-form
 				ref="formEl"
@@ -123,10 +127,7 @@ const usernameInputEl = ref<InputInstance | undefined>(undefined);
 const passwordInputEl = ref<InputInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<IAccountData>>({
-	email: [
-		{ required: true, message: t('onboardingModule.account.validation.emailRequired'), trigger: 'change' },
-		{ type: 'email', message: t('onboardingModule.account.validation.emailInvalid'), trigger: 'change' },
-	],
+	email: [{ type: 'email', message: t('onboardingModule.account.validation.emailInvalid'), trigger: 'change' }],
 	firstName: [{ required: true, message: t('onboardingModule.account.validation.firstNameRequired'), trigger: 'change' }],
 	lastName: [{ required: true, message: t('onboardingModule.account.validation.lastNameRequired'), trigger: 'change' }],
 	username: [{ required: true, message: t('onboardingModule.account.validation.usernameRequired'), trigger: 'change' }],

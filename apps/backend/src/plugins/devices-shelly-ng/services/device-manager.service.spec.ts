@@ -14,6 +14,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
 import { DeviceManagerService } from './device-manager.service';
@@ -202,6 +203,8 @@ const mockPropertyMappingStorage = {
 	getPropertyIdsForChannel: jest.fn(),
 } as any;
 
+const mockProvisionQueue = new DeviceProvisionQueueService();
+
 const makeService = () =>
 	new DeviceManagerService(
 		mockRpc as any,
@@ -211,6 +214,7 @@ const makeService = () =>
 		mockMappingLoaderService,
 		mockTransformerRegistry,
 		mockPropertyMappingStorage,
+		mockProvisionQueue,
 	);
 
 beforeEach(() => {
@@ -373,18 +377,18 @@ describe('DeviceManagerService.createOrUpdate', () => {
 	});
 });
 
-describe('DeviceManagerService internals', () => {
-	test('enqueueProvision serializes work per device', async () => {
-		const svc: any = makeService();
+describe('DeviceProvisionQueueService', () => {
+	test('enqueue serializes work per device', async () => {
+		const queue = new DeviceProvisionQueueService();
 
 		const order: string[] = [];
 
-		const slow = svc.enqueueProvision('dev-1', async () => {
+		const slow = queue.enqueue('dev-1', async () => {
 			order.push('first');
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		});
 
-		const fast = svc.enqueueProvision('dev-1', async () => {
+		const fast = queue.enqueue('dev-1', async () => {
 			order.push('second');
 		});
 

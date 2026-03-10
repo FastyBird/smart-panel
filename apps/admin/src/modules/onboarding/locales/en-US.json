@@ -108,12 +108,19 @@
 			"bedroom": "Bedroom",
 			"kitchen": "Kitchen",
 			"bathroom": "Bathroom",
+			"toilet": "Toilet",
 			"office": "Office",
 			"hallway": "Hallway",
+			"entryHall": "Entry Hall",
 			"garage": "Garage",
+			"garden": "Garden",
+			"diningRoom": "Dining Room",
+			"basement": "Basement",
+			"attic": "Attic",
+			"laundry": "Laundry",
 			"nursery": "Nursery",
 			"guestRoom": "Guest Room",
-			"diningRoom": "Dining Room"
+			"patio": "Patio"
 		},
 		"devices": {
 			"title": "Assign devices to rooms",
@@ -139,6 +146,7 @@
 		"searching": "Searching for devices...",
 		"devicesFound": "{count} device found | {count} device found | {count} devices found",
 		"noDevicesYet": "No devices found yet - configure connection to discover devices",
+		"noDevicesFound": "No devices found yet",
 		"enabled": "Integration enabled",
 		"configure": "Configure",
 		"configRequired": "Configuration required to connect",

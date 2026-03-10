@@ -28,6 +28,8 @@ export interface ExtensionMetadata {
 	 * For example, the buddy module uses: 'llm', 'tts', 'stt', 'tools'
 	 */
 	capabilities?: string[];
+	/** Whether the extension is enabled by default (defaults to true) */
+	defaultEnabled?: boolean;
 	links?: {
 		documentation?: string;
 		devDocumentation?: string;
@@ -251,13 +253,14 @@ export class ExtensionsService {
 		}
 
 		// Get enabled status from config
+		const defaultEnabled = metadata?.defaultEnabled ?? true;
 		let enabled: boolean;
 		try {
 			const pluginConfig = this.configService.getPluginConfig(type);
-			enabled = pluginConfig.enabled ?? true;
+			enabled = pluginConfig.enabled ?? defaultEnabled;
 		} catch {
-			// Plugin config not found, default to enabled
-			enabled = true;
+			// Plugin config not found, use metadata default
+			enabled = defaultEnabled;
 		}
 
 		const extension = new ExtensionModel();

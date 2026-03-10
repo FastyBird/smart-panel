@@ -18,11 +18,11 @@ export class SpacesConfigModel extends ModuleConfigModel {
 	type: string = SPACES_MODULE_NAME;
 
 	@ApiProperty({
-		description: 'Whether the module is enabled',
+		description: 'Module enabled state',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose()
 	@IsBoolean()
-	enabled: boolean = true;
+	override enabled: boolean = true;
 }

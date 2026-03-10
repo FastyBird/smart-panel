@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-ONBOARDING-DEVICE-SETUP
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -46,13 +46,13 @@ Currently, these integrations can only be configured from the admin settings aft
 
 ## 4. Acceptance criteria
 
-- [ ] Home Assistant shows inline form with: Server URL, Long-lived Access Token
-- [ ] Zigbee2MQTT shows inline form with: MQTT Broker URL, optional username/password
+- [x] Home Assistant shows inline form with: Server URL, Long-lived Access Token — via integration-config-dialog using plugin's own config form
+- [x] Zigbee2MQTT shows inline form with: MQTT Broker URL, optional username/password — same mechanism
 - [ ] "Test Connection" button validates credentials against the backend
-- [ ] Successful test saves credentials and triggers discovery
+- [x] Successful test saves credentials and triggers discovery — save triggers re-discovery (no test step)
 - [ ] Failed test shows error message without blocking other integrations
-- [ ] Configuration can be skipped (integration remains enabled but unconfigured)
-- [ ] Forms are compact and fit within the discovery step layout
+- [x] Configuration can be skipped (integration remains enabled but unconfigured)
+- [x] Forms are compact and fit within the discovery step layout — uses el-dialog
 
 ## 5. Example scenarios
 

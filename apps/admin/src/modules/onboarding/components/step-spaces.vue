@@ -1,8 +1,12 @@
 <template>
 	<div class="py-4 px-4 max-w-lg mx-auto">
-		<p class="text-gray-500 mb-4">
-			{{ t('onboardingModule.spaces.description') }}
-		</p>
+		<el-alert
+			type="info"
+			:title="t('onboardingModule.spaces.description')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
 
 		<!-- Quick add by category -->
 		<div class="mb-4">
@@ -151,42 +155,48 @@
 					/>
 					{{ t('onboardingModule.spaces.devices.unassigned', { count: unassignedDevices.length }) }}
 				</div>
-				<div class="divide-y divide-gray-200">
-					<div
-						v-for="device in unassignedDevices"
-						:key="device.id"
-						class="flex items-center gap-3 px-3 py-2"
-					>
-						<el-checkbox
-							:model-value="selectedDeviceIds.includes(device.id)"
-							@change="toggleDeviceSelection(device.id)"
-						/>
-						<div class="flex-1 min-w-0">
-							<div class="text-sm truncate">{{ device.name }}</div>
-							<div
-								v-if="device.description"
-								class="text-xs text-gray-400 truncate"
-							>
-								{{ device.description }}
-							</div>
-						</div>
-						<el-select
-							:model-value="deviceAssignments[device.id] ?? ''"
-							:placeholder="t('onboardingModule.spaces.devices.selectSpace')"
-							size="small"
-							clearable
-							class="w-40"
-							@update:model-value="assignDevice(device.id, $event || null)"
+				<el-scrollbar max-height="30vh">
+					<div class="divide-y divide-gray-200">
+						<div
+							v-for="device in unassignedDevices"
+							:key="device.id"
+							class="flex items-center gap-3 px-3 py-2"
 						>
-							<el-option
-								v-for="space in spacesToCreate"
-								:key="space.name"
-								:label="space.name"
-								:value="space.name"
+							<el-checkbox
+								:model-value="selectedDeviceIds.includes(device.id)"
+								@change="toggleDeviceSelection(device.id)"
 							/>
-						</el-select>
+							<icon
+								:icon="getDeviceCategoryIcon(device.category)"
+								class="text-gray-400 shrink-0 text-lg"
+							/>
+							<div class="flex-1 min-w-0 overflow-hidden">
+								<div class="text-sm truncate">{{ device.name }}</div>
+								<div class="text-xs text-gray-400 truncate">
+									<span>{{ formatDeviceType(device.type) }}</span>
+									<template v-if="device.description">
+										&middot; {{ device.description }}
+									</template>
+								</div>
+							</div>
+							<el-select
+								:model-value="deviceAssignments[device.id] ?? ''"
+								:placeholder="t('onboardingModule.spaces.devices.selectSpace')"
+								size="small"
+								clearable
+								class="w-36! shrink-0"
+								@update:model-value="assignDevice(device.id, $event || null)"
+							>
+								<el-option
+									v-for="space in spacesToCreate"
+									:key="space.name"
+									:label="space.name"
+									:value="space.name"
+								/>
+							</el-select>
+						</div>
 					</div>
-				</div>
+				</el-scrollbar>
 			</div>
 
 			<!-- Assigned devices -->
@@ -201,42 +211,48 @@
 					/>
 					{{ t('onboardingModule.spaces.devices.assigned', { count: assignedDevices.length }) }}
 				</div>
-				<div class="divide-y divide-gray-200">
-					<div
-						v-for="device in assignedDevices"
-						:key="device.id"
-						class="flex items-center gap-3 px-3 py-2"
-					>
-						<el-checkbox
-							:model-value="selectedDeviceIds.includes(device.id)"
-							@change="toggleDeviceSelection(device.id)"
-						/>
-						<div class="flex-1 min-w-0">
-							<div class="text-sm truncate">{{ device.name }}</div>
-							<div
-								v-if="device.description"
-								class="text-xs text-gray-400 truncate"
-							>
-								{{ device.description }}
-							</div>
-						</div>
-						<el-select
-							:model-value="deviceAssignments[device.id] ?? ''"
-							:placeholder="t('onboardingModule.spaces.devices.selectSpace')"
-							size="small"
-							clearable
-							class="w-40"
-							@update:model-value="assignDevice(device.id, $event || null)"
+				<el-scrollbar max-height="30vh">
+					<div class="divide-y divide-gray-200">
+						<div
+							v-for="device in assignedDevices"
+							:key="device.id"
+							class="flex items-center gap-3 px-3 py-2"
 						>
-							<el-option
-								v-for="space in spacesToCreate"
-								:key="space.name"
-								:label="space.name"
-								:value="space.name"
+							<el-checkbox
+								:model-value="selectedDeviceIds.includes(device.id)"
+								@change="toggleDeviceSelection(device.id)"
 							/>
-						</el-select>
+							<icon
+								:icon="getDeviceCategoryIcon(device.category)"
+								class="text-gray-400 shrink-0 text-lg"
+							/>
+							<div class="flex-1 min-w-0 overflow-hidden">
+								<div class="text-sm truncate">{{ device.name }}</div>
+								<div class="text-xs text-gray-400 truncate">
+									<span>{{ formatDeviceType(device.type) }}</span>
+									<template v-if="device.description">
+										&middot; {{ device.description }}
+									</template>
+								</div>
+							</div>
+							<el-select
+								:model-value="deviceAssignments[device.id] ?? ''"
+								:placeholder="t('onboardingModule.spaces.devices.selectSpace')"
+								size="small"
+								clearable
+								class="w-36! shrink-0"
+								@update:model-value="assignDevice(device.id, $event || null)"
+							>
+								<el-option
+									v-for="space in spacesToCreate"
+									:key="space.name"
+									:label="space.name"
+									:value="space.name"
+								/>
+							</el-select>
+						</div>
 					</div>
-				</div>
+				</el-scrollbar>
 			</div>
 		</template>
 
@@ -254,7 +270,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElDivider, ElFormItem, ElInput, ElOption, ElSelect, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElDivider, ElFormItem, ElInput, ElOption, ElScrollbar, ElSelect, ElTag } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { ROOM_DEFINITIONS, useAppOnboarding } from '../composables/composables';
@@ -276,6 +292,49 @@ const {
 const customName = ref('');
 const selectedDeviceIds = ref<string[]>([]);
 const bulkAssignTarget = ref<string>('');
+
+const deviceCategoryIcons: Record<string, string> = {
+	air_conditioner: 'mdi:air-conditioner',
+	air_dehumidifier: 'mdi:air-humidifier-off',
+	air_humidifier: 'mdi:air-humidifier',
+	air_purifier: 'mdi:air-purifier',
+	alarm: 'mdi:alarm-light',
+	av_receiver: 'mdi:audio-video',
+	camera: 'mdi:cctv',
+	door: 'mdi:door',
+	doorbell: 'mdi:doorbell',
+	fan: 'mdi:fan',
+	game_console: 'mdi:controller',
+	heating_unit: 'mdi:radiator',
+	lighting: 'mdi:lightbulb',
+	lock: 'mdi:lock',
+	media: 'mdi:play-circle',
+	outlet: 'mdi:power-socket-eu',
+	projector: 'mdi:projector',
+	pump: 'mdi:pump',
+	robot_vacuum: 'mdi:robot-vacuum',
+	sensor: 'mdi:thermometer',
+	set_top_box: 'mdi:set-top-box',
+	speaker: 'mdi:speaker',
+	sprinkler: 'mdi:sprinkler',
+	streaming_service: 'mdi:cast',
+	switcher: 'mdi:toggle-switch',
+	television: 'mdi:television',
+	thermostat: 'mdi:thermostat',
+	valve: 'mdi:valve',
+	water_heater: 'mdi:water-boiler',
+	window_covering: 'mdi:blinds',
+};
+
+const getDeviceCategoryIcon = (category: string): string => {
+	return deviceCategoryIcons[category] ?? 'mdi:devices';
+};
+
+const formatDeviceType = (type: string): string => {
+	return type
+		.replace(/-/g, ' ')
+		.replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const quickCategories = ROOM_DEFINITIONS.filter((r) => r.category !== null && r.i18nKey !== null).map((r) => ({
 	value: r.category!,

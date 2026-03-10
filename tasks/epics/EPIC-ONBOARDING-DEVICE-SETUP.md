@@ -4,7 +4,7 @@ Type: epic
 Scope: backend, admin
 Size: large
 Parent: EPIC-APP-ONBOARDING
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -62,16 +62,16 @@ This epic extends onboarding to automate steps 1-4 and optionally step 5, provid
 
 ## 4. Acceptance criteria
 
-- [ ] After enabling integrations, user can trigger device discovery
-- [ ] Auto-discoverable integrations (Shelly, WLED) start scanning immediately
-- [ ] Integrations requiring configuration (HA, Z2M) show inline config form
-- [ ] Discovery results appear in real-time (WebSocket or polling)
-- [ ] User can see discovered devices grouped by integration
-- [ ] Spaces step shows discovered devices for assignment to rooms
-- [ ] Heuristic suggestion of spaces based on device names works
-- [ ] User can manually create spaces and drag/assign devices
-- [ ] Skipping discovery is always possible
-- [ ] Summary shows: integrations enabled, devices found, spaces created, assignments made
+- [x] After enabling integrations, user can trigger device discovery
+- [x] Auto-discoverable integrations (Shelly, WLED) start scanning immediately
+- [x] Integrations requiring configuration (HA, Z2M) show inline config form
+- [ ] Discovery results appear in real-time (WebSocket or polling) — currently uses polling with 2s delay
+- [x] User can see discovered devices grouped by integration
+- [x] Spaces step shows discovered devices for assignment to rooms
+- [x] Heuristic suggestion of spaces based on device names works
+- [x] User can manually create spaces and drag/assign devices
+- [x] Skipping discovery is always possible
+- [x] Summary shows: integrations enabled, devices found, spaces created, assignments made
 
 ## 5. Example scenarios
 
@@ -154,9 +154,9 @@ interface IDiscoveryAdapter {
 | ID | Title | Scope | Size | Status |
 |----|-------|-------|------|--------|
 | FEATURE-ONBOARDING-INTEGRATIONS | Integrations discovery step (enable/disable) | backend, admin | medium | done |
-| FEATURE-ONBOARDING-DEVICE-DISCOVERY | Device discovery during onboarding | backend, admin | large | planned |
-| FEATURE-ONBOARDING-INTEGRATION-CONFIG | Inline integration configuration | backend, admin | medium | planned |
-| FEATURE-ONBOARDING-SPACES-ASSIGNMENT | Enhanced spaces step with device assignment | admin | medium | planned |
+| FEATURE-ONBOARDING-DEVICE-DISCOVERY | Device discovery during onboarding | backend, admin | large | in-progress |
+| FEATURE-ONBOARDING-INTEGRATION-CONFIG | Inline integration configuration | backend, admin | medium | in-progress |
+| FEATURE-ONBOARDING-SPACES-ASSIGNMENT | Enhanced spaces step with device assignment | admin | medium | done |
 | TECH-SPACES-ONBOARDING-WIZARD | Spaces onboarding and assignment wizard | admin, backend | medium | done |
 
 ## 9. AI instructions

@@ -6,24 +6,26 @@
 		:close-on-click-modal="false"
 		@update:model-value="(val: boolean) => emit('update:visible', val)"
 	>
-		<div
-			v-loading="isLoading"
-			class="min-h-[120px]"
-		>
-			<component
-				:is="configFormComponent"
-				v-if="configPlugin && configFormComponent"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-				v-model:remote-form-reset="remoteFormReset"
-				v-model:remote-form-changed="remoteFormChanged"
-				:config="configPlugin"
-			/>
-			<el-empty
-				v-else-if="!isLoading"
-				:description="t('onboardingModule.integrations.configDialog.noConfig')"
-			/>
-		</div>
+		<el-scrollbar max-height="60vh">
+			<div
+				v-loading="isLoading"
+				class="min-h-[120px]"
+			>
+				<component
+					:is="configFormComponent"
+					v-if="configPlugin && configFormComponent"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-reset="remoteFormReset"
+					v-model:remote-form-changed="remoteFormChanged"
+					:config="configPlugin"
+				/>
+				<el-empty
+					v-else-if="!isLoading"
+					:description="t('onboardingModule.integrations.configDialog.noConfig')"
+				/>
+			</div>
+		</el-scrollbar>
 		<template #footer>
 			<div class="flex justify-end gap-2">
 				<el-button @click="emit('update:visible', false)">
@@ -46,7 +48,7 @@
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElEmpty, vLoading } from 'element-plus';
+import { ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';

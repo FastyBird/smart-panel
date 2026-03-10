@@ -17,6 +17,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DESCRIPTORS,
@@ -97,6 +98,7 @@ describe('DeviceMapperService', () => {
 			deviceConnectivityService,
 			shelliesAdapter,
 			httpClient,
+			new DeviceProvisionQueueService(),
 		);
 	});
 

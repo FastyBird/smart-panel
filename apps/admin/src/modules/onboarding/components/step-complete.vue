@@ -11,9 +11,13 @@
 			{{ t('onboardingModule.complete.title') }}
 		</h2>
 
-		<p class="text-base text-gray-500 mb-8 max-w-md">
-			{{ t('onboardingModule.complete.description') }}
-		</p>
+		<el-alert
+			type="info"
+			:title="t('onboardingModule.complete.description')"
+			:closable="false"
+			show-icon
+			class="mb-8! max-w-md"
+		/>
 
 		<div class="flex flex-col gap-3 max-w-sm w-full">
 			<!-- Account -->
@@ -138,7 +142,7 @@
 import { computed } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElIcon } from 'element-plus';
+import { ElAlert, ElIcon } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager } from '../../../common';

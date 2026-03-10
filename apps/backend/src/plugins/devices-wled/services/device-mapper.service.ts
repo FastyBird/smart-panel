@@ -6,6 +6,7 @@ import { ChannelCategory, ConnectionState, DeviceCategory } from '../../../modul
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DEVICES_WLED_PLUGIN_NAME,
@@ -51,6 +52,7 @@ export class WledDeviceMapperService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly provisionQueue: DeviceProvisionQueueService,
 	) {}
 
 	/**
@@ -62,8 +64,17 @@ export class WledDeviceMapperService {
 		configName?: string | null,
 		configIdentifier?: string | null,
 	): Promise<WledDeviceEntity> {
-		// Generate identifier from MAC address if not provided
 		const identifier = configIdentifier || this.generateIdentifier(context.info.mac);
+
+		return this.provisionQueue.enqueue(identifier, () => this.doMapDevice(host, context, identifier, configName));
+	}
+
+	private async doMapDevice(
+		host: string,
+		context: WledDeviceContext,
+		identifier: string,
+		configName?: string | null,
+	): Promise<WledDeviceEntity> {
 		const name = configName || context.info.name || `WLED ${identifier}`;
 
 		// Create or update the device entity

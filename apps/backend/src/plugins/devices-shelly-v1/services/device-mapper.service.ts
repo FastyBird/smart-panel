@@ -13,6 +13,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	getPropertyDefaultValue,
@@ -64,12 +65,17 @@ export class DeviceMapperService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly shelliesAdapter: ShelliesAdapterService,
 		private readonly httpClient: ShellyV1HttpClientService,
+		private readonly provisionQueue: DeviceProvisionQueueService,
 	) {}
 
 	/**
 	 * Map and create or update a discovered device
 	 */
 	async mapDevice(event: NormalizedDeviceEvent): Promise<ShellyV1DeviceEntity> {
+		return this.provisionQueue.enqueue(event.id, () => this.doMapDevice(event));
+	}
+
+	private async doMapDevice(event: NormalizedDeviceEvent): Promise<ShellyV1DeviceEntity> {
 		// Get the device instance from the adapter
 		const shellyDevice = this.shelliesAdapter.getDevice(event.type, event.id);
 

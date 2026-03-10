@@ -130,9 +130,13 @@ export const useSystemActions = (): IUseSystemActions => {
 
 					await systemActions.factoryResetDone();
 				} catch {
-					systemActions.factoryReset('err', 'action');
+					// Skip error if factory reset already completed via WS event
+					// (the WS disconnect after token revocation triggers this catch)
+					if (!systemActions.isFactoryResetDone()) {
+						systemActions.factoryReset('err', 'action');
 
-					flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
+						flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
+					}
 				}
 			})
 			.catch((): void => {

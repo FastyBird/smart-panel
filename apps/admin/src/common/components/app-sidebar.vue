@@ -28,9 +28,7 @@
 import { useNamespace } from 'element-plus';
 
 import { RouteNames } from '../../app.constants';
-// @ts-expect-error imported SVG files are without TS
 import LogoBird from '../../assets/images/fb_bird.svg?component';
-// @ts-expect-error imported SVG files are without TS
 import LogoFastyBird from '../../assets/images/fb_smartpanel.svg?component';
 
 import AppNavigation from './app-navigation.vue';

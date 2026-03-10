@@ -155,6 +155,38 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	/**
+	 * Stop all running services. Used during factory reset to ensure
+	 * plugin services are cleaned up before data is wiped.
+	 */
+	async stopAllServices(): Promise<void> {
+		this.shutdownInProgress = true;
+
+		this.logger.log('Stopping all managed services for factory reset');
+
+		const sorted = this.getSortedServices().reverse();
+
+		for (const registration of sorted) {
+			const state = registration.service.getState();
+
+			if (state === 'stopped') continue;
+
+			if (state === 'starting') {
+				await this.waitForState(registration, 'started', 5000);
+			} else if (state === 'stopping') {
+				await this.waitForState(registration, 'stopped', 5000);
+
+				continue;
+			}
+
+			await this.stopService(registration);
+		}
+
+		this.shutdownInProgress = false;
+
+		this.logger.log('All services stopped for factory reset');
+	}
+
+	/**
 	 * Called by NestJS when the module is being destroyed.
 	 * Stops all running services in reverse priority order.
 	 *

@@ -63,7 +63,6 @@ import { ref, watch } from 'vue';
 import { ElAside, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
 
 import { RouteNames } from '../../app.constants';
-// @ts-expect-error imported SVG files are without TS
 import Logo from '../../assets/images/fb_row.svg?component';
 import { AppBar, AppNavigation, AppSidebar, AppTopBar } from '../components/components';
 import { useBreakpoints } from '../composables/useBreakpoints';
