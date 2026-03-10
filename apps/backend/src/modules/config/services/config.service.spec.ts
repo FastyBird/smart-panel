@@ -303,7 +303,10 @@ describe('ConfigService', () => {
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
 			expect(mockYamlStringify).toHaveBeenCalled();
 			expect(mockFsWriteFileSync).toHaveBeenCalled();
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, {
+				source: 'mock',
+				type: 'plugin',
+			});
 		});
 
 		it('should throw validation errors for an invalid update', () => {
@@ -425,7 +428,10 @@ describe('ConfigService', () => {
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
 			expect(mockYamlStringify).toHaveBeenCalled();
 			expect(mockFsWriteFileSync).toHaveBeenCalled();
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, {
+				source: 'mock-module',
+				type: 'module',
+			});
 		});
 
 		it('should throw validation errors for an invalid update', () => {

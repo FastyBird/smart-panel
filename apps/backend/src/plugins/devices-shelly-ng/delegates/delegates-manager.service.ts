@@ -86,6 +86,13 @@ export class DelegatesManagerService {
 	 */
 	private readonly insertGeneration: Map<string, number> = new Map();
 
+	/**
+	 * Per-device async lock to serialize insert/remove operations.
+	 * Prevents race conditions when mDNS fires rapid attach/detach events
+	 * for the same device.
+	 */
+	private readonly deviceLocks: Map<string, Promise<void>> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -100,9 +107,13 @@ export class DelegatesManagerService {
 	}
 
 	async insert(shelly: Device & MaybeNet, force: boolean = false): Promise<ShellyDeviceDelegate> {
+		return this.withDeviceLock(shelly.id, () => this.performInsert(shelly, force));
+	}
+
+	private async performInsert(shelly: Device & MaybeNet, force: boolean = false): Promise<ShellyDeviceDelegate> {
 		if (this.delegates.has(shelly.id)) {
 			if (force) {
-				this.remove(shelly.id);
+				this.performRemove(shelly.id);
 			} else {
 				return this.delegates.get(shelly.id);
 			}
@@ -1623,7 +1634,15 @@ export class DelegatesManagerService {
 		return delegate;
 	}
 
-	remove(deviceId: string): void {
+	remove(deviceId: string): Promise<void> {
+		return this.withDeviceLock(deviceId, () => {
+			this.performRemove(deviceId);
+
+			return Promise.resolve();
+		});
+	}
+
+	private performRemove(deviceId: string): void {
 		const delegate = this.delegates.get(deviceId);
 
 		if (!delegate) {
@@ -1931,7 +1950,7 @@ export class DelegatesManagerService {
 
 	detach(): void {
 		for (const [deviceId] of this.delegates.entries()) {
-			this.remove(deviceId);
+			this.performRemove(deviceId);
 		}
 
 		this.changeHandlers.clear();
@@ -1944,9 +1963,38 @@ export class DelegatesManagerService {
 		}
 
 		this.pendingWrites.clear();
+		this.deviceLocks.clear();
 	}
 
 	destroy(): void {
 		this.detach();
+	}
+
+	/**
+	 * Serialize async operations per device. Ensures that for any given device,
+	 * insert and remove operations run sequentially — even when mDNS fires
+	 * rapid attach/detach events.
+	 */
+	private async withDeviceLock<T>(deviceId: string, fn: () => Promise<T>): Promise<T> {
+		const pending = this.deviceLocks.get(deviceId) ?? Promise.resolve();
+
+		let resolveLock!: () => void;
+		const lock = new Promise<void>((r) => {
+			resolveLock = r;
+		});
+		this.deviceLocks.set(deviceId, lock);
+
+		// Wait for any previous operation on this device to finish
+		await pending.catch(() => {});
+
+		try {
+			return await fn();
+		} finally {
+			resolveLock();
+
+			if (this.deviceLocks.get(deviceId) === lock) {
+				this.deviceLocks.delete(deviceId);
+			}
+		}
 	}
 }

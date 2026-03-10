@@ -489,8 +489,11 @@ export class ConfigService {
 
 			this.saveConfig(appConfig);
 
+			// Force config cache reload after save (saveConfig nullifies the cache)
+			void this.appConfig;
+
 			this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
-			this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
+			this.eventEmitter.emit(EventType.CONFIG_UPDATED, { source: key as string, type: 'section' as const });
 
 			this.logger.log(`Configuration update for section=${key} completed successfully`);
 
@@ -615,8 +618,11 @@ export class ConfigService {
 		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);
 		this.saveConfig(appConfig);
 
+		// Force config cache reload after save (saveConfig nullifies the cache)
+		void this.appConfig;
+
 		this.logger.log(`[EVENT] Broadcasting configuration change for plugin=${plugin}`);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, { source: plugin, type: 'plugin' as const });
 
 		this.logger.log(`Configuration update for plugin=${plugin} completed successfully`);
 	}
@@ -734,8 +740,11 @@ export class ConfigService {
 		this.logger.log(`[SAVE] Saving updated configuration for module=${module}`);
 		this.saveConfig(appConfig);
 
+		// Force config cache reload after save (saveConfig nullifies the cache)
+		void this.appConfig;
+
 		this.logger.log(`[EVENT] Broadcasting configuration change for module=${module}`);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, { source: module, type: 'module' as const });
 
 		this.logger.log(`Configuration update for module=${module} completed successfully`);
 	}

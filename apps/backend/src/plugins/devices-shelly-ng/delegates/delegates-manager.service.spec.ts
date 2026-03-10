@@ -373,7 +373,7 @@ describe('DelegatesManagerService', () => {
 
 		(deviceConnectivityService.setConnectionState as jest.Mock).mockClear();
 
-		svc.remove(delegate.id);
+		await svc.remove(delegate.id);
 
 		expect(svc['changeHandlers'].size).toBe(0);
 		expect(svc['setPropertiesHandlers'].size).toBe(0);
