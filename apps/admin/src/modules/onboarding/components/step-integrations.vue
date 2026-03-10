@@ -11,30 +11,125 @@
 			<div
 				v-for="integration in devicePlugins"
 				:key="integration.type"
-				class="flex items-center gap-4 p-3 rounded-lg border"
+				class="rounded-lg border transition-all duration-300"
 				:class="integration.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
 			>
-				<el-icon
-					:size="32"
-					class="shrink-0"
-					:class="integration.enabled ? 'text-primary' : 'text-gray-400'"
-				>
-					<icon :icon="getPluginIcon(integration.type)" />
-				</el-icon>
-				<div class="flex-1">
-					<div class="font-medium">{{ integration.name }}</div>
-					<div
-						v-if="integration.description"
-						class="text-xs text-gray-500"
+				<div class="flex items-center gap-4 p-3">
+					<el-icon
+						:size="32"
+						class="shrink-0"
+						:class="integration.enabled ? 'text-primary' : 'text-gray-400'"
 					>
-						{{ integration.description }}
+						<icon :icon="getPluginIcon(integration.type)" />
+					</el-icon>
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{{ integration.name }}</div>
+						<div
+							v-if="integration.description"
+							class="text-xs text-gray-500 truncate"
+						>
+							{{ integration.description }}
+						</div>
 					</div>
+					<el-switch
+						:model-value="integration.enabled"
+						:disabled="!integration.canToggleEnabled || isToggling(integration.type)"
+						:loading="isToggling(integration.type)"
+						@update:model-value="(val: string | number | boolean) => onToggle(integration.type, !!val)"
+					/>
 				</div>
-				<el-switch
-					:model-value="integration.enabled"
-					:disabled="!integration.canToggleEnabled"
-					@update:model-value="(val: string | number | boolean) => onToggle(integration.type, !!val)"
-				/>
+
+				<!-- Expanded section when enabled -->
+				<div
+					v-if="integration.enabled"
+					class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+				>
+					<div class="flex items-center gap-2 text-xs min-w-0">
+						<template v-if="isDiscovering(integration.type)">
+							<el-icon
+								:size="14"
+								class="text-primary is-loading"
+							>
+								<icon icon="mdi:loading" />
+							</el-icon>
+							<span class="text-gray-500">
+								{{ t('onboardingModule.integrations.searching') }}
+							</span>
+						</template>
+						<template v-else-if="getDeviceCount(integration.type) > 0">
+							<el-icon
+								:size="14"
+								class="text-green-500"
+							>
+								<icon icon="mdi:check-circle" />
+							</el-icon>
+							<span class="text-green-600">
+								{{ t('onboardingModule.integrations.devicesFound', { count: getDeviceCount(integration.type) }) }}
+							</span>
+						</template>
+						<template v-else-if="discoveryFinished(integration.type)">
+							<el-icon
+								:size="14"
+								class="text-gray-400"
+							>
+								<icon icon="mdi:information-outline" />
+							</el-icon>
+							<span class="text-gray-500">
+								{{ t('onboardingModule.integrations.noDevicesYet') }}
+							</span>
+						</template>
+						<template v-else>
+							<el-icon
+								:size="14"
+								class="text-blue-400"
+							>
+								<icon icon="mdi:power-plug-outline" />
+							</el-icon>
+							<span class="text-gray-500">
+								{{ t('onboardingModule.integrations.enabled') }}
+							</span>
+						</template>
+					</div>
+					<el-button
+						v-if="hasConfigForm(integration.type)"
+						size="small"
+						text
+						type="primary"
+						@click="openConfigDialog(integration.type, integration.name)"
+					>
+						<el-icon
+							:size="14"
+							class="mr-1"
+						>
+							<icon icon="mdi:cog-outline" />
+						</el-icon>
+						{{ t('onboardingModule.integrations.configure') }}
+					</el-button>
+				</div>
+
+				<!-- Configuration required badge -->
+				<div
+					v-if="integration.enabled && requiresConfiguration(integration.type) && !isConfigured(integration.type)"
+					class="border-t border-orange-200 bg-orange-50 px-3 py-2 flex items-center gap-2"
+				>
+					<el-icon
+						:size="14"
+						class="text-orange-500"
+					>
+						<icon icon="mdi:alert-circle-outline" />
+					</el-icon>
+					<span class="text-xs text-orange-600">
+						{{ t('onboardingModule.integrations.configRequired') }}
+					</span>
+					<el-button
+						size="small"
+						text
+						type="warning"
+						@click="openConfigDialog(integration.type, integration.name)"
+					>
+						{{ t('onboardingModule.integrations.setupNow') }}
+					</el-button>
+				</div>
 			</div>
 
 			<div
@@ -45,6 +140,28 @@
 			</div>
 		</div>
 
+		<!-- Summary bar -->
+		<div
+			v-if="enabledCount > 0"
+			class="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-3"
+		>
+			<el-icon
+				:size="20"
+				class="text-primary shrink-0"
+			>
+				<icon icon="mdi:check-decagram" />
+			</el-icon>
+			<span class="text-sm text-gray-600">
+				{{ t('onboardingModule.integrations.summary', { count: enabledCount }) }}
+			</span>
+			<span
+				v-if="totalDevicesFound > 0"
+				class="text-sm text-green-600 ml-auto"
+			>
+				{{ t('onboardingModule.integrations.totalDevices', { count: totalDevicesFound }) }}
+			</span>
+		</div>
+
 		<el-alert
 			type="info"
 			:title="t('onboardingModule.integrations.hint')"
@@ -52,19 +169,33 @@
 			show-icon
 			class="mt-4!"
 		/>
+
+		<integration-config-dialog
+			v-model:visible="configDialogVisible"
+			:plugin-type="configDialogPluginType"
+			:plugin-name="configDialogPluginName"
+			@saved="onConfigSaved"
+		/>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElIcon, ElSwitch, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElIcon, ElSwitch, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
+import { CONFIG_MODULE_PLUGIN_TYPE } from '../../../modules/config/config.constants';
+import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
+import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { devicesStoreKey } from '../../../modules/devices/store/keys';
+import { usePlugins } from '../../../modules/config/composables/usePlugins';
+
+import IntegrationConfigDialog from './integration-config-dialog.vue';
 
 defineOptions({
 	name: 'StepIntegrations',
@@ -73,8 +204,27 @@ defineOptions({
 const { t } = useI18n();
 const storesManager = injectStoresManager();
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
+const devicesStore = storesManager.getStore(devicesStoreKey);
+const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+const { getByName } = usePlugins();
 
 const isFetching = ref(false);
+const togglingPlugins = reactive<Set<string>>(new Set());
+const discoveringPlugins = reactive<Set<string>>(new Set());
+const discoveredPlugins = reactive<Set<string>>(new Set());
+const deviceCounts = reactive<Record<string, number>>({});
+const configuredPlugins = reactive<Set<string>>(new Set());
+
+// Config dialog state
+const configDialogVisible = ref(false);
+const configDialogPluginType = ref('');
+const configDialogPluginName = ref('');
+
+// Plugins that require configuration to work (need API keys, hostnames, etc.)
+const pluginsRequiringConfig: Record<string, boolean> = {
+	'devices-home-assistant-plugin': true,
+	'devices-zigbee2mqtt-plugin': true,
+};
 
 const pluginIcons: Record<string, string> = {
 	'devices-home-assistant-plugin': 'mdi:home-assistant',
@@ -96,14 +246,125 @@ const devicePlugins = computed(() => {
 		.sort((a, b) => a.name.localeCompare(b.name));
 });
 
+const enabledCount = computed(() => devicePlugins.value.filter((p) => p.enabled).length);
+
+const totalDevicesFound = computed(() => Object.values(deviceCounts).reduce((sum, count) => sum + count, 0));
+
+const isToggling = (type: string): boolean => togglingPlugins.has(type);
+
+const isDiscovering = (type: string): boolean => discoveringPlugins.has(type);
+
+const discoveryFinished = (type: string): boolean => discoveredPlugins.has(type);
+
+const getDeviceCount = (type: string): number => deviceCounts[type] ?? 0;
+
+const hasConfigForm = (type: string): boolean => {
+	const plugin = getByName(type);
+	if (!plugin) return false;
+
+	const element = plugin.elements?.find(
+		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE
+	);
+
+	return !!element?.components?.pluginConfigEditForm;
+};
+
+const requiresConfiguration = (type: string): boolean => !!pluginsRequiringConfig[type];
+
+const isConfigured = (type: string): boolean => configuredPlugins.has(type);
+
+const openConfigDialog = (type: string, name: string): void => {
+	configDialogPluginType.value = type;
+	configDialogPluginName.value = name;
+	configDialogVisible.value = true;
+};
+
+const onConfigSaved = (): void => {
+	configuredPlugins.add(configDialogPluginType.value);
+
+	// Re-trigger discovery after config is saved
+	startDiscovery(configDialogPluginType.value);
+};
+
+const startDiscovery = async (type: string): Promise<void> => {
+	discoveringPlugins.add(type);
+	discoveredPlugins.delete(type);
+
+	try {
+		// Wait a moment for the backend to start the plugin
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+
+		// Fetch devices to get counts
+		await devicesStore.fetch();
+
+		const allDevices = devicesStore.findAll();
+		const pluginPrefix = type.replace('-plugin', '');
+		const count = allDevices.filter((d) => d.type.startsWith(pluginPrefix)).length;
+
+		deviceCounts[type] = count;
+	} catch {
+		// Discovery may fail if plugin isn't fully started yet
+		deviceCounts[type] = 0;
+	} finally {
+		discoveringPlugins.delete(type);
+		discoveredPlugins.add(type);
+	}
+};
+
 const onToggle = async (type: string, enabled: boolean): Promise<void> => {
+	togglingPlugins.add(type);
+
 	try {
 		await extensionsStore.update({
 			type,
 			data: { enabled },
 		});
+
+		if (enabled) {
+			startDiscovery(type);
+
+			// Check if plugin config exists
+			checkPluginConfig(type);
+		} else {
+			// Clean up state when disabled
+			discoveringPlugins.delete(type);
+			discoveredPlugins.delete(type);
+			delete deviceCounts[type];
+			configuredPlugins.delete(type);
+		}
 	} catch {
 		// Store handles errors internally
+	} finally {
+		togglingPlugins.delete(type);
+	}
+};
+
+const checkPluginConfig = async (type: string): Promise<void> => {
+	try {
+		const config = await configPluginsStore.get({ type });
+
+		if (config) {
+			// Check if meaningful config values are set (beyond just 'type' and 'enabled')
+			const configEntries = Object.entries(config).filter(
+				([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== ''
+			);
+
+			if (configEntries.length > 0) {
+				configuredPlugins.add(type);
+			}
+		}
+	} catch {
+		// Config fetch may fail - that's ok
+	}
+};
+
+// Initialize state for already-enabled plugins
+const initializeEnabledPlugins = (): void => {
+	for (const plugin of devicePlugins.value) {
+		if (plugin.enabled) {
+			startDiscovery(plugin.type);
+			checkPluginConfig(plugin.type);
+		}
 	}
 };
 
@@ -117,5 +378,7 @@ onBeforeMount(async () => {
 	} finally {
 		isFetching.value = false;
 	}
+
+	initializeEnabledPlugins();
 });
 </script>

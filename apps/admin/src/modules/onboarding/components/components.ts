@@ -4,3 +4,4 @@ export { default as StepLocation } from './step-location.vue';
 export { default as StepSpaces } from './step-spaces.vue';
 export { default as StepIntegrations } from './step-integrations.vue';
 export { default as StepComplete } from './step-complete.vue';
+export { default as IntegrationConfigDialog } from './integration-config-dialog.vue';
