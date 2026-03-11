@@ -1,7 +1,6 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
@@ -9,19 +8,11 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { OpenMeteoGeolocationCityToCoordinatesResponseModel } from '../models/geolocation.model';
 import { OpenMeteoGeolocationService } from '../services/open-meteo-geolocation.service';
-import {
-	WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME,
-	WEATHER_OPEN_METEO_PLUGIN_NAME,
-} from '../weather-open-meteo.constants';
+import { WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME } from '../weather-open-meteo.constants';
 
 @ApiTags(WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME)
 @Controller('geolocation')
 export class OpenMeteoGeolocationController {
-	private readonly logger: ExtensionLoggerService = createExtensionLogger(
-		WEATHER_OPEN_METEO_PLUGIN_NAME,
-		'OpenMeteoGeolocationController',
-	);
-
 	constructor(private readonly geolocationService: OpenMeteoGeolocationService) {}
 
 	@ApiOperation({

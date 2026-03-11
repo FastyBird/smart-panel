@@ -118,7 +118,7 @@ export class OpenMeteoProvider implements IWeatherProvider {
 		}
 
 		// If still over limit, remove oldest entries
-		if (this.cache.size > this.CACHE_MAX_SIZE) {
+		if (this.cache.size >= this.CACHE_MAX_SIZE) {
 			const entries = [...this.cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
 			const toRemove = this.cache.size - this.CACHE_MAX_SIZE;
 
