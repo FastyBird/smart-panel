@@ -83,14 +83,18 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 			return;
 		}
 
-		searchCities(query).then((results) => {
-			const suggestions: ISearchSuggestion[] = results.map((city) => ({
-				...city,
-				value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
-			}));
+		searchCities(query)
+			.then((results) => {
+				const suggestions: ISearchSuggestion[] = results.map((city) => ({
+					...city,
+					value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
+				}));
 
-			cb(suggestions as unknown as Record<string, unknown>[]);
-		});
+				cb(suggestions as unknown as Record<string, unknown>[]);
+			})
+			.catch(() => {
+				cb([]);
+			});
 	};
 
 	const handleCitySelect = (item: Record<string, unknown>): void => {
