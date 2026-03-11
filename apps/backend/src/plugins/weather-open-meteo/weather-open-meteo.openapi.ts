@@ -6,6 +6,10 @@ import { UpdateOpenMeteoConfigDto } from './dto/update-config.dto';
 import { UpdateOpenMeteoLocationDto } from './dto/update-location.dto';
 import { OpenMeteoLocationEntity } from './entities/locations-open-meteo.entity';
 import { OpenMeteoConfigModel } from './models/config.model';
+import {
+	OpenMeteoGeolocationCityModel,
+	OpenMeteoGeolocationCityToCoordinatesResponseModel,
+} from './models/geolocation.model';
 
 export const WEATHER_OPEN_METEO_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	OpenMeteoLocationEntity,
@@ -13,4 +17,6 @@ export const WEATHER_OPEN_METEO_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	CreateOpenMeteoLocationDto,
 	UpdateOpenMeteoLocationDto,
 	UpdateOpenMeteoConfigDto,
+	OpenMeteoGeolocationCityModel,
+	OpenMeteoGeolocationCityToCoordinatesResponseModel,
 ];

@@ -84,6 +84,7 @@ import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
 import { TilesScenePlugin } from './plugins/tiles-scene';
 import { TilesTimePlugin } from './plugins/tiles-time';
 import { TilesWeatherPlugin } from './plugins/tiles-weather';
+import { WeatherOpenMeteoPlugin } from './plugins/weather-open-meteo';
 import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap';
 import { weatherOpenweathermapOnecallPlugin as WeatherOpenweathermapOnecallPlugin } from './plugins/weather-openweathermap-onecall';
 
@@ -191,6 +192,7 @@ app.use(TilesWeatherPlugin, pluginOptions);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
 app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
+app.use(WeatherOpenMeteoPlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
 app.use(ScenesLocalPlugin, pluginOptions);

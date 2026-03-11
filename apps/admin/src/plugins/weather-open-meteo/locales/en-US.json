@@ -1,0 +1,77 @@
+{
+	"headings": {
+		"aboutSettings": "Open-Meteo weather settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"unit": {
+				"title": "Temperature unit",
+				"placeholder": "Select temperature unit",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Name",
+				"description": "A friendly name for this location",
+				"placeholder": "e.g., Home, Office, Beach House",
+				"validation": {
+					"required": "Name is required"
+				}
+			},
+			"citySearch": {
+				"title": "Search city",
+				"placeholder": "Start typing to search for a city...",
+				"description": "Search for a city and we'll auto-fill the coordinates"
+			},
+			"latitude": {
+				"title": "Latitude",
+				"placeholder": "e.g., 51.5074",
+				"validation": {
+					"required": "Latitude is required",
+					"range": "Latitude must be between -90 and 90"
+				}
+			},
+			"longitude": {
+				"title": "Longitude",
+				"placeholder": "e.g., -0.1278",
+				"validation": {
+					"required": "Longitude is required",
+					"range": "Longitude must be between -180 and 180"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "My location"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Open-Meteo settings have been updated",
+			"notEdited": "Failed to update Open-Meteo settings"
+		},
+		"locations": {
+			"created": "Location \"{location}\" has been created",
+			"notCreated": "Failed to create location \"{location}\"",
+			"edited": "Location \"{location}\" has been updated",
+			"notEdited": "Failed to update location \"{location}\""
+		},
+		"geolocationNotSupported": "Geolocation is not supported by your browser",
+		"geolocationDenied": "Location access was denied. Please enable location permissions.",
+		"geolocationUnavailable": "Location information is unavailable",
+		"geolocationTimeout": "The request to get your location timed out",
+		"geolocationError": "An error occurred while getting your location"
+	},
+	"texts": {
+		"aboutSettings": "Configure your Open-Meteo weather settings. This provider is free and requires no API key.",
+		"orEnterManually": "Or enter location manually"
+	}
+}

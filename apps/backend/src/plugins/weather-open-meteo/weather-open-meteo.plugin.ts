@@ -16,12 +16,14 @@ import { LocationsTypeMapperService } from '../../modules/weather/services/locat
 import { WeatherProviderRegistryService } from '../../modules/weather/services/weather-provider-registry.service';
 import { WeatherModule } from '../../modules/weather/weather.module';
 
+import { OpenMeteoGeolocationController } from './controllers/geolocation.controller';
 import { CreateOpenMeteoLocationDto } from './dto/create-location.dto';
 import { UpdateOpenMeteoConfigDto } from './dto/update-config.dto';
 import { UpdateOpenMeteoLocationDto } from './dto/update-location.dto';
 import { OpenMeteoLocationEntity } from './entities/locations-open-meteo.entity';
 import { OpenMeteoConfigModel } from './models/config.model';
 import { OpenMeteoProvider } from './platforms/open-meteo.provider';
+import { OpenMeteoGeolocationService } from './services/open-meteo-geolocation.service';
 import { OpenMeteoHttpService } from './services/open-meteo-http.service';
 import {
 	WEATHER_OPEN_METEO_PLUGIN_API_TAG_DESCRIPTION,
@@ -44,8 +46,9 @@ import { WEATHER_OPEN_METEO_PLUGIN_SWAGGER_EXTRA_MODELS } from './weather-open-m
 		SwaggerModule,
 		ExtensionsModule,
 	],
-	providers: [OpenMeteoHttpService, OpenMeteoProvider],
-	exports: [OpenMeteoHttpService, OpenMeteoProvider],
+	controllers: [OpenMeteoGeolocationController],
+	providers: [OpenMeteoHttpService, OpenMeteoGeolocationService, OpenMeteoProvider],
+	exports: [OpenMeteoHttpService, OpenMeteoGeolocationService, OpenMeteoProvider],
 })
 export class WeatherOpenMeteoPlugin implements OnModuleInit {
 	constructor(
