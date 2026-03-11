@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -36,7 +36,11 @@ export class OpenMeteoGeolocationController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('city-to-coordinates')
 	async getCityCoordinates(@Query('city') city: string): Promise<OpenMeteoGeolocationCityToCoordinatesResponseModel> {
-		const data = await this.geolocationService.getCoordinatesByCity(city);
+		if (!city || city.trim().length < 2) {
+			throw new BadRequestException('Query parameter "city" must be at least 2 characters');
+		}
+
+		const data = await this.geolocationService.getCoordinatesByCity(city.trim());
 
 		const response = new OpenMeteoGeolocationCityToCoordinatesResponseModel();
 		response.data = data || [];

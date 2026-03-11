@@ -52,8 +52,6 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
 		const { lat, lng } = e.latlng;
 
-		setMarker(lat, lng);
-
 		model.latitude = lat;
 		model.longitude = lng;
 	};
@@ -89,8 +87,6 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 		model.longitude = suggestion.lon;
 		model.countryCode = suggestion.country_code;
 		searchQuery.value = '';
-
-		setMarker(suggestion.lat, suggestion.lon);
 	};
 
 	const getMyLocation = (): void => {
@@ -108,8 +104,6 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 
 				model.latitude = lat;
 				model.longitude = lng;
-
-				setMarker(lat, lng);
 
 				isGettingLocation.value = false;
 			},
@@ -144,29 +138,10 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	});
 
 	watch(
-		() => model.latitude,
-		(): void => {
-			if (
-				model.latitude !== null &&
-				typeof model.latitude !== 'undefined' &&
-				model.longitude !== null &&
-				typeof model.longitude !== 'undefined'
-			) {
-				setMarker(model.latitude, model.longitude);
-			}
-		}
-	);
-
-	watch(
-		() => model.longitude,
-		(): void => {
-			if (
-				model.latitude !== null &&
-				typeof model.latitude !== 'undefined' &&
-				model.longitude !== null &&
-				typeof model.longitude !== 'undefined'
-			) {
-				setMarker(model.latitude, model.longitude);
+		() => [model.latitude, model.longitude] as const,
+		([lat, lon]): void => {
+			if (lat !== null && lon !== null) {
+				setMarker(Number(lat), Number(lon));
 			}
 		}
 	);

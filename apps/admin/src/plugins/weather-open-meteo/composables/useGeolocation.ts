@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
 import { useBackend } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
@@ -19,7 +19,7 @@ interface IGeolocationCityResponse {
 
 export interface IUseGeolocation {
 	searchCities: (query: string) => Promise<IGeolocationCity[]>;
-	isSearching: ReturnType<typeof ref<boolean>>;
+	isSearching: Ref<boolean>;
 }
 
 export const useGeolocation = (): IUseGeolocation => {
