@@ -316,7 +316,7 @@ export class WeatherService implements OnApplicationBootstrap {
 			const [currentResult, forecast, hourly] = await Promise.all([
 				this.fetchCurrentWeather(location, force),
 				this.fetchForecastWeather(location, force),
-				fetchHourly ? this.fetchHourlyForecast(location, force) : Promise.resolve(null),
+				fetchHourly ? this.fetchHourlyForecast(location, force) : Promise.resolve<ForecastHourModel[] | null>(null),
 			]);
 
 			if (currentResult && forecast) {

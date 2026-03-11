@@ -2,4 +2,6 @@ import type { IWeatherHourlyForecast } from '../store/weather-hourly-forecast.st
 
 export interface ILocationHourlyForecastProps {
 	hourlyForecast: IWeatherHourlyForecast;
+	sunrise?: Date | string | null;
+	sunset?: Date | string | null;
 }

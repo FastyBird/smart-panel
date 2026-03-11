@@ -156,7 +156,7 @@
 				</div>
 			</template>
 
-			<location-hourly-forecast :hourly-forecast="weather.hourlyForecast" />
+			<location-hourly-forecast :hourly-forecast="weather.hourlyForecast" :sunrise="weather.current?.sunrise" :sunset="weather.current?.sunset" />
 		</el-card>
 
 		<el-card class="mt-4 mb-2">
