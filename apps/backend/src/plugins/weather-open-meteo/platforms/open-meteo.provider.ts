@@ -110,13 +110,20 @@ export class OpenMeteoProvider implements IWeatherProvider {
 	}
 
 	private evictExpiredEntries(now: number): void {
-		if (this.cache.size <= this.CACHE_MAX_SIZE) {
-			return;
-		}
-
+		// Always remove expired entries first
 		for (const [key, entry] of this.cache) {
 			if (now - entry.timestamp >= this.CACHE_TTL_MS) {
 				this.cache.delete(key);
+			}
+		}
+
+		// If still over limit, remove oldest entries
+		if (this.cache.size > this.CACHE_MAX_SIZE) {
+			const entries = [...this.cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+			const toRemove = this.cache.size - this.CACHE_MAX_SIZE;
+
+			for (let i = 0; i < toRemove; i++) {
+				this.cache.delete(entries[i][0]);
 			}
 		}
 	}

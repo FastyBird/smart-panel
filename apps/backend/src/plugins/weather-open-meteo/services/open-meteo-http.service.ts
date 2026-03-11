@@ -143,8 +143,8 @@ function wmoToOwmCode(wmoCode: number): number {
  * `new Date()` would incorrectly interpret these in the server's timezone.
  */
 function parseLocalDate(dateStr: string, timezone: string): Date {
-	// Use Intl to find the UTC offset for the given timezone at the approximate time
-	const naive = new Date(dateStr + 'Z'); // treat as UTC temporarily to get a reference point
+	// Treat the date string as UTC temporarily to get a reference point
+	const naive = new Date(dateStr + 'Z');
 
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone,
@@ -157,24 +157,31 @@ function parseLocalDate(dateStr: string, timezone: string): Date {
 		hourCycle: 'h23',
 	});
 
-	// Format the naive UTC date in the target timezone to find the offset
-	const parts = formatter.formatToParts(naive);
-	const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '0';
+	// Compute the UTC offset at a given instant by formatting it in the target timezone
+	const getOffsetMs = (instant: Date): number => {
+		const parts = formatter.formatToParts(instant);
+		const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '0';
 
-	const tzYear = parseInt(get('year'), 10);
-	const tzMonth = parseInt(get('month'), 10) - 1;
-	const tzDay = parseInt(get('day'), 10);
-	const tzHour = parseInt(get('hour'), 10);
-	const tzMinute = parseInt(get('minute'), 10);
-	const tzSecond = parseInt(get('second'), 10);
+		const local = Date.UTC(
+			parseInt(get('year'), 10),
+			parseInt(get('month'), 10) - 1,
+			parseInt(get('day'), 10),
+			parseInt(get('hour'), 10),
+			parseInt(get('minute'), 10),
+			parseInt(get('second'), 10),
+		);
 
-	// What the timezone thinks naive UTC is in local time
-	const localAtUtc = new Date(Date.UTC(tzYear, tzMonth, tzDay, tzHour, tzMinute, tzSecond));
-	// The offset is the difference: localAtUtc - naive
-	const offsetMs = localAtUtc.getTime() - naive.getTime();
+		return local - instant.getTime();
+	};
 
-	// The actual UTC time is the naive time minus the offset
-	return new Date(naive.getTime() - offsetMs);
+	// First estimate: compute offset at the naive (UTC) interpretation
+	const offset1 = getOffsetMs(naive);
+	const estimate = new Date(naive.getTime() - offset1);
+
+	// Second pass: re-check offset at the estimated UTC time to handle DST boundaries
+	const offset2 = getOffsetMs(estimate);
+
+	return new Date(naive.getTime() - offset2);
 }
 
 @Injectable()
