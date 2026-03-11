@@ -38,7 +38,7 @@
 					<el-button
 						:loading="isGettingLocation"
 						class="px-2!"
-						@click="getMyLocation"
+						@click="getMyLocationClearCity"
 					>
 						<template #icon>
 							<icon icon="mdi:map-marker-account-outline" />
@@ -209,5 +209,10 @@ const onMapClickClearCity = (e: { latlng: { lat: number; lng: number } }): void 
 const onMarkerMoveEndClearCity = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
 	locationData.city = '';
 	onMarkerMoveEnd(e);
+};
+
+const getMyLocationClearCity = (): void => {
+	locationData.city = '';
+	getMyLocation();
 };
 </script>
