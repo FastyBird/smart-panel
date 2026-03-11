@@ -65,6 +65,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
 		const { lat, lng } = e.latlng;
 
+		model.name = '';
 		model.latitude = lat;
 		model.longitude = lng;
 	};
@@ -72,6 +73,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	const onMarkerMoveEnd = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
 		const { lat, lng } = e.target.getLatLng();
 
+		model.name = '';
 		model.latitude = lat;
 		model.longitude = lng;
 		marker.value = [lat, lng];
@@ -162,7 +164,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 		() => [model.latitude, model.longitude] as const,
 		([lat, lon]): void => {
 			if (isValidCoordinate(lat) && isValidCoordinate(lon)) {
-				setMarker(Number(lat), Number(lon));
+				marker.value = [Number(lat), Number(lon)];
 			}
 		}
 	);
