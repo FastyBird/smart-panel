@@ -22,7 +22,7 @@ export interface IUseLocationMap {
 	zoom: Ref<number>;
 	center: Ref<[number, number]>;
 	marker: Ref<[number, number] | null>;
-	setMarker: (lat: number, lon: number) => void;
+	setMarker: (lat: number, lon: number, setZoom?: number) => void;
 	onMapClick: (e: { latlng: { lat: number; lng: number } }) => void;
 	onMarkerMoveEnd: (e: { target: { getLatLng: () => { lat: number; lng: number } } }) => void;
 	handleCitySearch: (query: string, cb: (suggestions: Record<string, unknown>[]) => void) => void;
@@ -43,10 +43,13 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
 	const marker = ref<[number, number] | null>(null);
 
-	const setMarker = (lat: number, lon: number): void => {
+	const setMarker = (lat: number, lon: number, setZoom?: number): void => {
 		marker.value = [lat, lon];
 		center.value = [lat, lon];
-		zoom.value = 18;
+
+		if (setZoom !== undefined) {
+			zoom.value = setZoom;
+		}
 	};
 
 	const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
@@ -133,7 +136,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 
 	onBeforeMount((): void => {
 		if (model.latitude !== null && model.longitude !== null) {
-			setMarker(model.latitude, model.longitude);
+			setMarker(model.latitude, model.longitude, 18);
 		}
 	});
 

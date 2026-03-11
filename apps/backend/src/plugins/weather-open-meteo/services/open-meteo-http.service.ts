@@ -53,6 +53,37 @@ const WMO_CODE_MAP: Record<number, WmoMapping> = {
 	99: { main: 'Thunderstorm', description: 'thunderstorm with heavy hail', icon: '11d', iconNight: '11n' },
 };
 
+const CZECH_WMO_DESCRIPTION_MAP: Record<number, string> = {
+	0: 'jasno',
+	1: 'převážně jasno',
+	2: 'polojasno',
+	3: 'zataženo',
+	45: 'mlha',
+	48: 'namrzající mlha',
+	51: 'slabé mrholení',
+	53: 'mrholení',
+	55: 'silné mrholení',
+	56: 'slabé mrznoucí mrholení',
+	57: 'silné mrznoucí mrholení',
+	61: 'slabý déšť',
+	63: 'déšť',
+	65: 'silný déšť',
+	66: 'slabý mrznoucí déšť',
+	67: 'silný mrznoucí déšť',
+	71: 'slabé sněžení',
+	73: 'sněžení',
+	75: 'silné sněžení',
+	77: 'sněhové krupky',
+	80: 'slabé přeháňky',
+	81: 'přeháňky',
+	82: 'silné přeháňky',
+	85: 'slabé sněhové přeháňky',
+	86: 'silné sněhové přeháňky',
+	95: 'bouřka',
+	96: 'bouřka se slabým krupobitím',
+	99: 'bouřka se silným krupobitím',
+};
+
 /**
  * Map WMO code to OpenWeatherMap-compatible code ranges for compatibility.
  */
@@ -304,38 +335,7 @@ export class OpenMeteoHttpService {
 	}
 
 	private getCzechDescription(wmoCode: number): string | null {
-		const czechMap: Record<number, string> = {
-			0: 'jasno',
-			1: 'převážně jasno',
-			2: 'polojasno',
-			3: 'zataženo',
-			45: 'mlha',
-			48: 'namrzající mlha',
-			51: 'slabé mrholení',
-			53: 'mrholení',
-			55: 'silné mrholení',
-			56: 'slabé mrznoucí mrholení',
-			57: 'silné mrznoucí mrholení',
-			61: 'slabý déšť',
-			63: 'déšť',
-			65: 'silný déšť',
-			66: 'slabý mrznoucí déšť',
-			67: 'silný mrznoucí déšť',
-			71: 'slabé sněžení',
-			73: 'sněžení',
-			75: 'silné sněžení',
-			77: 'sněhové krupky',
-			80: 'slabé přeháňky',
-			81: 'přeháňky',
-			82: 'silné přeháňky',
-			85: 'slabé sněhové přeháňky',
-			86: 'silné sněhové přeháňky',
-			95: 'bouřka',
-			96: 'bouřka se slabým krupobitím',
-			99: 'bouřka se silným krupobitím',
-		};
-
-		return czechMap[wmoCode] ?? null;
+		return CZECH_WMO_DESCRIPTION_MAP[wmoCode] ?? null;
 	}
 
 	private getConfig(): OpenMeteoConfigModel {
