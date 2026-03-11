@@ -27,7 +27,7 @@ export interface IUseLocationMap {
 	onMarkerMoveEnd: (e: { target: { getLatLng: () => { lat: number; lng: number } } }) => void;
 	handleCitySearch: (query: string, cb: (suggestions: Record<string, unknown>[]) => void) => void;
 	handleCitySelect: (item: Record<string, unknown>) => void;
-	getMyLocation: (onSuccess?: () => void) => void;
+	getMyLocation: (onSuccess?: (() => void) | Event) => void;
 }
 
 export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
@@ -109,7 +109,8 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 		setMarker(suggestion.lat, suggestion.lon, 12);
 	};
 
-	const getMyLocation = (onSuccess?: () => void): void => {
+	const getMyLocation = (onSuccess?: (() => void) | Event): void => {
+		const callback = typeof onSuccess === 'function' ? onSuccess : undefined;
 		if (!navigator.geolocation) {
 			flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationNotSupported'));
 			return;
@@ -127,7 +128,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 
 				setMarker(lat, lng, 12);
 
-				onSuccess?.();
+				callback?.();
 
 				isGettingLocation.value = false;
 			},

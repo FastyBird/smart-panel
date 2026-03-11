@@ -212,8 +212,7 @@ const onMarkerMoveEndClearCity = (e: { target: { getLatLng: () => { lat: number;
 };
 
 const getMyLocationClearCity = (): void => {
-	getMyLocation(() => {
-		locationData.city = '';
-	});
+	locationData.city = '';
+	getMyLocation();
 };
 </script>

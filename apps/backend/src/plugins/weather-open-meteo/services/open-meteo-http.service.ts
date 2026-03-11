@@ -246,7 +246,7 @@ export class OpenMeteoHttpService {
 			const response = await fetch(url);
 			const data = (await response.json()) as unknown;
 
-			if (!response.ok || response.status !== 200) {
+			if (!response.ok) {
 				this.logger.error(`[WEATHER] Open-Meteo API request failed: ${JSON.stringify(data)}`);
 				return null;
 			}
