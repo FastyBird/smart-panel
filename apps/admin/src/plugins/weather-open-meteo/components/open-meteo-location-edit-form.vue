@@ -195,7 +195,7 @@ const rules: FormRules<ILocationModel> = {
 			validator: (_rule, value, callback) => {
 				if (value === null || value === undefined || value === '') {
 					callback(new Error(t('weatherOpenMeteoPlugin.fields.locations.latitude.validation.required')));
-				} else if (Number(value) < -90 || Number(value) > 90) {
+				} else if (isNaN(Number(value)) || Number(value) < -90 || Number(value) > 90) {
 					callback(new Error(t('weatherOpenMeteoPlugin.fields.locations.latitude.validation.range')));
 				} else {
 					callback();
@@ -209,7 +209,7 @@ const rules: FormRules<ILocationModel> = {
 			validator: (_rule, value, callback) => {
 				if (value === null || value === undefined || value === '') {
 					callback(new Error(t('weatherOpenMeteoPlugin.fields.locations.longitude.validation.required')));
-				} else if (Number(value) < -180 || Number(value) > 180) {
+				} else if (isNaN(Number(value)) || Number(value) < -180 || Number(value) > 180) {
 					callback(new Error(t('weatherOpenMeteoPlugin.fields.locations.longitude.validation.range')));
 				} else {
 					callback();
