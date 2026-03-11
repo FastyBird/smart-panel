@@ -70,9 +70,10 @@ export const getWeatherIcon = (
 };
 
 /**
- * Determines if a given time is during nighttime by comparing time-of-day
- * (hours and minutes) against sunrise/sunset. This works correctly even when
- * the reference time is on a different day than the sunrise/sunset timestamps.
+ * Determines if a given time is during nighttime by comparing UTC time-of-day
+ * against sunrise/sunset. Uses UTC to avoid browser-timezone mismatches when
+ * the weather location is in a different timezone. Handles the case where
+ * sunrise/sunset straddle midnight UTC.
  *
  * @param sunrise - Sunrise time
  * @param sunset - Sunset time
@@ -92,9 +93,15 @@ export const isNightTime = (
 	const sr = sunrise instanceof Date ? sunrise : new Date(sunrise);
 	const ss = sunset instanceof Date ? sunset : new Date(sunset);
 
-	const refMinutes = ref.getHours() * 60 + ref.getMinutes();
-	const srMinutes = sr.getHours() * 60 + sr.getMinutes();
-	const ssMinutes = ss.getHours() * 60 + ss.getMinutes();
+	const refMinutes = ref.getUTCHours() * 60 + ref.getUTCMinutes();
+	const srMinutes = sr.getUTCHours() * 60 + sr.getUTCMinutes();
+	const ssMinutes = ss.getUTCHours() * 60 + ss.getUTCMinutes();
 
-	return refMinutes < srMinutes || refMinutes >= ssMinutes;
+	if (srMinutes <= ssMinutes) {
+		// Normal: sunrise and sunset on the same UTC day
+		return refMinutes < srMinutes || refMinutes >= ssMinutes;
+	}
+
+	// Wrapped: sunrise/sunset straddle midnight UTC
+	return refMinutes >= ssMinutes && refMinutes < srMinutes;
 };
