@@ -54,6 +54,7 @@ export class ShellyNgService implements IManagedPluginService {
 	 */
 	private readonly discoveryQueue: Device[] = [];
 	private processingDiscovery = false;
+	private discoveryGeneration = 0;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -329,6 +330,7 @@ export class ShellyNgService implements IManagedPluginService {
 		this.shellies = undefined;
 
 		this.discoveryQueue.length = 0;
+		this.discoveryGeneration++;
 		this.processingDiscovery = false;
 
 		this.delegatesRegistryService.detach();
@@ -366,8 +368,10 @@ export class ShellyNgService implements IManagedPluginService {
 
 		this.processingDiscovery = true;
 
+		const generation = this.discoveryGeneration;
+
 		try {
-			while (this.discoveryQueue.length > 0) {
+			while (this.discoveryQueue.length > 0 && this.discoveryGeneration === generation) {
 				const device = this.discoveryQueue.shift();
 
 				if (!device) {
@@ -387,7 +391,12 @@ export class ShellyNgService implements IManagedPluginService {
 				}
 			}
 		} finally {
-			this.processingDiscovery = false;
+			// Only clear the flag if this is still the active generation.
+			// If doStop() incremented the generation and reset the flag,
+			// a stale finally must not overwrite the new processor's state.
+			if (this.discoveryGeneration === generation) {
+				this.processingDiscovery = false;
+			}
 		}
 	}
 
