@@ -355,10 +355,12 @@ export class DelegatesManagerService {
 					if (power === null) {
 						// Property may not be created yet - this is expected during device initialization
 					} else {
-						await this.setDefaultPropertyValue(device.id, power, comp.apower);
+						await this.setDefaultPropertyValue(device.id, power, Math.max(0, comp.apower));
 
 						this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
+							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) =>
+								this.handleChange(power, Math.max(0, n), false),
+							);
 						});
 
 						if (typeof comp.voltage !== 'undefined') {
@@ -1497,10 +1499,12 @@ export class DelegatesManagerService {
 				throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
 			}
 
-			await this.setDefaultPropertyValue(device.id, power, comp.apower);
+			await this.setDefaultPropertyValue(device.id, power, Math.max(0, comp.apower));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-				this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
+				this.handleNumericChange(comp.key, 'apower', power.id, val, (n) =>
+					this.handleChange(power, Math.max(0, n), false),
+				);
 			});
 
 			if (typeof comp.voltage !== 'undefined') {
