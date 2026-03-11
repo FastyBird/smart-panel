@@ -118,7 +118,7 @@ import 'leaflet/dist/leaflet.css';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useFlashMessage } from '../../../common';
-import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-openweathermap-onecall/composables/composables';
+import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-open-meteo/composables/composables';
 import { useAppOnboarding } from '../composables/composables';
 
 defineOptions({
