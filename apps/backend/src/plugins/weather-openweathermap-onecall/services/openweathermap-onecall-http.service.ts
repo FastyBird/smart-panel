@@ -201,18 +201,20 @@ export class OpenWeatherMapOneCallHttpService {
 	}
 
 	private transformHourlyForecast(hourly: OpenWeatherMapOneCallHourlyWeatherDto[]): ForecastHourModel[] {
-		return hourly.map((hour) =>
-			toInstance(ForecastHourModel, {
-				temperature: hour.temp,
-				feels_like: hour.feels_like,
-				pressure: hour.pressure,
-				humidity: hour.humidity,
-				weather: {
-					code: hour.weather[0].id,
-					main: hour.weather[0].main,
-					description: hour.weather[0].description,
-					icon: hour.weather[0].icon,
-				},
+		return hourly
+			.filter((hour) => hour.weather.length > 0)
+			.map((hour) =>
+				toInstance(ForecastHourModel, {
+					temperature: hour.temp,
+					feels_like: hour.feels_like,
+					pressure: hour.pressure,
+					humidity: hour.humidity,
+					weather: {
+						code: hour.weather[0].id,
+						main: hour.weather[0].main,
+						description: hour.weather[0].description,
+						icon: hour.weather[0].icon,
+					},
 				wind: {
 					speed: hour.wind_speed,
 					deg: hour.wind_deg,

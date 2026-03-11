@@ -338,6 +338,8 @@ class WeatherModuleService {
     final deletedId = payload['id'] as String?;
     if (deletedId != null) {
       _locationsRepository.removeLocation(deletedId);
+      _currentWeatherRepository.removeLocation(deletedId);
+      _forecastWeatherRepository.removeLocation(deletedId);
       _hourlyForecastWeatherRepository.removeLocation(deletedId);
     }
   }

@@ -1,4 +1,7 @@
+import 'package:fastybird_smart_panel/api/models/weather_module_data_forecast_hour.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_hour.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/weather_info.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/wind.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
@@ -62,35 +65,53 @@ class HourlyForecastWeatherRepository extends Repository<List<ForecastHourModel>
       () async {
         final response = await apiClient.getWeatherModuleAllWeather();
 
-        // Access raw response JSON to get hourly_forecast data, since the
-        // generated API type may not yet include this field
-        final rawData = response.response.data as Map<String, dynamic>?;
-        final rawDataList = rawData?['data'] as List<dynamic>?;
+        final allWeather = response.data.data;
 
-        if (rawDataList != null) {
-          for (final rawLocationWeather in rawDataList) {
-            if (rawLocationWeather is! Map<String, dynamic>) continue;
+        for (final locationWeather in allWeather) {
+          final hourlyForecast = locationWeather.hourlyForecast;
 
-            final locationId = rawLocationWeather['location_id'] as String?;
-            final hourlyForecastRaw = rawLocationWeather['hourly_forecast'];
+          if (hourlyForecast != null && hourlyForecast.isNotEmpty) {
+            final hourlyModels = hourlyForecast
+                .map((hour) => _mapApiModelToForecastHour(hour))
+                .toList();
+            final locationId = locationWeather.locationId;
 
-            if (hourlyForecastRaw != null && hourlyForecastRaw is List && hourlyForecastRaw.isNotEmpty) {
-              final hourlyModels = hourlyForecastRaw
-                  .map((hour) => ForecastHourModel.fromJson(Map<String, dynamic>.from(hour)))
-                  .toList();
-
-              await _insertHourlyModels(hourlyModels, locationId: locationId);
-            }
+            await _insertHourlyModels(hourlyModels, locationId: locationId);
           }
         }
 
         if (kDebugMode) {
           debugPrint(
-            '[WEATHER MODULE][HOURLY] Fetched hourly forecast for ${rawDataList?.length ?? 0} locations',
+            '[WEATHER MODULE][HOURLY] Fetched hourly forecast for ${allWeather.length} locations',
           );
         }
       },
       'fetch hourly forecast weather',
+    );
+  }
+
+  /// Map API model to panel ForecastHourModel
+  ForecastHourModel _mapApiModelToForecastHour(WeatherModuleDataForecastHour api) {
+    return ForecastHourModel(
+      temperature: api.temperature.toDouble(),
+      feelsLike: api.feelsLike.toDouble(),
+      pressure: api.pressure.toInt(),
+      humidity: api.humidity.toInt(),
+      weather: WeatherInfoModel(
+        code: api.weather.code,
+        main: api.weather.main,
+        description: api.weather.description,
+        icon: api.weather.icon,
+      ),
+      wind: WindModel(
+        speed: api.wind.speed.toDouble(),
+        deg: api.wind.deg.toInt(),
+        gust: api.wind.gust?.toDouble(),
+      ),
+      clouds: api.clouds.toDouble(),
+      rain: api.rain?.toDouble(),
+      snow: api.snow?.toDouble(),
+      dateTime: api.dateTime,
     );
   }
 
