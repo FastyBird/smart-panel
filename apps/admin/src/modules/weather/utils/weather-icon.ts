@@ -4,18 +4,20 @@
  * @param code - Weather condition code (OpenWeatherMap codes)
  * @param sunrise - Sunrise time
  * @param sunset - Sunset time
+ * @param referenceTime - Optional time to check against sunrise/sunset (defaults to now)
  * @returns Icon name for Iconify (wi: prefix)
  */
 export const getWeatherIcon = (
 	code: number | null | undefined,
 	sunrise?: Date | string | null,
-	sunset?: Date | string | null
+	sunset?: Date | string | null,
+	referenceTime?: Date | null
 ): string => {
 	if (code === null || code === undefined) {
 		return 'wi:na';
 	}
 
-	const isNight = isNightTime(sunrise, sunset);
+	const isNight = isNightTime(sunrise, sunset, referenceTime);
 
 	// Thunderstorms (200-299)
 	if (code >= 200 && code < 300) {
@@ -68,20 +70,25 @@ export const getWeatherIcon = (
 };
 
 /**
- * Determines if the current time is during nighttime.
+ * Determines if a given time is during nighttime.
  *
  * @param sunrise - Sunrise time
  * @param sunset - Sunset time
- * @returns True if current time is before sunrise or after sunset
+ * @param referenceTime - Time to check (defaults to current time)
+ * @returns True if reference time is before sunrise or after sunset
  */
-export const isNightTime = (sunrise?: Date | string | null, sunset?: Date | string | null): boolean => {
+export const isNightTime = (
+	sunrise?: Date | string | null,
+	sunset?: Date | string | null,
+	referenceTime?: Date | null
+): boolean => {
 	if (!sunrise || !sunset) {
 		return false;
 	}
 
-	const now = new Date();
+	const ref = referenceTime ?? new Date();
 	const sr = sunrise instanceof Date ? sunrise : new Date(sunrise);
 	const ss = sunset instanceof Date ? sunset : new Date(sunset);
 
-	return now <= sr || now >= ss;
+	return ref <= sr || ref >= ss;
 };

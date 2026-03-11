@@ -208,7 +208,7 @@ export class OpenMeteoHttpService {
 	async fetchWeatherData(location: OpenMeteoLocationEntity): Promise<{
 		current: CurrentDayModel;
 		forecast: ForecastDayModel[];
-		hourly: ForecastHourModel[];
+		hourly: ForecastHourModel[] | null;
 		location: LocationModel;
 	} | null> {
 		const temperatureUnit = this.getUnits();
@@ -292,7 +292,7 @@ export class OpenMeteoHttpService {
 			const timezone = openMeteoData.timezone ?? 'UTC';
 			const current = this.transformCurrentWeather(openMeteoData.current, openMeteoData.daily, timezone);
 			const forecast = this.transformDailyForecast(openMeteoData.daily, timezone);
-			const hourly = openMeteoData.hourly ? this.transformHourlyForecast(openMeteoData.hourly, timezone) : [];
+			const hourly = openMeteoData.hourly ? this.transformHourlyForecast(openMeteoData.hourly, timezone) : null;
 
 			const locationModel = toInstance(LocationModel, {
 				name: location.name,

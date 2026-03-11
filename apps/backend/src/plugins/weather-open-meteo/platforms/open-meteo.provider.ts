@@ -21,7 +21,7 @@ import {
 interface CachedWeatherData {
 	current: CurrentDayModel;
 	forecast: ForecastDayModel[];
-	hourly: ForecastHourModel[];
+	hourly: ForecastHourModel[] | null;
 	location: LocationModel;
 	timestamp: number;
 }

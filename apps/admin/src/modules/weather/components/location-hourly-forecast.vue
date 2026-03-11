@@ -10,7 +10,7 @@
 					{{ formatHour(hour.dateTime) }}
 				</div>
 				<el-icon :size="28">
-					<icon :icon="getWeatherIcon(hour.weather.code, props.sunrise, props.sunset)" />
+					<icon :icon="getWeatherIcon(hour.weather.code, props.sunrise, props.sunset, hour.dateTime)" />
 				</el-icon>
 				<div class="font-bold text-sm">
 					{{ formatTemp(hour.temperature) }}°{{ temperatureUnit }}
