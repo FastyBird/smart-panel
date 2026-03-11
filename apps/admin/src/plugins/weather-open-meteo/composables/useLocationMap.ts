@@ -43,6 +43,16 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
 	const marker = ref<[number, number] | null>(null);
 
+	const isValidCoordinate = (value: unknown): value is number => {
+		if (value === null || value === undefined || value === '') {
+			return false;
+		}
+
+		const num = Number(value);
+
+		return !isNaN(num) && isFinite(num);
+	};
+
 	const setMarker = (lat: number, lon: number, setZoom?: number): void => {
 		marker.value = [lat, lon];
 		center.value = [lat, lon];
@@ -135,15 +145,15 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 	};
 
 	onBeforeMount((): void => {
-		if (model.latitude !== null && model.longitude !== null) {
-			setMarker(model.latitude, model.longitude, 18);
+		if (isValidCoordinate(model.latitude) && isValidCoordinate(model.longitude)) {
+			setMarker(Number(model.latitude), Number(model.longitude), 18);
 		}
 	});
 
 	watch(
 		() => [model.latitude, model.longitude] as const,
 		([lat, lon]): void => {
-			if (lat !== null && lon !== null) {
+			if (isValidCoordinate(lat) && isValidCoordinate(lon)) {
 				setMarker(Number(lat), Number(lon));
 			}
 		}
