@@ -44,7 +44,8 @@ export class OpenMeteoGeolocationService {
 					name: item.name,
 					lat: item.latitude,
 					lon: item.longitude,
-					country: item.country_code,
+					country: item.country,
+					country_code: item.country_code,
 					state: item.admin1,
 				}),
 			);

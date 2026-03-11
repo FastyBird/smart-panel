@@ -1,4 +1,4 @@
-import { onBeforeMount, reactive, ref, watch, type Ref } from 'vue';
+import { onBeforeMount, ref, watch, type Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useFlashMessage } from '../../../common';
@@ -87,7 +87,7 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 		model.name = `${suggestion.name}${suggestion.state ? `, ${suggestion.state}` : ''}, ${suggestion.country}`;
 		model.latitude = suggestion.lat;
 		model.longitude = suggestion.lon;
-		model.countryCode = suggestion.country;
+		model.countryCode = suggestion.country_code;
 		searchQuery.value = '';
 
 		setMarker(suggestion.lat, suggestion.lon);

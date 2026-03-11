@@ -31,12 +31,20 @@ export class OpenMeteoGeolocationCityModel {
 	lon: number;
 
 	@ApiProperty({
-		description: 'Country code',
+		description: 'Country name',
+		type: 'string',
+		example: 'United Kingdom',
+	})
+	@Expose()
+	country: string;
+
+	@ApiProperty({
+		description: 'Country code (ISO 3166-1 alpha-2)',
 		type: 'string',
 		example: 'GB',
 	})
 	@Expose()
-	country: string;
+	country_code: string;
 
 	@ApiPropertyOptional({
 		description: 'Administrative region',
