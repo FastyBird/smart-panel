@@ -13,7 +13,13 @@ import { ConfigService } from '../../config/services/config.service';
 import { WeatherLocationEntity } from '../entities/locations.entity';
 import { WeatherAlertModel } from '../models/alert.model';
 import { WeatherConfigModel } from '../models/config.model';
-import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
+import {
+	CurrentDayModel,
+	ForecastDayModel,
+	ForecastHourModel,
+	LocationModel,
+	LocationWeatherModel,
+} from '../models/weather.model';
 import { EventType, WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherNotFoundException, WeatherNotSupportedException } from '../weather.exceptions';
 
@@ -30,6 +36,7 @@ export class WeatherService implements OnApplicationBootstrap {
 	private readonly ALERTS_CACHE_TTL = 900000; // 15-minute cache for alerts
 	private readonly CURRENT_CACHE_PREFIX = 'weather-current:';
 	private readonly FORECAST_CACHE_PREFIX = 'weather-forecast:';
+	private readonly HOURLY_CACHE_PREFIX = 'weather-hourly:';
 	private readonly ALERTS_CACHE_PREFIX = 'weather-alerts:';
 
 	constructor(
@@ -166,6 +173,35 @@ export class WeatherService implements OnApplicationBootstrap {
 	}
 
 	/**
+	 * Get hourly forecast for a specific location
+	 */
+	async getHourlyForecast(locationId: string, force = false): Promise<ForecastHourModel[]> {
+		const location = await this.locationsService.findOne(locationId);
+
+		if (!location) {
+			throw new WeatherNotFoundException(`Location with id=${locationId} not found`);
+		}
+
+		const provider = this.providerRegistry.get(location.type);
+
+		if (!provider) {
+			throw new WeatherNotFoundException(`No provider found for location type=${location.type}`);
+		}
+
+		if (!provider.supportsHourlyForecast()) {
+			throw new WeatherNotSupportedException(`Hourly forecast is not supported by provider ${provider.getName()}.`);
+		}
+
+		const hourly = await this.fetchHourlyForecast(location, force);
+
+		if (!hourly) {
+			throw new WeatherNotFoundException(`Hourly forecast for location id=${locationId} could not be loaded`);
+		}
+
+		return hourly;
+	}
+
+	/**
 	 * Get weather alerts for a specific location
 	 */
 	async getAlerts(locationId: string, force = false): Promise<WeatherAlertModel[]> {
@@ -275,16 +311,20 @@ export class WeatherService implements OnApplicationBootstrap {
 		}
 
 		try {
-			const [currentResult, forecast] = await Promise.all([
+			const fetchHourly = provider.supportsHourlyForecast();
+
+			const [currentResult, forecast, hourly] = await Promise.all([
 				this.fetchCurrentWeather(location, force),
 				this.fetchForecastWeather(location, force),
+				fetchHourly ? this.fetchHourlyForecast(location, force) : Promise.resolve<ForecastHourModel[] | null>(null),
 			]);
 
 			if (currentResult && forecast) {
 				return toInstance(LocationWeatherModel, {
-					locationId: location.id,
+					location_id: location.id,
 					current: currentResult.current,
 					forecast,
+					hourly_forecast: hourly,
 					location: currentResult.location,
 				});
 			}
@@ -378,6 +418,36 @@ export class WeatherService implements OnApplicationBootstrap {
 		return null;
 	}
 
+	private async fetchHourlyForecast(
+		location: WeatherLocationEntity,
+		force: boolean,
+	): Promise<ForecastHourModel[] | null> {
+		const cacheKey = `${this.HOURLY_CACHE_PREFIX}${location.id}`;
+
+		if (!force) {
+			const cached = await this.cacheManager.get<ForecastHourModel[]>(cacheKey);
+			if (cached) {
+				this.logger.debug(`Returning cached hourly forecast for location=${location.id}`);
+				return cached;
+			}
+		}
+
+		const provider = this.providerRegistry.get(location.type);
+
+		if (!provider || !provider.supportsHourlyForecast() || !provider.getHourlyForecast) {
+			return null;
+		}
+
+		const hourly = await provider.getHourlyForecast(location);
+
+		if (hourly) {
+			await this.cacheManager.set(cacheKey, hourly, this.CACHE_TTL);
+			return hourly;
+		}
+
+		return null;
+	}
+
 	private async fetchAlerts(location: WeatherLocationEntity, force: boolean): Promise<WeatherAlertModel[]> {
 		const cacheKey = `${this.ALERTS_CACHE_PREFIX}${location.id}`;
 
@@ -407,6 +477,7 @@ export class WeatherService implements OnApplicationBootstrap {
 	private async clearLocationCache(locationId: string): Promise<void> {
 		await this.cacheManager.del(`${this.CURRENT_CACHE_PREFIX}${locationId}`);
 		await this.cacheManager.del(`${this.FORECAST_CACHE_PREFIX}${locationId}`);
+		await this.cacheManager.del(`${this.HOURLY_CACHE_PREFIX}${locationId}`);
 		await this.cacheManager.del(`${this.ALERTS_CACHE_PREFIX}${locationId}`);
 	}
 }

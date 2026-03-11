@@ -5,36 +5,43 @@ import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/hourly_forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
+import 'package:fastybird_smart_panel/modules/weather/views/forecast_hour.dart';
 import 'package:flutter/foundation.dart';
 
 class WeatherService extends ChangeNotifier {
   final CurrentWeatherRepository _currentDayRepository;
   final ForecastWeatherRepository _forecastRepository;
+  final HourlyForecastWeatherRepository _hourlyForecastRepository;
   final LocationsRepository _locationsRepository;
   final ModuleConfigRepository<WeatherConfigModel> _configurationRepository;
 
   CurrentDayView? _currentDay;
 
   List<ForecastDayView> _forecast = [];
+  List<ForecastHourView> _hourlyForecast = [];
 
   Timer? _updateDebounce;
 
   WeatherService({
     required CurrentWeatherRepository currentDayRepository,
     required ForecastWeatherRepository forecastRepository,
+    required HourlyForecastWeatherRepository hourlyForecastRepository,
     required LocationsRepository locationsRepository,
     required ModuleConfigRepository<WeatherConfigModel> configurationRepository,
   })  : _currentDayRepository = currentDayRepository,
         _forecastRepository = forecastRepository,
+        _hourlyForecastRepository = hourlyForecastRepository,
         _locationsRepository = locationsRepository,
         _configurationRepository = configurationRepository;
 
   Future<void> initialize() async {
     _currentDayRepository.addListener(_scheduleUpdate);
     _forecastRepository.addListener(_scheduleUpdate);
+    _hourlyForecastRepository.addListener(_scheduleUpdate);
     _locationsRepository.addListener(_scheduleUpdate);
     _configurationRepository.addListener(_scheduleUpdate);
 
@@ -46,6 +53,9 @@ class WeatherService extends ChangeNotifier {
 
   /// Get forecast for the primary/selected location (backward compatible)
   List<ForecastDayView> get forecast => _forecast;
+
+  /// Get hourly forecast for the primary/selected location
+  List<ForecastHourView> get hourlyForecast => _hourlyForecast;
 
   /// Get current weather for a specific location
   /// Falls back to primary location weather if locationId is null or not found
@@ -93,6 +103,27 @@ class WeatherService extends ChangeNotifier {
 
     // Fall back to primary forecast if location-specific not available
     return _forecast;
+  }
+
+  /// Get hourly forecast for a specific location
+  /// Falls back to primary location hourly forecast if locationId is null or not found
+  List<ForecastHourView> getHourlyForecastByLocation(String? locationId) {
+    final configuration = _configurationRepository.data;
+    if (configuration == null) return [];
+
+    if (locationId == null) {
+      return _hourlyForecast;
+    }
+
+    final locationHourly = _hourlyForecastRepository.getByLocation(locationId);
+    if (locationHourly != null) {
+      return locationHourly.map((hour) => ForecastHourView(
+        weatherModel: hour,
+        configModel: configuration,
+      )).toList();
+    }
+
+    return _hourlyForecast;
   }
 
   /// Get all weather locations
@@ -161,6 +192,28 @@ class WeatherService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    List<ForecastHourView> newHourlyForecast = [];
+
+    if (configuration != null) {
+      final hourlyData = _hourlyForecastRepository.getItem();
+      if (hourlyData != null) {
+        for (var hour in hourlyData) {
+          newHourlyForecast.add(
+            ForecastHourView(
+              weatherModel: hour,
+              configModel: configuration,
+            ),
+          );
+        }
+      }
+    }
+
+    if (!listEquals(_hourlyForecast, newHourlyForecast)) {
+      _hourlyForecast = newHourlyForecast;
+
+      triggerNotifyListeners = true;
+    }
+
     if (triggerNotifyListeners) {
       notifyListeners();
     }
@@ -172,6 +225,7 @@ class WeatherService extends ChangeNotifier {
 
     _currentDayRepository.removeListener(_scheduleUpdate);
     _forecastRepository.removeListener(_scheduleUpdate);
+    _hourlyForecastRepository.removeListener(_scheduleUpdate);
     _locationsRepository.removeListener(_scheduleUpdate);
     _configurationRepository.removeListener(_scheduleUpdate);
 

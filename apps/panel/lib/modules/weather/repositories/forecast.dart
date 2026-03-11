@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/weather_module_data_forecast_day.dart';
+import 'package:fastybird_smart_panel/api/models/weather_module_data_location_weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_feels_like.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_temperature.dart';
@@ -104,25 +105,30 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
       () async {
         final response = await apiClient.getWeatherModuleAllWeather();
 
-        final allWeather = response.data.data;
-
-        for (final locationWeather in allWeather) {
-          final forecastModels = locationWeather.forecast
-              .map((day) => _mapApiModelToForecastDay(day))
-              .toList();
-          final locationId = locationWeather.locationId;
-
-          await _insertForecastModels(forecastModels, locationId: locationId);
-        }
-
-        if (kDebugMode) {
-          debugPrint(
-            '[WEATHER MODULE][FORECAST] Fetched forecast for ${allWeather.length} locations',
-          );
-        }
+        await loadFromApiData(response.data.data);
       },
       'fetch forecast weather',
     );
+  }
+
+  /// Load forecast data from pre-fetched API data without making an API call.
+  Future<void> loadFromApiData(
+    List<WeatherModuleDataLocationWeather> allWeather,
+  ) async {
+    for (final locationWeather in allWeather) {
+      final forecastModels = locationWeather.forecast
+          .map((day) => _mapApiModelToForecastDay(day))
+          .toList();
+      final locationId = locationWeather.locationId;
+
+      await _insertForecastModels(forecastModels, locationId: locationId);
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE][FORECAST] Fetched forecast for ${allWeather.length} locations',
+      );
+    }
   }
 
   /// Map API model to panel ForecastDayModel directly to avoid serialization issues

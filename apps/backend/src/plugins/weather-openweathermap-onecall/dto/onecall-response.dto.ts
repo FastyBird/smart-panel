@@ -213,6 +213,63 @@ export class OpenWeatherMapOneCallDailyWeatherDto {
 	weather: OneCallWeatherConditionDto[];
 }
 
+export class OpenWeatherMapOneCallHourlyWeatherDto {
+	@Expose()
+	@IsInt()
+	dt: number;
+
+	@Expose()
+	@IsNumber()
+	temp: number;
+
+	@Expose()
+	@IsNumber()
+	feels_like: number;
+
+	@Expose()
+	@IsInt()
+	pressure: number;
+
+	@Expose()
+	@IsInt()
+	humidity: number;
+
+	@Expose()
+	@IsInt()
+	clouds: number;
+
+	@Expose()
+	@IsNumber()
+	wind_speed: number;
+
+	@Expose()
+	@IsInt()
+	wind_deg: number;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	wind_gust?: number;
+
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => OneCallRainDto)
+	rain?: OneCallRainDto;
+
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => OneCallSnowDto)
+	snow?: OneCallSnowDto;
+
+	@Expose()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => OneCallWeatherConditionDto)
+	weather: OneCallWeatherConditionDto[];
+}
+
 export class OpenWeatherMapOneCallAlertDto {
 	@Expose()
 	@IsString()
@@ -263,6 +320,13 @@ export class OpenWeatherMapOneCallResponseDto {
 	@ValidateNested()
 	@Type(() => OpenWeatherMapOneCallCurrentWeatherDto)
 	current?: OpenWeatherMapOneCallCurrentWeatherDto;
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => OpenWeatherMapOneCallHourlyWeatherDto)
+	hourly?: OpenWeatherMapOneCallHourlyWeatherDto[];
 
 	@Expose()
 	@IsOptional()

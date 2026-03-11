@@ -6,12 +6,15 @@ import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherApiException } from '../weather.exceptions';
 import type { IWeatherDay } from '../store/weather-day.store.types';
 import type { IWeatherForecast } from '../store/weather-forecast.store.types';
+import type { IWeatherHourlyForecast } from '../store/weather-hourly-forecast.store.types';
 import { transformWeatherDayResponse } from '../store/weather-day.transformers';
 import { transformWeatherForecastResponse } from '../store/weather-forecast.transformers';
+import { transformWeatherHourlyForecastResponse } from '../store/weather-hourly-forecast.transformers';
 
 export interface ILocationWeatherDetail {
 	current: IWeatherDay;
 	forecast: IWeatherForecast;
+	hourlyForecast: IWeatherHourlyForecast | null;
 }
 
 export interface IUseLocationWeather {
@@ -54,6 +57,7 @@ export const useLocationWeather = (): IUseLocationWeather => {
 				const weatherData = responseData.data as {
 					current?: unknown;
 					forecast?: unknown[];
+					hourly_forecast?: unknown[];
 				};
 
 				if (weatherData.current && weatherData.forecast) {
@@ -62,9 +66,22 @@ export const useLocationWeather = (): IUseLocationWeather => {
 						weatherData.forecast as Parameters<typeof transformWeatherForecastResponse>[0]
 					);
 
+					let transformedHourly: IWeatherHourlyForecast | null = null;
+
+					if (weatherData.hourly_forecast && Array.isArray(weatherData.hourly_forecast) && weatherData.hourly_forecast.length > 0) {
+						try {
+							transformedHourly = transformWeatherHourlyForecastResponse(
+								weatherData.hourly_forecast as Parameters<typeof transformWeatherHourlyForecastResponse>[0]
+							);
+						} catch {
+							logger.warn('[WEATHER] Failed to transform hourly forecast, skipping');
+						}
+					}
+
 					data.value = {
 						current: transformedCurrent,
 						forecast: transformedForecast,
+						hourlyForecast: transformedHourly,
 					};
 
 					return;

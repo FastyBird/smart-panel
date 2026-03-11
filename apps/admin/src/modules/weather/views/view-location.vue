@@ -143,6 +143,22 @@
 			/>
 		</el-card>
 
+		<el-card
+			v-if="weather.hourlyForecast && weather.hourlyForecast.length > 0"
+			class="mt-4"
+		>
+			<template #header>
+				<div class="flex items-center">
+					<el-icon :size="20">
+						<icon icon="mdi:clock-outline" />
+					</el-icon>
+					<span class="ml-2 font-medium">{{ t('weatherModule.headings.hourlyForecast') }}</span>
+				</div>
+			</template>
+
+			<location-hourly-forecast :hourly-forecast="weather.hourlyForecast" :sunrise="weather.current?.sunrise" :sunset="weather.current?.sunset" />
+		</el-card>
+
 		<el-card class="mt-4 mb-2">
 			<template #header>
 				<div class="flex items-center">
@@ -231,6 +247,7 @@ import { Icon } from '@iconify/vue';
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import LocationDetail from '../components/location-detail.vue';
 import LocationForecast from '../components/location-forecast.vue';
+import LocationHourlyForecast from '../components/location-hourly-forecast.vue';
 import { useLocation } from '../composables/useLocation';
 import { useLocationWeather } from '../composables/useLocationWeather';
 import { RouteNames } from '../weather.constants';

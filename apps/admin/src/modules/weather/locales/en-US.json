@@ -5,6 +5,7 @@
 		"locations": "Weather locations",
 		"locationDetail": "{location}",
 		"forecast": "Forecast",
+		"hourlyForecast": "Hourly forecast",
 		"addLocation": "Add location",
 		"editLocation": "Edit location",
 		"deleteLocation": "Delete location",

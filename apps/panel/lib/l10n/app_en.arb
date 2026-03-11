@@ -1258,6 +1258,10 @@
   "@weather_detail_today": {
     "description": "Label for today in forecast"
   },
+  "weather_detail_hourly_forecast": "Hourly forecast",
+  "@weather_detail_hourly_forecast": {
+    "description": "Section heading for hourly forecast"
+  },
   "weather_condition_thunderstorm_with_light_rain": "Thunderstorm with light rain",
   "@weather_condition_thunderstorm_with_light_rain": {
     "description": "A thunderstorm accompanied by light rain."

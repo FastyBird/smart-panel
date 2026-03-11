@@ -1,32 +1,32 @@
-import 'package:fastybird_smart_panel/api/models/weather_module_data_current_day.dart';
+import 'package:fastybird_smart_panel/api/models/weather_module_data_forecast_hour.dart';
 import 'package:fastybird_smart_panel/api/models/weather_module_data_location_weather.dart';
-import 'package:fastybird_smart_panel/modules/weather/models/current_day.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/forecast_hour.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather_info.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/wind.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
-class CurrentWeatherRepository extends Repository<CurrentDayModel> {
-  /// Per-location weather data storage
-  final Map<String, CurrentDayModel> _locationData = {};
+class HourlyForecastWeatherRepository extends Repository<List<ForecastHourModel>> {
+  /// Per-location hourly forecast data storage
+  final Map<String, List<ForecastHourModel>> _locationData = {};
 
   /// Provider for the primary location ID from config.
   String? Function()? _primaryLocationIdProvider;
 
-  CurrentWeatherRepository({required super.apiClient});
+  HourlyForecastWeatherRepository({required super.apiClient});
 
   /// Set a function to provide the primary location ID.
   void setPrimaryLocationIdProvider(String? Function() provider) {
     _primaryLocationIdProvider = provider;
   }
 
-  /// Get weather data for a specific location
-  CurrentDayModel? getByLocation(String locationId) {
+  /// Get hourly forecast data for a specific location
+  List<ForecastHourModel>? getByLocation(String locationId) {
     return _locationData[locationId];
   }
 
-  /// Get all stored location weather data
-  Map<String, CurrentDayModel> get allLocationData =>
+  /// Get all stored location hourly forecast data
+  Map<String, List<ForecastHourModel>> get allLocationData =>
       Map.unmodifiable(_locationData);
 
   Future<bool> refresh() async {
@@ -39,23 +39,26 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
     }
   }
 
-  Future<void> insertWeather(
-    Map<String, dynamic> json, {
+  Future<void> insertHourlyForecast(
+    List<Map<String, dynamic>> json, {
     String? locationId,
   }) async {
-    try {
-      CurrentDayModel newData = CurrentDayModel.fromJson(json);
+    List<ForecastHourModel> insertData = [];
 
-      await _insertCurrentDayModel(newData, locationId: locationId);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[WEATHER MODULE][DAY] Failed to create day model: ${e.toString()}',
-        );
+    for (var row in json) {
+      try {
+        ForecastHourModel hour = ForecastHourModel.fromJson(row);
+        insertData.add(hour);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEATHER MODULE][HOURLY] Failed to create hourly forecast model: ${e.toString()}',
+          );
+        }
       }
-
-      /// Failed to create new model
     }
+
+    await _insertHourlyModels(insertData, locationId: locationId);
   }
 
   Future<void> fetchWeather() async {
@@ -65,34 +68,38 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
 
         await loadFromApiData(response.data.data);
       },
-      'fetch current weather',
+      'fetch hourly forecast weather',
     );
   }
 
-  /// Load current weather from pre-fetched API data without making an API call.
+  /// Load hourly forecast from pre-fetched API data without making an API call.
   Future<void> loadFromApiData(
     List<WeatherModuleDataLocationWeather> allWeather,
   ) async {
     for (final locationWeather in allWeather) {
-      final currentModel = _mapApiModelToCurrentDay(locationWeather.current);
-      final locationId = locationWeather.locationId;
+      final hourlyForecast = locationWeather.hourlyForecast;
 
-      await _insertCurrentDayModel(currentModel, locationId: locationId);
+      if (hourlyForecast != null && hourlyForecast.isNotEmpty) {
+        final hourlyModels = hourlyForecast
+            .map((hour) => _mapApiModelToForecastHour(hour))
+            .toList();
+        final locationId = locationWeather.locationId;
+
+        await _insertHourlyModels(hourlyModels, locationId: locationId);
+      }
     }
 
     if (kDebugMode) {
       debugPrint(
-        '[WEATHER MODULE][DAY] Fetched current weather for ${allWeather.length} locations',
+        '[WEATHER MODULE][HOURLY] Fetched hourly forecast for ${allWeather.length} locations',
       );
     }
   }
 
-  /// Map API model to panel CurrentDayModel directly to avoid serialization issues
-  CurrentDayModel _mapApiModelToCurrentDay(WeatherModuleDataCurrentDay api) {
-    return CurrentDayModel(
+  /// Map API model to panel ForecastHourModel
+  ForecastHourModel _mapApiModelToForecastHour(WeatherModuleDataForecastHour api) {
+    return ForecastHourModel(
       temperature: api.temperature.toDouble(),
-      temperatureMin: api.temperatureMin?.toDouble(),
-      temperatureMax: api.temperatureMax?.toDouble(),
       feelsLike: api.feelsLike.toDouble(),
       pressure: api.pressure.toInt(),
       humidity: api.humidity.toInt(),
@@ -110,15 +117,13 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
       clouds: api.clouds.toDouble(),
       rain: api.rain?.toDouble(),
       snow: api.snow?.toDouble(),
-      sunrise: api.sunrise,
-      sunset: api.sunset,
-      dayTime: api.dayTime,
+      dateTime: api.dateTime,
     );
   }
 
-  /// Insert CurrentDayModel directly without JSON conversion
-  Future<void> _insertCurrentDayModel(
-    CurrentDayModel newData, {
+  /// Insert ForecastHourModel list directly
+  Future<void> _insertHourlyModels(
+    List<ForecastHourModel> insertData, {
     String? locationId,
   }) async {
     bool changed = false;
@@ -126,14 +131,14 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
     // Store by location if locationId provided
     if (locationId != null) {
       final existingData = _locationData[locationId];
-      if (existingData != newData) {
+      if (existingData != insertData) {
         if (kDebugMode) {
           debugPrint(
-            '[WEATHER MODULE][DAY] Current day weather for location $locationId was successfully updated',
+            '[WEATHER MODULE][HOURLY] Hourly forecast for location $locationId was successfully updated',
           );
         }
 
-        _locationData[locationId] = newData;
+        _locationData[locationId] = insertData;
         changed = true;
       }
     }
@@ -142,14 +147,14 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
     final primaryId = _primaryLocationIdProvider?.call();
     final isPrimary = locationId == null || locationId == primaryId || primaryId == null;
 
-    if (isPrimary && data != newData) {
+    if (isPrimary && data != insertData) {
       if (kDebugMode) {
         debugPrint(
-          '[WEATHER MODULE][DAY] Current day weather was successfully updated (primary: $locationId)',
+          '[WEATHER MODULE][HOURLY] Hourly forecast was successfully updated (primary: $locationId)',
         );
       }
 
-      data = newData;
+      data = insertData;
       changed = true;
     }
 
@@ -159,7 +164,6 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
   }
 
   /// Re-resolve which location's data should be the global `data`.
-  /// Call this when the primary location ID changes (e.g., display override changed).
   void reresolvePrimary() {
     final primaryId = _primaryLocationIdProvider?.call();
 
@@ -169,7 +173,7 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
       if (data != primaryData) {
         if (kDebugMode) {
           debugPrint(
-            '[WEATHER MODULE][DAY] Re-resolved primary location to $primaryId',
+            '[WEATHER MODULE][HOURLY] Re-resolved primary location to $primaryId',
           );
         }
 
@@ -177,7 +181,6 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
         notifyListeners();
       }
     } else if (primaryId == null && _locationData.isNotEmpty) {
-      // No primary set, use first available
       final firstData = _locationData.values.first;
 
       if (data != firstData) {
@@ -187,7 +190,7 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
     }
   }
 
-  /// Remove weather data for a specific location
+  /// Remove hourly forecast data for a specific location
   void removeLocation(String locationId) {
     if (_locationData.containsKey(locationId)) {
       _locationData.remove(locationId);

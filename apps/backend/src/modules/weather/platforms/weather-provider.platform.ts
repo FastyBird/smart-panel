@@ -1,6 +1,6 @@
 import { WeatherLocationEntity } from '../entities/locations.entity';
 import { WeatherAlertModel } from '../models/alert.model';
-import { CurrentDayModel, ForecastDayModel } from '../models/weather.model';
+import { CurrentDayModel, ForecastDayModel, ForecastHourModel } from '../models/weather.model';
 
 /**
  * Interface for weather provider implementations.
@@ -29,6 +29,12 @@ export interface IWeatherProvider {
 	supportsAlerts(): boolean;
 
 	/**
+	 * Whether this provider supports hourly forecast
+	 * @returns true if hourly forecast is supported
+	 */
+	supportsHourlyForecast(): boolean;
+
+	/**
 	 * Fetches current weather data for the given location
 	 * @param location The weather location entity
 	 * @returns Current day weather model or null if fetch failed
@@ -41,6 +47,13 @@ export interface IWeatherProvider {
 	 * @returns Array of forecast day models or null if fetch failed
 	 */
 	getForecastWeather(location: WeatherLocationEntity): Promise<ForecastDayModel[] | null>;
+
+	/**
+	 * Fetches hourly forecast data for the given location
+	 * @param location The weather location entity
+	 * @returns Array of forecast hour models or null if not supported/failed
+	 */
+	getHourlyForecast?(location: WeatherLocationEntity): Promise<ForecastHourModel[] | null>;
 
 	/**
 	 * Fetches weather alerts for the given location

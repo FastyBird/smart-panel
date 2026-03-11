@@ -8,11 +8,17 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { SystemConfigModel } from '../../../modules/system/models/config.model';
 import { LanguageType, TemperatureUnitType } from '../../../modules/system/system.constants';
 import { WeatherAlertModel } from '../../../modules/weather/models/alert.model';
-import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
+import {
+	CurrentDayModel,
+	ForecastDayModel,
+	ForecastHourModel,
+	LocationModel,
+} from '../../../modules/weather/models/weather.model';
 import {
 	OpenWeatherMapOneCallAlertDto,
 	OpenWeatherMapOneCallCurrentWeatherDto,
 	OpenWeatherMapOneCallDailyWeatherDto,
+	OpenWeatherMapOneCallHourlyWeatherDto,
 	OpenWeatherMapOneCallResponseDto,
 } from '../dto/onecall-response.dto';
 import { OpenWeatherMapOneCallLocationEntity } from '../entities/locations-openweathermap-onecall.entity';
@@ -33,6 +39,7 @@ export class OpenWeatherMapOneCallHttpService {
 	async fetchWeatherData(location: OpenWeatherMapOneCallLocationEntity): Promise<{
 		current: CurrentDayModel;
 		forecast: ForecastDayModel[];
+		hourly: ForecastHourModel[];
 		location: LocationModel;
 		alerts: WeatherAlertModel[];
 	} | null> {
@@ -46,7 +53,7 @@ export class OpenWeatherMapOneCallHttpService {
 		const language = this.getLanguage();
 		const units = this.getUnits();
 
-		const url = `${this.BASE_URL}?lat=${location.latitude}&lon=${location.longitude}&appid=${config.apiKey}&units=${units}&lang=${language}&exclude=minutely,hourly`;
+		const url = `${this.BASE_URL}?lat=${location.latitude}&lon=${location.longitude}&appid=${config.apiKey}&units=${units}&lang=${language}&exclude=minutely`;
 
 		try {
 			const response = await fetch(url);
@@ -67,6 +74,7 @@ export class OpenWeatherMapOneCallHttpService {
 
 			const current = this.transformCurrentWeather(oneCallData.current);
 			const forecast = this.transformDailyForecast(oneCallData.daily || []);
+			const hourly = this.transformHourlyForecast(oneCallData.hourly || []);
 			const alerts = this.transformAlerts(oneCallData.alerts || []);
 
 			const locationModel = toInstance(LocationModel, {
@@ -74,50 +82,10 @@ export class OpenWeatherMapOneCallHttpService {
 				country: location.countryCode,
 			});
 
-			return { current, forecast, location: locationModel, alerts };
+			return { current, forecast, hourly, location: locationModel, alerts };
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error('[WEATHER] Failed to fetch One Call API data', { message: err.message, stack: err.stack });
-			return null;
-		}
-	}
-
-	async fetchAlerts(location: OpenWeatherMapOneCallLocationEntity): Promise<WeatherAlertModel[] | null> {
-		const config = this.getConfig();
-
-		if (!config.apiKey) {
-			this.logger.warn('[WEATHER] Missing API key for OpenWeatherMap One Call 3.0');
-			return null;
-		}
-
-		const language = this.getLanguage();
-
-		// Only fetch alerts, exclude everything else
-		const url = `${this.BASE_URL}?lat=${location.latitude}&lon=${location.longitude}&appid=${config.apiKey}&lang=${language}&exclude=current,minutely,hourly,daily`;
-
-		try {
-			const response = await fetch(url);
-			const data = (await response.json()) as unknown;
-
-			if (!response.ok || response.status !== 200) {
-				this.logger.error(`[WEATHER] One Call API alerts request failed: ${JSON.stringify(data)}`);
-				return null;
-			}
-
-			const oneCallData = toInstance(OpenWeatherMapOneCallResponseDto, data, { excludeExtraneousValues: false });
-			const errors = await validate(oneCallData);
-
-			if (errors.length) {
-				this.logger.error(
-					`[VALIDATION] One Call API alerts response validation failed error=${JSON.stringify(errors)}`,
-				);
-				return null;
-			}
-
-			return this.transformAlerts(oneCallData.alerts || []);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error('[WEATHER] Failed to fetch One Call API alerts', { message: err.message, stack: err.stack });
 			return null;
 		}
 	}
@@ -190,6 +158,34 @@ export class OpenWeatherMapOneCallHttpService {
 				dayTime: new Date(day.dt * 1000),
 			}),
 		);
+	}
+
+	private transformHourlyForecast(hourly: OpenWeatherMapOneCallHourlyWeatherDto[]): ForecastHourModel[] {
+		return hourly
+			.filter((hour) => hour.weather.length > 0)
+			.map((hour) =>
+				toInstance(ForecastHourModel, {
+					temperature: hour.temp,
+					feels_like: hour.feels_like,
+					pressure: hour.pressure,
+					humidity: hour.humidity,
+					weather: {
+						code: hour.weather[0].id,
+						main: hour.weather[0].main,
+						description: hour.weather[0].description,
+						icon: hour.weather[0].icon,
+					},
+					wind: {
+						speed: hour.wind_speed,
+						deg: hour.wind_deg,
+						gust: hour.wind_gust ?? null,
+					},
+					clouds: hour.clouds,
+					rain: hour.rain?.['1h'] ?? null,
+					snow: hour.snow?.['1h'] ?? null,
+					date_time: new Date(hour.dt * 1000),
+				}),
+			);
 	}
 
 	private transformAlerts(alerts: OpenWeatherMapOneCallAlertDto[]): WeatherAlertModel[] {
