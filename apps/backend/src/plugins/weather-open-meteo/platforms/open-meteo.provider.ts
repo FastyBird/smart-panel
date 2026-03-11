@@ -29,6 +29,7 @@ export class OpenMeteoProvider implements IWeatherProvider {
 
 	private readonly cache = new Map<string, CachedWeatherData>();
 	private readonly CACHE_TTL_MS = 60_000; // 1 minute
+	private readonly CACHE_MAX_SIZE = 100;
 
 	constructor(private readonly httpService: OpenMeteoHttpService) {}
 
@@ -81,11 +82,18 @@ export class OpenMeteoProvider implements IWeatherProvider {
 			return cached;
 		}
 
+		// Remove expired entry if present
+		if (cached) {
+			this.cache.delete(cacheKey);
+		}
+
 		this.logger.debug(`[WEATHER] Fetching weather data for location id=${location.id}`);
 
 		const result = await this.httpService.fetchWeatherData(location);
 
 		if (result) {
+			this.evictExpiredEntries(now);
+
 			const entry: CachedWeatherData = {
 				...result,
 				timestamp: now,
@@ -99,5 +107,17 @@ export class OpenMeteoProvider implements IWeatherProvider {
 		}
 
 		return null;
+	}
+
+	private evictExpiredEntries(now: number): void {
+		if (this.cache.size <= this.CACHE_MAX_SIZE) {
+			return;
+		}
+
+		for (const [key, entry] of this.cache) {
+			if (now - entry.timestamp >= this.CACHE_TTL_MS) {
+				this.cache.delete(key);
+			}
+		}
 	}
 }
