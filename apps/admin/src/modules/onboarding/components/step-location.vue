@@ -86,14 +86,14 @@
 				v-model:zoom="zoom"
 				:use-global-leaflet="false"
 				:center="center"
-				@click="onMapClick"
+				@click="onMapClickClearCity"
 			>
 				<l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 				<l-marker
 					v-if="marker"
 					:lat-lng="marker"
 					:draggable="true"
-					@moveend="onMarkerMoveEnd"
+					@moveend="onMarkerMoveEndClearCity"
 				/>
 			</l-map>
 		</div>
@@ -199,5 +199,15 @@ const onCitySelect = (item: Record<string, unknown>): void => {
 	// but onboarding only needs the short city name for locationData.city
 	const suggestion = item as unknown as { name: string };
 	locationData.city = suggestion.name;
+};
+
+const onMapClickClearCity = (e: { latlng: { lat: number; lng: number } }): void => {
+	locationData.city = '';
+	onMapClick(e);
+};
+
+const onMarkerMoveEndClearCity = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
+	locationData.city = '';
+	onMarkerMoveEnd(e);
 };
 </script>
