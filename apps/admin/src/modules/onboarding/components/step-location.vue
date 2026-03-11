@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput, type InputInstance } from 'element-plus';
@@ -117,7 +117,8 @@ import { Icon } from '@iconify/vue';
 import 'leaflet/dist/leaflet.css';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { type ILocationModel, useLocationMap } from '../../../plugins/weather-open-meteo/composables/useLocationMap';
+import { useFlashMessage } from '../../../common';
+import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-open-meteo/composables/useGeolocation';
 import { useAppOnboarding } from '../composables/composables';
 
 defineOptions({
@@ -125,46 +126,37 @@ defineOptions({
 });
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 const { locationData } = useAppOnboarding();
+const { searchCities, isSearching } = useGeolocation();
 
 const longitudeInputEl = ref<InputInstance | undefined>(undefined);
+const searchQuery = ref('');
+const isGettingLocation = ref(false);
 
-// Bridge onboarding locationData to the ILocationModel interface used by useLocationMap
-const locationModel: ILocationModel = reactive({
-	get name() {
-		return locationData.city || '';
-	},
-	set name(value: string) {
-		locationData.city = value;
-	},
-	get latitude() {
-		return locationData.latitude;
-	},
-	set latitude(value: number | null) {
-		locationData.latitude = value;
-	},
-	get longitude() {
-		return locationData.longitude;
-	},
-	set longitude(value: number | null) {
-		locationData.longitude = value;
-	},
-	countryCode: '',
-});
+// Map state
+const zoom = ref<number>(10);
+const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
+const marker = ref<[number, number] | null>(null);
 
-const {
-	searchQuery,
-	isSearching,
-	isGettingLocation,
-	zoom,
-	center,
-	marker,
-	onMapClick,
-	onMarkerMoveEnd,
-	handleCitySearch,
-	handleCitySelect,
-	getMyLocation,
-} = useLocationMap(locationModel);
+const isValidCoordinate = (value: unknown): value is number => {
+	if (value === null || value === undefined || value === '') {
+		return false;
+	}
+
+	const num = Number(value);
+
+	return !isNaN(num) && isFinite(num);
+};
+
+const setMarker = (lat: number, lon: number, setZoom?: number): void => {
+	marker.value = [lat, lon];
+	center.value = [lat, lon];
+
+	if (setZoom !== undefined) {
+		zoom.value = setZoom;
+	}
+};
 
 const latitudeModel = computed({
 	get: () => (locationData.latitude !== null ? String(locationData.latitude) : ''),
@@ -192,27 +184,120 @@ const longitudeModel = computed({
 	},
 });
 
-const onCitySelect = (item: Record<string, unknown>): void => {
-	handleCitySelect(item);
+interface ISearchSuggestion extends IGeolocationCity {
+	value: string;
+}
 
-	// useLocationMap sets model.name to the full formatted name,
-	// but onboarding only needs the short city name for locationData.city
-	const suggestion = item as unknown as { name: string };
+const handleCitySearch = (query: string, cb: (suggestions: Record<string, unknown>[]) => void): void => {
+	if (!query || query.length < 2) {
+		cb([]);
+		return;
+	}
+
+	searchCities(query)
+		.then((results) => {
+			const suggestions: ISearchSuggestion[] = results.map((city) => ({
+				...city,
+				value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
+			}));
+
+			cb(suggestions as unknown as Record<string, unknown>[]);
+		})
+		.catch(() => {
+			cb([]);
+		});
+};
+
+const onCitySelect = (item: Record<string, unknown>): void => {
+	const suggestion = item as unknown as ISearchSuggestion;
+
 	locationData.city = suggestion.name;
+	locationData.latitude = suggestion.lat;
+	locationData.longitude = suggestion.lon;
+	searchQuery.value = '';
+
+	setMarker(suggestion.lat, suggestion.lon, 12);
 };
 
 const onMapClickClearCity = (e: { latlng: { lat: number; lng: number } }): void => {
+	const { lat, lng } = e.latlng;
+
 	locationData.city = '';
-	onMapClick(e);
+	locationData.latitude = lat;
+	locationData.longitude = lng;
+	marker.value = [lat, lng];
 };
 
 const onMarkerMoveEndClearCity = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
+	const { lat, lng } = e.target.getLatLng();
+
 	locationData.city = '';
-	onMarkerMoveEnd(e);
+	locationData.latitude = lat;
+	locationData.longitude = lng;
+	marker.value = [lat, lng];
 };
 
 const getMyLocationClearCity = (): void => {
-	locationData.city = '';
-	getMyLocation();
+	if (!navigator.geolocation) {
+		flashMessage.error(t('onboardingModule.location.messages.geolocationNotSupported'));
+		return;
+	}
+
+	isGettingLocation.value = true;
+
+	navigator.geolocation.getCurrentPosition(
+		(position) => {
+			const lat = position.coords.latitude;
+			const lng = position.coords.longitude;
+
+			locationData.city = '';
+			locationData.latitude = lat;
+			locationData.longitude = lng;
+
+			setMarker(lat, lng, 12);
+
+			isGettingLocation.value = false;
+		},
+		(error) => {
+			isGettingLocation.value = false;
+			switch (error.code) {
+				case error.PERMISSION_DENIED:
+					flashMessage.error(t('onboardingModule.location.messages.geolocationDenied'));
+					break;
+				case error.POSITION_UNAVAILABLE:
+					flashMessage.error(t('onboardingModule.location.messages.geolocationUnavailable'));
+					break;
+				case error.TIMEOUT:
+					flashMessage.error(t('onboardingModule.location.messages.geolocationTimeout'));
+					break;
+				default:
+					flashMessage.error(t('onboardingModule.location.messages.geolocationError'));
+			}
+		},
+		{
+			enableHighAccuracy: true,
+			timeout: 10000,
+			maximumAge: 0,
+		}
+	);
 };
+
+onBeforeMount((): void => {
+	if (isValidCoordinate(locationData.latitude) && isValidCoordinate(locationData.longitude)) {
+		setMarker(Number(locationData.latitude), Number(locationData.longitude), 18);
+	}
+});
+
+watch(
+	() => [locationData.latitude, locationData.longitude] as const,
+	([lat, lon]): void => {
+		if (isValidCoordinate(lat) && isValidCoordinate(lon)) {
+			const latNum = Number(lat);
+			const lonNum = Number(lon);
+
+			marker.value = [latNum, lonNum];
+			center.value = [latNum, lonNum];
+		}
+	}
+);
 </script>
