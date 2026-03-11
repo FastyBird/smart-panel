@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsArray, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class OpenMeteoCurrentDto {
 	@Expose()
@@ -159,9 +159,13 @@ export class OpenMeteoResponseDto {
 
 	@Expose()
 	@IsOptional()
+	@ValidateNested()
+	@Type(() => OpenMeteoCurrentDto)
 	current?: OpenMeteoCurrentDto;
 
 	@Expose()
 	@IsOptional()
+	@ValidateNested()
+	@Type(() => OpenMeteoDailyDto)
 	daily?: OpenMeteoDailyDto;
 }

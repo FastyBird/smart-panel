@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { validate } from 'class-validator';
+
+import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
