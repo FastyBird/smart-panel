@@ -100,6 +100,8 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 		model.longitude = suggestion.lon;
 		model.countryCode = suggestion.country_code;
 		searchQuery.value = '';
+
+		setMarker(suggestion.lat, suggestion.lon, 12);
 	};
 
 	const getMyLocation = (): void => {
