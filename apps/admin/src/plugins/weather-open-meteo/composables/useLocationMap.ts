@@ -124,6 +124,8 @@ export const useLocationMap = (model: ILocationModel): IUseLocationMap => {
 				model.latitude = lat;
 				model.longitude = lng;
 
+				setMarker(lat, lng, 12);
+
 				isGettingLocation.value = false;
 			},
 			(error) => {
