@@ -37,6 +37,7 @@ import {
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
+import { DeviceManagerService } from '../services/device-manager.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
@@ -98,6 +99,7 @@ export class DelegatesManagerService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly deviceManagerService: DeviceManagerService,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly transformerRegistry: TransformerRegistry,
 	) {}
@@ -139,6 +141,8 @@ export class DelegatesManagerService {
 			DEVICES_SHELLY_NG_TYPE,
 		);
 
+		let isNewDevice = false;
+
 		if (device === null) {
 			try {
 				device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
@@ -148,6 +152,8 @@ export class DelegatesManagerService {
 					hostname,
 					name: shelly.system.config.device.name ?? shelly.modelName,
 				});
+
+				isNewDevice = true;
 			} catch (error) {
 				// Handle race condition: device may have been created by another process
 				// Retry finding the device
@@ -164,6 +170,25 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
+
+		if (isNewDevice) {
+			// Provision channels and properties before setting up handlers.
+			// This is called explicitly (awaited) so channels exist by the time
+			// handler setup queries run below. The subscriber also fires
+			// createOrUpdate asynchronously, but it is idempotent.
+			await this.deviceManagerService.createOrUpdate(device.id);
+
+			// Reload device to pick up any changes made by createOrUpdate
+			device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+				'identifier',
+				shelly.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (device === null) {
+				throw new DevicesShellyNgException('Device not found after provisioning');
+			}
+		}
 
 		// Check if this insert was superseded by a remove or a newer insert
 		if (this.insertGeneration.get(shelly.id) !== generation) {

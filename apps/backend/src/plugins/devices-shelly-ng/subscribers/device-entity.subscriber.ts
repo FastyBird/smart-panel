@@ -29,7 +29,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): void {
-		this.scheduleProvision(event.entity.id, event.queryRunner?.isTransactionActive ?? false);
+		this.scheduleProvision(event.entity.id);
 	}
 
 	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {
@@ -47,7 +47,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			return;
 		}
 
-		this.scheduleProvision(event.databaseEntity.id, event.queryRunner?.isTransactionActive ?? false);
+		this.scheduleProvision(event.databaseEntity.id);
 	}
 
 	afterRemove(): void {
@@ -61,7 +61,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		});
 	}
 
-	private scheduleProvision(deviceId: string, inTransaction: boolean): void {
+	private scheduleProvision(deviceId: string): void {
 		const run = async (): Promise<void> => {
 			try {
 				await this.deviceManagerService.createOrUpdate(deviceId);
@@ -81,15 +81,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			}
 		};
 
-		// If still inside a transaction, defer to the macrotask queue so the outer
-		// transaction can commit before we start new DB work (avoids SQLite savepoint issues).
-		if (inTransaction) {
-			setTimeout(() => {
-				void run();
-			}, 0);
-			return;
-		}
-
-		void run();
+		// Always defer to the macrotask queue so the caller's save() promise chain
+		// resolves before this provisioning flow submits its own queries.
+		setTimeout(() => {
+			void run();
+		}, 0);
 	}
 }
