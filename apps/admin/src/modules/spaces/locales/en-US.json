@@ -440,6 +440,9 @@
 		},
 		"viewAll": {
 			"title": "View all"
+		},
+		"back": {
+			"title": "Go back"
 		}
 	},
 	"detail": {

@@ -92,8 +92,45 @@
 		</template>
 	</view-header>
 
+	<!-- Space not found -->
+	<div
+		v-if="notFound"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
+		<el-card
+			class="mt-2"
+			body-class="flex flex-row justify-center"
+		>
+			<el-result class="h-full max-w-[700px]">
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:home-group" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:help" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					{{ t('spacesModule.messages.notFound') }}
+				</template>
+
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="onClose"
+					>
+						{{ t('spacesModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</el-card>
+	</div>
+
 	<el-scrollbar
-		v-if="isSpaceRoute || isLGDevice"
+		v-else-if="isSpaceRoute || isLGDevice"
 		v-loading="isLoading || space === null"
 		:element-loading-text="t('spacesModule.texts.loadingSpace')"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
@@ -273,6 +310,7 @@ import {
 	ElDrawer,
 	ElIcon,
 	ElMessageBox,
+	ElResult,
 	ElScrollbar,
 	ElTabPane,
 	ElTabs,
@@ -288,6 +326,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	IconWithChild,
 	useBreakpoints,
 	useFlashMessage,
 	ViewError,
@@ -334,6 +373,7 @@ const isLoading = computed<boolean>(() => fetching.value);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
+const notFound = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
@@ -464,7 +504,7 @@ const onSpaceEdit = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	await fetchSpace();
 	if (!isLoading.value && space.value === null && !wasSpaceLoaded.value) {
-		// Space not found
+		notFound.value = true;
 	}
 	// Mark as loaded if space was successfully fetched
 	if (space.value !== null) {
@@ -495,9 +535,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if space was never loaded (initial load failed)
 		if (!val && space.value === null && !wasSpaceLoaded.value) {
-			// Space not found
+			notFound.value = true;
 		}
 	}
 );
@@ -518,8 +557,7 @@ watch(
 				router.push({ name: RouteNames.SPACES });
 			}
 		} else if (!isLoading.value && val === null && !wasSpaceLoaded.value) {
-			// Space was never loaded - initial load failed
-			// Space not found
+			notFound.value = true;
 		}
 	}
 );

@@ -79,8 +79,45 @@
 		</template>
 	</view-header>
 
+	<!-- Channel not found -->
 	<div
-		v-if="isChannelRoute || isLGDevice"
+		v-if="notFound"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
+		<el-card
+			class="mt-2"
+			body-class="flex flex-row justify-center"
+		>
+			<el-result class="h-full max-w-[700px]">
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:chip" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:help" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					{{ t('devicesModule.messages.channels.notFound') }}
+				</template>
+
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="onClose"
+					>
+						{{ t('devicesModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</el-card>
+	</div>
+
+	<div
+		v-else-if="isChannelRoute || isLGDevice"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-channels-properties
@@ -177,7 +214,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElResult } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -187,6 +224,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	IconWithChild,
 	ViewError,
 	ViewHeader,
 	useBreakpoints,
@@ -196,7 +234,6 @@ import {
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
 import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 
@@ -222,6 +259,7 @@ const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
 // Track if channel was previously loaded to detect deletion
 const wasChannelLoaded = ref<boolean>(false);
+const notFound = ref<boolean>(false);
 const { canAddAnotherProperty } = useChannelSpecification({ id: props.id });
 const {
 	properties,
@@ -240,7 +278,7 @@ const {
 const propertiesActions = useChannelsPropertiesActions();
 
 if (!validateUuid(props.id)) {
-	throw new Error('Channel identifier is not valid');
+	notFound.value = true;
 }
 
 const mounted = ref<boolean>(false);
@@ -408,23 +446,27 @@ const onAdjustList = (): void => {
 };
 
 onBeforeMount((): void => {
+	if (notFound.value) {
+		return;
+	}
+
 	fetchChannel()
 		.then((): void => {
+			if (!isLoading.value && channel.value === null && !wasChannelLoaded.value) {
+				notFound.value = true;
+				return;
+			}
 			// Mark as loaded if channel was successfully fetched
 			if (channel.value !== null) {
 				wasChannelLoaded.value = true;
 			}
 
-			fetchProperties().catch((error: unknown): void => {
-				const err = error as Error;
-
-				throw new DevicesException('Something went wrong', err);
+			fetchProperties().catch((): void => {
+				// Silently ignore property fetch errors
 			});
 		})
-		.catch((error: unknown): void => {
-			const err = error as Error;
-
-			throw new DevicesException('Something went wrong', err);
+		.catch((): void => {
+			notFound.value = true;
 		});
 
 	showDrawer.value =
@@ -456,9 +498,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if channel was never loaded (initial load failed)
 		if (!val && channel.value === null && !wasChannelLoaded.value) {
-			throw new DevicesException('Channel not found');
+			notFound.value = true;
 		}
 	}
 );
@@ -479,8 +520,7 @@ watch(
 				router.push({ name: RouteNames.CHANNELS });
 			}
 		} else if (!isLoading.value && val === null && !wasChannelLoaded.value) {
-			// Channel was never loaded - initial load failed
-			throw new DevicesException('Channel not found');
+			notFound.value = true;
 		}
 	}
 );

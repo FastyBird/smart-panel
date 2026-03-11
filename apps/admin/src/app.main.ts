@@ -243,6 +243,17 @@ router.beforeEach((to) => {
 	return routerGuards.handle(accountManager?.details.value ?? undefined, to as unknown as RouteRecordRaw);
 });
 
+// Catch-all 404 route — must be registered after all modules/plugins add their routes
+router.addRoute(RouteNames.ROOT, {
+	path: ':pathMatch(.*)*',
+	name: 'not-found',
+	component: () => import('./common/views/view-not-found.vue'),
+	meta: {
+		guards: ['authenticated'],
+		title: 'Page not found',
+	},
+});
+
 // App router initialization
 // INFO: Need to be placed as last because of dynamic routes inject
 app.use(router);

@@ -658,6 +658,9 @@
     },
     "viewLogs": {
       "title": "View logs"
+    },
+    "back": {
+      "title": "Go back"
     }
   },
   "labels": {

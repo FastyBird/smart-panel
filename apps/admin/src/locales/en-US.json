@@ -12,7 +12,11 @@
 		},
 		"headings": {
 			"loadingFailed": "An error occurred",
+			"notFound": "Page not found",
 			"home": "Administration"
+		},
+		"messages": {
+			"notFound": "The page you are looking for doesn't exist or may have been moved."
 		},
 		"subHeadings": {
 			"home": "Smart Panel display administration"

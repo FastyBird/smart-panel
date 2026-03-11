@@ -143,8 +143,45 @@
 		</div>
 	</el-dialog>
 
+	<!-- Device not found -->
+	<div
+		v-if="notFound"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
+		<el-card
+			class="mt-2"
+			body-class="flex flex-row justify-center"
+		>
+			<el-result class="h-full max-w-[700px]">
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:devices" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:help" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					{{ t('devicesModule.messages.devices.notFound') }}
+				</template>
+
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="onClose"
+					>
+						{{ t('devicesModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</el-card>
+	</div>
+
 	<el-scrollbar
-		v-if="isDeviceRoute || isLGDevice"
+		v-else-if="isDeviceRoute || isLGDevice"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
 		:class="[ns.b()]"
 	>
@@ -314,7 +351,6 @@ import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceControls, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
@@ -345,6 +381,7 @@ const { fetchValidation } = useDeviceValidation({ id: props.id });
 
 // Track if device was previously loaded to detect deletion
 const wasDeviceLoaded = ref<boolean>(false);
+const notFound = ref<boolean>(false);
 const { canAddAnotherChannel } = useDeviceSpecification({ id: props.id });
 const { channels, fetchChannels } = useChannels({ deviceId: props.id });
 const { controls, fetchControls } = useDeviceControls({ deviceId: props.id });
@@ -352,7 +389,7 @@ const channelsActions = useChannelsActions();
 const channelsPropertiesActions = useChannelsPropertiesActions();
 
 if (!validateUuid(props.id)) {
-	throw new Error('Device identifier is not valid');
+	notFound.value = true;
 }
 
 const mounted = ref<boolean>(false);
@@ -606,20 +643,23 @@ const onClose = (): void => {
 };
 
 onBeforeMount((): void => {
+	if (notFound.value) {
+		return;
+	}
+
 	fetchDevice()
 		.then((): void => {
 			if (!isLoading.value && device.value === null && !wasDeviceLoaded.value) {
-				throw new DevicesException('Device not found');
+				notFound.value = true;
+				return;
 			}
 			// Mark as loaded if device was successfully fetched
 			if (device.value !== null) {
 				wasDeviceLoaded.value = true;
 			}
 
-			fetchChannels().catch((error: unknown): void => {
-				const err = error as Error;
-
-				throw new DevicesException('Something went wrong', err);
+			fetchChannels().catch((): void => {
+				// Silently ignore channel fetch errors
 			});
 
 			// Fetch validation data for this device
@@ -632,10 +672,8 @@ onBeforeMount((): void => {
 				// Silently ignore controls fetch errors - controls are optional
 			});
 		})
-		.catch((error: unknown): void => {
-			const err = error as Error;
-
-			throw new DevicesException('Something went wrong', err);
+		.catch((): void => {
+			notFound.value = true;
 		});
 
 	showDrawer.value =
@@ -673,9 +711,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if device was never loaded (initial load failed)
 		if (!val && device.value === null && !wasDeviceLoaded.value) {
-			throw new DevicesException('Device not found');
+			notFound.value = true;
 		}
 	}
 );
@@ -696,8 +733,7 @@ watch(
 				router.push({ name: RouteNames.DEVICES });
 			}
 		} else if (!isLoading.value && val === null && !wasDeviceLoaded.value) {
-			// Device was never loaded - initial load failed
-			throw new DevicesException('Device not found');
+			notFound.value = true;
 		}
 	}
 );
