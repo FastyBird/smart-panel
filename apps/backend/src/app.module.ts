@@ -101,6 +101,8 @@ import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-d
 import { TilesScenePlugin } from './plugins/tiles-scene/tiles-scene.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
+import { WEATHER_OPEN_METEO_PLUGIN_PREFIX } from './plugins/weather-open-meteo/weather-open-meteo.constants';
+import { WeatherOpenMeteoPlugin } from './plugins/weather-open-meteo/weather-open-meteo.plugin';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.constants';
 import { WeatherOpenweathermapOnecallPlugin } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.plugin';
 import { WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX } from './plugins/weather-openweathermap/weather-openweathermap.constants';
@@ -275,6 +277,10 @@ export class AppModule {
 								module: DevicesSimulatorPlugin,
 							},
 							{
+								path: WEATHER_OPEN_METEO_PLUGIN_PREFIX,
+								module: WeatherOpenMeteoPlugin,
+							},
+							{
 								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapPlugin,
 							},
@@ -376,6 +382,7 @@ export class AppModule {
 				DataSourcesDeviceChannelPlugin,
 				DataSourcesWeatherPlugin,
 				LoggerRotatingFilePlugin,
+				WeatherOpenMeteoPlugin,
 				WeatherOpenweathermapPlugin,
 				WeatherOpenweathermapOnecallPlugin,
 				BuddyOpenaiPlugin,

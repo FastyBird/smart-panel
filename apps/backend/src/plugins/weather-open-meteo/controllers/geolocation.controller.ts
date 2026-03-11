@@ -1,0 +1,41 @@
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { OpenMeteoGeolocationCityToCoordinatesResponseModel } from '../models/geolocation.model';
+import { OpenMeteoGeolocationService } from '../services/open-meteo-geolocation.service';
+import { WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME } from '../weather-open-meteo.constants';
+
+@ApiTags(WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME)
+@Controller('geolocation')
+export class OpenMeteoGeolocationController {
+	constructor(private readonly geolocationService: OpenMeteoGeolocationService) {}
+
+	@ApiOperation({
+		tags: [WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME],
+		summary: 'Get coordinates by city name',
+		description: 'Convert city name to geographic coordinates using Open-Meteo Geocoding API (no API key required)',
+		operationId: 'get-weather-open-meteo-city-geolocation',
+	})
+	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
+	@ApiSuccessResponse(OpenMeteoGeolocationCityToCoordinatesResponseModel, 'City coordinates retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('city-to-coordinates')
+	async getCityCoordinates(@Query('city') city: string): Promise<OpenMeteoGeolocationCityToCoordinatesResponseModel> {
+		if (!city || city.trim().length < 2) {
+			throw new BadRequestException('Query parameter "city" must be at least 2 characters');
+		}
+
+		const data = await this.geolocationService.getCoordinatesByCity(city.trim());
+
+		const response = new OpenMeteoGeolocationCityToCoordinatesResponseModel();
+		response.data = data || [];
+
+		return response;
+	}
+}

@@ -23,7 +23,7 @@
 						:debounce="500"
 						clearable
 						class="flex-1"
-						@select="handleCitySelect"
+						@select="onCitySelect"
 					>
 						<template #default="{ item }">
 							<div class="flex flex-col py-1">
@@ -38,7 +38,7 @@
 					<el-button
 						:loading="isGettingLocation"
 						class="px-2!"
-						@click="getMyLocation"
+						@click="getMyLocationClearCity"
 					>
 						<template #icon>
 							<icon icon="mdi:map-marker-account-outline" />
@@ -86,14 +86,14 @@
 				v-model:zoom="zoom"
 				:use-global-leaflet="false"
 				:center="center"
-				@click="onMapClick"
+				@click="onMapClickClearCity"
 			>
 				<l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 				<l-marker
 					v-if="marker"
 					:lat-lng="marker"
 					:draggable="true"
-					@moveend="onMarkerMoveEnd"
+					@moveend="onMarkerMoveEndClearCity"
 				/>
 			</l-map>
 		</div>
@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput, type InputInstance } from 'element-plus';
@@ -118,7 +118,7 @@ import 'leaflet/dist/leaflet.css';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useFlashMessage } from '../../../common';
-import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-openweathermap-onecall/composables/composables';
+import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-open-meteo/composables/useGeolocation';
 import { useAppOnboarding } from '../composables/composables';
 
 defineOptions({
@@ -127,10 +127,36 @@ defineOptions({
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const { searchCities, isSearching } = useGeolocation();
 const { locationData } = useAppOnboarding();
+const { searchCities, isSearching } = useGeolocation();
 
 const longitudeInputEl = ref<InputInstance | undefined>(undefined);
+const searchQuery = ref('');
+const isGettingLocation = ref(false);
+
+// Map state
+const zoom = ref<number>(10);
+const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
+const marker = ref<[number, number] | null>(null);
+
+const isValidCoordinate = (value: unknown): value is number => {
+	if (value === null || value === undefined || value === '') {
+		return false;
+	}
+
+	const num = Number(value);
+
+	return !isNaN(num) && isFinite(num);
+};
+
+const setMarker = (lat: number, lon: number, setZoom?: number): void => {
+	marker.value = [lat, lon];
+	center.value = [lat, lon];
+
+	if (setZoom !== undefined) {
+		zoom.value = setZoom;
+	}
+};
 
 const latitudeModel = computed({
 	get: () => (locationData.latitude !== null ? String(locationData.latitude) : ''),
@@ -158,45 +184,9 @@ const longitudeModel = computed({
 	},
 });
 
-const searchQuery = ref('');
-const isGettingLocation = ref(false);
-
-// Map state
-const zoom = ref<number>(4);
-const center = ref<[number, number]>([50.083328, 14.46667]);
-const marker = ref<[number, number] | null>(null);
-
 interface ISearchSuggestion extends IGeolocationCity {
 	value: string;
 }
-
-const setMarker = (lat: number, lon: number, adjustZoom = false): void => {
-	marker.value = [lat, lon];
-	center.value = [lat, lon];
-
-	if (adjustZoom) {
-		zoom.value = 12;
-	}
-};
-
-const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
-	const { lat, lng } = e.latlng;
-
-	marker.value = [lat, lng];
-
-	locationData.city = '';
-	locationData.latitude = lat;
-	locationData.longitude = lng;
-};
-
-const onMarkerMoveEnd = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
-	const { lat, lng } = e.target.getLatLng();
-
-	locationData.city = '';
-	locationData.latitude = lat;
-	locationData.longitude = lng;
-	marker.value = [lat, lng];
-};
 
 const handleCitySearch = (query: string, cb: (suggestions: Record<string, unknown>[]) => void): void => {
 	if (!query || query.length < 2) {
@@ -218,7 +208,7 @@ const handleCitySearch = (query: string, cb: (suggestions: Record<string, unknow
 		});
 };
 
-const handleCitySelect = (item: Record<string, unknown>): void => {
+const onCitySelect = (item: Record<string, unknown>): void => {
 	const suggestion = item as unknown as ISearchSuggestion;
 
 	locationData.city = suggestion.name;
@@ -226,10 +216,28 @@ const handleCitySelect = (item: Record<string, unknown>): void => {
 	locationData.longitude = suggestion.lon;
 	searchQuery.value = '';
 
-	setMarker(suggestion.lat, suggestion.lon, true);
+	setMarker(suggestion.lat, suggestion.lon, 12);
 };
 
-const getMyLocation = (): void => {
+const onMapClickClearCity = (e: { latlng: { lat: number; lng: number } }): void => {
+	const { lat, lng } = e.latlng;
+
+	locationData.city = '';
+	locationData.latitude = lat;
+	locationData.longitude = lng;
+	marker.value = [lat, lng];
+};
+
+const onMarkerMoveEndClearCity = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
+	const { lat, lng } = e.target.getLatLng();
+
+	locationData.city = '';
+	locationData.latitude = lat;
+	locationData.longitude = lng;
+	marker.value = [lat, lng];
+};
+
+const getMyLocationClearCity = (): void => {
 	if (!navigator.geolocation) {
 		flashMessage.error(t('onboardingModule.location.messages.geolocationNotSupported'));
 		return;
@@ -246,13 +254,12 @@ const getMyLocation = (): void => {
 			locationData.latitude = lat;
 			locationData.longitude = lng;
 
-			setMarker(lat, lng, true);
+			setMarker(lat, lng, 12);
 
 			isGettingLocation.value = false;
 		},
 		(error) => {
 			isGettingLocation.value = false;
-
 			switch (error.code) {
 				case error.PERMISSION_DENIED:
 					flashMessage.error(t('onboardingModule.location.messages.geolocationDenied'));
@@ -275,14 +282,22 @@ const getMyLocation = (): void => {
 	);
 };
 
-// Sync map marker when lat/lon fields change manually or on remount
+onBeforeMount((): void => {
+	if (isValidCoordinate(locationData.latitude) && isValidCoordinate(locationData.longitude)) {
+		setMarker(Number(locationData.latitude), Number(locationData.longitude), 18);
+	}
+});
+
 watch(
-	() => [locationData.latitude, locationData.longitude],
-	() => {
-		if (locationData.latitude !== null && locationData.longitude !== null) {
-			setMarker(locationData.latitude, locationData.longitude);
+	() => [locationData.latitude, locationData.longitude] as const,
+	([lat, lon]): void => {
+		if (isValidCoordinate(lat) && isValidCoordinate(lon)) {
+			const latNum = Number(lat);
+			const lonNum = Number(lon);
+
+			marker.value = [latNum, lonNum];
+			center.value = [latNum, lonNum];
 		}
-	},
-	{ immediate: true }
+	}
 );
 </script>

@@ -171,29 +171,22 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	const hasLocationData = computed(() => !!(locationData.city || (locationData.latitude !== null && locationData.longitude !== null)));
+	const hasLocationData = computed(() => locationData.latitude !== null && locationData.longitude !== null);
 
 	const saveLocation = async (): Promise<boolean> => {
 		if (locationConfigured.value) return true;
 
-		if (!locationData.city && locationData.latitude === null) {
+		if (locationData.latitude === null || locationData.longitude === null) {
 			return true;
 		}
 
 		try {
 			const locationBody: Record<string, unknown> = {
-				type: 'weather-openweathermap',
+				type: 'weather-open-meteo',
 				name: locationData.city || 'Home',
+				latitude: locationData.latitude,
+				longitude: locationData.longitude,
 			};
-
-			if (locationData.latitude !== null && locationData.longitude !== null) {
-				locationBody.location_type = 'lat_lon';
-				locationBody.latitude = locationData.latitude;
-				locationBody.longitude = locationData.longitude;
-			} else if (locationData.city) {
-				locationBody.location_type = 'city_name';
-				locationBody.city_name = locationData.city;
-			}
 
 			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
 				body: { data: locationBody },
@@ -355,8 +348,8 @@ export const useAppOnboarding = () => {
 		isLoading.value = true;
 
 		try {
-			// Save location if configured
-			if (locationData.city || (locationData.latitude !== null && locationData.longitude !== null)) {
+			// Save location if coordinates are set
+			if (locationData.latitude !== null && locationData.longitude !== null) {
 				const locationSaved = await saveLocation();
 
 				if (!locationSaved) {
