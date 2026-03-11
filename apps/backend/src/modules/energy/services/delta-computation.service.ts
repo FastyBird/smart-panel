@@ -38,7 +38,7 @@ export class DeltaComputationService {
 	private readonly logger = createExtensionLogger(ENERGY_MODULE_NAME, 'DeltaComputationService');
 
 	/**
-	 * Baselines keyed by `${deviceId}:${sourceType}`.
+	 * Baselines keyed by `${deviceId}:${channelId}:${sourceType}`.
 	 */
 	private baselines = new Map<string, BaselineState>();
 
@@ -48,6 +48,7 @@ export class DeltaComputationService {
 	 * Process a new cumulative kWh reading and return a delta if computable.
 	 *
 	 * @param deviceId The device that reported the reading.
+	 * @param channelId The channel that reported the reading.
 	 * @param sourceType The energy source type.
 	 * @param cumulativeKwh The new cumulative kWh value.
 	 * @param timestamp When the sample was received.
@@ -55,11 +56,12 @@ export class DeltaComputationService {
 	 */
 	computeDelta(
 		deviceId: string,
+		channelId: string,
 		sourceType: EnergySourceType,
 		cumulativeKwh: number,
 		timestamp: Date,
 	): DeltaResult | null {
-		const key = `${deviceId}:${sourceType}`;
+		const key = `${deviceId}:${channelId}:${sourceType}`;
 		const prev = this.baselines.get(key);
 
 		// Detect out-of-order samples (log + count) but still process them.
@@ -133,10 +135,22 @@ export class DeltaComputationService {
 	}
 
 	/**
-	 * Clear baseline for a specific device+source (e.g., on device removal).
+	 * Clear baseline for a specific device+channel+source (e.g., on channel removal).
 	 */
-	clearBaseline(deviceId: string, sourceType: EnergySourceType): void {
-		this.baselines.delete(`${deviceId}:${sourceType}`);
+	clearBaseline(deviceId: string, channelId: string, sourceType: EnergySourceType): void {
+		this.baselines.delete(`${deviceId}:${channelId}:${sourceType}`);
+	}
+
+	/**
+	 * Clear all baselines for a specific device (e.g., on device removal).
+	 */
+	clearDeviceBaselines(deviceId: string): void {
+		const prefix = `${deviceId}:`;
+		for (const key of this.baselines.keys()) {
+			if (key.startsWith(prefix)) {
+				this.baselines.delete(key);
+			}
+		}
 	}
 
 	/**

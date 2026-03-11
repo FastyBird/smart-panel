@@ -138,8 +138,9 @@ export class EnergyIngestionListener implements OnModuleInit {
 
 		this.metrics.recordSampleProcessed();
 
-		// Compute delta from cumulative reading
-		const delta = this.deltaComputation.computeDelta(deviceId, mapping.sourceType, numericValue, timestamp);
+		// Compute delta from cumulative reading (keyed per-channel to avoid
+		// false meter-reset warnings when a device has multiple energy channels)
+		const delta = this.deltaComputation.computeDelta(deviceId, channel.id, mapping.sourceType, numericValue, timestamp);
 
 		if (!delta) {
 			return;
