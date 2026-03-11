@@ -329,6 +329,7 @@ export class ShellyNgService implements IManagedPluginService {
 		this.shellies = undefined;
 
 		this.discoveryQueue.length = 0;
+		this.processingDiscovery = false;
 
 		this.delegatesRegistryService.detach();
 
