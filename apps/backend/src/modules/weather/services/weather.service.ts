@@ -311,15 +311,13 @@ export class WeatherService implements OnApplicationBootstrap {
 		}
 
 		try {
-			const provider = this.providerRegistry.get(location.type);
-			const fetchHourly = provider?.supportsHourlyForecast() ?? false;
+			const fetchHourly = provider.supportsHourlyForecast();
 
-			const [currentResult, forecast] = await Promise.all([
+			const [currentResult, forecast, hourly] = await Promise.all([
 				this.fetchCurrentWeather(location, force),
 				this.fetchForecastWeather(location, force),
+				fetchHourly ? this.fetchHourlyForecast(location, force) : Promise.resolve(null),
 			]);
-
-			const hourly: ForecastHourModel[] | null = fetchHourly ? await this.fetchHourlyForecast(location, force) : null;
 
 			if (currentResult && forecast) {
 				return toInstance(LocationWeatherModel, {

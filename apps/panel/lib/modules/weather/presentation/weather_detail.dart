@@ -492,7 +492,7 @@ class WeatherDetailPage extends StatelessWidget {
 					final hour = hourlyForecast[index];
 					final temp = NumberUtils.formatNumber(
 						UnitConverter.convertTemperature(
-							hour.temperature,
+							hour.toCelsius(hour.temperature),
 							units.temperature,
 						),
 						0,

@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
@@ -64,6 +64,7 @@ export class LocationForecastResponseModel extends BaseSuccessResponseModel<Fore
  * Response wrapper for array of ForecastHourModel
  */
 @ApiSchema({ name: 'WeatherModuleResLocationHourlyForecast' })
+@ApiExtraModels(ForecastHourModel)
 export class LocationHourlyForecastResponseModel extends BaseSuccessResponseModel<ForecastHourModel[]> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
