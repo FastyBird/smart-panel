@@ -243,6 +243,18 @@ router.beforeEach((to) => {
 	return routerGuards.handle(accountManager?.details.value ?? undefined, to as unknown as RouteRecordRaw);
 });
 
+// Catch-all 404 route — top-level so it works for unauthenticated users too.
+// Known routes (devices, spaces, …) still have their own auth guards and will
+// redirect to login; only truly unknown paths land here.
+router.addRoute({
+	path: '/:pathMatch(.*)*',
+	name: 'not-found',
+	component: () => import('./common/views/view-not-found.vue'),
+	meta: {
+		title: 'Page not found',
+	},
+});
+
 // App router initialization
 // INFO: Need to be placed as last because of dynamic routes inject
 app.use(router);

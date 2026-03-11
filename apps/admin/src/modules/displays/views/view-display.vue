@@ -312,12 +312,13 @@
 			</el-col>
 		</el-row>
 
-		<div
+		<entity-not-found
 			v-else-if="!isLoading"
-			class="text-center py-8 text-gray-500"
-		>
-			{{ t('displaysModule.messages.notFound') }}
-		</div>
+			icon="mdi:monitor"
+			:message="t('displaysModule.messages.notFound')"
+			:button-label="t('displaysModule.buttons.back.title')"
+			@back="router.push({ name: RouteNames.DISPLAYS })"
+		/>
 	</div>
 
 	<router-view
@@ -373,7 +374,7 @@ import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { usePages } from '../../dashboard/composables/composables';
 import { useDevices } from '../../devices/composables/useDevices';

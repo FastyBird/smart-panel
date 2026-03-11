@@ -1,86 +1,97 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="!notFound">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isChannelRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:chip"
-				class="w[20px] h[20px]"
-			/>
-		</template>
+		<app-bar-heading
+			v-if="!isMDDevice && isChannelRoute"
+			teleport
+		>
+			<template #icon>
+				<icon
+					icon="mdi:chip"
+					class="w[20px] h[20px]"
+				/>
+			</template>
 
-		<template #title>
-			{{ t('devicesModule.headings.channels.detail', { channel: channel?.name }) }}
-		</template>
+			<template #title>
+				{{ t('devicesModule.headings.channels.detail', { channel: channel?.name }) }}
+			</template>
 
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.channels.detail', { channel: channel?.name }) }}
-		</template>
-	</app-bar-heading>
+			<template #subtitle>
+				{{ t('devicesModule.subHeadings.channels.detail', { channel: channel?.name }) }}
+			</template>
+		</app-bar-heading>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="onClose"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+		</app-bar-button>
 
-	<app-bar-button
-		v-if="!isMDDevice && isChannelRoute && canAddAnotherProperty"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onPropertyAdd"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice && isChannelRoute && canAddAnotherProperty"
+			:align="AppBarButtonAlign.RIGHT"
+			teleport
+			small
+			@click="onPropertyAdd"
+		>
+			<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
+		</app-bar-button>
 
-	<view-header
-		:heading="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
-		:sub-heading="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
+		<view-header
+			:heading="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
+			:sub-heading="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
+			icon="mdi:chip"
+		>
+			<template #extra>
+				<div class="flex items-center">
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						:disabled="!canAddAnotherProperty"
+						@click="onPropertyAdd"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+
+						{{ t('devicesModule.buttons.addProperty.title') }}
+					</el-button>
+
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="onChannelEdit"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+				</div>
+			</template>
+		</view-header>
+	</template>
+
+	<!-- Channel not found -->
+	<entity-not-found
+		v-if="notFound"
 		icon="mdi:chip"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					:disabled="!canAddAnotherProperty"
-					@click="onPropertyAdd"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
-
-					{{ t('devicesModule.buttons.addProperty.title') }}
-				</el-button>
-
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onChannelEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+		:message="t('devicesModule.messages.channels.notFound')"
+		:button-label="t('devicesModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<div
-		v-if="isChannelRoute || isLGDevice"
+		v-else-if="isChannelRoute || isLGDevice"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-channels-properties
@@ -187,6 +198,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	EntityNotFound,
 	ViewError,
 	ViewHeader,
 	useBreakpoints,
@@ -195,8 +207,8 @@ import {
 } from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
 import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
+import { DevicesApiException } from '../devices.exceptions';
 import { RouteNames } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 
@@ -222,6 +234,7 @@ const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
 // Track if channel was previously loaded to detect deletion
 const wasChannelLoaded = ref<boolean>(false);
+const notFound = ref<boolean>(false);
 const { canAddAnotherProperty } = useChannelSpecification({ id: props.id });
 const {
 	properties,
@@ -240,7 +253,7 @@ const {
 const propertiesActions = useChannelsPropertiesActions();
 
 if (!validateUuid(props.id)) {
-	throw new Error('Channel identifier is not valid');
+	notFound.value = true;
 }
 
 const mounted = ref<boolean>(false);
@@ -408,23 +421,32 @@ const onAdjustList = (): void => {
 };
 
 onBeforeMount((): void => {
+	if (notFound.value) {
+		return;
+	}
+
 	fetchChannel()
 		.then((): void => {
+			if (!isLoading.value && channel.value === null && !wasChannelLoaded.value) {
+				notFound.value = true;
+				return;
+			}
 			// Mark as loaded if channel was successfully fetched
 			if (channel.value !== null) {
 				wasChannelLoaded.value = true;
 			}
 
-			fetchProperties().catch((error: unknown): void => {
-				const err = error as Error;
-
-				throw new DevicesException('Something went wrong', err);
+			fetchProperties().catch((): void => {
+				flashMessage.error(t('devicesModule.messages.channelsProperties.notLoadedForChannel'));
 			});
 		})
 		.catch((error: unknown): void => {
-			const err = error as Error;
-
-			throw new DevicesException('Something went wrong', err);
+			if (error instanceof DevicesApiException && error.code === 404) {
+				notFound.value = true;
+			} else {
+				flashMessage.error(t('devicesModule.messages.channels.notLoaded'));
+				notFound.value = true;
+			}
 		});
 
 	showDrawer.value =
@@ -456,9 +478,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if channel was never loaded (initial load failed)
 		if (!val && channel.value === null && !wasChannelLoaded.value) {
-			throw new DevicesException('Channel not found');
+			notFound.value = true;
 		}
 	}
 );
@@ -479,8 +500,7 @@ watch(
 				router.push({ name: RouteNames.CHANNELS });
 			}
 		} else if (!isLoading.value && val === null && !wasChannelLoaded.value) {
-			// Channel was never loaded - initial load failed
-			throw new DevicesException('Channel not found');
+			notFound.value = true;
 		}
 	}
 );

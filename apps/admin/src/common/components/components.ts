@@ -8,6 +8,7 @@ export { default as AppNavigation } from './app-navigation.vue';
 export { default as AppSidebar } from './app-sidebar.vue';
 export { default as AppTopBar } from './app-top-bar.vue';
 export { default as BulkActionsToolbar } from './bulk-actions-toolbar.vue';
+export { default as EntityNotFound } from './entity-not-found.vue';
 export { default as IconPicker } from './icon-picker.vue';
 export { default as IconWithChild } from './icon-with-child.vue';
 export { default as MarkdownRenderer } from './markdown-renderer.vue';

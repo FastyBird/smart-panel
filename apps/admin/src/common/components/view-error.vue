@@ -1,7 +1,7 @@
 <template>
 	<div
 		v-if="error"
-		class="flex flex-col justify-center w-full h-full"
+		class="flex flex-col items-center justify-center w-full h-full"
 	>
 		<el-result>
 			<template #icon>
@@ -13,13 +13,13 @@
 						<slot name="icon" />
 					</template>
 					<template #secondary>
-						<icon icon="mdi:error" />
+						<icon :icon="isNotFound ? 'mdi:help' : 'mdi:error'" />
 					</template>
 				</icon-with-child>
 			</template>
 
 			<template #title>
-				<h1>{{ t('application.headings.loadingFailed') }}</h1>
+				<h1>{{ isNotFound ? t('application.headings.notFound') : t('application.headings.loadingFailed') }}</h1>
 			</template>
 
 			<template #sub-title>
@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { onErrorCaptured, ref } from 'vue';
+import { computed, onErrorCaptured, ref } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -55,6 +55,13 @@ const { t } = useI18n();
 const logger = useLogger();
 
 const error = ref<unknown | null>(null);
+
+const isNotFound = computed<boolean>((): boolean => {
+	if (error.value instanceof Error) {
+		return /not found/i.test(error.value.message);
+	}
+	return false;
+});
 
 onErrorCaptured((err: unknown, _vm: ComponentPublicInstance | null, info: string): boolean => {
 	error.value = err;

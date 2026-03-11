@@ -1,99 +1,110 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="!notFound">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isSpaceRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				:icon="spaceIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
+		<app-bar-heading
+			v-if="!isMDDevice && isSpaceRoute"
+			teleport
+		>
+			<template #icon>
+				<icon
+					:icon="spaceIcon"
+					class="w[20px] h[20px]"
+				/>
+			</template>
 
-		<template #title>
-			{{ t('spacesModule.headings.detail', { space: space?.name }) }}
-		</template>
+			<template #title>
+				{{ t('spacesModule.headings.detail', { space: space?.name }) }}
+			</template>
 
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.detail', { space: space?.name }) }}
-		</template>
-	</app-bar-heading>
+			<template #subtitle>
+				{{ t('spacesModule.subHeadings.detail', { space: space?.name }) }}
+			</template>
+		</app-bar-heading>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="onClose"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+		</app-bar-button>
 
-	<view-header
-		:heading="t('spacesModule.headings.detail', { space: space?.name })"
-		:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
-		:icon="spaceIcon"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddDevice"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+		<view-header
+			:heading="t('spacesModule.headings.detail', { space: space?.name })"
+			:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
+			:icon="spaceIcon"
+		>
+			<template #extra>
+				<div class="flex items-center">
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddDevice"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.devices.add') }}
-				</el-button>
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddScene"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+						{{ t('spacesModule.detail.devices.add') }}
+					</el-button>
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddScene"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.scenes.add') }}
-				</el-button>
-				<el-button
-					v-if="space?.type === SpaceType.ROOM"
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddDisplay"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+						{{ t('spacesModule.detail.scenes.add') }}
+					</el-button>
+					<el-button
+						v-if="space?.type === SpaceType.ROOM"
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddDisplay"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.displays.add') }}
-				</el-button>
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onSpaceEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+						{{ t('spacesModule.detail.displays.add') }}
+					</el-button>
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="onSpaceEdit"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+				</div>
+			</template>
+		</view-header>
+	</template>
+
+	<!-- Space not found -->
+	<entity-not-found
+		v-if="notFound"
+		icon="mdi:home-group"
+		:message="t('spacesModule.messages.notFound')"
+		:button-label="t('spacesModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<el-scrollbar
-		v-if="isSpaceRoute || isLGDevice"
+		v-else-if="isSpaceRoute || isLGDevice"
 		v-loading="isLoading || space === null"
 		:element-loading-text="t('spacesModule.texts.loadingSpace')"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
@@ -288,6 +299,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	EntityNotFound,
 	useBreakpoints,
 	useFlashMessage,
 	ViewError,
@@ -304,6 +316,7 @@ import {
 } from '../components/components';
 import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
+import { SpacesApiException } from '../spaces.exceptions';
 import { type ISpace } from '../store';
 
 import type { IViewSpaceProps } from './view-space.types';
@@ -334,6 +347,7 @@ const isLoading = computed<boolean>(() => fetching.value);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
+const notFound = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
@@ -462,9 +476,21 @@ const onSpaceEdit = (): void => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	await fetchSpace();
+	try {
+		await fetchSpace();
+	} catch (error: unknown) {
+		if (error instanceof SpacesApiException && error.code === 404) {
+			notFound.value = true;
+		} else {
+			flashMessage.error(t('spacesModule.messages.notLoaded'));
+			notFound.value = true;
+		}
+
+		return;
+	}
+
 	if (!isLoading.value && space.value === null && !wasSpaceLoaded.value) {
-		// Space not found
+		notFound.value = true;
 	}
 	// Mark as loaded if space was successfully fetched
 	if (space.value !== null) {
@@ -495,9 +521,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if space was never loaded (initial load failed)
 		if (!val && space.value === null && !wasSpaceLoaded.value) {
-			// Space not found
+			notFound.value = true;
 		}
 	}
 );
@@ -518,8 +543,7 @@ watch(
 				router.push({ name: RouteNames.SPACES });
 			}
 		} else if (!isLoading.value && val === null && !wasSpaceLoaded.value) {
-			// Space was never loaded - initial load failed
-			// Space not found
+			notFound.value = true;
 		}
 	}
 );

@@ -328,6 +328,9 @@
 		"permitJoin": {
 			"title": "Permit join",
 			"disable": "Disable join ({time})"
+		},
+		"back": {
+			"title": "Go back"
 		}
 	},
 	"edit": {
