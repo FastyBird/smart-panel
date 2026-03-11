@@ -82,36 +82,13 @@
 	</template>
 
 	<!-- Channel not found -->
-	<div
+	<entity-not-found
 		v-if="notFound"
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:chip" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:help" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('devicesModule.messages.channels.notFound') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.back.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
+		icon="mdi:chip"
+		:message="t('devicesModule.messages.channels.notFound')"
+		:button-label="t('devicesModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<div
 		v-else-if="isChannelRoute || isLGDevice"
@@ -211,7 +188,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElResult } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -221,7 +198,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
-	IconWithChild,
+	EntityNotFound,
 	ViewError,
 	ViewHeader,
 	useBreakpoints,

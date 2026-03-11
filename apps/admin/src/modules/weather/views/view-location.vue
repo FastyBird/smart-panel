@@ -84,36 +84,13 @@
 	</div>
 
 	<!-- Location not found -->
-	<div
+	<entity-not-found
 		v-else-if="!location"
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:map-marker" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:help" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('weatherModule.messages.locations.notFound') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onClose"
-				>
-					{{ t('weatherModule.buttons.back.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
+		icon="mdi:map-marker"
+		:message="t('weatherModule.messages.locations.notFound')"
+		:button-label="t('weatherModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<!-- Error state - weather failed to load -->
 	<div
@@ -251,7 +228,7 @@ import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElResult, ElScrollbar
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import LocationDetail from '../components/location-detail.vue';
 import LocationForecast from '../components/location-forecast.vue';
 import { useLocation } from '../composables/useLocation';

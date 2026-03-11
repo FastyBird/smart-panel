@@ -146,36 +146,13 @@
 	</template>
 
 	<!-- Device not found -->
-	<div
+	<entity-not-found
 		v-if="notFound"
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:devices" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:help" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('devicesModule.messages.devices.notFound') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.back.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
+		icon="mdi:devices"
+		:message="t('devicesModule.messages.devices.notFound')"
+		:button-label="t('devicesModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<el-scrollbar
 		v-else-if="isDeviceRoute || isLGDevice"
@@ -337,6 +314,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	EntityNotFound,
 	IconWithChild,
 	ViewError,
 	ViewHeader,

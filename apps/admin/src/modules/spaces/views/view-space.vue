@@ -95,36 +95,13 @@
 	</template>
 
 	<!-- Space not found -->
-	<div
+	<entity-not-found
 		v-if="notFound"
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:home-group" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:help" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('spacesModule.messages.notFound') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onClose"
-				>
-					{{ t('spacesModule.buttons.back.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
+		icon="mdi:home-group"
+		:message="t('spacesModule.messages.notFound')"
+		:button-label="t('spacesModule.buttons.back.title')"
+		@back="onClose"
+	/>
 
 	<el-scrollbar
 		v-else-if="isSpaceRoute || isLGDevice"
@@ -307,7 +284,6 @@ import {
 	ElDrawer,
 	ElIcon,
 	ElMessageBox,
-	ElResult,
 	ElScrollbar,
 	ElTabPane,
 	ElTabs,
@@ -323,7 +299,7 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
-	IconWithChild,
+	EntityNotFound,
 	useBreakpoints,
 	useFlashMessage,
 	ViewError,

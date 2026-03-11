@@ -312,36 +312,13 @@
 			</el-col>
 		</el-row>
 
-		<div
+		<entity-not-found
 			v-else-if="!isLoading"
-			class="flex flex-col items-center justify-center w-full h-full"
-		>
-			<el-result>
-				<template #icon>
-					<icon-with-child :size="80">
-						<template #primary>
-							<icon icon="mdi:monitor" />
-						</template>
-						<template #secondary>
-							<icon icon="mdi:help" />
-						</template>
-					</icon-with-child>
-				</template>
-
-				<template #title>
-					{{ t('displaysModule.messages.notFound') }}
-				</template>
-
-				<template #extra>
-					<el-button
-						type="primary"
-						@click="router.push({ name: RouteNames.DISPLAYS })"
-					>
-						{{ t('displaysModule.buttons.back.title') }}
-					</el-button>
-				</template>
-			</el-result>
-		</div>
+			icon="mdi:monitor"
+			:message="t('displaysModule.messages.notFound')"
+			:button-label="t('displaysModule.buttons.back.title')"
+			@back="router.push({ name: RouteNames.DISPLAYS })"
+		/>
 	</div>
 
 	<router-view
@@ -393,11 +370,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElResult, ElRow, ElTag, vLoading } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElRow, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, IconWithChild, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { usePages } from '../../dashboard/composables/composables';
 import { useDevices } from '../../devices/composables/useDevices';
