@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, reactive, ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput } from 'element-plus';
@@ -126,7 +126,7 @@ import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
 import { WEATHER_OPEN_METEO_PLUGIN_TYPE } from '../weather-open-meteo.constants';
-import { useGeolocation, type IGeolocationCity } from '../composables/composables';
+import { useLocationMap, type ILocationModel } from '../composables/composables';
 
 import type { IOpenMeteoLocationEditFormProps } from './open-meteo-location-edit-form.types';
 
@@ -152,23 +152,7 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { edit: editLocation } = useLocationsActions();
 
-const { searchCities, isSearching } = useGeolocation();
-
 const formEl = ref<FormInstance | undefined>(undefined);
-const searchQuery = ref('');
-const isGettingLocation = ref(false);
-
-// Map state
-const zoom = ref<number>(10);
-const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
-const marker = ref<[number, number] | null>(null);
-
-interface ILocationModel {
-	name: string;
-	latitude: number | null;
-	longitude: number | null;
-	countryCode: string;
-}
 
 // Initialize model from props.location
 const getInitialModel = (): ILocationModel => {
@@ -183,6 +167,20 @@ const getInitialModel = (): ILocationModel => {
 };
 
 const model = reactive<ILocationModel>(getInitialModel());
+
+const {
+	searchQuery,
+	isSearching,
+	isGettingLocation,
+	zoom,
+	center,
+	marker,
+	onMapClick,
+	onMarkerMoveEnd,
+	handleCitySearch,
+	handleCitySelect,
+	getMyLocation,
+} = useLocationMap(model);
 
 const rules: FormRules<ILocationModel> = {
 	name: [
@@ -220,104 +218,6 @@ const rules: FormRules<ILocationModel> = {
 			trigger: ['change', 'blur'],
 		},
 	],
-};
-
-interface ISearchSuggestion extends IGeolocationCity {
-	value: string;
-}
-
-const setMarker = (lat: number, lon: number): void => {
-	marker.value = [lat, lon];
-	center.value = [lat, lon];
-	zoom.value = 18;
-};
-
-const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
-	const { lat, lng } = e.latlng;
-
-	setMarker(lat, lng);
-
-	model.latitude = lat;
-	model.longitude = lng;
-};
-
-const onMarkerMoveEnd = (e: { target: { getLatLng: () => { lat: number; lng: number } } }): void => {
-	const { lat, lng } = e.target.getLatLng();
-
-	model.latitude = lat;
-	model.longitude = lng;
-	marker.value = [lat, lng];
-};
-
-const handleCitySearch = (query: string, cb: (suggestions: Record<string, unknown>[]) => void): void => {
-	if (!query || query.length < 2) {
-		cb([]);
-		return;
-	}
-
-	searchCities(query).then((results) => {
-		const suggestions: ISearchSuggestion[] = results.map((city) => ({
-			...city,
-			value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
-		}));
-
-		cb(suggestions as unknown as Record<string, unknown>[]);
-	});
-};
-
-const handleCitySelect = (item: Record<string, unknown>): void => {
-	const suggestion = item as unknown as ISearchSuggestion;
-	model.name = `${suggestion.name}${suggestion.state ? `, ${suggestion.state}` : ''}, ${suggestion.country}`;
-	model.latitude = suggestion.lat;
-	model.longitude = suggestion.lon;
-	model.countryCode = suggestion.country;
-	searchQuery.value = '';
-
-	setMarker(suggestion.lat, suggestion.lon);
-};
-
-const getMyLocation = (): void => {
-	if (!navigator.geolocation) {
-		flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationNotSupported'));
-		return;
-	}
-
-	isGettingLocation.value = true;
-
-	navigator.geolocation.getCurrentPosition(
-		(position) => {
-			const lat = position.coords.latitude;
-			const lng = position.coords.longitude;
-
-			model.latitude = lat;
-			model.longitude = lng;
-
-			setMarker(lat, lng);
-
-			isGettingLocation.value = false;
-		},
-		(error) => {
-			isGettingLocation.value = false;
-			switch (error.code) {
-				case error.PERMISSION_DENIED:
-					flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationDenied'));
-					break;
-				case error.POSITION_UNAVAILABLE:
-					flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationUnavailable'));
-					break;
-				case error.TIMEOUT:
-					flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationTimeout'));
-					break;
-				default:
-					flashMessage.error(t('weatherOpenMeteoPlugin.messages.geolocationError'));
-			}
-		},
-		{
-			enableHighAccuracy: true,
-			timeout: 10000,
-			maximumAge: 0,
-		}
-	);
 };
 
 const onSubmit = async (): Promise<void> => {
@@ -359,30 +259,6 @@ const onSubmit = async (): Promise<void> => {
 		}, 2000);
 	}
 };
-
-onBeforeMount((): void => {
-	if (model.latitude !== null && model.longitude !== null) {
-		setMarker(model.latitude, model.longitude);
-	}
-});
-
-watch(
-	() => model.latitude,
-	(): void => {
-		if (model.latitude !== null && typeof model.latitude !== 'undefined' && model.longitude !== null && typeof model.longitude !== 'undefined') {
-			setMarker(model.latitude, model.longitude);
-		}
-	}
-);
-
-watch(
-	() => model.longitude,
-	(): void => {
-		if (model.latitude !== null && typeof model.latitude !== 'undefined' && model.longitude !== null && typeof model.longitude !== 'undefined') {
-			setMarker(model.latitude, model.longitude);
-		}
-	}
-);
 
 watch(
 	() => props.remoteFormSubmit,

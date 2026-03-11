@@ -171,7 +171,7 @@ export const useAppOnboarding = () => {
 		}
 	};
 
-	const hasLocationData = computed(() => !!(locationData.city || (locationData.latitude !== null && locationData.longitude !== null)));
+	const hasLocationData = computed(() => locationData.latitude !== null && locationData.longitude !== null);
 
 	const saveLocation = async (): Promise<boolean> => {
 		if (locationConfigured.value) return true;
@@ -348,8 +348,8 @@ export const useAppOnboarding = () => {
 		isLoading.value = true;
 
 		try {
-			// Save location if configured
-			if (locationData.city || (locationData.latitude !== null && locationData.longitude !== null)) {
+			// Save location if coordinates are set
+			if (locationData.latitude !== null && locationData.longitude !== null) {
 				const locationSaved = await saveLocation();
 
 				if (!locationSaved) {

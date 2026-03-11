@@ -9,7 +9,10 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { OpenMeteoGeolocationCityToCoordinatesResponseModel } from '../models/geolocation.model';
 import { OpenMeteoGeolocationService } from '../services/open-meteo-geolocation.service';
-import { WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME, WEATHER_OPEN_METEO_PLUGIN_NAME } from '../weather-open-meteo.constants';
+import {
+	WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME,
+	WEATHER_OPEN_METEO_PLUGIN_NAME,
+} from '../weather-open-meteo.constants';
 
 @ApiTags(WEATHER_OPEN_METEO_PLUGIN_API_TAG_NAME)
 @Controller('geolocation')

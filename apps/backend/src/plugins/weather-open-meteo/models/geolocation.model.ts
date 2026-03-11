@@ -48,7 +48,9 @@ export class OpenMeteoGeolocationCityModel {
 }
 
 @ApiSchema({ name: 'WeatherOpenMeteoResGeolocationCityToCoordinates' })
-export class OpenMeteoGeolocationCityToCoordinatesResponseModel extends BaseSuccessResponseModel<OpenMeteoGeolocationCityModel[]> {
+export class OpenMeteoGeolocationCityToCoordinatesResponseModel extends BaseSuccessResponseModel<
+	OpenMeteoGeolocationCityModel[]
+> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',
