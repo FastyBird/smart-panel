@@ -83,6 +83,38 @@
 		</el-card>
 	</div>
 
+	<!-- Location not found -->
+	<div
+		v-else-if="!location"
+		class="flex flex-col items-center justify-center w-full h-full"
+	>
+		<el-result>
+			<template #icon>
+				<icon-with-child :size="80">
+					<template #primary>
+						<icon icon="mdi:map-marker" />
+					</template>
+					<template #secondary>
+						<icon icon="mdi:help" />
+					</template>
+				</icon-with-child>
+			</template>
+
+			<template #title>
+				{{ t('weatherModule.messages.locations.notFound') }}
+			</template>
+
+			<template #extra>
+				<el-button
+					type="primary"
+					@click="onClose"
+				>
+					{{ t('weatherModule.buttons.back.title') }}
+				</el-button>
+			</template>
+		</el-result>
+	</div>
+
 	<!-- Error state - weather failed to load -->
 	<div
 		v-else-if="hasWeatherError || !weather"
@@ -156,38 +188,6 @@
 	>
 		<component :is="Component" />
 	</router-view>
-
-	<!-- Location not found -->
-	<div
-		v-else
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:map-marker" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:help" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('weatherModule.messages.locations.notFound') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onClose"
-				>
-					{{ t('weatherModule.buttons.back.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
 
 	<!-- Drawer for large devices -->
 	<el-drawer
