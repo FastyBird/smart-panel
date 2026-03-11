@@ -13,6 +13,7 @@ import {
 	AllLocationsWeatherResponseModel,
 	LocationCurrentResponseModel,
 	LocationForecastResponseModel,
+	LocationHourlyForecastResponseModel,
 	LocationWeatherResponseModel,
 } from '../models/weather-response.model';
 import { WeatherService } from '../services/weather.service';
@@ -186,6 +187,57 @@ export class WeatherController {
 		} catch (error) {
 			if (error instanceof WeatherNotFoundException) {
 				throw new NotFoundException(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
+		summary: 'Get hourly forecast for specific location',
+		description:
+			'Retrieve hourly weather forecast for a specific location. Note: Not all weather providers support hourly forecast.',
+		operationId: 'get-weather-module-location-hourly-forecast',
+	})
+	@ApiParam({
+		name: 'locationId',
+		description: 'Location ID',
+		type: 'string',
+		format: 'uuid',
+		required: true,
+	})
+	@ApiSuccessResponse(LocationHourlyForecastResponseModel, 'Hourly forecast data retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Location not found or hourly forecast data could not be loaded')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':locationId/hourly')
+	async getHourlyForecast(
+		@Param('locationId', ParseUUIDPipe) locationId: string,
+	): Promise<LocationHourlyForecastResponseModel> {
+		this.logger.debug(`Fetching hourly forecast data for location=${locationId}`);
+
+		try {
+			const data = await this.weatherService.getHourlyForecast(locationId);
+
+			const response = new LocationHourlyForecastResponseModel();
+			response.data = data;
+
+			return response;
+		} catch (error) {
+			if (error instanceof WeatherNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+
+			if (error instanceof WeatherNotSupportedException) {
+				throw new HttpException(
+					{
+						statusCode: HttpStatus.NOT_IMPLEMENTED,
+						message: error.message,
+						error: 'Not Implemented',
+					},
+					HttpStatus.NOT_IMPLEMENTED,
+				);
 			}
 
 			throw error;

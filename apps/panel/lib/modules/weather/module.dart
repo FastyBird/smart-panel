@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/hourly_forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/foundation.dart';
@@ -17,6 +18,7 @@ class WeatherModuleService {
 
   late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
+  late HourlyForecastWeatherRepository _hourlyForecastWeatherRepository;
   late LocationsRepository _locationsRepository;
 
   late WeatherService _weatherService;
@@ -41,12 +43,16 @@ class WeatherModuleService {
     _forecastWeatherRepository = ForecastWeatherRepository(
       apiClient: apiClient.weatherModule,
     );
+    _hourlyForecastWeatherRepository = HourlyForecastWeatherRepository(
+      apiClient: apiClient.weatherModule,
+    );
     _locationsRepository = LocationsRepository(
       apiClient: apiClient.weatherModule,
     );
 
     locator.registerSingleton(_currentWeatherRepository);
     locator.registerSingleton(_forecastWeatherRepository);
+    locator.registerSingleton(_hourlyForecastWeatherRepository);
     locator.registerSingleton(_locationsRepository);
   }
 
@@ -80,11 +86,13 @@ class WeatherModuleService {
     _locationsRepository.setPrimaryLocationIdProvider(resolveLocationId);
     _currentWeatherRepository.setPrimaryLocationIdProvider(resolveLocationId);
     _forecastWeatherRepository.setPrimaryLocationIdProvider(resolveLocationId);
+    _hourlyForecastWeatherRepository.setPrimaryLocationIdProvider(resolveLocationId);
 
     // Create weather service with config from config module
     _weatherService = WeatherService(
       currentDayRepository: _currentWeatherRepository,
       forecastRepository: _forecastWeatherRepository,
+      hourlyForecastRepository: _hourlyForecastWeatherRepository,
       locationsRepository: _locationsRepository,
       configurationRepository: _weatherConfigRepo,
     );
@@ -199,6 +207,7 @@ class WeatherModuleService {
 
       _currentWeatherRepository.reresolvePrimary();
       _forecastWeatherRepository.reresolvePrimary();
+      _hourlyForecastWeatherRepository.reresolvePrimary();
     }
   }
 
@@ -258,6 +267,7 @@ class WeatherModuleService {
     try {
       await _currentWeatherRepository.fetchWeather();
       await _forecastWeatherRepository.fetchWeather();
+      await _hourlyForecastWeatherRepository.fetchWeather();
     } catch (e) {
       // This error could be ignored
     }
@@ -281,6 +291,17 @@ class WeatherModuleService {
           .toList();
 
       _forecastWeatherRepository.insertForecast(
+        mapped,
+        locationId: locationId,
+      );
+    }
+
+    if (payload.containsKey('hourly_forecast') && payload['hourly_forecast'] is List) {
+      List<Map<String, dynamic>> mapped = (payload['hourly_forecast'] as List<dynamic>)
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      _hourlyForecastWeatherRepository.insertHourlyForecast(
         mapped,
         locationId: locationId,
       );
@@ -317,6 +338,7 @@ class WeatherModuleService {
     final deletedId = payload['id'] as String?;
     if (deletedId != null) {
       _locationsRepository.removeLocation(deletedId);
+      _hourlyForecastWeatherRepository.removeLocation(deletedId);
     }
   }
 }

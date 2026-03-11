@@ -7,8 +7,18 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SystemConfigModel } from '../../../modules/system/models/config.model';
 import { LanguageType, TemperatureUnitType } from '../../../modules/system/system.constants';
-import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
-import { OpenMeteoCurrentDto, OpenMeteoDailyDto, OpenMeteoResponseDto } from '../dto/open-meteo-response.dto';
+import {
+	CurrentDayModel,
+	ForecastDayModel,
+	ForecastHourModel,
+	LocationModel,
+} from '../../../modules/weather/models/weather.model';
+import {
+	OpenMeteoCurrentDto,
+	OpenMeteoDailyDto,
+	OpenMeteoHourlyDto,
+	OpenMeteoResponseDto,
+} from '../dto/open-meteo-response.dto';
 import { OpenMeteoLocationEntity } from '../entities/locations-open-meteo.entity';
 import { OpenMeteoConfigModel } from '../models/config.model';
 import { WEATHER_OPEN_METEO_PLUGIN_NAME } from '../weather-open-meteo.constants';
@@ -198,6 +208,7 @@ export class OpenMeteoHttpService {
 	async fetchWeatherData(location: OpenMeteoLocationEntity): Promise<{
 		current: CurrentDayModel;
 		forecast: ForecastDayModel[];
+		hourly: ForecastHourModel[];
 		location: LocationModel;
 	} | null> {
 		const temperatureUnit = this.getUnits();
@@ -236,9 +247,23 @@ export class OpenMeteoHttpService {
 			'cloud_cover_mean',
 		].join(',');
 
+		const hourlyParams = [
+			'temperature_2m',
+			'apparent_temperature',
+			'relative_humidity_2m',
+			'surface_pressure',
+			'wind_speed_10m',
+			'wind_direction_10m',
+			'wind_gusts_10m',
+			'cloud_cover',
+			'rain',
+			'snowfall',
+			'weather_code',
+		].join(',');
+
 		const url =
 			`${this.BASE_URL}?latitude=${location.latitude}&longitude=${location.longitude}` +
-			`&current=${currentParams}&daily=${dailyParams}` +
+			`&current=${currentParams}&daily=${dailyParams}&hourly=${hourlyParams}` +
 			`&temperature_unit=${temperatureUnit}&wind_speed_unit=${windSpeedUnit}` +
 			`&timezone=auto&forecast_days=7`;
 
@@ -267,13 +292,14 @@ export class OpenMeteoHttpService {
 			const timezone = openMeteoData.timezone ?? 'UTC';
 			const current = this.transformCurrentWeather(openMeteoData.current, openMeteoData.daily, timezone);
 			const forecast = this.transformDailyForecast(openMeteoData.daily, timezone);
+			const hourly = openMeteoData.hourly ? this.transformHourlyForecast(openMeteoData.hourly, timezone) : [];
 
 			const locationModel = toInstance(LocationModel, {
 				name: location.name,
 				country: location.countryCode,
 			});
 
-			return { current, forecast, location: locationModel };
+			return { current, forecast, hourly, location: locationModel };
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error('[WEATHER] Failed to fetch Open-Meteo data', { message: err.message, stack: err.stack });
@@ -381,6 +407,50 @@ export class OpenMeteoHttpService {
 		}
 
 		return days;
+	}
+
+	private transformHourlyForecast(hourly: OpenMeteoHourlyDto, timezone: string): ForecastHourModel[] {
+		const hours: ForecastHourModel[] = [];
+		const now = new Date();
+		const maxHours = 48;
+
+		for (let i = 0; i < hourly.time.length && hours.length < maxHours; i++) {
+			const dateTime = parseLocalDate(hourly.time[i], timezone);
+
+			// Skip past hours
+			if (dateTime < now) {
+				continue;
+			}
+
+			const wmoCode = hourly.weather_code[i];
+			const mapping = WMO_CODE_MAP[wmoCode] ?? WMO_CODE_MAP[0];
+
+			hours.push(
+				toInstance(ForecastHourModel, {
+					temperature: hourly.temperature_2m[i],
+					feels_like: hourly.apparent_temperature[i],
+					pressure: hourly.surface_pressure[i],
+					humidity: hourly.relative_humidity_2m[i],
+					weather: {
+						code: wmoToOwmCode(wmoCode),
+						main: mapping.main,
+						description: this.getLocalizedDescription(wmoCode, mapping),
+						icon: mapping.icon,
+					},
+					wind: {
+						speed: hourly.wind_speed_10m[i],
+						deg: hourly.wind_direction_10m[i],
+						gust: hourly.wind_gusts_10m?.[i] ?? null,
+					},
+					clouds: hourly.cloud_cover[i],
+					rain: hourly.rain?.[i] ?? null,
+					snow: hourly.snowfall?.[i] ?? null,
+					date_time: dateTime,
+				}),
+			);
+		}
+
+		return hours;
 	}
 
 	private getLocalizedDescription(wmoCode: number, mapping: WmoMapping): string {

@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { WeatherLocationEntity } from '../../../modules/weather/entities/locations.entity';
 import { WeatherAlertModel } from '../../../modules/weather/models/alert.model';
-import { CurrentDayModel, ForecastDayModel } from '../../../modules/weather/models/weather.model';
+import { CurrentDayModel, ForecastDayModel, ForecastHourModel } from '../../../modules/weather/models/weather.model';
 import { IWeatherProvider } from '../../../modules/weather/platforms/weather-provider.platform';
 import { OpenWeatherMapOneCallLocationEntity } from '../entities/locations-openweathermap-onecall.entity';
 import { OpenWeatherMapOneCallHttpService } from '../services/openweathermap-onecall-http.service';
@@ -36,7 +36,10 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 	}
 
 	supportsAlerts(): boolean {
-		// One Call API 3.0 supports weather alerts
+		return true;
+	}
+
+	supportsHourlyForecast(): boolean {
 		return true;
 	}
 
@@ -71,6 +74,26 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 		if (result) {
 			this.logger.debug(`[WEATHER] Successfully fetched forecast weather for location id=${location.id}`);
 			return result.forecast;
+		}
+
+		return null;
+	}
+
+	async getHourlyForecast(location: WeatherLocationEntity): Promise<ForecastHourModel[] | null> {
+		if (!(location instanceof OpenWeatherMapOneCallLocationEntity)) {
+			this.logger.error(`[WEATHER] Invalid location type: expected OpenWeatherMapOneCallLocationEntity`);
+			return null;
+		}
+
+		this.logger.debug(`[WEATHER] Fetching hourly forecast for location id=${location.id}`);
+
+		const result = await this.httpService.fetchWeatherData(location);
+
+		if (result) {
+			this.logger.debug(
+				`[WEATHER] Successfully fetched ${result.hourly.length} hourly forecast entries for location id=${location.id}`,
+			);
+			return result.hourly;
 		}
 
 		return null;

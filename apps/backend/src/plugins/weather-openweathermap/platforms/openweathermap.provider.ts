@@ -35,8 +35,10 @@ export class OpenWeatherMapProvider implements IWeatherProvider {
 	}
 
 	supportsAlerts(): boolean {
-		// OpenWeatherMap 2.5 API does not support weather alerts
-		// Alerts require One Call API 3.0 which would be a separate plugin
+		return false;
+	}
+
+	supportsHourlyForecast(): boolean {
 		return false;
 	}
 

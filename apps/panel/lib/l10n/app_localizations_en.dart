@@ -978,6 +978,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weather_detail_today => 'Today';
 
   @override
+  String get weather_detail_hourly_forecast => 'Hourly forecast';
+
+  @override
   String get weather_condition_thunderstorm_with_light_rain => 'Thunderstorm with light rain';
 
   @override

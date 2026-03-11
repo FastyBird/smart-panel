@@ -1829,6 +1829,12 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get weather_detail_today;
 
+  /// Section heading for hourly forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Hourly forecast'**
+  String get weather_detail_hourly_forecast;
+
   /// A thunderstorm accompanied by light rain.
   ///
   /// In en, this message translates to:

@@ -989,6 +989,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_detail_today => 'Dnes';
 
   @override
+  String get weather_detail_hourly_forecast => 'Hodinová předpověď';
+
+  @override
   String get weather_condition_thunderstorm_with_light_rain => 'Bouřka s lehkým deštěm';
 
   @override

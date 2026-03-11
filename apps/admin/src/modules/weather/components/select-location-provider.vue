@@ -50,7 +50,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { options, getElement } = useWeatherLocationsPlugins();
+const { options, getByType } = useWeatherLocationsPlugins();
 
 const selectedType = ref<string | undefined>(props.modelValue);
 
@@ -59,7 +59,7 @@ const selectedPlugin = computed(() => {
 		return undefined;
 	}
 
-	return getElement(selectedType.value);
+	return getByType(selectedType.value);
 });
 
 watch(

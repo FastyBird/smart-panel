@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/weather/export.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
+import 'package:fastybird_smart_panel/modules/weather/views/forecast_hour.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
@@ -35,6 +36,7 @@ class WeatherDetailPage extends StatelessWidget {
 		) {
 			final currentDay = weatherService.getCurrentDayByLocation(locationId);
 			final forecast = weatherService.getForecastByLocation(locationId);
+			final hourlyForecast = weatherService.getHourlyForecastByLocation(locationId);
 			final screenService = locator<ScreenService>();
 			final isLandscape = screenService.isLandscape;
 
@@ -66,7 +68,7 @@ class WeatherDetailPage extends StatelessWidget {
 							),
 							// Content right panel (56%)
 							Expanded(
-								child: _buildContentArea(context, currentDay, forecast),
+								child: _buildContentArea(context, currentDay, forecast, hourlyForecast),
 							),
 						],
 					),
@@ -84,7 +86,7 @@ class WeatherDetailPage extends StatelessWidget {
 							child: _buildSkyPanel(context, currentDay, config, isPortrait: true),
 						),
 						Expanded(
-							child: _buildContentArea(context, currentDay, forecast),
+							child: _buildContentArea(context, currentDay, forecast, hourlyForecast),
 						),
 					],
 				),
@@ -392,6 +394,7 @@ class WeatherDetailPage extends StatelessWidget {
 		BuildContext context,
 		CurrentDayView? currentDay,
 		List<ForecastDayView> forecast,
+		List<ForecastHourView> hourlyForecast,
 	) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -414,6 +417,12 @@ class WeatherDetailPage extends StatelessWidget {
 		}
 
 		final contentItems = <Widget>[
+			// Hourly forecast section
+			if (hourlyForecast.isNotEmpty) ...[
+				_buildSectionTitle(localizations.weather_detail_hourly_forecast, isDark),
+				_buildHourlyForecast(context, hourlyForecast, units),
+				SizedBox(height: AppSpacings.pMd),
+			],
 			// Forecast section
 			if (forecast.isNotEmpty) ...[
 				_buildSectionTitle(localizations.weather_detail_forecast, isDark),
@@ -456,6 +465,84 @@ class WeatherDetailPage extends StatelessWidget {
 						? AppTextColorDark.placeholder
 						: AppTextColorLight.placeholder,
 				),
+			),
+		);
+	}
+
+	// ===========================================================================
+	// HOURLY FORECAST
+	// ===========================================================================
+
+	Widget _buildHourlyForecast(
+		BuildContext context,
+		List<ForecastHourView> hourlyForecast,
+		DisplayUnits units,
+	) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
+		final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.darker;
+
+		return SizedBox(
+			height: AppSpacings.scale(80),
+			child: ListView.separated(
+				scrollDirection: Axis.horizontal,
+				itemCount: hourlyForecast.length,
+				separatorBuilder: (_, __) => SizedBox(width: AppSpacings.pSm),
+				itemBuilder: (context, index) {
+					final hour = hourlyForecast[index];
+					final temp = NumberUtils.formatNumber(
+						UnitConverter.convertTemperature(
+							hour.temperature,
+							units.temperature,
+						),
+						0,
+					);
+					final timeStr = '${hour.dateTime.hour.toString().padLeft(2, '0')}:00';
+
+					return Container(
+						width: AppSpacings.scale(52),
+						padding: EdgeInsets.symmetric(
+							horizontal: AppSpacings.pSm,
+							vertical: AppSpacings.pSm,
+						),
+						decoration: BoxDecoration(
+							color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
+							border: Border.all(color: borderColor),
+						),
+						child: Column(
+							mainAxisAlignment: MainAxisAlignment.spaceBetween,
+							children: [
+								Text(
+									timeStr,
+									style: TextStyle(
+										fontSize: AppSpacings.scale(9),
+										color: isDark
+											? AppTextColorDark.secondary
+											: AppTextColorLight.secondary,
+									),
+								),
+								BoxedIcon(
+									WeatherConditionMapper.getIcon(hour.weatherCode),
+									size: AppSpacings.scale(16),
+									color: isDark
+										? AppTextColorDark.regular
+										: AppTextColorLight.regular,
+								),
+								Text(
+									'$temp$tempSymbol',
+									style: TextStyle(
+										fontSize: AppSpacings.scale(10),
+										fontWeight: FontWeight.w600,
+										color: isDark
+											? AppTextColorDark.primary
+											: AppTextColorLight.primary,
+									),
+								),
+							],
+						),
+					);
+				},
 			),
 		);
 	}

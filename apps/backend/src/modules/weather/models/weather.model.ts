@@ -286,6 +286,82 @@ export class ForecastDayModel {
 	dayTime: Date;
 }
 
+@ApiSchema({ name: 'WeatherModuleDataForecastHour' })
+export class ForecastHourModel {
+	@ApiProperty({ description: 'Temperature', type: 'number', example: 15.5 })
+	@Expose()
+	@IsNumber()
+	temperature: number;
+
+	@ApiProperty({ name: 'feels_like', description: 'Feels like temperature', type: 'number', example: 14.2 })
+	@Expose({ name: 'feels_like' })
+	@IsNumber()
+	@Transform(({ obj }: { obj: { feels_like?: number; feelsLike?: number } }) => obj.feels_like ?? obj.feelsLike, {
+		toClassOnly: true,
+	})
+	feelsLike: number;
+
+	@ApiProperty({ description: 'Atmospheric pressure (hPa)', type: 'number', example: 1013 })
+	@Expose()
+	@IsNumber()
+	pressure: number;
+
+	@ApiProperty({ description: 'Humidity percentage', type: 'number', example: 72 })
+	@Expose()
+	@IsNumber()
+	humidity: number;
+
+	@ApiProperty({ description: 'Weather condition', type: WeatherModel })
+	@Expose()
+	@ValidateNested()
+	@Type(() => WeatherModel)
+	weather: WeatherModel;
+
+	@ApiProperty({ description: 'Wind information', type: WindModel })
+	@Expose()
+	@ValidateNested()
+	@Type(() => WindModel)
+	wind: WindModel;
+
+	@ApiProperty({ description: 'Cloudiness percentage', type: 'number', example: 75 })
+	@Expose()
+	@IsNumber()
+	clouds: number;
+
+	@ApiPropertyOptional({ description: 'Rain volume (mm)', type: 'number', example: 2.5, nullable: true })
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	rain: number | null = null;
+
+	@ApiPropertyOptional({ description: 'Snow volume (mm)', type: 'number', example: 1.5, nullable: true })
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	snow: number | null = null;
+
+	@ApiProperty({
+		name: 'date_time',
+		description: 'Hour timestamp (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T14:00:00.000Z',
+	})
+	@Expose({ name: 'date_time' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { date_time?: string | Date; dateTime?: string | Date } }) => {
+			const value: string | Date = obj.date_time || obj.dateTime;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: string | Date }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	dateTime: Date;
+}
+
 @ApiSchema({ name: 'WeatherModuleDataCurrentDay' })
 export class CurrentDayModel {
 	@ApiProperty({ description: 'Current temperature', type: 'number', example: 15.5 })
@@ -479,6 +555,19 @@ export class LocationWeatherModel {
 	@ValidateNested({ each: true })
 	@Type(() => ForecastDayModel)
 	forecast: ForecastDayModel[];
+
+	@ApiPropertyOptional({
+		name: 'hourly_forecast',
+		description: 'Hourly forecast weather (available for some providers)',
+		type: [ForecastHourModel],
+		nullable: true,
+	})
+	@Expose({ name: 'hourly_forecast' })
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => ForecastHourModel)
+	hourlyForecast?: ForecastHourModel[] | null = null;
 
 	@ApiProperty({ description: 'Location information', type: LocationModel })
 	@Expose()

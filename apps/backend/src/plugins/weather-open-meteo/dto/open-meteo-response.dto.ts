@@ -143,6 +143,71 @@ export class OpenMeteoDailyDto {
 	cloud_cover_mean: number[];
 }
 
+export class OpenMeteoHourlyDto {
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	time: string[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	temperature_2m: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	apparent_temperature: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	relative_humidity_2m: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	surface_pressure: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	wind_speed_10m: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	wind_direction_10m: number[];
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	wind_gusts_10m?: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	cloud_cover: number[];
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	rain?: number[];
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	snowfall?: number[];
+
+	@Expose()
+	@IsArray()
+	@IsNumber({}, { each: true })
+	weather_code: number[];
+}
+
 export class OpenMeteoResponseDto {
 	@Expose()
 	@IsNumber()
@@ -168,4 +233,10 @@ export class OpenMeteoResponseDto {
 	@ValidateNested()
 	@Type(() => OpenMeteoDailyDto)
 	daily?: OpenMeteoDailyDto;
+
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => OpenMeteoHourlyDto)
+	hourly?: OpenMeteoHourlyDto;
 }

@@ -4,7 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
-import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from './weather.model';
+import { CurrentDayModel, ForecastDayModel, ForecastHourModel, LocationWeatherModel } from './weather.model';
 
 /**
  * Response wrapper for LocationWeatherModel
@@ -58,4 +58,18 @@ export class LocationForecastResponseModel extends BaseSuccessResponseModel<Fore
 	})
 	@Expose()
 	declare data: ForecastDayModel[];
+}
+
+/**
+ * Response wrapper for array of ForecastHourModel
+ */
+@ApiSchema({ name: 'WeatherModuleResLocationHourlyForecast' })
+export class LocationHourlyForecastResponseModel extends BaseSuccessResponseModel<ForecastHourModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(ForecastHourModel) },
+	})
+	@Expose()
+	declare data: ForecastHourModel[];
 }

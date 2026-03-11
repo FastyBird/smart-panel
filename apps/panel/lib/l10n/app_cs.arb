@@ -288,6 +288,7 @@
   "weather_detail_forecast": "Předpověď",
   "weather_detail_not_configured": "Počasí není nakonfigurováno",
   "weather_detail_today": "Dnes",
+  "weather_detail_hourly_forecast": "Hodinová předpověď",
   "weather_condition_thunderstorm_with_light_rain": "Bouřka s lehkým deštěm",
   "weather_condition_thunderstorm_with_rain": "Bouřka s deštěm",
   "weather_condition_thunderstorm_with_heavy_rain": "Bouřka s prudkým deštěm",

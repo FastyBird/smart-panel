@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { WeatherLocationEntity } from '../../../modules/weather/entities/locations.entity';
-import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
+import {
+	CurrentDayModel,
+	ForecastDayModel,
+	ForecastHourModel,
+	LocationModel,
+} from '../../../modules/weather/models/weather.model';
 import { IWeatherProvider } from '../../../modules/weather/platforms/weather-provider.platform';
 import { OpenMeteoLocationEntity } from '../entities/locations-open-meteo.entity';
 import { OpenMeteoHttpService } from '../services/open-meteo-http.service';
@@ -16,6 +21,7 @@ import {
 interface CachedWeatherData {
 	current: CurrentDayModel;
 	forecast: ForecastDayModel[];
+	hourly: ForecastHourModel[];
 	location: LocationModel;
 	timestamp: number;
 }
@@ -49,6 +55,10 @@ export class OpenMeteoProvider implements IWeatherProvider {
 		return false;
 	}
 
+	supportsHourlyForecast(): boolean {
+		return true;
+	}
+
 	async getCurrentWeather(location: WeatherLocationEntity): Promise<CurrentDayModel | null> {
 		if (!(location instanceof OpenMeteoLocationEntity)) {
 			this.logger.error(`[WEATHER] Invalid location type: expected OpenMeteoLocationEntity`);
@@ -69,6 +79,17 @@ export class OpenMeteoProvider implements IWeatherProvider {
 		const result = await this.fetchWithCache(location);
 
 		return result?.forecast ?? null;
+	}
+
+	async getHourlyForecast(location: WeatherLocationEntity): Promise<ForecastHourModel[] | null> {
+		if (!(location instanceof OpenMeteoLocationEntity)) {
+			this.logger.error(`[WEATHER] Invalid location type: expected OpenMeteoLocationEntity`);
+			return null;
+		}
+
+		const result = await this.fetchWithCache(location);
+
+		return result?.hourly ?? null;
 	}
 
 	private async fetchWithCache(location: OpenMeteoLocationEntity): Promise<CachedWeatherData | null> {
