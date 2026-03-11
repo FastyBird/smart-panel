@@ -99,7 +99,6 @@ const spacesToCreate = reactive<ISpaceToCreate[]>([]);
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const devicesFetched = ref(false);
-const spacesSuggested = ref(false);
 const createdSpaceNameToId: Record<string, string> = {};
 
 export const useAppOnboarding = () => {
@@ -205,8 +204,6 @@ export const useAppOnboarding = () => {
 	};
 
 	const fetchDevices = async (): Promise<boolean> => {
-		if (devicesFetched.value) return true;
-
 		try {
 			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/devices/devices` as never);
 
@@ -249,10 +246,6 @@ export const useAppOnboarding = () => {
 	};
 
 	const suggestSpacesFromDevices = (): void => {
-		if (spacesSuggested.value) return;
-
-		spacesSuggested.value = true;
-
 		const existingNames = new Set(spacesToCreate.map((s) => s.name.toLowerCase()));
 
 		for (const device of discoveredDevices) {
@@ -272,7 +265,7 @@ export const useAppOnboarding = () => {
 				existingNames.add(label.toLowerCase());
 			}
 
-			// Auto-assign device to the suggested space (only on first run, guarded by spacesSuggested flag)
+			// Auto-assign device to the suggested space if not already assigned
 			if (!deviceAssignments[device.id]) {
 				deviceAssignments[device.id] = label;
 			}
@@ -417,7 +410,6 @@ export const useAppOnboarding = () => {
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
 		devicesFetched.value = false;
-		spacesSuggested.value = false;
 	};
 
 	return {
