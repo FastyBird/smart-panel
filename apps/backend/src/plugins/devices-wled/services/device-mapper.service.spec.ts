@@ -473,20 +473,6 @@ describe('WledDeviceMapperService', () => {
 				}),
 			);
 
-			// Verify nightlight channel was created
-			expect(channelsService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
-				}),
-			);
-
-			// Verify sync channel was created
-			expect(channelsService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: WLED_CHANNEL_IDENTIFIERS.SYNC,
-				}),
-			);
-
 			// Verify segment channel was created (segment_0)
 			expect(channelsService.create).toHaveBeenCalledWith(
 				expect.objectContaining({

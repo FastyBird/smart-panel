@@ -315,43 +315,6 @@ describe('WledDevicePlatform', () => {
 			);
 		});
 
-		it('should update effect property', async () => {
-			const device = createMockDevice('wled-test');
-			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT,
-				PropertyCategory.MODE,
-				DataTypeType.UCHAR,
-			);
-
-			wledAdapter.getDeviceByIdentifier.mockReturnValue({
-				host: '192.168.1.100',
-				identifier: 'wled-test',
-				connected: true,
-				enabled: true,
-			});
-			wledAdapter.updateStateExtended.mockResolvedValue(true);
-
-			const result = await platform.processBatch([
-				{
-					device,
-					channel,
-					property,
-					value: 5,
-				},
-			]);
-
-			expect(result).toBe(true);
-			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
-				'192.168.1.100',
-				expect.objectContaining({
-					segment: expect.objectContaining({
-						effect: 5,
-					}),
-				}),
-			);
-		});
-
 		it('should ignore non-light channel commands', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel('device_information');
