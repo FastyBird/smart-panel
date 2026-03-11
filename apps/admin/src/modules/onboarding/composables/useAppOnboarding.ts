@@ -182,17 +182,13 @@ export const useAppOnboarding = () => {
 
 		try {
 			const locationBody: Record<string, unknown> = {
-				type: 'weather-openweathermap',
+				type: 'weather-open-meteo',
 				name: locationData.city || 'Home',
 			};
 
 			if (locationData.latitude !== null && locationData.longitude !== null) {
-				locationBody.location_type = 'lat_lon';
 				locationBody.latitude = locationData.latitude;
 				locationBody.longitude = locationData.longitude;
-			} else if (locationData.city) {
-				locationBody.location_type = 'city_name';
-				locationBody.city_name = locationData.city;
 			}
 
 			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
