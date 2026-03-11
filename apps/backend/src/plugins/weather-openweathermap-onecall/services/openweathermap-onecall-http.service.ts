@@ -90,46 +90,6 @@ export class OpenWeatherMapOneCallHttpService {
 		}
 	}
 
-	async fetchAlerts(location: OpenWeatherMapOneCallLocationEntity): Promise<WeatherAlertModel[] | null> {
-		const config = this.getConfig();
-
-		if (!config.apiKey) {
-			this.logger.warn('[WEATHER] Missing API key for OpenWeatherMap One Call 3.0');
-			return null;
-		}
-
-		const language = this.getLanguage();
-
-		// Only fetch alerts, exclude everything else
-		const url = `${this.BASE_URL}?lat=${location.latitude}&lon=${location.longitude}&appid=${config.apiKey}&lang=${language}&exclude=current,minutely,hourly,daily`;
-
-		try {
-			const response = await fetch(url);
-			const data = (await response.json()) as unknown;
-
-			if (!response.ok || response.status !== 200) {
-				this.logger.error(`[WEATHER] One Call API alerts request failed: ${JSON.stringify(data)}`);
-				return null;
-			}
-
-			const oneCallData = toInstance(OpenWeatherMapOneCallResponseDto, data, { excludeExtraneousValues: false });
-			const errors = await validate(oneCallData);
-
-			if (errors.length) {
-				this.logger.error(
-					`[VALIDATION] One Call API alerts response validation failed error=${JSON.stringify(errors)}`,
-				);
-				return null;
-			}
-
-			return this.transformAlerts(oneCallData.alerts || []);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error('[WEATHER] Failed to fetch One Call API alerts', { message: err.message, stack: err.stack });
-			return null;
-		}
-	}
-
 	private transformCurrentWeather(current: OpenWeatherMapOneCallCurrentWeatherDto): CurrentDayModel {
 		return toInstance(CurrentDayModel, {
 			temperature: current.temp,

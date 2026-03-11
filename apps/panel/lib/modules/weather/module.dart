@@ -265,9 +265,13 @@ class WeatherModuleService {
 
   Future<void> _initializeWeatherData() async {
     try {
-      await _currentWeatherRepository.fetchWeather();
-      await _forecastWeatherRepository.fetchWeather();
-      await _hourlyForecastWeatherRepository.fetchWeather();
+      final response = await _currentWeatherRepository.apiClient
+          .getWeatherModuleAllWeather();
+      final allWeather = response.data.data;
+
+      await _currentWeatherRepository.loadFromApiData(allWeather);
+      await _forecastWeatherRepository.loadFromApiData(allWeather);
+      await _hourlyForecastWeatherRepository.loadFromApiData(allWeather);
     } catch (e) {
       // This error could be ignored
     }

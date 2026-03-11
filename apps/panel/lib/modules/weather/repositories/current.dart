@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/weather_module_data_current_day.dart';
+import 'package:fastybird_smart_panel/api/models/weather_module_data_location_weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather_info.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/wind.dart';
@@ -62,23 +63,28 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
       () async {
         final response = await apiClient.getWeatherModuleAllWeather();
 
-        final allWeather = response.data.data;
-
-        for (final locationWeather in allWeather) {
-          final currentModel = _mapApiModelToCurrentDay(locationWeather.current);
-          final locationId = locationWeather.locationId;
-
-          await _insertCurrentDayModel(currentModel, locationId: locationId);
-        }
-
-        if (kDebugMode) {
-          debugPrint(
-            '[WEATHER MODULE][DAY] Fetched current weather for ${allWeather.length} locations',
-          );
-        }
+        await loadFromApiData(response.data.data);
       },
       'fetch current weather',
     );
+  }
+
+  /// Load current weather from pre-fetched API data without making an API call.
+  Future<void> loadFromApiData(
+    List<WeatherModuleDataLocationWeather> allWeather,
+  ) async {
+    for (final locationWeather in allWeather) {
+      final currentModel = _mapApiModelToCurrentDay(locationWeather.current);
+      final locationId = locationWeather.locationId;
+
+      await _insertCurrentDayModel(currentModel, locationId: locationId);
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE][DAY] Fetched current weather for ${allWeather.length} locations',
+      );
+    }
   }
 
   /// Map API model to panel CurrentDayModel directly to avoid serialization issues

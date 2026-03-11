@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/weather_module_data_forecast_hour.dart';
+import 'package:fastybird_smart_panel/api/models/weather_module_data_location_weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_hour.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather_info.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/wind.dart';
@@ -65,29 +66,34 @@ class HourlyForecastWeatherRepository extends Repository<List<ForecastHourModel>
       () async {
         final response = await apiClient.getWeatherModuleAllWeather();
 
-        final allWeather = response.data.data;
-
-        for (final locationWeather in allWeather) {
-          final hourlyForecast = locationWeather.hourlyForecast;
-
-          if (hourlyForecast != null && hourlyForecast.isNotEmpty) {
-            final hourlyModels = hourlyForecast
-                .map((hour) => _mapApiModelToForecastHour(hour))
-                .toList();
-            final locationId = locationWeather.locationId;
-
-            await _insertHourlyModels(hourlyModels, locationId: locationId);
-          }
-        }
-
-        if (kDebugMode) {
-          debugPrint(
-            '[WEATHER MODULE][HOURLY] Fetched hourly forecast for ${allWeather.length} locations',
-          );
-        }
+        await loadFromApiData(response.data.data);
       },
       'fetch hourly forecast weather',
     );
+  }
+
+  /// Load hourly forecast from pre-fetched API data without making an API call.
+  Future<void> loadFromApiData(
+    List<WeatherModuleDataLocationWeather> allWeather,
+  ) async {
+    for (final locationWeather in allWeather) {
+      final hourlyForecast = locationWeather.hourlyForecast;
+
+      if (hourlyForecast != null && hourlyForecast.isNotEmpty) {
+        final hourlyModels = hourlyForecast
+            .map((hour) => _mapApiModelToForecastHour(hour))
+            .toList();
+        final locationId = locationWeather.locationId;
+
+        await _insertHourlyModels(hourlyModels, locationId: locationId);
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE][HOURLY] Fetched hourly forecast for ${allWeather.length} locations',
+      );
+    }
   }
 
   /// Map API model to panel ForecastHourModel
