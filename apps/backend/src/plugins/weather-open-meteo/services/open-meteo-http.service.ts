@@ -193,7 +193,7 @@ export class OpenMeteoHttpService {
 	} | null> {
 		const units = this.getUnits();
 		const temperatureUnit = units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
-		const windSpeedUnit = units === 'fahrenheit' ? 'mph' : 'kmh';
+		const windSpeedUnit = 'ms'; // WindModel expects m/s regardless of temperature unit
 
 		const currentParams = [
 			'temperature_2m',
