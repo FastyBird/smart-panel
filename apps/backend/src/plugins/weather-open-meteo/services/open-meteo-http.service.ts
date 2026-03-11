@@ -135,6 +135,46 @@ function wmoToOwmCode(wmoCode: number): number {
 	}
 }
 
+/**
+ * Parse an offset-less date/time string from Open-Meteo as if it were in the given IANA timezone.
+ * Open-Meteo with `timezone=auto` returns local times without offset (e.g. "2024-01-15T07:15").
+ * `new Date()` would incorrectly interpret these in the server's timezone.
+ */
+function parseLocalDate(dateStr: string, timezone: string): Date {
+	// Use Intl to find the UTC offset for the given timezone at the approximate time
+	const naive = new Date(dateStr + 'Z'); // treat as UTC temporarily to get a reference point
+
+	const formatter = new Intl.DateTimeFormat('en-US', {
+		timeZone: timezone,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: false,
+	});
+
+	// Format the naive UTC date in the target timezone to find the offset
+	const parts = formatter.formatToParts(naive);
+	const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '0';
+
+	const tzYear = parseInt(get('year'), 10);
+	const tzMonth = parseInt(get('month'), 10) - 1;
+	const tzDay = parseInt(get('day'), 10);
+	const tzHour = parseInt(get('hour'), 10);
+	const tzMinute = parseInt(get('minute'), 10);
+	const tzSecond = parseInt(get('second'), 10);
+
+	// What the timezone thinks naive UTC is in local time
+	const localAtUtc = new Date(Date.UTC(tzYear, tzMonth, tzDay, tzHour, tzMinute, tzSecond));
+	// The offset is the difference: localAtUtc - naive
+	const offsetMs = localAtUtc.getTime() - naive.getTime();
+
+	// The actual UTC time is the naive time minus the offset
+	return new Date(naive.getTime() - offsetMs);
+}
+
 @Injectable()
 export class OpenMeteoHttpService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -210,8 +250,9 @@ export class OpenMeteoHttpService {
 				return null;
 			}
 
-			const current = this.transformCurrentWeather(openMeteoData.current, openMeteoData.daily);
-			const forecast = this.transformDailyForecast(openMeteoData.daily);
+			const timezone = openMeteoData.timezone ?? 'UTC';
+			const current = this.transformCurrentWeather(openMeteoData.current, openMeteoData.daily, timezone);
+			const forecast = this.transformDailyForecast(openMeteoData.daily, timezone);
 
 			const locationModel = toInstance(LocationModel, {
 				name: location.name,
@@ -226,15 +267,15 @@ export class OpenMeteoHttpService {
 		}
 	}
 
-	private transformCurrentWeather(current: OpenMeteoCurrentDto, daily: OpenMeteoDailyDto): CurrentDayModel {
+	private transformCurrentWeather(current: OpenMeteoCurrentDto, daily: OpenMeteoDailyDto, timezone: string): CurrentDayModel {
 		const wmoCode = current.weather_code;
 		const mapping = WMO_CODE_MAP[wmoCode] ?? WMO_CODE_MAP[0];
 		const isDay = current.is_day === 1;
 		const icon = isDay ? mapping.icon : mapping.iconNight;
 
 		// Get today's sunrise/sunset from daily data
-		const todaySunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]) : new Date();
-		const todaySunset = daily.sunset?.[0] ? new Date(daily.sunset[0]) : new Date();
+		const todaySunrise = daily.sunrise?.[0] ? parseLocalDate(daily.sunrise[0], timezone) : new Date();
+		const todaySunset = daily.sunset?.[0] ? parseLocalDate(daily.sunset[0], timezone) : new Date();
 
 		// Get today's min/max from daily data
 		const todayMin = daily.temperature_2m_min?.[0] ?? current.temperature_2m;
@@ -263,11 +304,11 @@ export class OpenMeteoHttpService {
 			snow: current.snowfall ?? null,
 			sunrise: todaySunrise,
 			sunset: todaySunset,
-			dayTime: new Date(current.time),
+			dayTime: parseLocalDate(current.time, timezone),
 		});
 	}
 
-	private transformDailyForecast(daily: OpenMeteoDailyDto): ForecastDayModel[] {
+	private transformDailyForecast(daily: OpenMeteoDailyDto, timezone: string): ForecastDayModel[] {
 		const days: ForecastDayModel[] = [];
 
 		for (let i = 0; i < daily.time.length; i++) {
@@ -314,9 +355,9 @@ export class OpenMeteoHttpService {
 					clouds: daily.cloud_cover_mean[i],
 					rain: daily.rain_sum?.[i] ?? null,
 					snow: daily.snowfall_sum?.[i] ?? null,
-					sunrise: new Date(daily.sunrise[i]),
-					sunset: new Date(daily.sunset[i]),
-					dayTime: new Date(daily.time[i] + 'T12:00:00'),
+					sunrise: parseLocalDate(daily.sunrise[i], timezone),
+					sunset: parseLocalDate(daily.sunset[i], timezone),
+					dayTime: parseLocalDate(daily.time[i] + 'T12:00:00', timezone),
 				}),
 			);
 		}
