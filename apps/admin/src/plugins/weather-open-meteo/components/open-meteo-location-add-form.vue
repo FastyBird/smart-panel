@@ -355,7 +355,7 @@ const onSubmit = async (): Promise<void> => {
 };
 
 onBeforeMount((): void => {
-	if (model.latitude && model.longitude) {
+	if (model.latitude !== null && model.longitude !== null) {
 		setMarker(model.latitude, model.longitude);
 	}
 });

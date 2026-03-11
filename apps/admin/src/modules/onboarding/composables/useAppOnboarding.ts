@@ -176,7 +176,7 @@ export const useAppOnboarding = () => {
 	const saveLocation = async (): Promise<boolean> => {
 		if (locationConfigured.value) return true;
 
-		if (!locationData.city && locationData.latitude === null) {
+		if (locationData.latitude === null || locationData.longitude === null) {
 			return true;
 		}
 
@@ -184,12 +184,9 @@ export const useAppOnboarding = () => {
 			const locationBody: Record<string, unknown> = {
 				type: 'weather-open-meteo',
 				name: locationData.city || 'Home',
+				latitude: locationData.latitude,
+				longitude: locationData.longitude,
 			};
-
-			if (locationData.latitude !== null && locationData.longitude !== null) {
-				locationBody.latitude = locationData.latitude;
-				locationBody.longitude = locationData.longitude;
-			}
 
 			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
 				body: { data: locationBody },

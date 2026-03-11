@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { WeatherLocationEntity } from '../../../modules/weather/entities/locations.entity';
-import { CurrentDayModel, ForecastDayModel } from '../../../modules/weather/models/weather.model';
+import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
 import { IWeatherProvider } from '../../../modules/weather/platforms/weather-provider.platform';
 import { OpenMeteoLocationEntity } from '../entities/locations-open-meteo.entity';
 import { OpenMeteoHttpService } from '../services/open-meteo-http.service';
@@ -13,12 +13,22 @@ import {
 	WEATHER_OPEN_METEO_PLUGIN_TYPE,
 } from '../weather-open-meteo.constants';
 
+interface CachedWeatherData {
+	current: CurrentDayModel;
+	forecast: ForecastDayModel[];
+	location: LocationModel;
+	timestamp: number;
+}
+
 @Injectable()
 export class OpenMeteoProvider implements IWeatherProvider {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		WEATHER_OPEN_METEO_PLUGIN_NAME,
 		'OpenMeteoProvider',
 	);
+
+	private readonly cache = new Map<string, CachedWeatherData>();
+	private readonly CACHE_TTL_MS = 60_000; // 1 minute
 
 	constructor(private readonly httpService: OpenMeteoHttpService) {}
 
@@ -44,16 +54,9 @@ export class OpenMeteoProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching current weather for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
 
-		const result = await this.httpService.fetchWeatherData(location);
-
-		if (result) {
-			this.logger.debug(`[WEATHER] Successfully fetched current weather for location id=${location.id}`);
-			return result.current;
-		}
-
-		return null;
+		return result?.current ?? null;
 	}
 
 	async getForecastWeather(location: WeatherLocationEntity): Promise<ForecastDayModel[] | null> {
@@ -62,13 +65,37 @@ export class OpenMeteoProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching forecast weather for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
+
+		return result?.forecast ?? null;
+	}
+
+	private async fetchWithCache(location: OpenMeteoLocationEntity): Promise<CachedWeatherData | null> {
+		const cacheKey = location.id;
+		const now = Date.now();
+
+		const cached = this.cache.get(cacheKey);
+
+		if (cached && now - cached.timestamp < this.CACHE_TTL_MS) {
+			this.logger.debug(`[WEATHER] Using cached data for location id=${location.id}`);
+			return cached;
+		}
+
+		this.logger.debug(`[WEATHER] Fetching weather data for location id=${location.id}`);
 
 		const result = await this.httpService.fetchWeatherData(location);
 
 		if (result) {
-			this.logger.debug(`[WEATHER] Successfully fetched forecast weather for location id=${location.id}`);
-			return result.forecast;
+			const entry: CachedWeatherData = {
+				...result,
+				timestamp: now,
+			};
+
+			this.cache.set(cacheKey, entry);
+
+			this.logger.debug(`[WEATHER] Successfully fetched and cached weather data for location id=${location.id}`);
+
+			return entry;
 		}
 
 		return null;
