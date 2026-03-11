@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { validate } from 'class-validator';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -242,7 +243,13 @@ export class OpenMeteoHttpService {
 				return null;
 			}
 
-			const openMeteoData = data as OpenMeteoResponseDto;
+			const openMeteoData = toInstance(OpenMeteoResponseDto, data, { excludeExtraneousValues: false });
+			const errors = await validate(openMeteoData);
+
+			if (errors.length) {
+				this.logger.error(`[VALIDATION] Open-Meteo response validation failed error=${JSON.stringify(errors)}`);
+				return null;
+			}
 
 			if (!openMeteoData.current || !openMeteoData.daily) {
 				this.logger.error('[WEATHER] Open-Meteo API response missing current or daily data');
