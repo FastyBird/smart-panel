@@ -3,7 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { WeatherLocationEntity } from '../../../modules/weather/entities/locations.entity';
 import { WeatherAlertModel } from '../../../modules/weather/models/alert.model';
-import { CurrentDayModel, ForecastDayModel, ForecastHourModel } from '../../../modules/weather/models/weather.model';
+import {
+	CurrentDayModel,
+	ForecastDayModel,
+	ForecastHourModel,
+	LocationModel,
+} from '../../../modules/weather/models/weather.model';
 import { IWeatherProvider } from '../../../modules/weather/platforms/weather-provider.platform';
 import { OpenWeatherMapOneCallLocationEntity } from '../entities/locations-openweathermap-onecall.entity';
 import { OpenWeatherMapOneCallHttpService } from '../services/openweathermap-onecall-http.service';
@@ -14,12 +19,24 @@ import {
 	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_TYPE,
 } from '../weather-openweathermap-onecall.constants';
 
+interface CachedWeatherData {
+	current: CurrentDayModel;
+	forecast: ForecastDayModel[];
+	hourly: ForecastHourModel[];
+	location: LocationModel;
+	alerts: WeatherAlertModel[];
+	timestamp: number;
+}
+
 @Injectable()
 export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
 		'OpenWeatherMapOneCallProvider',
 	);
+
+	private readonly cache = new Map<string, CachedWeatherData>();
+	private readonly CACHE_TTL_MS = 60_000; // 1 minute
 
 	constructor(private readonly httpService: OpenWeatherMapOneCallHttpService) {}
 
@@ -49,16 +66,9 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching current weather for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
 
-		const result = await this.httpService.fetchWeatherData(location);
-
-		if (result) {
-			this.logger.debug(`[WEATHER] Successfully fetched current weather for location id=${location.id}`);
-			return result.current;
-		}
-
-		return null;
+		return result?.current ?? null;
 	}
 
 	async getForecastWeather(location: WeatherLocationEntity): Promise<ForecastDayModel[] | null> {
@@ -67,16 +77,9 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching forecast weather for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
 
-		const result = await this.httpService.fetchWeatherData(location);
-
-		if (result) {
-			this.logger.debug(`[WEATHER] Successfully fetched forecast weather for location id=${location.id}`);
-			return result.forecast;
-		}
-
-		return null;
+		return result?.forecast ?? null;
 	}
 
 	async getHourlyForecast(location: WeatherLocationEntity): Promise<ForecastHourModel[] | null> {
@@ -85,18 +88,9 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching hourly forecast for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
 
-		const result = await this.httpService.fetchWeatherData(location);
-
-		if (result) {
-			this.logger.debug(
-				`[WEATHER] Successfully fetched ${result.hourly.length} hourly forecast entries for location id=${location.id}`,
-			);
-			return result.hourly;
-		}
-
-		return null;
+		return result?.hourly ?? null;
 	}
 
 	async getAlerts(location: WeatherLocationEntity): Promise<WeatherAlertModel[] | null> {
@@ -105,15 +99,41 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching weather alerts for location id=${location.id}`);
+		const result = await this.fetchWithCache(location);
 
-		const alerts = await this.httpService.fetchAlerts(location);
+		return result?.alerts ?? null;
+	}
 
-		if (alerts !== null) {
-			this.logger.debug(
-				`[WEATHER] Successfully fetched ${alerts.length} weather alert(s) for location id=${location.id}`,
-			);
-			return alerts;
+	private async fetchWithCache(location: OpenWeatherMapOneCallLocationEntity): Promise<CachedWeatherData | null> {
+		const cacheKey = location.id;
+		const now = Date.now();
+
+		const cached = this.cache.get(cacheKey);
+
+		if (cached && now - cached.timestamp < this.CACHE_TTL_MS) {
+			this.logger.debug(`[WEATHER] Using cached data for location id=${location.id}`);
+			return cached;
+		}
+
+		if (cached) {
+			this.cache.delete(cacheKey);
+		}
+
+		this.logger.debug(`[WEATHER] Fetching weather data for location id=${location.id}`);
+
+		const result = await this.httpService.fetchWeatherData(location);
+
+		if (result) {
+			const entry: CachedWeatherData = {
+				...result,
+				timestamp: now,
+			};
+
+			this.cache.set(cacheKey, entry);
+
+			this.logger.debug(`[WEATHER] Successfully fetched and cached weather data for location id=${location.id}`);
+
+			return entry;
 		}
 
 		return null;
