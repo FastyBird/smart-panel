@@ -37,6 +37,7 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 
 	private readonly cache = new Map<string, CachedWeatherData>();
 	private readonly CACHE_TTL_MS = 60_000; // 1 minute
+	private readonly CACHE_MAX_SIZE = 100;
 
 	constructor(private readonly httpService: OpenWeatherMapOneCallHttpService) {}
 
@@ -124,6 +125,8 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 		const result = await this.httpService.fetchWeatherData(location);
 
 		if (result) {
+			this.evictExpiredEntries(now);
+
 			const entry: CachedWeatherData = {
 				...result,
 				timestamp: now,
@@ -137,5 +140,24 @@ export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
 		}
 
 		return null;
+	}
+
+	private evictExpiredEntries(now: number): void {
+		// Always remove expired entries first
+		for (const [key, entry] of this.cache) {
+			if (now - entry.timestamp >= this.CACHE_TTL_MS) {
+				this.cache.delete(key);
+			}
+		}
+
+		// If still over limit, remove oldest entries to make room for the incoming entry
+		if (this.cache.size >= this.CACHE_MAX_SIZE) {
+			const entries = [...this.cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+			const toRemove = this.cache.size - this.CACHE_MAX_SIZE + 1;
+
+			for (let i = 0; i < toRemove; i++) {
+				this.cache.delete(entries[i][0]);
+			}
+		}
 	}
 }

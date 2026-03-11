@@ -42,6 +42,7 @@ import { formatNumber } from '../../../common';
 import { useConfigModule } from '../../config';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { useWeatherDay } from '../composables/useWeatherDay';
+import { getWeatherIcon } from '../utils/utils';
 import { WeatherException } from '../weather.exceptions';
 
 defineOptions({
@@ -68,33 +69,7 @@ const iconType = computed<string>((): string => {
 		return 'wi:na';
 	}
 
-	const isNight = isNightTime(weatherDay.value.sunrise, weatherDay.value.sunset);
-
-	if (weatherDay.value.weather.code >= 200 && weatherDay.value.weather.code < 300) {
-		return isNight ? 'wi:night-thunderstorm' : 'wi:day-thunderstorm';
-	} else if (weatherDay.value.weather.code >= 300 && weatherDay.value.weather.code < 400) {
-		return isNight ? 'wi:night-showers' : 'wi:day-showers';
-	} else if (weatherDay.value.weather.code >= 500 && weatherDay.value.weather.code <= 504) {
-		return isNight ? 'wi:night-rain' : 'wi:day-rain';
-	} else if (weatherDay.value.weather.code == 511) {
-		return isNight ? 'wi:night-snow' : 'wi:day-snow';
-	} else if (weatherDay.value.weather.code > 520 && weatherDay.value.weather.code < 600) {
-		return isNight ? 'wi:night-showers' : 'wi:day-showers';
-	} else if (weatherDay.value.weather.code >= 600 && weatherDay.value.weather.code < 700) {
-		return isNight ? 'wi:night-snow' : 'wi:day-snow';
-	} else if (weatherDay.value.weather.code >= 700 && weatherDay.value.weather.code < 800) {
-		return isNight ? 'wi:night-fog' : 'wi:day-fog';
-	} else if (weatherDay.value.weather.code == 800) {
-		return isNight ? 'wi:night-clear' : 'wi:day-sunny';
-	} else if (weatherDay.value.weather.code == 801) {
-		return 'wi:cloud';
-	} else if (weatherDay.value.weather.code == 802) {
-		return isNight ? 'wi:night-cloudy' : 'wi:day-cloudy';
-	} else if (weatherDay.value.weather.code == 803 || weatherDay.value.weather.code == 804) {
-		return isNight ? 'wi:night-cloudy-windy' : 'wi:day-cloudy-windy';
-	}
-
-	return 'wi:na';
+	return getWeatherIcon(weatherDay.value.weather.code, weatherDay.value.sunrise, weatherDay.value.sunset);
 });
 
 const description = computed<string>(() => {
@@ -217,15 +192,6 @@ const description = computed<string>(() => {
 			return t('weatherModule.conditions.unknown');
 	}
 });
-
-const isNightTime = (sunrise: Date | string, sunset: Date | string): boolean => {
-	const now = new Date();
-
-	const sr = sunrise instanceof Date ? sunrise : new Date(sunrise);
-	const ss = sunset instanceof Date ? sunset : new Date(sunset);
-
-	return now <= sr || now >= ss;
-};
 
 onBeforeMount(async (): Promise<void> => {
 	fetchConfigWeather().catch((error: unknown): void => {
