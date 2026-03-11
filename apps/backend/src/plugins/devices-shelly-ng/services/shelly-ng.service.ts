@@ -46,6 +46,15 @@ export class ShellyNgService implements IManagedPluginService {
 	private pendingRestart: Promise<void> | null = null;
 	private restartTimer: NodeJS.Timeout | null = null;
 
+	/**
+	 * Global sequential queue for processing discovered devices.
+	 * SQLite uses a single QueryRunner, so concurrent device provisioning
+	 * causes query serialization issues. Processing one device at a time
+	 * eliminates cross-device contention.
+	 */
+	private readonly discoveryQueue: Device[] = [];
+	private processingDiscovery = false;
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly databaseDiscovererService: DatabaseDiscovererService,
@@ -319,6 +328,8 @@ export class ShellyNgService implements IManagedPluginService {
 
 		this.shellies = undefined;
 
+		this.discoveryQueue.length = 0;
+
 		this.delegatesRegistryService.detach();
 
 		this.state = 'stopped';
@@ -333,55 +344,69 @@ export class ShellyNgService implements IManagedPluginService {
 	}
 
 	/**
-	 * Handles 'add' events from the shellies-ng library
+	 * Handles 'add' events from the shellies-ng library.
+	 * Enqueues device for sequential processing to avoid SQLite contention.
 	 */
 	protected handleAddedDevice = (device: Device): void => {
-		this.devicesService
-			.findOneBy<ShellyNgDeviceEntity>('identifier', device.id, DEVICES_SHELLY_NG_TYPE)
-			.then((sysDevice: ShellyNgDeviceEntity | null): void => {
-				if (sysDevice !== null) {
-					this.deviceManagerService
-						.createOrUpdate(sysDevice.id)
-						.then((): void => {
-							this.delegatesRegistryService
-								.insert(device)
-								.then((): void => {})
-								.catch((err: Error): void => {
-									this.logger.error(`Failed to create Shelly device delegate for device=${sysDevice.id}`, {
-										resource: sysDevice.id,
-										message: err.message,
-										stack: err.stack,
-									});
-								});
-						})
-						.catch((err: Error): void => {
-							this.logger.error(`Failed to re-create Shelly device delegate for device=${device.id}`, {
-								resource: device.id,
-								message: err.message,
-								stack: err.stack,
-							});
-						});
-				} else {
-					this.delegatesRegistryService
-						.insert(device)
-						.then((): void => {})
-						.catch((err: Error): void => {
-							this.logger.error(`Failed to create new Shelly device delegate for device=${device.id}`, {
-								resource: device.id,
-								message: err.message,
-								stack: err.stack,
-							});
-						});
-				}
-			})
-			.catch((err: Error): void => {
-				this.logger.error(`Failed to find Shelly device in database device=${device.id}`, {
-					resource: device.id,
-					message: err.message,
-					stack: err.stack,
-				});
-			});
+		this.discoveryQueue.push(device);
+
+		if (!this.processingDiscovery) {
+			void this.processDiscoveryQueue();
+		}
 	};
+
+	/**
+	 * Drains the discovery queue one device at a time.
+	 */
+	private async processDiscoveryQueue(): Promise<void> {
+		if (this.processingDiscovery) {
+			return;
+		}
+
+		this.processingDiscovery = true;
+
+		try {
+			while (this.discoveryQueue.length > 0) {
+				const device = this.discoveryQueue.shift();
+
+				if (!device) {
+					continue;
+				}
+
+				try {
+					await this.processDiscoveredDevice(device);
+				} catch (err) {
+					const error = err as Error;
+
+					this.logger.error(`Failed to process discovered device=${device.id}`, {
+						resource: device.id,
+						message: error.message,
+						stack: error.stack,
+					});
+				}
+			}
+		} finally {
+			this.processingDiscovery = false;
+		}
+	}
+
+	/**
+	 * Processes a single discovered device: looks it up in the database,
+	 * provisions channels/properties if needed, and attaches the delegate.
+	 */
+	private async processDiscoveredDevice(device: Device): Promise<void> {
+		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+			'identifier',
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		if (sysDevice !== null) {
+			await this.deviceManagerService.createOrUpdate(sysDevice.id);
+		}
+
+		await this.delegatesRegistryService.insert(device);
+	}
 
 	/**
 	 * Handles 'remove' events from the shellies-ng library

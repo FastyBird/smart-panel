@@ -50,6 +50,10 @@ const propertyMappingStorage = {
 	getPropertyIdsForChannel: jest.fn().mockReturnValue([]),
 };
 
+const deviceManagerService = {
+	createOrUpdate: jest.fn().mockResolvedValue({}),
+};
+
 const transformerRegistry = {
 	get: jest.fn().mockReturnValue(null),
 };
@@ -135,6 +139,7 @@ describe('DelegatesManagerService', () => {
 			channelsService as any,
 			channelsPropertiesService as any,
 			deviceConnectivityService as any,
+			deviceManagerService as any,
 			propertyMappingStorage as any,
 			transformerRegistry as any,
 		);
@@ -181,7 +186,9 @@ describe('DelegatesManagerService', () => {
 		} as ShellyNgChannelPropertyEntity;
 
 		// devicesService mocks
-		(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+		(devicesService.findOneBy as jest.Mock)
+			.mockResolvedValueOnce(null) // first call: device not found → create
+			.mockResolvedValueOnce(device as unknown as ShellyNgDeviceEntity); // second call: reload after createOrUpdate
 		(devicesService.create as jest.Mock).mockImplementation(
 			async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
 				device.identifier = dto.identifier;
