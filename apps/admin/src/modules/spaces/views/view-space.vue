@@ -1,96 +1,98 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="!notFound">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isSpaceRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				:icon="spaceIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
+		<app-bar-heading
+			v-if="!isMDDevice && isSpaceRoute"
+			teleport
+		>
+			<template #icon>
+				<icon
+					:icon="spaceIcon"
+					class="w[20px] h[20px]"
+				/>
+			</template>
 
-		<template #title>
-			{{ t('spacesModule.headings.detail', { space: space?.name }) }}
-		</template>
+			<template #title>
+				{{ t('spacesModule.headings.detail', { space: space?.name }) }}
+			</template>
 
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.detail', { space: space?.name }) }}
-		</template>
-	</app-bar-heading>
+			<template #subtitle>
+				{{ t('spacesModule.subHeadings.detail', { space: space?.name }) }}
+			</template>
+		</app-bar-heading>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="onClose"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+		</app-bar-button>
 
-	<view-header
-		:heading="t('spacesModule.headings.detail', { space: space?.name })"
-		:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
-		:icon="spaceIcon"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddDevice"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+		<view-header
+			:heading="t('spacesModule.headings.detail', { space: space?.name })"
+			:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
+			:icon="spaceIcon"
+		>
+			<template #extra>
+				<div class="flex items-center">
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddDevice"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.devices.add') }}
-				</el-button>
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddScene"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+						{{ t('spacesModule.detail.devices.add') }}
+					</el-button>
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddScene"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.scenes.add') }}
-				</el-button>
-				<el-button
-					v-if="space?.type === SpaceType.ROOM"
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					@click="onAddDisplay"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+						{{ t('spacesModule.detail.scenes.add') }}
+					</el-button>
+					<el-button
+						v-if="space?.type === SpaceType.ROOM"
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						@click="onAddDisplay"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('spacesModule.detail.displays.add') }}
-				</el-button>
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onSpaceEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+						{{ t('spacesModule.detail.displays.add') }}
+					</el-button>
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="onSpaceEdit"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+				</div>
+			</template>
+		</view-header>
+	</template>
 
 	<!-- Space not found -->
 	<div
@@ -497,7 +499,14 @@ const onSpaceEdit = (): void => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	await fetchSpace();
+	try {
+		await fetchSpace();
+	} catch {
+		notFound.value = true;
+
+		return;
+	}
+
 	if (!isLoading.value && space.value === null && !wasSpaceLoaded.value) {
 		notFound.value = true;
 	}

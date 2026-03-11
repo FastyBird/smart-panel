@@ -1,147 +1,149 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="!notFound">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isDeviceRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:devices"
-				class="w[20px] h[20px]"
-			/>
-		</template>
+		<app-bar-heading
+			v-if="!isMDDevice && isDeviceRoute"
+			teleport
+		>
+			<template #icon>
+				<icon
+					icon="mdi:devices"
+					class="w[20px] h[20px]"
+				/>
+			</template>
 
-		<template #title>
-			{{ t('devicesModule.headings.devices.detail', { device: device?.name }) }}
-		</template>
+			<template #title>
+				{{ t('devicesModule.headings.devices.detail', { device: device?.name }) }}
+			</template>
 
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.devices.detail', { device: device?.name }) }}
-		</template>
-	</app-bar-heading>
+			<template #subtitle>
+				{{ t('devicesModule.subHeadings.devices.detail', { device: device?.name }) }}
+			</template>
+		</app-bar-heading>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="onClose"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+		</app-bar-button>
 
-	<app-bar-button
-		v-if="!isMDDevice && isDeviceRoute && canAddAnotherChannel"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onChannelAdd"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice && isDeviceRoute && canAddAnotherChannel"
+			:align="AppBarButtonAlign.RIGHT"
+			teleport
+			small
+			@click="onChannelAdd"
+		>
+			<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
+		</app-bar-button>
 
-	<view-header
-		:heading="t('devicesModule.headings.devices.detail', { device: device?.name })"
-		:sub-heading="t('devicesModule.subHeadings.devices.detail', { device: device?.name })"
-		icon="mdi:devices"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					:disabled="!canAddAnotherChannel"
-					@click="onChannelAdd"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+		<view-header
+			:heading="t('devicesModule.headings.devices.detail', { device: device?.name })"
+			:sub-heading="t('devicesModule.subHeadings.devices.detail', { device: device?.name })"
+			icon="mdi:devices"
+		>
+			<template #extra>
+				<div class="flex items-center">
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						:disabled="!canAddAnotherChannel"
+						@click="onChannelAdd"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('devicesModule.buttons.addChannel.title') }}
-				</el-button>
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onDeviceEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onDeviceControl"
-				>
-					<template #icon>
-						<icon icon="mdi:tune-variant" />
-					</template>
-				</el-button>
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="openLogsDialog"
-				>
-					<template #icon>
-						<icon icon="mdi:console" />
-					</template>
-
-					{{ t('devicesModule.buttons.viewLogs.title') }}
-				</el-button>
-
-				<el-dropdown
-					v-if="controls.length !== 0"
-					trigger="click"
-				>
+						{{ t('devicesModule.buttons.addChannel.title') }}
+					</el-button>
 					<el-button
 						plain
 						class="px-4! ml-2!"
+						@click="onDeviceEdit"
 					>
 						<template #icon>
-							<icon icon="mdi:cog" />
+							<icon icon="mdi:pencil" />
 						</template>
 					</el-button>
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="onDeviceControl"
+					>
+						<template #icon>
+							<icon icon="mdi:tune-variant" />
+						</template>
+					</el-button>
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="openLogsDialog"
+					>
+						<template #icon>
+							<icon icon="mdi:console" />
+						</template>
 
-					<template #dropdown>
-						<el-dropdown-menu>
-							<el-dropdown-item
-								v-for="control of controls"
-								:key="control.id"
-							>
-								<template #icon>
-									<icon icon="mdi:pencil" />
-								</template>
-								{{ control.name }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</template>
-				</el-dropdown>
+						{{ t('devicesModule.buttons.viewLogs.title') }}
+					</el-button>
+
+					<el-dropdown
+						v-if="controls.length !== 0"
+						trigger="click"
+					>
+						<el-button
+							plain
+							class="px-4! ml-2!"
+						>
+							<template #icon>
+								<icon icon="mdi:cog" />
+							</template>
+						</el-button>
+
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item
+									v-for="control of controls"
+									:key="control.id"
+								>
+									<template #icon>
+										<icon icon="mdi:pencil" />
+									</template>
+									{{ control.name }}
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</div>
+			</template>
+		</view-header>
+
+		<!-- Device Logs Dialog -->
+		<el-dialog
+			v-model="logsDialogVisible"
+			:title="t('devicesModule.texts.devices.logs.title')"
+			width="80%"
+			destroy-on-close
+			@close="closeLogsDialog"
+		>
+			<div class="h-96">
+				<device-logs
+					v-if="device"
+					v-model:live="logsLive"
+					:device-id="device.id"
+				/>
 			</div>
-		</template>
-	</view-header>
-
-	<!-- Device Logs Dialog -->
-	<el-dialog
-		v-model="logsDialogVisible"
-		:title="t('devicesModule.texts.devices.logs.title')"
-		width="80%"
-		destroy-on-close
-		@close="closeLogsDialog"
-	>
-		<div class="h-96">
-			<device-logs
-				v-if="device"
-				v-model:live="logsLive"
-				:device-id="device.id"
-			/>
-		</div>
-	</el-dialog>
+		</el-dialog>
+	</template>
 
 	<!-- Device not found -->
 	<div

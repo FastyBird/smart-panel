@@ -1,83 +1,85 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="!notFound">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isChannelRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:chip"
-				class="w[20px] h[20px]"
-			/>
-		</template>
+		<app-bar-heading
+			v-if="!isMDDevice && isChannelRoute"
+			teleport
+		>
+			<template #icon>
+				<icon
+					icon="mdi:chip"
+					class="w[20px] h[20px]"
+				/>
+			</template>
 
-		<template #title>
-			{{ t('devicesModule.headings.channels.detail', { channel: channel?.name }) }}
-		</template>
+			<template #title>
+				{{ t('devicesModule.headings.channels.detail', { channel: channel?.name }) }}
+			</template>
 
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.channels.detail', { channel: channel?.name }) }}
-		</template>
-	</app-bar-heading>
+			<template #subtitle>
+				{{ t('devicesModule.subHeadings.channels.detail', { channel: channel?.name }) }}
+			</template>
+		</app-bar-heading>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="onClose"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+		</app-bar-button>
 
-	<app-bar-button
-		v-if="!isMDDevice && isChannelRoute && canAddAnotherProperty"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onPropertyAdd"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
-	</app-bar-button>
+		<app-bar-button
+			v-if="!isMDDevice && isChannelRoute && canAddAnotherProperty"
+			:align="AppBarButtonAlign.RIGHT"
+			teleport
+			small
+			@click="onPropertyAdd"
+		>
+			<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
+		</app-bar-button>
 
-	<view-header
-		:heading="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
-		:sub-heading="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
-		icon="mdi:chip"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="px-4! ml-2!"
-					:disabled="!canAddAnotherProperty"
-					@click="onPropertyAdd"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+		<view-header
+			:heading="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
+			:sub-heading="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
+			icon="mdi:chip"
+		>
+			<template #extra>
+				<div class="flex items-center">
+					<el-button
+						type="primary"
+						plain
+						class="px-4! ml-2!"
+						:disabled="!canAddAnotherProperty"
+						@click="onPropertyAdd"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
 
-					{{ t('devicesModule.buttons.addProperty.title') }}
-				</el-button>
+						{{ t('devicesModule.buttons.addProperty.title') }}
+					</el-button>
 
-				<el-button
-					plain
-					class="px-4! ml-2!"
-					@click="onChannelEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+					<el-button
+						plain
+						class="px-4! ml-2!"
+						@click="onChannelEdit"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+				</div>
+			</template>
+		</view-header>
+	</template>
 
 	<!-- Channel not found -->
 	<div
