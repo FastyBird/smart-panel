@@ -497,7 +497,8 @@ class WeatherDetailPage extends StatelessWidget {
 						),
 						0,
 					);
-					final timeStr = '${hour.dateTime.hour.toString().padLeft(2, '0')}:00';
+					final localTime = hour.dateTime.toLocal();
+					final timeStr = '${localTime.hour.toString().padLeft(2, '0')}:00';
 
 					return Container(
 						width: AppSpacings.scale(52),
