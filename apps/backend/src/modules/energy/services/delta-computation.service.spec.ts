@@ -12,12 +12,14 @@ describe('DeltaComputationService', () => {
 	let service: DeltaComputationService;
 	let metrics: EnergyMetricsService;
 
+	let warnSpy: jest.SpyInstance;
+
 	beforeEach(() => {
 		metrics = new EnergyMetricsService();
 		service = new DeltaComputationService(metrics);
 
 		// Suppress logger output in tests
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -95,15 +97,32 @@ describe('DeltaComputationService', () => {
 			expect(result.deltaKwh).toBeCloseTo(2.0);
 		});
 
-		it('should handle reset to zero', () => {
+		it('should handle reset to zero silently (no warn)', () => {
 			service.computeDelta(deviceId, channelId, sourceType, 100.0, new Date('2026-02-09T12:00:00Z'));
 			const result = service.computeDelta(deviceId, channelId, sourceType, 0.0, new Date('2026-02-09T12:05:00Z'));
 
 			// Zero delta should return null (no energy consumed)
 			expect(result).toBeNull();
+			// Should use debug, not warn — relay output off is not an anomaly
+			for (const call of warnSpy.mock.calls as unknown[][]) {
+				const msg = typeof call[0] === 'string' ? call[0] : '';
+				expect(msg).not.toContain('Meter reset detected');
+			}
 		});
 
-		it('should resume normal operation after a reset', () => {
+		it('should resume normal operation after relay output off/on cycle', () => {
+			// Device consuming energy
+			service.computeDelta(deviceId, channelId, sourceType, 500.0, new Date('2026-02-09T12:00:00Z'));
+			// Relay output turned off — counter resets to 0
+			service.computeDelta(deviceId, channelId, sourceType, 0.0, new Date('2026-02-09T12:05:00Z'));
+			// Relay output turned on — counter starts from 0 again
+			const result = service.computeDelta(deviceId, channelId, sourceType, 3.0, new Date('2026-02-09T12:10:00Z'));
+
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(3.0);
+		});
+
+		it('should resume normal operation after a non-zero reset', () => {
 			service.computeDelta(deviceId, channelId, sourceType, 500.0, new Date('2026-02-09T12:00:00Z'));
 			service.computeDelta(deviceId, channelId, sourceType, 2.0, new Date('2026-02-09T12:05:00Z'));
 

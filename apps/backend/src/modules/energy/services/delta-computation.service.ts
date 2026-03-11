@@ -29,9 +29,10 @@ interface BaselineState {
  * Rules:
  * - If prev is missing: store baseline, produce no delta.
  * - If new >= prev: delta = new - prev (monotonic increase).
- * - If new < prev:
- *   - Treat as meter reset: delta = new (energy accumulated since reset).
- *   - Log the reset event.
+ * - If new < prev and new === 0:
+ *   - Counter reset to zero (e.g. relay output turned off). Reset baseline, no delta.
+ * - If new < prev and new > 0:
+ *   - Treat as meter reset: delta = new (energy accumulated since reset). Log warning.
  */
 @Injectable()
 export class DeltaComputationService {
@@ -95,8 +96,17 @@ export class DeltaComputationService {
 		if (cumulativeKwh >= prev.cumulativeKwh) {
 			// Normal monotonic increase
 			deltaKwh = cumulativeKwh - prev.cumulativeKwh;
+		} else if (cumulativeKwh === 0) {
+			// Counter reset to zero — normal for relay-based devices (e.g. Shelly)
+			// when the output is turned off. Just reset baseline, no delta.
+			this.logger.debug(
+				`Counter reset to zero for device=${deviceId} sourceType=${sourceType}: ` +
+					`prev=${prev.cumulativeKwh}, timestamp=${timestamp.toISOString()}. Resetting baseline.`,
+			);
+			this.metrics.recordNegativeDelta();
+			deltaKwh = 0;
 		} else {
-			// Value decreased — meter reset
+			// Value decreased to non-zero — unusual meter reset
 			this.logger.warn(
 				`Meter reset detected for device=${deviceId} sourceType=${sourceType}: ` +
 					`prev=${prev.cumulativeKwh}, new=${cumulativeKwh}, ` +
