@@ -191,8 +191,7 @@ export class OpenMeteoHttpService {
 		forecast: ForecastDayModel[];
 		location: LocationModel;
 	} | null> {
-		const units = this.getUnits();
-		const temperatureUnit = units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+		const temperatureUnit = this.getUnits();
 		const windSpeedUnit = 'ms'; // WindModel expects m/s regardless of temperature unit
 
 		const currentParams = [

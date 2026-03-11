@@ -42,7 +42,7 @@ export class UpdateOpenMeteoLocationDto extends UpdateLocationDto {
 	@Expose({ name: 'country_code' })
 	@Transform(
 		({ obj }: { obj: { country_code?: string | null; countryCode?: string | null } }) => {
-			const value = obj.country_code || obj.countryCode;
+			const value = obj.country_code ?? obj.countryCode;
 			return value === null ? undefined : value;
 		},
 		{ toClassOnly: true },
