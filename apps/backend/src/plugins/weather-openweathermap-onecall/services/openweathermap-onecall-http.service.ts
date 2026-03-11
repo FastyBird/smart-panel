@@ -215,17 +215,17 @@ export class OpenWeatherMapOneCallHttpService {
 						description: hour.weather[0].description,
 						icon: hour.weather[0].icon,
 					},
-				wind: {
-					speed: hour.wind_speed,
-					deg: hour.wind_deg,
-					gust: hour.wind_gust ?? null,
-				},
-				clouds: hour.clouds,
-				rain: hour.rain?.['1h'] ?? null,
-				snow: hour.snow?.['1h'] ?? null,
-				date_time: new Date(hour.dt * 1000),
-			}),
-		);
+					wind: {
+						speed: hour.wind_speed,
+						deg: hour.wind_deg,
+						gust: hour.wind_gust ?? null,
+					},
+					clouds: hour.clouds,
+					rain: hour.rain?.['1h'] ?? null,
+					snow: hour.snow?.['1h'] ?? null,
+					date_time: new Date(hour.dt * 1000),
+				}),
+			);
 	}
 
 	private transformAlerts(alerts: OpenWeatherMapOneCallAlertDto[]): WeatherAlertModel[] {
