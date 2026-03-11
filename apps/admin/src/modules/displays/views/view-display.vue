@@ -314,9 +314,33 @@
 
 		<div
 			v-else-if="!isLoading"
-			class="text-center py-8 text-gray-500"
+			class="flex flex-col items-center justify-center w-full h-full"
 		>
-			{{ t('displaysModule.messages.notFound') }}
+			<el-result>
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:monitor" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:help" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					{{ t('displaysModule.messages.notFound') }}
+				</template>
+
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="router.push({ name: RouteNames.DISPLAYS })"
+					>
+						{{ t('displaysModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</el-result>
 		</div>
 	</div>
 
@@ -369,11 +393,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElRow, ElTag, vLoading } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElResult, ElRow, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, IconWithChild, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { usePages } from '../../dashboard/composables/composables';
 import { useDevices } from '../../devices/composables/useDevices';

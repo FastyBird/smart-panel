@@ -82,38 +82,33 @@
 	<!-- Channel not found -->
 	<div
 		v-if="notFound"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		class="flex flex-col items-center justify-center w-full h-full"
 	>
-		<el-card
-			class="mt-2"
-			body-class="flex flex-row justify-center"
-		>
-			<el-result class="h-full max-w-[700px]">
-				<template #icon>
-					<icon-with-child :size="80">
-						<template #primary>
-							<icon icon="mdi:chip" />
-						</template>
-						<template #secondary>
-							<icon icon="mdi:help" />
-						</template>
-					</icon-with-child>
-				</template>
+		<el-result>
+			<template #icon>
+				<icon-with-child :size="80">
+					<template #primary>
+						<icon icon="mdi:chip" />
+					</template>
+					<template #secondary>
+						<icon icon="mdi:help" />
+					</template>
+				</icon-with-child>
+			</template>
 
-				<template #title>
-					{{ t('devicesModule.messages.channels.notFound') }}
-				</template>
+			<template #title>
+				{{ t('devicesModule.messages.channels.notFound') }}
+			</template>
 
-				<template #extra>
-					<el-button
-						type="primary"
-						@click="onClose"
-					>
-						{{ t('devicesModule.buttons.back.title') }}
-					</el-button>
-				</template>
-			</el-result>
-		</el-card>
+			<template #extra>
+				<el-button
+					type="primary"
+					@click="onClose"
+				>
+					{{ t('devicesModule.buttons.back.title') }}
+				</el-button>
+			</template>
+		</el-result>
 	</div>
 
 	<div
@@ -214,7 +209,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElResult } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElResult } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
