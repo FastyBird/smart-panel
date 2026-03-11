@@ -125,7 +125,6 @@ import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
-import { WEATHER_OPEN_METEO_PLUGIN_TYPE } from '../weather-open-meteo.constants';
 import { useLocationMap, type ILocationModel } from '../composables/composables';
 
 import type { IOpenMeteoLocationAddFormProps } from './open-meteo-location-add-form.types';
@@ -227,7 +226,7 @@ const onSubmit = async (): Promise<void> => {
 	try {
 		const locationData: { name: string; type: string } & Record<string, unknown> = {
 			name: model.name,
-			type: WEATHER_OPEN_METEO_PLUGIN_TYPE,
+			type: props.type,
 			latitude: model.latitude !== null ? Number(model.latitude) : undefined,
 			longitude: model.longitude !== null ? Number(model.longitude) : undefined,
 		};
