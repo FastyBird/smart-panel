@@ -152,7 +152,7 @@ function parseLocalDate(dateStr: string, timezone: string): Date {
 		hour: '2-digit',
 		minute: '2-digit',
 		second: '2-digit',
-		hour12: false,
+		hourCycle: 'h23',
 	});
 
 	// Format the naive UTC date in the target timezone to find the offset
@@ -267,7 +267,11 @@ export class OpenMeteoHttpService {
 		}
 	}
 
-	private transformCurrentWeather(current: OpenMeteoCurrentDto, daily: OpenMeteoDailyDto, timezone: string): CurrentDayModel {
+	private transformCurrentWeather(
+		current: OpenMeteoCurrentDto,
+		daily: OpenMeteoDailyDto,
+		timezone: string,
+	): CurrentDayModel {
 		const wmoCode = current.weather_code;
 		const mapping = WMO_CODE_MAP[wmoCode] ?? WMO_CODE_MAP[0];
 		const isDay = current.is_day === 1;
