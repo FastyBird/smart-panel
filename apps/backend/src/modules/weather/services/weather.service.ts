@@ -321,10 +321,10 @@ export class WeatherService implements OnApplicationBootstrap {
 
 			if (currentResult && forecast) {
 				return toInstance(LocationWeatherModel, {
-					locationId: location.id,
+					location_id: location.id,
 					current: currentResult.current,
 					forecast,
-					hourlyForecast: hourly,
+					hourly_forecast: hourly,
 					location: currentResult.location,
 				});
 			}

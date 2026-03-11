@@ -567,11 +567,6 @@ export class LocationWeatherModel {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ForecastHourModel)
-	@Transform(
-		({ obj }: { obj: { hourly_forecast?: ForecastHourModel[]; hourlyForecast?: ForecastHourModel[] } }) =>
-			obj.hourly_forecast ?? obj.hourlyForecast,
-		{ toClassOnly: true },
-	)
 	hourlyForecast?: ForecastHourModel[] | null = null;
 
 	@ApiProperty({ description: 'Location information', type: LocationModel })
