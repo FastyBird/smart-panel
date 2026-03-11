@@ -318,15 +318,37 @@ const onConfigSaved = (): void => {
 // Polling interval for device discovery (ms)
 const DISCOVERY_POLL_INTERVAL = 5_000;
 const DISCOVERY_INITIAL_DELAY = 2_000;
-const discoveryTimers = new Map<string, ReturnType<typeof setInterval>>();
 
-const stopDiscoveryPolling = (type: string): void => {
-	const timer = discoveryTimers.get(type);
+// Single shared polling timer — one fetch serves all enabled plugins
+let pollingTimer: ReturnType<typeof setInterval> | null = null;
+let pollingGeneration = 0;
 
-	if (timer) {
-		clearInterval(timer);
-		discoveryTimers.delete(type);
+const startPolling = (): void => {
+	if (pollingTimer) return;
+
+	const gen = ++pollingGeneration;
+
+	pollingTimer = setInterval(() => {
+		if (pollingGeneration !== gen) {
+			stopPolling();
+			return;
+		}
+
+		devicesStore.fetch().catch(() => {
+			// Polling failure is non-fatal
+		});
+	}, DISCOVERY_POLL_INTERVAL);
+};
+
+const stopPolling = (): void => {
+	if (pollingTimer) {
+		clearInterval(pollingTimer);
+		pollingTimer = null;
 	}
+};
+
+const hasActiveDiscoveries = (): boolean => {
+	return devicePlugins.value.some((p) => p.enabled && discoveryGeneration[p.type] > 0);
 };
 
 const startDiscovery = async (type: string): Promise<void> => {
@@ -335,7 +357,6 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 	discoveringPlugins.add(type);
 	discoveredPlugins.delete(type);
-	stopDiscoveryPolling(type);
 
 	try {
 		// Wait a moment for the backend to start the plugin
@@ -349,19 +370,8 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 		if (discoveryGeneration[type] !== generation) return;
 
-		// Poll periodically so the count stays up-to-date even without WebSocket
-		const timer = setInterval(() => {
-			if (discoveryGeneration[type] !== generation) {
-				stopDiscoveryPolling(type);
-				return;
-			}
-
-			devicesStore.fetch().catch(() => {
-				// Polling failure is non-fatal
-			});
-		}, DISCOVERY_POLL_INTERVAL);
-
-		discoveryTimers.set(type, timer);
+		// Start shared polling if not already running
+		startPolling();
 	} catch {
 		// Discovery may fail if plugin isn't fully started yet
 	} finally {
@@ -407,7 +417,11 @@ const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 			discoveringPlugins.delete(type);
 			discoveredPlugins.delete(type);
 			configuredPlugins.delete(type);
-			stopDiscoveryPolling(type);
+
+			// Stop shared polling if no plugins are actively discovering
+			if (!hasActiveDiscoveries()) {
+				stopPolling();
+			}
 
 			// Remove discovered devices belonging to this plugin
 			await removePluginDevices(type);
@@ -463,15 +477,16 @@ onBeforeMount(async () => {
 });
 
 onBeforeUnmount(() => {
-	// Stop active polling timers
-	for (const type of discoveryTimers.keys()) {
-		stopDiscoveryPolling(type);
-	}
+	stopPolling();
 
 	// Reset all generations so any in-flight startDiscovery() calls
-	// bail at the next generation check instead of creating new timers
+	// bail at the next generation check instead of starting polling
 	for (const type of Object.keys(discoveryGeneration)) {
 		discoveryGeneration[type] = 0;
 	}
+
+	// Bump polling generation so a stale startPolling() from an
+	// in-flight startDiscovery() self-cancels on the next tick
+	pollingGeneration++;
 });
 </script>

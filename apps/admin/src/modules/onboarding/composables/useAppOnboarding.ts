@@ -262,8 +262,10 @@ export const useAppOnboarding = () => {
 				existingNames.add(label.toLowerCase());
 			}
 
-			// Auto-assign device to the suggested space if not already assigned
-			if (!deviceAssignments[device.id]) {
+			// Auto-assign only devices we haven't seen before (not in the map at all).
+			// Devices explicitly unassigned by the user have a null value and must not
+			// be re-assigned.
+			if (!(device.id in deviceAssignments)) {
 				deviceAssignments[device.id] = label;
 			}
 		}
