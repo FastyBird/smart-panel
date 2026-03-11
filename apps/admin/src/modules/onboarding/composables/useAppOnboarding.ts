@@ -98,7 +98,6 @@ const locationData = reactive<ILocationData>({
 const spacesToCreate = reactive<ISpaceToCreate[]>([]);
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
-const devicesFetched = ref(false);
 const createdSpaceNameToId: Record<string, string> = {};
 
 export const useAppOnboarding = () => {
@@ -227,8 +226,6 @@ export const useAppOnboarding = () => {
 					deviceAssignments[d.id] = null;
 				}
 			}
-
-			devicesFetched.value = true;
 
 			return true;
 		} catch {
@@ -409,7 +406,6 @@ export const useAppOnboarding = () => {
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
-		devicesFetched.value = false;
 	};
 
 	return {
@@ -422,7 +418,6 @@ export const useAppOnboarding = () => {
 		spacesToCreate,
 		discoveredDevices,
 		deviceAssignments,
-		devicesFetched,
 		savedSpacesCount,
 		isLastStep,
 		nextStep,

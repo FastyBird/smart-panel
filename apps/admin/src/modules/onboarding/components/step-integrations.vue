@@ -463,8 +463,15 @@ onBeforeMount(async () => {
 });
 
 onBeforeUnmount(() => {
+	// Stop active polling timers
 	for (const type of discoveryTimers.keys()) {
 		stopDiscoveryPolling(type);
+	}
+
+	// Reset all generations so any in-flight startDiscovery() calls
+	// bail at the next generation check instead of creating new timers
+	for (const type of Object.keys(discoveryGeneration)) {
+		discoveryGeneration[type] = 0;
 	}
 });
 </script>
