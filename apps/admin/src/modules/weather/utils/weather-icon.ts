@@ -70,12 +70,14 @@ export const getWeatherIcon = (
 };
 
 /**
- * Determines if a given time is during nighttime.
+ * Determines if a given time is during nighttime by comparing time-of-day
+ * (hours and minutes) against sunrise/sunset. This works correctly even when
+ * the reference time is on a different day than the sunrise/sunset timestamps.
  *
  * @param sunrise - Sunrise time
  * @param sunset - Sunset time
  * @param referenceTime - Time to check (defaults to current time)
- * @returns True if reference time is before sunrise or after sunset
+ * @returns True if reference time-of-day is before sunrise or after sunset
  */
 export const isNightTime = (
 	sunrise?: Date | string | null,
@@ -90,5 +92,9 @@ export const isNightTime = (
 	const sr = sunrise instanceof Date ? sunrise : new Date(sunrise);
 	const ss = sunset instanceof Date ? sunset : new Date(sunset);
 
-	return ref <= sr || ref >= ss;
+	const refMinutes = ref.getHours() * 60 + ref.getMinutes();
+	const srMinutes = sr.getHours() * 60 + sr.getMinutes();
+	const ssMinutes = ss.getHours() * 60 + ss.getMinutes();
+
+	return refMinutes < srMinutes || refMinutes >= ssMinutes;
 };
