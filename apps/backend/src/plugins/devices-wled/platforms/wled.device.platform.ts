@@ -7,14 +7,12 @@ import {
 	DEVICES_WLED_TYPE,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
-	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
 	WLED_SEGMENT_PROPERTY_IDENTIFIERS,
-	WLED_SYNC_PROPERTY_IDENTIFIERS,
 	specBrightnessToWled,
 } from '../devices-wled.constants';
 import { WledCommandException } from '../devices-wled.exceptions';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
-import { WledNightlightUpdate, WledStateUpdateExtended, WledUdpSyncUpdate } from '../interfaces/wled.interface';
+import { WledStateUpdateExtended } from '../interfaces/wled.interface';
 import { WledClientAdapterService } from '../services/wled-client-adapter.service';
 
 export type IWledDevicePropertyData = IDevicePropertyData & {
@@ -149,10 +147,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 		// Handle different channel types
 		if (channelId === WLED_CHANNEL_IDENTIFIERS.LIGHT) {
 			return this.executeMainLightCommand(device, propertyUpdates, host);
-		} else if (channelId === WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT) {
-			return this.executeNightlightCommand(device, propertyUpdates, host);
-		} else if (channelId === WLED_CHANNEL_IDENTIFIERS.SYNC) {
-			return this.executeSyncCommand(device, propertyUpdates, host);
 		} else if (channelId.startsWith(WLED_CHANNEL_IDENTIFIERS.SEGMENT + '_')) {
 			// Extract segment ID from channel identifier (e.g., "segment_0" -> 0)
 			const segmentId = parseInt(channelId.split('_')[1], 10);
@@ -203,88 +197,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 	}
 
 	/**
-	 * Execute nightlight channel command
-	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
-	 */
-	private async executeNightlightCommand(
-		device: WledDeviceEntity,
-		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
-		host: string,
-	): Promise<boolean> {
-		try {
-			const nightlightUpdate: WledNightlightUpdate = {};
-
-			for (const { property, value } of propertyUpdates) {
-				switch (property.identifier) {
-					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.ON:
-						nightlightUpdate.on = this.coerceBoolean(value);
-						break;
-					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.DURATION:
-						nightlightUpdate.duration = this.coerceNumber(value, 1, 255);
-						break;
-					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.MODE:
-						nightlightUpdate.mode = this.coerceNumber(value, 0, 3);
-						break;
-					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS:
-						// Convert spec brightness (0-100%) to WLED brightness (0-255)
-						nightlightUpdate.targetBrightness = specBrightnessToWled(this.coerceNumber(value, 0, 100));
-						break;
-				}
-			}
-
-			if (Object.keys(nightlightUpdate).length === 0) {
-				return false;
-			}
-
-			this.logger.log(`Sending nightlight update to ${device.identifier}`, { resource: device.id });
-			return await this.wledAdapter.setNightlight(host, nightlightUpdate);
-		} catch (error) {
-			throw new WledCommandException(
-				device.identifier,
-				'nightlight update',
-				error instanceof Error ? error.message : String(error),
-			);
-		}
-	}
-
-	/**
-	 * Execute sync channel command
-	 */
-	private async executeSyncCommand(
-		device: WledDeviceEntity,
-		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
-		host: string,
-	): Promise<boolean> {
-		try {
-			const syncUpdate: WledUdpSyncUpdate = {};
-
-			for (const { property, value } of propertyUpdates) {
-				switch (property.identifier) {
-					case WLED_SYNC_PROPERTY_IDENTIFIERS.SEND:
-						syncUpdate.send = this.coerceBoolean(value);
-						break;
-					case WLED_SYNC_PROPERTY_IDENTIFIERS.RECEIVE:
-						syncUpdate.receive = this.coerceBoolean(value);
-						break;
-				}
-			}
-
-			if (Object.keys(syncUpdate).length === 0) {
-				return false;
-			}
-
-			this.logger.log(`Sending sync update to ${device.identifier}`, { resource: device.id });
-			return await this.wledAdapter.setUdpSync(host, syncUpdate);
-		} catch (error) {
-			throw new WledCommandException(
-				device.identifier,
-				'sync update',
-				error instanceof Error ? error.message : String(error),
-			);
-		}
-	}
-
-	/**
 	 * Execute segment-specific command
 	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
 	 */
@@ -304,12 +216,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 				on: boolean;
 				brightness: number;
 				colors: number[][];
-				effect: number;
-				effectSpeed: number;
-				effectIntensity: number;
-				palette: number;
-				reverse: boolean;
-				mirror: boolean;
 			}> = {};
 
 			let hasColorUpdate = false;
@@ -340,24 +246,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_BLUE:
 						colors[2] = this.coerceNumber(value, 0, 255);
 						hasColorUpdate = true;
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT:
-						segmentUpdate.effect = this.coerceNumber(value, 0, 255);
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_SPEED:
-						segmentUpdate.effectSpeed = this.coerceNumber(value, 0, 255);
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_INTENSITY:
-						segmentUpdate.effectIntensity = this.coerceNumber(value, 0, 255);
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.PALETTE:
-						segmentUpdate.palette = this.coerceNumber(value, 0, 255);
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.REVERSE:
-						segmentUpdate.reverse = this.coerceBoolean(value);
-						break;
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.MIRROR:
-						segmentUpdate.mirror = this.coerceBoolean(value);
 						break;
 				}
 			}
@@ -394,10 +282,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 		const segmentUpdate: {
 			id: number;
 			colors?: number[][];
-			effect?: number;
-			effectSpeed?: number;
-			effectIntensity?: number;
-			palette?: number;
 		} = { id: 0 };
 
 		let hasColorUpdate = false;
@@ -429,34 +313,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 				case WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_BLUE:
 					colors[2] = this.coerceNumber(value, 0, 255);
 					hasColorUpdate = true;
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT:
-					segmentUpdate.effect = this.coerceNumber(value, 0, 255);
-					hasSegmentUpdate = true;
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT_SPEED:
-					segmentUpdate.effectSpeed = this.coerceNumber(value, 0, 255);
-					hasSegmentUpdate = true;
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT_INTENSITY:
-					segmentUpdate.effectIntensity = this.coerceNumber(value, 0, 255);
-					hasSegmentUpdate = true;
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.PALETTE:
-					segmentUpdate.palette = this.coerceNumber(value, 0, 255);
-					hasSegmentUpdate = true;
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.PRESET:
-					stateUpdate.preset = this.coerceNumber(value, -1, 250);
-					break;
-
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.LIVE_OVERRIDE:
-					stateUpdate.liveOverride = this.coerceNumber(value, 0, 2);
 					break;
 
 				default:
