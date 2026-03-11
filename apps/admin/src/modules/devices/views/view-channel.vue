@@ -230,6 +230,7 @@ import {
 } from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
 import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
+import { DevicesApiException } from '../devices.exceptions';
 import { RouteNames } from '../devices.constants';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
@@ -459,11 +460,16 @@ onBeforeMount((): void => {
 			}
 
 			fetchProperties().catch((): void => {
-				// Silently ignore property fetch errors
+				flashMessage.error(t('devicesModule.messages.channelsProperties.notLoadedForChannel'));
 			});
 		})
-		.catch((): void => {
-			notFound.value = true;
+		.catch((error: unknown): void => {
+			if (error instanceof DevicesApiException && error.code === 404) {
+				notFound.value = true;
+			} else {
+				flashMessage.error(t('devicesModule.messages.channels.notLoaded'));
+				notFound.value = true;
+			}
 		});
 
 	showDrawer.value =

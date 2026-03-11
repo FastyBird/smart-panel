@@ -133,10 +133,13 @@
       "bulkEnableCanceled": "Bulk device enable has been canceled.",
       "bulkDisabled": "{count} devices were successfully disabled.",
       "bulkDisableFailed": "Failed to disable {count} devices.",
-      "bulkDisableCanceled": "Bulk device disable has been canceled."
+      "bulkDisableCanceled": "Bulk device disable has been canceled.",
+      "notLoaded": "Failed to load device. Please try again later."
     },
     "channels": {
       "notFound": "The channel you are looking for doesn’t exist or may have been removed.",
+      "notLoaded": "Failed to load channel. Please try again later.",
+      "notLoadedForDevice": "Failed to load channels for this device.",
       "created": "New channel added successfully.",
       "notCreated": "Something went wrong. Unable to create the channel.",
       "edited": "Changes saved! The channel: {channel} has been updated.",
@@ -149,6 +152,7 @@
     },
     "channelsProperties": {
       "notFound": "The channel property you are looking for doesn’t exist or may have been removed.",
+      "notLoadedForChannel": "Failed to load properties for this channel.",
       "created": "New channel property added successfully.",
       "notCreated": "Something went wrong. Unable to create the channel property.",
       "edited": "Changes saved! The channel property: {property} has been updated.",

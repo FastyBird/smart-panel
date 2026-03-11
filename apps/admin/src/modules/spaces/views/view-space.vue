@@ -340,6 +340,7 @@ import {
 } from '../components/components';
 import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
+import { SpacesApiException } from '../spaces.exceptions';
 import { type ISpace } from '../store';
 
 import type { IViewSpaceProps } from './view-space.types';
@@ -501,8 +502,13 @@ const onSpaceEdit = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	try {
 		await fetchSpace();
-	} catch {
-		notFound.value = true;
+	} catch (error: unknown) {
+		if (error instanceof SpacesApiException && error.code === 404) {
+			notFound.value = true;
+		} else {
+			flashMessage.error(t('spacesModule.messages.notLoaded'));
+			notFound.value = true;
+		}
 
 		return;
 	}

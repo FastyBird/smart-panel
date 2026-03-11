@@ -347,6 +347,7 @@ import {
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceControls, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
+import { DevicesApiException } from '../devices.exceptions';
 import { RouteNames } from '../devices.constants';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
@@ -656,7 +657,7 @@ onBeforeMount((): void => {
 			}
 
 			fetchChannels().catch((): void => {
-				// Silently ignore channel fetch errors
+				flashMessage.error(t('devicesModule.messages.channels.notLoadedForDevice'));
 			});
 
 			// Fetch validation data for this device
@@ -669,8 +670,13 @@ onBeforeMount((): void => {
 				// Silently ignore controls fetch errors - controls are optional
 			});
 		})
-		.catch((): void => {
-			notFound.value = true;
+		.catch((error: unknown): void => {
+			if (error instanceof DevicesApiException && error.code === 404) {
+				notFound.value = true;
+			} else {
+				flashMessage.error(t('devicesModule.messages.devices.notLoaded'));
+				notFound.value = true;
+			}
 		});
 
 	showDrawer.value =
