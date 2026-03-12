@@ -738,11 +738,28 @@ const selectLlmProvider = (type: string): void => {
 	}
 };
 
+const pickActiveVoiceConfig = (): void => {
+	const ttsType = selectedTtsProvider.value;
+	const sttType = selectedSttProvider.value;
+
+	const ttsNeedsConfig = ttsType ? !ttsProviders.value.find((p) => p.type === ttsType)?.configured : false;
+	const sttNeedsConfig = sttType ? !sttProviders.value.find((p) => p.type === sttType)?.configured : false;
+
+	// Prefer showing the unconfigured provider's form so the user can resolve it
+	if (ttsNeedsConfig) {
+		activeVoiceConfigType.value = ttsType;
+	} else if (sttNeedsConfig) {
+		activeVoiceConfigType.value = sttType;
+	} else {
+		// Both configured (or none selected) — show the most recently toggled one
+		activeVoiceConfigType.value = ttsType ?? sttType;
+	}
+};
+
 const selectTtsProvider = (type: string): void => {
 	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
 
-	// Fall back to STT provider if TTS was deselected
-	activeVoiceConfigType.value = selectedTtsProvider.value ?? selectedSttProvider.value;
+	pickActiveVoiceConfig();
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
 	isSavingVoiceConfig.value = false;
@@ -758,8 +775,7 @@ const selectTtsProvider = (type: string): void => {
 const selectSttProvider = (type: string): void => {
 	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
 
-	// Fall back to TTS provider if STT was deselected
-	activeVoiceConfigType.value = selectedSttProvider.value ?? selectedTtsProvider.value;
+	pickActiveVoiceConfig();
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
 	isSavingVoiceConfig.value = false;
@@ -832,8 +848,11 @@ watch(voiceFormResult, (val: FormResultType) => {
 
 	if (val === FormResult.OK) {
 		flashMessage.success(t('buddyModule.wizard.configSaved'));
-		fetchTtsProviders();
-		fetchSttProviders();
+
+		// Refresh provider statuses, then switch to the next unconfigured provider if any
+		Promise.all([fetchTtsProviders(), fetchSttProviders()]).then(() => {
+			pickActiveVoiceConfig();
+		});
 	}
 });
 
