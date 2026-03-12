@@ -264,14 +264,22 @@
 							selectedMessagingProvider === provider.type
 								? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
 								: 'border-[var(--el-border-color)] hover:border-[var(--el-color-primary-light-5)]',
+							!provider.enabled ? 'opacity-50 cursor-not-allowed' : '',
 						]"
-						@click="selectMessagingProvider(provider.type)"
+						@click="provider.enabled ? selectMessagingProvider(provider.type) : undefined"
 					>
 						<div class="flex items-center justify-between">
 							<span class="font-medium">{{ provider.name }}</span>
 							<div class="flex items-center gap-2">
 								<el-tag
-									v-if="provider.configured"
+									v-if="!provider.enabled"
+									size="small"
+									type="info"
+								>
+									{{ t('buddyModule.wizard.disabled') }}
+								</el-tag>
+								<el-tag
+									v-else-if="provider.configured"
 									size="small"
 									type="success"
 								>
@@ -857,6 +865,8 @@ const loadAllData = async (): Promise<void> => {
 
 		if (selectedTts) {
 			selectedTtsProvider.value = selectedTts.type;
+			activeVoiceConfigType.value = selectedTts.type;
+			fetchPluginConfig(selectedTts.type);
 		}
 
 		// Pre-select currently selected STT
@@ -864,6 +874,13 @@ const loadAllData = async (): Promise<void> => {
 
 		if (selectedStt) {
 			selectedSttProvider.value = selectedStt.type;
+
+			// Only override activeVoiceConfigType if TTS wasn't pre-selected
+			if (!selectedTts) {
+				activeVoiceConfigType.value = selectedStt.type;
+			}
+
+			fetchPluginConfig(selectedStt.type);
 		}
 	} finally {
 		isLoading.value = false;
@@ -881,6 +898,21 @@ watch(
 			selectedSttProvider.value = null;
 			selectedMessagingProvider.value = null;
 			activeVoiceConfigType.value = null;
+
+			// Reset saving flags and form refs to prevent perpetual spinners
+			isSavingLlmConfig.value = false;
+			isSavingVoiceConfig.value = false;
+			isSavingMessagingConfig.value = false;
+			isSavingModuleConfig.value = false;
+			llmFormSubmit.value = false;
+			llmFormResult.value = FormResult.NONE;
+			llmFormChanged.value = false;
+			voiceFormSubmit.value = false;
+			voiceFormResult.value = FormResult.NONE;
+			voiceFormChanged.value = false;
+			messagingFormSubmit.value = false;
+			messagingFormResult.value = FormResult.NONE;
+			messagingFormChanged.value = false;
 
 			loadAllData();
 		}
