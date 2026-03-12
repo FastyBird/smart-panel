@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
-import { ExtensionKind } from '../../extensions/extensions.constants';
 import { ExtensionsService } from '../../extensions/services/extensions.service';
 import { BUDDY_MODULE_NAME, BuddyCapability } from '../buddy.constants';
 import { MessagingProviderStatusDataModel } from '../models/messaging-provider-status.model';

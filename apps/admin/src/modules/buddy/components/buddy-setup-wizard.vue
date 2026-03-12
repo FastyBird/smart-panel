@@ -1033,12 +1033,15 @@ watch(
 			isSavingModuleConfig.value = false;
 			llmFormSubmit.value = false;
 			llmFormResult.value = FormResult.NONE;
+			llmFormReset.value = false;
 			llmFormChanged.value = false;
 			voiceFormSubmit.value = false;
 			voiceFormResult.value = FormResult.NONE;
+			voiceFormReset.value = false;
 			voiceFormChanged.value = false;
 			messagingFormSubmit.value = false;
 			messagingFormResult.value = FormResult.NONE;
+			messagingFormReset.value = false;
 			messagingFormChanged.value = false;
 
 			loadAllData();
