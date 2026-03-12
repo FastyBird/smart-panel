@@ -7,21 +7,18 @@
 		@update:model-value="(val: boolean) => emit('update:visible', val)"
 	>
 		<el-steps
+			v-if="!isLoading"
+			:key="stepSequenceKey"
 			:active="currentStep"
 			finish-status="success"
 			align-center
 			class="mb-6"
 		>
-			<el-step :title="t('buddyModule.wizard.steps.provider')" />
 			<el-step
-				v-if="hasVoiceProviders"
-				:title="t('buddyModule.wizard.steps.voice')"
+				v-for="step in stepSequence"
+				:key="step"
+				:title="t(`buddyModule.wizard.steps.${step}`)"
 			/>
-			<el-step
-				v-if="hasMessagingProviders"
-				:title="t('buddyModule.wizard.steps.messaging')"
-			/>
-			<el-step :title="t('buddyModule.wizard.steps.done')" />
 		</el-steps>
 
 		<div
@@ -525,6 +522,9 @@ const stepSequence = computed<StepName[]>(() => {
 
 	return steps;
 });
+
+// Key for el-steps to force full re-render when the step set changes
+const stepSequenceKey = computed(() => stepSequence.value.join(','));
 
 const currentStepName = computed<StepName>(() => stepSequence.value[currentStep.value] ?? 'done');
 
