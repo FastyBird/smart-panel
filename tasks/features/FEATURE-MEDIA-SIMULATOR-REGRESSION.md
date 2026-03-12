@@ -16,7 +16,7 @@ I want to have **deterministic simulator scenarios and a comprehensive regressio
 
 - Existing media domain code lives in `apps/backend/src/modules/spaces/` (services, entities, models, constants).
 - Existing unit tests: `derived-media-endpoint.service.spec.ts`, `space-media-activity.service.spec.ts`, `space-media-activity-binding.service.spec.ts`.
-- Simulator plugin at `apps/backend/src/plugins/devices-simulator/` defines YAML scenarios but has no media-specific templates.
+- Simulator plugin at `apps/backend/src/plugins/simulator/` defines YAML scenarios but has no media-specific templates.
 - Prerequisites: Media endpoints API (MVP #1), Bindings CRUD + apply-defaults (MVP #2), Activation + executor + active state + WS events (MVP #3).
 
 ## 3. Scope

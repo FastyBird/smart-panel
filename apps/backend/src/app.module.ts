@@ -83,8 +83,6 @@ import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/dev
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/devices-shelly-v1.constants';
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
-import { DEVICES_SIMULATOR_PLUGIN_PREFIX } from './plugins/devices-simulator/devices-simulator.constants';
-import { DevicesSimulatorPlugin } from './plugins/devices-simulator/devices-simulator.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
@@ -97,6 +95,8 @@ import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { ScenesLocalPlugin } from './plugins/scenes-local/scenes-local.plugin';
+import { SIMULATOR_PLUGIN_PREFIX } from './plugins/simulator/simulator.constants';
+import { SimulatorPlugin } from './plugins/simulator/simulator.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesScenePlugin } from './plugins/tiles-scene/tiles-scene.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
@@ -273,8 +273,8 @@ export class AppModule {
 								module: DevicesZigbee2mqttPlugin,
 							},
 							{
-								path: DEVICES_SIMULATOR_PLUGIN_PREFIX,
-								module: DevicesSimulatorPlugin,
+								path: SIMULATOR_PLUGIN_PREFIX,
+								module: SimulatorPlugin,
 							},
 							{
 								path: WEATHER_OPEN_METEO_PLUGIN_PREFIX,
@@ -371,7 +371,7 @@ export class AppModule {
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,
 				DevicesZigbee2mqttPlugin,
-				DevicesSimulatorPlugin,
+				SimulatorPlugin,
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,

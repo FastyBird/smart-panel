@@ -1,0 +1,63 @@
+import { Expose, Transform } from 'class-transformer';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
+import { SIMULATOR_TYPE } from '../simulator.constants';
+
+@ApiSchema({ name: 'SimulatorPluginUpdateDevice' })
+export class UpdateSimulatorDeviceDto extends UpdateDeviceDto {
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: SIMULATOR_TYPE,
+		example: SIMULATOR_TYPE,
+	})
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })
+	type: typeof SIMULATOR_TYPE;
+
+	@ApiPropertyOptional({
+		description: 'Whether to auto-simulate value changes',
+		name: 'auto_simulate',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"auto_simulate","reason":"Auto simulate must be a boolean."}]' })
+	auto_simulate?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Simulation interval in milliseconds (when auto_simulate is true)',
+		name: 'simulate_interval',
+		type: 'number',
+		minimum: 1000,
+		maximum: 60000,
+		example: 5000,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsInt({ message: '[{"field":"simulate_interval","reason":"Simulate interval must be an integer."}]' })
+	@Min(1000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must be at least 1000ms."}]' })
+	@Max(60000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must not exceed 60000ms."}]' })
+	simulate_interval?: number;
+
+	@ApiPropertyOptional({
+		description: 'Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)',
+		name: 'behavior_mode',
+		type: 'string',
+		enum: ['default', 'realistic'],
+		example: 'realistic',
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsIn(['default', 'realistic'], {
+		message: '[{"field":"behavior_mode","reason":"Behavior mode must be either default or realistic."}]',
+	})
+	behavior_mode?: string;
+}

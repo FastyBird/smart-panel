@@ -244,7 +244,7 @@ const pluginIcons: Record<string, string> = {
 	'devices-zigbee2mqtt-plugin': 'mdi:zigbee',
 	'devices-wled-plugin': 'mdi:led-strip-variant',
 	'devices-third-party-plugin': 'mdi:api',
-	'devices-simulator-plugin': 'mdi:test-tube',
+	'simulator-plugin': 'mdi:test-tube',
 };
 
 const getPluginIcon = (type: string): string => {
@@ -253,7 +253,7 @@ const getPluginIcon = (type: string): string => {
 
 const devicePlugins = computed(() => {
 	return Object.values(extensionsStore.data)
-		.filter((ext) => ext.kind === ExtensionKind.PLUGIN && ext.type.startsWith('devices-'))
+		.filter((ext) => ext.kind === ExtensionKind.PLUGIN && (ext.type.startsWith('devices-') || ext.type === 'simulator-plugin'))
 		.sort((a, b) => a.name.localeCompare(b.name));
 });
 

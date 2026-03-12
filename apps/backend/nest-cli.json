@@ -38,11 +38,11 @@
         "outDir": "dist"
       },
       {
-        "include": "plugins/devices-simulator/scenarios/schema/**/*.json",
+        "include": "plugins/simulator/scenarios/schema/**/*.json",
         "outDir": "dist"
       },
       {
-        "include": "plugins/devices-simulator/scenarios/definitions/**/*.yaml",
+        "include": "plugins/simulator/scenarios/definitions/**/*.yaml",
         "outDir": "dist"
       }
     ]
