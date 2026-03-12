@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -80,6 +80,7 @@ import { Icon } from '@iconify/vue';
 import { v4 as uuid } from 'uuid';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { useSpaces } from '../../spaces/composables';
 import SceneAddForm from '../components/scenes/scene-add-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
 
@@ -104,6 +105,8 @@ const { t } = useI18n();
 const router = useRouter();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const { fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
 
 const sceneId = ref<string>(uuid());
 const remoteFormSubmit = ref<boolean>(false);
@@ -131,6 +134,12 @@ const onClose = (): void => {
 		router.push({ name: RouteNames.SCENES });
 	}
 };
+
+onBeforeMount(() => {
+	if (!spacesLoaded.value) {
+		fetchSpaces();
+	}
+});
 
 watch(
 	(): boolean => props.remoteFormChanged,

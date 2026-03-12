@@ -1,4 +1,6 @@
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+
+import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
 import type { IDisplay } from '../store/displays.store.types';
@@ -11,7 +13,7 @@ export const useDisplays = (): IUseDisplays => {
 
 	const displaysStore = storesManager.getStore(displaysStoreKey);
 
-	const isLoaded = ref<boolean>(false);
+	const { firstLoad } = storeToRefs(displaysStore);
 
 	const displays = computed<IDisplay[]>((): IDisplay[] => {
 		return displaysStore?.findAll() ?? [];
@@ -21,10 +23,12 @@ export const useDisplays = (): IUseDisplays => {
 		return displaysStore?.fetching() ?? false;
 	});
 
+	const isLoaded = computed<boolean>((): boolean => {
+		return firstLoad.value;
+	});
+
 	const fetchDisplays = async (): Promise<void> => {
 		await displaysStore?.fetch();
-
-		isLoaded.value = true;
 	};
 
 	const options = computed<{ value: IDisplay['id']; label: string }[]>((): { value: IDisplay['id']; label: string }[] => {
@@ -32,14 +36,6 @@ export const useDisplays = (): IUseDisplays => {
 			value: display.id,
 			label: display.name || display.macAddress,
 		}));
-	});
-
-	onMounted(async (): Promise<void> => {
-		if (!displaysStore?.firstLoadFinished()) {
-			await fetchDisplays();
-		} else {
-			isLoaded.value = true;
-		}
 	});
 
 	return {
