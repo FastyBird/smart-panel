@@ -96,10 +96,9 @@ const locationData = reactive<ILocationData>({
 });
 
 const spacesToCreate = reactive<ISpaceToCreate[]>([]);
+const dismissedSpaces = reactive<Set<string>>(new Set());
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
-const devicesFetched = ref(false);
-const spacesSuggested = ref(false);
 const createdSpaceNameToId: Record<string, string> = {};
 
 export const useAppOnboarding = () => {
@@ -205,8 +204,6 @@ export const useAppOnboarding = () => {
 	};
 
 	const fetchDevices = async (): Promise<boolean> => {
-		if (devicesFetched.value) return true;
-
 		try {
 			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/devices/devices` as never);
 
@@ -225,13 +222,7 @@ export const useAppOnboarding = () => {
 					description: d.description ?? null,
 					roomId: d.room_id ?? null,
 				});
-				// Initialize assignment (null = unassigned)
-				if (!(d.id in deviceAssignments)) {
-					deviceAssignments[d.id] = null;
-				}
 			}
-
-			devicesFetched.value = true;
 
 			return true;
 		} catch {
@@ -249,10 +240,6 @@ export const useAppOnboarding = () => {
 	};
 
 	const suggestSpacesFromDevices = (): void => {
-		if (spacesSuggested.value) return;
-
-		spacesSuggested.value = true;
-
 		const existingNames = new Set(spacesToCreate.map((s) => s.name.toLowerCase()));
 
 		for (const device of discoveredDevices) {
@@ -262,8 +249,9 @@ export const useAppOnboarding = () => {
 
 			const label = resolveRoomLabel(suggested);
 
-			// Add the suggested space if not already in the list
-			if (!existingNames.has(label.toLowerCase())) {
+			// Add the suggested space if not already in the list and not
+			// previously dismissed by the user
+			if (!existingNames.has(label.toLowerCase()) && !dismissedSpaces.has(label.toLowerCase())) {
 				spacesToCreate.push({
 					name: label,
 					category: suggested.category,
@@ -272,8 +260,9 @@ export const useAppOnboarding = () => {
 				existingNames.add(label.toLowerCase());
 			}
 
-			// Auto-assign device to the suggested space (only on first run, guarded by spacesSuggested flag)
-			if (!deviceAssignments[device.id]) {
+			// Auto-assign only devices we haven't seen before (not in the map at all)
+			// and only if the target space exists (not dismissed by the user).
+			if (!(device.id in deviceAssignments) && !dismissedSpaces.has(label.toLowerCase())) {
 				deviceAssignments[device.id] = label;
 			}
 		}
@@ -413,11 +402,10 @@ export const useAppOnboarding = () => {
 		locationData.longitude = null;
 		locationData.timezone = '';
 		spacesToCreate.splice(0);
+		dismissedSpaces.clear();
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
-		devicesFetched.value = false;
-		spacesSuggested.value = false;
 	};
 
 	return {
@@ -428,9 +416,9 @@ export const useAppOnboarding = () => {
 		accountData,
 		locationData,
 		spacesToCreate,
+		dismissedSpaces,
 		discoveredDevices,
 		deviceAssignments,
-		devicesFetched,
 		savedSpacesCount,
 		isLastStep,
 		nextStep,

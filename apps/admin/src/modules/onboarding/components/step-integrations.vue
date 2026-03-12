@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElIcon, ElScrollbar, ElSwitch, vLoading } from 'element-plus';
@@ -218,7 +218,6 @@ const isFetching = ref(false);
 const togglingPlugins = reactive<Set<string>>(new Set());
 const discoveringPlugins = reactive<Set<string>>(new Set());
 const discoveredPlugins = reactive<Set<string>>(new Set());
-const deviceCounts = reactive<Record<string, number>>({});
 const configuredPlugins = reactive<Set<string>>(new Set());
 
 // Tracks the latest discovery generation per plugin so stale completions are discarded.
@@ -260,7 +259,25 @@ const devicePlugins = computed(() => {
 
 const enabledCount = computed(() => devicePlugins.value.filter((p) => p.enabled).length);
 
-const totalDevicesFound = computed(() => Object.values(deviceCounts).reduce((sum, count) => sum + count, 0));
+/**
+ * Live device counts per plugin type, computed directly from the store.
+ * Updates automatically when devices are added/removed via WebSocket events.
+ */
+const deviceCountsByPlugin = computed(() => {
+	const allDevices = devicesStore.findAll();
+	const counts: Record<string, number> = {};
+
+	for (const plugin of devicePlugins.value) {
+		if (plugin.enabled) {
+			const pluginPrefix = plugin.type.replace('-plugin', '');
+			counts[plugin.type] = allDevices.filter((d) => d.type.startsWith(pluginPrefix)).length;
+		}
+	}
+
+	return counts;
+});
+
+const totalDevicesFound = computed(() => Object.values(deviceCountsByPlugin.value).reduce((sum, count) => sum + count, 0));
 
 const isToggling = (type: string): boolean => togglingPlugins.has(type);
 
@@ -268,7 +285,7 @@ const isDiscovering = (type: string): boolean => discoveringPlugins.has(type);
 
 const discoveryFinished = (type: string): boolean => discoveredPlugins.has(type);
 
-const getDeviceCount = (type: string): number => deviceCounts[type] ?? 0;
+const getDeviceCount = (type: string): number => deviceCountsByPlugin.value[type] ?? 0;
 
 const hasConfigForm = (type: string): boolean => {
 	const plugin = getByName(type);
@@ -298,6 +315,42 @@ const onConfigSaved = (): void => {
 	startDiscovery(configDialogPluginType.value);
 };
 
+// Polling interval for device discovery (ms)
+const DISCOVERY_POLL_INTERVAL = 5_000;
+const DISCOVERY_INITIAL_DELAY = 2_000;
+
+// Single shared polling timer — one fetch serves all enabled plugins
+let pollingTimer: ReturnType<typeof setInterval> | null = null;
+let pollingGeneration = 0;
+
+const startPolling = (): void => {
+	if (pollingTimer) return;
+
+	const gen = ++pollingGeneration;
+
+	pollingTimer = setInterval(() => {
+		if (pollingGeneration !== gen) {
+			stopPolling();
+			return;
+		}
+
+		devicesStore.fetch().catch(() => {
+			// Polling failure is non-fatal
+		});
+	}, DISCOVERY_POLL_INTERVAL);
+};
+
+const stopPolling = (): void => {
+	if (pollingTimer) {
+		clearInterval(pollingTimer);
+		pollingTimer = null;
+	}
+};
+
+const hasActiveDiscoveries = (): boolean => {
+	return devicePlugins.value.some((p) => p.enabled && discoveryGeneration[p.type] > 0);
+};
+
 const startDiscovery = async (type: string): Promise<void> => {
 	const generation = (discoveryGeneration[type] ?? 0) + 1;
 	discoveryGeneration[type] = generation;
@@ -307,32 +360,23 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 	try {
 		// Wait a moment for the backend to start the plugin
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, DISCOVERY_INITIAL_DELAY));
 
 		// Bail if a newer discovery was started or plugin was disabled
 		if (discoveryGeneration[type] !== generation) return;
 
-		// Fetch devices to get counts
+		// Initial fetch to seed the store
 		await devicesStore.fetch();
-
-		if (discoveryGeneration[type] !== generation) return;
-
-		const allDevices = devicesStore.findAll();
-		const pluginPrefix = type.replace('-plugin', '');
-		const count = allDevices.filter((d) => d.type.startsWith(pluginPrefix)).length;
-
-		deviceCounts[type] = count;
 	} catch {
-		if (discoveryGeneration[type] !== generation) return;
+		// Initial fetch may fail if plugin isn't fully started yet
+	}
 
-		// Discovery may fail if plugin isn't fully started yet
-		deviceCounts[type] = 0;
-	} finally {
-		// Only update state if this is still the current discovery
-		if (discoveryGeneration[type] === generation) {
-			discoveringPlugins.delete(type);
-			discoveredPlugins.add(type);
-		}
+	// Start shared polling regardless of whether the initial fetch succeeded,
+	// so devices discovered later are still picked up
+	if (discoveryGeneration[type] === generation) {
+		startPolling();
+		discoveringPlugins.delete(type);
+		discoveredPlugins.add(type);
 	}
 };
 
@@ -369,8 +413,12 @@ const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 			discoveryGeneration[type] = 0;
 			discoveringPlugins.delete(type);
 			discoveredPlugins.delete(type);
-			delete deviceCounts[type];
 			configuredPlugins.delete(type);
+
+			// Stop shared polling if no plugins are actively discovering
+			if (!hasActiveDiscoveries()) {
+				stopPolling();
+			}
 
 			// Remove discovered devices belonging to this plugin
 			await removePluginDevices(type);
@@ -423,5 +471,19 @@ onBeforeMount(async () => {
 	}
 
 	initializeEnabledPlugins();
+});
+
+onBeforeUnmount(() => {
+	stopPolling();
+
+	// Reset all generations so any in-flight startDiscovery() calls
+	// bail at the next generation check instead of starting polling
+	for (const type of Object.keys(discoveryGeneration)) {
+		discoveryGeneration[type] = 0;
+	}
+
+	// Bump polling generation so a stale startPolling() from an
+	// in-flight startDiscovery() self-cancels on the next tick
+	pollingGeneration++;
 });
 </script>

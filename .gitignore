@@ -38,6 +38,8 @@ var/data/extensions.ts
 var/buddy/
 var/db/database.sqlite
 var/db/database.sqlite-journal
+var/db/database.sqlite-wal
+var/db/database.sqlite-shm
 logs/smart-panel-*
 
 # pnpm store
