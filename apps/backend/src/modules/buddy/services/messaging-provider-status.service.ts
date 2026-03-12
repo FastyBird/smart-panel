@@ -19,9 +19,7 @@ export class MessagingProviderStatusService {
 	getProviderStatuses(): MessagingProviderStatusDataModel[] {
 		const allExtensions = this.extensionsService.findAllPlugins();
 
-		const messagingPlugins = allExtensions.filter(
-			(ext) => ext.kind === ExtensionKind.PLUGIN && ext.capabilities?.includes(BuddyCapability.MESSAGING),
-		);
+		const messagingPlugins = allExtensions.filter((ext) => ext.capabilities?.includes(BuddyCapability.MESSAGING));
 
 		const statuses: MessagingProviderStatusDataModel[] = [];
 

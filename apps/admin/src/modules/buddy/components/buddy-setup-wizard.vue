@@ -738,12 +738,21 @@ const selectLlmProvider = (type: string): void => {
 	}
 };
 
+const resetVoiceFormRefs = (): void => {
+	isSavingVoiceConfig.value = false;
+	voiceFormSubmit.value = false;
+	voiceFormResult.value = FormResult.NONE;
+	voiceFormChanged.value = false;
+};
+
 const pickActiveVoiceConfig = (): void => {
 	const ttsType = selectedTtsProvider.value;
 	const sttType = selectedSttProvider.value;
 
 	const ttsNeedsConfig = ttsType ? !ttsProviders.value.find((p) => p.type === ttsType)?.configured : false;
 	const sttNeedsConfig = sttType ? !sttProviders.value.find((p) => p.type === sttType)?.configured : false;
+
+	const prevActive = activeVoiceConfigType.value;
 
 	// Prefer showing the unconfigured provider's form so the user can resolve it
 	if (ttsNeedsConfig) {
@@ -754,18 +763,18 @@ const pickActiveVoiceConfig = (): void => {
 		// Both configured (or none selected) — show the most recently toggled one
 		activeVoiceConfigType.value = ttsType ?? sttType;
 	}
+
+	// Reset form refs when the active provider changes to prevent stale state
+	if (activeVoiceConfigType.value !== prevActive) {
+		resetVoiceFormRefs();
+	}
 };
 
 const selectTtsProvider = (type: string): void => {
 	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
 
 	pickActiveVoiceConfig();
-
-	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
-	isSavingVoiceConfig.value = false;
-	voiceFormSubmit.value = false;
-	voiceFormResult.value = FormResult.NONE;
-	voiceFormChanged.value = false;
+	resetVoiceFormRefs();
 
 	if (selectedTtsProvider.value) {
 		fetchPluginConfig(selectedTtsProvider.value);
@@ -776,12 +785,7 @@ const selectSttProvider = (type: string): void => {
 	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
 
 	pickActiveVoiceConfig();
-
-	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
-	isSavingVoiceConfig.value = false;
-	voiceFormSubmit.value = false;
-	voiceFormResult.value = FormResult.NONE;
-	voiceFormChanged.value = false;
+	resetVoiceFormRefs();
 
 	if (selectedSttProvider.value) {
 		fetchPluginConfig(selectedSttProvider.value);
