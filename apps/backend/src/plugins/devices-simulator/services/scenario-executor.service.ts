@@ -29,11 +29,12 @@ import { SceneCategory } from '../../../modules/scenes/scenes.constants';
 import { ScenesService } from '../../../modules/scenes/services/scenes.service';
 import { SpaceClimateRoleService } from '../../../modules/spaces/services/space-climate-role.service';
 import { SpaceCoversRoleService } from '../../../modules/spaces/services/space-covers-role.service';
+import { SetLightingRoleDto } from '../../../modules/spaces/dto/lighting-role.dto';
 import { SpaceLightingRoleService } from '../../../modules/spaces/services/space-lighting-role.service';
 import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
+import { LightingRole, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
@@ -369,8 +370,8 @@ export class ScenarioExecutorService {
 	 * Apply default domain roles and media activity bindings for a room
 	 */
 	private async applyDomainDefaults(spaceId: string): Promise<void> {
-		// Lighting roles
-		const lightingRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(spaceId);
+		// Lighting roles — use name-based heuristic for better role assignment
+		const lightingRoles = await this.inferSmartLightingRoles(spaceId);
 
 		if (lightingRoles.length > 0) {
 			await this.spaceLightingRoleService.bulkSetRoles(spaceId, lightingRoles);
@@ -407,6 +408,105 @@ export class ScenarioExecutorService {
 		if (mediaBindings.length > 0) {
 			this.logger.log(`Applied ${mediaBindings.length} media activity bindings for space ${spaceId}`);
 		}
+	}
+
+	/**
+	 * Infer lighting roles from device names using keyword heuristics
+	 */
+	private async inferSmartLightingRoles(spaceId: string): Promise<SetLightingRoleDto[]> {
+		const lightTargets = await this.spaceLightingRoleService.getLightTargetsInSpace(spaceId);
+
+		if (lightTargets.length === 0) {
+			return [];
+		}
+
+		const roles: SetLightingRoleDto[] = [];
+		let priority = 0;
+
+		for (const target of lightTargets) {
+			const role = this.inferLightingRoleFromName(target.deviceName);
+
+			roles.push({
+				deviceId: target.deviceId,
+				channelId: target.channelId,
+				role,
+				priority: priority++,
+			});
+		}
+
+		return roles;
+	}
+
+	/**
+	 * Determine lighting role from device name keywords
+	 */
+	private inferLightingRoleFromName(name: string): LightingRole {
+		const lower = name.toLowerCase();
+
+		// NIGHT — nightlight, night light
+		if (lower.includes('night')) {
+			return LightingRole.NIGHT;
+		}
+
+		// TASK — desk lamp, reading lamp, vanity, workbench, under-cabinet, task
+		if (
+			lower.includes('desk lamp') ||
+			lower.includes('reading') ||
+			lower.includes('vanity') ||
+			lower.includes('workbench') ||
+			lower.includes('under-cabinet') ||
+			lower.includes('undercabinet') ||
+			lower.includes('task')
+		) {
+			return LightingRole.TASK;
+		}
+
+		// ACCENT — accent, string light, strip, led strip, sconce, wall light
+		if (
+			lower.includes('accent') ||
+			lower.includes('string light') ||
+			lower.includes('strip') ||
+			lower.includes('sconce') ||
+			lower.includes('wall light')
+		) {
+			return LightingRole.ACCENT;
+		}
+
+		// AMBIENT — floor lamp, table lamp, bedside, pendant, path light, mood
+		if (
+			lower.includes('floor lamp') ||
+			lower.includes('table lamp') ||
+			lower.includes('bedside') ||
+			lower.includes('pendant') ||
+			lower.includes('path light') ||
+			lower.includes('mood') ||
+			lower.includes('ambient')
+		) {
+			return LightingRole.AMBIENT;
+		}
+
+		// MAIN — ceiling, chandelier, main, recessed, overhead, flush, downlight, flood, spot
+		if (
+			lower.includes('ceiling') ||
+			lower.includes('chandelier') ||
+			lower.includes('main') ||
+			lower.includes('recessed') ||
+			lower.includes('overhead') ||
+			lower.includes('flush') ||
+			lower.includes('downlight') ||
+			lower.includes('flood') ||
+			lower.includes('spot')
+		) {
+			return LightingRole.MAIN;
+		}
+
+		// Fallback: if name contains "lamp" (not matched above), treat as AMBIENT
+		if (lower.includes('lamp')) {
+			return LightingRole.AMBIENT;
+		}
+
+		// Default to MAIN for unrecognized names (e.g., "Bathroom 2 Light")
+		return LightingRole.MAIN;
 	}
 
 	/**
