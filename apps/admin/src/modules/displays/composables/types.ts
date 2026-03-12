@@ -22,7 +22,7 @@ export interface IUseDisplay {
 export interface IUseDisplays {
 	displays: ComputedRef<IDisplay[]>;
 	isLoading: ComputedRef<boolean>;
-	isLoaded: Ref<boolean>;
+	isLoaded: ComputedRef<boolean>;
 	fetchDisplays: () => Promise<void>;
 	options: ComputedRef<{ value: IDisplay['id']; label: string }[]>;
 }
