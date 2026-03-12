@@ -752,7 +752,7 @@ watch(messagingFormResult, (val: FormResultType) => {
 	}
 });
 
-const saveModuleConfig = async (): Promise<boolean> => {
+const saveModuleConfig = async (includeVoice: boolean = false): Promise<boolean> => {
 	isSavingModuleConfig.value = true;
 
 	try {
@@ -765,8 +765,12 @@ const saveModuleConfig = async (): Promise<boolean> => {
 			configData.provider = selectedLlmProvider.value;
 		}
 
-		configData.ttsPlugin = selectedTtsProvider.value ?? TTS_PLUGIN_NONE;
-		configData.sttPlugin = selectedSttProvider.value ?? STT_PLUGIN_NONE;
+		// Only include voice fields when explicitly saving voice config,
+		// so we don't overwrite existing voice settings when saving from the provider step
+		if (includeVoice) {
+			configData.ttsPlugin = selectedTtsProvider.value ?? TTS_PLUGIN_NONE;
+			configData.sttPlugin = selectedSttProvider.value ?? STT_PLUGIN_NONE;
+		}
 
 		await configModulesStore.edit({
 			data: configData as never,
@@ -801,7 +805,7 @@ const handleSkip = async (): Promise<void> => {
 		selectedSttProvider.value = null;
 		activeVoiceConfigType.value = null;
 
-		const saved = await saveModuleConfig();
+		const saved = await saveModuleConfig(true);
 
 		if (!saved) return;
 	} else if (currentStepName.value === 'messaging') {
@@ -821,7 +825,7 @@ const handleNext = async (): Promise<void> => {
 
 	// When leaving the voice step, always save (even when deselecting to clear old values)
 	if (currentStepName.value === 'voice') {
-		const saved = await saveModuleConfig();
+		const saved = await saveModuleConfig(true);
 
 		if (!saved) return;
 	}
@@ -870,7 +874,14 @@ watch(
 	() => props.visible,
 	(val: boolean) => {
 		if (val) {
+			// Reset all wizard state so stale values from a previous session don't persist
 			currentStep.value = 0;
+			selectedLlmProvider.value = null;
+			selectedTtsProvider.value = null;
+			selectedSttProvider.value = null;
+			selectedMessagingProvider.value = null;
+			activeVoiceConfigType.value = null;
+
 			loadAllData();
 		}
 	},
