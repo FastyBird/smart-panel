@@ -111,11 +111,6 @@
 					</div>
 				</div>
 			</div>
-
-			<buddy-setup-wizard
-				v-model:visible="wizardVisible"
-				@completed="emit('wizard-completed')"
-			/>
 		</template>
 
 		<template v-else-if="!hasActiveConversation && !isLoadingMessages">
@@ -184,6 +179,11 @@
 				</el-button>
 			</div>
 		</template>
+
+		<buddy-setup-wizard
+			v-model:visible="wizardVisible"
+			@completed="emit('wizard-completed')"
+		/>
 	</div>
 </template>
 
