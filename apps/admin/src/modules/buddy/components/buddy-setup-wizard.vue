@@ -676,6 +676,7 @@ const selectLlmProvider = (type: string): void => {
 	selectedLlmProvider.value = selectedLlmProvider.value === type ? null : type;
 
 	// Reset form refs so stale state from a previous provider's form doesn't carry over
+	isSavingLlmConfig.value = false;
 	llmFormSubmit.value = false;
 	llmFormResult.value = FormResult.NONE;
 	llmFormChanged.value = false;
@@ -693,6 +694,7 @@ const selectTtsProvider = (type: string): void => {
 	activeVoiceConfigType.value = selectedTtsProvider.value ?? selectedSttProvider.value;
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
+	isSavingVoiceConfig.value = false;
 	voiceFormSubmit.value = false;
 	voiceFormResult.value = FormResult.NONE;
 	voiceFormChanged.value = false;
@@ -709,6 +711,7 @@ const selectSttProvider = (type: string): void => {
 	activeVoiceConfigType.value = selectedSttProvider.value ?? selectedTtsProvider.value;
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
+	isSavingVoiceConfig.value = false;
 	voiceFormSubmit.value = false;
 	voiceFormResult.value = FormResult.NONE;
 	voiceFormChanged.value = false;
@@ -722,6 +725,7 @@ const selectMessagingProvider = (type: string): void => {
 	selectedMessagingProvider.value = selectedMessagingProvider.value === type ? null : type;
 
 	// Reset form refs so stale state from a previous provider's form doesn't carry over
+	isSavingMessagingConfig.value = false;
 	messagingFormSubmit.value = false;
 	messagingFormResult.value = FormResult.NONE;
 	messagingFormChanged.value = false;
