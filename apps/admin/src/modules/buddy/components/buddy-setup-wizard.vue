@@ -679,7 +679,9 @@ const selectLlmProvider = (type: string): void => {
 
 const selectTtsProvider = (type: string): void => {
 	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
-	activeVoiceConfigType.value = selectedTtsProvider.value;
+
+	// Fall back to STT provider if TTS was deselected
+	activeVoiceConfigType.value = selectedTtsProvider.value ?? selectedSttProvider.value;
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
 	voiceFormSubmit.value = false;
@@ -693,7 +695,9 @@ const selectTtsProvider = (type: string): void => {
 
 const selectSttProvider = (type: string): void => {
 	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
-	activeVoiceConfigType.value = selectedSttProvider.value;
+
+	// Fall back to TTS provider if STT was deselected
+	activeVoiceConfigType.value = selectedSttProvider.value ?? selectedTtsProvider.value;
 
 	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
 	voiceFormSubmit.value = false;
