@@ -125,6 +125,9 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, SUBMIT_FORM_SM, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { usePages } from '../../dashboard/composables/composables';
+import { useSpaces } from '../../spaces/composables';
+import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
 import { DisplayEditForm } from '../components/components';
 import { useDisplay } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../displays.constants';
@@ -158,6 +161,11 @@ const wasDisplayLoaded = ref<boolean>(false);
 
 const displayId = computed(() => props.id);
 const { display, isLoading, fetchDisplay } = useDisplay(displayId);
+
+// Cross-module data needed by display edit form
+const { fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
+const { fetchPages, loaded: pagesLoaded } = usePages();
+const { fetchLocations: fetchWeatherLocations, loaded: weatherLoaded } = useWeatherLocations();
 
 if (!validateUuid(props.id)) {
 	throw new Error('Display identifier is not valid');
@@ -251,6 +259,17 @@ const onClose = (): void => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	// Eagerly fetch cross-module data so edit form has it when it mounts
+	if (!spacesLoaded.value) {
+		fetchSpaces();
+	}
+	if (!pagesLoaded.value) {
+		fetchPages();
+	}
+	if (!weatherLoaded.value) {
+		fetchWeatherLocations();
+	}
+
 	fetchDisplay()
 		.then((): void => {
 			if (!isLoading.value && display.value === null && !wasDisplayLoaded.value) {

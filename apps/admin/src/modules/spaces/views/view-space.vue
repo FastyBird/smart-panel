@@ -305,6 +305,9 @@ import {
 	ViewError,
 	ViewHeader,
 } from '../../../common';
+import { useDevices } from '../../devices/composables/useDevices';
+import { useDisplays } from '../../displays/composables/useDisplays';
+import { useScenes } from '../../scenes/composables/useScenes';
 import {
 	SpaceAddDeviceDialog,
 	SpaceAddDisplayDialog,
@@ -342,6 +345,11 @@ const ns = useNamespace('view-space');
 const spaceId = computed(() => (props.id || route.params.id) as string | undefined);
 
 const { space, fetching, fetchSpace } = useSpace(spaceId);
+
+// Cross-module data needed by tab sections (devices, scenes, displays)
+const { fetchDevices, loaded: devicesLoaded } = useDevices();
+const { fetchScenes, loaded: scenesLoaded } = useScenes();
+const { fetchDisplays, isLoaded: displaysLoaded } = useDisplays();
 
 const isLoading = computed<boolean>(() => fetching.value);
 
@@ -476,6 +484,17 @@ const onSpaceEdit = (): void => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	// Eagerly fetch cross-module data so tab sections have it when they mount
+	if (!devicesLoaded.value) {
+		fetchDevices();
+	}
+	if (!scenesLoaded.value) {
+		fetchScenes();
+	}
+	if (!displaysLoaded.value) {
+		fetchDisplays();
+	}
+
 	try {
 		await fetchSpace();
 	} catch (error: unknown) {

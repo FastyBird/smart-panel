@@ -117,6 +117,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { useSpaces } from '../../spaces/composables';
 import { useScene } from '../composables/composables';
 import SceneEditForm from '../components/scenes/scene-edit-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
@@ -139,6 +140,8 @@ const router = useRouter();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { scene, isLoading, fetchScene } = useScene({ id: props.id });
+
+const { fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
 
 // Track if we've finished loading the full scene for editing
 const sceneReady = ref<boolean>(false);
@@ -204,6 +207,10 @@ watch(
 );
 
 onBeforeMount(async () => {
+	if (!spacesLoaded.value) {
+		fetchSpaces();
+	}
+
 	await fetchScene();
 	sceneReady.value = true;
 });
