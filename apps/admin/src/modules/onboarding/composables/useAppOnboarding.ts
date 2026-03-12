@@ -221,10 +221,6 @@ export const useAppOnboarding = () => {
 					description: d.description ?? null,
 					roomId: d.room_id ?? null,
 				});
-				// Initialize assignment (null = unassigned)
-				if (!(d.id in deviceAssignments)) {
-					deviceAssignments[d.id] = null;
-				}
 			}
 
 			return true;
