@@ -100,6 +100,8 @@ const dismissedSpaces = reactive<Set<string>>(new Set());
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const createdSpaceNameToId: Record<string, string> = {};
+let createdLocationId: string | null = null;
+let createdLocationCoords: { latitude: number; longitude: number } | null = null;
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -180,18 +182,49 @@ export const useAppOnboarding = () => {
 		}
 
 		try {
-			const locationBody: Record<string, unknown> = {
-				type: 'weather-open-meteo',
-				name: locationData.city || 'Home',
-				latitude: locationData.latitude,
-				longitude: locationData.longitude,
-			};
+			// Invalidate cached location if user changed coordinates
+			if (
+				createdLocationId &&
+				createdLocationCoords &&
+				(createdLocationCoords.latitude !== locationData.latitude || createdLocationCoords.longitude !== locationData.longitude)
+			) {
+				createdLocationId = null;
+				createdLocationCoords = null;
+			}
 
-			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
-				body: { data: locationBody },
+			// Only create the location if we haven't already (avoids duplicates on retry)
+			if (!createdLocationId) {
+				const locationBody: Record<string, unknown> = {
+					type: 'weather-open-meteo',
+					name: locationData.city || 'Home',
+					latitude: locationData.latitude,
+					longitude: locationData.longitude,
+				};
+
+				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
+					body: { data: locationBody },
+				} as never);
+
+				if (error) {
+					return false;
+				}
+
+				createdLocationId = (data as { data?: { id?: string } })?.data?.id ?? null;
+
+				if (!createdLocationId) {
+					return false;
+				}
+
+				createdLocationCoords = { latitude: locationData.latitude, longitude: locationData.longitude };
+			}
+
+			// Set the newly created location as the primary weather location
+			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
+				params: { path: { module: 'weather-module' } },
+				body: { data: { primary_location_id: createdLocationId } },
 			} as never);
 
-			if (error) {
+			if (configError) {
 				return false;
 			}
 
@@ -406,6 +439,8 @@ export const useAppOnboarding = () => {
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
+		createdLocationId = null;
+		createdLocationCoords = null;
 	};
 
 	return {
