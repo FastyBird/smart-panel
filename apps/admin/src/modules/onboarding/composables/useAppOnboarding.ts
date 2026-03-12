@@ -96,6 +96,7 @@ const locationData = reactive<ILocationData>({
 });
 
 const spacesToCreate = reactive<ISpaceToCreate[]>([]);
+const dismissedSpaces = reactive<Set<string>>(new Set());
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const createdSpaceNameToId: Record<string, string> = {};
@@ -248,8 +249,9 @@ export const useAppOnboarding = () => {
 
 			const label = resolveRoomLabel(suggested);
 
-			// Add the suggested space if not already in the list
-			if (!existingNames.has(label.toLowerCase())) {
+			// Add the suggested space if not already in the list and not
+			// previously dismissed by the user
+			if (!existingNames.has(label.toLowerCase()) && !dismissedSpaces.has(label.toLowerCase())) {
 				spacesToCreate.push({
 					name: label,
 					category: suggested.category,
@@ -401,6 +403,7 @@ export const useAppOnboarding = () => {
 		locationData.longitude = null;
 		locationData.timezone = '';
 		spacesToCreate.splice(0);
+		dismissedSpaces.clear();
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
@@ -414,6 +417,7 @@ export const useAppOnboarding = () => {
 		accountData,
 		locationData,
 		spacesToCreate,
+		dismissedSpaces,
 		discoveredDevices,
 		deviceAssignments,
 		savedSpacesCount,

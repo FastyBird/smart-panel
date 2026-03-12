@@ -282,6 +282,7 @@ defineOptions({
 const { t } = useI18n();
 const {
 	spacesToCreate,
+	dismissedSpaces,
 	discoveredDevices,
 	deviceAssignments,
 	accountCreated,
@@ -361,12 +362,17 @@ const toggleCategory = (category: string): void => {
 		const spaceName = spacesToCreate[existingIndex].name;
 
 		spacesToCreate.splice(existingIndex, 1);
+		dismissedSpaces.add(spaceName.toLowerCase());
 
 		// Clear assignments pointing to the removed space
 		clearAssignmentsForSpace(spaceName);
 	} else {
+		const name = meta?.label ?? category;
+
+		dismissedSpaces.delete(name.toLowerCase());
+
 		spacesToCreate.push({
-			name: meta?.label ?? category,
+			name,
 			category,
 			icon: meta?.icon ?? 'mdi:home',
 		});
@@ -376,6 +382,8 @@ const toggleCategory = (category: string): void => {
 const addCustomSpace = (): void => {
 	const name = customName.value.trim();
 	if (!name) return;
+
+	dismissedSpaces.delete(name.toLowerCase());
 
 	spacesToCreate.push({
 		name,
@@ -390,6 +398,7 @@ const removeSpace = (index: number): void => {
 	const spaceName = spacesToCreate[index].name;
 
 	spacesToCreate.splice(index, 1);
+	dismissedSpaces.add(spaceName.toLowerCase());
 
 	// Clear assignments pointing to the removed space
 	clearAssignmentsForSpace(spaceName);
