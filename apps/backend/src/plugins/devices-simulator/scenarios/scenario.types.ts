@@ -53,6 +53,14 @@ export interface ScenarioDeviceDefinition {
 	simulate_interval?: number;
 	/** Simulation behavior mode: default (timer-based) or realistic (reacts to user commands) */
 	behavior_mode?: string;
+	/** Lighting domain role (e.g., 'main', 'task', 'ambient', 'accent', 'night') */
+	lighting_role?: string;
+	/** Climate domain role (e.g., 'auto', 'heating_only', 'cooling_only', 'auxiliary', 'sensor') */
+	climate_role?: string;
+	/** Sensor domain role (e.g., 'environment', 'safety', 'security', 'air_quality', 'energy') */
+	sensor_role?: string;
+	/** Covers domain role (e.g., 'primary', 'blackout', 'sheer', 'outdoor') */
+	covers_role?: string;
 	/** Channels to create for this device */
 	channels: ScenarioChannelDefinition[];
 }

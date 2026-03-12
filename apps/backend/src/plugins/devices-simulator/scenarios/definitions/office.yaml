@@ -21,6 +21,7 @@ devices:
   - name: "Reception Lights"
     category: lighting
     room: reception
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -70,6 +71,7 @@ devices:
     name: "Office Ceiling Lights"
     category: lighting
     room: main-office
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -141,6 +143,7 @@ devices:
     name: "Meeting Room Lights"
     category: lighting
     room: meeting-room
+    lighting_role: main
     channels:
       - category: light
         properties:

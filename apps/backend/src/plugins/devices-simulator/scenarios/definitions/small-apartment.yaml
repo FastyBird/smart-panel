@@ -25,6 +25,7 @@ devices:
     name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     simulate_interval: 15000
     channels:
@@ -89,6 +90,7 @@ devices:
     name: "Bedroom Light"
     category: lighting
     room: bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -123,6 +125,7 @@ devices:
   - name: "Bathroom Light"
     category: lighting
     room: bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:

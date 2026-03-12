@@ -41,6 +41,7 @@ devices:
     name: "Living Room Main Lights"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -62,6 +63,7 @@ devices:
     name: "Living Room Accent Lights"
     category: lighting
     room: living-room
+    lighting_role: accent
     auto_simulate: true
     channels:
       - category: light
@@ -169,6 +171,7 @@ devices:
     name: "Master Bedroom Lights"
     category: lighting
     room: master-bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -224,6 +227,7 @@ devices:
   - name: "Guest Bedroom Light"
     category: lighting
     room: guest-bedroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -258,6 +262,7 @@ devices:
   - name: "Master Bathroom Lights"
     category: lighting
     room: master-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -307,6 +312,7 @@ devices:
   - name: "Guest Bathroom Light"
     category: lighting
     room: guest-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -321,6 +327,7 @@ devices:
   - name: "Kitchen Lights"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -387,6 +394,7 @@ devices:
   - name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -406,6 +414,7 @@ devices:
   - name: "Office Desk Light"
     category: lighting
     room: home-office
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -443,6 +452,7 @@ devices:
   - name: "Hallway Lights"
     category: lighting
     room: hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -513,6 +523,7 @@ devices:
   - name: "Terrace Lights"
     category: lighting
     room: terrace
+    lighting_role: main
     channels:
       - category: light
         properties:

@@ -35,6 +35,7 @@ devices:
     name: "Living Room Main Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -53,6 +54,7 @@ devices:
   - name: "Living Room Floor Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -121,6 +123,7 @@ devices:
   - name: "Master Bedroom Light"
     category: lighting
     room: master-bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -156,6 +159,7 @@ devices:
   - name: "Kids Room Light"
     category: lighting
     room: kids-bedroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -171,6 +175,7 @@ devices:
   - name: "Kids Room Nightlight"
     category: lighting
     room: kids-bedroom
+    lighting_role: night
     channels:
       - category: light
         properties:
@@ -187,6 +192,7 @@ devices:
   - name: "Bathroom Light"
     category: lighting
     room: bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -229,6 +235,7 @@ devices:
     name: "Kitchen Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -279,6 +286,7 @@ devices:
   - name: "Garage Light"
     category: lighting
     room: garage
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -306,6 +314,7 @@ devices:
   - name: "Hallway Light"
     category: lighting
     room: hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -379,6 +388,7 @@ devices:
   - name: "Patio Light"
     category: lighting
     room: backyard
+    lighting_role: main
     channels:
       - category: light
         properties:

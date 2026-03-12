@@ -125,6 +125,26 @@
 					"default": "default",
 					"description": "Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)"
 				},
+				"lighting_role": {
+					"type": "string",
+					"enum": ["main", "task", "ambient", "accent", "night", "other", "hidden"],
+					"description": "Lighting domain role for this device"
+				},
+				"climate_role": {
+					"type": "string",
+					"enum": ["auto", "heating_only", "cooling_only", "auxiliary", "sensor", "hidden"],
+					"description": "Climate domain role for this device"
+				},
+				"sensor_role": {
+					"type": "string",
+					"enum": ["environment", "safety", "security", "air_quality", "energy", "other", "hidden"],
+					"description": "Sensor domain role for this device"
+				},
+				"covers_role": {
+					"type": "string",
+					"enum": ["primary", "blackout", "sheer", "outdoor", "hidden"],
+					"description": "Covers domain role for this device"
+				},
 				"channels": {
 					"type": "array",
 					"items": {

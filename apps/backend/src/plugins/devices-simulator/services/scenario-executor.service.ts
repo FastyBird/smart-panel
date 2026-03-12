@@ -34,7 +34,15 @@ import { SpaceLightingRoleService } from '../../../modules/spaces/services/space
 import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { LightingRole, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
+import {
+	ClimateRole,
+	CoversRole,
+	LightingRole,
+	SensorRole,
+	SpaceRoomCategory,
+	SpaceType,
+	SpaceZoneCategory,
+} from '../../../modules/spaces/spaces.constants';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
@@ -127,6 +135,7 @@ export class ScenarioExecutorService {
 		const sceneIds: string[] = [];
 		const roomIdMap = new Map<string, string>(); // scenario room id -> database room id
 		const zoneIds = new Set<string>(); // scenario room ids that are zones
+		const deviceRoles = new Map<string, ScenarioDeviceDefinition>(); // deviceId -> YAML def with role declarations
 
 		this.logger.log(`Executing scenario: ${config.name}`);
 
@@ -197,6 +206,10 @@ export class ScenarioExecutorService {
 				const device = await this.createDevice(deviceDef, roomId, deviceZoneIds);
 				deviceIds.push(device.id);
 
+				if (deviceDef.lighting_role || deviceDef.climate_role || deviceDef.sensor_role || deviceDef.covers_role) {
+					deviceRoles.set(device.id, deviceDef);
+				}
+
 				this.logger.log(`Created device: ${deviceDef.name} (${device.id})`);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -232,7 +245,7 @@ export class ScenarioExecutorService {
 		if (options.applyRoles !== false && roomIds.length > 0 && !options.dryRun) {
 			for (const roomId of roomIds) {
 				try {
-					await this.applyDomainDefaults(roomId);
+					await this.applyDomainDefaults(roomId, deviceRoles);
 					rolesApplied++;
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
@@ -367,35 +380,84 @@ export class ScenarioExecutorService {
 	}
 
 	/**
-	 * Apply default domain roles and media activity bindings for a room
+	 * Apply domain roles and media activity bindings for a room.
+	 * Uses YAML-declared roles when available, falls back to service defaults.
 	 */
-	private async applyDomainDefaults(spaceId: string): Promise<void> {
-		// Lighting roles — use name-based heuristic for better role assignment
-		const lightingRoles = await this.inferSmartLightingRoles(spaceId);
+	private async applyDomainDefaults(
+		spaceId: string,
+		deviceRoles: Map<string, ScenarioDeviceDefinition>,
+	): Promise<void> {
+		// Lighting roles — use YAML declarations, fall back to service defaults
+		const lightTargets = await this.spaceLightingRoleService.getLightTargetsInSpace(spaceId);
 
-		if (lightingRoles.length > 0) {
-			await this.spaceLightingRoleService.bulkSetRoles(spaceId, lightingRoles);
-			this.logger.log(`Applied ${lightingRoles.length} lighting roles for space ${spaceId}`);
+		if (lightTargets.length > 0) {
+			const hasYamlLightingRoles = lightTargets.some((t) => deviceRoles.get(t.deviceId)?.lighting_role);
+
+			let lightingRoles: SetLightingRoleDto[];
+
+			if (hasYamlLightingRoles) {
+				lightingRoles = lightTargets.map((target, i) => {
+					const declared = deviceRoles.get(target.deviceId)?.lighting_role;
+
+					return {
+						deviceId: target.deviceId,
+						channelId: target.channelId,
+						role: (declared as LightingRole) ?? LightingRole.MAIN,
+						priority: i,
+					};
+				});
+			} else {
+				lightingRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(spaceId);
+			}
+
+			if (lightingRoles.length > 0) {
+				await this.spaceLightingRoleService.bulkSetRoles(spaceId, lightingRoles);
+				this.logger.log(`Applied ${lightingRoles.length} lighting roles for space ${spaceId}`);
+			}
 		}
 
-		// Climate roles
+		// Climate roles — use YAML overrides or service defaults
 		const climateRoles = await this.spaceClimateRoleService.inferDefaultClimateRoles(spaceId);
+
+		for (const role of climateRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.climate_role;
+
+			if (declared) {
+				role.role = declared as ClimateRole;
+			}
+		}
 
 		if (climateRoles.length > 0) {
 			await this.spaceClimateRoleService.bulkSetRoles(spaceId, climateRoles);
 			this.logger.log(`Applied ${climateRoles.length} climate roles for space ${spaceId}`);
 		}
 
-		// Sensor roles
+		// Sensor roles — use YAML overrides or service defaults
 		const sensorRoles = await this.spaceSensorRoleService.inferDefaultSensorRoles(spaceId);
+
+		for (const role of sensorRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.sensor_role;
+
+			if (declared) {
+				role.role = declared as SensorRole;
+			}
+		}
 
 		if (sensorRoles.length > 0) {
 			await this.spaceSensorRoleService.bulkSetRoles(spaceId, sensorRoles);
 			this.logger.log(`Applied ${sensorRoles.length} sensor roles for space ${spaceId}`);
 		}
 
-		// Covers roles
+		// Covers roles — use YAML overrides or service defaults
 		const coversRoles = await this.spaceCoversRoleService.inferDefaultCoversRoles(spaceId);
+
+		for (const role of coversRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.covers_role;
+
+			if (declared) {
+				role.role = declared as CoversRole;
+			}
+		}
 
 		if (coversRoles.length > 0) {
 			await this.spaceCoversRoleService.bulkSetRoles(spaceId, coversRoles);
@@ -408,105 +470,6 @@ export class ScenarioExecutorService {
 		if (mediaBindings.length > 0) {
 			this.logger.log(`Applied ${mediaBindings.length} media activity bindings for space ${spaceId}`);
 		}
-	}
-
-	/**
-	 * Infer lighting roles from device names using keyword heuristics
-	 */
-	private async inferSmartLightingRoles(spaceId: string): Promise<SetLightingRoleDto[]> {
-		const lightTargets = await this.spaceLightingRoleService.getLightTargetsInSpace(spaceId);
-
-		if (lightTargets.length === 0) {
-			return [];
-		}
-
-		const roles: SetLightingRoleDto[] = [];
-		let priority = 0;
-
-		for (const target of lightTargets) {
-			const role = this.inferLightingRoleFromName(target.deviceName);
-
-			roles.push({
-				deviceId: target.deviceId,
-				channelId: target.channelId,
-				role,
-				priority: priority++,
-			});
-		}
-
-		return roles;
-	}
-
-	/**
-	 * Determine lighting role from device name keywords
-	 */
-	private inferLightingRoleFromName(name: string): LightingRole {
-		const lower = name.toLowerCase();
-
-		// NIGHT — nightlight, night light
-		if (lower.includes('night')) {
-			return LightingRole.NIGHT;
-		}
-
-		// TASK — desk lamp, reading lamp, vanity, workbench, under-cabinet, task
-		if (
-			lower.includes('desk lamp') ||
-			lower.includes('reading') ||
-			lower.includes('vanity') ||
-			lower.includes('workbench') ||
-			lower.includes('under-cabinet') ||
-			lower.includes('undercabinet') ||
-			lower.includes('task')
-		) {
-			return LightingRole.TASK;
-		}
-
-		// ACCENT — accent, string light, strip, led strip, sconce, wall light
-		if (
-			lower.includes('accent') ||
-			lower.includes('string light') ||
-			lower.includes('strip') ||
-			lower.includes('sconce') ||
-			lower.includes('wall light')
-		) {
-			return LightingRole.ACCENT;
-		}
-
-		// AMBIENT — floor lamp, table lamp, bedside, pendant, path light, mood
-		if (
-			lower.includes('floor lamp') ||
-			lower.includes('table lamp') ||
-			lower.includes('bedside') ||
-			lower.includes('pendant') ||
-			lower.includes('path light') ||
-			lower.includes('mood') ||
-			lower.includes('ambient')
-		) {
-			return LightingRole.AMBIENT;
-		}
-
-		// MAIN — ceiling, chandelier, main, recessed, overhead, flush, downlight, flood, spot
-		if (
-			lower.includes('ceiling') ||
-			lower.includes('chandelier') ||
-			lower.includes('main') ||
-			lower.includes('recessed') ||
-			lower.includes('overhead') ||
-			lower.includes('flush') ||
-			lower.includes('downlight') ||
-			lower.includes('flood') ||
-			lower.includes('spot')
-		) {
-			return LightingRole.MAIN;
-		}
-
-		// Fallback: if name contains "lamp" (not matched above), treat as AMBIENT
-		if (lower.includes('lamp')) {
-			return LightingRole.AMBIENT;
-		}
-
-		// Default to MAIN for unrecognized names (e.g., "Bathroom 2 Light")
-		return LightingRole.MAIN;
 	}
 
 	/**

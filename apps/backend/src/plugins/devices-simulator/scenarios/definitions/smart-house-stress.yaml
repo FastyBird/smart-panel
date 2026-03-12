@@ -60,6 +60,7 @@ devices:
   name: Living Room Ceiling Light
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -79,6 +80,7 @@ devices:
 - name: Living Room Recessed Lights
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -94,6 +96,7 @@ devices:
 - name: Living Room Accent Cove
   category: lighting
   room: living-room
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -112,6 +115,7 @@ devices:
 - name: Living Room Floor Lamp
   category: lighting
   room: living-room
+  lighting_role: ambient
   channels:
   - category: light
     properties:
@@ -268,6 +272,7 @@ devices:
 - name: Family Room Accent Lights
   category: lighting
   room: family-room
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -304,6 +309,7 @@ devices:
   name: Master Bedroom Main Light
   category: lighting
   room: master-bedroom
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -323,6 +329,7 @@ devices:
 - name: Master Bedroom Bedside Left
   category: lighting
   room: master-bedroom
+  lighting_role: ambient
   channels:
   - category: light
     properties:
@@ -337,6 +344,7 @@ devices:
 - name: Master Bedroom Bedside Right
   category: lighting
   room: master-bedroom
+  lighting_role: ambient
   channels:
   - category: light
     properties:
@@ -467,6 +475,7 @@ devices:
 - name: Bedroom 2 Ceiling Light
   category: lighting
   room: bedroom-2
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -481,6 +490,7 @@ devices:
 - name: Bedroom 2 Desk Lamp
   category: lighting
   room: bedroom-2
+  lighting_role: task
   channels:
   - category: light
     properties:
@@ -526,6 +536,7 @@ devices:
 - name: Bedroom 3 Ceiling Light
   category: lighting
   room: bedroom-3
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -540,6 +551,7 @@ devices:
 - name: Bedroom 3 Nightlight
   category: lighting
   room: bedroom-3
+  lighting_role: night
   channels:
   - category: light
     properties:
@@ -573,6 +585,7 @@ devices:
 - name: Master Bathroom Main Light
   category: lighting
   room: master-bathroom
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -589,6 +602,7 @@ devices:
 - name: Master Bathroom Vanity Light
   category: lighting
   room: master-bathroom
+  lighting_role: task
   channels:
   - category: light
     properties:
@@ -661,6 +675,7 @@ devices:
 - name: Bathroom 2 Light
   category: lighting
   room: bathroom-2
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -700,6 +715,7 @@ devices:
 - name: Kitchen Ceiling Light
   category: lighting
   room: kitchen
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -717,6 +733,7 @@ devices:
 - name: Kitchen Under-Cabinet Lights
   category: lighting
   room: kitchen
+  lighting_role: task
   channels:
   - category: light
     properties:
@@ -733,6 +750,7 @@ devices:
 - name: Kitchen Island Pendants
   category: lighting
   room: kitchen
+  lighting_role: ambient
   channels:
   - category: light
     properties:
@@ -821,6 +839,7 @@ devices:
   name: Dining Room Chandelier
   category: lighting
   room: dining-room
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -840,6 +859,7 @@ devices:
 - name: Dining Room Accent Lights
   category: lighting
   room: dining-room
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -870,6 +890,7 @@ devices:
   name: Office Main Light
   category: lighting
   room: home-office
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -889,6 +910,7 @@ devices:
 - name: Office Desk Lamp
   category: lighting
   room: home-office
+  lighting_role: task
   channels:
   - category: light
     properties:
@@ -942,6 +964,7 @@ devices:
 - name: Laundry Room Light
   category: lighting
   room: laundry
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -1002,6 +1025,7 @@ devices:
 - name: Garage Main Light
   category: lighting
   room: garage
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -1016,6 +1040,7 @@ devices:
 - name: Garage Workbench Light
   category: lighting
   room: garage
+  lighting_role: task
   channels:
   - category: light
     properties:
@@ -1068,6 +1093,7 @@ devices:
 - name: Foyer Chandelier
   category: lighting
   room: foyer
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -1138,6 +1164,7 @@ devices:
 - name: Hallway Ceiling Light
   category: lighting
   room: hallway
+  lighting_role: main
   auto_simulate: true
   channels:
   - category: light
@@ -1203,6 +1230,7 @@ devices:
 - name: Patio Ceiling Light
   category: lighting
   room: patio
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -1217,6 +1245,7 @@ devices:
 - name: Patio String Lights
   category: lighting
   room: patio
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -1289,6 +1318,7 @@ devices:
 - name: Backyard Flood Lights
   category: lighting
   room: backyard
+  lighting_role: main
   channels:
   - category: light
     properties:
@@ -1303,6 +1333,7 @@ devices:
 - name: Backyard Path Lights
   category: lighting
   room: backyard
+  lighting_role: ambient
   channels:
   - category: light
     properties:
@@ -1510,6 +1541,7 @@ devices:
 - name: Living Room LED Strip
   category: lighting
   room: living-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 45000
   channels:
@@ -1578,6 +1610,7 @@ devices:
 - name: Living Room Task Lamp
   category: lighting
   room: living-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -1596,6 +1629,7 @@ devices:
 - name: Living Room Ambient Wall Lights
   category: lighting
   room: living-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -1616,6 +1650,7 @@ devices:
 - name: Living Room Night Light
   category: lighting
   room: living-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -1634,6 +1669,7 @@ devices:
 - name: Family Room Main Ceiling Lights
   category: lighting
   room: family-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 25000
   channels:
@@ -1652,6 +1688,7 @@ devices:
 - name: Family Room TV Bias Light
   category: lighting
   room: family-room
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -1670,6 +1707,7 @@ devices:
 - name: Master Bedroom Night Lamp
   category: lighting
   room: master-bedroom
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -1688,6 +1726,7 @@ devices:
 - name: Bedroom 2 Accent Strip
   category: lighting
   room: bedroom-2
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -1706,6 +1745,7 @@ devices:
 - name: Kitchen Night Light
   category: lighting
   room: kitchen
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -1724,6 +1764,7 @@ devices:
 - name: Hallway Night Lights
   category: lighting
   room: hallway
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -1740,6 +1781,7 @@ devices:
 - name: Patio Accent Spots
   category: lighting
   room: patio
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -1758,6 +1800,7 @@ devices:
 - name: Backyard Decorative Lights
   category: lighting
   room: backyard
+  lighting_role: accent
   channels:
   - category: light
     properties:
@@ -2122,6 +2165,7 @@ devices:
 - name: Living Room Main Light Zone
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2140,6 +2184,7 @@ devices:
 - name: Living Room Task Light Zone
   category: lighting
   room: living-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -2158,6 +2203,7 @@ devices:
 - name: Living Room Ambient Light Zone
   category: lighting
   room: living-room
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2178,6 +2224,7 @@ devices:
 - name: Living Room Accent Light Zone
   category: lighting
   room: living-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -2198,6 +2245,7 @@ devices:
 - name: Living Room Night Light Zone
   category: lighting
   room: living-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -2216,6 +2264,7 @@ devices:
 - name: Living Room Other Light Zone
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2364,6 +2413,7 @@ devices:
 - name: Family Room Main Light Zone
   category: lighting
   room: family-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -2382,6 +2432,7 @@ devices:
 - name: Family Room Task Light Zone
   category: lighting
   room: family-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -2400,6 +2451,7 @@ devices:
 - name: Family Room Ambient Light Zone
   category: lighting
   room: family-room
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -2420,6 +2472,7 @@ devices:
 - name: Family Room Accent Light Zone
   category: lighting
   room: family-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2440,6 +2493,7 @@ devices:
 - name: Family Room Night Light Zone
   category: lighting
   room: family-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2458,6 +2512,7 @@ devices:
 - name: Family Room Other Light Zone
   category: lighting
   room: family-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -2602,6 +2657,7 @@ devices:
 - name: Master Bedroom Main Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -2620,6 +2676,7 @@ devices:
 - name: Master Bedroom Task Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2638,6 +2695,7 @@ devices:
 - name: Master Bedroom Ambient Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2658,6 +2716,7 @@ devices:
 - name: Master Bedroom Accent Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -2678,6 +2737,7 @@ devices:
 - name: Master Bedroom Night Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2696,6 +2756,7 @@ devices:
 - name: Master Bedroom Other Light Zone
   category: lighting
   room: master-bedroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2840,6 +2901,7 @@ devices:
 - name: Bedroom 2 Main Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2858,6 +2920,7 @@ devices:
 - name: Bedroom 2 Task Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -2876,6 +2939,7 @@ devices:
 - name: Bedroom 2 Ambient Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -2896,6 +2960,7 @@ devices:
 - name: Bedroom 2 Accent Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -2916,6 +2981,7 @@ devices:
 - name: Bedroom 2 Night Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -2934,6 +3000,7 @@ devices:
 - name: Bedroom 2 Other Light Zone
   category: lighting
   room: bedroom-2
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -3068,6 +3135,7 @@ devices:
 - name: Bedroom 3 Main Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -3086,6 +3154,7 @@ devices:
 - name: Bedroom 3 Task Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -3104,6 +3173,7 @@ devices:
 - name: Bedroom 3 Ambient Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -3124,6 +3194,7 @@ devices:
 - name: Bedroom 3 Accent Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -3144,6 +3215,7 @@ devices:
 - name: Bedroom 3 Night Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -3162,6 +3234,7 @@ devices:
 - name: Bedroom 3 Other Light Zone
   category: lighting
   room: bedroom-3
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -3292,6 +3365,7 @@ devices:
 - name: Master Bathroom Main Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -3310,6 +3384,7 @@ devices:
 - name: Master Bathroom Task Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -3328,6 +3403,7 @@ devices:
 - name: Master Bathroom Ambient Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -3348,6 +3424,7 @@ devices:
 - name: Master Bathroom Accent Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -3368,6 +3445,7 @@ devices:
 - name: Master Bathroom Night Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -3386,6 +3464,7 @@ devices:
 - name: Master Bathroom Other Light Zone
   category: lighting
   room: master-bathroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -3528,6 +3607,7 @@ devices:
 - name: Bathroom 2 Main Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -3546,6 +3626,7 @@ devices:
 - name: Bathroom 2 Task Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -3564,6 +3645,7 @@ devices:
 - name: Bathroom 2 Ambient Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -3584,6 +3666,7 @@ devices:
 - name: Bathroom 2 Accent Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -3604,6 +3687,7 @@ devices:
 - name: Bathroom 2 Night Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -3622,6 +3706,7 @@ devices:
 - name: Bathroom 2 Other Light Zone
   category: lighting
   room: bathroom-2
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -3764,6 +3849,7 @@ devices:
 - name: Kitchen Main Light Zone
   category: lighting
   room: kitchen
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -3782,6 +3868,7 @@ devices:
 - name: Kitchen Task Light Zone
   category: lighting
   room: kitchen
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -3800,6 +3887,7 @@ devices:
 - name: Kitchen Ambient Light Zone
   category: lighting
   room: kitchen
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -3820,6 +3908,7 @@ devices:
 - name: Kitchen Accent Light Zone
   category: lighting
   room: kitchen
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -3840,6 +3929,7 @@ devices:
 - name: Kitchen Night Light Zone
   category: lighting
   room: kitchen
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -3858,6 +3948,7 @@ devices:
 - name: Kitchen Other Light Zone
   category: lighting
   room: kitchen
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -3996,6 +4087,7 @@ devices:
 - name: Dining Room Main Light Zone
   category: lighting
   room: dining-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4014,6 +4106,7 @@ devices:
 - name: Dining Room Task Light Zone
   category: lighting
   room: dining-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -4032,6 +4125,7 @@ devices:
 - name: Dining Room Ambient Light Zone
   category: lighting
   room: dining-room
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4052,6 +4146,7 @@ devices:
 - name: Dining Room Accent Light Zone
   category: lighting
   room: dining-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -4072,6 +4167,7 @@ devices:
 - name: Dining Room Night Light Zone
   category: lighting
   room: dining-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -4090,6 +4186,7 @@ devices:
 - name: Dining Room Other Light Zone
   category: lighting
   room: dining-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -4220,6 +4317,7 @@ devices:
 - name: Home Office Main Light Zone
   category: lighting
   room: home-office
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -4238,6 +4336,7 @@ devices:
 - name: Home Office Task Light Zone
   category: lighting
   room: home-office
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -4256,6 +4355,7 @@ devices:
 - name: Home Office Ambient Light Zone
   category: lighting
   room: home-office
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4276,6 +4376,7 @@ devices:
 - name: Home Office Accent Light Zone
   category: lighting
   room: home-office
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -4296,6 +4397,7 @@ devices:
 - name: Home Office Night Light Zone
   category: lighting
   room: home-office
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -4314,6 +4416,7 @@ devices:
 - name: Home Office Other Light Zone
   category: lighting
   room: home-office
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -4462,6 +4565,7 @@ devices:
 - name: Laundry Room Main Light Zone
   category: lighting
   room: laundry
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -4480,6 +4584,7 @@ devices:
 - name: Laundry Room Task Light Zone
   category: lighting
   room: laundry
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -4498,6 +4603,7 @@ devices:
 - name: Laundry Room Ambient Light Zone
   category: lighting
   room: laundry
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4518,6 +4624,7 @@ devices:
 - name: Laundry Room Accent Light Zone
   category: lighting
   room: laundry
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -4538,6 +4645,7 @@ devices:
 - name: Laundry Room Night Light Zone
   category: lighting
   room: laundry
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -4556,6 +4664,7 @@ devices:
 - name: Laundry Room Other Light Zone
   category: lighting
   room: laundry
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -4698,6 +4807,7 @@ devices:
 - name: Garage Main Light Zone
   category: lighting
   room: garage
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -4716,6 +4826,7 @@ devices:
 - name: Garage Task Light Zone
   category: lighting
   room: garage
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -4734,6 +4845,7 @@ devices:
 - name: Garage Ambient Light Zone
   category: lighting
   room: garage
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -4754,6 +4866,7 @@ devices:
 - name: Garage Accent Light Zone
   category: lighting
   room: garage
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -4774,6 +4887,7 @@ devices:
 - name: Garage Night Light Zone
   category: lighting
   room: garage
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4792,6 +4906,7 @@ devices:
 - name: Garage Other Light Zone
   category: lighting
   room: garage
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -4930,6 +5045,7 @@ devices:
 - name: Foyer Main Light Zone
   category: lighting
   room: foyer
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4948,6 +5064,7 @@ devices:
 - name: Foyer Task Light Zone
   category: lighting
   room: foyer
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -4966,6 +5083,7 @@ devices:
 - name: Foyer Ambient Light Zone
   category: lighting
   room: foyer
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -4986,6 +5104,7 @@ devices:
 - name: Foyer Accent Light Zone
   category: lighting
   room: foyer
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -5006,6 +5125,7 @@ devices:
 - name: Foyer Night Light Zone
   category: lighting
   room: foyer
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -5024,6 +5144,7 @@ devices:
 - name: Foyer Other Light Zone
   category: lighting
   room: foyer
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -5158,6 +5279,7 @@ devices:
 - name: Hallway Main Light Zone
   category: lighting
   room: hallway
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5176,6 +5298,7 @@ devices:
 - name: Hallway Task Light Zone
   category: lighting
   room: hallway
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5194,6 +5317,7 @@ devices:
 - name: Hallway Ambient Light Zone
   category: lighting
   room: hallway
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5214,6 +5338,7 @@ devices:
 - name: Hallway Accent Light Zone
   category: lighting
   room: hallway
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5234,6 +5359,7 @@ devices:
 - name: Hallway Night Light Zone
   category: lighting
   room: hallway
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5252,6 +5378,7 @@ devices:
 - name: Hallway Other Light Zone
   category: lighting
   room: hallway
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5386,6 +5513,7 @@ devices:
 - name: Patio Main Light Zone
   category: lighting
   room: patio
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5404,6 +5532,7 @@ devices:
 - name: Patio Task Light Zone
   category: lighting
   room: patio
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -5422,6 +5551,7 @@ devices:
 - name: Patio Ambient Light Zone
   category: lighting
   room: patio
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5442,6 +5572,7 @@ devices:
 - name: Patio Accent Light Zone
   category: lighting
   room: patio
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -5462,6 +5593,7 @@ devices:
 - name: Patio Night Light Zone
   category: lighting
   room: patio
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5480,6 +5612,7 @@ devices:
 - name: Patio Other Light Zone
   category: lighting
   room: patio
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -5610,6 +5743,7 @@ devices:
 - name: Backyard Main Light Zone
   category: lighting
   room: backyard
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -5628,6 +5762,7 @@ devices:
 - name: Backyard Task Light Zone
   category: lighting
   room: backyard
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -5646,6 +5781,7 @@ devices:
 - name: Backyard Ambient Light Zone
   category: lighting
   room: backyard
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5666,6 +5802,7 @@ devices:
 - name: Backyard Accent Light Zone
   category: lighting
   room: backyard
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -5686,6 +5823,7 @@ devices:
 - name: Backyard Night Light Zone
   category: lighting
   room: backyard
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5704,6 +5842,7 @@ devices:
 - name: Backyard Other Light Zone
   category: lighting
   room: backyard
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -5830,6 +5969,7 @@ devices:
 - name: 'Living Room Main Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -5848,6 +5988,7 @@ devices:
 - name: 'Living Room Task Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -5866,6 +6007,7 @@ devices:
 - name: 'Living Room Ambient Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5886,6 +6028,7 @@ devices:
 - name: 'Living Room Accent Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -5906,6 +6049,7 @@ devices:
 - name: 'Living Room Night Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -5924,6 +6068,7 @@ devices:
 - name: 'Living Room Other Light Zone #2'
   category: lighting
   room: living-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -6094,6 +6239,7 @@ devices:
 - name: 'Family Room Main Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -6112,6 +6258,7 @@ devices:
 - name: 'Family Room Task Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -6130,6 +6277,7 @@ devices:
 - name: 'Family Room Ambient Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -6150,6 +6298,7 @@ devices:
 - name: 'Family Room Accent Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6170,6 +6319,7 @@ devices:
 - name: 'Family Room Night Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -6188,6 +6338,7 @@ devices:
 - name: 'Family Room Other Light Zone #2'
   category: lighting
   room: family-room
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6358,6 +6509,7 @@ devices:
 - name: 'Kitchen Main Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6376,6 +6528,7 @@ devices:
 - name: 'Kitchen Task Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -6394,6 +6547,7 @@ devices:
 - name: 'Kitchen Ambient Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -6414,6 +6568,7 @@ devices:
 - name: 'Kitchen Accent Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6434,6 +6589,7 @@ devices:
 - name: 'Kitchen Night Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -6452,6 +6608,7 @@ devices:
 - name: 'Kitchen Other Light Zone #2'
   category: lighting
   room: kitchen
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -6618,6 +6775,7 @@ devices:
 - name: 'Home Office Main Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6636,6 +6794,7 @@ devices:
 - name: 'Home Office Task Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -6654,6 +6813,7 @@ devices:
 - name: 'Home Office Ambient Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6674,6 +6834,7 @@ devices:
 - name: 'Home Office Accent Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -6694,6 +6855,7 @@ devices:
 - name: 'Home Office Night Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -6712,6 +6874,7 @@ devices:
 - name: 'Home Office Other Light Zone #2'
   category: lighting
   room: home-office
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -6878,6 +7041,7 @@ devices:
 - name: 'Master Bedroom Main Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -6896,6 +7060,7 @@ devices:
 - name: 'Master Bedroom Task Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -6914,6 +7079,7 @@ devices:
 - name: 'Master Bedroom Ambient Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -6934,6 +7100,7 @@ devices:
 - name: 'Master Bedroom Accent Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -6954,6 +7121,7 @@ devices:
 - name: 'Master Bedroom Night Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -6972,6 +7140,7 @@ devices:
 - name: 'Master Bedroom Other Light Zone #2'
   category: lighting
   room: master-bedroom
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -7136,6 +7305,7 @@ devices:
 - name: 'Garage Main Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -7154,6 +7324,7 @@ devices:
 - name: 'Garage Task Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -7172,6 +7343,7 @@ devices:
 - name: 'Garage Ambient Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -7192,6 +7364,7 @@ devices:
 - name: 'Garage Accent Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -7212,6 +7385,7 @@ devices:
 - name: 'Garage Night Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -7230,6 +7404,7 @@ devices:
 - name: 'Garage Other Light Zone #2'
   category: lighting
   room: garage
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -7324,6 +7499,7 @@ devices:
 - name: 'Backyard Main Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -7342,6 +7518,7 @@ devices:
 - name: 'Backyard Task Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -7360,6 +7537,7 @@ devices:
 - name: 'Backyard Ambient Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 20000
   channels:
@@ -7380,6 +7558,7 @@ devices:
 - name: 'Backyard Accent Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -7400,6 +7579,7 @@ devices:
 - name: 'Backyard Night Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -7418,6 +7598,7 @@ devices:
 - name: 'Backyard Other Light Zone #2'
   category: lighting
   room: backyard
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 60000
   channels:
@@ -7508,6 +7689,7 @@ devices:
 - name: 'Patio Main Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 15000
   channels:
@@ -7526,6 +7708,7 @@ devices:
 - name: 'Patio Task Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: task
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -7544,6 +7727,7 @@ devices:
 - name: 'Patio Ambient Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: ambient
   auto_simulate: true
   simulate_interval: 10000
   channels:
@@ -7564,6 +7748,7 @@ devices:
 - name: 'Patio Accent Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: accent
   auto_simulate: true
   simulate_interval: 5000
   channels:
@@ -7584,6 +7769,7 @@ devices:
 - name: 'Patio Night Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: night
   auto_simulate: true
   simulate_interval: 30000
   channels:
@@ -7602,6 +7788,7 @@ devices:
 - name: 'Patio Other Light Zone #2'
   category: lighting
   room: patio
+  lighting_role: main
   auto_simulate: true
   simulate_interval: 30000
   channels:

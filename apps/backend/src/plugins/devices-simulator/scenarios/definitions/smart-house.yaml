@@ -62,6 +62,7 @@ devices:
     name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -83,6 +84,7 @@ devices:
     name: "Living Room Recessed Lights"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -101,6 +103,7 @@ devices:
   - name: "Living Room Accent Cove"
     category: lighting
     room: living-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -120,6 +123,7 @@ devices:
   - name: "Living Room Floor Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -291,6 +295,7 @@ devices:
   - name: "Family Room Accent Lights"
     category: lighting
     room: family-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -334,6 +339,7 @@ devices:
     name: "Master Bedroom Main Light"
     category: lighting
     room: master-bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -354,6 +360,7 @@ devices:
     name: "Master Bedroom Bedside Left"
     category: lighting
     room: master-bedroom
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -371,6 +378,7 @@ devices:
   - name: "Master Bedroom Bedside Right"
     category: lighting
     room: master-bedroom
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -521,6 +529,7 @@ devices:
   - name: "Bedroom 2 Ceiling Light"
     category: lighting
     room: bedroom-2
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -536,6 +545,7 @@ devices:
   - name: "Bedroom 2 Desk Lamp"
     category: lighting
     room: bedroom-2
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -587,6 +597,7 @@ devices:
   - name: "Bedroom 3 Ceiling Light"
     category: lighting
     room: bedroom-3
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -602,6 +613,7 @@ devices:
   - name: "Bedroom 3 Nightlight"
     category: lighting
     room: bedroom-3
+    lighting_role: night
     channels:
       - category: light
         properties:
@@ -640,6 +652,7 @@ devices:
   - name: "Master Bathroom Main Light"
     category: lighting
     room: master-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -657,6 +670,7 @@ devices:
   - name: "Master Bathroom Vanity Light"
     category: lighting
     room: master-bathroom
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -737,6 +751,7 @@ devices:
   - name: "Bathroom 2 Light"
     category: lighting
     room: bathroom-2
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -782,6 +797,7 @@ devices:
   - name: "Kitchen Ceiling Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -800,6 +816,7 @@ devices:
   - name: "Kitchen Under-Cabinet Lights"
     category: lighting
     room: kitchen
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -817,6 +834,7 @@ devices:
   - name: "Kitchen Island Pendants"
     category: lighting
     room: kitchen
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -914,6 +932,7 @@ devices:
     name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -934,6 +953,7 @@ devices:
   - name: "Dining Room Accent Lights"
     category: lighting
     room: dining-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -969,6 +989,7 @@ devices:
     name: "Office Main Light"
     category: lighting
     room: home-office
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -991,6 +1012,7 @@ devices:
     name: "Office Desk Lamp"
     category: lighting
     room: home-office
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -1054,6 +1076,7 @@ devices:
   - name: "Laundry Room Light"
     category: lighting
     room: laundry
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1121,6 +1144,7 @@ devices:
   - name: "Garage Main Light"
     category: lighting
     room: garage
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1136,6 +1160,7 @@ devices:
   - name: "Garage Workbench Light"
     category: lighting
     room: garage
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -1195,6 +1220,7 @@ devices:
   - name: "Foyer Chandelier"
     category: lighting
     room: foyer
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -1273,6 +1299,7 @@ devices:
   - name: "Hallway Ceiling Light"
     category: lighting
     room: hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -1346,6 +1373,7 @@ devices:
     name: "Patio Ceiling Light"
     category: lighting
     room: patio
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1363,6 +1391,7 @@ devices:
     name: "Patio String Lights"
     category: lighting
     room: patio
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -1447,6 +1476,7 @@ devices:
     name: "Backyard Flood Lights"
     category: lighting
     room: backyard
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1463,6 +1493,7 @@ devices:
   - name: "Backyard Path Lights"
     category: lighting
     room: backyard
+    lighting_role: ambient
     channels:
       - category: light
         properties:
