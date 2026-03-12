@@ -230,8 +230,8 @@
 					</div>
 				</div>
 
-				<!-- Inline config form for selected voice provider -->
-				<template v-if="activeVoiceConfigPlugin && activeVoiceConfigForm">
+				<!-- Inline config form for selected voice provider that needs configuration -->
+				<template v-if="activeVoiceProviderNeedsConfig && activeVoiceConfigPlugin && activeVoiceConfigForm">
 					<el-divider />
 					<h4 class="m-0 mb-3">
 						{{ t('buddyModule.wizard.configureProvider', { name: activeVoiceProviderName }) }}
@@ -306,8 +306,8 @@
 					</div>
 				</div>
 
-				<!-- Inline config form for selected messaging provider -->
-				<template v-if="selectedMessagingConfigPlugin && selectedMessagingConfigForm">
+				<!-- Inline config form for selected messaging provider that needs configuration -->
+				<template v-if="selectedMessagingProviderNeedsConfig && selectedMessagingConfigPlugin && selectedMessagingConfigForm">
 					<el-divider />
 					<h4 class="m-0 mb-3">
 						{{ t('buddyModule.wizard.configureProvider', { name: selectedMessagingProviderName }) }}
@@ -410,7 +410,7 @@
 					</el-button>
 
 					<el-button
-						v-if="currentStepName === 'voice' && activeVoiceConfigForm && voiceFormChanged"
+						v-if="currentStepName === 'voice' && activeVoiceProviderNeedsConfig && activeVoiceConfigForm && voiceFormChanged"
 						type="success"
 						:loading="isSavingVoiceConfig"
 						@click="saveVoiceConfig"
@@ -419,7 +419,7 @@
 					</el-button>
 
 					<el-button
-						v-if="currentStepName === 'messaging' && selectedMessagingConfigForm && messagingFormChanged"
+						v-if="currentStepName === 'messaging' && selectedMessagingProviderNeedsConfig && selectedMessagingConfigForm && messagingFormChanged"
 						type="success"
 						:loading="isSavingMessagingConfig"
 						@click="saveMessagingConfig"
@@ -607,6 +607,18 @@ const activeVoiceProviderName = computed<string>(() => {
 	return stt?.name ?? '';
 });
 
+const activeVoiceProviderNeedsConfig = computed<boolean>(() => {
+	if (!activeVoiceConfigType.value) return false;
+
+	const tts = ttsProviders.value.find((p) => p.type === activeVoiceConfigType.value);
+
+	if (tts) return !tts.configured;
+
+	const stt = sttProviders.value.find((p) => p.type === activeVoiceConfigType.value);
+
+	return !!stt && !stt.configured;
+});
+
 const activeVoiceConfigForm = computed<Component | null>(() => {
 	if (!activeVoiceConfigType.value) return null;
 
@@ -633,6 +645,12 @@ const isSavingMessagingConfig = ref(false);
 
 const selectedMessagingProviderName = computed<string>(() => {
 	return messagingProviders.value.find((p) => p.type === selectedMessagingProvider.value)?.name ?? '';
+});
+
+const selectedMessagingProviderNeedsConfig = computed<boolean>(() => {
+	const data = messagingProviders.value.find((p) => p.type === selectedMessagingProvider.value);
+
+	return !!data && !data.configured;
 });
 
 const selectedMessagingConfigForm = computed<Component | null>(() => {
@@ -896,25 +914,19 @@ const loadAllData = async (): Promise<void> => {
 	try {
 		await Promise.all([fetchLlmProviders(), fetchTtsProviders(), fetchSttProviders(), fetchMessagingProviders()]);
 
-		// Pre-select currently selected provider
+		// Pre-select currently selected providers and fetch their configs in parallel
 		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected);
+		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
+		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
 		if (selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
-			fetchPluginConfig(selected.type);
 		}
-
-		// Pre-select currently selected TTS
-		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
 		if (selectedTts) {
 			selectedTtsProvider.value = selectedTts.type;
 			activeVoiceConfigType.value = selectedTts.type;
-			fetchPluginConfig(selectedTts.type);
 		}
-
-		// Pre-select currently selected STT
-		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
 		if (selectedStt) {
 			selectedSttProvider.value = selectedStt.type;
@@ -923,9 +935,24 @@ const loadAllData = async (): Promise<void> => {
 			if (!selectedTts) {
 				activeVoiceConfigType.value = selectedStt.type;
 			}
-
-			fetchPluginConfig(selectedStt.type);
 		}
+
+		// Fetch all pre-selected plugin configs before clearing isLoading
+		const configFetches: Promise<void>[] = [];
+
+		if (selected && selected.type !== LLM_PROVIDER_NONE) {
+			configFetches.push(fetchPluginConfig(selected.type));
+		}
+
+		if (selectedTts) {
+			configFetches.push(fetchPluginConfig(selectedTts.type));
+		}
+
+		if (selectedStt) {
+			configFetches.push(fetchPluginConfig(selectedStt.type));
+		}
+
+		await Promise.all(configFetches);
 	} finally {
 		isLoading.value = false;
 	}
