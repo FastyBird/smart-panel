@@ -536,6 +536,15 @@ const stepSequenceKey = computed(() => stepSequence.value.join(','));
 
 const currentStepName = computed<StepName>(() => stepSequence.value[currentStep.value] ?? 'done');
 
+// Clamp currentStep if stepSequence shrinks due to a provider refetch mid-wizard
+watch(stepSequence, (seq) => {
+	const maxStep = seq.length - 1;
+
+	if (currentStep.value > maxStep) {
+		currentStep.value = maxStep;
+	}
+});
+
 const canSkip = computed(() => {
 	const name = currentStepName.value;
 
