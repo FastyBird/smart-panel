@@ -172,6 +172,8 @@ export const useAppOnboarding = () => {
 
 	const hasLocationData = computed(() => locationData.latitude !== null && locationData.longitude !== null);
 
+	let createdLocationId: string | null = null;
+
 	const saveLocation = async (): Promise<boolean> => {
 		if (locationConfigured.value) return true;
 
@@ -180,33 +182,38 @@ export const useAppOnboarding = () => {
 		}
 
 		try {
-			const locationBody: Record<string, unknown> = {
-				type: 'weather-open-meteo',
-				name: locationData.city || 'Home',
-				latitude: locationData.latitude,
-				longitude: locationData.longitude,
-			};
+			// Only create the location if we haven't already (avoids duplicates on retry)
+			if (!createdLocationId) {
+				const locationBody: Record<string, unknown> = {
+					type: 'weather-open-meteo',
+					name: locationData.city || 'Home',
+					latitude: locationData.latitude,
+					longitude: locationData.longitude,
+				};
 
-			const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
-				body: { data: locationBody },
-			} as never);
+				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
+					body: { data: locationBody },
+				} as never);
 
-			if (error) {
-				return false;
+				if (error) {
+					return false;
+				}
+
+				createdLocationId = (data as { data?: { id?: string } })?.data?.id ?? null;
+
+				if (!createdLocationId) {
+					return false;
+				}
 			}
 
 			// Set the newly created location as the primary weather location
-			const locationId = (data as { data?: { id?: string } })?.data?.id;
+			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
+				params: { path: { module: 'weather-module' } },
+				body: { data: { primary_location_id: createdLocationId } },
+			} as never);
 
-			if (locationId) {
-				const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
-					params: { path: { module: 'weather-module' } },
-					body: { data: { primary_location_id: locationId } },
-				} as never);
-
-				if (configError) {
-					return false;
-				}
+			if (configError) {
+				return false;
 			}
 
 			locationConfigured.value = true;
