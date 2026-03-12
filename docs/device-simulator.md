@@ -70,12 +70,12 @@ pnpm run cli simulator:generate -c lighting --auto-simulate --interval 3000
 
 ## REST API Endpoints
 
-All endpoints are prefixed with `/api/v1/plugins/devices-simulator/simulator`
+All endpoints are prefixed with `/api/v1/plugins/simulator/simulator`
 
 ### List Available Categories
 
 ```http
-GET /api/v1/plugins/devices-simulator/simulator/categories
+GET /api/v1/plugins/simulator/simulator/categories
 ```
 
 Returns a list of all device categories with their descriptions.
@@ -97,7 +97,7 @@ Returns a list of all device categories with their descriptions.
 ### Generate a Simulated Device
 
 ```http
-POST /api/v1/plugins/devices-simulator/simulator/generate
+POST /api/v1/plugins/simulator/simulator/generate
 ```
 
 **Request Body:**
@@ -121,7 +121,7 @@ POST /api/v1/plugins/devices-simulator/simulator/generate
 ### Simulate Property Value Change
 
 ```http
-POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-value
+POST /api/v1/plugins/simulator/simulator/{deviceId}/simulate-value
 ```
 
 **Request Body:**
@@ -139,7 +139,7 @@ If `value` is omitted, a random value based on the property type will be generat
 ### Simulate Connection State
 
 ```http
-POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-connection
+POST /api/v1/plugins/simulator/simulator/{deviceId}/simulate-connection
 ```
 
 **Request Body:**
@@ -156,7 +156,7 @@ POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-connection
 ### Simulate All Property Values
 
 ```http
-POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-all
+POST /api/v1/plugins/simulator/simulator/{deviceId}/simulate-all
 ```
 
 Generates and sets random values for all properties of the device based on their data types and constraints.
@@ -227,7 +227,7 @@ pnpm run cli simulator:generate -c thermostat -n "Office Thermostat"
 pnpm run cli simulator:generate -c lighting -n "Test Light"
 
 # Use the API to simulate disconnection
-curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-connection \
+curl -X POST http://localhost:3000/api/v1/plugins/simulator/simulator/{deviceId}/simulate-connection \
   -H "Content-Type: application/json" \
   -d '{"data": {"state": "disconnected"}}'
 ```
@@ -239,7 +239,7 @@ curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{d
 pnpm run cli simulator:generate -c sensor -n "Test Sensor"
 
 # Use the API to simulate value changes
-curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-all
+curl -X POST http://localhost:3000/api/v1/plugins/simulator/simulator/{deviceId}/simulate-all
 ```
 
 > **Note:** The `--auto-simulate` and `--interval` options store configuration in the device entity but automatic value simulation is not yet implemented. Use the `/simulate-all` endpoint to manually trigger value updates.
@@ -249,27 +249,27 @@ curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{d
 ### Plugin Location
 
 ```
-apps/backend/src/plugins/devices-simulator/
+apps/backend/src/plugins/simulator/
 ├── commands/
 │   └── generate-device.command.ts    # CLI command
 ├── controllers/
 │   └── simulator.controller.ts       # REST API endpoints
 ├── dto/                              # Data transfer objects
 ├── entities/
-│   └── devices-simulator.entity.ts   # Database entities
+│   └── simulator.entity.ts   # Database entities
 ├── models/                           # Response models
 ├── platforms/
 │   └── simulator-device.platform.ts  # Platform handler
 ├── services/
 │   └── device-generator.service.ts   # Device generation logic
-├── devices-simulator.constants.ts
-├── devices-simulator.openapi.ts
-└── devices-simulator.plugin.ts       # Plugin module
+├── simulator.constants.ts
+├── simulator.openapi.ts
+└── simulator.plugin.ts       # Plugin module
 ```
 
 ### Device Type
 
-Simulated devices use the type `devices-simulator` which distinguishes them from real device integrations.
+Simulated devices use the type `simulator` which distinguishes them from real device integrations.
 
 ### Value Generation
 

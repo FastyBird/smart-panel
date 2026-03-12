@@ -85,7 +85,7 @@ src/
 │   ├── devices-home-assistant/    # Home Assistant integration
 │   ├── devices-shelly-ng/         # Shelly Gen 2+ devices
 │   ├── devices-shelly-v1/         # Shelly Gen 1 devices
-│   ├── devices-simulator/         # Virtual device simulator
+│   ├── simulator/         # Virtual device simulator
 │   ├── devices-third-party/       # Third-party device support
 │   ├── devices-wled/              # WLED RGB device support
 │   ├── devices-zigbee2mqtt/       # Zigbee2MQTT integration

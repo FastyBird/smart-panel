@@ -244,7 +244,7 @@ const pluginIcons: Record<string, string> = {
 	'devices-zigbee2mqtt-plugin': 'mdi:zigbee',
 	'devices-wled-plugin': 'mdi:led-strip-variant',
 	'devices-third-party-plugin': 'mdi:api',
-	'devices-simulator-plugin': 'mdi:test-tube',
+	'simulator-plugin': 'mdi:test-tube',
 };
 
 const getPluginIcon = (type: string): string => {

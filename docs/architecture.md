@@ -111,7 +111,7 @@ Displays are panel app instances that register with the backend:
 
 | Category | Plugins |
 |----------|---------|
-| Device integrations | `devices-home-assistant`, `devices-shelly-ng`, `devices-shelly-v1`, `devices-simulator`, `devices-third-party`, `devices-wled`, `devices-zigbee2mqtt` |
+| Device integrations | `devices-home-assistant`, `devices-shelly-ng`, `devices-shelly-v1`, `simulator`, `devices-third-party`, `devices-wled`, `devices-zigbee2mqtt` |
 | Page types | `pages-tiles`, `pages-cards`, `pages-device-detail` |
 | Tile types | `tiles-weather`, `tiles-time`, `tiles-device-preview`, `tiles-scene` |
 | Data sources | `data-sources-device-channel`, `data-sources-weather` |
