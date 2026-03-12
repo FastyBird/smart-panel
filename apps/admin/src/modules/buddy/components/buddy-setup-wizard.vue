@@ -865,6 +865,10 @@ const handleNext = async (): Promise<void> => {
 		if (!saved) return;
 	}
 
+	// Messaging plugins are configured entirely through their inline config forms
+	// (saveMessagingConfig). No module-level config field exists for messaging,
+	// so no saveModuleConfig call is needed here.
+
 	nextStep();
 };
 
