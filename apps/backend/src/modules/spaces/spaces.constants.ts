@@ -37,6 +37,8 @@ export enum EventType {
 	MEDIA_ACTIVITY_STEP_PROGRESS = 'SpacesModule.MediaActivity.StepProgress',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
+	// Suggestion events
+	SUGGESTION_CREATED = 'SpacesModule.Suggestion.Created',
 	// Sensor role events
 	SENSOR_TARGET_CREATED = 'SpacesModule.SensorTarget.Created',
 	SENSOR_TARGET_UPDATED = 'SpacesModule.SensorTarget.Updated',
@@ -618,9 +620,14 @@ export enum SuggestionFeedback {
 export const SUGGESTION_COOLDOWN_MS = 30 * 60 * 1000;
 
 /**
- * Space categories that support night mode suggestions
+ * Suggestion heartbeat interval in milliseconds (5 minutes)
  */
-export const BEDROOM_SPACE_PATTERNS = ['bedroom', 'schlafzimmer', 'ložnice', 'chambre'];
+export const SUGGESTION_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Space suggestion expiry in milliseconds (1 hour)
+ */
+export const SUGGESTION_EXPIRY_MS = 60 * 60 * 1000;
 
 export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestrationConfig> = {
 	[LightingMode.OFF]: {

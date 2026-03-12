@@ -51,6 +51,7 @@ import { SpaceMediaActivityBindingService } from './services/space-media-activit
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
+import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
@@ -105,6 +106,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceSensorRoleService,
 		SpaceSensorStateService,
 		SpaceSuggestionService,
+		SpaceSuggestionHeartbeatService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
 		SpaceActivityListener,

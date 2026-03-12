@@ -5,15 +5,9 @@ import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import {
-	BEDROOM_SPACE_PATTERNS,
-	LightingIntentType,
-	LightingMode,
-	SPACES_MODULE_NAME,
-	SUGGESTION_COOLDOWN_MS,
-	SuggestionFeedback,
-	SuggestionType,
-} from '../spaces.constants';
+import { LightingIntentType, SPACES_MODULE_NAME, SUGGESTION_COOLDOWN_MS, SuggestionFeedback, SuggestionType } from '../spaces.constants';
+import { IntentSpecLoaderService } from '../spec/intent-spec-loader.service';
+import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
 import { SpaceIntentService } from './space-intent.service';
 import { SpacesService } from './spaces.service';
@@ -25,7 +19,8 @@ export interface SpaceSuggestion {
 	type: SuggestionType;
 	title: string;
 	reason: string | null;
-	lightingMode: LightingMode | null;
+	intentType: string;
+	intentMode: string | null;
 }
 
 /**
@@ -41,56 +36,66 @@ export interface SuggestionContext {
 export const spaceCooldowns = new CooldownManager<SuggestionType>();
 
 /**
- * Check if a space name matches bedroom patterns
+ * Check if a space name matches any of the given bedroom patterns
  */
-export function isBedroomSpace(spaceName: string): boolean {
+export function isBedroomSpace(spaceName: string, patterns: string[]): boolean {
 	const lowerName = spaceName.toLowerCase();
 
-	return BEDROOM_SPACE_PATTERNS.some((pattern) => lowerName.includes(pattern));
+	return patterns.some((pattern) => lowerName.includes(pattern));
 }
 
 /**
  * Evaluate suggestion rules for a given context.
- * This is a pure function for testability.
- *
- * MVP Rules:
- * 1. After 17:00 with lights in work mode (high brightness) -> suggest Relax mode
- * 2. After 22:00 in bedroom with any lights on -> suggest Night mode or Lights Off
+ * Rules are evaluated in order — first matching rule wins.
  *
  * @param context - The context to evaluate
- * @returns A suggestion or null if no suggestion applies
+ * @param rules - Resolved suggestion rules from YAML spec
+ * @param bedroomPatterns - Bedroom name patterns from YAML spec
+ * @returns A suggestion or null if no rule matches
  */
-export function evaluateSuggestionRules(context: SuggestionContext): SpaceSuggestion | null {
+export function evaluateSuggestionRules(
+	context: SuggestionContext,
+	rules: ResolvedSuggestionRule[],
+	bedroomPatterns: string[],
+): SpaceSuggestion | null {
 	const { space, currentHour, lightsOn, averageBrightness } = context;
+	const isBedroom = isBedroomSpace(space.name, bedroomPatterns);
 
-	// Rule 1: Evening (after 22:00) in bedroom with lights on -> Night mode
-	if (currentHour >= 22 && isBedroomSpace(space.name) && lightsOn) {
-		return {
-			type: SuggestionType.LIGHTING_NIGHT,
-			title: 'Night lighting',
-			reason: 'Late evening - switch to night mode for better sleep',
-			lightingMode: LightingMode.NIGHT,
-		};
-	}
+	for (const rule of rules) {
+		// Check hour_from condition
+		if (rule.hourFrom !== null && currentHour < rule.hourFrom) {
+			continue;
+		}
 
-	// Rule 2: Evening (after 17:00) with high brightness -> Relax mode
-	// For non-bedrooms, extends until 23:00 when Lights Off rule takes over
-	if (currentHour >= 17 && currentHour < 23 && lightsOn && averageBrightness !== null && averageBrightness >= 70) {
-		return {
-			type: SuggestionType.LIGHTING_RELAX,
-			title: 'Relax lighting',
-			reason: 'Evening time - switch to a calmer lighting mode',
-			lightingMode: LightingMode.RELAX,
-		};
-	}
+		// Check hour_to condition
+		if (rule.hourTo !== null && currentHour >= rule.hourTo) {
+			continue;
+		}
 
-	// Rule 3: Late night (after 23:00) with lights on in non-bedroom -> Lights off suggestion
-	if (currentHour >= 23 && lightsOn && !isBedroomSpace(space.name)) {
+		// Check lights_on condition
+		if (rule.lightsOn !== null && lightsOn !== rule.lightsOn) {
+			continue;
+		}
+
+		// Check min_brightness condition
+		if (rule.minBrightness !== null) {
+			if (averageBrightness === null || averageBrightness < rule.minBrightness) {
+				continue;
+			}
+		}
+
+		// Check space_is_bedroom condition
+		if (rule.spaceIsBedroom !== null && isBedroom !== rule.spaceIsBedroom) {
+			continue;
+		}
+
+		// All conditions passed — return this suggestion
 		return {
-			type: SuggestionType.LIGHTING_OFF,
-			title: 'Turn off lights',
-			reason: 'Late night - consider turning off the lights',
-			lightingMode: null, // OFF intent, not a mode
+			type: rule.id as SuggestionType,
+			title: rule.title,
+			reason: rule.reason,
+			intentType: rule.intentType,
+			intentMode: rule.intentMode,
 		};
 	}
 
@@ -104,6 +109,7 @@ export class SpaceSuggestionService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
+		private readonly specLoader: IntentSpecLoaderService,
 	) {}
 
 	/**
@@ -135,8 +141,12 @@ export class SpaceSuggestionService {
 			averageBrightness,
 		};
 
-		// Evaluate rules
-		const suggestion = evaluateSuggestionRules(context);
+		// Evaluate rules from YAML spec
+		const suggestion = evaluateSuggestionRules(
+			context,
+			this.specLoader.getSuggestionRules(),
+			this.specLoader.getBedroomPatterns(),
+		);
 
 		if (!suggestion) {
 			return null;
@@ -198,45 +208,39 @@ export class SpaceSuggestionService {
 	}
 
 	/**
-	 * Execute the lighting intent for a suggestion type.
+	 * Execute the intent for a suggestion type.
+	 * Looks up the suggestion rule from YAML spec to determine intent type and mode.
 	 *
 	 * @param spaceId - The UUID of the space to execute the intent in
 	 * @param suggestionType - The type of suggestion to execute
-	 * @returns true if the intent was executed successfully, false if space doesn't exist or execution failed
+	 * @returns true if the intent was executed successfully, false if rule not found or execution failed
 	 */
 	private async executeIntent(spaceId: string, suggestionType: SuggestionType): Promise<boolean> {
 		try {
-			let result;
+			const rules = this.specLoader.getSuggestionRules();
+			const rule = rules.find((r) => r.id === suggestionType);
 
-			switch (suggestionType) {
-				case SuggestionType.LIGHTING_RELAX:
-					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
-						type: LightingIntentType.SET_MODE,
-						mode: LightingMode.RELAX,
-					});
+			if (!rule) {
+				this.logger.warn(`No suggestion rule found for type: ${suggestionType as string}`);
 
-					return result !== null;
-
-				case SuggestionType.LIGHTING_NIGHT:
-					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
-						type: LightingIntentType.SET_MODE,
-						mode: LightingMode.NIGHT,
-					});
-
-					return result !== null;
-
-				case SuggestionType.LIGHTING_OFF:
-					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
-						type: LightingIntentType.OFF,
-					});
-
-					return result !== null;
-
-				default:
-					this.logger.warn(`Unknown suggestion type: ${suggestionType as string}`);
-
-					return false;
+				return false;
 			}
+
+			// Map YAML intent_type strings to LightingIntentType enum values
+			const intentType = Object.values(LightingIntentType).find((v) => v === rule.intentType);
+
+			if (!intentType) {
+				this.logger.warn(`Unknown intent type: ${rule.intentType} for suggestion: ${rule.id}`);
+
+				return false;
+			}
+
+			const result = await this.spaceIntentService.executeLightingIntent(spaceId, {
+				type: intentType,
+				mode: rule.intentMode ?? undefined,
+			} as any);
+
+			return result !== null;
 		} catch (error) {
 			this.logger.error(`Failed to execute intent for suggestion type=${suggestionType}: ${error}`);
 

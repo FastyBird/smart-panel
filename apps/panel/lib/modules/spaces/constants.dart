@@ -51,6 +51,10 @@ class SpacesModuleConstants {
   static const String mediaBindingDeletedEvent =
       'SpacesModule.MediaBinding.Deleted';
 
+  // Suggestion events
+  static const String suggestionCreatedEvent =
+      'SpacesModule.Suggestion.Created';
+
   // Media activity lifecycle events
   static const String mediaActivityActivatingEvent =
       'SpacesModule.MediaActivity.Activating';

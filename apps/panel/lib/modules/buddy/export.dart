@@ -13,7 +13,7 @@ export 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 export 'package:fastybird_smart_panel/modules/buddy/service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
-export 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+export 'package:fastybird_smart_panel/modules/buddy/services/buddy_suggestion_provider.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 
 // Module
@@ -24,5 +24,4 @@ export 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
-export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_activation_indicator.dart';

@@ -1,0 +1,47 @@
+# Suggestion Rules Configuration
+#
+# Defines automated suggestions that the system can generate for spaces.
+# Each rule specifies conditions (hour range, brightness, bedroom, lights state)
+# and the intent to execute when the suggestion is applied.
+#
+# Rule evaluation order matters — first matching rule wins.
+
+bedroom_patterns:
+  - "bedroom"
+  - "schlafzimmer"
+  - "ložnice"
+  - "chambre"
+
+rules:
+  - id: "lighting_night"
+    title: "Night lighting"
+    reason: "Late evening - switch to night mode for better sleep"
+    hour_from: 22
+    hour_to: null
+    lights_on: true
+    min_brightness: null
+    space_is_bedroom: true
+    intent_type: "set_mode"
+    intent_mode: "night"
+
+  - id: "lighting_relax"
+    title: "Relax lighting"
+    reason: "Evening time - switch to a calmer lighting mode"
+    hour_from: 17
+    hour_to: 23
+    lights_on: true
+    min_brightness: 70
+    space_is_bedroom: null
+    intent_type: "set_mode"
+    intent_mode: "relax"
+
+  - id: "lighting_off"
+    title: "Turn off lights"
+    reason: "Late night - consider turning off the lights"
+    hour_from: 23
+    hour_to: null
+    lights_on: true
+    min_brightness: null
+    space_is_bedroom: false
+    intent_type: "off"
+    intent_mode: null

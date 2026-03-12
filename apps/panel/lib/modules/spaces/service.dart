@@ -346,6 +346,43 @@ class SpacesService extends ChangeNotifier {
     return _spaceStateRepository.setLightingMode(spaceId, mode);
   }
 
+  /// Execute a lighting intent using raw string type and optional mode.
+  /// Used by suggestion system to avoid coupling to typed enums.
+  Future<LightingIntentResult?> executeLightingIntentRaw(
+    String spaceId,
+    String intentType, {
+    String? mode,
+  }) {
+    final parsedType = _parseLightingIntentType(intentType);
+
+    if (parsedType == null) {
+      return Future.value(null);
+    }
+
+    final parsedMode = mode != null ? parseLightingMode(mode) : null;
+
+    return _spaceStateRepository.executeLightingIntent(
+      spaceId: spaceId,
+      type: parsedType,
+      mode: parsedMode,
+    );
+  }
+
+  LightingIntentType? _parseLightingIntentType(String type) {
+    switch (type) {
+      case 'off':
+        return LightingIntentType.off;
+      case 'on':
+        return LightingIntentType.on;
+      case 'set_mode':
+        return LightingIntentType.setMode;
+      case 'brightness_delta':
+        return LightingIntentType.brightnessDelta;
+      default:
+        return null;
+    }
+  }
+
   /// Adjust brightness by delta
   Future<LightingIntentResult?> adjustBrightness(
     String spaceId, {

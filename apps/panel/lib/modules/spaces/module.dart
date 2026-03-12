@@ -2,6 +2,10 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
+import 'package:fastybird_smart_panel/modules/spaces/services/space_suggestion_provider.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
@@ -27,6 +31,7 @@ class SpacesModuleService {
   late MediaActivityRepository _mediaActivityRepository;
   late MediaActivityService _mediaActivityService;
   late SpacesService _spacesService;
+  late SpaceSuggestionProvider _suggestionProvider;
 
   bool _isLoading = true;
 
@@ -86,6 +91,14 @@ class SpacesModuleService {
   Future<void> initialize() async {
     _isLoading = true;
 
+    // Register space suggestion provider with global notification service
+    _suggestionProvider = SpaceSuggestionProvider();
+    try {
+      locator<SuggestionNotificationService>().registerProvider(_suggestionProvider);
+    } catch (_) {
+      // Global notification service not yet available
+    }
+
     await _spacesService.initialize();
 
     _isLoading = false;
@@ -115,6 +128,15 @@ class SpacesModuleService {
   bool get isLoading => _isLoading;
 
   void dispose() {
+    // Unregister space suggestion provider from global service
+    try {
+      locator<SuggestionNotificationService>().unregisterProvider(
+        _suggestionProvider.providerId,
+      );
+    } catch (_) {
+      // Global notification service already disposed
+    }
+
     _socketService.unregisterEventHandler(
       SpacesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
@@ -235,6 +257,74 @@ class SpacesModuleService {
       final spaceId = payload['space_id'] as String?;
       if (spaceId != null) {
         _mediaActivityRepository.refreshBindings(spaceId);
+      }
+
+      /// Suggestion CREATED
+    } else if (event == SpacesModuleConstants.suggestionCreatedEvent) {
+      _handleSuggestionCreated(payload);
+    }
+  }
+
+  void _handleSuggestionCreated(Map<String, dynamic> payload) {
+    try {
+      final spaceId = payload['space_id'] as String?;
+      final typeStr = payload['type'] as String?;
+      final title = payload['title'] as String? ?? '';
+      final reason = payload['reason'] as String?;
+
+      if (spaceId == null || typeStr == null) return;
+
+      // Only process suggestions for the space this display is assigned to
+      try {
+        final displayRoomId = locator<DisplayRepository>().display?.roomId;
+        if (displayRoomId != null && displayRoomId != spaceId) {
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE] Ignoring suggestion for space $spaceId '
+              '(display is assigned to $displayRoomId)',
+            );
+          }
+          return;
+        }
+      } catch (_) {
+        // DisplayRepository not available — allow suggestion through
+      }
+
+      final type = parseSuggestionType(typeStr);
+      if (type == null) return;
+
+      final suggestion = SuggestionModel(
+        type: type,
+        title: title,
+        reason: reason,
+        intentType: payload['intent_type'] as String?,
+        intentMode: payload['intent_mode'] as String?,
+      );
+
+      final appSuggestion = SpaceAppSuggestion(
+        model: suggestion,
+        spaceId: spaceId,
+      );
+
+      try {
+        locator<SuggestionNotificationService>().enqueue(
+          appSuggestion,
+          providerId: _suggestionProvider.providerId,
+        );
+      } catch (_) {
+        // Global notification service not available
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE] Suggestion created via WebSocket: ${appSuggestion.id}',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE] Error handling suggestion event: $e',
+        );
       }
     }
   }
