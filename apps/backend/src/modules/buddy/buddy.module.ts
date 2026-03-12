@@ -34,6 +34,7 @@ import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
 import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { BuddyProviderStatusService } from './services/buddy-provider-status.service';
+import { MessagingProviderStatusService } from './services/messaging-provider-status.service';
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
@@ -101,6 +102,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		TtsProviderRegistryService,
 		TtsProviderStatusService,
 		TtsProviderService,
+		MessagingProviderStatusService,
 		OAuthCallbackService,
 		OAuthFlowService,
 		BuddyModuleResetService,

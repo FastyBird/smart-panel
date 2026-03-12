@@ -108,6 +108,7 @@
 					@send="sendMessage"
 					@play-audio="playMessageAudio"
 					@stop-audio="stopAudio"
+					@wizard-completed="loadChatData"
 				/>
 			</el-card>
 		</div>

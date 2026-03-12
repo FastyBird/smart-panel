@@ -8,12 +8,14 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from '../buddy.constants';
+import { MessagingProviderStatusesResponseModel } from '../models/messaging-provider-status.model';
 import { ProviderStatusesResponseModel } from '../models/provider-status.model';
 import {
 	SttProviderStatusesResponseModel,
 	TtsProviderStatusesResponseModel,
 } from '../models/voice-provider-status.model';
 import { BuddyProviderStatusService } from '../services/buddy-provider-status.service';
+import { MessagingProviderStatusService } from '../services/messaging-provider-status.service';
 import { SttProviderStatusService } from '../services/stt-provider-status.service';
 import { TtsProviderStatusService } from '../services/tts-provider-status.service';
 
@@ -26,6 +28,7 @@ export class BuddyProvidersController {
 		private readonly providerStatusService: BuddyProviderStatusService,
 		private readonly sttProviderStatusService: SttProviderStatusService,
 		private readonly ttsProviderStatusService: TtsProviderStatusService,
+		private readonly messagingProviderStatusService: MessagingProviderStatusService,
 	) {}
 
 	@ApiOperation({
@@ -97,6 +100,34 @@ export class BuddyProvidersController {
 		this.logger.debug(`Retrieved ${statuses.length} TTS provider statuses`);
 
 		const response = new TtsProviderStatusesResponseModel();
+
+		response.data = statuses;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [BUDDY_MODULE_API_TAG_NAME],
+		summary: 'List messaging provider statuses',
+		description:
+			'Retrieves the configuration status of all registered messaging adapter providers (Telegram, Discord, WhatsApp, etc.), including whether each is enabled and configured.',
+		operationId: 'get-buddy-module-messaging-provider-statuses',
+	})
+	@ApiSuccessResponse(
+		MessagingProviderStatusesResponseModel,
+		'A list of messaging provider statuses successfully retrieved.',
+	)
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('messaging')
+	getMessagingProviderStatuses(): MessagingProviderStatusesResponseModel {
+		this.logger.debug('Fetching messaging provider statuses');
+
+		const statuses = this.messagingProviderStatusService.getProviderStatuses();
+
+		this.logger.debug(`Retrieved ${statuses.length} messaging provider statuses`);
+
+		const response = new MessagingProviderStatusesResponseModel();
 
 		response.data = statuses;
 

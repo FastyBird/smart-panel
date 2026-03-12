@@ -52,6 +52,9 @@
 		},
 		"goToSettings": {
 			"title": "Go to Settings"
+		},
+		"setupWizard": {
+			"title": "Setup Wizard"
 		}
 	},
 	"fields": {
@@ -122,7 +125,7 @@
 		"providerNotConfigured": "AI provider not configured",
 		"providerNotConfiguredHint": "Configure an AI provider plugin to start chatting with your buddy.",
 		"noProviderSelected": "No AI provider is selected",
-		"noProviderSelectedHint": "Go to settings to select and configure an AI provider.",
+		"noProviderSelectedHint": "Select and configure an AI provider to get started. Use the Setup Wizard for guided configuration.",
 		"providerNotEnabled": "The provider {name} is not enabled",
 		"providerNotEnabledHint": "Enable it in the plugin configuration.",
 		"providerMissingConfig": "The provider {name} needs configuration",
@@ -141,6 +144,41 @@
 		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
 		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
+	},
+	"wizard": {
+		"title": "Buddy Setup Wizard",
+		"steps": {
+			"provider": "AI Provider",
+			"voice": "Voice",
+			"messaging": "Messaging",
+			"done": "Done"
+		},
+		"providerDescription": "Choose an AI provider to power your buddy's chat capabilities. Each provider requires its own API key or credentials.",
+		"voiceDescription": "Optionally configure voice capabilities. Text-to-Speech lets the buddy read responses aloud. Speech-to-Text enables voice input.",
+		"messagingDescription": "Optionally connect messaging platforms to chat with your buddy remotely via Telegram, Discord, WhatsApp, or other services.",
+		"noProvidersAvailable": "No AI provider plugins are installed. Install a provider plugin (e.g., Claude, OpenAI, Ollama) to enable AI chat.",
+		"configureProvider": "Configure {name}",
+		"configured": "Configured",
+		"needsSetup": "Needs setup",
+		"disabled": "Disabled",
+		"configSaved": "Configuration saved successfully",
+		"saveError": "Failed to save configuration",
+		"doneTitle": "Setup Complete",
+		"doneDescription": "Your buddy is ready to use. You can always change these settings later in the configuration page.",
+		"summaryLlm": "AI Provider",
+		"summaryVoice": "Voice",
+		"summaryMessaging": "Messaging",
+		"notSelected": "Not selected",
+		"skipped": "Skipped",
+		"ttsHeading": "Text-to-Speech (TTS)",
+		"sttHeading": "Speech-to-Text (STT)",
+		"buttons": {
+			"back": "Back",
+			"next": "Next",
+			"skip": "Skip",
+			"saveConfig": "Save Configuration",
+			"startChatting": "Start Chatting"
+		}
 	},
 	"meta": {
 		"settings": {

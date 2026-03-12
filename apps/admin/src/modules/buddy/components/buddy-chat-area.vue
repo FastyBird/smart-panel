@@ -11,12 +11,22 @@
 						:sub-title="t('buddyModule.texts.noProviderSelectedHint')"
 					>
 						<template #extra>
-							<el-button
-								type="primary"
-								@click="router.push('/config/modules/buddy-module')"
-							>
-								{{ t('buddyModule.buttons.configure.title') }}
-							</el-button>
+							<div class="flex gap-2">
+								<el-button
+									type="primary"
+									@click="wizardVisible = true"
+								>
+									<el-icon class="mr-1">
+										<icon icon="mdi:magic-staff" />
+									</el-icon>
+									{{ t('buddyModule.buttons.setupWizard.title') }}
+								</el-button>
+								<el-button
+									@click="router.push('/config/modules/buddy-module')"
+								>
+									{{ t('buddyModule.buttons.configure.title') }}
+								</el-button>
+							</div>
 						</template>
 					</el-result>
 
@@ -28,12 +38,22 @@
 						:sub-title="t('buddyModule.texts.providerNotEnabledHint')"
 					>
 						<template #extra>
-							<el-button
-								type="primary"
-								@click="router.push(`/config/plugins/${selectedProvider.type}`)"
-							>
-								{{ t('buddyModule.buttons.configure.title') }}
-							</el-button>
+							<div class="flex gap-2">
+								<el-button
+									type="primary"
+									@click="wizardVisible = true"
+								>
+									<el-icon class="mr-1">
+										<icon icon="mdi:magic-staff" />
+									</el-icon>
+									{{ t('buddyModule.buttons.setupWizard.title') }}
+								</el-button>
+								<el-button
+									@click="router.push(`/config/plugins/${selectedProvider.type}`)"
+								>
+									{{ t('buddyModule.buttons.configure.title') }}
+								</el-button>
+							</div>
 						</template>
 					</el-result>
 
@@ -45,12 +65,22 @@
 						:sub-title="t('buddyModule.texts.providerMissingConfigHint')"
 					>
 						<template #extra>
-							<el-button
-								type="primary"
-								@click="router.push(`/config/plugins/${selectedProvider.type}`)"
-							>
-								{{ t('buddyModule.buttons.configure.title') }}
-							</el-button>
+							<div class="flex gap-2">
+								<el-button
+									type="primary"
+									@click="wizardVisible = true"
+								>
+									<el-icon class="mr-1">
+										<icon icon="mdi:magic-staff" />
+									</el-icon>
+									{{ t('buddyModule.buttons.setupWizard.title') }}
+								</el-button>
+								<el-button
+									@click="router.push(`/config/plugins/${selectedProvider.type}`)"
+								>
+									{{ t('buddyModule.buttons.configure.title') }}
+								</el-button>
+							</div>
 						</template>
 					</el-result>
 
@@ -81,6 +111,11 @@
 					</div>
 				</div>
 			</div>
+
+			<buddy-setup-wizard
+				v-model:visible="wizardVisible"
+				@completed="emit('wizard-completed')"
+			/>
 		</template>
 
 		<template v-else-if="!hasActiveConversation && !isLoadingMessages">
@@ -164,6 +199,7 @@ import { Icon } from '@iconify/vue';
 import type { IProviderStatus } from '../composables/useBuddyProviders';
 import type { IMessage } from '../buddy.types';
 import BuddyMessageBubble from './buddy-message-bubble.vue';
+import BuddySetupWizard from './buddy-setup-wizard.vue';
 
 defineOptions({
 	name: 'BuddyChatArea',
@@ -186,6 +222,7 @@ const emit = defineEmits<{
 	(e: 'send', content: string): void;
 	(e: 'play-audio', messageId: string): void;
 	(e: 'stop-audio'): void;
+	(e: 'wizard-completed'): void;
 }>();
 
 const { t } = useI18n();
@@ -194,6 +231,7 @@ const router = useRouter();
 const inputMessage = ref<string>('');
 const scrollbarRef = ref<InstanceType<typeof ElScrollbar> | null>(null);
 const messagesContainerRef = ref<HTMLDivElement | null>(null);
+const wizardVisible = ref<boolean>(false);
 
 const otherProviders = computed<IProviderStatus[]>(() => {
 	return props.providerStatuses.filter((p) => !p.selected);
@@ -233,5 +271,4 @@ watch(
 		}
 	}
 );
-
 </script>

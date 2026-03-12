@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { BuddyCapability } from '../../modules/buddy/buddy.constants';
 import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -57,7 +58,7 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 			name: 'WhatsApp',
 			description: 'WhatsApp adapter plugin for Buddy module remote conversations and alerts',
 			author: 'FastyBird',
-			capabilities: [],
+			capabilities: [BuddyCapability.MESSAGING],
 			readme: `# Buddy WhatsApp Plugin
 
 WhatsApp adapter plugin for the Buddy module. Connects via WhatsApp Web protocol (QR code scan).

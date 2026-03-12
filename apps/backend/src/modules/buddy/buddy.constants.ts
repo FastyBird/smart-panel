@@ -25,7 +25,10 @@ export enum BuddyCapability {
 	TTS = 'tts',
 	STT = 'stt',
 	TOOLS = 'tools',
+	MESSAGING = 'messaging',
 }
+
+export const MESSAGING_PLUGIN_NONE = 'none';
 
 export const STT_PLUGIN_NONE = 'none';
 
