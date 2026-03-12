@@ -32,7 +32,9 @@ export class MessagingProviderStatusDataModel {
 }
 
 @ApiSchema({ name: 'BuddyModuleResMessagingProviderStatuses' })
-export class MessagingProviderStatusesResponseModel extends BaseSuccessResponseModel<MessagingProviderStatusDataModel[]> {
+export class MessagingProviderStatusesResponseModel extends BaseSuccessResponseModel<
+	MessagingProviderStatusDataModel[]
+> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',

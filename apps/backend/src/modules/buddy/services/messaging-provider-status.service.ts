@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
-import { ExtensionsService } from '../../extensions/services/extensions.service';
 import { ExtensionKind } from '../../extensions/extensions.constants';
-import { BuddyCapability, BUDDY_MODULE_NAME } from '../buddy.constants';
+import { ExtensionsService } from '../../extensions/services/extensions.service';
+import { BUDDY_MODULE_NAME, BuddyCapability } from '../buddy.constants';
 import { MessagingProviderStatusDataModel } from '../models/messaging-provider-status.model';
 
 @Injectable()
@@ -66,7 +66,7 @@ export class MessagingProviderStatusService {
 			if (key in config) {
 				hasCredentialField = true;
 
-				if (typeof config[key] === 'string' && (config[key] as string).trim().length > 0) {
+				if (typeof config[key] === 'string' && config[key].trim().length > 0) {
 					return true;
 				}
 			}

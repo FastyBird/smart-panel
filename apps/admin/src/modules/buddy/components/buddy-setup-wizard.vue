@@ -464,7 +464,6 @@ import { useBuddyProviders } from '../composables/useBuddyProviders';
 import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
 import { useBuddySttProviders } from '../composables/useBuddySttProviders';
 import { useBuddyMessagingProviders } from '../composables/useBuddyMessagingProviders';
-import type { IMessagingProviderStatus } from '../composables/useBuddyMessagingProviders';
 import type { IVoiceProviderStatus } from '../composables/useBuddyVoiceProviders';
 
 defineOptions({
@@ -757,15 +756,6 @@ const saveModuleConfig = async (): Promise<boolean> => {
 	isSavingModuleConfig.value = true;
 
 	try {
-		// Get current module config
-		let currentConfig;
-
-		try {
-			currentConfig = configModulesStore.findByType('buddy-module');
-		} catch {
-			// no existing config
-		}
-
 		const configData: Record<string, unknown> = {
 			type: 'buddy-module',
 			enabled: true,
@@ -775,17 +765,8 @@ const saveModuleConfig = async (): Promise<boolean> => {
 			configData.provider = selectedLlmProvider.value;
 		}
 
-		if (selectedTtsProvider.value) {
-			configData.ttsPlugin = selectedTtsProvider.value;
-		} else if (currentConfig && !('ttsPlugin' in configData)) {
-			configData.ttsPlugin = TTS_PLUGIN_NONE;
-		}
-
-		if (selectedSttProvider.value) {
-			configData.sttPlugin = selectedSttProvider.value;
-		} else if (currentConfig && !('sttPlugin' in configData)) {
-			configData.sttPlugin = STT_PLUGIN_NONE;
-		}
+		configData.ttsPlugin = selectedTtsProvider.value ?? TTS_PLUGIN_NONE;
+		configData.sttPlugin = selectedSttProvider.value ?? STT_PLUGIN_NONE;
 
 		await configModulesStore.edit({
 			data: configData as never,
@@ -813,12 +794,16 @@ const prevStep = (): void => {
 	}
 };
 
-const handleSkip = (): void => {
-	// Clear selections for the skipped step so the summary doesn't show unsaved choices
+const handleSkip = async (): Promise<void> => {
+	// Clear selections for the skipped step and persist to the server
 	if (currentStepName.value === 'voice') {
 		selectedTtsProvider.value = null;
 		selectedSttProvider.value = null;
 		activeVoiceConfigType.value = null;
+
+		const saved = await saveModuleConfig();
+
+		if (!saved) return;
 	} else if (currentStepName.value === 'messaging') {
 		selectedMessagingProvider.value = null;
 	}
@@ -834,8 +819,8 @@ const handleNext = async (): Promise<void> => {
 		if (!saved) return;
 	}
 
-	// When leaving the voice step, save voice selections
-	if (currentStepName.value === 'voice' && (selectedTtsProvider.value || selectedSttProvider.value)) {
+	// When leaving the voice step, always save (even when deselecting to clear old values)
+	if (currentStepName.value === 'voice') {
 		const saved = await saveModuleConfig();
 
 		if (!saved) return;
