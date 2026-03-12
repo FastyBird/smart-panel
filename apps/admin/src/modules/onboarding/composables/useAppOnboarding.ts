@@ -100,6 +100,8 @@ const dismissedSpaces = reactive<Set<string>>(new Set());
 const discoveredDevices = reactive<IDeviceInfo[]>([]);
 const deviceAssignments = reactive<Record<string, string | null>>({});
 const createdSpaceNameToId: Record<string, string> = {};
+let createdLocationId: string | null = null;
+let createdLocationCoords: { latitude: number; longitude: number } | null = null;
 
 export const useAppOnboarding = () => {
 	const { t } = useI18n();
@@ -172,8 +174,6 @@ export const useAppOnboarding = () => {
 
 	const hasLocationData = computed(() => locationData.latitude !== null && locationData.longitude !== null);
 
-	let createdLocationId: string | null = null;
-
 	const saveLocation = async (): Promise<boolean> => {
 		if (locationConfigured.value) return true;
 
@@ -182,6 +182,16 @@ export const useAppOnboarding = () => {
 		}
 
 		try {
+			// Invalidate cached location if user changed coordinates
+			if (
+				createdLocationId &&
+				createdLocationCoords &&
+				(createdLocationCoords.latitude !== locationData.latitude || createdLocationCoords.longitude !== locationData.longitude)
+			) {
+				createdLocationId = null;
+				createdLocationCoords = null;
+			}
+
 			// Only create the location if we haven't already (avoids duplicates on retry)
 			if (!createdLocationId) {
 				const locationBody: Record<string, unknown> = {
@@ -204,6 +214,8 @@ export const useAppOnboarding = () => {
 				if (!createdLocationId) {
 					return false;
 				}
+
+				createdLocationCoords = { latitude: locationData.latitude, longitude: locationData.longitude };
 			}
 
 			// Set the newly created location as the primary weather location
@@ -427,6 +439,8 @@ export const useAppOnboarding = () => {
 		discoveredDevices.splice(0);
 		Object.keys(deviceAssignments).forEach((key) => delete deviceAssignments[key]);
 		Object.keys(createdSpaceNameToId).forEach((key) => delete createdSpaceNameToId[key]);
+		createdLocationId = null;
+		createdLocationCoords = null;
 	};
 
 	return {
