@@ -928,7 +928,7 @@ devices:
   # ============================================================================
   # DINING ROOM
   # ============================================================================
-  - id: "f0000001-0001-4000-8000-000000000011"
+  - id: "f0000001-0001-4000-8000-000000000016"
     name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
@@ -937,10 +937,10 @@ devices:
     channels:
       - category: light
         properties:
-          - id: "f0000001-0001-4000-8000-000000000110"
+          - id: "f0000001-0001-4000-8000-000000000160"
             category: on
             value: false
-          - id: "f0000001-0001-4000-8000-000000000111"
+          - id: "f0000001-0001-4000-8000-000000000161"
             category: brightness
             value: 60
           - category: color_temperature
@@ -1052,7 +1052,7 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - id: "f0000001-0001-4000-8000-000000000010"
+  - id: "f0000001-0001-4000-8000-000000000017"
     name: "Office Roller Shade"
     category: window_covering
     room: home-office
@@ -1060,7 +1060,7 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - id: "f0000001-0001-4000-8000-000000000100"
+          - id: "f0000001-0001-4000-8000-000000000170"
             category: position
             value: 75
           - category: type
@@ -1695,19 +1695,19 @@ scenes:
       - device_id: "f0000001-0001-4000-8000-00000000000f"
         property_id: "f0000001-0001-4000-8000-0000000000f1"
         value: 100
-      - device_id: "f0000001-0001-4000-8000-000000000010"
-        property_id: "f0000001-0001-4000-8000-000000000100"
+      - device_id: "f0000001-0001-4000-8000-000000000017"
+        property_id: "f0000001-0001-4000-8000-000000000170"
         value: 50
 
   - name: "Dinner Party"
     category: party
     room: dining-room
     actions:
-      - device_id: "f0000001-0001-4000-8000-000000000011"
-        property_id: "f0000001-0001-4000-8000-000000000110"
+      - device_id: "f0000001-0001-4000-8000-000000000016"
+        property_id: "f0000001-0001-4000-8000-000000000160"
         value: true
-      - device_id: "f0000001-0001-4000-8000-000000000011"
-        property_id: "f0000001-0001-4000-8000-000000000111"
+      - device_id: "f0000001-0001-4000-8000-000000000016"
+        property_id: "f0000001-0001-4000-8000-000000000161"
         value: 40
       - device_id: "f0000001-0001-4000-8000-000000000001"
         property_id: "f0000001-0001-4000-8000-000000000011"

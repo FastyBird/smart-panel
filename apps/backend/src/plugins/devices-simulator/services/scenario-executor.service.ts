@@ -25,11 +25,10 @@ import {
 	getRequiredChannels,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
-import { SceneCategory } from '../../../modules/scenes/scenes.constants';
 import { ScenesService } from '../../../modules/scenes/services/scenes.service';
+import { SetLightingRoleDto } from '../../../modules/spaces/dto/lighting-role.dto';
 import { SpaceClimateRoleService } from '../../../modules/spaces/services/space-climate-role.service';
 import { SpaceCoversRoleService } from '../../../modules/spaces/services/space-covers-role.service';
-import { SetLightingRoleDto } from '../../../modules/spaces/dto/lighting-role.dto';
 import { SpaceLightingRoleService } from '../../../modules/spaces/services/space-lighting-role.service';
 import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
@@ -186,7 +185,6 @@ export class ScenarioExecutorService {
 
 					if (existing) {
 						this.logger.log(`Device already exists, skipping: ${deviceDef.name} (${deviceDef.id})`);
-						deviceIds.push(deviceDef.id);
 						continue;
 					}
 				}
@@ -228,9 +226,11 @@ export class ScenarioExecutorService {
 
 				try {
 					const sceneId = await this.createScene(sceneDef, roomIdMap);
-					sceneIds.push(sceneId);
 
-					this.logger.log(`Created scene: ${sceneDef.name} (${sceneId})`);
+					if (sceneId) {
+						sceneIds.push(sceneId);
+						this.logger.log(`Created scene: ${sceneDef.name} (${sceneId})`);
+					}
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					errors.push(`Failed to create scene '${sceneDef.name}': ${message}`);
@@ -283,14 +283,14 @@ export class ScenarioExecutorService {
 	/**
 	 * Create a scene from scenario definition
 	 */
-	private async createScene(sceneDef: ScenarioSceneDefinition, roomIdMap: Map<string, string>): Promise<string> {
+	private async createScene(sceneDef: ScenarioSceneDefinition, roomIdMap: Map<string, string>): Promise<string | null> {
 		// Check if scene already exists (upsert = skip-if-exists)
 		if (sceneDef.id) {
 			const existing = await this.scenesService.findOne(sceneDef.id);
 
 			if (existing) {
 				this.logger.log(`Scene already exists, skipping: ${sceneDef.name} (${sceneDef.id})`);
-				return sceneDef.id;
+				return null;
 			}
 		}
 
@@ -344,7 +344,9 @@ export class ScenarioExecutorService {
 		);
 
 		// Resolve category
-		const category = this.resolveSceneCategory(sceneDef.category);
+		const category = sceneDef.category
+			? (this.scenarioLoader.resolveSceneCategory(sceneDef.category) ?? undefined)
+			: undefined;
 
 		const scene = await this.scenesService.create({
 			id: sceneDef.id ?? uuidv4(),
@@ -357,26 +359,6 @@ export class ScenarioExecutorService {
 		});
 
 		return scene.id;
-	}
-
-	/**
-	 * Resolve scene category string to enum
-	 */
-	private resolveSceneCategory(category?: string): SceneCategory | undefined {
-		if (!category) {
-			return undefined;
-		}
-
-		const upperCategory = category.toUpperCase();
-		if (upperCategory in SceneCategory) {
-			return SceneCategory[upperCategory as keyof typeof SceneCategory];
-		}
-
-		// Try lowercase match
-		const lowerCategory = category.toLowerCase();
-		const values = Object.values(SceneCategory) as string[];
-		const match = values.find((v) => v === lowerCategory);
-		return (match as SceneCategory) ?? undefined;
 	}
 
 	/**
