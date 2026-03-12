@@ -749,7 +749,7 @@ const saveMessagingConfig = (): void => {
 
 // Watch form results for save completion
 watch(llmFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR || val === FormResult.NONE) {
+	if (val === FormResult.OK || val === FormResult.ERROR) {
 		isSavingLlmConfig.value = false;
 	}
 
@@ -762,7 +762,7 @@ watch(llmFormResult, (val: FormResultType) => {
 });
 
 watch(voiceFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR || val === FormResult.NONE) {
+	if (val === FormResult.OK || val === FormResult.ERROR) {
 		isSavingVoiceConfig.value = false;
 	}
 
@@ -774,7 +774,7 @@ watch(voiceFormResult, (val: FormResultType) => {
 });
 
 watch(messagingFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR || val === FormResult.NONE) {
+	if (val === FormResult.OK || val === FormResult.ERROR) {
 		isSavingMessagingConfig.value = false;
 	}
 
@@ -800,6 +800,9 @@ const saveModuleConfig = async (includeVoice: boolean = false): Promise<boolean>
 		// Only include voice fields when explicitly saving voice config,
 		// so we don't overwrite existing voice settings when saving from the provider step
 		if (includeVoice) {
+			const hasVoiceSelection = !!(selectedTtsProvider.value || selectedSttProvider.value);
+
+			configData.voiceEnabled = hasVoiceSelection;
 			configData.ttsPlugin = selectedTtsProvider.value ?? TTS_PLUGIN_NONE;
 			configData.sttPlugin = selectedSttProvider.value ?? STT_PLUGIN_NONE;
 		}
