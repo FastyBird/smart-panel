@@ -561,7 +561,20 @@ const isNextDisabled = computed<boolean>(() => {
 	}
 
 	if (step === 'voice') {
-		return activeVoiceProviderNeedsConfig.value;
+		// Check both TTS and STT independently — not just the active/focused one
+		if (selectedTtsProvider.value) {
+			const tts = ttsProviders.value.find((p) => p.type === selectedTtsProvider.value);
+
+			if (tts && !tts.configured) return true;
+		}
+
+		if (selectedSttProvider.value) {
+			const stt = sttProviders.value.find((p) => p.type === selectedSttProvider.value);
+
+			if (stt && !stt.configured) return true;
+		}
+
+		return false;
 	}
 
 	if (step === 'messaging') {
