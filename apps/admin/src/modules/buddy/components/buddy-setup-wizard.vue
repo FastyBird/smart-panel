@@ -774,7 +774,6 @@ const selectTtsProvider = (type: string): void => {
 	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
 
 	pickActiveVoiceConfig();
-	resetVoiceFormRefs();
 
 	if (selectedTtsProvider.value) {
 		fetchPluginConfig(selectedTtsProvider.value);
@@ -785,7 +784,6 @@ const selectSttProvider = (type: string): void => {
 	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
 
 	pickActiveVoiceConfig();
-	resetVoiceFormRefs();
 
 	if (selectedSttProvider.value) {
 		fetchPluginConfig(selectedSttProvider.value);
