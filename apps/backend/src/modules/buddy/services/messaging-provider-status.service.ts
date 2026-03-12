@@ -31,7 +31,6 @@ export class MessagingProviderStatusService {
 			status.type = plugin.type;
 			status.name = plugin.name;
 			status.description = plugin.description ?? '';
-			status.enabled = plugin.enabled;
 
 			let pluginConfig: Record<string, unknown> | null = null;
 
@@ -43,7 +42,7 @@ export class MessagingProviderStatusService {
 
 			if (pluginConfig) {
 				status.enabled = (pluginConfig.enabled as boolean) ?? false;
-				status.configured = this.isPluginConfigured(plugin.type, pluginConfig);
+				status.configured = this.isPluginConfigured(pluginConfig);
 			} else {
 				status.enabled = false;
 				status.configured = false;
@@ -55,7 +54,7 @@ export class MessagingProviderStatusService {
 		return statuses;
 	}
 
-	private isPluginConfigured(type: string, config: Record<string, unknown>): boolean {
+	private isPluginConfigured(config: Record<string, unknown>): boolean {
 		// A messaging plugin is considered configured if it has its main credential set.
 		// We check common patterns: botToken, token, apiKey.
 		const credentialKeys = ['botToken', 'bot_token', 'token', 'apiKey', 'api_key'];
