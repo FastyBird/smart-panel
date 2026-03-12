@@ -23,6 +23,7 @@ interface ScenarioCommandOptions {
 	truncate?: boolean;
 	noRooms?: boolean;
 	noScenes?: boolean;
+	noRoles?: boolean;
 	dryRun?: boolean;
 }
 
@@ -91,6 +92,15 @@ export class ScenarioCommand extends CommandRunner {
 		defaultValue: false,
 	})
 	parseNoScenes(): boolean {
+		return true;
+	}
+
+	@Option({
+		flags: '--no-roles',
+		description: 'Skip applying default domain roles and media bindings',
+		defaultValue: false,
+	})
+	parseNoRoles(): boolean {
 		return true;
 	}
 
@@ -181,6 +191,7 @@ export class ScenarioCommand extends CommandRunner {
 			truncate: boolean;
 			createRooms: boolean;
 			createScenes: boolean;
+			applyRoles: boolean;
 			confirm: boolean;
 		}>([
 			{
@@ -214,6 +225,12 @@ export class ScenarioCommand extends CommandRunner {
 			},
 			{
 				type: 'confirm',
+				name: 'applyRoles',
+				message: 'Apply default domain roles and media bindings?',
+				default: true,
+			},
+			{
+				type: 'confirm',
 				name: 'confirm',
 				message: 'Proceed with loading the scenario?',
 				default: true,
@@ -230,6 +247,7 @@ export class ScenarioCommand extends CommandRunner {
 			truncate: answers.truncate,
 			noRooms: !answers.createRooms,
 			noScenes: !answers.createScenes,
+			noRoles: !answers.applyRoles,
 		});
 	}
 
@@ -328,6 +346,7 @@ export class ScenarioCommand extends CommandRunner {
 		const result = await this.scenarioExecutor.execute(scenarioConfig, {
 			createRooms: !options.noRooms,
 			createScenes: !options.noScenes,
+			applyRoles: !options.noRoles,
 			dryRun: options.dryRun,
 		});
 
@@ -345,6 +364,9 @@ export class ScenarioCommand extends CommandRunner {
 			console.log(`  Devices created: ${result.devicesCreated}`);
 			if (!options.noScenes && result.scenesCreated > 0) {
 				console.log(`  Scenes created: ${result.scenesCreated}`);
+			}
+			if (!options.noRoles && result.rolesApplied > 0) {
+				console.log(`  Domain roles applied: ${result.rolesApplied} rooms`);
 			}
 			console.log('');
 

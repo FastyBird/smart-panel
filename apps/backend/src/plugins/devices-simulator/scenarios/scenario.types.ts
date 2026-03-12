@@ -163,6 +163,8 @@ export interface ScenarioExecutionResult {
 	roomsCreated: number;
 	/** Number of scenes created */
 	scenesCreated: number;
+	/** Number of rooms where domain roles were applied */
+	rolesApplied: number;
 	/** IDs of created devices */
 	deviceIds: string[];
 	/** IDs of created rooms */
@@ -181,6 +183,8 @@ export interface ScenarioExecutionOptions {
 	createRooms?: boolean;
 	/** Create scenes defined in the scenario */
 	createScenes?: boolean;
+	/** Apply default domain roles (lighting, climate, sensor, covers) and media bindings */
+	applyRoles?: boolean;
 	/** Dry run - don't actually create anything */
 	dryRun?: boolean;
 }

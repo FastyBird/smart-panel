@@ -27,6 +27,11 @@ import {
 } from '../../../modules/devices/utils/schema.utils';
 import { SceneCategory } from '../../../modules/scenes/scenes.constants';
 import { ScenesService } from '../../../modules/scenes/services/scenes.service';
+import { SpaceClimateRoleService } from '../../../modules/spaces/services/space-climate-role.service';
+import { SpaceCoversRoleService } from '../../../modules/spaces/services/space-covers-role.service';
+import { SpaceLightingRoleService } from '../../../modules/spaces/services/space-lighting-role.service';
+import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
+import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
@@ -58,6 +63,11 @@ export class ScenarioExecutorService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly spacesService: SpacesService,
 		private readonly scenesService: ScenesService,
+		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceClimateRoleService: SpaceClimateRoleService,
+		private readonly spaceSensorRoleService: SpaceSensorRoleService,
+		private readonly spaceCoversRoleService: SpaceCoversRoleService,
+		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
 	) {}
 
 	/**
@@ -72,6 +82,7 @@ export class ScenarioExecutorService {
 				devicesCreated: 0,
 				roomsCreated: 0,
 				scenesCreated: 0,
+				rolesApplied: 0,
 				deviceIds: [],
 				roomIds: [],
 				sceneIds: [],
@@ -94,6 +105,7 @@ export class ScenarioExecutorService {
 				devicesCreated: 0,
 				roomsCreated: 0,
 				scenesCreated: 0,
+				rolesApplied: 0,
 				deviceIds: [],
 				roomIds: [],
 				sceneIds: [],
@@ -213,6 +225,26 @@ export class ScenarioExecutorService {
 			}
 		}
 
+		// Apply default domain roles and media bindings for each room
+		let rolesApplied = 0;
+
+		if (options.applyRoles !== false && roomIds.length > 0 && !options.dryRun) {
+			for (const roomId of roomIds) {
+				try {
+					await this.applyDomainDefaults(roomId);
+					rolesApplied++;
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					errors.push(`Failed to apply domain defaults for room '${roomId}': ${message}`);
+					this.logger.error(`Failed to apply domain defaults for room: ${roomId}`, { error: message });
+				}
+			}
+
+			if (rolesApplied > 0) {
+				this.logger.log(`Applied domain roles and media bindings for ${rolesApplied} rooms`);
+			}
+		}
+
 		const success = errors.length === 0;
 
 		if (options.dryRun) {
@@ -226,6 +258,7 @@ export class ScenarioExecutorService {
 			devicesCreated: deviceIds.length,
 			roomsCreated: roomIds.length,
 			scenesCreated: sceneIds.length,
+			rolesApplied,
 			deviceIds,
 			roomIds,
 			sceneIds,
@@ -330,6 +363,50 @@ export class ScenarioExecutorService {
 		const values = Object.values(SceneCategory) as string[];
 		const match = values.find((v) => v === lowerCategory);
 		return (match as SceneCategory) ?? undefined;
+	}
+
+	/**
+	 * Apply default domain roles and media activity bindings for a room
+	 */
+	private async applyDomainDefaults(spaceId: string): Promise<void> {
+		// Lighting roles
+		const lightingRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(spaceId);
+
+		if (lightingRoles.length > 0) {
+			await this.spaceLightingRoleService.bulkSetRoles(spaceId, lightingRoles);
+			this.logger.log(`Applied ${lightingRoles.length} lighting roles for space ${spaceId}`);
+		}
+
+		// Climate roles
+		const climateRoles = await this.spaceClimateRoleService.inferDefaultClimateRoles(spaceId);
+
+		if (climateRoles.length > 0) {
+			await this.spaceClimateRoleService.bulkSetRoles(spaceId, climateRoles);
+			this.logger.log(`Applied ${climateRoles.length} climate roles for space ${spaceId}`);
+		}
+
+		// Sensor roles
+		const sensorRoles = await this.spaceSensorRoleService.inferDefaultSensorRoles(spaceId);
+
+		if (sensorRoles.length > 0) {
+			await this.spaceSensorRoleService.bulkSetRoles(spaceId, sensorRoles);
+			this.logger.log(`Applied ${sensorRoles.length} sensor roles for space ${spaceId}`);
+		}
+
+		// Covers roles
+		const coversRoles = await this.spaceCoversRoleService.inferDefaultCoversRoles(spaceId);
+
+		if (coversRoles.length > 0) {
+			await this.spaceCoversRoleService.bulkSetRoles(spaceId, coversRoles);
+			this.logger.log(`Applied ${coversRoles.length} covers roles for space ${spaceId}`);
+		}
+
+		// Media activity bindings
+		const mediaBindings = await this.spaceMediaActivityBindingService.applyDefaults(spaceId);
+
+		if (mediaBindings.length > 0) {
+			this.logger.log(`Applied ${mediaBindings.length} media activity bindings for space ${spaceId}`);
+		}
 	}
 
 	/**
