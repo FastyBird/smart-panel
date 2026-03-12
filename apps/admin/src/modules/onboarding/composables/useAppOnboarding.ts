@@ -260,10 +260,9 @@ export const useAppOnboarding = () => {
 				existingNames.add(label.toLowerCase());
 			}
 
-			// Auto-assign only devices we haven't seen before (not in the map at all).
-			// Devices explicitly unassigned by the user have a null value and must not
-			// be re-assigned.
-			if (!(device.id in deviceAssignments)) {
+			// Auto-assign only devices we haven't seen before (not in the map at all)
+			// and only if the target space exists (not dismissed by the user).
+			if (!(device.id in deviceAssignments) && !dismissedSpaces.has(label.toLowerCase())) {
 				deviceAssignments[device.id] = label;
 			}
 		}

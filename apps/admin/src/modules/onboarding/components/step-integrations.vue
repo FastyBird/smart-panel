@@ -367,19 +367,16 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 		// Initial fetch to seed the store
 		await devicesStore.fetch();
-
-		if (discoveryGeneration[type] !== generation) return;
-
-		// Start shared polling if not already running
-		startPolling();
 	} catch {
-		// Discovery may fail if plugin isn't fully started yet
-	} finally {
-		// Only update state if this is still the current discovery
-		if (discoveryGeneration[type] === generation) {
-			discoveringPlugins.delete(type);
-			discoveredPlugins.add(type);
-		}
+		// Initial fetch may fail if plugin isn't fully started yet
+	}
+
+	// Start shared polling regardless of whether the initial fetch succeeded,
+	// so devices discovered later are still picked up
+	if (discoveryGeneration[type] === generation) {
+		startPolling();
+		discoveringPlugins.delete(type);
+		discoveredPlugins.add(type);
 	}
 };
 
