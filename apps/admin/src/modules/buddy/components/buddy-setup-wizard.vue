@@ -666,6 +666,11 @@ const voiceSummary = computed<string>(() => {
 const selectLlmProvider = (type: string): void => {
 	selectedLlmProvider.value = selectedLlmProvider.value === type ? null : type;
 
+	// Reset form refs so stale state from a previous provider's form doesn't carry over
+	llmFormSubmit.value = false;
+	llmFormResult.value = FormResult.NONE;
+	llmFormChanged.value = false;
+
 	// Fetch config for this plugin if not loaded
 	if (selectedLlmProvider.value) {
 		fetchPluginConfig(selectedLlmProvider.value);
@@ -676,6 +681,11 @@ const selectTtsProvider = (type: string): void => {
 	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
 	activeVoiceConfigType.value = selectedTtsProvider.value;
 
+	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
+	voiceFormSubmit.value = false;
+	voiceFormResult.value = FormResult.NONE;
+	voiceFormChanged.value = false;
+
 	if (selectedTtsProvider.value) {
 		fetchPluginConfig(selectedTtsProvider.value);
 	}
@@ -685,6 +695,11 @@ const selectSttProvider = (type: string): void => {
 	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
 	activeVoiceConfigType.value = selectedSttProvider.value;
 
+	// Reset shared voice form refs so stale state from a previous provider doesn't carry over
+	voiceFormSubmit.value = false;
+	voiceFormResult.value = FormResult.NONE;
+	voiceFormChanged.value = false;
+
 	if (selectedSttProvider.value) {
 		fetchPluginConfig(selectedSttProvider.value);
 	}
@@ -692,6 +707,11 @@ const selectSttProvider = (type: string): void => {
 
 const selectMessagingProvider = (type: string): void => {
 	selectedMessagingProvider.value = selectedMessagingProvider.value === type ? null : type;
+
+	// Reset form refs so stale state from a previous provider's form doesn't carry over
+	messagingFormSubmit.value = false;
+	messagingFormResult.value = FormResult.NONE;
+	messagingFormChanged.value = false;
 
 	if (selectedMessagingProvider.value) {
 		fetchPluginConfig(selectedMessagingProvider.value);
