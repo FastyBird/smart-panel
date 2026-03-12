@@ -187,12 +187,22 @@ export const useAppOnboarding = () => {
 				longitude: locationData.longitude,
 			};
 
-			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
+			const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
 				body: { data: locationBody },
 			} as never);
 
 			if (error) {
 				return false;
+			}
+
+			// Set the newly created location as the primary weather location
+			const locationId = (data as { data?: { id?: string } })?.data?.id;
+
+			if (locationId) {
+				await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
+					params: { path: { module: 'weather-module' } },
+					body: { data: { primary_location_id: locationId } },
+				} as never);
 			}
 
 			locationConfigured.value = true;
