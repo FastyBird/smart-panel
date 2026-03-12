@@ -16,6 +16,10 @@ import {
 	SuggestionsResponseModel,
 } from './models/suggestion-response.model';
 import {
+	MessagingProviderStatusDataModel,
+	MessagingProviderStatusesResponseModel,
+} from './models/messaging-provider-status.model';
+import {
 	SttProviderStatusesResponseModel,
 	TtsProviderStatusesResponseModel,
 	VoiceProviderStatusDataModel,
@@ -44,4 +48,6 @@ export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	SuggestionsResponseModel,
 	SuggestionFeedbackResultDataModel,
 	SuggestionFeedbackResponseModel,
+	MessagingProviderStatusDataModel,
+	MessagingProviderStatusesResponseModel,
 ];

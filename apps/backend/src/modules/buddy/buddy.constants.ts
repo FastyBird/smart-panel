@@ -28,8 +28,6 @@ export enum BuddyCapability {
 	MESSAGING = 'messaging',
 }
 
-export const MESSAGING_PLUGIN_NONE = 'none';
-
 export const STT_PLUGIN_NONE = 'none';
 
 export const TTS_AUDIO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes

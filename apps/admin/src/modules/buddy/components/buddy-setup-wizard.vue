@@ -390,7 +390,7 @@
 				<div class="flex gap-2">
 					<el-button
 						v-if="canSkip"
-						@click="nextStep"
+						@click="handleSkip"
 					>
 						{{ t('buddyModule.wizard.buttons.skip') }}
 					</el-button>
@@ -811,6 +811,19 @@ const prevStep = (): void => {
 	if (currentStep.value > 0) {
 		currentStep.value--;
 	}
+};
+
+const handleSkip = (): void => {
+	// Clear selections for the skipped step so the summary doesn't show unsaved choices
+	if (currentStepName.value === 'voice') {
+		selectedTtsProvider.value = null;
+		selectedSttProvider.value = null;
+		activeVoiceConfigType.value = null;
+	} else if (currentStepName.value === 'messaging') {
+		selectedMessagingProvider.value = null;
+	}
+
+	nextStep();
 };
 
 const handleNext = async (): Promise<void> => {

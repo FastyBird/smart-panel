@@ -56,14 +56,26 @@ export class MessagingProviderStatusService {
 	}
 
 	private isPluginConfigured(type: string, config: Record<string, unknown>): boolean {
-		// A messaging plugin is considered configured if it has its main credential set
-		// We check common patterns: botToken, token, apiKey
+		// A messaging plugin is considered configured if it has its main credential set.
+		// We check common patterns: botToken, token, apiKey.
 		const credentialKeys = ['botToken', 'bot_token', 'token', 'apiKey', 'api_key'];
 
+		let hasCredentialField = false;
+
 		for (const key of credentialKeys) {
-			if (typeof config[key] === 'string' && (config[key] as string).trim().length > 0) {
-				return true;
+			if (key in config) {
+				hasCredentialField = true;
+
+				if (typeof config[key] === 'string' && (config[key] as string).trim().length > 0) {
+					return true;
+				}
 			}
+		}
+
+		// If the plugin has no credential fields at all (e.g. WhatsApp with QR pairing),
+		// consider it configured when enabled — there are no credentials to fill in.
+		if (!hasCredentialField) {
+			return (config.enabled as boolean) ?? false;
 		}
 
 		return false;
