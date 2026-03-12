@@ -37,16 +37,19 @@ rooms:
 
 devices:
   # Living Room
-  - name: "Living Room Main Lights"
+  - id: "e0000001-0001-4000-8000-000000000001"
+    name: "Living Room Main Lights"
     category: lighting
     room: living-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "e0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "e0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 75
           - category: color_temperature
             value: 3500
@@ -55,16 +58,19 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room Accent Lights"
+  - id: "e0000001-0001-4000-8000-000000000002"
+    name: "Living Room Accent Lights"
     category: lighting
     room: living-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "e0000001-0001-4000-8000-000000000020"
+            category: on
             value: true
-          - category: brightness
+          - id: "e0000001-0001-4000-8000-000000000021"
+            category: brightness
             value: 50
           - category: hue
             value: 30
@@ -117,14 +123,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room TV"
+  - id: "e0000001-0001-4000-8000-000000000003"
+    name: "Living Room TV"
     category: television
     room: living-room
     behavior_mode: realistic
     channels:
       - category: television
         properties:
-          - category: on
+          - id: "e0000001-0001-4000-8000-000000000030"
+            category: on
             value: false
       - category: speaker
         properties:
@@ -137,7 +145,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room Blinds"
+  - id: "e0000001-0001-4000-8000-000000000004"
+    name: "Living Room Blinds"
     category: window_covering
     room: living-room
     auto_simulate: true
@@ -145,7 +154,8 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "e0000001-0001-4000-8000-000000000040"
+            category: position
             value: 100
           - category: tilt
             value: 50
@@ -155,14 +165,16 @@ devices:
             value: "FastyBird"
 
   # Master Bedroom
-  - name: "Master Bedroom Lights"
+  - id: "e0000001-0001-4000-8000-000000000005"
+    name: "Master Bedroom Lights"
     category: lighting
     room: master-bedroom
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "e0000001-0001-4000-8000-000000000050"
+            category: on
             value: false
           - category: brightness
             value: 30
@@ -191,7 +203,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Blinds"
+  - id: "e0000001-0001-4000-8000-000000000006"
+    name: "Master Bedroom Blinds"
     category: window_covering
     room: master-bedroom
     auto_simulate: true
@@ -199,7 +212,8 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "e0000001-0001-4000-8000-000000000060"
+            category: position
             value: 0
       - category: device_information
         properties:
@@ -442,14 +456,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "e0000001-0001-4000-8000-000000000007"
+    name: "Front Door Lock"
     category: lock
     room: hallway
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "e0000001-0001-4000-8000-000000000070"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -531,3 +547,51 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Movie Night"
+    category: movie
+    room: living-room
+    actions:
+      - device_id: "e0000001-0001-4000-8000-000000000001"
+        property_id: "e0000001-0001-4000-8000-000000000011"
+        value: 15
+      - device_id: "e0000001-0001-4000-8000-000000000002"
+        property_id: "e0000001-0001-4000-8000-000000000020"
+        value: false
+      - device_id: "e0000001-0001-4000-8000-000000000003"
+        property_id: "e0000001-0001-4000-8000-000000000030"
+        value: true
+      - device_id: "e0000001-0001-4000-8000-000000000004"
+        property_id: "e0000001-0001-4000-8000-000000000040"
+        value: 0
+
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "e0000001-0001-4000-8000-000000000001"
+        property_id: "e0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "e0000001-0001-4000-8000-000000000005"
+        property_id: "e0000001-0001-4000-8000-000000000050"
+        value: false
+      - device_id: "e0000001-0001-4000-8000-000000000006"
+        property_id: "e0000001-0001-4000-8000-000000000060"
+        value: 0
+      - device_id: "e0000001-0001-4000-8000-000000000007"
+        property_id: "e0000001-0001-4000-8000-000000000070"
+        value: "locked"
+
+  - name: "Party Mode"
+    category: party
+    room: living-room
+    actions:
+      - device_id: "e0000001-0001-4000-8000-000000000001"
+        property_id: "e0000001-0001-4000-8000-000000000011"
+        value: 60
+      - device_id: "e0000001-0001-4000-8000-000000000002"
+        property_id: "e0000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "e0000001-0001-4000-8000-000000000002"
+        property_id: "e0000001-0001-4000-8000-000000000021"
+        value: 80

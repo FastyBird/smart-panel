@@ -87,14 +87,16 @@ devices:
   # ============================================================================
   # FLOOR 1 - FOYER
   # ============================================================================
-  - name: "Foyer Chandelier"
+  - id: "10000001-0001-4000-8000-000000000002"
+    name: "Foyer Chandelier"
     category: lighting
     room: foyer
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000020"
+            category: on
             value: true
           - category: brightness
             value: 80
@@ -120,14 +122,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "10000001-0001-4000-8000-000000000003"
+    name: "Front Door Lock"
     category: lock
     room: foyer
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "10000001-0001-4000-8000-000000000030"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -200,16 +204,19 @@ devices:
   # ============================================================================
   # FLOOR 1 - LIVING ROOM
   # ============================================================================
-  - name: "Living Room Ceiling Light"
+  - id: "10000001-0001-4000-8000-000000000001"
+    name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "10000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
           - category: color_temperature
             value: 4000
@@ -520,16 +527,19 @@ devices:
   # ============================================================================
   # FLOOR 1 - KITCHEN
   # ============================================================================
-  - name: "Kitchen Main Light"
+  - id: "10000001-0001-4000-8000-000000000005"
+    name: "Kitchen Main Light"
     category: lighting
     room: kitchen
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000050"
+            category: on
             value: true
-          - category: brightness
+          - id: "10000001-0001-4000-8000-000000000051"
+            category: brightness
             value: 100
           - category: color_temperature
             value: 5000
@@ -1146,14 +1156,16 @@ devices:
   # ============================================================================
   # FLOOR 2 - MASTER SUITE
   # ============================================================================
-  - name: "Master Bedroom Main Light"
+  - id: "10000001-0001-4000-8000-000000000004"
+    name: "Master Bedroom Main Light"
     category: lighting
     room: master-suite
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000040"
+            category: on
             value: false
           - category: brightness
             value: 70
@@ -2196,3 +2208,36 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "10000001-0001-4000-8000-000000000001"
+        property_id: "10000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000002"
+        property_id: "10000001-0001-4000-8000-000000000020"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000004"
+        property_id: "10000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000003"
+        property_id: "10000001-0001-4000-8000-000000000030"
+        value: "locked"
+
+  - name: "Good Morning"
+    category: morning
+    actions:
+      - device_id: "10000001-0001-4000-8000-000000000005"
+        property_id: "10000001-0001-4000-8000-000000000050"
+        value: true
+      - device_id: "10000001-0001-4000-8000-000000000005"
+        property_id: "10000001-0001-4000-8000-000000000051"
+        value: 100
+      - device_id: "10000001-0001-4000-8000-000000000002"
+        property_id: "10000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "10000001-0001-4000-8000-000000000003"
+        property_id: "10000001-0001-4000-8000-000000000030"
+        value: "unlocked"

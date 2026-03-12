@@ -1,7 +1,7 @@
 /**
  * Scenario Executor Service
  *
- * Executes scenario configurations to create rooms and devices.
+ * Executes scenario configurations to create rooms, devices, and scenes.
  */
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,6 +16,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
 import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -24,8 +25,11 @@ import {
 	getRequiredChannels,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
+import { SceneCategory } from '../../../modules/scenes/scenes.constants';
+import { ScenesService } from '../../../modules/scenes/services/scenes.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
+import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
@@ -35,6 +39,7 @@ import {
 	ScenarioExecutionOptions,
 	ScenarioExecutionResult,
 	ScenarioPropertyDefinition,
+	ScenarioSceneDefinition,
 } from '../scenarios/scenario.types';
 
 import { ScenarioLoaderService } from './scenario-loader.service';
@@ -49,8 +54,10 @@ export class ScenarioExecutorService {
 	constructor(
 		private readonly scenarioLoader: ScenarioLoaderService,
 		private readonly devicesService: DevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly spacesService: SpacesService,
+		private readonly scenesService: ScenesService,
 	) {}
 
 	/**
@@ -64,8 +71,10 @@ export class ScenarioExecutorService {
 				success: false,
 				devicesCreated: 0,
 				roomsCreated: 0,
+				scenesCreated: 0,
 				deviceIds: [],
 				roomIds: [],
+				sceneIds: [],
 				errors: loadResult.errors ?? ['Failed to load scenario'],
 			};
 		}
@@ -84,8 +93,10 @@ export class ScenarioExecutorService {
 				success: false,
 				devicesCreated: 0,
 				roomsCreated: 0,
+				scenesCreated: 0,
 				deviceIds: [],
 				roomIds: [],
+				sceneIds: [],
 				errors: loadResult.errors ?? ['Failed to load scenario'],
 			};
 		}
@@ -100,6 +111,7 @@ export class ScenarioExecutorService {
 		const errors: string[] = [];
 		const deviceIds: string[] = [];
 		const roomIds: string[] = [];
+		const sceneIds: string[] = [];
 		const roomIdMap = new Map<string, string>(); // scenario room id -> database room id
 		const zoneIds = new Set<string>(); // scenario room ids that are zones
 
@@ -146,6 +158,17 @@ export class ScenarioExecutorService {
 			}
 
 			try {
+				// Check if device already exists (upsert = skip-if-exists)
+				if (deviceDef.id) {
+					const existing = await this.devicesService.findOne(deviceDef.id);
+
+					if (existing) {
+						this.logger.log(`Device already exists, skipping: ${deviceDef.name} (${deviceDef.id})`);
+						deviceIds.push(deviceDef.id);
+						continue;
+					}
+				}
+
 				// Resolve space assignment - rooms use room_id, zones use zone_ids
 				let roomId: string | null = null;
 				let deviceZoneIds: string[] = [];
@@ -169,6 +192,27 @@ export class ScenarioExecutorService {
 			}
 		}
 
+		// Create scenes if enabled
+		if (options.createScenes !== false && config.scenes && config.scenes.length > 0) {
+			for (const sceneDef of config.scenes) {
+				if (options.dryRun) {
+					this.logger.log(`[DRY RUN] Would create scene: ${sceneDef.name}`);
+					continue;
+				}
+
+				try {
+					const sceneId = await this.createScene(sceneDef, roomIdMap);
+					sceneIds.push(sceneId);
+
+					this.logger.log(`Created scene: ${sceneDef.name} (${sceneId})`);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					errors.push(`Failed to create scene '${sceneDef.name}': ${message}`);
+					this.logger.error(`Failed to create scene: ${sceneDef.name}`, { error: message });
+				}
+			}
+		}
+
 		const success = errors.length === 0;
 
 		if (options.dryRun) {
@@ -181,10 +225,111 @@ export class ScenarioExecutorService {
 			success,
 			devicesCreated: deviceIds.length,
 			roomsCreated: roomIds.length,
+			scenesCreated: sceneIds.length,
 			deviceIds,
 			roomIds,
+			sceneIds,
 			errors,
 		};
+	}
+
+	/**
+	 * Create a scene from scenario definition
+	 */
+	private async createScene(sceneDef: ScenarioSceneDefinition, roomIdMap: Map<string, string>): Promise<string> {
+		// Check if scene already exists (upsert = skip-if-exists)
+		if (sceneDef.id) {
+			const existing = await this.scenesService.findOne(sceneDef.id);
+
+			if (existing) {
+				this.logger.log(`Scene already exists, skipping: ${sceneDef.name} (${sceneDef.id})`);
+				return sceneDef.id;
+			}
+		}
+
+		// Resolve room reference to space ID
+		let primarySpaceId: string | null = null;
+		if (sceneDef.room) {
+			primarySpaceId = roomIdMap.get(sceneDef.room) ?? null;
+		}
+
+		// Build actions — resolve channel_id (and device_id) from property relations if not provided
+		const actions = await Promise.all(
+			sceneDef.actions.map(async (actionDef) => {
+				let deviceId = actionDef.device_id;
+				let channelId = actionDef.channel_id;
+
+				// Resolve channel_id (and optionally device_id) from property relations
+				if (!channelId || !deviceId) {
+					const property = await this.channelsPropertiesService.findOne(actionDef.property_id);
+
+					if (property) {
+						const channel = property.channel;
+
+						if (channel && typeof channel !== 'string') {
+							channelId = channelId ?? channel.id;
+
+							if (!deviceId) {
+								const device = channel.device;
+
+								if (device && typeof device !== 'string') {
+									deviceId = device.id;
+								}
+							}
+						}
+					}
+
+					if (!channelId) {
+						this.logger.warn(
+							`Could not resolve channel_id for property ${actionDef.property_id} in scene "${sceneDef.name}"`,
+						);
+					}
+				}
+
+				return {
+					type: SCENES_LOCAL_TYPE,
+					device_id: deviceId,
+					...(channelId ? { channel_id: channelId } : {}),
+					property_id: actionDef.property_id,
+					value: actionDef.value,
+				};
+			}),
+		);
+
+		// Resolve category
+		const category = this.resolveSceneCategory(sceneDef.category);
+
+		const scene = await this.scenesService.create({
+			id: sceneDef.id ?? uuidv4(),
+			name: sceneDef.name,
+			...(sceneDef.description ? { description: sceneDef.description } : {}),
+			...(category ? { category } : {}),
+			...(primarySpaceId ? { primary_space_id: primarySpaceId } : {}),
+			...(sceneDef.enabled !== undefined ? { enabled: sceneDef.enabled } : {}),
+			actions,
+		});
+
+		return scene.id;
+	}
+
+	/**
+	 * Resolve scene category string to enum
+	 */
+	private resolveSceneCategory(category?: string): SceneCategory | undefined {
+		if (!category) {
+			return undefined;
+		}
+
+		const upperCategory = category.toUpperCase();
+		if (upperCategory in SceneCategory) {
+			return SceneCategory[upperCategory as keyof typeof SceneCategory];
+		}
+
+		// Try lowercase match
+		const lowerCategory = category.toLowerCase();
+		const values = Object.values(SceneCategory) as string[];
+		const match = values.find((v) => v === lowerCategory);
+		return (match as SceneCategory) ?? undefined;
 	}
 
 	/**
@@ -206,7 +351,7 @@ export class ScenarioExecutorService {
 
 		// Create device
 		const deviceData = {
-			id: uuidv4(),
+			id: deviceDef.id ?? uuidv4(),
 			type: DEVICES_SIMULATOR_TYPE,
 			category: deviceCategory,
 			name: deviceDef.name,
@@ -257,7 +402,7 @@ export class ScenarioExecutorService {
 			const properties = this.buildProperties(channelDef.properties, channelCategory);
 
 			return {
-				id: uuidv4(),
+				id: channelDef.id ?? uuidv4(),
 				type: DEVICES_SIMULATOR_TYPE,
 				category: channelCategory,
 				name: channelDef.name ?? this.formatName(channelDef.category),
@@ -325,7 +470,7 @@ export class ScenarioExecutorService {
 			}
 
 			return {
-				id: uuidv4(),
+				id: propertyDef.id ?? uuidv4(),
 				type: DEVICES_SIMULATOR_TYPE,
 				category: propertyCategory,
 				name: this.formatName(propertyDef.category),
@@ -446,6 +591,7 @@ export class ScenarioExecutorService {
 	preview(config: ScenarioConfig): {
 		rooms: { name: string; type: 'room' | 'zone' }[];
 		devices: { name: string; category: string; channelCount: number; propertyCount: number }[];
+		scenes: { name: string; category: string; actionCount: number }[];
 	} {
 		const rooms = config.rooms?.map((r) => ({ name: r.name, type: r.type ?? 'room' })) ?? [];
 
@@ -506,6 +652,13 @@ export class ScenarioExecutorService {
 			};
 		});
 
-		return { rooms, devices };
+		const scenes =
+			config.scenes?.map((s) => ({
+				name: s.name,
+				category: s.category ?? 'generic',
+				actionCount: s.actions.length,
+			})) ?? [];
+
+		return { rooms, devices, scenes };
 	}
 }

@@ -58,16 +58,19 @@ devices:
   # ============================================================================
   # LIVING ROOM
   # ============================================================================
-  - name: "Living Room Ceiling Light"
+  - id: "f0000001-0001-4000-8000-000000000001"
+    name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
           - category: color_temperature
             value: 4000
@@ -76,16 +79,19 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room Recessed Lights"
+  - id: "f0000001-0001-4000-8000-000000000012"
+    name: "Living Room Recessed Lights"
     category: lighting
     room: living-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000120"
+            category: on
             value: true
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-000000000121"
+            category: brightness
             value: 60
       - category: device_information
         properties:
@@ -241,14 +247,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Family Room TV"
+  - id: "f0000001-0001-4000-8000-000000000002"
+    name: "Family Room TV"
     category: television
     room: family-room
     behavior_mode: realistic
     channels:
       - category: television
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000020"
+            category: on
             value: false
       - category: speaker
         properties:
@@ -261,16 +269,19 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Family Room Soundbar"
+  - id: "f0000001-0001-4000-8000-00000000000d"
+    name: "Family Room Soundbar"
     category: speaker
     room: family-room
     behavior_mode: realistic
     channels:
       - category: speaker
         properties:
-          - category: active
+          - id: "f0000001-0001-4000-8000-0000000000d0"
+            category: active
             value: false
-          - category: volume
+          - id: "f0000001-0001-4000-8000-0000000000d1"
+            category: volume
             value: 30
       - category: device_information
         properties:
@@ -296,14 +307,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Family Room Motorized Blinds"
+  - id: "f0000001-0001-4000-8000-000000000003"
+    name: "Family Room Motorized Blinds"
     category: window_covering
     room: family-room
     behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "f0000001-0001-4000-8000-000000000030"
+            category: position
             value: 0
           - category: tilt
             value: 45
@@ -317,14 +330,16 @@ devices:
   # ============================================================================
   # MASTER BEDROOM
   # ============================================================================
-  - name: "Master Bedroom Main Light"
+  - id: "f0000001-0001-4000-8000-000000000004"
+    name: "Master Bedroom Main Light"
     category: lighting
     room: master-bedroom
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000040"
+            category: on
             value: false
           - category: brightness
             value: 70
@@ -335,15 +350,18 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Bedside Left"
+  - id: "f0000001-0001-4000-8000-000000000009"
+    name: "Master Bedroom Bedside Left"
     category: lighting
     room: master-bedroom
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000090"
+            category: on
             value: false
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-000000000091"
+            category: brightness
             value: 30
       - category: device_information
         properties:
@@ -365,13 +383,15 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Ceiling Fan"
+  - id: "f0000001-0001-4000-8000-00000000000a"
+    name: "Master Bedroom Ceiling Fan"
     category: fan
     room: master-bedroom
     channels:
       - category: fan
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-0000000000a0"
+            category: on
             value: false
           - category: speed
             value: "low"
@@ -398,7 +418,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom AC"
+  - id: "f0000001-0001-4000-8000-00000000000b"
+    name: "Master Bedroom AC"
     category: air_conditioner
     room: master-bedroom
     auto_simulate: true
@@ -406,9 +427,11 @@ devices:
     channels:
       - category: cooler
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-0000000000b0"
+            category: on
             value: false
-          - category: temperature
+          - id: "f0000001-0001-4000-8000-0000000000b1"
+            category: temperature
             value: 22.0
       - category: temperature
         properties:
@@ -440,7 +463,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Blackout Shades"
+  - id: "f0000001-0001-4000-8000-000000000005"
+    name: "Master Bedroom Blackout Shades"
     category: window_covering
     room: master-bedroom
     auto_simulate: true
@@ -448,7 +472,8 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "f0000001-0001-4000-8000-000000000050"
+            category: position
             value: 0
           - category: type
             value: "roller"
@@ -457,14 +482,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Sheer Curtains"
+  - id: "f0000001-0001-4000-8000-00000000000c"
+    name: "Master Bedroom Sheer Curtains"
     category: window_covering
     room: master-bedroom
     behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "f0000001-0001-4000-8000-0000000000c0"
+            category: position
             value: 100
           - category: type
             value: "curtain"
@@ -883,16 +910,19 @@ devices:
   # ============================================================================
   # DINING ROOM
   # ============================================================================
-  - name: "Dining Room Chandelier"
+  - id: "f0000001-0001-4000-8000-000000000011"
+    name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000110"
+            category: on
             value: false
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-000000000111"
+            category: brightness
             value: 60
           - category: color_temperature
             value: 2700
@@ -935,33 +965,40 @@ devices:
   # ============================================================================
   # HOME OFFICE
   # ============================================================================
-  - name: "Office Main Light"
+  - id: "f0000001-0001-4000-8000-00000000000e"
+    name: "Office Main Light"
     category: lighting
     room: home-office
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-0000000000e0"
+            category: on
             value: true
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-0000000000e1"
+            category: brightness
             value: 80
-          - category: color_temperature
+          - id: "f0000001-0001-4000-8000-0000000000e2"
+            category: color_temperature
             value: 5000
       - category: device_information
         properties:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Office Desk Lamp"
+  - id: "f0000001-0001-4000-8000-00000000000f"
+    name: "Office Desk Lamp"
     category: lighting
     room: home-office
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-0000000000f0"
+            category: on
             value: true
-          - category: brightness
+          - id: "f0000001-0001-4000-8000-0000000000f1"
+            category: brightness
             value: 90
           - category: color_temperature
             value: 5500
@@ -993,14 +1030,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Office Roller Shade"
+  - id: "f0000001-0001-4000-8000-000000000010"
+    name: "Office Roller Shade"
     category: window_covering
     room: home-office
     behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "f0000001-0001-4000-8000-000000000100"
+            category: position
             value: 75
           - category: type
             value: "roller"
@@ -1171,14 +1210,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "f0000001-0001-4000-8000-000000000006"
+    name: "Front Door Lock"
     category: lock
     room: foyer
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "f0000001-0001-4000-8000-000000000060"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -1245,7 +1286,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Main Thermostat"
+  - id: "f0000001-0001-4000-8000-000000000007"
+    name: "Main Thermostat"
     category: thermostat
     room: hallway
     auto_simulate: true
@@ -1258,9 +1300,11 @@ devices:
             value: 22.0
       - category: heater
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000070"
+            category: on
             value: false
-          - category: temperature
+          - id: "f0000001-0001-4000-8000-000000000071"
+            category: temperature
             value: 21.0
       - category: device_information
         properties:
@@ -1298,13 +1342,15 @@ devices:
   # ============================================================================
   # PATIO
   # ============================================================================
-  - name: "Patio Ceiling Light"
+  - id: "f0000001-0001-4000-8000-000000000013"
+    name: "Patio Ceiling Light"
     category: lighting
     room: patio
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000130"
+            category: on
             value: false
           - category: brightness
             value: 100
@@ -1313,13 +1359,15 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Patio String Lights"
+  - id: "f0000001-0001-4000-8000-000000000008"
+    name: "Patio String Lights"
     category: lighting
     room: patio
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000080"
+            category: on
             value: false
           - category: brightness
             value: 70
@@ -1347,14 +1395,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Patio Door Lock"
+  - id: "f0000001-0001-4000-8000-000000000014"
+    name: "Patio Door Lock"
     category: lock
     room: patio
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "f0000001-0001-4000-8000-000000000140"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -1393,13 +1443,15 @@ devices:
   # ============================================================================
   # BACKYARD
   # ============================================================================
-  - name: "Backyard Flood Lights"
+  - id: "f0000001-0001-4000-8000-000000000015"
+    name: "Backyard Flood Lights"
     category: lighting
     room: backyard
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "f0000001-0001-4000-8000-000000000150"
+            category: on
             value: false
           - category: brightness
             value: 100
@@ -1508,3 +1560,205 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Movie Night"
+    category: movie
+    room: family-room
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000011"
+        value: 20
+      - device_id: "f0000001-0001-4000-8000-000000000002"
+        property_id: "f0000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000003"
+        property_id: "f0000001-0001-4000-8000-000000000030"
+        value: 0
+
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000004"
+        property_id: "f0000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000005"
+        property_id: "f0000001-0001-4000-8000-000000000050"
+        value: 0
+      - device_id: "f0000001-0001-4000-8000-000000000006"
+        property_id: "f0000001-0001-4000-8000-000000000060"
+        value: "locked"
+      - device_id: "f0000001-0001-4000-8000-000000000008"
+        property_id: "f0000001-0001-4000-8000-000000000080"
+        value: false
+
+  - name: "Away Mode"
+    category: away
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000004"
+        property_id: "f0000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000006"
+        property_id: "f0000001-0001-4000-8000-000000000060"
+        value: "locked"
+      - device_id: "f0000001-0001-4000-8000-000000000007"
+        property_id: "f0000001-0001-4000-8000-000000000070"
+        value: false
+
+  - name: "Relax Evening"
+    category: relax
+    room: living-room
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000011"
+        value: 30
+      - device_id: "f0000001-0001-4000-8000-000000000012"
+        property_id: "f0000001-0001-4000-8000-000000000120"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000007"
+        property_id: "f0000001-0001-4000-8000-000000000071"
+        value: 22.0
+
+  - name: "Bedtime Reading"
+    category: night
+    room: master-bedroom
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000004"
+        property_id: "f0000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000009"
+        property_id: "f0000001-0001-4000-8000-000000000090"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000009"
+        property_id: "f0000001-0001-4000-8000-000000000091"
+        value: 25
+      - device_id: "f0000001-0001-4000-8000-000000000005"
+        property_id: "f0000001-0001-4000-8000-000000000050"
+        value: 0
+      - device_id: "f0000001-0001-4000-8000-00000000000c"
+        property_id: "f0000001-0001-4000-8000-0000000000c0"
+        value: 0
+
+  - name: "Work Focus"
+    category: work
+    room: home-office
+    actions:
+      - device_id: "f0000001-0001-4000-8000-00000000000e"
+        property_id: "f0000001-0001-4000-8000-0000000000e0"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-00000000000e"
+        property_id: "f0000001-0001-4000-8000-0000000000e1"
+        value: 90
+      - device_id: "f0000001-0001-4000-8000-00000000000e"
+        property_id: "f0000001-0001-4000-8000-0000000000e2"
+        value: 5000
+      - device_id: "f0000001-0001-4000-8000-00000000000f"
+        property_id: "f0000001-0001-4000-8000-0000000000f0"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-00000000000f"
+        property_id: "f0000001-0001-4000-8000-0000000000f1"
+        value: 100
+      - device_id: "f0000001-0001-4000-8000-000000000010"
+        property_id: "f0000001-0001-4000-8000-000000000100"
+        value: 50
+
+  - name: "Dinner Party"
+    category: party
+    room: dining-room
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000011"
+        property_id: "f0000001-0001-4000-8000-000000000110"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000011"
+        property_id: "f0000001-0001-4000-8000-000000000111"
+        value: 40
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000011"
+        value: 50
+      - device_id: "f0000001-0001-4000-8000-000000000008"
+        property_id: "f0000001-0001-4000-8000-000000000080"
+        value: true
+
+  - name: "Home Cinema"
+    category: movie
+    room: family-room
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000012"
+        property_id: "f0000001-0001-4000-8000-000000000120"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000002"
+        property_id: "f0000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-00000000000d"
+        property_id: "f0000001-0001-4000-8000-0000000000d0"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-00000000000d"
+        property_id: "f0000001-0001-4000-8000-0000000000d1"
+        value: 50
+      - device_id: "f0000001-0001-4000-8000-000000000003"
+        property_id: "f0000001-0001-4000-8000-000000000030"
+        value: 0
+
+  - name: "Morning Routine"
+    category: morning
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000010"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000011"
+        value: 100
+      - device_id: "f0000001-0001-4000-8000-000000000005"
+        property_id: "f0000001-0001-4000-8000-000000000050"
+        value: 100
+      - device_id: "f0000001-0001-4000-8000-00000000000c"
+        property_id: "f0000001-0001-4000-8000-0000000000c0"
+        value: 100
+      - device_id: "f0000001-0001-4000-8000-000000000006"
+        property_id: "f0000001-0001-4000-8000-000000000060"
+        value: "unlocked"
+
+  - name: "Outdoor Evening"
+    category: relax
+    room: patio
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000013"
+        property_id: "f0000001-0001-4000-8000-000000000130"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000008"
+        property_id: "f0000001-0001-4000-8000-000000000080"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000015"
+        property_id: "f0000001-0001-4000-8000-000000000150"
+        value: true
+      - device_id: "f0000001-0001-4000-8000-000000000014"
+        property_id: "f0000001-0001-4000-8000-000000000140"
+        value: "unlocked"
+
+  - name: "Energy Saving"
+    category: energy
+    actions:
+      - device_id: "f0000001-0001-4000-8000-000000000001"
+        property_id: "f0000001-0001-4000-8000-000000000011"
+        value: 40
+      - device_id: "f0000001-0001-4000-8000-000000000012"
+        property_id: "f0000001-0001-4000-8000-000000000120"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000008"
+        property_id: "f0000001-0001-4000-8000-000000000080"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000015"
+        property_id: "f0000001-0001-4000-8000-000000000150"
+        value: false
+      - device_id: "f0000001-0001-4000-8000-000000000007"
+        property_id: "f0000001-0001-4000-8000-000000000071"
+        value: 19.0

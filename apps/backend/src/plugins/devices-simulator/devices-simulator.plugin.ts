@@ -18,6 +18,7 @@ import { PlatformRegistryService } from '../../modules/devices/services/platform
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ScenesModule } from '../../modules/scenes/scenes.module';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
@@ -81,6 +82,7 @@ import { SimulationService } from './services/simulation.service';
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
+		ScenesModule,
 		SpacesModule,
 		SwaggerModule,
 	],

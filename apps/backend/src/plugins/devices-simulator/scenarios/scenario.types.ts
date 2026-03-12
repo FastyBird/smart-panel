@@ -9,6 +9,8 @@
  * Property definition in a scenario channel
  */
 export interface ScenarioPropertyDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Property category (e.g., 'on', 'brightness', 'temperature') */
 	category: string;
 	/** Optional data type override for multi-datatype properties */
@@ -21,6 +23,8 @@ export interface ScenarioPropertyDefinition {
  * Channel definition in a scenario device
  */
 export interface ScenarioChannelDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Channel category (e.g., 'light', 'temperature', 'thermostat') */
 	category: string;
 	/** Optional custom name for the channel */
@@ -33,6 +37,8 @@ export interface ScenarioChannelDefinition {
  * Device definition in a scenario
  */
 export interface ScenarioDeviceDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Display name for the device */
 	name: string;
 	/** Device category (e.g., 'lighting', 'sensor', 'thermostat') */
@@ -66,6 +72,40 @@ export interface ScenarioRoomDefinition {
 }
 
 /**
+ * Scene action definition
+ */
+export interface ScenarioSceneActionDefinition {
+	/** UUID of the target device */
+	device_id: string;
+	/** Optional UUID of the target channel */
+	channel_id?: string;
+	/** UUID of the target property */
+	property_id: string;
+	/** Value to set on the property */
+	value: string | number | boolean;
+}
+
+/**
+ * Scene definition in a scenario
+ */
+export interface ScenarioSceneDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
+	/** Scene display name */
+	name: string;
+	/** Optional scene description */
+	description?: string;
+	/** Scene category (e.g., 'movie', 'night', 'morning') */
+	category?: string;
+	/** Reference to room id from rooms array */
+	room?: string;
+	/** Whether the scene is enabled */
+	enabled?: boolean;
+	/** Actions to perform when scene is triggered */
+	actions: ScenarioSceneActionDefinition[];
+}
+
+/**
  * Complete scenario configuration loaded from YAML
  */
 export interface ScenarioConfig {
@@ -79,6 +119,8 @@ export interface ScenarioConfig {
 	rooms?: ScenarioRoomDefinition[];
 	/** Devices to create */
 	devices: ScenarioDeviceDefinition[];
+	/** Scenes to create (optional) */
+	scenes?: ScenarioSceneDefinition[];
 }
 
 /**
@@ -119,10 +161,14 @@ export interface ScenarioExecutionResult {
 	devicesCreated: number;
 	/** Number of rooms created */
 	roomsCreated: number;
+	/** Number of scenes created */
+	scenesCreated: number;
 	/** IDs of created devices */
 	deviceIds: string[];
 	/** IDs of created rooms */
 	roomIds: string[];
+	/** IDs of created scenes */
+	sceneIds: string[];
 	/** Errors encountered during execution */
 	errors: string[];
 }
@@ -133,6 +179,8 @@ export interface ScenarioExecutionResult {
 export interface ScenarioExecutionOptions {
 	/** Create rooms defined in the scenario */
 	createRooms?: boolean;
+	/** Create scenes defined in the scenario */
+	createScenes?: boolean;
 	/** Dry run - don't actually create anything */
 	dryRun?: boolean;
 }
