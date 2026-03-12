@@ -199,10 +199,14 @@ export const useAppOnboarding = () => {
 			const locationId = (data as { data?: { id?: string } })?.data?.id;
 
 			if (locationId) {
-				await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
+				const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
 					params: { path: { module: 'weather-module' } },
 					body: { data: { primary_location_id: locationId } },
 				} as never);
+
+				if (configError) {
+					return false;
+				}
 			}
 
 			locationConfigured.value = true;
