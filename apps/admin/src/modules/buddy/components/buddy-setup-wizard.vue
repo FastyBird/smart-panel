@@ -437,7 +437,7 @@
 					<el-button
 						v-else
 						type="primary"
-						:disabled="currentStepName === 'provider' && !selectedLlmProvider"
+						:disabled="isNextDisabled"
 						:loading="isSavingModuleConfig"
 						@click="handleNext"
 					>
@@ -461,8 +461,7 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../config/config.types';
 import { usePlugins } from '../../config/composables/usePlugins';
-import { configModulesStoreKey } from '../../config/store/keys';
-import { configPluginsStoreKey } from '../../config/store/keys';
+import { configModulesStoreKey, configPluginsStoreKey } from '../../config/store/keys';
 import { LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import type { IProviderStatus } from '../composables/useBuddyProviders';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
@@ -549,6 +548,27 @@ const canSkip = computed(() => {
 	const name = currentStepName.value;
 
 	return name === 'voice' || name === 'messaging';
+});
+
+const isNextDisabled = computed<boolean>(() => {
+	const step = currentStepName.value;
+
+	if (step === 'provider') {
+		// Must select a provider, and if it needs config, it must be saved first
+		if (!selectedLlmProvider.value) return true;
+
+		return selectedLlmProviderNeedsConfig.value;
+	}
+
+	if (step === 'voice') {
+		return activeVoiceProviderNeedsConfig.value;
+	}
+
+	if (step === 'messaging') {
+		return selectedMessagingProviderNeedsConfig.value;
+	}
+
+	return false;
 });
 
 // LLM provider helpers
