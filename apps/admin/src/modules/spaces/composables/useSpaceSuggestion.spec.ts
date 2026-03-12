@@ -26,7 +26,8 @@ describe('useSpaceSuggestion', () => {
 				type: 'set_mode',
 				title: 'Switch to Relax Mode',
 				reason: 'It is evening time',
-				lighting_mode: 'relax',
+				intent_type: 'set_mode',
+				intent_mode: 'relax',
 				...overrides,
 			},
 		},
@@ -83,7 +84,8 @@ describe('useSpaceSuggestion', () => {
 			expect(result).not.toBeNull();
 			expect(result?.type).toBe('set_mode');
 			expect(result?.title).toBe('Switch to Relax Mode');
-			expect(result?.lightingMode).toBe('relax');
+			expect(result?.intentType).toBe('set_mode');
+			expect(result?.intentMode).toBe('relax');
 			expect(suggestion.value).toEqual(result);
 			expect(hasSuggestion.value).toBe(true);
 		});

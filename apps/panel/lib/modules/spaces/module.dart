@@ -293,12 +293,17 @@ class SpacesModuleService {
       final type = parseSuggestionType(typeStr);
       if (type == null) return;
 
+      final expiresAtStr = payload['expires_at'] as String?;
+
       final suggestion = SuggestionModel(
         type: type,
         title: title,
         reason: reason,
         intentType: payload['intent_type'] as String?,
         intentMode: payload['intent_mode'] as String?,
+        expiresAt: expiresAtStr != null
+            ? DateTime.tryParse(expiresAtStr)
+            : null,
       );
 
       final appSuggestion = SpaceAppSuggestion(

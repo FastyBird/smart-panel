@@ -177,7 +177,8 @@ void main() {
           type: SuggestionType.lightingRelax,
           title: 'Switch to relax mode',
           reason: 'It is evening time',
-          lightingMode: LightingMode.relax,
+          intentType: 'lighting',
+          intentMode: 'relax',
         );
 
         when(() => mockSpaceStateRepository.getSuggestion(spaceId))
@@ -300,7 +301,8 @@ void main() {
           type: SuggestionType.lightingNight,
           title: 'Switch to night mode',
           reason: 'It is late at night',
-          lightingMode: LightingMode.night,
+          intentType: 'lighting',
+          intentMode: 'night',
         );
 
         when(() => mockSpaceStateRepository.fetchSuggestion(spaceId))

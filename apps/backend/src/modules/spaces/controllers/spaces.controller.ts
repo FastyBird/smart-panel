@@ -28,6 +28,7 @@ import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } fr
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
+import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
 	BindingValidationIssueModel,
@@ -2361,7 +2362,7 @@ export class SpacesController {
 	async emitTestSuggestion(
 		@Body() body?: { data?: { space_id?: string } },
 	): Promise<{ data: { emitted: boolean; space_id?: string } }> {
-		let space;
+		let space: SpaceEntity | null | undefined;
 
 		if (body?.data?.space_id) {
 			space = await this.spacesService.findOne(body.data.space_id);

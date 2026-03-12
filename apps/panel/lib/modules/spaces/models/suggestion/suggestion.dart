@@ -84,6 +84,7 @@ class SuggestionModel {
   final String? reason;
   final String? intentType;
   final String? intentMode;
+  final DateTime? expiresAt;
 
   SuggestionModel({
     required this.type,
@@ -91,7 +92,11 @@ class SuggestionModel {
     this.reason,
     this.intentType,
     this.intentMode,
+    this.expiresAt,
   });
+
+  bool get isExpired =>
+      expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
   factory SuggestionModel.fromJson(Map<String, dynamic> json) {
     return SuggestionModel(
@@ -101,6 +106,9 @@ class SuggestionModel {
       reason: json['reason'] as String?,
       intentType: json['intent_type'] as String?,
       intentMode: json['intent_mode'] as String?,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
     );
   }
 }

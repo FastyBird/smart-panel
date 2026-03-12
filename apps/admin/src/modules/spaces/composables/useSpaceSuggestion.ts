@@ -10,7 +10,7 @@ import {
 	SpacesModuleSuggestionFeedbackSuggestion_type,
 } from '../../../openapi';
 
-import type { LightingMode } from './useSpaceIntents';
+
 
 // ============================================
 // SUGGESTION TYPES
@@ -25,14 +25,16 @@ export type SuggestionFeedback = `${SchemaSpacesModuleSuggestionFeedback['feedba
  * A smart suggestion for the space based on context (time, occupancy, etc.).
  */
 export interface ISuggestion {
-	/** Type of suggestion (e.g., lighting_mode) */
+	/** Type of suggestion (e.g., lighting_relax) */
 	type: SuggestionType;
 	/** Human-readable suggestion title */
 	title: string;
 	/** Explanation of why this suggestion is made */
 	reason: string | null;
-	/** Suggested lighting mode, if applicable */
-	lightingMode: LightingMode | null;
+	/** The intent type this suggestion would execute */
+	intentType: string;
+	/** The intent mode parameter, if applicable (e.g., lighting mode) */
+	intentMode: string | null;
 }
 
 /**
@@ -144,7 +146,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				type: data.data.type as SuggestionType,
 				title: data.data.title ?? '',
 				reason: data.data.reason ?? null,
-				lightingMode: (data.data.lighting_mode as LightingMode) ?? null,
+				intentType: data.data.intent_type ?? 'set_mode',
+				intentMode: data.data.intent_mode ?? null,
 			};
 
 			return suggestionData.value;

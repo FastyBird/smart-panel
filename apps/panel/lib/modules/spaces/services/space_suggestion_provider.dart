@@ -35,7 +35,7 @@ class SpaceAppSuggestion implements AppSuggestion {
 	bool get isWarning => false;
 
 	@override
-	bool get isExpired => false;
+	bool get isExpired => model.isExpired;
 
 	@override
 	String get actionLabel => 'Apply';

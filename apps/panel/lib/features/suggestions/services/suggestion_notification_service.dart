@@ -58,8 +58,9 @@ class SuggestionNotificationService extends ChangeNotifier {
 		// If the current suggestion belongs to this provider, dismiss it
 		if (_current != null && _suggestionProviderMap[_current!.id] == providerId) {
 			_cancelTimer();
+			final currentId = _current!.id;
 			_current = null;
-			_suggestionProviderMap.remove(_current?.id);
+			_suggestionProviderMap.remove(currentId);
 			_advanceQueue();
 			notifyListeners();
 		}

@@ -4,8 +4,15 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingIntentType, SPACES_MODULE_NAME, SUGGESTION_COOLDOWN_MS, SuggestionFeedback, SuggestionType } from '../spaces.constants';
+import {
+	LightingIntentType,
+	SPACES_MODULE_NAME,
+	SUGGESTION_COOLDOWN_MS,
+	SuggestionFeedback,
+	SuggestionType,
+} from '../spaces.constants';
 import { IntentSpecLoaderService } from '../spec/intent-spec-loader.service';
 import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
@@ -218,7 +225,7 @@ export class SpaceSuggestionService {
 	private async executeIntent(spaceId: string, suggestionType: SuggestionType): Promise<boolean> {
 		try {
 			const rules = this.specLoader.getSuggestionRules();
-			const rule = rules.find((r) => r.id === suggestionType);
+			const rule = rules.find((r) => r.id === (suggestionType as string));
 
 			if (!rule) {
 				this.logger.warn(`No suggestion rule found for type: ${suggestionType as string}`);
@@ -227,7 +234,7 @@ export class SpaceSuggestionService {
 			}
 
 			// Map YAML intent_type strings to LightingIntentType enum values
-			const intentType = Object.values(LightingIntentType).find((v) => v === rule.intentType);
+			const intentType = Object.values(LightingIntentType).find((v) => (v as string) === rule.intentType);
 
 			if (!intentType) {
 				this.logger.warn(`Unknown intent type: ${rule.intentType} for suggestion: ${rule.id}`);
@@ -235,10 +242,12 @@ export class SpaceSuggestionService {
 				return false;
 			}
 
-			const result = await this.spaceIntentService.executeLightingIntent(spaceId, {
+			const intent: LightingIntentDto = Object.assign(new LightingIntentDto(), {
 				type: intentType,
 				mode: rule.intentMode ?? undefined,
-			} as any);
+			});
+
+			const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent);
 
 			return result !== null;
 		} catch (error) {
