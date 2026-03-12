@@ -421,18 +421,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 				if (userConfig.rules?.length) {
 					const userRules = userConfig.rules.map((rule) => this.resolveSuggestionRule(rule));
 
-					// User rules with same ID override builtin rules
-					const merged = new Map<string, ResolvedSuggestionRule>();
+					// User rules define the final order. User rules come first (preserving
+					// their YAML order), then any builtin rules not overridden by user are
+					// appended. This lets users insert higher-priority rules above builtins.
+					const userRuleIds = new Set(userRules.map((r) => r.id));
+					const remainingBuiltin = this.suggestionRules.filter((r) => !userRuleIds.has(r.id));
 
-					for (const rule of this.suggestionRules) {
-						merged.set(rule.id, rule);
-					}
-
-					for (const rule of userRules) {
-						merged.set(rule.id, rule);
-					}
-
-					this.suggestionRules = Array.from(merged.values());
+					this.suggestionRules = [...userRules, ...remainingBuiltin];
 				}
 			}
 		}

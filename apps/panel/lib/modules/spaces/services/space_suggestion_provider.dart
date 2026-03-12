@@ -63,9 +63,10 @@ class SpaceSuggestionProvider implements SuggestionProvider {
 
 	Future<void> _executeSuggestionIntent(SpaceAppSuggestion suggestion) async {
 		// Execute the intent using intentType/intentMode from the suggestion model
+		LightingIntentResult? result;
+
 		try {
 			final spacesService = locator<SpacesService>();
-			LightingIntentResult? result;
 
 			result = await spacesService.executeLightingIntentRaw(
 				suggestion.spaceId,
@@ -85,16 +86,18 @@ class SpaceSuggestionProvider implements SuggestionProvider {
 			}
 		}
 
-		// Send dismissed feedback to set the backend cooldown without
-		// triggering a second server-side intent execution.
-		try {
-			locator<SpaceStateRepository>().submitSuggestionFeedback(
-				suggestion.spaceId,
-				suggestion.model.type,
-				SuggestionFeedback.dismissed,
-			);
-		} catch (_) {
-			// SpaceStateRepository not available
+		// Only set cooldown if the intent succeeded. If it failed, the user
+		// should see the suggestion again on the next heartbeat cycle.
+		if (result != null && result.success) {
+			try {
+				locator<SpaceStateRepository>().submitSuggestionFeedback(
+					suggestion.spaceId,
+					suggestion.model.type,
+					SuggestionFeedback.dismissed,
+				);
+			} catch (_) {
+				// SpaceStateRepository not available
+			}
 		}
 	}
 
