@@ -9,6 +9,8 @@
  * Property definition in a scenario channel
  */
 export interface ScenarioPropertyDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Property category (e.g., 'on', 'brightness', 'temperature') */
 	category: string;
 	/** Optional data type override for multi-datatype properties */
@@ -21,6 +23,8 @@ export interface ScenarioPropertyDefinition {
  * Channel definition in a scenario device
  */
 export interface ScenarioChannelDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Channel category (e.g., 'light', 'temperature', 'thermostat') */
 	category: string;
 	/** Optional custom name for the channel */
@@ -33,6 +37,8 @@ export interface ScenarioChannelDefinition {
  * Device definition in a scenario
  */
 export interface ScenarioDeviceDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
 	/** Display name for the device */
 	name: string;
 	/** Device category (e.g., 'lighting', 'sensor', 'thermostat') */
@@ -47,6 +53,14 @@ export interface ScenarioDeviceDefinition {
 	simulate_interval?: number;
 	/** Simulation behavior mode: default (timer-based) or realistic (reacts to user commands) */
 	behavior_mode?: string;
+	/** Lighting domain role (e.g., 'main', 'task', 'ambient', 'accent', 'night') */
+	lighting_role?: string;
+	/** Climate domain role (e.g., 'auto', 'heating_only', 'cooling_only', 'auxiliary', 'sensor') */
+	climate_role?: string;
+	/** Sensor domain role (e.g., 'environment', 'safety', 'security', 'air_quality', 'energy') */
+	sensor_role?: string;
+	/** Covers domain role (e.g., 'primary', 'blackout', 'sheer', 'outdoor') */
+	covers_role?: string;
 	/** Channels to create for this device */
 	channels: ScenarioChannelDefinition[];
 }
@@ -66,6 +80,40 @@ export interface ScenarioRoomDefinition {
 }
 
 /**
+ * Scene action definition
+ */
+export interface ScenarioSceneActionDefinition {
+	/** UUID of the target device */
+	device_id: string;
+	/** Optional UUID of the target channel */
+	channel_id?: string;
+	/** UUID of the target property */
+	property_id: string;
+	/** Value to set on the property */
+	value: string | number | boolean;
+}
+
+/**
+ * Scene definition in a scenario
+ */
+export interface ScenarioSceneDefinition {
+	/** Optional UUID for idempotent creation */
+	id?: string;
+	/** Scene display name */
+	name: string;
+	/** Optional scene description */
+	description?: string;
+	/** Scene category (e.g., 'movie', 'night', 'morning') */
+	category?: string;
+	/** Reference to room id from rooms array */
+	room?: string;
+	/** Whether the scene is enabled */
+	enabled?: boolean;
+	/** Actions to perform when scene is triggered */
+	actions: ScenarioSceneActionDefinition[];
+}
+
+/**
  * Complete scenario configuration loaded from YAML
  */
 export interface ScenarioConfig {
@@ -79,6 +127,8 @@ export interface ScenarioConfig {
 	rooms?: ScenarioRoomDefinition[];
 	/** Devices to create */
 	devices: ScenarioDeviceDefinition[];
+	/** Scenes to create (optional) */
+	scenes?: ScenarioSceneDefinition[];
 }
 
 /**
@@ -119,10 +169,16 @@ export interface ScenarioExecutionResult {
 	devicesCreated: number;
 	/** Number of rooms created */
 	roomsCreated: number;
+	/** Number of scenes created */
+	scenesCreated: number;
+	/** Number of rooms where domain roles were applied */
+	rolesApplied: number;
 	/** IDs of created devices */
 	deviceIds: string[];
 	/** IDs of created rooms */
 	roomIds: string[];
+	/** IDs of created scenes */
+	sceneIds: string[];
 	/** Errors encountered during execution */
 	errors: string[];
 }
@@ -133,6 +189,10 @@ export interface ScenarioExecutionResult {
 export interface ScenarioExecutionOptions {
 	/** Create rooms defined in the scenario */
 	createRooms?: boolean;
+	/** Create scenes defined in the scenario */
+	createScenes?: boolean;
+	/** Apply default domain roles (lighting, climate, sensor, covers) and media bindings */
+	applyRoles?: boolean;
 	/** Dry run - don't actually create anything */
 	dryRun?: boolean;
 }

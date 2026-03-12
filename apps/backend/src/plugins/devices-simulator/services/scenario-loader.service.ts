@@ -14,6 +14,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { getPropertyMetadata, isChannelAllowed } from '../../../modules/devices/utils/schema.utils';
+import { SceneCategory } from '../../../modules/scenes/scenes.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
 import {
 	ScenarioChannelDefinition,
@@ -21,6 +22,7 @@ import {
 	ScenarioDeviceDefinition,
 	ScenarioFileInfo,
 	ScenarioLoadResult,
+	ScenarioSceneDefinition,
 } from '../scenarios/scenario.types';
 
 @Injectable()
@@ -204,10 +206,27 @@ export class ScenarioLoaderService implements OnModuleInit {
 		// Collect room IDs for reference validation
 		const roomIds = new Set(config.rooms?.map((r) => r.id) ?? []);
 
+		// Collect device IDs and property IDs for scene validation
+		const deviceIds = new Set<string>();
+		const propertyIds = new Set<string>();
+
 		// Validate each device
 		for (let i = 0; i < config.devices.length; i++) {
 			const device = config.devices[i];
 			const devicePath = `devices[${i}]`;
+
+			if (device.id) {
+				deviceIds.add(device.id);
+			}
+
+			// Collect property IDs
+			for (const channel of device.channels) {
+				for (const property of channel.properties) {
+					if (property.id) {
+						propertyIds.add(property.id);
+					}
+				}
+			}
 
 			// Validate device category
 			const deviceCategory = this.resolveDeviceCategory(device.category);
@@ -223,6 +242,16 @@ export class ScenarioLoaderService implements OnModuleInit {
 
 			// Validate channels
 			this.validateDeviceChannels(device, deviceCategory, devicePath, errors, warnings);
+		}
+
+		// Validate scenes
+		if (config.scenes) {
+			for (let i = 0; i < config.scenes.length; i++) {
+				const scene = config.scenes[i];
+				const scenePath = `scenes[${i}]`;
+
+				this.validateScene(scene, scenePath, roomIds, deviceIds, propertyIds, errors, warnings);
+			}
 		}
 
 		return { errors, warnings };
@@ -338,6 +367,61 @@ export class ScenarioLoaderService implements OnModuleInit {
 		const values = Object.values(PropertyCategory) as string[];
 		const match = values.find((v) => v === lowerCategory);
 		return (match as PropertyCategory) ?? null;
+	}
+
+	/**
+	 * Validate a scene definition
+	 */
+	private validateScene(
+		scene: ScenarioSceneDefinition,
+		scenePath: string,
+		roomIds: Set<string>,
+		deviceIds: Set<string>,
+		propertyIds: Set<string>,
+		_errors: string[],
+		warnings: string[],
+	): void {
+		// Validate category
+		if (scene.category) {
+			const category = this.resolveSceneCategory(scene.category);
+			if (!category) {
+				warnings.push(`${scenePath}: Unknown scene category '${scene.category}'`);
+			}
+		}
+
+		// Validate room reference
+		if (scene.room && !roomIds.has(scene.room)) {
+			warnings.push(`${scenePath}: Room '${scene.room}' is not defined in rooms array`);
+		}
+
+		// Validate actions reference known devices/properties
+		for (let j = 0; j < scene.actions.length; j++) {
+			const action = scene.actions[j];
+			const actionPath = `${scenePath}.actions[${j}]`;
+
+			if (!deviceIds.has(action.device_id)) {
+				warnings.push(`${actionPath}: device_id '${action.device_id}' not found in scenario devices`);
+			}
+			if (!propertyIds.has(action.property_id)) {
+				warnings.push(`${actionPath}: property_id '${action.property_id}' not found in scenario devices`);
+			}
+		}
+	}
+
+	/**
+	 * Resolve scene category string to enum
+	 */
+	resolveSceneCategory(category: string): SceneCategory | null {
+		const upperCategory = category.toUpperCase();
+		if (upperCategory in SceneCategory) {
+			return SceneCategory[upperCategory as keyof typeof SceneCategory];
+		}
+
+		// Try lowercase match
+		const lowerCategory = category.toLowerCase();
+		const values = Object.values(SceneCategory) as string[];
+		const match = values.find((v) => v === lowerCategory);
+		return (match as SceneCategory) ?? null;
 	}
 
 	/**

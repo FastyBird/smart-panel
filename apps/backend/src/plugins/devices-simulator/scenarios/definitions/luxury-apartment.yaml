@@ -39,18 +39,23 @@ devices:
   # ============================================================================
   # LIVING ROOM
   # ============================================================================
-  - name: "Living Room Main Light"
+  - id: "d0000001-0001-4000-8000-000000000001"
+    name: "Living Room Main Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "d0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "d0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
-          - category: color_temperature
+          - id: "d0000001-0001-4000-8000-000000000012"
+            category: color_temperature
             value: 4000
       - category: device_information
         properties:
@@ -60,6 +65,7 @@ devices:
   - name: "Living Room Accent Lights"
     category: lighting
     room: living-room
+    lighting_role: accent
     auto_simulate: true
     channels:
       - category: light
@@ -80,6 +86,7 @@ devices:
   - name: "Living Room Floor Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -94,14 +101,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room TV"
+  - id: "d0000001-0001-4000-8000-000000000002"
+    name: "Living Room TV"
     category: television
     room: living-room
     behavior_mode: realistic
     channels:
       - category: television
         properties:
-          - category: on
+          - id: "d0000001-0001-4000-8000-000000000020"
+            category: on
             value: false
       - category: speaker
         properties:
@@ -186,7 +195,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room Blackout Blinds"
+  - id: "d0000001-0001-4000-8000-000000000003"
+    name: "Living Room Blackout Blinds"
     category: window_covering
     room: living-room
     auto_simulate: true
@@ -194,7 +204,8 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "d0000001-0001-4000-8000-000000000030"
+            category: position
             value: 0
           - category: tilt
             value: 0
@@ -221,14 +232,17 @@ devices:
   # ============================================================================
   # MASTER BEDROOM
   # ============================================================================
-  - name: "Master Bedroom Main Light"
+  - id: "d0000001-0001-4000-8000-000000000004"
+    name: "Master Bedroom Main Light"
     category: lighting
     room: master-bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "d0000001-0001-4000-8000-000000000040"
+            category: on
             value: false
           - category: brightness
             value: 70
@@ -242,6 +256,7 @@ devices:
   - name: "Master Bedroom Bedside Lamp Left"
     category: lighting
     room: master-bedroom
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -257,6 +272,7 @@ devices:
   - name: "Master Bedroom Bedside Lamp Right"
     category: lighting
     room: master-bedroom
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -272,6 +288,7 @@ devices:
   - name: "Master Bedroom Accent Strip"
     category: lighting
     room: master-bedroom
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -372,7 +389,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Master Bedroom Blackout Shades"
+  - id: "d0000001-0001-4000-8000-000000000005"
+    name: "Master Bedroom Blackout Shades"
     category: window_covering
     room: master-bedroom
     auto_simulate: true
@@ -380,7 +398,8 @@ devices:
     channels:
       - category: window_covering
         properties:
-          - category: position
+          - id: "d0000001-0001-4000-8000-000000000050"
+            category: position
             value: 0
           - category: type
             value: "roller"
@@ -410,6 +429,7 @@ devices:
   - name: "Guest Bedroom Light"
     category: lighting
     room: guest-bedroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -425,6 +445,7 @@ devices:
   - name: "Guest Bedroom Bedside Lamp"
     category: lighting
     room: guest-bedroom
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -477,6 +498,7 @@ devices:
   - name: "Master Bathroom Main Light"
     category: lighting
     room: master-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -494,6 +516,7 @@ devices:
   - name: "Master Bathroom Vanity Light"
     category: lighting
     room: master-bathroom
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -567,6 +590,7 @@ devices:
   - name: "Guest Bathroom Light"
     category: lighting
     room: guest-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -612,6 +636,7 @@ devices:
   - name: "Kitchen Main Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -630,6 +655,7 @@ devices:
   - name: "Kitchen Under-Cabinet Lights"
     category: lighting
     room: kitchen
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -647,6 +673,7 @@ devices:
   - name: "Kitchen Island Pendants"
     category: lighting
     room: kitchen
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -745,6 +772,7 @@ devices:
   - name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -763,6 +791,7 @@ devices:
   - name: "Dining Room Accent Lights"
     category: lighting
     room: dining-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -798,16 +827,20 @@ devices:
   # ============================================================================
   # HOME OFFICE
   # ============================================================================
-  - name: "Office Desk Lamp"
+  - id: "d0000001-0001-4000-8000-000000000007"
+    name: "Office Desk Lamp"
     category: lighting
     room: home-office
+    lighting_role: task
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "d0000001-0001-4000-8000-000000000070"
+            category: on
             value: true
-          - category: brightness
+          - id: "d0000001-0001-4000-8000-000000000071"
+            category: brightness
             value: 90
           - category: color_temperature
             value: 5500
@@ -819,6 +852,7 @@ devices:
   - name: "Office Ambient Light"
     category: lighting
     room: home-office
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -836,6 +870,7 @@ devices:
   - name: "Office Monitor Light Bar"
     category: lighting
     room: home-office
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -896,6 +931,7 @@ devices:
   - name: "Hallway Ceiling Light"
     category: lighting
     room: hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -912,6 +948,7 @@ devices:
   - name: "Entry Accent Light"
     category: lighting
     room: hallway
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -928,14 +965,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "d0000001-0001-4000-8000-000000000006"
+    name: "Front Door Lock"
     category: lock
     room: hallway
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "d0000001-0001-4000-8000-000000000060"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -1011,6 +1050,7 @@ devices:
   - name: "Balcony Main Light"
     category: lighting
     room: balcony
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1026,6 +1066,7 @@ devices:
   - name: "Balcony String Lights"
     category: lighting
     room: balcony
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -1080,3 +1121,51 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Movie Night"
+    category: movie
+    room: living-room
+    actions:
+      - device_id: "d0000001-0001-4000-8000-000000000001"
+        property_id: "d0000001-0001-4000-8000-000000000011"
+        value: 15
+      - device_id: "d0000001-0001-4000-8000-000000000001"
+        property_id: "d0000001-0001-4000-8000-000000000012"
+        value: 2700
+      - device_id: "d0000001-0001-4000-8000-000000000002"
+        property_id: "d0000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "d0000001-0001-4000-8000-000000000003"
+        property_id: "d0000001-0001-4000-8000-000000000030"
+        value: 0
+
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "d0000001-0001-4000-8000-000000000001"
+        property_id: "d0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "d0000001-0001-4000-8000-000000000004"
+        property_id: "d0000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "d0000001-0001-4000-8000-000000000005"
+        property_id: "d0000001-0001-4000-8000-000000000050"
+        value: 0
+      - device_id: "d0000001-0001-4000-8000-000000000006"
+        property_id: "d0000001-0001-4000-8000-000000000060"
+        value: "locked"
+
+  - name: "Work Mode"
+    category: work
+    room: home-office
+    actions:
+      - device_id: "d0000001-0001-4000-8000-000000000007"
+        property_id: "d0000001-0001-4000-8000-000000000070"
+        value: true
+      - device_id: "d0000001-0001-4000-8000-000000000007"
+        property_id: "d0000001-0001-4000-8000-000000000071"
+        value: 90
+      - device_id: "d0000001-0001-4000-8000-000000000001"
+        property_id: "d0000001-0001-4000-8000-000000000010"
+        value: false

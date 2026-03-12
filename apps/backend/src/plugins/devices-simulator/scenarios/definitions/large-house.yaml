@@ -87,14 +87,17 @@ devices:
   # ============================================================================
   # FLOOR 1 - FOYER
   # ============================================================================
-  - name: "Foyer Chandelier"
+  - id: "10000001-0001-4000-8000-000000000002"
+    name: "Foyer Chandelier"
     category: lighting
     room: foyer
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000020"
+            category: on
             value: true
           - category: brightness
             value: 80
@@ -108,6 +111,7 @@ devices:
   - name: "Foyer Accent Sconces"
     category: lighting
     room: foyer
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -120,14 +124,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "10000001-0001-4000-8000-000000000003"
+    name: "Front Door Lock"
     category: lock
     room: foyer
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "10000001-0001-4000-8000-000000000030"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -200,16 +206,20 @@ devices:
   # ============================================================================
   # FLOOR 1 - LIVING ROOM
   # ============================================================================
-  - name: "Living Room Ceiling Light"
+  - id: "10000001-0001-4000-8000-000000000001"
+    name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "10000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
           - category: color_temperature
             value: 4000
@@ -221,6 +231,7 @@ devices:
   - name: "Living Room Recessed Lights"
     category: lighting
     room: living-room
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -236,6 +247,7 @@ devices:
   - name: "Living Room Accent Cove"
     category: lighting
     room: living-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -255,6 +267,7 @@ devices:
   - name: "Living Room Floor Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -272,6 +285,7 @@ devices:
   - name: "Living Room Table Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -416,6 +430,7 @@ devices:
   - name: "Family Room Recessed Lights"
     category: lighting
     room: family-room
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -467,6 +482,7 @@ devices:
   - name: "Family Room Accent Lights"
     category: lighting
     room: family-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -520,16 +536,20 @@ devices:
   # ============================================================================
   # FLOOR 1 - KITCHEN
   # ============================================================================
-  - name: "Kitchen Main Light"
+  - id: "10000001-0001-4000-8000-000000000005"
+    name: "Kitchen Main Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000050"
+            category: on
             value: true
-          - category: brightness
+          - id: "10000001-0001-4000-8000-000000000051"
+            category: brightness
             value: 100
           - category: color_temperature
             value: 5000
@@ -541,6 +561,7 @@ devices:
   - name: "Kitchen Under-Cabinet Lights"
     category: lighting
     room: kitchen
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -558,6 +579,7 @@ devices:
   - name: "Kitchen Island Pendants"
     category: lighting
     room: kitchen
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -575,6 +597,7 @@ devices:
   - name: "Kitchen Pantry Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -697,6 +720,7 @@ devices:
   - name: "Dining Room Chandelier"
     category: lighting
     room: dining-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -715,6 +739,7 @@ devices:
   - name: "Dining Room Accent Sconces"
     category: lighting
     room: dining-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -749,6 +774,7 @@ devices:
   - name: "Office Ceiling Light"
     category: lighting
     room: office
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -767,6 +793,7 @@ devices:
   - name: "Office Desk Lamp"
     category: lighting
     room: office
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -784,6 +811,7 @@ devices:
   - name: "Office Ambient Light"
     category: lighting
     room: office
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -845,6 +873,7 @@ devices:
   - name: "Powder Room Light"
     category: lighting
     room: powder-room
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -876,6 +905,7 @@ devices:
   - name: "Mudroom Light"
     category: lighting
     room: mudroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -921,6 +951,7 @@ devices:
   - name: "Laundry Room Light"
     category: lighting
     room: laundry
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -988,6 +1019,7 @@ devices:
   - name: "Garage Main Lights"
     category: lighting
     room: garage
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1003,6 +1035,7 @@ devices:
   - name: "Garage Workbench Light"
     category: lighting
     room: garage
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -1080,6 +1113,7 @@ devices:
   - name: "Upper Hallway Light"
     category: lighting
     room: upper-hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -1146,14 +1180,17 @@ devices:
   # ============================================================================
   # FLOOR 2 - MASTER SUITE
   # ============================================================================
-  - name: "Master Bedroom Main Light"
+  - id: "10000001-0001-4000-8000-000000000004"
+    name: "Master Bedroom Main Light"
     category: lighting
     room: master-suite
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "10000001-0001-4000-8000-000000000040"
+            category: on
             value: false
           - category: brightness
             value: 70
@@ -1167,6 +1204,7 @@ devices:
   - name: "Master Bedroom Bedside Left"
     category: lighting
     room: master-suite
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -1182,6 +1220,7 @@ devices:
   - name: "Master Bedroom Bedside Right"
     category: lighting
     room: master-suite
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -1197,6 +1236,7 @@ devices:
   - name: "Master Bedroom Accent Strip"
     category: lighting
     room: master-suite
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -1362,6 +1402,7 @@ devices:
   - name: "Master Bath Main Light"
     category: lighting
     room: master-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1379,6 +1420,7 @@ devices:
   - name: "Master Bath Vanity Light"
     category: lighting
     room: master-bathroom
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -1396,6 +1438,7 @@ devices:
   - name: "Master Bath Shower Light"
     category: lighting
     room: master-bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1476,6 +1519,7 @@ devices:
   - name: "Master Closet Light"
     category: lighting
     room: master-closet
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1508,6 +1552,7 @@ devices:
   - name: "Bedroom 2 Ceiling Light"
     category: lighting
     room: bedroom-2
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1523,6 +1568,7 @@ devices:
   - name: "Bedroom 2 Desk Lamp"
     category: lighting
     room: bedroom-2
+    lighting_role: task
     channels:
       - category: light
         properties:
@@ -1574,6 +1620,7 @@ devices:
   - name: "Bedroom 3 Ceiling Light"
     category: lighting
     room: bedroom-3
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1589,6 +1636,7 @@ devices:
   - name: "Bedroom 3 Bedside Lamp"
     category: lighting
     room: bedroom-3
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -1638,6 +1686,7 @@ devices:
   - name: "Bedroom 4 Ceiling Light"
     category: lighting
     room: bedroom-4
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1653,6 +1702,7 @@ devices:
   - name: "Bedroom 4 Nightlight"
     category: lighting
     room: bedroom-4
+    lighting_role: night
     channels:
       - category: light
         properties:
@@ -1691,6 +1741,7 @@ devices:
   - name: "Bathroom 2 Light"
     category: lighting
     room: bathroom-2
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1736,6 +1787,7 @@ devices:
   - name: "Bathroom 3 Light"
     category: lighting
     room: bathroom-3
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1767,6 +1819,7 @@ devices:
   - name: "Bonus Room Main Light"
     category: lighting
     room: bonus-room
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1782,6 +1835,7 @@ devices:
   - name: "Bonus Room Accent Lights"
     category: lighting
     room: bonus-room
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -1839,6 +1893,7 @@ devices:
   - name: "Front Porch Light"
     category: lighting
     room: front-porch
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1872,6 +1927,7 @@ devices:
   - name: "Back Patio Ceiling Light"
     category: lighting
     room: back-patio
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1887,6 +1943,7 @@ devices:
   - name: "Back Patio String Lights"
     category: lighting
     room: back-patio
+    lighting_role: accent
     channels:
       - category: light
         properties:
@@ -1980,6 +2037,7 @@ devices:
   - name: "Pool Area Lights"
     category: lighting
     room: pool-area
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -1995,6 +2053,7 @@ devices:
   - name: "Pool Underwater Lights"
     category: lighting
     room: pool-area
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -2068,6 +2127,7 @@ devices:
   - name: "Backyard Flood Lights"
     category: lighting
     room: backyard
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -2083,6 +2143,7 @@ devices:
   - name: "Backyard Path Lights"
     category: lighting
     room: backyard
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -2098,6 +2159,7 @@ devices:
   - name: "Backyard Garden Lights"
     category: lighting
     room: backyard
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -2196,3 +2258,36 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "10000001-0001-4000-8000-000000000001"
+        property_id: "10000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000002"
+        property_id: "10000001-0001-4000-8000-000000000020"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000004"
+        property_id: "10000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "10000001-0001-4000-8000-000000000003"
+        property_id: "10000001-0001-4000-8000-000000000030"
+        value: "locked"
+
+  - name: "Good Morning"
+    category: morning
+    actions:
+      - device_id: "10000001-0001-4000-8000-000000000005"
+        property_id: "10000001-0001-4000-8000-000000000050"
+        value: true
+      - device_id: "10000001-0001-4000-8000-000000000005"
+        property_id: "10000001-0001-4000-8000-000000000051"
+        value: 100
+      - device_id: "10000001-0001-4000-8000-000000000002"
+        property_id: "10000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "10000001-0001-4000-8000-000000000003"
+        property_id: "10000001-0001-4000-8000-000000000030"
+        value: "unlocked"

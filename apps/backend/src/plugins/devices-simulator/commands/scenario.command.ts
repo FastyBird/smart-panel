@@ -22,6 +22,8 @@ interface ScenarioCommandOptions {
 	file?: string;
 	truncate?: boolean;
 	noRooms?: boolean;
+	noScenes?: boolean;
+	noRoles?: boolean;
 	dryRun?: boolean;
 }
 
@@ -81,6 +83,24 @@ export class ScenarioCommand extends CommandRunner {
 		defaultValue: false,
 	})
 	parseNoRooms(): boolean {
+		return true;
+	}
+
+	@Option({
+		flags: '--no-scenes',
+		description: 'Skip creating scenes defined in scenario',
+		defaultValue: false,
+	})
+	parseNoScenes(): boolean {
+		return true;
+	}
+
+	@Option({
+		flags: '--no-roles',
+		description: 'Skip applying default domain roles and media bindings',
+		defaultValue: false,
+	})
+	parseNoRoles(): boolean {
 		return true;
 	}
 
@@ -170,6 +190,8 @@ export class ScenarioCommand extends CommandRunner {
 			scenario: string;
 			truncate: boolean;
 			createRooms: boolean;
+			createScenes: boolean;
+			applyRoles: boolean;
 			confirm: boolean;
 		}>([
 			{
@@ -197,6 +219,18 @@ export class ScenarioCommand extends CommandRunner {
 			},
 			{
 				type: 'confirm',
+				name: 'createScenes',
+				message: 'Create scenes defined in the scenario?',
+				default: true,
+			},
+			{
+				type: 'confirm',
+				name: 'applyRoles',
+				message: 'Apply default domain roles and media bindings?',
+				default: true,
+			},
+			{
+				type: 'confirm',
 				name: 'confirm',
 				message: 'Proceed with loading the scenario?',
 				default: true,
@@ -212,6 +246,8 @@ export class ScenarioCommand extends CommandRunner {
 			scenario: answers.scenario,
 			truncate: answers.truncate,
 			noRooms: !answers.createRooms,
+			noScenes: !answers.createScenes,
+			noRoles: !answers.applyRoles,
 		});
 	}
 
@@ -291,6 +327,14 @@ export class ScenarioCommand extends CommandRunner {
 		}
 		console.log('');
 
+		if (preview.scenes.length > 0 && !options.noScenes) {
+			console.log(`  \x1b[1mScenes (${preview.scenes.length}):\x1b[0m`);
+			for (const scene of preview.scenes) {
+				console.log(`    • ${scene.name} (${scene.category}) - ${scene.actionCount} actions`);
+			}
+			console.log('');
+		}
+
 		if (options.dryRun) {
 			console.log('\x1b[33m[DRY RUN] No changes made.\x1b[0m\n');
 			return;
@@ -301,6 +345,8 @@ export class ScenarioCommand extends CommandRunner {
 
 		const result = await this.scenarioExecutor.execute(scenarioConfig, {
 			createRooms: !options.noRooms,
+			createScenes: !options.noScenes,
+			applyRoles: !options.noRoles,
 			dryRun: options.dryRun,
 		});
 
@@ -315,7 +361,14 @@ export class ScenarioCommand extends CommandRunner {
 			if (!options.noRooms && zoneCount > 0) {
 				console.log(`  Zones created: ${zoneCount}`);
 			}
-			console.log(`  Devices created: ${result.devicesCreated}\n`);
+			console.log(`  Devices created: ${result.devicesCreated}`);
+			if (!options.noScenes && result.scenesCreated > 0) {
+				console.log(`  Scenes created: ${result.scenesCreated}`);
+			}
+			if (!options.noRoles && result.rolesApplied > 0) {
+				console.log(`  Domain roles applied: ${result.rolesApplied} rooms`);
+			}
+			console.log('');
 
 			if (result.deviceIds.length > 0) {
 				console.log('\x1b[36mDevice IDs:\x1b[0m');
@@ -330,7 +383,8 @@ export class ScenarioCommand extends CommandRunner {
 				console.error(`  • ${error}`);
 			}
 			console.log(`  Devices created: ${result.devicesCreated}`);
-			console.log(`  Spaces created: ${result.roomsCreated}\n`);
+			console.log(`  Spaces created: ${result.roomsCreated}`);
+			console.log(`  Scenes created: ${result.scenesCreated}\n`);
 		}
 	}
 

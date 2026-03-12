@@ -1,7 +1,7 @@
 /**
  * Scenario Executor Service
  *
- * Executes scenario configurations to create rooms and devices.
+ * Executes scenario configurations to create rooms, devices, and scenes.
  */
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,6 +16,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
 import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -24,8 +25,24 @@ import {
 	getRequiredChannels,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
+import { ScenesService } from '../../../modules/scenes/services/scenes.service';
+import { SetLightingRoleDto } from '../../../modules/spaces/dto/lighting-role.dto';
+import { SpaceClimateRoleService } from '../../../modules/spaces/services/space-climate-role.service';
+import { SpaceCoversRoleService } from '../../../modules/spaces/services/space-covers-role.service';
+import { SpaceLightingRoleService } from '../../../modules/spaces/services/space-lighting-role.service';
+import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
+import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
+import {
+	ClimateRole,
+	CoversRole,
+	LightingRole,
+	SensorRole,
+	SpaceRoomCategory,
+	SpaceType,
+	SpaceZoneCategory,
+} from '../../../modules/spaces/spaces.constants';
+import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
@@ -35,6 +52,7 @@ import {
 	ScenarioExecutionOptions,
 	ScenarioExecutionResult,
 	ScenarioPropertyDefinition,
+	ScenarioSceneDefinition,
 } from '../scenarios/scenario.types';
 
 import { ScenarioLoaderService } from './scenario-loader.service';
@@ -49,8 +67,15 @@ export class ScenarioExecutorService {
 	constructor(
 		private readonly scenarioLoader: ScenarioLoaderService,
 		private readonly devicesService: DevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly spacesService: SpacesService,
+		private readonly scenesService: ScenesService,
+		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceClimateRoleService: SpaceClimateRoleService,
+		private readonly spaceSensorRoleService: SpaceSensorRoleService,
+		private readonly spaceCoversRoleService: SpaceCoversRoleService,
+		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
 	) {}
 
 	/**
@@ -64,8 +89,11 @@ export class ScenarioExecutorService {
 				success: false,
 				devicesCreated: 0,
 				roomsCreated: 0,
+				scenesCreated: 0,
+				rolesApplied: 0,
 				deviceIds: [],
 				roomIds: [],
+				sceneIds: [],
 				errors: loadResult.errors ?? ['Failed to load scenario'],
 			};
 		}
@@ -84,8 +112,11 @@ export class ScenarioExecutorService {
 				success: false,
 				devicesCreated: 0,
 				roomsCreated: 0,
+				scenesCreated: 0,
+				rolesApplied: 0,
 				deviceIds: [],
 				roomIds: [],
+				sceneIds: [],
 				errors: loadResult.errors ?? ['Failed to load scenario'],
 			};
 		}
@@ -100,8 +131,10 @@ export class ScenarioExecutorService {
 		const errors: string[] = [];
 		const deviceIds: string[] = [];
 		const roomIds: string[] = [];
+		const sceneIds: string[] = [];
 		const roomIdMap = new Map<string, string>(); // scenario room id -> database room id
 		const zoneIds = new Set<string>(); // scenario room ids that are zones
+		const deviceRoles = new Map<string, ScenarioDeviceDefinition>(); // deviceId -> YAML def with role declarations
 
 		this.logger.log(`Executing scenario: ${config.name}`);
 
@@ -146,6 +179,16 @@ export class ScenarioExecutorService {
 			}
 
 			try {
+				// Check if device already exists (upsert = skip-if-exists)
+				if (deviceDef.id) {
+					const existing = await this.devicesService.findOne(deviceDef.id);
+
+					if (existing) {
+						this.logger.log(`Device already exists, skipping: ${deviceDef.name} (${deviceDef.id})`);
+						continue;
+					}
+				}
+
 				// Resolve space assignment - rooms use room_id, zones use zone_ids
 				let roomId: string | null = null;
 				let deviceZoneIds: string[] = [];
@@ -161,11 +204,58 @@ export class ScenarioExecutorService {
 				const device = await this.createDevice(deviceDef, roomId, deviceZoneIds);
 				deviceIds.push(device.id);
 
+				if (deviceDef.lighting_role || deviceDef.climate_role || deviceDef.sensor_role || deviceDef.covers_role) {
+					deviceRoles.set(device.id, deviceDef);
+				}
+
 				this.logger.log(`Created device: ${deviceDef.name} (${device.id})`);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				errors.push(`Failed to create device '${deviceDef.name}': ${message}`);
 				this.logger.error(`Failed to create device: ${deviceDef.name}`, { error: message });
+			}
+		}
+
+		// Create scenes if enabled
+		if (options.createScenes !== false && config.scenes && config.scenes.length > 0) {
+			for (const sceneDef of config.scenes) {
+				if (options.dryRun) {
+					this.logger.log(`[DRY RUN] Would create scene: ${sceneDef.name}`);
+					continue;
+				}
+
+				try {
+					const sceneId = await this.createScene(sceneDef, roomIdMap);
+
+					if (sceneId) {
+						sceneIds.push(sceneId);
+						this.logger.log(`Created scene: ${sceneDef.name} (${sceneId})`);
+					}
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					errors.push(`Failed to create scene '${sceneDef.name}': ${message}`);
+					this.logger.error(`Failed to create scene: ${sceneDef.name}`, { error: message });
+				}
+			}
+		}
+
+		// Apply default domain roles and media bindings for each room
+		let rolesApplied = 0;
+
+		if (options.applyRoles !== false && roomIds.length > 0 && !options.dryRun) {
+			for (const roomId of roomIds) {
+				try {
+					await this.applyDomainDefaults(roomId, deviceRoles);
+					rolesApplied++;
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					errors.push(`Failed to apply domain defaults for room '${roomId}': ${message}`);
+					this.logger.error(`Failed to apply domain defaults for room: ${roomId}`, { error: message });
+				}
+			}
+
+			if (rolesApplied > 0) {
+				this.logger.log(`Applied domain roles and media bindings for ${rolesApplied} rooms`);
 			}
 		}
 
@@ -181,10 +271,187 @@ export class ScenarioExecutorService {
 			success,
 			devicesCreated: deviceIds.length,
 			roomsCreated: roomIds.length,
+			scenesCreated: sceneIds.length,
+			rolesApplied,
 			deviceIds,
 			roomIds,
+			sceneIds,
 			errors,
 		};
+	}
+
+	/**
+	 * Create a scene from scenario definition
+	 */
+	private async createScene(sceneDef: ScenarioSceneDefinition, roomIdMap: Map<string, string>): Promise<string | null> {
+		// Check if scene already exists (upsert = skip-if-exists)
+		if (sceneDef.id) {
+			const existing = await this.scenesService.findOne(sceneDef.id);
+
+			if (existing) {
+				this.logger.log(`Scene already exists, skipping: ${sceneDef.name} (${sceneDef.id})`);
+				return null;
+			}
+		}
+
+		// Resolve room reference to space ID
+		let primarySpaceId: string | null = null;
+		if (sceneDef.room) {
+			primarySpaceId = roomIdMap.get(sceneDef.room) ?? null;
+		}
+
+		// Build actions — resolve channel_id (and device_id) from property relations if not provided
+		const actions = await Promise.all(
+			sceneDef.actions.map(async (actionDef) => {
+				let deviceId = actionDef.device_id;
+				let channelId = actionDef.channel_id;
+
+				// Resolve channel_id (and optionally device_id) from property relations
+				if (!channelId || !deviceId) {
+					const property = await this.channelsPropertiesService.findOne(actionDef.property_id);
+
+					if (property) {
+						const channel = property.channel;
+
+						if (channel && typeof channel !== 'string') {
+							channelId = channelId ?? channel.id;
+
+							if (!deviceId) {
+								const device = channel.device;
+
+								if (device && typeof device !== 'string') {
+									deviceId = device.id;
+								}
+							}
+						}
+					}
+
+					if (!channelId) {
+						this.logger.warn(
+							`Could not resolve channel_id for property ${actionDef.property_id} in scene "${sceneDef.name}"`,
+						);
+					}
+				}
+
+				return {
+					type: SCENES_LOCAL_TYPE,
+					device_id: deviceId,
+					...(channelId ? { channel_id: channelId } : {}),
+					property_id: actionDef.property_id,
+					value: actionDef.value,
+				};
+			}),
+		);
+
+		// Resolve category
+		const category = sceneDef.category
+			? (this.scenarioLoader.resolveSceneCategory(sceneDef.category) ?? undefined)
+			: undefined;
+
+		const scene = await this.scenesService.create({
+			id: sceneDef.id ?? uuidv4(),
+			name: sceneDef.name,
+			...(sceneDef.description ? { description: sceneDef.description } : {}),
+			...(category ? { category } : {}),
+			...(primarySpaceId ? { primary_space_id: primarySpaceId } : {}),
+			...(sceneDef.enabled !== undefined ? { enabled: sceneDef.enabled } : {}),
+			actions,
+		});
+
+		return scene.id;
+	}
+
+	/**
+	 * Apply domain roles and media activity bindings for a room.
+	 * Uses YAML-declared roles when available, falls back to service defaults.
+	 */
+	private async applyDomainDefaults(
+		spaceId: string,
+		deviceRoles: Map<string, ScenarioDeviceDefinition>,
+	): Promise<void> {
+		// Lighting roles — use YAML declarations, fall back to service defaults
+		const lightTargets = await this.spaceLightingRoleService.getLightTargetsInSpace(spaceId);
+
+		if (lightTargets.length > 0) {
+			const hasYamlLightingRoles = lightTargets.some((t) => deviceRoles.get(t.deviceId)?.lighting_role);
+
+			let lightingRoles: SetLightingRoleDto[];
+
+			if (hasYamlLightingRoles) {
+				lightingRoles = lightTargets.map((target, i) => {
+					const declared = deviceRoles.get(target.deviceId)?.lighting_role;
+
+					return {
+						deviceId: target.deviceId,
+						channelId: target.channelId,
+						role: (declared as LightingRole) ?? LightingRole.MAIN,
+						priority: i,
+					};
+				});
+			} else {
+				lightingRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(spaceId);
+			}
+
+			if (lightingRoles.length > 0) {
+				await this.spaceLightingRoleService.bulkSetRoles(spaceId, lightingRoles);
+				this.logger.log(`Applied ${lightingRoles.length} lighting roles for space ${spaceId}`);
+			}
+		}
+
+		// Climate roles — use YAML overrides or service defaults
+		const climateRoles = await this.spaceClimateRoleService.inferDefaultClimateRoles(spaceId);
+
+		for (const role of climateRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.climate_role;
+
+			if (declared) {
+				role.role = declared as ClimateRole;
+			}
+		}
+
+		if (climateRoles.length > 0) {
+			await this.spaceClimateRoleService.bulkSetRoles(spaceId, climateRoles);
+			this.logger.log(`Applied ${climateRoles.length} climate roles for space ${spaceId}`);
+		}
+
+		// Sensor roles — use YAML overrides or service defaults
+		const sensorRoles = await this.spaceSensorRoleService.inferDefaultSensorRoles(spaceId);
+
+		for (const role of sensorRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.sensor_role;
+
+			if (declared) {
+				role.role = declared as SensorRole;
+			}
+		}
+
+		if (sensorRoles.length > 0) {
+			await this.spaceSensorRoleService.bulkSetRoles(spaceId, sensorRoles);
+			this.logger.log(`Applied ${sensorRoles.length} sensor roles for space ${spaceId}`);
+		}
+
+		// Covers roles — use YAML overrides or service defaults
+		const coversRoles = await this.spaceCoversRoleService.inferDefaultCoversRoles(spaceId);
+
+		for (const role of coversRoles) {
+			const declared = deviceRoles.get(role.deviceId)?.covers_role;
+
+			if (declared) {
+				role.role = declared as CoversRole;
+			}
+		}
+
+		if (coversRoles.length > 0) {
+			await this.spaceCoversRoleService.bulkSetRoles(spaceId, coversRoles);
+			this.logger.log(`Applied ${coversRoles.length} covers roles for space ${spaceId}`);
+		}
+
+		// Media activity bindings
+		const mediaBindings = await this.spaceMediaActivityBindingService.applyDefaults(spaceId);
+
+		if (mediaBindings.length > 0) {
+			this.logger.log(`Applied ${mediaBindings.length} media activity bindings for space ${spaceId}`);
+		}
 	}
 
 	/**
@@ -206,7 +473,7 @@ export class ScenarioExecutorService {
 
 		// Create device
 		const deviceData = {
-			id: uuidv4(),
+			id: deviceDef.id ?? uuidv4(),
 			type: DEVICES_SIMULATOR_TYPE,
 			category: deviceCategory,
 			name: deviceDef.name,
@@ -257,7 +524,7 @@ export class ScenarioExecutorService {
 			const properties = this.buildProperties(channelDef.properties, channelCategory);
 
 			return {
-				id: uuidv4(),
+				id: channelDef.id ?? uuidv4(),
 				type: DEVICES_SIMULATOR_TYPE,
 				category: channelCategory,
 				name: channelDef.name ?? this.formatName(channelDef.category),
@@ -325,7 +592,7 @@ export class ScenarioExecutorService {
 			}
 
 			return {
-				id: uuidv4(),
+				id: propertyDef.id ?? uuidv4(),
 				type: DEVICES_SIMULATOR_TYPE,
 				category: propertyCategory,
 				name: this.formatName(propertyDef.category),
@@ -446,6 +713,7 @@ export class ScenarioExecutorService {
 	preview(config: ScenarioConfig): {
 		rooms: { name: string; type: 'room' | 'zone' }[];
 		devices: { name: string; category: string; channelCount: number; propertyCount: number }[];
+		scenes: { name: string; category: string; actionCount: number }[];
 	} {
 		const rooms = config.rooms?.map((r) => ({ name: r.name, type: r.type ?? 'room' })) ?? [];
 
@@ -506,6 +774,13 @@ export class ScenarioExecutorService {
 			};
 		});
 
-		return { rooms, devices };
+		const scenes =
+			config.scenes?.map((s) => ({
+				name: s.name,
+				category: s.category ?? 'generic',
+				actionCount: s.actions.length,
+			})) ?? [];
+
+		return { rooms, devices, scenes };
 	}
 }

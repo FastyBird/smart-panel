@@ -37,6 +37,13 @@
 			},
 			"minItems": 1,
 			"description": "Devices to create"
+		},
+		"scenes": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/scene"
+			},
+			"description": "Scenes to create (optional)"
 		}
 	},
 	"definitions": {
@@ -75,6 +82,11 @@
 			"required": ["name", "category", "channels"],
 			"additionalProperties": false,
 			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "Optional UUID for idempotent creation"
+				},
 				"name": {
 					"type": "string",
 					"minLength": 1,
@@ -113,6 +125,26 @@
 					"default": "default",
 					"description": "Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)"
 				},
+				"lighting_role": {
+					"type": "string",
+					"enum": ["main", "task", "ambient", "accent", "night", "other", "hidden"],
+					"description": "Lighting domain role for this device"
+				},
+				"climate_role": {
+					"type": "string",
+					"enum": ["auto", "heating_only", "cooling_only", "auxiliary", "sensor", "hidden"],
+					"description": "Climate domain role for this device"
+				},
+				"sensor_role": {
+					"type": "string",
+					"enum": ["environment", "safety", "security", "air_quality", "energy", "other", "hidden"],
+					"description": "Sensor domain role for this device"
+				},
+				"covers_role": {
+					"type": "string",
+					"enum": ["primary", "blackout", "sheer", "outdoor", "hidden"],
+					"description": "Covers domain role for this device"
+				},
 				"channels": {
 					"type": "array",
 					"items": {
@@ -128,6 +160,11 @@
 			"required": ["category", "properties"],
 			"additionalProperties": false,
 			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "Optional UUID for idempotent creation"
+				},
 				"category": {
 					"type": "string",
 					"minLength": 1,
@@ -153,6 +190,11 @@
 			"required": ["category"],
 			"additionalProperties": false,
 			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "Optional UUID for idempotent creation"
+				},
 				"category": {
 					"type": "string",
 					"minLength": 1,
@@ -170,6 +212,80 @@
 						{ "type": "boolean" }
 					],
 					"description": "Initial property value"
+				}
+			}
+		},
+		"scene": {
+			"type": "object",
+			"required": ["name", "actions"],
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "Optional UUID for idempotent creation"
+				},
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 100,
+					"description": "Scene display name"
+				},
+				"description": {
+					"type": "string",
+					"maxLength": 500,
+					"description": "Optional scene description"
+				},
+				"category": {
+					"type": "string",
+					"description": "Scene category (e.g., movie, night, morning, away)"
+				},
+				"room": {
+					"type": "string",
+					"description": "Reference to room id from rooms array"
+				},
+				"enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Whether the scene is enabled"
+				},
+				"actions": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/scene_action"
+					},
+					"minItems": 1,
+					"description": "Actions to perform when scene is triggered"
+				}
+			}
+		},
+		"scene_action": {
+			"type": "object",
+			"required": ["device_id", "property_id", "value"],
+			"additionalProperties": false,
+			"properties": {
+				"device_id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "UUID of the target device"
+				},
+				"channel_id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "Optional UUID of the target channel"
+				},
+				"property_id": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					"description": "UUID of the target property"
+				},
+				"value": {
+					"oneOf": [
+						{ "type": "string" },
+						{ "type": "number" },
+						{ "type": "boolean" }
+					],
+					"description": "Value to set on the property"
 				}
 			}
 		}

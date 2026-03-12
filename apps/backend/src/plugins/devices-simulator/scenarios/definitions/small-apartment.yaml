@@ -21,17 +21,21 @@ rooms:
 
 devices:
   # Living Room
-  - name: "Living Room Ceiling Light"
+  - id: "a0000001-0001-4000-8000-000000000001"
+    name: "Living Room Ceiling Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     simulate_interval: 15000
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "a0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "a0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
       - category: device_information
         properties:
@@ -59,14 +63,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Smart TV"
+  - id: "a0000001-0001-4000-8000-000000000002"
+    name: "Smart TV"
     category: television
     room: living-room
     behavior_mode: realistic
     channels:
       - category: television
         properties:
-          - category: on
+          - id: "a0000001-0001-4000-8000-000000000020"
+            category: on
             value: false
       - category: speaker
         properties:
@@ -80,16 +86,20 @@ devices:
             value: "FastyBird"
 
   # Bedroom
-  - name: "Bedroom Light"
+  - id: "a0000001-0001-4000-8000-000000000003"
+    name: "Bedroom Light"
     category: lighting
     room: bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "a0000001-0001-4000-8000-000000000030"
+            category: on
             value: false
-          - category: brightness
+          - id: "a0000001-0001-4000-8000-000000000031"
+            category: brightness
             value: 50
       - category: device_information
         properties:
@@ -115,6 +125,7 @@ devices:
   - name: "Bathroom Light"
     category: lighting
     room: bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -160,14 +171,16 @@ devices:
             value: "FastyBird"
 
   # Hallway
-  - name: "Front Door Lock"
+  - id: "a0000001-0001-4000-8000-000000000004"
+    name: "Front Door Lock"
     category: lock
     room: hallway
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "a0000001-0001-4000-8000-000000000040"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -188,3 +201,31 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Movie Night"
+    category: movie
+    room: living-room
+    actions:
+      - device_id: "a0000001-0001-4000-8000-000000000001"
+        property_id: "a0000001-0001-4000-8000-000000000011"
+        value: 20
+      - device_id: "a0000001-0001-4000-8000-000000000002"
+        property_id: "a0000001-0001-4000-8000-000000000020"
+        value: true
+      - device_id: "a0000001-0001-4000-8000-000000000003"
+        property_id: "a0000001-0001-4000-8000-000000000030"
+        value: false
+
+  - name: "Good Night"
+    category: night
+    actions:
+      - device_id: "a0000001-0001-4000-8000-000000000001"
+        property_id: "a0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "a0000001-0001-4000-8000-000000000003"
+        property_id: "a0000001-0001-4000-8000-000000000030"
+        value: false
+      - device_id: "a0000001-0001-4000-8000-000000000004"
+        property_id: "a0000001-0001-4000-8000-000000000040"
+        value: "locked"

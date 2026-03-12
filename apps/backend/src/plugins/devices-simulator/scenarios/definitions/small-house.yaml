@@ -31,16 +31,20 @@ rooms:
 
 devices:
   # Living Room
-  - name: "Living Room Main Light"
+  - id: "b0000001-0001-4000-8000-000000000001"
+    name: "Living Room Main Light"
     category: lighting
     room: living-room
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "b0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "b0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 80
       - category: device_information
         properties:
@@ -50,6 +54,7 @@ devices:
   - name: "Living Room Floor Lamp"
     category: lighting
     room: living-room
+    lighting_role: ambient
     channels:
       - category: light
         properties:
@@ -81,14 +86,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Living Room TV"
+  - id: "b0000001-0001-4000-8000-000000000002"
+    name: "Living Room TV"
     category: television
     room: living-room
     behavior_mode: realistic
     channels:
       - category: television
         properties:
-          - category: on
+          - id: "b0000001-0001-4000-8000-000000000020"
+            category: on
             value: false
       - category: speaker
         properties:
@@ -116,6 +123,7 @@ devices:
   - name: "Master Bedroom Light"
     category: lighting
     room: master-bedroom
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -151,6 +159,7 @@ devices:
   - name: "Kids Room Light"
     category: lighting
     room: kids-bedroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -166,6 +175,7 @@ devices:
   - name: "Kids Room Nightlight"
     category: lighting
     room: kids-bedroom
+    lighting_role: night
     channels:
       - category: light
         properties:
@@ -182,6 +192,7 @@ devices:
   - name: "Bathroom Light"
     category: lighting
     room: bathroom
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -220,16 +231,20 @@ devices:
             value: "FastyBird"
 
   # Kitchen
-  - name: "Kitchen Light"
+  - id: "b0000001-0001-4000-8000-000000000003"
+    name: "Kitchen Light"
     category: lighting
     room: kitchen
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "b0000001-0001-4000-8000-000000000030"
+            category: on
             value: true
-          - category: brightness
+          - id: "b0000001-0001-4000-8000-000000000031"
+            category: brightness
             value: 100
       - category: device_information
         properties:
@@ -271,6 +286,7 @@ devices:
   - name: "Garage Light"
     category: lighting
     room: garage
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -298,6 +314,7 @@ devices:
   - name: "Hallway Light"
     category: lighting
     room: hallway
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -311,14 +328,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Front Door Lock"
+  - id: "b0000001-0001-4000-8000-000000000004"
+    name: "Front Door Lock"
     category: lock
     room: hallway
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "b0000001-0001-4000-8000-000000000040"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -340,7 +359,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "House Thermostat"
+  - id: "b0000001-0001-4000-8000-000000000005"
+    name: "House Thermostat"
     category: thermostat
     room: hallway
     auto_simulate: true
@@ -353,9 +373,11 @@ devices:
             value: 21.0
       - category: heater
         properties:
-          - category: on
+          - id: "b0000001-0001-4000-8000-000000000050"
+            category: on
             value: true
-          - category: temperature
+          - id: "b0000001-0001-4000-8000-000000000051"
+            category: temperature
             value: 21.0
       - category: device_information
         properties:
@@ -366,6 +388,7 @@ devices:
   - name: "Patio Light"
     category: lighting
     room: backyard
+    lighting_role: main
     channels:
       - category: light
         properties:
@@ -388,3 +411,44 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Movie Night"
+    category: movie
+    room: living-room
+    actions:
+      - device_id: "b0000001-0001-4000-8000-000000000001"
+        property_id: "b0000001-0001-4000-8000-000000000011"
+        value: 20
+      - device_id: "b0000001-0001-4000-8000-000000000002"
+        property_id: "b0000001-0001-4000-8000-000000000020"
+        value: true
+
+  - name: "Good Morning"
+    category: morning
+    actions:
+      - device_id: "b0000001-0001-4000-8000-000000000003"
+        property_id: "b0000001-0001-4000-8000-000000000030"
+        value: true
+      - device_id: "b0000001-0001-4000-8000-000000000003"
+        property_id: "b0000001-0001-4000-8000-000000000031"
+        value: 100
+      - device_id: "b0000001-0001-4000-8000-000000000004"
+        property_id: "b0000001-0001-4000-8000-000000000040"
+        value: "unlocked"
+
+  - name: "Away Mode"
+    category: away
+    actions:
+      - device_id: "b0000001-0001-4000-8000-000000000001"
+        property_id: "b0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "b0000001-0001-4000-8000-000000000003"
+        property_id: "b0000001-0001-4000-8000-000000000030"
+        value: false
+      - device_id: "b0000001-0001-4000-8000-000000000004"
+        property_id: "b0000001-0001-4000-8000-000000000040"
+        value: "locked"
+      - device_id: "b0000001-0001-4000-8000-000000000005"
+        property_id: "b0000001-0001-4000-8000-000000000050"
+        value: false

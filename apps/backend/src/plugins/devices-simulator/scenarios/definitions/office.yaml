@@ -21,6 +21,7 @@ devices:
   - name: "Reception Lights"
     category: lighting
     room: reception
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
@@ -49,14 +50,16 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Entry Door Lock"
+  - id: "c0000001-0001-4000-8000-000000000002"
+    name: "Entry Door Lock"
     category: lock
     room: reception
     behavior_mode: realistic
     channels:
       - category: lock
         properties:
-          - category: status
+          - id: "c0000001-0001-4000-8000-000000000020"
+            category: status
             value: "locked"
       - category: device_information
         properties:
@@ -64,25 +67,31 @@ devices:
             value: "FastyBird"
 
   # Main Office
-  - name: "Office Ceiling Lights"
+  - id: "c0000001-0001-4000-8000-000000000001"
+    name: "Office Ceiling Lights"
     category: lighting
     room: main-office
+    lighting_role: main
     auto_simulate: true
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "c0000001-0001-4000-8000-000000000010"
+            category: on
             value: true
-          - category: brightness
+          - id: "c0000001-0001-4000-8000-000000000011"
+            category: brightness
             value: 90
-          - category: color_temperature
+          - id: "c0000001-0001-4000-8000-000000000012"
+            category: color_temperature
             value: 4500
       - category: device_information
         properties:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Office Thermostat"
+  - id: "c0000001-0001-4000-8000-000000000003"
+    name: "Office Thermostat"
     category: thermostat
     room: main-office
     auto_simulate: true
@@ -95,9 +104,11 @@ devices:
             value: 23.0
       - category: heater
         properties:
-          - category: on
+          - id: "c0000001-0001-4000-8000-000000000030"
+            category: on
             value: true
-          - category: temperature
+          - id: "c0000001-0001-4000-8000-000000000031"
+            category: temperature
             value: 22.0
       - category: device_information
         properties:
@@ -128,15 +139,19 @@ devices:
             value: "FastyBird"
 
   # Meeting Room
-  - name: "Meeting Room Lights"
+  - id: "c0000001-0001-4000-8000-000000000004"
+    name: "Meeting Room Lights"
     category: lighting
     room: meeting-room
+    lighting_role: main
     channels:
       - category: light
         properties:
-          - category: on
+          - id: "c0000001-0001-4000-8000-000000000040"
+            category: on
             value: false
-          - category: brightness
+          - id: "c0000001-0001-4000-8000-000000000041"
+            category: brightness
             value: 100
       - category: device_information
         properties:
@@ -191,7 +206,8 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
-  - name: "Server Room AC"
+  - id: "c0000001-0001-4000-8000-000000000005"
+    name: "Server Room AC"
     category: air_conditioner
     room: server-room
     auto_simulate: true
@@ -199,7 +215,8 @@ devices:
     channels:
       - category: cooler
         properties:
-          - category: on
+          - id: "c0000001-0001-4000-8000-000000000050"
+            category: on
             value: true
       - category: temperature
         properties:
@@ -222,3 +239,40 @@ devices:
         properties:
           - category: manufacturer
             value: "FastyBird"
+
+scenes:
+  - name: "Office Hours"
+    category: work
+    room: main-office
+    actions:
+      - device_id: "c0000001-0001-4000-8000-000000000001"
+        property_id: "c0000001-0001-4000-8000-000000000010"
+        value: true
+      - device_id: "c0000001-0001-4000-8000-000000000001"
+        property_id: "c0000001-0001-4000-8000-000000000011"
+        value: 90
+      - device_id: "c0000001-0001-4000-8000-000000000001"
+        property_id: "c0000001-0001-4000-8000-000000000012"
+        value: 4500
+      - device_id: "c0000001-0001-4000-8000-000000000002"
+        property_id: "c0000001-0001-4000-8000-000000000020"
+        value: "unlocked"
+      - device_id: "c0000001-0001-4000-8000-000000000003"
+        property_id: "c0000001-0001-4000-8000-000000000030"
+        value: true
+
+  - name: "After Hours"
+    category: away
+    actions:
+      - device_id: "c0000001-0001-4000-8000-000000000001"
+        property_id: "c0000001-0001-4000-8000-000000000010"
+        value: false
+      - device_id: "c0000001-0001-4000-8000-000000000004"
+        property_id: "c0000001-0001-4000-8000-000000000040"
+        value: false
+      - device_id: "c0000001-0001-4000-8000-000000000002"
+        property_id: "c0000001-0001-4000-8000-000000000020"
+        value: "locked"
+      - device_id: "c0000001-0001-4000-8000-000000000005"
+        property_id: "c0000001-0001-4000-8000-000000000050"
+        value: true
