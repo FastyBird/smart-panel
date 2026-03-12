@@ -5,18 +5,25 @@ description: "2-3 bedroom house with typical smart home devices"
 rooms:
   - id: living-room
     name: "Living Room"
+    category: living_room
   - id: master-bedroom
     name: "Master Bedroom"
+    category: bedroom
   - id: kids-bedroom
     name: "Kids Bedroom"
+    category: bedroom
   - id: bathroom
     name: "Bathroom"
+    category: bathroom
   - id: kitchen
     name: "Kitchen"
+    category: kitchen
   - id: garage
     name: "Garage"
+    category: garage
   - id: hallway
     name: "Hallway"
+    category: hallway
   - id: backyard
     name: "Backyard"
     type: zone

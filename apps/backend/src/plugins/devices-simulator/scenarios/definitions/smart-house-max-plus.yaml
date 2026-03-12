@@ -8,32 +8,46 @@ description: Single-floor smart home scenario designed to maximize Smart Panel d
 rooms:
 - id: living-room
   name: Living Room
+  category: living_room
 - id: family-room
   name: Family Room
+  category: living_room
 - id: master-bedroom
   name: Master Bedroom
+  category: bedroom
 - id: bedroom-2
   name: Bedroom 2
+  category: bedroom
 - id: bedroom-3
   name: Bedroom 3
+  category: bedroom
 - id: master-bathroom
   name: Master Bathroom
+  category: bathroom
 - id: bathroom-2
   name: Bathroom 2
+  category: bathroom
 - id: kitchen
   name: Kitchen
+  category: kitchen
 - id: dining-room
   name: Dining Room
+  category: dining_room
 - id: home-office
   name: Home Office
+  category: office
 - id: laundry
   name: Laundry Room
+  category: laundry
 - id: garage
   name: Garage
+  category: garage
 - id: foyer
   name: Foyer
+  category: entryway
 - id: hallway
   name: Hallway
+  category: hallway
 - id: patio
   name: Patio
   type: zone

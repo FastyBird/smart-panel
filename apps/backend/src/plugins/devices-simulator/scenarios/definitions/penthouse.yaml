@@ -5,22 +5,31 @@ description: "High-end penthouse apartment with comprehensive smart home system"
 rooms:
   - id: living-room
     name: "Living Room"
+    category: living_room
   - id: master-bedroom
     name: "Master Bedroom"
+    category: bedroom
   - id: guest-bedroom
     name: "Guest Bedroom"
+    category: guest_room
   - id: master-bathroom
     name: "Master Bathroom"
+    category: bathroom
   - id: guest-bathroom
     name: "Guest Bathroom"
+    category: bathroom
   - id: kitchen
     name: "Kitchen"
+    category: kitchen
   - id: dining-room
     name: "Dining Room"
+    category: dining_room
   - id: home-office
     name: "Home Office"
+    category: office
   - id: hallway
     name: "Hallway"
+    category: hallway
   - id: terrace
     name: "Terrace"
     type: zone

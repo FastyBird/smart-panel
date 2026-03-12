@@ -263,11 +263,24 @@ export class ScenarioCommand extends CommandRunner {
 		console.log('');
 
 		if (preview.rooms.length > 0 && !options.noRooms) {
-			console.log(`  \x1b[1mRooms (${preview.rooms.length}):\x1b[0m`);
-			for (const room of preview.rooms) {
-				console.log(`    • ${room.name}`);
+			const rooms = preview.rooms.filter((r) => r.type === 'room');
+			const zones = preview.rooms.filter((r) => r.type === 'zone');
+
+			if (rooms.length > 0) {
+				console.log(`  \x1b[1mRooms (${rooms.length}):\x1b[0m`);
+				for (const room of rooms) {
+					console.log(`    • ${room.name}`);
+				}
+				console.log('');
 			}
-			console.log('');
+
+			if (zones.length > 0) {
+				console.log(`  \x1b[1mZones (${zones.length}):\x1b[0m`);
+				for (const zone of zones) {
+					console.log(`    • ${zone.name}`);
+				}
+				console.log('');
+			}
 		}
 
 		console.log(`  \x1b[1mDevices (${preview.devices.length}):\x1b[0m`);
@@ -292,8 +305,16 @@ export class ScenarioCommand extends CommandRunner {
 		});
 
 		if (result.success) {
+			const roomCount = preview.rooms.filter((r) => r.type === 'room').length;
+			const zoneCount = preview.rooms.filter((r) => r.type === 'zone').length;
+
 			console.log(`\x1b[32m✅ Scenario loaded successfully!\x1b[0m`);
-			console.log(`  Rooms created: ${result.roomsCreated}`);
+			if (!options.noRooms && roomCount > 0) {
+				console.log(`  Rooms created: ${roomCount}`);
+			}
+			if (!options.noRooms && zoneCount > 0) {
+				console.log(`  Zones created: ${zoneCount}`);
+			}
 			console.log(`  Devices created: ${result.devicesCreated}\n`);
 
 			if (result.deviceIds.length > 0) {
@@ -309,7 +330,7 @@ export class ScenarioCommand extends CommandRunner {
 				console.error(`  • ${error}`);
 			}
 			console.log(`  Devices created: ${result.devicesCreated}`);
-			console.log(`  Rooms created: ${result.roomsCreated}\n`);
+			console.log(`  Spaces created: ${result.roomsCreated}\n`);
 		}
 	}
 

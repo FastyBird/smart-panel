@@ -444,10 +444,10 @@ export class ScenarioExecutorService {
 	 * Calculates actual counts including auto-added required channels/properties
 	 */
 	preview(config: ScenarioConfig): {
-		rooms: { name: string }[];
+		rooms: { name: string; type: 'room' | 'zone' }[];
 		devices: { name: string; category: string; channelCount: number; propertyCount: number }[];
 	} {
-		const rooms = config.rooms?.map((r) => ({ name: r.name })) ?? [];
+		const rooms = config.rooms?.map((r) => ({ name: r.name, type: r.type ?? 'room' })) ?? [];
 
 		const devices = config.devices.map((d) => {
 			const deviceCategory = this.scenarioLoader.resolveDeviceCategory(d.category);

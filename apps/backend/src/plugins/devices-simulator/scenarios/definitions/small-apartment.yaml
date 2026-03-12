@@ -5,14 +5,19 @@ description: "Typical 1-bedroom apartment with essential smart home devices"
 rooms:
   - id: living-room
     name: "Living Room"
+    category: living_room
   - id: bedroom
     name: "Bedroom"
+    category: bedroom
   - id: bathroom
     name: "Bathroom"
+    category: bathroom
   - id: kitchen
     name: "Kitchen"
+    category: kitchen
   - id: hallway
     name: "Hallway"
+    category: hallway
 
 devices:
   # Living Room

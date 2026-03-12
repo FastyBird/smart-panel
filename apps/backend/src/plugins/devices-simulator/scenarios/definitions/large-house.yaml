@@ -6,45 +6,65 @@ rooms:
   # Floor 1
   - id: foyer
     name: "Foyer"
+    category: entryway
   - id: living-room
     name: "Living Room"
+    category: living_room
   - id: family-room
     name: "Family Room"
+    category: living_room
   - id: kitchen
     name: "Kitchen"
+    category: kitchen
   - id: dining-room
     name: "Dining Room"
+    category: dining_room
   - id: office
     name: "Home Office"
+    category: office
   - id: powder-room
     name: "Powder Room"
+    category: bathroom
   - id: mudroom
     name: "Mudroom"
+    category: entryway
   - id: laundry
     name: "Laundry Room"
+    category: laundry
   - id: garage
     name: "Garage"
+    category: garage
   # Floor 2
   - id: upper-hallway
     name: "Upper Hallway"
+    category: hallway
   - id: master-suite
     name: "Master Suite"
+    category: bedroom
   - id: master-bathroom
     name: "Master Bathroom"
+    category: bathroom
   - id: master-closet
     name: "Master Closet"
+    category: closet
   - id: bedroom-2
     name: "Bedroom 2"
+    category: bedroom
   - id: bedroom-3
     name: "Bedroom 3"
+    category: bedroom
   - id: bedroom-4
     name: "Bedroom 4"
+    category: bedroom
   - id: bathroom-2
     name: "Bathroom 2"
+    category: bathroom
   - id: bathroom-3
     name: "Bathroom 3"
+    category: bathroom
   - id: bonus-room
     name: "Bonus Room"
+    category: media_room
   # Outdoor
   - id: front-porch
     name: "Front Porch"

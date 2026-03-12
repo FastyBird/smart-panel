@@ -5,12 +5,16 @@ description: "Small office space with climate control and security"
 rooms:
   - id: reception
     name: "Reception"
+    category: entryway
   - id: main-office
     name: "Main Office"
+    category: office
   - id: meeting-room
     name: "Meeting Room"
+    category: office
   - id: server-room
     name: "Server Room"
+    category: utility_room
 
 devices:
   # Reception
