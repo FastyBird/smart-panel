@@ -38,6 +38,10 @@
       "system": "System",
       "about": "About application"
     },
+    "update": {
+      "title": "Software Updates",
+      "confirmTitle": "Install Update"
+    },
     "manage": {
       "manageSystem": "Manage system",
       "restart": "Restart",
@@ -82,6 +86,16 @@
     },
     "misc": {
       "requestError": "Something went wrong, please try again later."
+    },
+    "update": {
+      "confirmInstall": "Are you sure you want to update to version {version}?",
+      "majorUpdateWarning": "This is a major version update to {version}. Major updates may contain breaking changes. Are you sure you want to proceed?",
+      "confirmTitle": "Install Update",
+      "updateStarted": "Update process has been started. The system will restart automatically.",
+      "updateComplete": "Update completed successfully!",
+      "updateFailed": "Update failed. Please check the system logs for details.",
+      "checkFailed": "Failed to check for updates. Please try again later.",
+      "installFailed": "Failed to start the update. Please try again later."
     }
   },
   "texts": {
@@ -101,6 +115,13 @@
       "factoryResetInProcess": "Smart Panel is reset to factory state...",
       "poweredOff": "You can close this window — no further action is required.",
       "systemLogs": "Preview and diagnose application logs."
+    },
+    "update": {
+      "available": "Update available",
+      "upToDate": "Your system is up to date.",
+      "checking": "Checking for updates...",
+      "installing": "Installing update...",
+      "noVersionInfo": "Unable to retrieve version information."
     },
     "systemLogs": {
       "loadingLogs": "Loading application logs...",
@@ -355,6 +376,18 @@
     },
     "loadMore": {
       "title": "Load more"
+    },
+    "update": {
+      "checkForUpdates": "Check for Updates",
+      "installUpdate": "Install Update"
+    }
+  },
+  "labels": {
+    "update": {
+      "currentVersion": "Current version",
+      "latestVersion": "Latest version",
+      "lastChecked": "Last checked",
+      "updateStatus": "Status"
     }
   },
   "systemInfo": {

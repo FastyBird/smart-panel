@@ -14,14 +14,9 @@ const mockPlugin: IConfigPlugin = {
 	enabled: true,
 };
 
-vi.mock('../../../common', async () => {
-	const actual = await vi.importActual('../../../common');
-
-	return {
-		...actual,
-		injectStoresManager: vi.fn(),
-	};
-});
+vi.mock('../../../common', () => ({
+	injectStoresManager: vi.fn(),
+}));
 
 describe('useConfigPlugin', () => {
 	let get: Mock;

@@ -2,10 +2,11 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
-import { SYSTEM_MODULE_NAME } from '../system.constants';
+import { EventType, SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
 export interface VersionInfo {
 	current: string;
@@ -25,6 +26,22 @@ export interface PanelVersionInfo {
 	assets: PanelReleaseAsset[];
 }
 
+export interface UpdateStatusInfo {
+	status: UpdateStatusType;
+	phase: UpdatePhase | null;
+	progressPercent: number | null;
+	message: string | null;
+	error: string | null;
+	startedAt: Date | null;
+}
+
+export interface ReleaseNotes {
+	version: string;
+	body: string | null;
+	url: string;
+	publishedAt: string | null;
+}
+
 @Injectable()
 export class UpdateService {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateService');
@@ -36,7 +53,21 @@ export class UpdateService {
 	private cachedPanelInfo: Map<string, PanelVersionInfo> = new Map();
 	private serverCacheTimestamp: Map<string, number> = new Map();
 	private panelCacheTimestamp: Map<string, number> = new Map();
+	private cachedReleaseNotes: Map<string, ReleaseNotes> = new Map();
 	private readonly CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+	private updateStatus: UpdateStatusInfo = {
+		status: UpdateStatusType.IDLE,
+		phase: null,
+		progressPercent: null,
+		message: null,
+		error: null,
+		startedAt: null,
+	};
+
+	private updateLock = false;
+
+	constructor(private readonly eventEmitter: EventEmitter2) {}
 
 	getCurrentVersion(): string {
 		try {
@@ -48,6 +79,40 @@ export class UpdateService {
 		} catch {
 			return '0.0.0';
 		}
+	}
+
+	getStatus(): UpdateStatusInfo {
+		return { ...this.updateStatus };
+	}
+
+	isUpdateInProgress(): boolean {
+		return this.updateLock;
+	}
+
+	acquireUpdateLock(): boolean {
+		if (this.updateLock) {
+			return false;
+		}
+
+		this.updateLock = true;
+
+		return true;
+	}
+
+	releaseUpdateLock(): void {
+		this.updateLock = false;
+	}
+
+	setStatus(partial: Partial<UpdateStatusInfo>): void {
+		this.updateStatus = { ...this.updateStatus, ...partial };
+
+		this.eventEmitter.emit(EventType.SYSTEM_UPDATE_STATUS, {
+			status: this.updateStatus.status,
+			phase: this.updateStatus.phase,
+			progress_percent: this.updateStatus.progressPercent,
+			message: this.updateStatus.message,
+			error: this.updateStatus.error,
+		});
 	}
 
 	async checkServerUpdate(channel: 'latest' | 'beta' | 'alpha' = 'latest'): Promise<VersionInfo> {
@@ -105,6 +170,71 @@ export class UpdateService {
 				updateType: null,
 			};
 		}
+	}
+
+	async fetchReleaseNotes(version: string): Promise<ReleaseNotes> {
+		const cleanVersion = version.replace(/^v/, '');
+		const cached = this.cachedReleaseNotes.get(cleanVersion);
+
+		if (cached) {
+			return cached;
+		}
+
+		const url = `${this.GITHUB_API_URL}/tags/v${cleanVersion}`;
+
+		try {
+			const response = await fetch(url, {
+				headers: {
+					Accept: 'application/vnd.github.v3+json',
+					'User-Agent': 'FastyBird-SmartPanel',
+				},
+			});
+
+			if (!response.ok) {
+				this.logger.warn(`GitHub API returned ${response.status} for release notes v${cleanVersion}`);
+
+				return {
+					version: cleanVersion,
+					body: null,
+					url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
+					publishedAt: null,
+				};
+			}
+
+			const release = (await response.json()) as {
+				tag_name: string;
+				body: string | null;
+				html_url: string;
+				published_at: string | null;
+			};
+
+			const result: ReleaseNotes = {
+				version: cleanVersion,
+				body: release.body,
+				url: release.html_url,
+				publishedAt: release.published_at,
+			};
+
+			this.cachedReleaseNotes.set(cleanVersion, result);
+
+			return result;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to fetch release notes for v${cleanVersion}: ${err.message}`);
+
+			return {
+				version: cleanVersion,
+				body: null,
+				url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
+				publishedAt: null,
+			};
+		}
+	}
+
+	invalidateServerCache(): void {
+		this.cachedServerInfo.clear();
+		this.serverCacheTimestamp.clear();
 	}
 
 	async checkPanelUpdate(prerelease: boolean = false): Promise<PanelVersionInfo> {

@@ -6,6 +6,8 @@ import { defaultsDeep, get } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
 import {
+	type IModule,
+	type ModuleInjectionKey,
 	injectBackendClient,
 	injectLogger,
 	injectModulesManager,
@@ -13,8 +15,6 @@ import {
 	injectSockets,
 	injectStoresManager,
 	provideAccountManager,
-	type IModule,
-	type ModuleInjectionKey,
 } from '../../common';
 import type { IUser } from '../users';
 

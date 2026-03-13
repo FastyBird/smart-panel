@@ -46,4 +46,3 @@ export const injectModulesManager = (app?: App): ModulesManager => {
 export const provideModulesManager = (app: App, manager: ModulesManager): void => {
 	app.provide(modulesManagerKey, manager);
 };
-

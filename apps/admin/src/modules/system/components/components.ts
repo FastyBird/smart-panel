@@ -7,6 +7,8 @@ export { default as SystemLogDetail } from './system-logs/system-log-detail.vue'
 export { default as AboutApplication } from './system-info/about-application.vue';
 export { default as ManageSystem } from './system-info/manage-system.vue';
 export { default as SystemInfoDetail } from './system-info/system-info-detail.vue';
+export { default as UpdateNotificationBadge } from './system-info/update-notification-badge.vue';
+export { default as UpdateStatus } from './system-info/update-status.vue';
 
 export { default as SystemConfigForm } from './system-config-form.vue';
 

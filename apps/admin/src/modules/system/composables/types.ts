@@ -46,3 +46,23 @@ export interface IUseSystemLog {
 	systemLog: ComputedRef<ILogEntry | null>;
 	isLoading: ComputedRef<boolean>;
 }
+
+export interface IUseUpdateStatus {
+	currentVersion: Ref<string | null>;
+	latestVersion: Ref<string | null>;
+	updateAvailable: Ref<boolean>;
+	updateType: Ref<'patch' | 'minor' | 'major' | null>;
+	lastChecked: Ref<Date | null>;
+	changelogUrl: Ref<string | null>;
+	status: Ref<string>;
+	phase: Ref<string | null>;
+	progressPercent: Ref<number | null>;
+	error: Ref<string | null>;
+	loading: Ref<boolean>;
+	installing: Ref<boolean>;
+	isUpdating: ComputedRef<boolean>;
+	fetchStatus: () => Promise<void>;
+	checkForUpdates: () => Promise<void>;
+	installUpdate: (allowMajor?: boolean) => Promise<void>;
+	applyStatusEvent: (payload: Record<string, unknown>) => void;
+}

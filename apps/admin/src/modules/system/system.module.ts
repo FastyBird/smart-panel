@@ -25,6 +25,7 @@ import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
+import { emitUpdateEvent } from './services/update-events.service';
 import { logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX, SYSTEM_MODULE_NAME } from './system.constants';
@@ -153,6 +154,11 @@ export default {
 					systemInfoStore.onEvent({
 						data: data.payload,
 					});
+					break;
+
+				case EventType.SYSTEM_UPDATE_STATUS:
+				case EventType.SYSTEM_UPDATE_PROGRESS:
+					emitUpdateEvent(data.payload);
 					break;
 
 				default:

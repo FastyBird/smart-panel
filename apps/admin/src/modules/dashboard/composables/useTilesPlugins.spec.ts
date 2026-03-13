@@ -51,16 +51,11 @@ const mockPluginList = [
 	},
 ];
 
-vi.mock('../../../common', async () => {
-	const actual = await vi.importActual('../../../common');
-
-	return {
-		...actual,
-		injectPluginsManager: () => ({
-			getPlugins: () => mockPluginList,
-		}),
-	};
-});
+vi.mock('../../../common', () => ({
+	injectPluginsManager: () => ({
+		getPlugins: () => mockPluginList,
+	}),
+}));
 
 vi.mock('../../config', () => ({
 	useConfigPlugins: () => ({

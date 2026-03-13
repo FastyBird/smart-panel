@@ -9,6 +9,7 @@ import { SYSTEM_MODULE_NAME } from '../system.constants';
 interface UpdateCheckOptions {
 	channel?: string;
 	panel?: boolean;
+	changelog?: boolean;
 }
 
 @Command({
@@ -45,6 +46,22 @@ export class UpdateCheckCommand extends CommandRunner {
 					serverInfo.updateType === 'major' ? '\x1b[31m' : serverInfo.updateType === 'minor' ? '\x1b[33m' : '\x1b[32m';
 				console.log(`  Update type:      ${typeColor}${serverInfo.updateType}\x1b[0m`);
 				console.log(`\n  \x1b[32m✓\x1b[0m Update available! Run \x1b[36msystem:update:server\x1b[0m to install.`);
+
+				if (options?.changelog && serverInfo.latest) {
+					const releaseNotes = await this.updateService.fetchReleaseNotes(serverInfo.latest);
+
+					if (releaseNotes.body) {
+						console.log(`\n\x1b[1m  Release Notes (v${releaseNotes.version})\x1b[0m\n`);
+						console.log(
+							releaseNotes.body
+								.split('\n')
+								.map((line) => `  ${line}`)
+								.join('\n'),
+						);
+					}
+
+					console.log(`\n  \x1b[90mFull changelog: ${releaseNotes.url}\x1b[0m`);
+				}
 			} else {
 				console.log('\n  \x1b[32m✓\x1b[0m Server is up to date.');
 			}
@@ -107,5 +124,14 @@ export class UpdateCheckCommand extends CommandRunner {
 	})
 	parsePanel(val: boolean): boolean {
 		return val;
+	}
+
+	@Option({
+		flags: '--changelog',
+		description: 'Display release notes for available updates',
+		defaultValue: false,
+	})
+	parseChangelog(): boolean {
+		return true;
 	}
 }

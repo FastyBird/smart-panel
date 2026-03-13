@@ -27,6 +27,10 @@ vi.mock('../composables/useDarkMode', () => ({
 	})),
 }));
 
+vi.mock('../../modules/system/components/components', () => ({
+	UpdateNotificationBadge: { name: 'UpdateNotificationBadge', template: '<div />' },
+}));
+
 vi.mock('../services/account-manager', () => ({
 	injectAccountManager: vi.fn().mockReturnValue({
 		details: computed(() => ({

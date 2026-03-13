@@ -125,8 +125,8 @@ import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { useBreakpoints } from '../../../common';
-import { injectAccountManager } from '../../../common/services/account-manager';
 import UserAvatar from '../../../common/components/user-avatar.vue';
+import { injectAccountManager } from '../../../common/services/account-manager';
 
 defineOptions({
 	name: 'LayoutLock',

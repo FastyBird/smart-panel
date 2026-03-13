@@ -1,4 +1,4 @@
-import { computed, type ComputedRef } from 'vue';
+import { type ComputedRef, computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
