@@ -1,0 +1,331 @@
+import { nextTick } from 'vue';
+
+import { ElCollapseItem, ElOption, ElSlider } from 'element-plus';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
+
+import type { IDerivedMediaEndpoint, IMediaActivityBinding } from '../composables/useSpaceMedia';
+
+// --- Shared mutable state for mocks ---
+const state: {
+	endpoints: IDerivedMediaEndpoint[];
+	bindings: IMediaActivityBinding[];
+} = {
+	endpoints: [],
+	bindings: [],
+};
+
+const mockFetchEndpoints = vi.fn().mockResolvedValue(undefined);
+const mockFetchBindings = vi.fn().mockResolvedValue(undefined);
+const mockFetchActiveState = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('../composables/useSpaceMedia', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		useSpaceMedia: () => ({
+			endpoints: computed(() => state.endpoints),
+			activeState: ref(null),
+			fetchingEndpoints: ref(false),
+			fetchingBindings: ref(false),
+			activating: ref(false),
+			deactivating: ref(false),
+			applyingDefaults: ref(false),
+			activationError: ref(null),
+			fetchEndpoints: mockFetchEndpoints,
+			fetchBindings: mockFetchBindings,
+			fetchActiveState: mockFetchActiveState,
+			activate: vi.fn().mockResolvedValue({}),
+			saveBinding: vi.fn().mockResolvedValue({}),
+			createBinding: vi.fn().mockResolvedValue({}),
+			deleteBinding: vi.fn().mockResolvedValue(undefined),
+			applyDefaults: vi.fn().mockResolvedValue(undefined),
+			findBindingByActivity: (key: string) => state.bindings.find((b) => b.activityKey === key),
+			endpointsByType: (type: string) => computed(() => state.endpoints.filter((ep) => ep.type === type)),
+		}),
+		MediaActivityKey: {
+			watch: 'watch',
+			listen: 'listen',
+			gaming: 'gaming',
+			background: 'background',
+		},
+		MediaEndpointType: {
+			display: 'display',
+			audio_output: 'audio_output',
+			source: 'source',
+			remote_target: 'remote_target',
+		},
+		getActivityColor: () => 'primary' as const,
+		getActivityIcon: (key: string) => {
+			const icons: Record<string, string> = {
+				watch: 'mdi:television-play',
+				listen: 'mdi:music',
+				gaming: 'mdi:controller',
+				background: 'mdi:music-note',
+			};
+
+			return icons[key] || 'mdi:help-circle';
+		},
+	};
+});
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
+
+vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({
+		success: vi.fn(),
+		error: vi.fn(),
+		info: vi.fn(),
+		warning: vi.fn(),
+	}),
+}));
+
+import SpaceMediaActivitiesDialog from './space-media-activities-dialog.vue';
+
+// --- Test fixtures ---
+
+const mockDisplayEp: IDerivedMediaEndpoint = {
+	endpointId: 'ep-display-1',
+	spaceId: 'space-1',
+	deviceId: 'dev-1',
+	type: 'display' as IDerivedMediaEndpoint['type'],
+	name: 'Living Room TV',
+	capabilities: {
+		power: true,
+		volume: false,
+		mute: false,
+		playback: false,
+		track: false,
+		inputSelect: true,
+		remoteCommands: false,
+	},
+	links: {
+		inputSelect: {
+			propertyId: 'prop-1',
+			dataType: 'enum',
+			format: ['hdmi1', 'hdmi2', 'hdmi3'],
+		},
+	},
+};
+
+const mockAudioEp: IDerivedMediaEndpoint = {
+	endpointId: 'ep-audio-1',
+	spaceId: 'space-1',
+	deviceId: 'dev-2',
+	type: 'audio_output' as IDerivedMediaEndpoint['type'],
+	name: 'AV Receiver',
+	capabilities: {
+		power: true,
+		volume: true,
+		mute: true,
+		playback: false,
+		track: false,
+		inputSelect: false,
+		remoteCommands: false,
+	},
+};
+
+const mockSourceEp: IDerivedMediaEndpoint = {
+	endpointId: 'ep-source-1',
+	spaceId: 'space-1',
+	deviceId: 'dev-3',
+	type: 'source' as IDerivedMediaEndpoint['type'],
+	name: 'Apple TV',
+	capabilities: {
+		power: true,
+		volume: false,
+		mute: false,
+		playback: true,
+		track: true,
+		inputSelect: false,
+		remoteCommands: false,
+	},
+};
+
+const mockRemoteEp: IDerivedMediaEndpoint = {
+	endpointId: 'ep-remote-1',
+	spaceId: 'space-1',
+	deviceId: 'dev-4',
+	type: 'remote_target' as IDerivedMediaEndpoint['type'],
+	name: 'IR Blaster',
+	capabilities: {
+		power: false,
+		volume: false,
+		mute: false,
+		playback: false,
+		track: false,
+		inputSelect: false,
+		remoteCommands: true,
+	},
+};
+
+const allEndpoints = [mockDisplayEp, mockAudioEp, mockSourceEp, mockRemoteEp];
+
+const mockWatchBinding: IMediaActivityBinding = {
+	id: 'binding-1',
+	spaceId: 'space-1',
+	activityKey: 'watch' as IMediaActivityBinding['activityKey'],
+	displayEndpointId: 'ep-display-1',
+	audioEndpointId: 'ep-audio-1',
+	sourceEndpointId: 'ep-source-1',
+	remoteEndpointId: 'ep-remote-1',
+	displayInputId: 'hdmi1',
+	audioInputId: null,
+	sourceInputId: null,
+	audioVolumePreset: 50,
+	createdAt: '2024-01-01T00:00:00Z',
+	updatedAt: null,
+};
+
+const mockSpace = { id: 'space-1', name: 'Living Room' };
+
+describe('SpaceMediaActivitiesDialog', () => {
+	let wrapper: VueWrapper;
+
+	const createWrapper = async (): Promise<void> => {
+		wrapper = mount(SpaceMediaActivitiesDialog, {
+			props: {
+				visible: true,
+				space: mockSpace,
+			},
+			global: {
+				stubs: {
+					'el-dialog': {
+						template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
+						props: ['modelValue'],
+						emits: ['update:modelValue', 'open', 'close'],
+						mounted() {
+							this.$emit('open');
+						},
+					},
+					Icon: { template: '<i />' },
+				},
+				directives: {
+					loading: () => {},
+				},
+			},
+		});
+
+		// Wait for onDialogOpen async handler to complete
+		await flushPromises();
+		await nextTick();
+		await flushPromises();
+	};
+
+	beforeEach(() => {
+		state.endpoints = [...allEndpoints];
+		state.bindings = [mockWatchBinding];
+		vi.clearAllMocks();
+		mockFetchEndpoints.mockResolvedValue(undefined);
+		mockFetchBindings.mockResolvedValue(undefined);
+		mockFetchActiveState.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		wrapper?.unmount();
+	});
+
+	describe('form rendering', () => {
+		it('renders all 4 activity collapse panels', async () => {
+			await createWrapper();
+
+			const items = wrapper.findAllComponents(ElCollapseItem);
+
+			expect(items).toHaveLength(4);
+
+			const names = items.map((item) => item.props('name'));
+
+			expect(names).toEqual(['watch', 'listen', 'gaming', 'background']);
+		});
+
+		it('calls fetch methods when dialog opens', async () => {
+			await createWrapper();
+
+			expect(mockFetchEndpoints).toHaveBeenCalledOnce();
+			expect(mockFetchBindings).toHaveBeenCalledOnce();
+			expect(mockFetchActiveState).toHaveBeenCalledOnce();
+		});
+
+		it('shows configured status for activity with binding', async () => {
+			await createWrapper();
+
+			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+
+			expect(watchPanel.text()).toContain('spacesModule.media.activities.status.configured');
+		});
+
+		it('shows unconfigured status for activity without binding', async () => {
+			await createWrapper();
+
+			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+
+			expect(listenPanel.text()).toContain('spacesModule.media.activities.status.unconfigured');
+		});
+	});
+
+	describe('filtering logic', () => {
+		it('shows display input override when endpoint has inputSelect capability', async () => {
+			await createWrapper();
+
+			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+
+			expect(watchPanel.text()).toContain('spacesModule.media.activities.overrides.displayInput');
+		});
+
+		it('shows volume slider when audio endpoint has volume capability', async () => {
+			await createWrapper();
+
+			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+			const sliders = watchPanel.findAllComponents(ElSlider);
+
+			expect(sliders).toHaveLength(1);
+		});
+
+		it('hides overrides for activity without configured endpoints', async () => {
+			await createWrapper();
+
+			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+
+			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.displayInput');
+			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioInput');
+			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioVolume');
+
+			const sliders = listenPanel.findAllComponents(ElSlider);
+
+			expect(sliders).toHaveLength(0);
+		});
+
+		it('configured activity has more options than unconfigured due to override selects', async () => {
+			await createWrapper();
+
+			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+
+			const watchOptions = watchPanel.findAllComponents(ElOption);
+			const listenOptions = listenPanel.findAllComponents(ElOption);
+
+			// Watch: 4 main selects × 1 endpoint each + 3 input override options = 7
+			expect(watchOptions.length).toBeGreaterThan(listenOptions.length);
+
+			// Listen: 4 main selects × 1 endpoint each = 4
+			expect(listenOptions).toHaveLength(4);
+		});
+
+		it('each endpoint type select shows only one option per type', async () => {
+			await createWrapper();
+
+			// With 1 endpoint per type, all unconfigured activities should have exactly 4 options
+			// (display, audio, source, remote — one each)
+			const gamingPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'gaming')!;
+			const backgroundPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'background')!;
+
+			expect(gamingPanel.findAllComponents(ElOption)).toHaveLength(4);
+			expect(backgroundPanel.findAllComponents(ElOption)).toHaveLength(4);
+		});
+	});
+});
