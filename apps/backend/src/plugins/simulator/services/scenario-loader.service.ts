@@ -96,7 +96,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 						continue;
 					}
 					const fullPath = join(dirPath, entry.name);
-					const name = basename(entry.name, entry.name.endsWith('.yaml') ? '.yaml' : '.yml');
+					let name = basename(entry.name, entry.name.endsWith('.yaml') ? '.yaml' : '.yml');
+					if (filePrefix && name.startsWith(filePrefix)) {
+						name = name.slice(filePrefix.length);
+					}
 
 					scenarios.push({
 						path: fullPath,
