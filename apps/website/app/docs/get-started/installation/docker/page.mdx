@@ -1,0 +1,191 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Docker Installation
+
+This guide walks you through deploying Smart Panel using **Docker** — the fastest way to get a
+production-ready server running without installing Node.js or managing system services directly.
+
+---
+
+## Prerequisites
+
+- A Linux host with [Docker](https://docs.docker.com/engine/install/) and
+  [Docker Compose](https://docs.docker.com/compose/install/) installed
+- At least 512 MB RAM and 300 MB free disk space
+
+---
+
+## Quick Start
+
+<Steps>
+	## Create a project directory
+
+	```bash copy
+	mkdir -p ~/smart-panel && cd ~/smart-panel
+	```
+
+	## Download the Docker Compose file
+
+	```bash copy
+	curl -sL "https://raw.githubusercontent.com/FastyBird/smart-panel/main/docker/prod/docker-compose.yml" \
+		-o docker-compose.yml
+	```
+
+	## Generate a JWT secret
+
+	Smart Panel requires a secret key for authentication tokens:
+
+	```bash copy
+	export FB_TOKEN_SECRET=$(openssl rand -base64 32)
+	echo "FB_TOKEN_SECRET=${FB_TOKEN_SECRET}" > .env
+	```
+
+	## Start Smart Panel
+
+	```bash copy
+	docker compose up -d
+	```
+
+	The container will run database migrations on first startup and then start the server.
+</Steps>
+
+That's it! Open `http://<your-host-ip>:3000` in a browser to access the admin interface.
+
+---
+
+## With InfluxDB (Time-Series Data)
+
+To enable time-series data storage for temperature history, energy monitoring, etc.:
+
+```bash copy
+docker compose --profile influxdb up -d
+```
+
+Then download the InfluxDB override file to wire Smart Panel to InfluxDB automatically:
+
+```bash copy
+curl -sL "https://raw.githubusercontent.com/FastyBird/smart-panel/main/docker/prod/docker-compose.influxdb.yml" \
+	-o docker-compose.influxdb.yml
+docker compose -f docker-compose.yml -f docker-compose.influxdb.yml up -d
+```
+
+<Callout type="warning">
+	Smart Panel requires InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
+	The Docker Compose file uses the correct version automatically.
+</Callout>
+
+---
+
+## Configuration
+
+You can configure Smart Panel by setting environment variables in your `.env` file or directly in
+`docker-compose.yml`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_BACKEND_PORT` | `3000` | HTTP server port (host-side mapping) |
+| `FB_TOKEN_SECRET` | **Required** | JWT authentication secret |
+| `FB_MDNS_ENABLED` | `true` | Enable mDNS discovery |
+| `FB_OPENWEATHERMAP_API_KEY` | - | OpenWeatherMap API key |
+
+### Custom Port
+
+To run on a different port, update your `.env`:
+
+```bash
+FB_TOKEN_SECRET=your-secret-here
+FB_BACKEND_PORT=8080
+```
+
+Then restart:
+
+```bash copy
+docker compose up -d
+```
+
+---
+
+## Data Persistence
+
+All application data (SQLite database, configuration) is stored in a Docker named volume
+`smart-panel-data` mounted at `/data` inside the container. This volume persists across container
+restarts and image updates.
+
+To back up your data:
+
+```bash copy
+docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
+	tar czf /backup/smart-panel-backup.tar.gz -C /data .
+```
+
+To restore from a backup:
+
+```bash copy
+docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
+	sh -c "rm -rf /data/* && tar xzf /backup/smart-panel-backup.tar.gz -C /data"
+```
+
+---
+
+## Updating
+
+To update to the latest version:
+
+```bash copy
+docker compose pull
+docker compose up -d
+```
+
+The container will automatically run any pending database migrations on startup.
+
+---
+
+## Using a Specific Version
+
+To pin to a specific version, edit your `docker-compose.yml`:
+
+```yaml
+services:
+  smart-panel:
+    image: ghcr.io/fastybird/smart-panel:1.2.3
+```
+
+Or use the `latest` tag (default) to always pull the newest release.
+
+---
+
+## Container Management
+
+```bash copy
+# View logs
+docker compose logs -f smart-panel
+
+# Restart
+docker compose restart smart-panel
+
+# Stop
+docker compose down
+
+# Stop and remove volumes (WARNING: deletes all data)
+docker compose down -v
+```
+
+---
+
+## Health Check
+
+The container includes a built-in health check that polls the `/api/system/health` endpoint every
+30 seconds. Check the container health status with:
+
+```bash copy
+docker inspect --format='{{.State.Health.Status}}' smart-panel
+```
+
+---
+
+## What's Next?
+
+Your server is running. Now either:
+
+- **Add display panels** by following the [Display Only](/docs/get-started/installation/display-only) guide on your display devices
+- **Create your admin account** by following the [Onboarding](/docs/get-started/onboarding) guide
