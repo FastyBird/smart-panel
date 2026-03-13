@@ -69,6 +69,7 @@
 							</div>
 						</el-dropdown-item>
 						<el-dropdown-item
+							v-if="accountManager?.routes.lock"
 							:icon="h(Icon, { icon: 'mdi:lock' })"
 							:divided="typeof accountManager?.routes.edit !== 'undefined' || typeof accountManager?.routes.security !== 'undefined'"
 						>

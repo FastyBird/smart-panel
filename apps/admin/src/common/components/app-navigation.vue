@@ -98,6 +98,7 @@
 				</el-menu-item>
 
 				<el-menu-item
+					v-if="accountManager?.routes.lock"
 					index="3-3"
 					data-test-id="navigation-lock-screen"
 					@click="onLock"
