@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: FEATURE-PLUGIN-ZIGBEE2MQTT
-Status: in-progress
+Status: done
 Created: 2025-12-22
 
 ## 1. Business goal
@@ -80,13 +80,13 @@ I want an improved adoption flow similar to Home Assistant that allows me to sel
   - Confirmed device category
   - Selected channels and properties to create
   - Custom device name (optional)
-- [ ] Internal properties are created for device-specific attributes:
-  - [ ] Window covering: `position_command`, `tilt_command` for setting behavior
-  - [ ] Battery: `charging_state`, `battery_voltage` when available
-  - [ ] Climate: `preset_mode`, `fan_mode`, `away_mode` options
-  - [ ] Light: `effect`, `transition` when supported
+- [x] Internal properties are created for device-specific attributes:
+  - [x] Window covering: `position_command`, `tilt_command` for setting behavior
+  - [x] Battery: `charging_state`, `battery_voltage` when available
+  - [x] Climate: `preset_mode`, `fan_mode`, `away_mode` options
+  - [x] Light: `effect`, `transition` when supported
 - [x] Category inference prioritizes primary exposes (light, switch, climate) over sensors
-- [ ] Unit tests for mapping preview and adoption services
+- [x] Unit tests for mapping preview and adoption services
 
 ### Admin UI
 

@@ -33,12 +33,30 @@ mappings:
               unit: "°C"
               settable: false
 
-      # Thermostat channel - locked state (required)
-      # Note: mode/active properties have been removed from thermostat channel
+      # Thermostat channel - locked state and internal climate properties
       - identifier: thermostat
         name: Thermostat
         category: THERMOSTAT
-        features: []
+        features:
+          # Preset mode (away, boost, comfort, eco, etc.)
+          # Internal property: Z2M climate devices expose preset modes
+          # Stored as MODE property on thermostat channel
+          - z2m_feature: preset
+            panel:
+              identifier: MODE
+              name: Preset Mode
+              data_type: ENUM
+              # format derived from device's actual preset values
+
+          # Fan mode (auto, low, medium, high, etc.)
+          # Internal property: Z2M climate devices expose fan control modes
+          # Stored as SPEED property on thermostat channel
+          - z2m_feature: fan_mode
+            panel:
+              identifier: SPEED
+              name: Fan Mode
+              data_type: ENUM
+              # format derived from device's actual fan mode values
 
       # Heater channel - heating setpoint and valve control (optional)
       - identifier: heater
@@ -186,7 +204,9 @@ mappings:
               unit: "%"
               settable: false
 
-# The following Z2M features are NOT supported by Smart Panel spec:
-# - preset (away, boost, comfort, eco, etc.) - no preset property in thermostat channel
-# - fan_mode - would need separate fan channel, but not part of thermostat device
-# - local_temperature_calibration - no calibration property
+# The following Z2M features are mapped as internal properties:
+# - preset (away, boost, comfort, eco, etc.) - stored as MODE on thermostat channel
+# - fan_mode - stored as SPEED on thermostat channel
+#
+# NOT mapped:
+# - local_temperature_calibration - no calibration property in spec
