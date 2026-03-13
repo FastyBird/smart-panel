@@ -3,7 +3,8 @@ ID: FEATURE-AI-ASSISTANT-PANEL-FACE-MVP
 Type: feature
 Scope: panel
 Size: medium
-Parent: FEATURE-AI-ASSISTANT-PANEL-FACE
+Parent: EPIC-AI-BUDDY-FACE
+Created: 2026-03-13
 Status: planned
 
 ## 1. Business goal
