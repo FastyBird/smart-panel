@@ -97,6 +97,8 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 			if (!username) {
 				emit('update:remoteFormResult', FormResult.ERROR);
 
+				flashMessage.error(t('authModule.messages.requestError'));
+
 				return;
 			}
 
