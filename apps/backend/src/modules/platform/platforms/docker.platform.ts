@@ -1,10 +1,11 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
+import os from 'os';
 import { promisify } from 'util';
 
 import { GenericPlatform } from './generic.platform';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export class DockerPlatform extends GenericPlatform {
 	async rebootDevice(): Promise<void> {
@@ -14,16 +15,21 @@ export class DockerPlatform extends GenericPlatform {
 
 		if (!containerId) {
 			this.logger.warn('Could not determine container ID, falling back to process exit');
-			process.exit(0);
+			process.exit(1);
 		}
 
 		try {
-			await execAsync(
-				`curl -s --unix-socket /var/run/docker.sock -X POST http://localhost/containers/${containerId}/restart`,
-			);
+			await execFileAsync('curl', [
+				'-s',
+				'--unix-socket',
+				'/var/run/docker.sock',
+				'-X',
+				'POST',
+				`http://localhost/containers/${containerId}/restart`,
+			]);
 		} catch (error) {
 			this.logger.error(`Docker restart failed: ${(error as Error).message}, falling back to process exit`);
-			process.exit(0);
+			process.exit(1);
 		}
 	}
 
@@ -38,9 +44,14 @@ export class DockerPlatform extends GenericPlatform {
 		}
 
 		try {
-			await execAsync(
-				`curl -s --unix-socket /var/run/docker.sock -X POST http://localhost/containers/${containerId}/stop`,
-			);
+			await execFileAsync('curl', [
+				'-s',
+				'--unix-socket',
+				'/var/run/docker.sock',
+				'-X',
+				'POST',
+				`http://localhost/containers/${containerId}/stop`,
+			]);
 		} catch (error) {
 			this.logger.error(`Docker stop failed: ${(error as Error).message}, falling back to process exit`);
 			process.exit(0);
@@ -61,15 +72,10 @@ export class DockerPlatform extends GenericPlatform {
 		}
 
 		// Try the hostname (Docker sets it to the short container ID by default)
-		try {
-			const { stdout } = await execAsync('hostname');
-			const hostname = stdout.trim();
+		const hostname = os.hostname();
 
-			if (/^[a-f0-9]{12}$/.test(hostname)) {
-				return hostname;
-			}
-		} catch {
-			// hostname not available
+		if (/^[a-f0-9]{12}$/.test(hostname)) {
+			return hostname;
 		}
 
 		// Try HOSTNAME env var
