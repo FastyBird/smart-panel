@@ -1,11 +1,7 @@
-import { ref } from 'vue';
-
 /**
- * Reactive singleton to hold update status received via WebSocket events.
- * The system module writes to it on WS events; the useUpdateStatus composable reads from it.
+ * Listener-based event bridge for WebSocket update events.
+ * The system module emits events on WS messages; composables and components subscribe via onUpdateEvent.
  */
-const updateEventPayload = ref<Record<string, unknown> | null>(null);
-
 let listeners: Array<(payload: Record<string, unknown>) => void> = [];
 
 export const onUpdateEvent = (callback: (payload: Record<string, unknown>) => void): (() => void) => {
@@ -17,8 +13,6 @@ export const onUpdateEvent = (callback: (payload: Record<string, unknown>) => vo
 };
 
 export const emitUpdateEvent = (payload: Record<string, unknown>): void => {
-	updateEventPayload.value = payload;
-
 	for (const listener of listeners) {
 		listener(payload);
 	}

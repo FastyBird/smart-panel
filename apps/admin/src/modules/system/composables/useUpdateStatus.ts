@@ -57,6 +57,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		updateType.value = (data.update_type as 'patch' | 'minor' | 'major' | null) ?? null;
 		lastChecked.value = data.last_checked ? new Date(data.last_checked as string) : null;
 		changelogUrl.value = (data.changelog_url as string) ?? null;
+		error.value = null;
 	};
 
 	const applyStatusEvent = (payload: Record<string, unknown>): void => {
@@ -125,6 +126,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	const installUpdate = async (allowMajor: boolean = false): Promise<void> => {
 		installing.value = true;
 		status.value = 'downloading';
+		error.value = null;
 
 		try {
 			await backend.client.POST(UPDATE_INSTALL_PATH as never, {

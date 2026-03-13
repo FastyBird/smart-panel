@@ -66,12 +66,13 @@ const onNavigateToUpdate = (): void => {
 };
 
 const applyStatusEvent = (payload: Record<string, unknown>): void => {
-	if (payload.update_available !== undefined) {
-		updateAvailable.value = payload.update_available as boolean;
-	}
+	// The WS payload contains status/phase/progress_percent/message/error,
+	// not version info. Re-fetch from API when an update completes or fails
+	// to get the latest version information.
+	const eventStatus = payload.status as string | undefined;
 
-	if (payload.latest_version !== undefined) {
-		latestVersion.value = payload.latest_version as string | null;
+	if (eventStatus === 'complete' || eventStatus === 'failed') {
+		void fetchInitialStatus();
 	}
 };
 
