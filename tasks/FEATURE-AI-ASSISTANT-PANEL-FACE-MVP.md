@@ -1,4 +1,4 @@
-# Task: AI Assistant Face Widget MVP (Static Demo)
+# Task: AI Assistant Face Widget MVP (Buddy Module Integration)
 ID: FEATURE-AI-ASSISTANT-PANEL-FACE-MVP
 Type: feature
 Scope: panel
@@ -8,18 +8,43 @@ Status: planned
 
 ## 1. Business goal
 
-In order to validate the visual design and animation quality of the assistant face
-As a developer
-I want to create a standalone face widget with polished animations matching EchoEar quality that can be demonstrated without backend integration
+In order to give the AI buddy a visual personality and make interactions feel alive
+As a panel user
+I want to see an animated emoji face that reacts to the buddy's state - thinking when processing, happy when responding, listening when voice is active, idle when waiting
 
 ## 2. Context
 
-- This is the MVP/first step before full assistant integration
-- **Quality target: ESP32 EchoEar / XiaoZhi AI level animations**
-- Focus on visual polish, smooth animations, and "alive" feeling
-- Should work as a standalone demo page accessible from settings
-- No WebSocket, no voice, no backend - just animated face
-- Can be used to gather feedback on visual design
+- **The backend buddy module already exists** with full LLM, STT, TTS, and voice activation support
+- The face widget integrates with the existing `BuddyService`, `VoiceActivationService`, and `AudioPlaybackService`
+- **No backend changes needed** - emotion is inferred from observable buddy state on the panel
+- Quality target: ESP32 EchoEar / XiaoZhi AI level animations
+
+### Existing Buddy Module (on `main` branch)
+
+The buddy module provides all the infrastructure. The face widget is a **reactive observer** of these services:
+
+| Service | Location | Observable State |
+|---------|----------|-----------------|
+| `BuddyService` | `lib/modules/buddy/service.dart` | `isSendingMessage`, `messages`, `hasActiveConversation`, `errorType`, `suggestions` |
+| `VoiceActivationService` | `lib/modules/buddy/services/voice_activation_service.dart` | `state` (stopped/listening/recording/processing) |
+| `AudioPlaybackService` | `lib/modules/buddy/services/audio_playback_service.dart` | `isPlaying`, `isLoading` |
+
+### Emotion Inference (No Backend Changes)
+
+Since the message model has no emotion field, the face widget **infers emotion from buddy state**:
+
+```
+Voice state = listening    → Face: LISTENING (alert eyes)
+Voice state = recording    → Face: LISTENING (active pulse)
+Voice state = processing   → Face: THINKING (processing dots)
+isSendingMessage = true    → Face: THINKING (eyes looking around)
+New assistant message       → Face: HAPPY (brief, then SPEAKING)
+AudioPlayback.isPlaying    → Face: SPEAKING (mouth animation)
+errorType != null          → Face: SORRY (sad expression)
+suggestions.isNotEmpty     → Face: EXCITED (brief notification)
+No activity for 30s+       → Face: SLEEPY → IDLE (gradual)
+Default idle               → Face: NEUTRAL (blink + look around)
+```
 
 ### Design References
 
@@ -29,35 +54,29 @@ I want to create a standalone face widget with polished animations matching Echo
 | esp32-eyes | 18 emotions, programmatic rendering, eye presets | [GitHub](https://github.com/playfultechnology/esp32-eyes) |
 | XiaoZhi AI | Emoji emotions, JSON protocol | [Emotion Docs](https://xiaozhi.dev/en/docs/development/emotion/) |
 
-### Quality Requirements
-
-The face must feel **alive and expressive**, not static:
-- Eyes should occasionally blink randomly (like a real creature)
-- Eyes should subtly move/look around when idle
-- Transitions between emotions must be smooth (interpolated)
-- Idle state should have continuous subtle animation
-- Each emotion must be visually distinct and recognizable
-
 ## 3. Scope
 
 **In scope**
 
 - `AssistantFaceWidget` using CustomPaint with EchoEar-quality rendering
-- `FacePainter` with advanced eye system (18 emotion presets)
+- `FacePainter` with advanced eye system (12+ emotion presets)
 - `BlinkController` - automatic random blinking
 - `LookController` - random eye movement / look-at support
 - `EmotionController` - smooth interpolated transitions
-- Demo page with full controls
-- Auto-cycle and random emotion modes
-- Theme support (light/dark with proper contrast)
+- `BuddyEmotionMapper` - maps buddy state to face emotions
+- Integration with existing `BuddyService` via Provider
+- Integration with existing `VoiceActivationService`
+- Integration with existing `AudioPlaybackService`
+- Face overlay/page accessible from buddy chat or as standalone view
+- Demo mode for testing all emotions without buddy
 
 **Out of scope**
 
-- Voice integration
-- Backend communication
-- Wake word detection
-- Conversation display
-- Sound/audio feedback
+- Backend changes (buddy module already handles LLM, STT, TTS)
+- Admin configuration changes
+- New API endpoints
+- Voice recording (already exists in buddy module)
+- Chat UI (already exists as `BuddyChatPage`)
 
 ## 4. Acceptance criteria
 
@@ -65,7 +84,6 @@ The face must feel **alive and expressive**, not static:
 - [ ] Face renders with smooth anti-aliased graphics
 - [ ] Eyes have proper depth (outer eye, iris, pupil, highlight)
 - [ ] Mouth has multiple shapes (line, arc, open oval, wide smile)
-- [ ] Optional: subtle shadow/glow effects for depth
 - [ ] Colors adapt properly to light/dark themes
 
 ### Emotions (minimum 12)
@@ -87,55 +105,73 @@ The face must feel **alive and expressive**, not static:
 - [ ] Blink animation duration ~150ms (quick and natural)
 - [ ] Random eye movement/look-around in idle state
 - [ ] Smooth interpolation between ALL emotion parameters (300-500ms)
-- [ ] Speaking mouth animation syncs to simulated audio levels
+- [ ] Speaking mouth animation while `AudioPlaybackService.isPlaying`
 - [ ] Idle breathing/floating animation
 - [ ] 60fps on Raspberry Pi 4
 
-### Demo Page Features
-- [ ] Grid of emotion buttons with visual preview
+### Buddy Integration
+- [ ] Face reacts to `VoiceActivationService.state` changes
+- [ ] Face shows thinking while `BuddyService.isSendingMessage`
+- [ ] Face shows speaking while `AudioPlaybackService.isPlaying`
+- [ ] Face shows sorry on `BuddyService.errorType` changes
+- [ ] Face shows excited briefly when new suggestions arrive
+- [ ] Face transitions to sleepy after inactivity timeout
+- [ ] Tapping face activates voice input (triggers voice activation)
+
+### Demo Mode
+- [ ] Demo page accessible from settings menu
+- [ ] Grid of emotion buttons to trigger manually
 - [ ] "Auto Demo" cycles through all emotions
-- [ ] "Random" mode picks emotions randomly
-- [ ] Blink toggle (on/off)
-- [ ] Look-around toggle (on/off)
-- [ ] Speed slider for transitions
-- [ ] Manual look control (drag to move eyes)
+- [ ] Blink and look-around toggles
 
 ## 5. Example scenarios
 
-### Scenario: Lifelike idle behavior
+### Scenario: Voice command flow with face reactions
 
-Given the face is in neutral state with blink enabled
-Then the eyes blink randomly every 2-6 seconds
-And the blink animation takes ~150ms
-And between blinks, eyes subtly drift in random directions
-And there's a gentle floating/breathing animation
+Given the face is in neutral/idle state
+When the user says "Hey Panel" (voice activation triggers)
+Then `VoiceActivationService.state` changes to `listening`
+And the face transitions to LISTENING (alert eyes)
+When the user speaks their command
+Then `VoiceActivationService.state` changes to `recording`
+And the face shows active LISTENING (pulsing)
+When recording ends and audio is sent
+Then `BuddyService.isSendingMessage` becomes true
+And the face transitions to THINKING (eyes moving, dots)
+When the buddy responds
+Then a new assistant message appears in `BuddyService.messages`
+And the face transitions to HAPPY (brief)
+When TTS audio plays
+Then `AudioPlaybackService.isPlaying` becomes true
+And the face transitions to SPEAKING (mouth animation)
+When audio finishes
+Then the face returns to NEUTRAL with idle animations
 
-### Scenario: Emotion transition
+### Scenario: Error handling
 
-Given the face is showing "neutral"
-When emotion changes to "happy"
-Then all parameters smoothly interpolate over 400ms:
-  - Eye height transitions from normal to curved
-  - Eye slope changes to create "^" shape
-  - Mouth curves upward into smile
-  - Overall face "lifts" slightly
+Given the face is in thinking state (processing a request)
+When `BuddyService.errorType` is set (e.g., provider not configured)
+Then the face transitions to SORRY (sad eyes, downturned mouth)
+And after 3 seconds returns to NEUTRAL
 
-### Scenario: Speaking animation
+### Scenario: Inactivity transition
 
-Given the face is in "speaking" state
-Then the mouth oscillates between slightly open and more open
-And the oscillation follows a pseudo-random pattern (not mechanical)
-And eyes remain engaged (not dead stare)
+Given the face is in neutral state
+When no buddy interaction occurs for 30 seconds
+Then the face gradually transitions to SLEEPY
+And after 60 seconds transitions to idle (minimal animation, closed eyes)
+When any interaction occurs
+Then the face immediately wakes to NEUTRAL or appropriate emotion
 
 ## 6. Technical constraints
 
 - Use `CustomPainter` for all rendering (no images/SVGs)
 - Use multiple `AnimationController`s for independent animations
-- Keep widget tree simple - minimize rebuilds
-- Use `RepaintBoundary` around face widget
-- Follow existing theme patterns from `lib/core/utils/theme.dart`
-- No new dependencies required (use Flutter built-ins)
-- Target 60fps - profile and optimize if needed
+- Access buddy services via existing Provider/get_it patterns
+- Follow existing widget patterns from buddy module (`voice_activation_indicator.dart`)
+- Use `RepaintBoundary` around face widget for performance
+- No new Flutter dependencies required (use built-ins)
+- Target 60fps on Raspberry Pi 4
 
 ## 7. Implementation hints
 
@@ -143,35 +179,244 @@ And eyes remain engaged (not dead stare)
 
 ```
 lib/features/assistant/
-├── assistant.dart                    # Feature exports
+├── assistant.dart                          # Feature barrel exports
 ├── presentation/
 │   ├── pages/
-│   │   └── assistant_demo_page.dart  # Demo page with full controls
+│   │   ├── assistant_face_page.dart        # Full-screen face view
+│   │   └── assistant_demo_page.dart        # Demo page (settings)
 │   └── widgets/
-│       ├── assistant_face_widget.dart
+│       ├── assistant_face_widget.dart      # Main widget
 │       ├── painters/
-│       │   ├── face_painter.dart
-│       │   ├── eye_painter.dart
-│       │   └── mouth_painter.dart
+│       │   ├── face_painter.dart           # Main face painter
+│       │   ├── eye_painter.dart            # Eye rendering
+│       │   └── mouth_painter.dart          # Mouth rendering
 │       ├── controllers/
-│       │   ├── emotion_controller.dart
-│       │   ├── blink_controller.dart
-│       │   └── look_controller.dart
+│       │   ├── emotion_controller.dart     # Emotion transitions
+│       │   ├── blink_controller.dart       # Random blinking
+│       │   └── look_controller.dart        # Eye wandering
 │       └── models/
-│           ├── emotion_preset.dart
-│           ├── eye_config.dart
-│           └── mouth_config.dart
+│           ├── emotion_preset.dart         # Emotion definitions
+│           ├── eye_config.dart             # Eye parameters
+│           └── mouth_config.dart           # Mouth parameters
+├── services/
+│   └── buddy_emotion_mapper.dart           # Maps buddy state → emotion
+```
+
+### BuddyEmotionMapper - Core Integration Logic
+
+```dart
+/// Maps observable buddy module state to face emotion presets.
+/// This is the bridge between the existing buddy module and the face widget.
+class BuddyEmotionMapper extends ChangeNotifier {
+  final BuddyService _buddyService;
+  final VoiceActivationService _voiceActivationService;
+  final AudioPlaybackService _audioPlaybackService;
+
+  EmotionPreset _currentEmotion = EmotionPresets.neutral;
+  Timer? _inactivityTimer;
+  DateTime? _lastInteractionTime;
+
+  static const _sleepyTimeout = Duration(seconds: 30);
+  static const _idleTimeout = Duration(seconds: 60);
+  static const _happyDuration = Duration(seconds: 2);
+  static const _sorryDuration = Duration(seconds: 3);
+  static const _excitedDuration = Duration(seconds: 2);
+
+  EmotionPreset get emotion => _currentEmotion;
+
+  BuddyEmotionMapper({
+    required BuddyService buddyService,
+    required VoiceActivationService voiceActivationService,
+    required AudioPlaybackService audioPlaybackService,
+  })  : _buddyService = buddyService,
+        _voiceActivationService = voiceActivationService,
+        _audioPlaybackService = audioPlaybackService {
+    _buddyService.addListener(_onBuddyChanged);
+    _voiceActivationService.addListener(_onVoiceChanged);
+    _audioPlaybackService.addListener(_onPlaybackChanged);
+    _startInactivityTimer();
+  }
+
+  void _onVoiceChanged() {
+    _markActivity();
+    switch (_voiceActivationService.state) {
+      case VoiceActivationState.listening:
+        _setEmotion(EmotionPresets.listening);
+        break;
+      case VoiceActivationState.recording:
+        _setEmotion(EmotionPresets.listening);  // Same but pulsing
+        break;
+      case VoiceActivationState.processing:
+        _setEmotion(EmotionPresets.thinking);
+        break;
+      case VoiceActivationState.stopped:
+        // Don't override - let other handlers decide
+        break;
+    }
+  }
+
+  void _onBuddyChanged() {
+    _markActivity();
+
+    // Error state takes priority
+    if (_buddyService.errorType != null) {
+      _setEmotionTemporary(EmotionPresets.sorry, _sorryDuration);
+      return;
+    }
+
+    // Sending/processing message
+    if (_buddyService.isSendingMessage) {
+      _setEmotion(EmotionPresets.thinking);
+      return;
+    }
+
+    // Check for new assistant message (brief happy before speaking)
+    final messages = _buddyService.messages;
+    if (messages.isNotEmpty && messages.last.role == BuddyMessageRole.assistant) {
+      if (!_audioPlaybackService.isPlaying) {
+        _setEmotionTemporary(EmotionPresets.happy, _happyDuration);
+      }
+    }
+
+    // New suggestions → brief excited
+    if (_buddyService.suggestions.isNotEmpty) {
+      _setEmotionTemporary(EmotionPresets.excited, _excitedDuration);
+    }
+  }
+
+  void _onPlaybackChanged() {
+    _markActivity();
+    if (_audioPlaybackService.isPlaying) {
+      _setEmotion(EmotionPresets.speaking);
+    } else if (!_buddyService.isSendingMessage) {
+      _setEmotion(EmotionPresets.neutral);
+    }
+  }
+
+  void _markActivity() {
+    _lastInteractionTime = DateTime.now();
+    _startInactivityTimer();
+
+    // Wake from sleepy/idle if needed
+    if (_currentEmotion == EmotionPresets.sleepy ||
+        _currentEmotion == EmotionPresets.idle) {
+      _setEmotion(EmotionPresets.neutral);
+    }
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final elapsed = DateTime.now().difference(_lastInteractionTime ?? DateTime.now());
+      if (elapsed > _idleTimeout) {
+        _setEmotion(EmotionPresets.idle);  // Deep idle, minimal animation
+      } else if (elapsed > _sleepyTimeout) {
+        _setEmotion(EmotionPresets.sleepy);
+      }
+    });
+  }
+
+  void _setEmotion(EmotionPreset emotion) {
+    if (_currentEmotion == emotion) return;
+    _currentEmotion = emotion;
+    notifyListeners();
+  }
+
+  void _setEmotionTemporary(EmotionPreset emotion, Duration duration) {
+    _setEmotion(emotion);
+    Future.delayed(duration, () {
+      if (_currentEmotion == emotion) {
+        _setEmotion(EmotionPresets.neutral);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _buddyService.removeListener(_onBuddyChanged);
+    _voiceActivationService.removeListener(_onVoiceChanged);
+    _audioPlaybackService.removeListener(_onPlaybackChanged);
+    super.dispose();
+  }
+}
+```
+
+### Face Page (Buddy-Integrated View)
+
+```dart
+/// Full-screen face view that reacts to buddy state.
+/// Can be used as a standalone page or overlaid on the chat.
+class AssistantFacePage extends StatefulWidget {
+  const AssistantFacePage({super.key});
+
+  @override
+  State<AssistantFacePage> createState() => _AssistantFacePageState();
+}
+
+class _AssistantFacePageState extends State<AssistantFacePage> {
+  late BuddyEmotionMapper _emotionMapper;
+
+  @override
+  void initState() {
+    super.initState();
+    final buddyService = context.read<BuddyService>();
+    final voiceService = GetIt.instance<VoiceActivationService>();
+    final audioService = GetIt.instance<AudioPlaybackService>();
+
+    _emotionMapper = BuddyEmotionMapper(
+      buddyService: buddyService,
+      voiceActivationService: voiceService,
+      audioPlaybackService: audioService,
+    );
+  }
+
+  @override
+  void dispose() {
+    _emotionMapper.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: GestureDetector(
+        onTap: _onFaceTapped,
+        child: ListenableBuilder(
+          listenable: _emotionMapper,
+          builder: (context, _) {
+            return AssistantFaceWidget(
+              emotion: _emotionMapper.emotion,
+              blinkEnabled: true,
+              lookEnabled: true,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _onFaceTapped() {
+    // Activate voice input when face is tapped
+    final voiceService = GetIt.instance<VoiceActivationService>();
+    if (voiceService.state == VoiceActivationState.stopped) {
+      voiceService.startListening();
+    }
+  }
+}
 ```
 
 ### Eye Configuration Model (like esp32-eyes)
 
 ```dart
-/// Configuration for a single eye's appearance
+/// Configuration for a single eye's appearance.
+/// All parameters are interpolatable for smooth transitions.
 class EyeConfig {
   final double height;      // 0.0 = flat line, 1.0 = full circle
   final double width;       // Horizontal stretch factor
-  final double slope;       // Rotation angle (-45° to +45°) for angry/skeptical
-  final double offsetY;     // Vertical offset (for raised eyebrow effect)
+  final double slope;       // Rotation angle (-45 to +45) for angry/skeptical
+  final double offsetY;     // Vertical offset (raised/lowered eyebrow)
   final double pupilSize;   // 0.0 = no pupil, 1.0 = large pupil
   final double pupilX;      // -1.0 to 1.0, horizontal look direction
   final double pupilY;      // -1.0 to 1.0, vertical look direction
@@ -188,7 +433,6 @@ class EyeConfig {
     this.highlight = true,
   });
 
-  /// Interpolate between two eye configs
   EyeConfig lerp(EyeConfig other, double t) {
     return EyeConfig(
       height: lerpDouble(height, other.height, t)!,
@@ -204,157 +448,78 @@ class EyeConfig {
 }
 ```
 
-### Mouth Configuration Model
+### Emotion Presets
 
 ```dart
-/// Configuration for mouth appearance
-class MouthConfig {
-  final double width;       // Mouth width as fraction of face
-  final double height;      // Mouth height (0 = line, 1 = tall oval)
-  final double curvature;   // -1.0 = frown, 0 = neutral, 1.0 = smile
-  final double openness;    // 0 = closed, 1 = fully open
-  final MouthShape shape;   // line, arc, oval, wide
-
-  const MouthConfig({
-    this.width = 0.4,
-    this.height = 0.0,
-    this.curvature = 0.0,
-    this.openness = 0.0,
-    this.shape = MouthShape.arc,
-  });
-
-  MouthConfig lerp(MouthConfig other, double t) { /* ... */ }
-}
-
-enum MouthShape { line, arc, oval, wide, wavy }
-```
-
-### Emotion Presets (12+ emotions)
-
-```dart
-/// Complete emotion preset with all face parameters
-class EmotionPreset {
-  final String name;
-  final String emoji;
-  final EyeConfig leftEye;
-  final EyeConfig rightEye;  // Can differ for asymmetric expressions
-  final MouthConfig mouth;
-  final double faceOffsetY;  // Subtle vertical shift
-  final Color? tint;         // Optional color tint
-
-  const EmotionPreset({
-    required this.name,
-    required this.emoji,
-    required this.leftEye,
-    required this.rightEye,
-    required this.mouth,
-    this.faceOffsetY = 0.0,
-    this.tint,
-  });
-
-  /// Symmetric preset (same config for both eyes)
-  const EmotionPreset.symmetric({
-    required this.name,
-    required this.emoji,
-    required EyeConfig eyes,
-    required this.mouth,
-    this.faceOffsetY = 0.0,
-    this.tint,
-  }) : leftEye = eyes, rightEye = eyes;
-}
-
-/// All emotion presets
 class EmotionPresets {
   static const neutral = EmotionPreset.symmetric(
-    name: 'Neutral',
-    emoji: '😐',
+    name: 'Neutral', emoji: '😐',
     eyes: EyeConfig(height: 0.8, pupilSize: 0.5),
     mouth: MouthConfig(curvature: 0.0),
   );
-
   static const happy = EmotionPreset.symmetric(
-    name: 'Happy',
-    emoji: '😊',
-    eyes: EyeConfig(height: 0.5, slope: 15, pupilSize: 0.4), // "^" shaped
+    name: 'Happy', emoji: '😊',
+    eyes: EyeConfig(height: 0.5, slope: 15, pupilSize: 0.4),
     mouth: MouthConfig(curvature: 0.8, width: 0.5),
-    faceOffsetY: -0.02,  // Slight lift
+    faceOffsetY: -0.02,
   );
-
   static const sad = EmotionPreset.symmetric(
-    name: 'Sad',
-    emoji: '😢',
+    name: 'Sad', emoji: '😢',
     eyes: EyeConfig(height: 0.6, slope: -10, offsetY: 0.05, pupilY: 0.3),
     mouth: MouthConfig(curvature: -0.6, width: 0.3),
-    faceOffsetY: 0.02,  // Slight droop
+    faceOffsetY: 0.02,
   );
-
   static const angry = EmotionPreset.symmetric(
-    name: 'Angry',
-    emoji: '😠',
+    name: 'Angry', emoji: '😠',
     eyes: EyeConfig(height: 0.7, slope: -20, pupilSize: 0.3),
     mouth: MouthConfig(curvature: -0.3, width: 0.35, shape: MouthShape.line),
   );
-
   static const surprised = EmotionPreset.symmetric(
-    name: 'Surprised',
-    emoji: '😮',
+    name: 'Surprised', emoji: '😮',
     eyes: EyeConfig(height: 1.2, width: 1.1, pupilSize: 0.4),
     mouth: MouthConfig(openness: 0.7, shape: MouthShape.oval),
   );
-
   static const thinking = EmotionPreset(
-    name: 'Thinking',
-    emoji: '🤔',
+    name: 'Thinking', emoji: '🤔',
     leftEye: EyeConfig(height: 0.7, pupilX: 0.5, pupilY: -0.4),
     rightEye: EyeConfig(height: 0.9, pupilX: 0.5, pupilY: -0.4),
     mouth: MouthConfig(curvature: -0.1, width: 0.25),
   );
-
   static const listening = EmotionPreset.symmetric(
-    name: 'Listening',
-    emoji: '👂',
+    name: 'Listening', emoji: '👂',
     eyes: EyeConfig(height: 1.0, pupilSize: 0.55),
     mouth: MouthConfig(curvature: 0.1),
   );
-
   static const speaking = EmotionPreset.symmetric(
-    name: 'Speaking',
-    emoji: '💬',
+    name: 'Speaking', emoji: '💬',
     eyes: EyeConfig(height: 0.85, pupilSize: 0.5),
     mouth: MouthConfig(openness: 0.3, shape: MouthShape.oval),
   );
-
   static const sleepy = EmotionPreset.symmetric(
-    name: 'Sleepy',
-    emoji: '😴',
+    name: 'Sleepy', emoji: '😴',
     eyes: EyeConfig(height: 0.2, slope: 5),
     mouth: MouthConfig(curvature: 0.0, openness: 0.1),
     faceOffsetY: 0.03,
   );
-
   static const excited = EmotionPreset.symmetric(
-    name: 'Excited',
-    emoji: '🤩',
+    name: 'Excited', emoji: '🤩',
     eyes: EyeConfig(height: 1.1, width: 1.1, pupilSize: 0.3, highlight: true),
     mouth: MouthConfig(curvature: 1.0, width: 0.55, openness: 0.2),
     faceOffsetY: -0.03,
   );
-
   static const confused = EmotionPreset(
-    name: 'Confused',
-    emoji: '😕',
+    name: 'Confused', emoji: '😕',
     leftEye: EyeConfig(height: 0.9, slope: 10),
     rightEye: EyeConfig(height: 0.7, slope: -5),
     mouth: MouthConfig(shape: MouthShape.wavy, curvature: -0.2),
   );
-
   static const love = EmotionPreset.symmetric(
-    name: 'Love',
-    emoji: '😍',
-    eyes: EyeConfig(height: 0.6, slope: 10, pupilSize: 0.7),  // Heart-like
+    name: 'Love', emoji: '😍',
+    eyes: EyeConfig(height: 0.6, slope: 10, pupilSize: 0.7),
     mouth: MouthConfig(curvature: 0.9, width: 0.45),
-    tint: Color(0x20FF69B4),  // Subtle pink tint
   );
+  // Alias for deep idle (minimal animation)
+  static const idle = sleepy;
 
   static const all = [
     neutral, happy, sad, angry, surprised, thinking,
@@ -363,343 +528,63 @@ class EmotionPresets {
 }
 ```
 
-### Blink Controller
+### Emotion State Flow Diagram
 
-```dart
-/// Controls automatic blinking behavior
-class BlinkController extends ChangeNotifier {
-  bool enabled = true;
-  Timer? _blinkTimer;
-  double _blinkProgress = 0.0;  // 0 = open, 1 = closed
-
-  double get blinkProgress => _blinkProgress;
-
-  void start() {
-    _scheduleNextBlink();
-  }
-
-  void _scheduleNextBlink() {
-    if (!enabled) return;
-    // Random interval between 2-6 seconds
-    final interval = Duration(milliseconds: 2000 + Random().nextInt(4000));
-    _blinkTimer = Timer(interval, _doBlink);
-  }
-
-  Future<void> _doBlink() async {
-    // Quick blink animation (~150ms total)
-    for (var i = 0; i <= 10; i++) {
-      _blinkProgress = i <= 5 ? i / 5.0 : (10 - i) / 5.0;
-      notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 15));
-    }
-    _blinkProgress = 0.0;
-    notifyListeners();
-    _scheduleNextBlink();
-  }
-
-  void dispose() {
-    _blinkTimer?.cancel();
-    super.dispose();
-  }
-}
 ```
-
-### Look Controller
-
-```dart
-/// Controls eye look direction with random wandering
-class LookController extends ChangeNotifier {
-  bool randomLookEnabled = true;
-  double _lookX = 0.0;
-  double _lookY = 0.0;
-  Timer? _wanderTimer;
-
-  double get lookX => _lookX;
-  double get lookY => _lookY;
-
-  void start() {
-    _scheduleNextWander();
-  }
-
-  void _scheduleNextWander() {
-    if (!randomLookEnabled) return;
-    final interval = Duration(milliseconds: 1000 + Random().nextInt(3000));
-    _wanderTimer = Timer(interval, _doWander);
-  }
-
-  Future<void> _doWander() async {
-    // Pick random target within comfortable range
-    final targetX = (Random().nextDouble() - 0.5) * 0.6;
-    final targetY = (Random().nextDouble() - 0.5) * 0.4;
-
-    // Smooth animation to target
-    const steps = 20;
-    final startX = _lookX;
-    final startY = _lookY;
-
-    for (var i = 0; i <= steps; i++) {
-      final t = Curves.easeInOut.transform(i / steps);
-      _lookX = lerpDouble(startX, targetX, t)!;
-      _lookY = lerpDouble(startY, targetY, t)!;
-      notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 25));
-    }
-
-    _scheduleNextWander();
-  }
-
-  /// Manually set look direction (for user interaction)
-  void lookAt(double x, double y) {
-    _lookX = x.clamp(-1.0, 1.0);
-    _lookY = y.clamp(-1.0, 1.0);
-    notifyListeners();
-  }
-
-  void dispose() {
-    _wanderTimer?.cancel();
-    super.dispose();
-  }
-}
-```
-
-### Eye Painter (detailed rendering)
-
-```dart
-class EyePainter {
-  static void paint(
-    Canvas canvas,
-    Offset center,
-    double baseRadius,
-    EyeConfig config,
-    double blinkProgress,
-    Color primaryColor,
-    Color backgroundColor,
-  ) {
-    // Apply blink (reduces height)
-    final effectiveHeight = config.height * (1 - blinkProgress * 0.9);
-
-    // Save canvas state for rotation (slope)
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(config.slope * pi / 180);
-
-    // Calculate dimensions
-    final eyeWidth = baseRadius * config.width;
-    final eyeHeight = baseRadius * effectiveHeight;
-
-    // Draw outer eye (white/light part)
-    final eyeRect = Rect.fromCenter(
-      center: Offset(0, config.offsetY * baseRadius),
-      width: eyeWidth * 2,
-      height: eyeHeight * 2,
-    );
-
-    final eyePaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.fill;
-
-    canvas.drawOval(eyeRect, eyePaint);
-
-    // Draw eye border
-    final borderPaint = Paint()
-      ..color = primaryColor.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    canvas.drawOval(eyeRect, borderPaint);
-
-    // Draw iris/pupil if eye is open enough
-    if (effectiveHeight > 0.2) {
-      final pupilRadius = baseRadius * config.pupilSize * effectiveHeight;
-      final pupilOffset = Offset(
-        config.pupilX * eyeWidth * 0.3,
-        config.pupilY * eyeHeight * 0.3 + config.offsetY * baseRadius,
-      );
-
-      // Iris
-      final irisPaint = Paint()
-        ..color = primaryColor
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(pupilOffset, pupilRadius, irisPaint);
-
-      // Pupil (darker center)
-      final pupilPaint = Paint()
-        ..color = primaryColor.withOpacity(0.8)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(pupilOffset, pupilRadius * 0.5, pupilPaint);
-
-      // Highlight (specular reflection)
-      if (config.highlight && effectiveHeight > 0.5) {
-        final highlightPaint = Paint()
-          ..color = Colors.white.withOpacity(0.8)
-          ..style = PaintingStyle.fill;
-
-        canvas.drawCircle(
-          pupilOffset + Offset(-pupilRadius * 0.3, -pupilRadius * 0.3),
-          pupilRadius * 0.25,
-          highlightPaint,
-        );
-      }
-    }
-
-    canvas.restore();
-  }
-}
-```
-
-### Demo Page with Full Controls
-
-```dart
-class AssistantDemoPage extends StatefulWidget {
-  @override
-  State<AssistantDemoPage> createState() => _AssistantDemoPageState();
-}
-
-class _AssistantDemoPageState extends State<AssistantDemoPage> {
-  EmotionPreset _currentEmotion = EmotionPresets.neutral;
-  bool _blinkEnabled = true;
-  bool _lookEnabled = true;
-  bool _autoDemo = false;
-  double _transitionSpeed = 1.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Assistant Face Demo')),
-      body: Column(
-        children: [
-          // Face widget (large, centered)
-          Expanded(
-            flex: 3,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                // Manual look control by dragging on face
-                // Convert drag position to -1..1 range
-              },
-              child: AssistantFaceWidget(
-                emotion: _currentEmotion,
-                blinkEnabled: _blinkEnabled,
-                lookEnabled: _lookEnabled,
-                transitionDuration: Duration(
-                  milliseconds: (400 / _transitionSpeed).round(),
-                ),
-              ),
-            ),
-          ),
-
-          // Current emotion display
-          Text(
-            '${_currentEmotion.emoji} ${_currentEmotion.name}',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-
-          // Controls
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                FilterChip(
-                  label: const Text('Blink'),
-                  selected: _blinkEnabled,
-                  onSelected: (v) => setState(() => _blinkEnabled = v),
-                ),
-                FilterChip(
-                  label: const Text('Look Around'),
-                  selected: _lookEnabled,
-                  onSelected: (v) => setState(() => _lookEnabled = v),
-                ),
-                ActionChip(
-                  label: Text(_autoDemo ? 'Stop' : 'Auto Demo'),
-                  onPressed: () => setState(() => _autoDemo = !_autoDemo),
-                ),
-              ],
-            ),
-          ),
-
-          // Speed slider
-          Slider(
-            value: _transitionSpeed,
-            min: 0.5,
-            max: 2.0,
-            label: 'Speed: ${_transitionSpeed.toStringAsFixed(1)}x',
-            onChanged: (v) => setState(() => _transitionSpeed = v),
-          ),
-
-          // Emotion grid
-          Expanded(
-            flex: 2,
-            child: GridView.count(
-              crossAxisCount: 4,
-              padding: const EdgeInsets.all(8),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: EmotionPresets.all.map((preset) {
-                final isSelected = preset == _currentEmotion;
-                return InkWell(
-                  onTap: () => setState(() => _currentEmotion = preset),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : null,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(preset.emoji, style: const TextStyle(fontSize: 24)),
-                        Text(preset.name, style: const TextStyle(fontSize: 10)),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+                    ┌─────────────────────────────────────────────┐
+                    │          BuddyEmotionMapper                 │
+                    │     (observes all buddy services)           │
+                    └──────────────┬──────────────────────────────┘
+                                   │
+              ┌────────────────────┼─────────────────────┐
+              │                    │                       │
+   ┌──────────▼────────┐ ┌───────▼──────────┐ ┌─────────▼──────────┐
+   │ VoiceActivation   │ │  BuddyService    │ │ AudioPlayback      │
+   │    Service         │ │                  │ │    Service          │
+   └──────────┬────────┘ └───────┬──────────┘ └─────────┬──────────┘
+              │                    │                       │
+   ┌──────────▼────────┐ ┌───────▼──────────┐ ┌─────────▼──────────┐
+   │ listening → 👂     │ │ sending → 🤔     │ │ playing → 💬       │
+   │ recording → 👂     │ │ error   → 😔     │ │ stopped → 😐       │
+   │ processing → 🤔    │ │ response→ 😊     │ │                    │
+   │ stopped   → (none) │ │ suggest → 🤩     │ │                    │
+   └───────────────────┘ └──────────────────┘ └────────────────────┘
+              │                    │                       │
+              └────────────────────┼───────────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────────────────┐
+                    │     Inactivity Timer                        │
+                    │  30s → 😴 sleepy   60s → idle              │
+                    └─────────────────────────────────────────────┘
 ```
 
 ## 8. AI instructions (for Junie / AI)
 
-- **Quality is paramount** - match EchoEar animation quality
-- Study esp32-eyes repository for animation inspiration
-- Start with eye rendering - get one eye perfect before duplicating
-- Test blinking animation extensively - it's the most noticeable detail
-- Smooth transitions are critical - use proper interpolation
-- Profile on real hardware - 60fps is mandatory
-- The face should feel "alive" - never static or mechanical
-- Iterate visually with hot reload
-- Get feedback on emotion distinctiveness
+- **Read the existing buddy module first** before writing any code:
+  - `apps/panel/lib/modules/buddy/service.dart`
+  - `apps/panel/lib/modules/buddy/services/voice_activation_service.dart`
+  - `apps/panel/lib/modules/buddy/services/audio_playback_service.dart`
+  - `apps/panel/lib/modules/buddy/module.dart`
+- **Do NOT create backend code** - the buddy module handles everything
+- **Do NOT modify existing buddy module files** - the face is additive only
+- Start with the standalone face widget (no buddy integration)
+- Add `BuddyEmotionMapper` after face animations work
+- Study `voice_activation_indicator.dart` for how to observe buddy services
+- Quality is paramount - match EchoEar animation level
+- Test each emotion visually before adding state mapping
 
 ### Implementation Order
 
-1. Basic eye rendering with EyeConfig
-2. Mouth rendering with MouthConfig
-3. Static emotion presets
-4. Emotion interpolation/transitions
-5. Blink controller
-6. Look controller
-7. Demo page
-8. Polish and optimize
-
-### Key Metrics
-
-- Blink should feel natural (2-6s random interval, ~150ms duration)
-- Eye wander should be subtle (not distracting)
-- Transitions should be smooth (no stuttering)
-- Each emotion must be instantly recognizable
+1. Eye rendering with `EyeConfig` (get one eye perfect)
+2. Mouth rendering with `MouthConfig`
+3. All 12 emotion presets (static)
+4. Smooth transitions between presets
+5. `BlinkController` (random blinking)
+6. `LookController` (eye wandering)
+7. Demo page (test all emotions manually)
+8. `BuddyEmotionMapper` (connect to buddy services)
+9. Face page with buddy integration
+10. Polish, optimize, test on RPi
 
 ### Visual Reference
 
@@ -711,4 +596,8 @@ NEUTRAL     HAPPY       SAD         ANGRY
 SURPRISED   THINKING    SLEEPY      EXCITED
   ⊙   ⊙       ◉   ◑      ─   ─       ✧   ✧
     ○           ~          ~           ◡
+
+LISTENING   SPEAKING    CONFUSED    LOVE
+  ⊙   ⊙       ◉   ◉      ◑   ◉      ♡   ♡
+    ·           ○          ∼           ⌣
 ```

@@ -1,224 +1,135 @@
 # Task: AI Assistant with Emoji Face Display
 ID: FEATURE-AI-ASSISTANT
 Type: feature
-Scope: backend, admin, panel
-Size: large
+Scope: panel
+Size: medium
 Parent: (none)
 Status: planned
 
 ## 1. Business goal
 
-In order to provide a friendly, interactive voice-controlled assistant for smart home management
+In order to provide a friendly, interactive visual personality for the AI buddy
 As a smart panel user
-I want to have an AI assistant with an animated emoji face that can respond to voice commands, control devices, provide information (weather, time, etc.), and give visual feedback through expressive animations
+I want to see an animated emoji face that reacts to buddy state - thinking when processing, happy when responding, listening when voice is active, and idle when waiting
 
 ## 2. Context
 
-- Inspired by ESP32 EchoEar (https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/echoear/)
-- XiaoZhi AI emotion system for emoji animations (https://xiaozhi.dev/en/docs/development/emotion/)
-- Existing audio hardware support in panel app (`audio_settings.dart`)
-- Existing WebSocket real-time communication infrastructure
-- Existing device control services and weather module
-- Target devices: Raspberry Pi 4/5, Radxa, and similar SBCs with displays
+### Existing Infrastructure (Already Implemented on `main`)
 
-### Key Design Decisions
+The smart panel project already has a comprehensive **AI Buddy module** on the `main` branch:
 
-1. **Multi-Hybrid Architecture**: Users can independently configure each service (LLM, STT, TTS, Wake Word) to use either local or cloud providers
-2. **Local-First Option**: Support fully offline operation with Ollama, Whisper.cpp, Piper TTS
-3. **Cloud Options**: Support OpenAI, Anthropic, Google, ElevenLabs for users who prefer quality/convenience
-4. **Backend-Centric Processing**: Main "brain" runs on backend, panel handles UI/audio I/O
+| Component | Status | Details |
+|-----------|--------|---------|
+| Backend Buddy Module | **Done** | Full LLM orchestration, conversations, context building |
+| LLM Providers | **Done** | Claude, OpenAI, Ollama, OpenAI Codex |
+| STT Providers | **Done** | OpenAI Whisper, Local Whisper, ElevenLabs |
+| TTS Providers | **Done** | OpenAI TTS, ElevenLabs, System TTS, VoiceAI |
+| Messaging Adapters | **Done** | Discord, Telegram, WhatsApp |
+| Admin Configuration UI | **Done** | Full provider config, personality, thresholds |
+| Panel Chat UI | **Done** | Chat page, message bubbles, suggestions |
+| Panel Voice Services | **Done** | Recording, playback, voice activation |
+| Suggestion Engine | **Done** | Anomaly detection, energy, conflicts, patterns |
+| **Panel Face Widget** | **Not Done** | **This is what we're building** |
+
+### What's Missing
+
+The only gap is a **visual face/avatar** that gives the buddy a personality on the panel display. The face widget is a purely frontend addition that observes existing buddy services.
+
+### Design Inspiration
+
+- ESP32 EchoEar (https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/echoear/)
+- esp32-eyes (https://github.com/playfultechnology/esp32-eyes) - 18 emotions, programmatic rendering
+- XiaoZhi AI Emotion Display (https://xiaozhi.dev/en/docs/development/emotion/)
 
 ## 3. Scope
 
 **In scope**
 
-- Animated emoji face widget (eyes, mouth) with emotional states
-- Voice input/output (STT/TTS) with configurable providers
-- Wake word detection for hands-free activation
-- LLM integration for natural language understanding
-- Device control through natural language commands
-- Weather, time, date queries
-- Conversation context management
-- Admin UI for service configuration
-- Multi-provider support (local and cloud options)
+- Animated emoji face widget (eyes, mouth) with 12+ emotional states
+- Smooth transitions, random blinking, eye wandering
+- Reactive to buddy state (listening, thinking, speaking, error, idle)
+- Integration with existing `BuddyService`, `VoiceActivationService`, `AudioPlaybackService`
+- Demo page for testing all emotions standalone
+- Face page/overlay for production use
 
 **Out of scope**
 
-- Music/media playback integration (future enhancement)
-- Calendar/reminder integration (future enhancement)
-- Multi-room/multi-panel synchronization (future enhancement)
-- Custom wake word training (use pre-built options)
-- Video/camera integration
+- Backend changes (buddy module already handles everything)
+- New API endpoints
+- Admin UI changes
+- Voice recording/playback (already exists)
+- Chat UI (already exists)
 
 ## 4. Acceptance criteria
 
-- [ ] Panel displays animated emoji face with at least 6 emotional states
-- [ ] Users can activate assistant via wake word or touch
-- [ ] Voice commands are transcribed and processed by backend
-- [ ] Assistant can control connected devices via natural language
-- [ ] Assistant can provide weather information
-- [ ] Assistant can tell time and date
-- [ ] Responses are spoken via TTS and shown visually
-- [ ] Admin UI allows configuration of all service providers
-- [ ] Each service (LLM, STT, TTS, Wake Word) can be independently configured
-- [ ] System works with fully local providers (offline capable)
-- [ ] System works with cloud providers (OpenAI, etc.)
+- [ ] Panel displays animated emoji face with at least 12 emotional states
+- [ ] Face reacts to buddy module state in real-time
+- [ ] Face shows listening state during voice activation
+- [ ] Face shows thinking state while processing messages
+- [ ] Face shows speaking state during TTS playback
+- [ ] Face shows error expression on failures
+- [ ] Face transitions to sleepy/idle after inactivity
+- [ ] Smooth 60fps animations on Raspberry Pi 4
+- [ ] Tapping face activates voice input
+- [ ] Demo mode for testing all emotions
 
 ## 5. Example scenarios
 
-### Scenario: Voice-activated device control
+### Scenario: Complete voice interaction
 
-Given the assistant is in idle state (sleeping face)
-When the user says "Hey Panel, turn off the kitchen lights"
-Then the face shows listening animation
-And the speech is transcribed to text
-And the backend processes the intent
-And the kitchen lights device is turned off
-And the face shows happy emotion
-And the assistant says "I've turned off the kitchen lights"
+Given the face is in idle state
+When the user activates voice input
+Then face shows listening → thinking → happy → speaking → neutral
+And each transition is smooth and natural
 
-### Scenario: Weather query
+### Scenario: Inactivity
 
-Given the assistant is active
-When the user asks "What's the weather like today?"
-Then the face shows thinking animation
-And the backend queries the weather service
-And the face shows happy emotion
-And the assistant speaks the current weather conditions
-
-### Scenario: Hybrid provider usage
-
-Given LLM is configured to use Ollama (local)
-And STT is configured to use OpenAI Whisper (cloud)
-And TTS is configured to use Piper (local)
-When the user speaks a command
-Then STT processes audio via OpenAI API
-And LLM processes text via local Ollama
-And TTS generates speech via local Piper
+Given no buddy interaction for 30+ seconds
+Then face gradually becomes sleepy → idle
+When user interacts again, face immediately wakes
 
 ## 6. Technical constraints
 
-- Follow existing NestJS module patterns for backend (see `weather.service.ts`, plugin structure)
-- Follow existing Flutter patterns for panel (Provider, Repository pattern)
-- Follow existing Vue 3 patterns for admin (Pinia stores, Element Plus components)
-- Use existing WebSocket infrastructure for real-time communication
-- Use existing configuration module patterns for settings persistence
-- Minimize new dependencies - prefer established, maintained packages
-- Tests expected for backend services and critical panel logic
-- Support i18n for all user-facing strings
+- **Panel only** - no backend or admin changes
+- Use existing buddy module services via Provider/get_it
+- Use `CustomPainter` for all face rendering (no images)
+- Follow existing widget patterns from buddy module
+- No new Flutter dependencies required
 
 ## 7. Implementation hints
 
-- **Backend**: Look at `src/modules/weather/` for service pattern, `src/plugins/` for provider pattern
-- **Panel**: Look at `lib/core/widgets/flip_clock.dart` for animation patterns, `lib/features/settings/` for new pages
-- **Admin**: Look at `src/modules/weather/` for settings UI pattern
-- **WebSocket**: Extend existing event types in `websocket.constants.ts`
-- Use Strategy pattern for swappable providers
-- Use Factory pattern for provider instantiation based on config
+- Study `voice_activation_indicator.dart` for how to observe buddy services
+- Use `BuddyEmotionMapper` pattern to map buddy state → face emotion
+- Emotion is inferred from observable state, not from backend
+- Follow `ChangeNotifier` pattern used throughout panel app
 
 ## 8. AI instructions (for Junie / AI)
 
-- Read this file and all child task files before implementation
-- Start with backend module skeleton (FEATURE-AI-ASSISTANT-BACKEND)
-- Then implement panel face widget (FEATURE-AI-ASSISTANT-PANEL-FACE)
-- Implement incrementally: text-only first, then add voice
-- Keep provider implementations separate and pluggable
-- Test each component independently before integration
-- Respect global AI rules from `/.ai-rules/GUIDELINES.md`
+- Read existing buddy module files before writing code
+- Do NOT create backend code or modify existing buddy module
+- The face widget is additive - no changes to existing files except route registration
+- Start with standalone face widget, then add buddy integration
 
 ## 9. Child Tasks
 
 | Task ID | Description | Size | Priority |
 |---------|-------------|------|----------|
-| **FEATURE-AI-ASSISTANT-PANEL-FACE-MVP** | **Standalone face demo (no backend)** | **small** | **1 - Start here** |
-| FEATURE-AI-ASSISTANT-BACKEND | Backend assistant module and service infrastructure | medium | 2 |
-| FEATURE-AI-ASSISTANT-PANEL-FACE | Flutter emoji face widget with animations | medium | 3 |
-| FEATURE-AI-ASSISTANT-PANEL-VOICE | Flutter voice recording and playback | medium | 4 |
-| FEATURE-AI-ASSISTANT-ADMIN | Admin configuration UI for assistant settings | small | 5 |
-| FEATURE-AI-ASSISTANT-LLM-PROVIDERS | LLM provider implementations (Ollama, OpenAI, etc.) | medium | 6 |
-| FEATURE-AI-ASSISTANT-VOICE-PROVIDERS | STT and TTS provider implementations | medium | 7 |
+| **FEATURE-AI-ASSISTANT-PANEL-FACE-MVP** | **Face widget with buddy integration** | **medium** | **1 - Start here** |
+| FEATURE-AI-ASSISTANT-PANEL-FACE | Extended face features, customization | small | 2 - After MVP |
 
-### Recommended Implementation Order
+### Implementation Order
 
 ```
-1. FEATURE-AI-ASSISTANT-PANEL-FACE-MVP  ← Start here (visual foundation)
+1. FEATURE-AI-ASSISTANT-PANEL-FACE-MVP  ← Start and focus here
+   │  - Standalone face rendering
+   │  - 12 emotion presets
+   │  - Blink + look controllers
+   │  - BuddyEmotionMapper integration
+   │  - Demo page
    │
-2. FEATURE-AI-ASSISTANT-BACKEND         ← Core infrastructure
-   │
-   ├─► 3. FEATURE-AI-ASSISTANT-PANEL-FACE    (integrate face with backend)
-   │
-   ├─► 4. FEATURE-AI-ASSISTANT-LLM-PROVIDERS (add LLM capabilities)
-   │
-   └─► 5. FEATURE-AI-ASSISTANT-ADMIN         (configuration UI)
-       │
-6. FEATURE-AI-ASSISTANT-VOICE-PROVIDERS      (STT/TTS)
-   │
-7. FEATURE-AI-ASSISTANT-PANEL-VOICE          (voice I/O on panel)
-```
-
-## 10. Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         ADMIN APP                                │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              Assistant Configuration UI                  │    │
-│  │  - LLM Provider Selection & Config                      │    │
-│  │  - STT Provider Selection & Config                      │    │
-│  │  - TTS Provider Selection & Config                      │    │
-│  │  - Wake Word Settings                                   │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │ REST API
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         BACKEND                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                 Assistant Module                         │    │
-│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐             │    │
-│  │  │ Assistant │ │  Intent   │ │  Context  │             │    │
-│  │  │  Service  │ │  Service  │ │  Service  │             │    │
-│  │  └─────┬─────┘ └───────────┘ └───────────┘             │    │
-│  │        │                                                │    │
-│  │  ┌─────▼─────────────────────────────────────────────┐ │    │
-│  │  │              Provider Registry                     │ │    │
-│  │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │ │    │
-│  │  │  │   LLM   │ │   STT   │ │   TTS   │ │  Wake   │  │ │    │
-│  │  │  │ Factory │ │ Factory │ │ Factory │ │ Factory │  │ │    │
-│  │  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │ │    │
-│  │  └───────┼──────────┼──────────┼──────────┼──────────┘ │    │
-│  └──────────┼──────────┼──────────┼──────────┼────────────┘    │
-│             │          │          │          │                  │
-│      ┌──────┴───┐ ┌────┴────┐ ┌───┴───┐ ┌────┴────┐            │
-│      │ Ollama   │ │ Whisper │ │ Piper │ │OpenWake │            │
-│      │ OpenAI   │ │ OpenAI  │ │OpenAI │ │Porcupine│            │
-│      │ Anthropic│ │Deepgram │ │Eleven │ │         │            │
-│      │ Google   │ │ Google  │ │Google │ │         │            │
-│      └──────────┘ └─────────┘ └───────┘ └─────────┘            │
-└─────────────────────────────────────────────────────────────────┘
-                              │ WebSocket
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        PANEL APP                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                  Assistant Feature                       │    │
-│  │  ┌───────────────────────────────────────────────────┐  │    │
-│  │  │              Emoji Face Widget                     │  │    │
-│  │  │   😊 😔 🤔 😮 😴 🎵 💬                            │  │    │
-│  │  │   CustomPaint + AnimationController               │  │    │
-│  │  └───────────────────────────────────────────────────┘  │    │
-│  │  ┌───────────────────────────────────────────────────┐  │    │
-│  │  │              Voice Service                         │  │    │
-│  │  │   - Microphone Recording                          │  │    │
-│  │  │   - Audio Playback                                │  │    │
-│  │  │   - Wake Word Detection (optional local)          │  │    │
-│  │  └───────────────────────────────────────────────────┘  │    │
-│  │  ┌───────────────────────────────────────────────────┐  │    │
-│  │  │            Assistant Repository                    │  │    │
-│  │  │   - Conversation State                            │  │    │
-│  │  │   - Emotion State                                 │  │    │
-│  │  │   - WebSocket Communication                       │  │    │
-│  │  └───────────────────────────────────────────────────┘  │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
+2. FEATURE-AI-ASSISTANT-PANEL-FACE      ← Future enhancements
+   │  - Face customization (style, colors)
+   │  - Additional emotion presets
+   │  - Face as dashboard tile
+   │  - Configurable behavior in admin
 ```
