@@ -1,4 +1,4 @@
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -83,6 +83,10 @@ const applyStatusEvent = (payload: Record<string, unknown>): void => {
 	installing.value = isUpdating.value;
 };
 
+// Module-level singleton subscription — registered once, never unsubscribed.
+// Since the refs are shared singletons, a single listener is sufficient.
+onUpdateEvent(applyStatusEvent);
+
 export const useUpdateStatus = (): IUseUpdateStatus => {
 	const backend = useBackend();
 
@@ -141,13 +145,6 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 			throw err;
 		}
 	};
-
-	// Subscribe to WebSocket update events (each component instance gets its own subscription)
-	const unsubscribe = onUpdateEvent(applyStatusEvent);
-
-	onUnmounted((): void => {
-		unsubscribe();
-	});
 
 	return {
 		currentVersion,
