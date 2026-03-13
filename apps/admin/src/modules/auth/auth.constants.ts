@@ -26,11 +26,15 @@ export enum Layout {
 
 export type LayoutType = Layout.DEFAULT | Layout.PHONE;
 
+export const LOCK_SCREEN_STORAGE_KEY = 'fb_screen_locked';
+
 export const RouteNames = {
 	SIGN: 'auth_module-sign',
 	SIGN_IN: 'auth_module-sign_in',
 	SIGN_UP: 'auth_module-sign_up',
 	SIGN_OUT: 'auth_module-sign_out',
+	LOCK: 'auth_module-lock',
+	LOCK_SCREEN: 'auth_module-lock_screen',
 	PROFILE: 'auth_module-profile',
 	PROFILE_GENERAL: 'auth_module-profile_general',
 	PROFILE_SECURITY: 'auth_module-profile_security',

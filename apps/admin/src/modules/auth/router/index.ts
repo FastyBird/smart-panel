@@ -41,6 +41,30 @@ export const ModuleAnonymousRoutes: RouteRecordRaw[] = [
 	},
 ];
 
+export const ModuleLockRoutes: RouteRecordRaw[] = [
+	{
+		path: '/lock',
+		name: RouteNames.LOCK,
+		component: () => import('../layouts/layout-lock.vue'),
+		meta: {
+			title: 'Lock screen',
+			icon: 'mdi:lock',
+		},
+		redirect: () => ({ name: RouteNames.LOCK_SCREEN }),
+		children: [
+			{
+				path: 'screen',
+				name: RouteNames.LOCK_SCREEN,
+				component: () => import('../views/view-lock-screen.vue'),
+				meta: {
+					title: 'Lock screen',
+					icon: 'mdi:lock',
+				},
+			},
+		],
+	},
+];
+
 export const ModuleAccountRoutes: RouteRecordRaw[] = [
 	{
 		path: 'profile',

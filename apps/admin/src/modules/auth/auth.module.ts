@@ -1,4 +1,4 @@
-import { type App, computed } from 'vue';
+import { type App, computed, ref } from 'vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep, get } from 'lodash';
@@ -18,9 +18,18 @@ import {
 } from '../../common';
 import type { IUser } from '../users';
 
-import { AUTH_MODULE_NAME, RouteNames } from './auth.constants';
+import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
 import enUS from './locales/en-US.json';
-import { ModuleAccountRoutes, ModuleAnonymousRoutes, anonymousGuard, authenticatedGuard, profileGuard, sessionGuard } from './router';
+import {
+	ModuleAccountRoutes,
+	ModuleAnonymousRoutes,
+	ModuleLockRoutes,
+	anonymousGuard,
+	authenticatedGuard,
+	lockedGuard,
+	profileGuard,
+	sessionGuard,
+} from './router';
 import { sessionStoreKey } from './store/keys';
 import { registerSessionStore } from './store/session.store';
 
@@ -150,6 +159,10 @@ export default {
 			options.router.addRoute(route);
 		});
 
+		ModuleLockRoutes.forEach((route): void => {
+			options.router.addRoute(route);
+		});
+
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
 		if (rootRoute) {
@@ -158,12 +171,14 @@ export default {
 			});
 		}
 
-		provideAccountManager(app, {
+		const locked = ref<boolean>(localStorage.getItem(LOCK_SCREEN_STORAGE_KEY) === 'true');
+
+		const accountManager = {
 			isSignedIn: computed<boolean>((): boolean => {
 				return sessionStore.isSignedIn();
 			}),
 			isLocked: computed<boolean>((): boolean => {
-				return false;
+				return locked.value;
 			}),
 			details: computed<IAppUser | null>((): IAppUser | null => {
 				const profile: IUser | null = sessionStore.profile;
@@ -196,6 +211,9 @@ export default {
 			},
 			signOut: async (): Promise<boolean> => {
 				try {
+					locked.value = false;
+					localStorage.removeItem(LOCK_SCREEN_STORAGE_KEY);
+
 					sessionStore.clear();
 
 					return true;
@@ -204,6 +222,15 @@ export default {
 				}
 			},
 			lock: (): Promise<boolean> => {
+				locked.value = true;
+				localStorage.setItem(LOCK_SCREEN_STORAGE_KEY, 'true');
+
+				return Promise.resolve(true);
+			},
+			unlock: (): Promise<boolean> => {
+				locked.value = false;
+				localStorage.removeItem(LOCK_SCREEN_STORAGE_KEY);
+
 				return Promise.resolve(true);
 			},
 			canAccess: (): Promise<boolean> => {
@@ -214,7 +241,14 @@ export default {
 				security: RouteNames.PROFILE_SECURITY,
 				signIn: RouteNames.SIGN_IN,
 				signUp: RouteNames.SIGN_UP,
+				lock: RouteNames.LOCK_SCREEN,
 			},
+		};
+
+		provideAccountManager(app, accountManager);
+
+		routerGuard.register((_appUser: IAppUser | undefined, route: RouteRecordRaw) => {
+			return lockedGuard(accountManager, route);
 		});
 	},
 };

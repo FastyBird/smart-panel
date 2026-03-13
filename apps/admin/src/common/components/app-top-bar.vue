@@ -198,7 +198,13 @@ const onEditSecurity = (): void => {
 };
 
 const onLock = (): void => {
-	// Handle lock
+	if (accountManager) {
+		accountManager.lock?.();
+
+		if (accountManager.routes.lock) {
+			router.push({ name: accountManager.routes.lock });
+		}
+	}
 };
 
 watch(
