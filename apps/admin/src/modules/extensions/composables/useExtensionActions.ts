@@ -33,15 +33,20 @@ export const useExtensionActions = (): IUseExtensionActions => {
 			// After enabling, re-fetch services to check for startup errors
 			if (enabled) {
 				setTimeout(() => {
-					void servicesStore.fetch().then(() => {
-						const services = servicesStore.findAll().filter((s) => s.pluginName === type);
+					void servicesStore
+						.fetch()
+						.then(() => {
+							const services = servicesStore.findAll().filter((s) => s.pluginName === type);
 
-						for (const service of services) {
-							if (service.lastError) {
-								flashMessage.warning(service.lastError);
+							for (const service of services) {
+								if (service.lastError) {
+									flashMessage.warning(service.lastError);
+								}
 							}
-						}
-					});
+						})
+						.catch(() => {
+							// Silently ignore — this is a best-effort check for startup errors
+						});
 				}, 1500);
 			}
 
