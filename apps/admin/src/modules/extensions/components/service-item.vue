@@ -255,7 +255,7 @@ const startTooltip = computed<string>(() => {
 });
 
 const stopTooltip = computed<string>(() => {
-	if (isTransitioning.value) {
+	if (props.service.state === ExtensionsModuleServiceState.stopping) {
 		return t('extensionsModule.services.tooltips.transitioning');
 	}
 	return t('extensionsModule.services.tooltips.stopService');
