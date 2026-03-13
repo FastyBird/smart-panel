@@ -7,23 +7,6 @@ import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 import type { IUseUpdateStatus } from './types';
 
-export interface IUpdateInfo {
-	currentVersion: string | null;
-	latestVersion: string | null;
-	updateAvailable: boolean;
-	updateType: 'patch' | 'minor' | 'major' | null;
-	lastChecked: Date | null;
-	changelogUrl: string | null;
-}
-
-export interface IUpdateStatus {
-	status: string;
-	phase: string | null;
-	progressPercent: number | null;
-	message: string | null;
-	error: string | null;
-}
-
 const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/status`;
 const UPDATE_CHECK_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/check`;
 const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/install`;

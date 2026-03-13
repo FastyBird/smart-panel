@@ -21,30 +21,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { ElBadge, ElButton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useBackend } from '../../../../common';
-import { MODULES_PREFIX } from '../../../../app.constants';
-import { onUpdateEvent } from '../../services/update-events.service';
-import { RouteNames, SYSTEM_MODULE_PREFIX } from '../../system.constants';
+import { useUpdateStatus } from '../../composables/composables';
+import { RouteNames } from '../../system.constants';
 
 defineOptions({
 	name: 'UpdateNotificationBadge',
 });
 
 const router = useRouter();
-const backend = useBackend();
 
 const DISMISSED_VERSION_KEY = 'smart-panel:update-dismissed-version';
-const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/status`;
 
-const updateAvailable = ref<boolean>(false);
-const latestVersion = ref<string | null>(null);
+const { updateAvailable, latestVersion, fetchStatus } = useUpdateStatus();
+
 const dismissedVersion = ref<string | null>(localStorage.getItem(DISMISSED_VERSION_KEY));
 
 const showBadge = computed<boolean>((): boolean => {
@@ -65,40 +61,16 @@ const onNavigateToUpdate = (): void => {
 	router.push({ name: RouteNames.SYSTEM_INFO });
 };
 
-const applyStatusEvent = (payload: Record<string, unknown>): void => {
-	// The WS payload contains status/phase/progress_percent/message/error,
-	// not version info. Re-fetch from API when an update completes or fails
-	// to get the latest version information.
-	const eventStatus = payload.status as string | undefined;
-
-	if (eventStatus === 'complete' || eventStatus === 'failed') {
-		void fetchInitialStatus();
+// Reset dismissal when a new version becomes available
+watch(latestVersion, (newVersion: string | null): void => {
+	if (newVersion && newVersion !== dismissedVersion.value) {
+		dismissedVersion.value = null;
+		localStorage.removeItem(DISMISSED_VERSION_KEY);
 	}
-};
-
-const fetchInitialStatus = async (): Promise<void> => {
-	try {
-		const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
-
-		const responseData = response.data as { data?: Record<string, unknown> } | undefined;
-
-		if (responseData?.data) {
-			updateAvailable.value = (responseData.data.update_available as boolean) ?? false;
-			latestVersion.value = (responseData.data.latest_version as string) ?? null;
-		}
-	} catch {
-		// Silently fail
-	}
-};
-
-const unsubscribe = onUpdateEvent(applyStatusEvent);
-
-onMounted((): void => {
-	void fetchInitialStatus();
 });
 
-onUnmounted((): void => {
-	unsubscribe();
+onMounted((): void => {
+	void fetchStatus();
 });
 </script>
 

@@ -61,7 +61,7 @@
 			</el-button>
 		</div>
 
-		<template v-if="isUpdating">
+		<template v-if="isUpdating || status === 'failed'">
 			<el-progress
 				:percentage="progressPercent || 0"
 				:status="status === 'failed' ? 'exception' : undefined"
