@@ -342,6 +342,11 @@ const discoveryRemaining = reactive<Record<string, number>>({});
 const getDiscoveryRemaining = (type: string): number => discoveryRemaining[type] ?? 0;
 
 const stopDiscoveryForPlugin = (type: string): void => {
+	// Invalidate the generation so any in-flight startDiscovery() calls
+	// (still awaiting the 2s delay or fetch) will bail at their generation checks
+	// instead of creating a ghost timer.
+	discoveryGeneration[type] = (discoveryGeneration[type] ?? 0) + 1;
+
 	// Clear the countdown timer
 	if (discoveryTimers[type]) {
 		clearInterval(discoveryTimers[type]!);
@@ -380,6 +385,13 @@ const startDiscovery = async (type: string): Promise<void> => {
 
 	// Start countdown timer — discovery state lasts DISCOVERY_TIMEOUT ms,
 	// during which WebSocket events update the device store in real-time.
+	// Clear any existing timer first to avoid leaking interval IDs when a
+	// stale in-flight startDiscovery() races with a new one.
+	if (discoveryTimers[type]) {
+		clearInterval(discoveryTimers[type]!);
+		discoveryTimers[type] = null;
+	}
+
 	const totalSeconds = Math.round(DISCOVERY_TIMEOUT / 1_000);
 	discoveryRemaining[type] = totalSeconds;
 
