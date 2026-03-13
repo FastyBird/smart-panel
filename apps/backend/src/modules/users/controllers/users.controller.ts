@@ -193,8 +193,16 @@ export class UsersController {
 
 		const { auth } = req;
 
+		// Resolve the authenticated user's ID (works for both access tokens and long-live tokens)
+		const authenticatedUserId = auth?.type === 'user' ? auth.id : auth?.type === 'token' ? auth.ownerId : null;
+
 		// Prevent users from changing their own role
-		if (auth && auth.type === 'user' && auth.id === id && updateDto.data.role !== undefined && updateDto.data.role !== user.role) {
+		if (
+			authenticatedUserId !== null &&
+			authenticatedUserId === id &&
+			updateDto.data.role !== undefined &&
+			updateDto.data.role !== user.role
+		) {
 			throw new UnprocessableEntityException('You cannot change your own role');
 		}
 

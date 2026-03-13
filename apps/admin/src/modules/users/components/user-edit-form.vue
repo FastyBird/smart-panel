@@ -238,16 +238,28 @@ const rules = reactive<FormRules<IUserEditForm>>({
 	email: [{ type: 'email', message: t('usersModule.fields.email.validation.email'), trigger: 'change' }],
 });
 
-const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
-	{
-		value: UsersModuleUserRole.user,
-		label: t('usersModule.fields.role.options.user'),
-	},
-	{
-		value: UsersModuleUserRole.admin,
-		label: t('usersModule.fields.role.options.admin'),
-	},
-];
+const roleOptions = computed<{ value: UsersModuleUserRole; label: string }[]>(() => {
+	const options: { value: UsersModuleUserRole; label: string }[] = [
+		{
+			value: UsersModuleUserRole.user,
+			label: t('usersModule.fields.role.options.user'),
+		},
+		{
+			value: UsersModuleUserRole.admin,
+			label: t('usersModule.fields.role.options.admin'),
+		},
+	];
+
+	// Include owner option when viewing the owner user so the label displays correctly
+	if (props.user.role === UsersModuleUserRole.owner) {
+		options.push({
+			value: UsersModuleUserRole.owner,
+			label: t('usersModule.fields.role.options.owner'),
+		});
+	}
+
+	return options;
+});
 
 const onChangePassword = (): void => {
 	passwordFormVisible.value = true;
