@@ -162,10 +162,6 @@ const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
 		value: UsersModuleUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
-	{
-		value: UsersModuleUserRole.owner,
-		label: t('usersModule.fields.role.options.owner'),
-	},
 ];
 
 watch(
