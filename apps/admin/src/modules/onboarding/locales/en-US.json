@@ -149,6 +149,7 @@
 		"configure": "Configure",
 		"configRequired": "Configuration required to connect",
 		"setupNow": "Set up now",
+		"stopScan": "Stop",
 		"summary": "{count} integration enabled | {count} integration enabled | {count} integrations enabled",
 		"totalDevices": "{count} device found | {count} device found | {count} devices found",
 		"configDialog": {
