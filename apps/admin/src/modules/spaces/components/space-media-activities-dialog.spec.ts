@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { SpaceType } from '../spaces.constants';
 import type { IDerivedMediaEndpoint, IMediaActivityBinding } from '../composables/useSpaceMedia';
 
 // --- Shared mutable state for mocks ---
@@ -186,7 +187,7 @@ const mockSpace = {
 	id: 'space-1',
 	name: 'Living Room',
 	description: null,
-	type: 'room',
+	type: SpaceType.ROOM,
 	category: null,
 	icon: null,
 	displayOrder: 0,
