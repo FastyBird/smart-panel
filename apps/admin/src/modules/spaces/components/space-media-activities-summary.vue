@@ -279,7 +279,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import { ElAlert, ElBadge, ElButton, ElCard, ElDialog, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
-import type { IMediaStepFailure } from '../composables/useSpaceMedia';
 import { useI18n } from 'vue-i18n';
 
 import { useFlashMessage } from '../../../common';
@@ -288,6 +287,7 @@ import {
 	getActivityIcon,
 	type IMediaDryRunPreview,
 	type IDerivedMediaEndpoint,
+	type IMediaStepFailure,
 	MediaActivityKey,
 	useSpaceMedia,
 } from '../composables/useSpaceMedia';
