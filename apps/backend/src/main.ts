@@ -68,7 +68,8 @@ async function bootstrap() {
 
 	// Register multipart support for file uploads — this adds the content-type
 	// parser that sets req[kMultipart] = true, which req.file() relies on.
-	await app.register(fastifyMultipart, {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	await app.register(fastifyMultipart as any, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
 
@@ -144,7 +145,8 @@ async function bootstrap() {
 		}
 	};
 
-	fastifyInstance.get('/auth/callback', oauthCallbackHandler);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	fastifyInstance.get('/auth/callback', oauthCallbackHandler as any);
 
 	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 
