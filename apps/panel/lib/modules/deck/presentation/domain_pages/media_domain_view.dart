@@ -604,7 +604,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						padding: AppSpacings.paddingXl,
 						decoration: BoxDecoration(
 							color: cardColor,
-							borderRadius: BorderRadius.circular(AppBorderRadius.large),
+							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						),
 						child: Column(
 							mainAxisSize: MainAxisSize.min,
