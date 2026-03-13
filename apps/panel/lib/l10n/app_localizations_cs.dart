@@ -1243,6 +1243,26 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_button_cancel => 'Zrušit';
 
   @override
+  String get room_selection_title => 'Vyberte místnost';
+
+  @override
+  String room_selection_description(int count) {
+    return 'Zvolte, ke které místnosti tento displej patří ($count k dispozici):';
+  }
+
+  @override
+  String get room_selection_button_confirm => 'Přiřadit k této místnosti';
+
+  @override
+  String get room_selection_button_skip => 'Zatím přeskočit';
+
+  @override
+  String get room_selection_saving => 'Přiřazování místnosti...';
+
+  @override
+  String get room_selection_error => 'Přiřazení místnosti se nezdařilo. Zkuste to znovu.';
+
+  @override
   String get action_success => 'Akce byla úspěšně dokončena';
 
   @override

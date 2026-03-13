@@ -1232,6 +1232,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discovery_button_cancel => 'Cancel';
 
   @override
+  String get room_selection_title => 'Select a Room';
+
+  @override
+  String room_selection_description(int count) {
+    return 'Choose which room this display belongs to ($count available):';
+  }
+
+  @override
+  String get room_selection_button_confirm => 'Assign to This Room';
+
+  @override
+  String get room_selection_button_skip => 'Skip for Now';
+
+  @override
+  String get room_selection_saving => 'Assigning Room...';
+
+  @override
+  String get room_selection_error => 'Failed to assign room. Please try again.';
+
+  @override
   String get action_success => 'Action completed successfully';
 
   @override

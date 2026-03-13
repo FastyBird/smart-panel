@@ -1612,6 +1612,36 @@
     "description": "Cancel search button text"
   },
 
+  "room_selection_title": "Select a Room",
+  "@room_selection_title": {
+    "description": "Title for room selection screen during onboarding"
+  },
+  "room_selection_description": "Choose which room this display belongs to ({count} available):",
+  "@room_selection_description": {
+    "description": "Description for room selection screen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "room_selection_button_confirm": "Assign to This Room",
+  "@room_selection_button_confirm": {
+    "description": "Confirm room selection button text"
+  },
+  "room_selection_button_skip": "Skip for Now",
+  "@room_selection_button_skip": {
+    "description": "Skip room selection button text"
+  },
+  "room_selection_saving": "Assigning Room...",
+  "@room_selection_saving": {
+    "description": "Loading text while saving room assignment"
+  },
+  "room_selection_error": "Failed to assign room. Please try again.",
+  "@room_selection_error": {
+    "description": "Error message when room assignment fails"
+  },
+
   "action_success": "Action completed successfully",
   "@action_success": {
     "description": "Success message when an action completes"

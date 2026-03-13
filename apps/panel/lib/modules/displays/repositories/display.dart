@@ -520,6 +520,7 @@ class DisplayRepository extends ChangeNotifier {
     Object? precipitationUnit = _unset,
     Object? distanceUnit = _unset,
     Object? weatherLocationId = _unset,
+    Object? roomId = _unset,
   }) {
     return DisplaysModuleUpdateDisplay(
       version: _display!.version,
@@ -539,7 +540,9 @@ class DisplayRepository extends ChangeNotifier {
       // Display configuration
       name: _display!.name,
       role: _toApiRole(_display!.role),
-      roomId: _display!.roomId,
+      roomId: identical(roomId, _unset)
+          ? _display!.roomId
+          : roomId as String?,
       homeMode: _toApiHomeMode(_display!.homeMode),
       homePageId: _display!.homePageId,
       // Audio settings
@@ -946,6 +949,32 @@ class DisplayRepository extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[DISPLAYS MODULE] Failed to update weather location: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update the room assignment for this display
+  Future<bool> setDisplayRoom(String roomId) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(roomId: roomId),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(roomId: roomId);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update room assignment: $e');
       }
       return false;
     }

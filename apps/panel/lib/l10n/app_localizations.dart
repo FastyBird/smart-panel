@@ -2321,6 +2321,42 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get discovery_button_cancel;
 
+  /// Title for room selection screen during onboarding
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Room'**
+  String get room_selection_title;
+
+  /// Description for room selection screen
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which room this display belongs to ({count} available):'**
+  String room_selection_description(int count);
+
+  /// Confirm room selection button text
+  ///
+  /// In en, this message translates to:
+  /// **'Assign to This Room'**
+  String get room_selection_button_confirm;
+
+  /// Skip room selection button text
+  ///
+  /// In en, this message translates to:
+  /// **'Skip for Now'**
+  String get room_selection_button_skip;
+
+  /// Loading text while saving room assignment
+  ///
+  /// In en, this message translates to:
+  /// **'Assigning Room...'**
+  String get room_selection_saving;
+
+  /// Error message when room assignment fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to assign room. Please try again.'**
+  String get room_selection_error;
+
   /// Success message when an action completes
   ///
   /// In en, this message translates to:
