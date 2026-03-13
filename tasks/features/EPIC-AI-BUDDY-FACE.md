@@ -91,7 +91,7 @@ AudioPlayback.isPlaying       → 💬 Speaking
 BuddyService.errorType       → 😔 Sorry (brief)
 New suggestions               → 🤩 Excited (brief)
 Inactivity 30s                → 😴 Sleepy
-Inactivity 60s                → 😴 Idle (minimal)
+Inactivity 60s                → 😑 Idle (closed eyes, minimal)
 Default                       → 😐 Neutral (blink + look)
 ```
 
@@ -99,7 +99,7 @@ Default                       → 😐 Neutral (blink + look)
 
 **In scope**
 
-- Animated emoji face widget with 12+ emotions (CustomPaint, 60fps)
+- Animated emoji face widget with 14 emotions (CustomPaint, 60fps)
 - Eye system with configurable parameters (height, slope, pupil, look direction)
 - Automatic blinking and random eye movement
 - Smooth interpolated transitions between all emotions
@@ -119,7 +119,7 @@ Default                       → 😐 Neutral (blink + look)
 
 ## 4. Acceptance criteria
 
-- [ ] Panel displays animated face with at least 12 visually distinct emotions
+- [ ] Panel displays animated face with at least 14 visually distinct emotions
 - [ ] Face reacts to buddy state in real-time via BuddyEmotionMapper
 - [ ] Eyes blink randomly (2-6s interval, ~150ms duration)
 - [ ] Eyes wander subtly in idle state

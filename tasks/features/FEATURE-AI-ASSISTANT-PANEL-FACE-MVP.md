@@ -87,7 +87,7 @@ Default idle               → Face: NEUTRAL (blink + look around)
 - [ ] Mouth has multiple shapes (line, arc, open oval, wide smile)
 - [ ] Colors adapt properly to light/dark themes
 
-### Emotions (minimum 12)
+### Emotions (minimum 14)
 - [ ] `neutral` - Default relaxed state
 - [ ] `happy` - Curved "^" eyes, big smile
 - [ ] `sad` - Droopy eyes, downturned mouth
@@ -100,6 +100,8 @@ Default idle               → Face: NEUTRAL (blink + look around)
 - [ ] `excited` - Sparkly wide eyes, big smile
 - [ ] `confused` - Asymmetric eyes, wavy mouth
 - [ ] `love` - Heart eyes or very happy curved eyes
+- [ ] `sorry` - Sad apologetic eyes, downturned mouth (for error states)
+- [ ] `idle` - Fully closed eyes, no mouth, minimal animation (distinct from sleepy)
 
 ### Animation System
 - [ ] Random blinking every 2-6 seconds (configurable)
@@ -215,7 +217,10 @@ class BuddyEmotionMapper extends ChangeNotifier {
 
   EmotionPreset _currentEmotion = EmotionPresets.neutral;
   Timer? _inactivityTimer;
+  Timer? _temporaryEmotionTimer;
   DateTime? _lastInteractionTime;
+  int _lastSeenMessageCount = 0;
+  int _lastSeenSuggestionCount = 0;
 
   static const _sleepyTimeout = Duration(seconds: 30);
   static const _idleTimeout = Duration(seconds: 60);
@@ -232,6 +237,9 @@ class BuddyEmotionMapper extends ChangeNotifier {
   })  : _buddyService = buddyService,
         _voiceActivationService = voiceActivationService,
         _audioPlaybackService = audioPlaybackService {
+    // Initialize tracking to current state so we only react to NEW messages/suggestions
+    _lastSeenMessageCount = _buddyService.messages.length;
+    _lastSeenSuggestionCount = _buddyService.suggestions.length;
     _buddyService.addListener(_onBuddyChanged);
     _voiceActivationService.addListener(_onVoiceChanged);
     _audioPlaybackService.addListener(_onPlaybackChanged);
@@ -271,16 +279,21 @@ class BuddyEmotionMapper extends ChangeNotifier {
       return;
     }
 
-    // Check for new assistant message (brief happy before speaking)
+    // Check for NEW assistant message (track count to avoid re-triggering)
     final messages = _buddyService.messages;
-    if (messages.isNotEmpty && messages.last.role == BuddyMessageRole.assistant) {
-      if (!_audioPlaybackService.isPlaying) {
-        _setEmotionTemporary(EmotionPresets.happy, _happyDuration);
+    if (messages.length > _lastSeenMessageCount) {
+      _lastSeenMessageCount = messages.length;
+      if (messages.last.role == BuddyMessageRole.assistant) {
+        if (!_audioPlaybackService.isPlaying) {
+          _setEmotionTemporary(EmotionPresets.happy, _happyDuration);
+        }
       }
     }
 
-    // New suggestions → brief excited
-    if (_buddyService.suggestions.isNotEmpty) {
+    // NEW suggestions → brief excited (track count to avoid re-triggering)
+    final suggestions = _buddyService.suggestions;
+    if (suggestions.length > _lastSeenSuggestionCount) {
+      _lastSeenSuggestionCount = suggestions.length;
       _setEmotionTemporary(EmotionPresets.excited, _excitedDuration);
     }
   }
@@ -324,8 +337,9 @@ class BuddyEmotionMapper extends ChangeNotifier {
   }
 
   void _setEmotionTemporary(EmotionPreset emotion, Duration duration) {
+    _temporaryEmotionTimer?.cancel();
     _setEmotion(emotion);
-    Future.delayed(duration, () {
+    _temporaryEmotionTimer = Timer(duration, () {
       if (_currentEmotion == emotion) {
         _setEmotion(EmotionPresets.neutral);
       }
@@ -335,6 +349,7 @@ class BuddyEmotionMapper extends ChangeNotifier {
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _temporaryEmotionTimer?.cancel();
     _buddyService.removeListener(_onBuddyChanged);
     _voiceActivationService.removeListener(_onVoiceChanged);
     _audioPlaybackService.removeListener(_onPlaybackChanged);
@@ -519,12 +534,24 @@ class EmotionPresets {
     eyes: EyeConfig(height: 0.6, slope: 10, pupilSize: 0.7),
     mouth: MouthConfig(curvature: 0.9, width: 0.45),
   );
-  // Alias for deep idle (minimal animation)
-  static const idle = sleepy;
+  static const sorry = EmotionPreset.symmetric(
+    name: 'Sorry', emoji: '😔',
+    eyes: EyeConfig(height: 0.5, slope: -8, offsetY: 0.04, pupilY: 0.3),
+    mouth: MouthConfig(curvature: -0.5, width: 0.3),
+    faceOffsetY: 0.02,
+  );
+  // Deep idle: distinct from sleepy — fully closed eyes, minimal animation
+  static const idle = EmotionPreset.symmetric(
+    name: 'Idle', emoji: '😑',
+    eyes: EyeConfig(height: 0.05, slope: 0),
+    mouth: MouthConfig(curvature: 0.0, openness: 0.0),
+    faceOffsetY: 0.04,
+  );
 
   static const all = [
     neutral, happy, sad, angry, surprised, thinking,
     listening, speaking, sleepy, excited, confused, love,
+    sorry, idle,
   ];
 }
 ```
@@ -578,7 +605,7 @@ class EmotionPresets {
 
 1. Eye rendering with `EyeConfig` (get one eye perfect)
 2. Mouth rendering with `MouthConfig`
-3. All 12 emotion presets (static)
+3. All 14 emotion presets (static)
 4. Smooth transitions between presets
 5. `BlinkController` (random blinking)
 6. `LookController` (eye wandering)
@@ -601,4 +628,8 @@ SURPRISED   THINKING    SLEEPY      EXCITED
 LISTENING   SPEAKING    CONFUSED    LOVE
   ⊙   ⊙       ◉   ◉      ◑   ◉      ♡   ♡
     ·           ○          ∼           ⌣
+
+SORRY       IDLE
+  ◡   ◡       ─   ─
+    ︵
 ```
