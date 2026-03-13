@@ -375,6 +375,17 @@ export class MediaActivityActivationResultModel {
 	})
 	@Expose()
 	warnings?: string[];
+
+	@ApiProperty({
+		name: 'requires_realtime',
+		description:
+			'Whether this activity requires a live WebSocket connection for real-time control. ' +
+			'When true, the UI should block media controls if the connection drops.',
+		type: 'boolean',
+		default: true,
+	})
+	@Expose({ name: 'requires_realtime' })
+	requiresRealtime: boolean = true;
 }
 
 // ========================

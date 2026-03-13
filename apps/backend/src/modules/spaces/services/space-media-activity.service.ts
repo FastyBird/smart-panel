@@ -306,6 +306,7 @@ export class SpaceMediaActivityService {
 				resolved: plan.resolved,
 				summary: lastResult,
 				warnings: warnings.length > 0 ? warnings : undefined,
+				requiresRealtime: true,
 			};
 		} catch (error) {
 			this.logger.error(
@@ -341,6 +342,7 @@ export class SpaceMediaActivityService {
 				state: MediaActivationState.FAILED,
 				resolved: plan.resolved,
 				summary: lastResult,
+				requiresRealtime: true,
 			};
 		}
 	}
@@ -441,6 +443,7 @@ export class SpaceMediaActivityService {
 			activityKey: null,
 			state: MediaActivationState.DEACTIVATED,
 			warnings: deactivationWarnings.length > 0 ? deactivationWarnings : undefined,
+			requiresRealtime: true,
 		};
 	}
 
@@ -1049,6 +1052,7 @@ export class SpaceMediaActivityService {
 			state: record.state,
 			resolved,
 			summary,
+			requiresRealtime: true,
 		};
 	}
 
