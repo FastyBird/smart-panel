@@ -98,7 +98,21 @@
 				</el-menu-item>
 
 				<el-menu-item
+					v-if="accountManager?.routes.lock"
 					index="3-3"
+					data-test-id="navigation-lock-screen"
+					@click="onLock"
+				>
+					<el-icon>
+						<icon icon="mdi:lock" />
+					</el-icon>
+					<template #title>
+						{{ t('application.userMenu.lockScreen') }}
+					</template>
+				</el-menu-item>
+
+				<el-menu-item
+					index="3-4"
 					data-test-id="navigation-sign-out"
 					@click="onSignOut"
 				>
@@ -187,6 +201,18 @@ const activeIndex = computed<string | undefined>((): string | undefined => {
 
 	return undefined;
 });
+
+const onLock = (): void => {
+	if (accountManager) {
+		accountManager.lock?.();
+
+		if (accountManager.routes.lock) {
+			router.push({ name: accountManager.routes.lock });
+		}
+
+		emit('click');
+	}
+};
 
 const onSignOut = (): void => {
 	if (accountManager) {

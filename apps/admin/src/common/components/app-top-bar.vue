@@ -69,6 +69,7 @@
 							</div>
 						</el-dropdown-item>
 						<el-dropdown-item
+							v-if="accountManager?.routes.lock"
 							:icon="h(Icon, { icon: 'mdi:lock' })"
 							:divided="typeof accountManager?.routes.edit !== 'undefined' || typeof accountManager?.routes.security !== 'undefined'"
 						>
@@ -198,7 +199,13 @@ const onEditSecurity = (): void => {
 };
 
 const onLock = (): void => {
-	// Handle lock
+	if (accountManager) {
+		accountManager.lock?.();
+
+		if (accountManager.routes.lock) {
+			router.push({ name: accountManager.routes.lock });
+		}
+	}
 };
 
 watch(

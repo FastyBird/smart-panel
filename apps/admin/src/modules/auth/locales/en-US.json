@@ -8,6 +8,11 @@
         "title": "Sign up"
       }
     },
+    "lock": {
+      "screen": {
+        "title": "Lock screen"
+      }
+    },
     "profile": {
       "general": {
         "title": "General"
@@ -26,12 +31,14 @@
   "headings": {
     "signIn": "Sign in",
     "signUp": "Sign up",
+    "lockScreen": "Screen locked",
     "profileGeneral": "General settings",
     "profileSecurity": "Security settings",
     "yourProfile": "Your profile"
   },
   "messages": {
     "requestError": "Something went wrong, please try again later.",
+    "invalidPassword": "The password you entered is incorrect.",
     "profileEdited": "Your profile has been updated successfully.",
     "profileNotEdited": "Your profile couldn't be edited.",
     "passwordEdited": "Your password has been updated successfully.",
@@ -108,6 +115,12 @@
     },
     "signUp": {
       "title": "Sign up"
+    },
+    "unlock": {
+      "title": "Unlock"
+    },
+    "signOut": {
+      "title": "Sign out"
     },
     "backToSignIn": {
       "title": "Back to sign in"

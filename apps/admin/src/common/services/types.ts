@@ -15,6 +15,7 @@ export interface IAccountManager {
 	signIn: (credentials: { username: string; password: string }) => Promise<boolean>;
 	signOut: () => Promise<boolean>;
 	lock?: () => Promise<boolean>;
+	unlock?: () => Promise<boolean>;
 	canAccess: (resource: string, action: string) => Promise<boolean>;
 	routes: {
 		signIn: string;
