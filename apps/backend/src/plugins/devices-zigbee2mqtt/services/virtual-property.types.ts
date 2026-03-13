@@ -338,7 +338,7 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 			// Tilt command type - indicates how Z2M sets tilt
 			// Z2M normalizes tilt commands internally (tilt, tilt_percentage)
 			{
-				property_category: PropertyCategory.STATE,
+				property_category: PropertyCategory.TILT,
 				virtual_type: VirtualPropertyType.STATIC,
 				data_type: DataTypeType.ENUM,
 				permissions: [PermissionType.READ_ONLY],
