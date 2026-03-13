@@ -20,6 +20,7 @@ import { BUDDY_VOICEAI_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-voiceai.opena
 import { UpdateBuddyVoiceaiConfigDto } from './dto/update-config.dto';
 import { BuddyVoiceaiConfigModel } from './models/config.model';
 import { VoiceaiTtsProvider } from './platforms/voiceai-tts.provider';
+import { VoiceaiConfigValidatorService } from './services/voiceai-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_VOICEAI_PLUGIN_NAME,
@@ -28,7 +29,7 @@ import { VoiceaiTtsProvider } from './platforms/voiceai-tts.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [VoiceaiTtsProvider],
+	providers: [VoiceaiTtsProvider, VoiceaiConfigValidatorService],
 	exports: [VoiceaiTtsProvider],
 })
 export class BuddyVoiceaiPlugin implements OnModuleInit {

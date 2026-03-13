@@ -20,6 +20,7 @@ import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-cl
 import { UpdateBuddyClaudeSetupTokenConfigDto } from './dto/update-config.dto';
 import { BuddyClaudeSetupTokenConfigModel } from './models/config.model';
 import { ClaudeSetupTokenProvider } from './platforms/claude-setup-token.provider';
+import { ClaudeSetupTokenConfigValidatorService } from './services/claude-setup-token-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME,
@@ -28,7 +29,7 @@ import { ClaudeSetupTokenProvider } from './platforms/claude-setup-token.provide
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [ClaudeSetupTokenProvider],
+	providers: [ClaudeSetupTokenProvider, ClaudeSetupTokenConfigValidatorService],
 	exports: [ClaudeSetupTokenProvider],
 })
 export class BuddyClaudeSetupTokenPlugin implements OnModuleInit {

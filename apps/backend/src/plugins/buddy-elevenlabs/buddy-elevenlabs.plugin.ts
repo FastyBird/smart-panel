@@ -22,6 +22,7 @@ import { UpdateBuddyElevenlabsConfigDto } from './dto/update-config.dto';
 import { BuddyElevenlabsConfigModel } from './models/config.model';
 import { ElevenLabsSttProvider } from './platforms/elevenlabs-stt.provider';
 import { ElevenLabsTtsProvider } from './platforms/elevenlabs-tts.provider';
+import { ElevenLabsConfigValidatorService } from './services/elevenlabs-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_ELEVENLABS_PLUGIN_NAME,
@@ -30,7 +31,7 @@ import { ElevenLabsTtsProvider } from './platforms/elevenlabs-tts.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [ElevenLabsSttProvider, ElevenLabsTtsProvider],
+	providers: [ElevenLabsSttProvider, ElevenLabsTtsProvider, ElevenLabsConfigValidatorService],
 	exports: [ElevenLabsSttProvider, ElevenLabsTtsProvider],
 })
 export class BuddyElevenlabsPlugin implements OnModuleInit {

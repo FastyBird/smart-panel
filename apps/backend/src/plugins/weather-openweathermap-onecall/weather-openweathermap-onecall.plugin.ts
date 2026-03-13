@@ -23,6 +23,7 @@ import { UpdateOpenWeatherMapOneCallLocationDto } from './dto/update-location.dt
 import { OpenWeatherMapOneCallLocationEntity } from './entities/locations-openweathermap-onecall.entity';
 import { OpenWeatherMapOneCallConfigModel } from './models/config.model';
 import { OpenWeatherMapOneCallProvider } from './platforms/openweathermap-onecall.provider';
+import { OpenWeatherMapOneCallConfigValidatorService } from './services/openweathermap-onecall-config-validator.service';
 import { OpenWeatherMapOneCallGeolocationService } from './services/openweathermap-onecall-geolocation.service';
 import { OpenWeatherMapOneCallHttpService } from './services/openweathermap-onecall-http.service';
 import {
@@ -47,7 +48,12 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_SWAGGER_EXTRA_MODELS } from './we
 		ExtensionsModule,
 	],
 	controllers: [OpenWeatherMapOneCallGeolocationController],
-	providers: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallGeolocationService, OpenWeatherMapOneCallProvider],
+	providers: [
+		OpenWeatherMapOneCallHttpService,
+		OpenWeatherMapOneCallGeolocationService,
+		OpenWeatherMapOneCallProvider,
+		OpenWeatherMapOneCallConfigValidatorService,
+	],
 	exports: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallGeolocationService, OpenWeatherMapOneCallProvider],
 })
 export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {

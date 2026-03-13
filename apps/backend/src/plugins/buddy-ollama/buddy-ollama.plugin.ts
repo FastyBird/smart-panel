@@ -19,6 +19,7 @@ import { BUDDY_OLLAMA_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-ollama.openapi
 import { UpdateBuddyOllamaConfigDto } from './dto/update-config.dto';
 import { BuddyOllamaConfigModel } from './models/config.model';
 import { OllamaProvider } from './platforms/ollama.provider';
+import { OllamaConfigValidatorService } from './services/ollama-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_OLLAMA_PLUGIN_NAME,
@@ -27,7 +28,7 @@ import { OllamaProvider } from './platforms/ollama.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [OllamaProvider],
+	providers: [OllamaProvider, OllamaConfigValidatorService],
 	exports: [OllamaProvider],
 })
 export class BuddyOllamaPlugin implements OnModuleInit {
