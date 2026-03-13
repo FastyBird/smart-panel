@@ -37,10 +37,6 @@ export class PlatformService {
 			});
 	}
 
-	getPlatformType(): PlatformType {
-		return this.platformType;
-	}
-
 	getSystemInfo() {
 		this.logger.debug('Fetching system information');
 

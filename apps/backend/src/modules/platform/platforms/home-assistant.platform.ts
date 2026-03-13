@@ -1,11 +1,6 @@
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-
 import { PlatformException } from '../platform.exceptions';
 
 import { GenericPlatform } from './generic.platform';
-
-const execFileAsync = promisify(execFile);
 
 export class HomeAssistantPlatform extends GenericPlatform {
 	private readonly supervisorToken: string | null;
@@ -40,18 +35,19 @@ export class HomeAssistantPlatform extends GenericPlatform {
 		const url = `${this.supervisorUrl}${endpoint}`;
 
 		try {
-			const { stdout } = await execFileAsync('curl', [
-				'-s',
-				'-X',
+			const response = await fetch(url, {
 				method,
-				'-H',
-				`Authorization: Bearer ${this.supervisorToken}`,
-				'-H',
-				'Content-Type: application/json',
-				url,
-			]);
+				headers: {
+					Authorization: `Bearer ${this.supervisorToken}`,
+					'Content-Type': 'application/json',
+				},
+			});
 
-			return stdout;
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			return await response.text();
 		} catch (error) {
 			const err = error as Error;
 
