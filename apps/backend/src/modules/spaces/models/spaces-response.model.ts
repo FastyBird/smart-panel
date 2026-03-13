@@ -1824,14 +1824,23 @@ export class SuggestionDataModel {
 	reason: string | null;
 
 	@ApiProperty({
-		name: 'lighting_mode',
-		description: 'The lighting mode this suggestion would apply',
-		enum: LightingMode,
-		nullable: true,
-		example: LightingMode.RELAX,
+		name: 'intent_type',
+		description: 'The intent type this suggestion would execute',
+		type: 'string',
+		example: 'set_mode',
 	})
-	@Expose({ name: 'lighting_mode' })
-	lightingMode: LightingMode | null;
+	@Expose({ name: 'intent_type' })
+	intentType: string;
+
+	@ApiPropertyOptional({
+		name: 'intent_mode',
+		description: 'The intent mode parameter (if applicable)',
+		type: 'string',
+		nullable: true,
+		example: 'relax',
+	})
+	@Expose({ name: 'intent_mode' })
+	intentMode: string | null;
 }
 
 /**

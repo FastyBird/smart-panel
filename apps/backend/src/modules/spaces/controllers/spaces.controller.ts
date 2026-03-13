@@ -1,4 +1,7 @@
+import { v4 as uuid } from 'uuid';
+
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -25,6 +28,7 @@ import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } fr
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
+import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
 	BindingValidationIssueModel,
@@ -133,11 +137,13 @@ import { SpaceMediaActivityBindingService } from '../services/space-media-activi
 import { SpaceMediaActivityService } from '../services/space-media-activity.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
+import { SpaceSuggestionEvent, SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
 	CoversMode,
+	EventType,
 	IntentCategory,
 	LightingMode,
 	LightingRole,
@@ -146,8 +152,10 @@ import {
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
 	SPACE_CATEGORY_TEMPLATES,
+	SUGGESTION_EXPIRY_MS,
 	SpaceRoomCategory,
 	SpaceZoneCategory,
+	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException } from '../spaces.exceptions';
 import { IntentSpecLoaderService } from '../spec';
@@ -194,12 +202,14 @@ export class SpacesController {
 		private readonly spaceSensorRoleService: SpaceSensorRoleService,
 		private readonly spaceSensorStateService: SpaceSensorStateService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
+		private readonly spaceSuggestionHeartbeatService: SpaceSuggestionHeartbeatService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
 		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
 		private readonly spaceMediaActivityService: SpaceMediaActivityService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	@Get()
@@ -1806,7 +1816,8 @@ export class SpacesController {
 			suggestionData.type = suggestion.type;
 			suggestionData.title = suggestion.title;
 			suggestionData.reason = suggestion.reason;
-			suggestionData.lightingMode = suggestion.lightingMode;
+			suggestionData.intentType = suggestion.intentType;
+			suggestionData.intentMode = suggestion.intentMode;
 			response.data = suggestionData;
 		} else {
 			response.data = null;
@@ -2315,5 +2326,73 @@ export class SpacesController {
 		response.data = result;
 
 		return response;
+	}
+
+	// ================================
+	// Debug / Testing Endpoints
+	// ================================
+
+	@Post('suggestions/heartbeat')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	@ApiOperation({
+		operationId: 'trigger-spaces-module-suggestion-heartbeat',
+		summary: 'Trigger suggestion heartbeat (debug)',
+		description:
+			'Manually runs the space suggestion heartbeat cycle. Evaluates all enabled spaces and emits suggestion events via WebSocket.',
+	})
+	async triggerSuggestionHeartbeat(): Promise<{ data: { triggered: boolean } }> {
+		this.logger.debug('Manually triggering suggestion heartbeat cycle');
+
+		await this.spaceSuggestionHeartbeatService.runCycle();
+
+		return { data: { triggered: true } };
+	}
+
+	@Post('suggestions/test')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	@ApiOperation({
+		operationId: 'trigger-spaces-module-suggestion-test',
+		summary: 'Emit a fake suggestion (debug)',
+		description:
+			'Emits a fake lighting suggestion via WebSocket, bypassing all rules and cooldowns. ' +
+			'Optionally specify a space_id in the request body to target a specific space.',
+	})
+	async emitTestSuggestion(
+		@Body() body?: { data?: { space_id?: string } },
+	): Promise<{ data: { emitted: boolean; space_id?: string } }> {
+		let space: SpaceEntity | null | undefined;
+
+		if (body?.data?.space_id) {
+			space = await this.spacesService.findOne(body.data.space_id);
+		}
+
+		if (!space) {
+			const spaces = await this.spacesService.findAll();
+			space = spaces[0];
+		}
+
+		if (!space) {
+			return { data: { emitted: false } };
+		}
+
+		const event: SpaceSuggestionEvent = {
+			id: uuid(),
+			type: SuggestionType.LIGHTING_RELAX,
+			title: 'Relax lighting',
+			reason: 'Evening time — switch to a calmer lighting mode',
+			intent_type: 'set_mode',
+			intent_mode: 'relax',
+			space_id: space.id,
+			created_at: new Date().toISOString(),
+			expires_at: new Date(Date.now() + SUGGESTION_EXPIRY_MS).toISOString(),
+		};
+
+		this.eventEmitter.emit(EventType.SUGGESTION_CREATED, event);
+
+		this.logger.debug(`Test suggestion emitted for space id=${space.id}`);
+
+		return { data: { emitted: true, space_id: space.id } };
 	}
 }

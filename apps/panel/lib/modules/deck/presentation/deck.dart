@@ -8,12 +8,11 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/features/suggestions/presentation/suggestion_toast.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
-import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_activation_indicator.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
@@ -72,21 +71,6 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     _swipeBlockSubscription =
         _eventBus.on<PageSwipeBlockEvent>().listen(_onSwipeBlockEvent);
 
-    // Wire up notification tap to open buddy drawer
-    try {
-      final notificationService = locator<SuggestionNotificationService>();
-      notificationService.onTapped = (_) {
-        if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BuddyChatPage()),
-          );
-        }
-      };
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Deck] SuggestionNotificationService not registered: $e');
-      }
-    }
   }
 
   void _onSwipeBlockEvent(PageSwipeBlockEvent event) {
@@ -356,15 +340,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               ),
 
               // Suggestion toast notification
-              Consumer<BuddyService>(
-                builder: (context, buddyService, _) {
-                  if (!buddyService.isModuleEnabled) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return const BuddySuggestionToast();
-                },
-              ),
+              const SuggestionToast(),
 
               // Wake word indicator
               Positioned(

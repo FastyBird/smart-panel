@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_suggestion_type.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 
 /// Suggestion type enum
 enum SuggestionType {
@@ -83,17 +82,21 @@ class SuggestionModel {
   final SuggestionType type;
   final String title;
   final String? reason;
-  final LightingMode? lightingMode;
+  final String? intentType;
+  final String? intentMode;
+  final DateTime? expiresAt;
 
   SuggestionModel({
     required this.type,
     required this.title,
     this.reason,
-    this.lightingMode,
+    this.intentType,
+    this.intentMode,
+    this.expiresAt,
   });
 
-  /// Check if this is a lighting suggestion
-  bool get isLightingSuggestion => lightingMode != null;
+  bool get isExpired =>
+      expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
   factory SuggestionModel.fromJson(Map<String, dynamic> json) {
     return SuggestionModel(
@@ -101,7 +104,11 @@ class SuggestionModel {
           SuggestionType.lightingOff,
       title: json['title'] as String? ?? '',
       reason: json['reason'] as String?,
-      lightingMode: parseLightingMode(json['lighting_mode'] as String?),
+      intentType: json['intent_type'] as String?,
+      intentMode: json['intent_mode'] as String?,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
     );
   }
 }

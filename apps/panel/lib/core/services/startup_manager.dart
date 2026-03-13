@@ -55,6 +55,8 @@ import 'package:fastybird_smart_panel/modules/security/repositories/security_eve
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
+import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/displays/services/inactivity_overlay_provider.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
@@ -749,6 +751,22 @@ class StartupManagerService {
     locator.registerSingleton(securityOverlayController);
     var overlayManager = OverlayManager();
     locator.registerSingleton(overlayManager);
+    var suggestionNotificationService = SuggestionNotificationService(
+      onSuggestionShown: () {
+        // Dismiss screensaver / lock screen so the toast is visible
+        try {
+          overlayManager.hide(InactivityOverlayIds.inactivity);
+        } catch (_) {}
+        // Restore brightness if the screen was dimmed
+        try {
+          final displayRepo = locator<DisplayRepository>();
+          if (displayRepo.brightness < 100) {
+            displayRepo.setDisplayBrightness(100);
+          }
+        } catch (_) {}
+      },
+    );
+    locator.registerSingleton(suggestionNotificationService);
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);

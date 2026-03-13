@@ -348,7 +348,8 @@ void main() {
             'type': 'lighting_relax',
             'title': 'Switch to relax mode',
             'reason': 'It is evening time',
-            'lighting_mode': 'relax',
+            'intent_type': 'lighting',
+            'intent_mode': 'relax',
           },
         };
 
@@ -367,7 +368,8 @@ void main() {
         expect(result!.type, equals(SuggestionType.lightingRelax));
         expect(result.title, equals('Switch to relax mode'));
         expect(result.reason, equals('It is evening time'));
-        expect(result.lightingMode, equals(LightingMode.relax));
+        expect(result.intentType, equals('lighting'));
+        expect(result.intentMode, equals('relax'));
         verify(() => mockClient.getSpacesModuleSpaceSuggestion(id: spaceId))
             .called(1);
       });

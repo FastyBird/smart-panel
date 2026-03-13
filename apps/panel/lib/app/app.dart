@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
 import 'package:fastybird_smart_panel/modules/deck/export.dart'
     as deck_module;
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
+import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_notification_service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/export.dart'
     as buddy_module;
 import 'package:fastybird_smart_panel/modules/security/export.dart'
@@ -490,7 +491,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<buddy_module.BuddyService>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<buddy_module.SuggestionNotificationService>(),
+          value: locator<SuggestionNotificationService>(),
         ),
       ],
       child: AppBody(),

@@ -448,6 +448,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	/**
 	 * Emit a lighting state change event for WebSocket clients.
 	 * Fetches the current aggregated state and broadcasts it.
+	 *
+	 * A short delay is applied to ensure property value changes from device
+	 * platforms have fully propagated through the PropertyValueService cache
+	 * before the state is aggregated. Without this delay, the state query
+	 * may read stale property values from TypeORM entity hydration.
 	 */
 	private async emitLightingStateChange(spaceId: string): Promise<void> {
 		try {

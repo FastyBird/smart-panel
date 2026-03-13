@@ -7,6 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -32,6 +33,7 @@ import { SpaceMediaActivityBindingService } from '../services/space-media-activi
 import { SpaceMediaActivityService } from '../services/space-media-activity.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
+import { SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
@@ -267,6 +269,10 @@ describe('SpacesController', () => {
 					},
 				},
 				{
+					provide: SpaceSuggestionHeartbeatService,
+					useValue: {},
+				},
+				{
 					provide: SpaceContextSnapshotService,
 					useValue: {
 						captureSnapshot: jest.fn().mockResolvedValue({
@@ -488,6 +494,12 @@ describe('SpacesController', () => {
 						getActive: jest.fn().mockResolvedValue(null),
 						activate: jest.fn().mockResolvedValue({ activityKey: null, state: 'deactivated' }),
 						deactivate: jest.fn().mockResolvedValue({ activityKey: null, state: 'deactivated' }),
+					},
+				},
+				{
+					provide: EventEmitter2,
+					useValue: {
+						emit: jest.fn(),
 					},
 				},
 			],
@@ -1276,7 +1288,8 @@ describe('SpacesController', () => {
 				type: SuggestionType.LIGHTING_RELAX,
 				title: 'Relax Mode',
 				reason: 'Evening time detected',
-				lightingMode: LightingMode.RELAX,
+				intentType: 'set_mode',
+				intentMode: 'relax',
 			};
 			jest.spyOn(spaceSuggestionService, 'getSuggestion').mockResolvedValue(suggestion);
 

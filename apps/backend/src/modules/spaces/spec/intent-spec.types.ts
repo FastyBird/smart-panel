@@ -147,6 +147,30 @@ export interface YamlCoversModesConfig {
 	modes: Record<string, YamlCoversModeOrchestration>;
 }
 
+/**
+ * Suggestion rule definition from YAML
+ */
+export interface YamlSuggestionRule {
+	id: string;
+	title: string;
+	reason: string | null;
+	hour_from: number | null;
+	hour_to: number | null;
+	lights_on: boolean | null;
+	min_brightness: number | null;
+	space_is_bedroom: boolean | null;
+	intent_type: string;
+	intent_mode: string | null;
+}
+
+/**
+ * Suggestions configuration from YAML
+ */
+export interface YamlSuggestionsConfig {
+	bedroom_patterns: string[];
+	rules: YamlSuggestionRule[];
+}
+
 // ========================
 // Resolved Types (after processing)
 // ========================
@@ -235,6 +259,22 @@ export interface ResolvedCoversModeOrchestration {
 	icon: string;
 	mvpPosition: number; // Position when no roles are configured (default 100)
 	roles: Record<string, ResolvedRolePositionRule>;
+}
+
+/**
+ * Resolved suggestion rule (camelCase for service use)
+ */
+export interface ResolvedSuggestionRule {
+	id: string;
+	title: string;
+	reason: string | null;
+	hourFrom: number | null;
+	hourTo: number | null;
+	lightsOn: boolean | null;
+	minBrightness: number | null;
+	spaceIsBedroom: boolean | null;
+	intentType: string;
+	intentMode: string | null;
 }
 
 /**

@@ -1,47 +1,102 @@
 import { v4 as uuid } from 'uuid';
 
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingMode, SpaceType, SuggestionType } from '../spaces.constants';
+import { SpaceType, SuggestionType } from '../spaces.constants';
+import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
-import { SuggestionContext, evaluateSuggestionRules, isBedroomSpace, spaceCooldowns } from './space-suggestion.service';
+import {
+	SuggestionContext,
+	evaluateSuggestionRules,
+	isBedroomSpace,
+	lastEmittedSuggestions,
+	spaceCooldowns,
+} from './space-suggestion.service';
+
+/**
+ * Default bedroom patterns matching the builtin suggestions.yaml
+ */
+const BEDROOM_PATTERNS = ['bedroom', 'schlafzimmer', 'ložnice', 'chambre'];
+
+/**
+ * Default suggestion rules matching the builtin suggestions.yaml
+ */
+const DEFAULT_RULES: ResolvedSuggestionRule[] = [
+	{
+		id: 'lighting_night',
+		title: 'Night lighting',
+		reason: 'Late evening - switch to night mode for better sleep',
+		hourFrom: 22,
+		hourTo: null,
+		lightsOn: true,
+		minBrightness: null,
+		spaceIsBedroom: true,
+		intentType: 'set_mode',
+		intentMode: 'night',
+	},
+	{
+		id: 'lighting_relax',
+		title: 'Relax lighting',
+		reason: 'Evening time - switch to a calmer lighting mode',
+		hourFrom: 17,
+		hourTo: 23,
+		lightsOn: true,
+		minBrightness: 70,
+		spaceIsBedroom: null,
+		intentType: 'set_mode',
+		intentMode: 'relax',
+	},
+	{
+		id: 'lighting_off',
+		title: 'Turn off lights',
+		reason: 'Late night - consider turning off the lights',
+		hourFrom: 23,
+		hourTo: null,
+		lightsOn: true,
+		minBrightness: null,
+		spaceIsBedroom: false,
+		intentType: 'off',
+		intentMode: null,
+	},
+];
 
 describe('SpaceSuggestionService - Pure Functions', () => {
 	beforeEach(() => {
 		spaceCooldowns.clearAll();
+		lastEmittedSuggestions.clear();
 	});
 
 	describe('isBedroomSpace', () => {
 		it('should return true for bedroom names', () => {
-			expect(isBedroomSpace('Bedroom')).toBe(true);
-			expect(isBedroomSpace('Master Bedroom')).toBe(true);
-			expect(isBedroomSpace('Kids Bedroom')).toBe(true);
+			expect(isBedroomSpace('Bedroom', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('Master Bedroom', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('Kids Bedroom', BEDROOM_PATTERNS)).toBe(true);
 		});
 
 		it('should return true for German bedroom names', () => {
-			expect(isBedroomSpace('Schlafzimmer')).toBe(true);
-			expect(isBedroomSpace('Main Schlafzimmer')).toBe(true);
+			expect(isBedroomSpace('Schlafzimmer', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('Main Schlafzimmer', BEDROOM_PATTERNS)).toBe(true);
 		});
 
 		it('should return true for Czech bedroom names', () => {
-			expect(isBedroomSpace('Ložnice')).toBe(true);
+			expect(isBedroomSpace('Ložnice', BEDROOM_PATTERNS)).toBe(true);
 		});
 
 		it('should return true for French bedroom names', () => {
-			expect(isBedroomSpace('Chambre')).toBe(true);
-			expect(isBedroomSpace('Grande Chambre')).toBe(true);
+			expect(isBedroomSpace('Chambre', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('Grande Chambre', BEDROOM_PATTERNS)).toBe(true);
 		});
 
 		it('should be case insensitive', () => {
-			expect(isBedroomSpace('BEDROOM')).toBe(true);
-			expect(isBedroomSpace('BedRoom')).toBe(true);
-			expect(isBedroomSpace('bedroom')).toBe(true);
+			expect(isBedroomSpace('BEDROOM', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('BedRoom', BEDROOM_PATTERNS)).toBe(true);
+			expect(isBedroomSpace('bedroom', BEDROOM_PATTERNS)).toBe(true);
 		});
 
 		it('should return false for non-bedroom spaces', () => {
-			expect(isBedroomSpace('Living Room')).toBe(false);
-			expect(isBedroomSpace('Kitchen')).toBe(false);
-			expect(isBedroomSpace('Bathroom')).toBe(false);
-			expect(isBedroomSpace('Office')).toBe(false);
+			expect(isBedroomSpace('Living Room', BEDROOM_PATTERNS)).toBe(false);
+			expect(isBedroomSpace('Kitchen', BEDROOM_PATTERNS)).toBe(false);
+			expect(isBedroomSpace('Bathroom', BEDROOM_PATTERNS)).toBe(false);
+			expect(isBedroomSpace('Office', BEDROOM_PATTERNS)).toBe(false);
 		});
 	});
 
@@ -135,11 +190,11 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 80,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).not.toBeNull();
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
-				expect(result?.lightingMode).toBe(LightingMode.NIGHT);
+				expect(result?.intentMode).toBe('night');
 				expect(result?.title).toBe('Night lighting');
 			});
 
@@ -151,7 +206,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 80,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				// May get relax suggestion instead if brightness is high
 				expect(result?.type !== SuggestionType.LIGHTING_NIGHT || result === null).toBe(true);
@@ -165,7 +220,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 80,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				// May get lights off suggestion instead
 				expect(result?.type !== SuggestionType.LIGHTING_NIGHT || result === null).toBe(true);
@@ -179,7 +234,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: null,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -194,11 +249,11 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 80,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).not.toBeNull();
 				expect(result?.type).toBe(SuggestionType.LIGHTING_RELAX);
-				expect(result?.lightingMode).toBe(LightingMode.RELAX);
+				expect(result?.intentMode).toBe('relax');
 				expect(result?.title).toBe('Relax lighting');
 			});
 
@@ -210,7 +265,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 70,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).not.toBeNull();
 				expect(result?.type).toBe(SuggestionType.LIGHTING_RELAX);
@@ -224,7 +279,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 50,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -237,7 +292,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 100,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -250,7 +305,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 100,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				// Night mode takes precedence in bedrooms at 22:00
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
@@ -264,7 +319,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: null,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -277,7 +332,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: null,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -292,11 +347,12 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 50,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).not.toBeNull();
 				expect(result?.type).toBe(SuggestionType.LIGHTING_OFF);
-				expect(result?.lightingMode).toBeNull(); // OFF intent, not a mode
+				expect(result?.intentType).toBe('off');
+				expect(result?.intentMode).toBeNull();
 				expect(result?.title).toBe('Turn off lights');
 			});
 
@@ -308,7 +364,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 50,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				// Night mode takes precedence in bedrooms
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
@@ -322,7 +378,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 50,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				// No suggestion at 22:00 for kitchen (not bedroom, not high brightness)
 				expect(result).toBeNull();
@@ -336,7 +392,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: null,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -351,7 +407,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 100,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -364,7 +420,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: null,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -377,7 +433,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 100,
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result).toBeNull();
 			});
@@ -392,7 +448,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 100, // Would trigger Relax, but Night takes precedence
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
 			});
@@ -405,9 +461,80 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 					averageBrightness: 30, // Would trigger Lights off in other rooms
 				});
 
-				const result = evaluateSuggestionRules(context);
+				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+		});
+
+		describe('lastEmittedSuggestions tracker', () => {
+			it('should track last emitted type per space', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_RELAX);
+			});
+
+			it('should allow clearing when conditions change', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.delete(spaceId);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBeUndefined();
+			});
+
+			it('should track different types per space independently', () => {
+				const spaceId1 = uuid();
+				const spaceId2 = uuid();
+
+				lastEmittedSuggestions.set(spaceId1, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId2, SuggestionType.LIGHTING_NIGHT);
+
+				expect(lastEmittedSuggestions.get(spaceId1)).toBe(SuggestionType.LIGHTING_RELAX);
+				expect(lastEmittedSuggestions.get(spaceId2)).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+
+			it('should update when a different type is emitted', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_NIGHT);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+		});
+
+		describe('Custom rules', () => {
+			it('should work with empty rules array', () => {
+				const context = createContext({
+					space: createSpace('Living Room'),
+					currentHour: 22,
+					lightsOn: true,
+					averageBrightness: 80,
+				});
+
+				const result = evaluateSuggestionRules(context, [], BEDROOM_PATTERNS);
+
+				expect(result).toBeNull();
+			});
+
+			it('should work with custom bedroom patterns', () => {
+				const context = createContext({
+					space: createSpace('Dormitorio'),
+					currentHour: 22,
+					lightsOn: true,
+					averageBrightness: 80,
+				});
+
+				// Default patterns don't match
+				const result1 = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
+				expect(result1?.type).not.toBe(SuggestionType.LIGHTING_NIGHT);
+
+				// Custom Spanish pattern matches
+				const result2 = evaluateSuggestionRules(context, DEFAULT_RULES, ['dormitorio']);
+				expect(result2?.type).toBe(SuggestionType.LIGHTING_NIGHT);
 			});
 		});
 	});

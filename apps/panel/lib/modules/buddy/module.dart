@@ -3,11 +3,12 @@ import 'package:flutter/foundation.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_notification_service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/constants.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/buddy_suggestion_provider.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
@@ -18,9 +19,9 @@ class BuddyModuleService {
 
 	late BuddyRepository _buddyRepository;
 	late BuddyService _buddyService;
-	late SuggestionNotificationService _notificationService;
 	late VoiceActivationService _voiceActivationService;
 	late ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
+	late BuddySuggestionProvider _suggestionProvider;
 
 	bool _isLoading = true;
 
@@ -36,11 +37,7 @@ class BuddyModuleService {
 			buddyRepository: _buddyRepository,
 		);
 
-		_notificationService = SuggestionNotificationService(
-			onDismissed: (suggestionId) {
-				_buddyService.dismissSuggestion(suggestionId);
-			},
-		);
+		_suggestionProvider = BuddySuggestionProvider();
 
 		_voiceActivationService = VoiceActivationService();
 
@@ -74,19 +71,33 @@ class BuddyModuleService {
 			}
 		};
 
-		// Wire up WebSocket suggestion events to the notification service
+		// Wire up WebSocket suggestion events to the global notification service
 		_buddyRepository.onSuggestionCreated = (suggestion) {
-			_notificationService.enqueue(suggestion);
+			try {
+				final notificationService = locator<SuggestionNotificationService>();
+				notificationService.enqueue(
+					BuddyAppSuggestion(suggestion),
+					providerId: _suggestionProvider.providerId,
+				);
+			} catch (_) {
+				// Global notification service not yet available
+			}
 		};
 
 		locator.registerSingleton(_buddyRepository);
 		locator.registerSingleton(_buddyService);
-		locator.registerSingleton(_notificationService);
 		locator.registerSingleton(_voiceActivationService);
 	}
 
 	Future<void> initialize() async {
 		_isLoading = true;
+
+		// Register buddy suggestion provider with global notification service
+		try {
+			locator<SuggestionNotificationService>().registerProvider(_suggestionProvider);
+		} catch (_) {
+			// Global notification service not yet available
+		}
 
 		// Register buddy config model with config module
 		final configModule = locator<ConfigModuleService>();
@@ -138,7 +149,6 @@ class BuddyModuleService {
 
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
-	SuggestionNotificationService get notificationService => _notificationService;
 	VoiceActivationService get voiceActivationService => _voiceActivationService;
 	ModuleConfigRepository<BuddyConfigModel> get buddyConfigRepo => _buddyConfigRepo;
 
@@ -152,7 +162,16 @@ class BuddyModuleService {
 		_voiceActivationService.onCapture = null;
 		_voiceActivationService.dispose();
 		_buddyRepository.onSuggestionCreated = null;
-		_notificationService.dispose();
+
+		// Unregister buddy suggestion provider from global service
+		try {
+			locator<SuggestionNotificationService>().unregisterProvider(
+				_suggestionProvider.providerId,
+			);
+		} catch (_) {
+			// Global notification service already disposed
+		}
+
 		_buddyService.dispose();
 		_buddyRepository.dispose();
 	}

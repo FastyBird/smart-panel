@@ -22,6 +22,7 @@ import {
 	ResolvedModeOrchestration,
 	ResolvedRoleBrightnessRule,
 	ResolvedRolePositionRule,
+	ResolvedSuggestionRule,
 	SpecLoadResult,
 	SpecSource,
 	YamlCoversModeOrchestration,
@@ -35,6 +36,8 @@ import {
 	YamlModeOrchestration,
 	YamlRoleBrightnessRule,
 	YamlRolePositionRule,
+	YamlSuggestionRule,
+	YamlSuggestionsConfig,
 } from './intent-spec.types';
 
 @Injectable()
@@ -47,6 +50,8 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private climateIntents: ResolvedIntentCategory | null = null;
 	private lightingModes: Map<string, ResolvedModeOrchestration> = new Map();
 	private coversModes: Map<string, ResolvedCoversModeOrchestration> = new Map();
+	private suggestionRules: ResolvedSuggestionRule[] = [];
+	private bedroomPatterns: string[] = [];
 	private loadResults: SpecLoadResult[] = [];
 
 	// Delta step mappings (derived from enums)
@@ -71,6 +76,8 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.climateIntents = null;
 		this.lightingModes.clear();
 		this.coversModes.clear();
+		this.suggestionRules = [];
+		this.bedroomPatterns = [];
 		this.brightnessDeltas.clear();
 		this.setpointDeltas.clear();
 
@@ -83,12 +90,15 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		// Step 3: Load mode orchestrations
 		this.loadLightingModes();
 		this.loadCoversModes();
+		// Step 4: Load suggestion rules
+		this.loadSuggestions();
 
 		this.logger.log(
 			`Loaded specs: ${this.lightingIntents?.intents.length ?? 0} lighting intents, ` +
 				`${this.climateIntents?.intents.length ?? 0} climate intents, ` +
 				`${this.lightingModes.size} lighting modes, ` +
-				`${this.coversModes.size} covers modes`,
+				`${this.coversModes.size} covers modes, ` +
+				`${this.suggestionRules.length} suggestion rules`,
 		);
 	}
 
@@ -376,6 +386,68 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		return {
 			position: rule.position,
 			tilt: rule.tilt,
+		};
+	}
+
+	/**
+	 * Load and merge suggestion rules
+	 */
+	private loadSuggestions(): void {
+		const builtinPath = join(this.builtinSpecPath, 'suggestions.yaml');
+		const userPath = join(this.userSpecPath, 'suggestions.yaml');
+
+		// Load builtin
+		const builtinConfig = this.loadYamlFile<YamlSuggestionsConfig>(builtinPath, 'builtin');
+
+		if (!builtinConfig) {
+			this.logger.error('Failed to load builtin suggestions');
+
+			return;
+		}
+
+		this.bedroomPatterns = builtinConfig.bedroom_patterns ?? [];
+		this.suggestionRules = (builtinConfig.rules ?? []).map((rule) => this.resolveSuggestionRule(rule));
+
+		// Load and merge user suggestions
+		if (existsSync(userPath)) {
+			const userConfig = this.loadYamlFile<YamlSuggestionsConfig>(userPath, 'user');
+
+			if (userConfig) {
+				// User bedroom patterns replace builtin if provided
+				if (userConfig.bedroom_patterns?.length) {
+					this.bedroomPatterns = userConfig.bedroom_patterns;
+				}
+
+				if (userConfig.rules?.length) {
+					const userRules = userConfig.rules.map((rule) => this.resolveSuggestionRule(rule));
+
+					// User rules define the final order. User rules come first (preserving
+					// their YAML order), then any builtin rules not overridden by user are
+					// appended. This lets users insert higher-priority rules above builtins.
+					const userRuleIds = new Set(userRules.map((r) => r.id));
+					const remainingBuiltin = this.suggestionRules.filter((r) => !userRuleIds.has(r.id));
+
+					this.suggestionRules = [...userRules, ...remainingBuiltin];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Resolve a YAML suggestion rule to ResolvedSuggestionRule (camelCase)
+	 */
+	private resolveSuggestionRule(rule: YamlSuggestionRule): ResolvedSuggestionRule {
+		return {
+			id: rule.id,
+			title: rule.title,
+			reason: rule.reason ?? null,
+			hourFrom: rule.hour_from ?? null,
+			hourTo: rule.hour_to ?? null,
+			lightsOn: rule.lights_on ?? null,
+			minBrightness: rule.min_brightness ?? null,
+			spaceIsBedroom: rule.space_is_bedroom ?? null,
+			intentType: rule.intent_type,
+			intentMode: rule.intent_mode ?? null,
 		};
 	}
 
@@ -677,6 +749,20 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		if (!modeConfig) return null;
 
 		return modeConfig.roles[role] ?? null;
+	}
+
+	/**
+	 * Get all suggestion rules (ordered by priority — first match wins)
+	 */
+	getSuggestionRules(): ResolvedSuggestionRule[] {
+		return this.suggestionRules;
+	}
+
+	/**
+	 * Get bedroom patterns for space name matching
+	 */
+	getBedroomPatterns(): string[] {
+		return this.bedroomPatterns;
 	}
 
 	/**
