@@ -547,9 +547,14 @@ virtual_properties: {}
 	});
 
 	describe('path getters', () => {
-		it('should return user mappings path', () => {
+		it('should return null for user mappings path when env var is not set', () => {
 			const path = service.getUserMappingsPath();
-			expect(path).toContain('home-assistant/mappings');
+			expect(path).toBeNull();
+		});
+
+		it('should return user data directory for flat prefix overrides', () => {
+			const path = service.getUserDataDir();
+			expect(path).toContain('var/data');
 		});
 
 		it('should return builtin mappings path', () => {

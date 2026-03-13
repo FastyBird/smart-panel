@@ -67,7 +67,7 @@ export interface MappedProperty {
  *
  * YAML mappings are loaded from:
  * - Built-in: src/plugins/devices-zigbee2mqtt/mappings/definitions/
- * - User-defined: var/data/zigbee/mappings/ (higher priority)
+ * - User-defined: var/data/plugin.devices-zigbee2mqtt.*.yaml (higher priority)
  */
 @Injectable()
 export class Z2mExposesMapperService implements OnModuleInit {

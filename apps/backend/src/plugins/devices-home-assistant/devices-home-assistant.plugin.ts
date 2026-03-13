@@ -320,9 +320,11 @@ Built-in mappings are located in:
 - \`mappings/definitions/entity-mappings.yaml\` - Entity to channel mappings
 - \`mappings/definitions/virtual-properties.yaml\` - Virtual property definitions
 
-User overrides can be placed in:
-- \`var/data/home-assistant/mappings/entity-mappings.yaml\`
-- \`var/data/home-assistant/mappings/virtual-properties.yaml\`
+User overrides can be placed in \`var/data/\` using the prefix \`plugin.devices-home-assistant.\`:
+- \`var/data/plugin.devices-home-assistant.entity-mappings.yaml\`
+- \`var/data/plugin.devices-home-assistant.virtual-properties.yaml\`
+
+Alternatively, set \`HA_MAPPINGS_PATH\` env variable to a custom directory.
 
 User overrides are merged with built-in mappings and take precedence.
 
@@ -410,7 +412,7 @@ virtual_properties:
 
 ### Custom Mapping Example
 
-To add custom mappings, create a file at \`var/data/home-assistant/mappings/entity-mappings.yaml\`:
+To add custom mappings, create a file at \`var/data/plugin.devices-home-assistant.entity-mappings.yaml\`:
 
 \`\`\`yaml
 version: "1.0"

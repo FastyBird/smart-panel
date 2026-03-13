@@ -248,12 +248,12 @@ Supports all Zigbee devices compatible with Zigbee2MQTT, including:
 
 ## Custom Device Mappings
 
-Place custom YAML files in \`var/data/zigbee/mappings/\` or set \`ZIGBEE_MAPPINGS_PATH\` env variable.
+Place custom YAML files in \`var/data/\` using the prefix \`plugin.devices-zigbee2mqtt.\` (e.g. \`plugin.devices-zigbee2mqtt.my-sensors.yaml\`), or set \`ZIGBEE_MAPPINGS_PATH\` env variable to a custom directory.
 
 ### Example: Custom Sensor Property
 
 \`\`\`yaml
-# var/data/zigbee/mappings/my-sensors.yaml
+# var/data/plugin.devices-zigbee2mqtt.my-sensors.yaml
 version: "1.0"
 
 mappings:

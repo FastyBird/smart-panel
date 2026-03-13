@@ -15,7 +15,7 @@ The mapping system enables:
 Mapping files are YAML files that define how Shelly components map to Smart Panel channels. They are located in:
 
 - **Built-in mappings**: `mappings/definitions/*.yaml`
-- **User custom mappings**: `var/data/shelly-ng/mappings/` (configurable via `SHELLY_NG_MAPPINGS_PATH` env var)
+- **User custom mappings**: `var/data/plugin.devices-shelly-ng.*.yaml` (or set `SHELLY_NG_MAPPINGS_PATH` env var to a custom directory)
 
 ### File Structure
 
@@ -241,7 +241,7 @@ Within each priority level, mappings are checked in the order they appear in the
 
 To create custom mappings:
 
-1. Create YAML files in `var/data/shelly-ng/mappings/` (or path specified by `SHELLY_NG_MAPPINGS_PATH`)
+1. Create YAML files in `var/data/` with prefix `plugin.devices-shelly-ng.` (e.g. `plugin.devices-shelly-ng.custom.yaml`), or use path specified by `SHELLY_NG_MAPPINGS_PATH`
 2. Follow the same structure as built-in mappings
 3. Files will be loaded automatically on module initialization
 4. Use higher priority values to override built-in mappings
