@@ -568,8 +568,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										),
 									],
 								),
-								// Blocking overlay when WebSocket is disconnected
-								if (!_wsConnected)
+								// Blocking overlay when WebSocket is disconnected.
+								// Only shown when SocketService was resolved — if the service
+								// is unavailable, _wsConnected stays false but we must not
+								// block the entire UI permanently.
+								if (_socketService != null && !_wsConnected)
 									_buildWsOfflineOverlay(context, isDark),
 							],
 						),
