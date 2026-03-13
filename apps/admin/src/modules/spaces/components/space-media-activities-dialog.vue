@@ -739,6 +739,10 @@ const onDeactivate = async (): Promise<void> => {
 		await deactivate();
 		flashMessage.success(t('spacesModule.media.activities.deactivateSuccess'));
 	} catch {
+		// Clear activationError set by deactivate() to prevent the inline alert
+		// from showing the misleading "activateFailed" title — the flash message
+		// already provides the correct feedback.
+		activationError.value = null;
 		flashMessage.error(t('spacesModule.media.activities.deactivateFailed'));
 	}
 };
