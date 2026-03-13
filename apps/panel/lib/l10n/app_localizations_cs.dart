@@ -1263,7 +1263,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get room_selection_empty_title => 'Žádné místnosti';
 
   @override
-  String get room_selection_empty_description => 'Zatím nebyly vytvořeny žádné místnosti. Otevřete administrační rozhraní a přidejte alespoň jednu místnost.';
+  String get room_selection_empty_description => 'Zatím nebyly vytvořeny žádné místnosti. Otevřete administraci a přidejte alespoň jednu místnost.';
 
   @override
   String get action_success => 'Akce byla úspěšně dokončena';
@@ -1330,7 +1330,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String space_empty_state_description(String spaceName) {
-    return 'Pro přidání zařízení a ovládacích prvků nastavte \"$spaceName\" přes bránu.';
+    return 'Pro přidání zařízení a ovládacích prvků nastavte \"$spaceName\" přes administraci.';
   }
 
   @override
@@ -1343,7 +1343,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get house_overview_no_spaces_title => 'Žádné místnosti nejsou nakonfigurovány';
 
   @override
-  String get house_overview_no_spaces_description => 'Vytvořte místnosti přes bránu, aby se zde zobrazily';
+  String get house_overview_no_spaces_description => 'Vytvořte místnosti přes administraci, aby se zde zobrazily';
 
   @override
   String get house_overview_no_space_page => 'Pro tuto místnost není nakonfigurována stránka';
@@ -3719,7 +3719,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get app_error_restart_button => 'Restartovat aplikaci';
 
   @override
-  String get app_error_permit_join_hint => 'Požádejte administrátora o aktivaci \"Permit Join\" v admin panelu a poté restartujte aplikaci.';
+  String get app_error_permit_join_hint => 'Požádejte administrátora o aktivaci \"Permit Join\" v administraci a poté restartujte aplikaci.';
 
   @override
   String get app_error_connection_failed_stored => 'Nepodařilo se připojit k uloženému serveru.';
@@ -3804,7 +3804,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_provider_not_configured_title => 'AI poskytovatel není nakonfigurován';
 
   @override
-  String get buddy_provider_not_configured_description => 'Nakonfigurujte AI poskytovatele v nastavení administrace pro aktivaci chatu.';
+  String get buddy_provider_not_configured_description => 'Nakonfigurujte AI poskytovatele v administraci pro aktivaci chatu.';
 
   @override
   String get buddy_thinking => 'Přemýšlím...';

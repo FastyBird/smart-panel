@@ -1252,7 +1252,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get room_selection_empty_title => 'No Rooms Available';
 
   @override
-  String get room_selection_empty_description => 'No rooms have been created yet. Please open the admin interface and add at least one room.';
+  String get room_selection_empty_description => 'No rooms have been created yet. Please open the administration and add at least one room.';
 
   @override
   String get action_success => 'Action completed successfully';
@@ -1319,7 +1319,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String space_empty_state_description(String spaceName) {
-    return 'To add devices and controls, set up \"$spaceName\" through the gateway.';
+    return 'To add devices and controls, set up \"$spaceName\" through the administration.';
   }
 
   @override
@@ -1332,7 +1332,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get house_overview_no_spaces_title => 'No Spaces Configured';
 
   @override
-  String get house_overview_no_spaces_description => 'Create spaces through the gateway to see them here';
+  String get house_overview_no_spaces_description => 'Create spaces through the administration to see them here';
 
   @override
   String get house_overview_no_space_page => 'No room page configured for this space';
@@ -1532,7 +1532,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_lights_empty_title => 'Lighting Not Configured';
 
   @override
-  String get domain_lights_empty_description => 'Lighting roles have not been set up for this room. Configure roles in the admin panel to control your lights.';
+  String get domain_lights_empty_description => 'Lighting roles have not been set up for this room. Configure roles in the administration to control your lights.';
 
   @override
   String domain_lights_count_on(int count) {
@@ -1573,7 +1573,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_climate_empty_title => 'Climate Not Configured';
 
   @override
-  String get domain_climate_empty_description => 'No thermostats or climate actuators are set up for this room. Add climate devices in the admin panel.';
+  String get domain_climate_empty_description => 'No thermostats or climate actuators are set up for this room. Add climate devices in the administration.';
 
   @override
   String get domain_media => 'Media';
@@ -2225,7 +2225,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_shading_empty_title => 'Shading Not Configured';
 
   @override
-  String get domain_shading_empty_description => 'Window covering roles have not been set up for this room. Configure roles in the admin panel to control your shades.';
+  String get domain_shading_empty_description => 'Window covering roles have not been set up for this room. Configure roles in the administration to control your shades.';
 
   @override
   String get shading_modes_title => 'Modes';
@@ -2881,7 +2881,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get media_not_configured_title => 'Media Not Configured';
 
   @override
-  String get media_not_configured_description => 'Media activities have not been set up for this room. Configure activity bindings in the admin panel.';
+  String get media_not_configured_description => 'Media activities have not been set up for this room. Configure activity bindings in the administration.';
 
   @override
   String media_starting_activity(String activityName) {
@@ -3357,7 +3357,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sensors_domain_empty_title => 'Sensors Not Configured';
 
   @override
-  String get sensors_domain_empty_description => 'Sensor roles have not been set up for this room. Configure sensor assignments in the admin panel.';
+  String get sensors_domain_empty_description => 'Sensor roles have not been set up for this room. Configure sensor assignments in the administration.';
 
   @override
   String sensors_domain_alerts_active(int count) {
@@ -3698,7 +3698,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get app_error_restart_button => 'Restart Application';
 
   @override
-  String get app_error_permit_join_hint => 'Please ask the administrator to activate \"Permit Join\" in the admin panel, then restart the application.';
+  String get app_error_permit_join_hint => 'Please ask the administrator to activate \"Permit Join\" in the administration, then restart the application.';
 
   @override
   String get app_error_connection_failed_stored => 'Could not connect to the stored backend server.';
@@ -3720,7 +3720,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deck_empty_title => 'No pages configured';
 
   @override
-  String get deck_empty_description => 'Please configure your dashboard in Admin.';
+  String get deck_empty_description => 'Please configure your dashboard in the administration.';
 
   @override
   String get alert_banner_view_button => 'View';
@@ -3783,7 +3783,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buddy_provider_not_configured_title => 'AI provider not configured';
 
   @override
-  String get buddy_provider_not_configured_description => 'Configure an AI provider in admin settings to enable chat.';
+  String get buddy_provider_not_configured_description => 'Configure an AI provider in the administration to enable chat.';
 
   @override
   String get buddy_thinking => 'Thinking...';
