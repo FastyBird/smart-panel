@@ -1,93 +1,95 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<div class="flex flex-col grow-1 h-full overflow-hidden">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:cog"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('configModule.headings.config') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('configModule.subHeadings.config') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<view-header
-		:heading="t('configModule.headings.config')"
-		:sub-heading="t('configModule.subHeadings.config')"
-		icon="mdi:cog"
-	/>
-
-	<el-tabs
-		v-if="isMDDevice"
-		v-model="activeTab"
-		class="lt-sm:mx-1 sm:mx-2 overflow-hidden grow-1"
-		@tab-click="onTabClick"
-	>
-		<el-tab-pane
-			:label="t('configModule.tabs.configModules')"
-			:name="'modules'"
-			class="h-full"
+		<app-bar-heading
+			v-if="!isMDDevice"
+			teleport
 		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:package-variant" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configModules') }}</span>
-				</span>
+			<template #icon>
+				<icon
+					icon="mdi:cog"
+					class="w[20px] h[20px]"
+				/>
 			</template>
 
-			<router-view v-if="isModulesRoute" />
-		</el-tab-pane>
-
-		<el-tab-pane
-			:label="t('configModule.tabs.configPlugins')"
-			:name="'plugins'"
-			class="h-full"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:toy-brick" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configPlugins') }}</span>
-				</span>
+			<template #title>
+				{{ t('configModule.headings.config') }}
 			</template>
 
-			<router-view v-if="isPluginsRoute" />
-		</el-tab-pane>
-	</el-tabs>
+			<template #subtitle>
+				{{ t('configModule.subHeadings.config') }}
+			</template>
+		</app-bar-heading>
 
-	<router-view
-		v-if="!isMDDevice"
-		class="p-2"
-	/>
+		<app-bar-button
+			v-if="!isMDDevice"
+			:align="AppBarButtonAlign.LEFT"
+			teleport
+			small
+			@click="router.push('/')"
+		>
+			<template #icon>
+				<el-icon :size="24">
+					<icon icon="mdi:chevron-left" />
+				</el-icon>
+			</template>
+
+			<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+		</app-bar-button>
+
+		<view-header
+			:heading="t('configModule.headings.config')"
+			:sub-heading="t('configModule.subHeadings.config')"
+			icon="mdi:cog"
+		/>
+
+		<el-tabs
+			v-if="isMDDevice"
+			v-model="activeTab"
+			class="lt-sm:mx-1 sm:mx-2 overflow-hidden grow-1 min-h-0"
+			@tab-click="onTabClick"
+		>
+			<el-tab-pane
+				:label="t('configModule.tabs.configModules')"
+				:name="'modules'"
+				class="h-full"
+			>
+				<template #label>
+					<span class="flex flex-row items-center gap-2">
+						<el-icon>
+							<icon icon="mdi:package-variant" />
+						</el-icon>
+						<span>{{ t('configModule.tabs.configModules') }}</span>
+					</span>
+				</template>
+
+				<router-view v-if="isModulesRoute" />
+			</el-tab-pane>
+
+			<el-tab-pane
+				:label="t('configModule.tabs.configPlugins')"
+				:name="'plugins'"
+				class="h-full"
+			>
+				<template #label>
+					<span class="flex flex-row items-center gap-2">
+						<el-icon>
+							<icon icon="mdi:toy-brick" />
+						</el-icon>
+						<span>{{ t('configModule.tabs.configPlugins') }}</span>
+					</span>
+				</template>
+
+				<router-view v-if="isPluginsRoute" />
+			</el-tab-pane>
+		</el-tabs>
+
+		<router-view
+			v-if="!isMDDevice"
+			class="p-2 grow-1 overflow-hidden"
+		/>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -215,3 +217,21 @@ watch(
 	{ immediate: false }
 );
 </script>
+
+<style scoped lang="scss">
+:deep(.el-tabs) {
+	display: flex;
+	flex-direction: column;
+}
+
+:deep(.el-tabs__content) {
+	flex: 1;
+	overflow: hidden;
+	min-height: 0;
+}
+
+:deep(.el-tab-pane) {
+	display: flex;
+	flex-direction: column;
+}
+</style>

@@ -1,6 +1,7 @@
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
+import { ExtensionsModuleServiceState } from '../../../openapi.constants';
 import { ExtensionsApiException } from '../extensions.exceptions';
 import { servicesStoreKey } from '../store/keys';
 
@@ -21,11 +22,19 @@ export const useServiceActions = (): IUseServiceActions => {
 
 	const startService = async (pluginName: string, serviceId: string): Promise<boolean> => {
 		try {
-			await servicesStore.start({ pluginName, serviceId });
+			const service = await servicesStore.start({ pluginName, serviceId });
 
-			flashMessage.success(t('extensionsModule.services.messages.started'));
+			if (service.state === ExtensionsModuleServiceState.started) {
+				flashMessage.success(t('extensionsModule.services.messages.started'));
+			} else if (service.state === ExtensionsModuleServiceState.starting) {
+				flashMessage.info(t('extensionsModule.services.messages.serviceStarting'));
+			} else if (service.lastError) {
+				flashMessage.warning(service.lastError);
+			} else {
+				flashMessage.warning(t('extensionsModule.services.messages.startError'));
+			}
 
-			return true;
+			return service.state === ExtensionsModuleServiceState.started || service.state === ExtensionsModuleServiceState.starting;
 		} catch (error: unknown) {
 			if (error instanceof ExtensionsApiException) {
 				flashMessage.error(t('extensionsModule.services.messages.startError'));

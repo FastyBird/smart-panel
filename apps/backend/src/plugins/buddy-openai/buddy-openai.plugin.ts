@@ -24,6 +24,7 @@ import { BuddyOpenaiConfigModel } from './models/config.model';
 import { OpenAiSttProvider } from './platforms/openai-stt.provider';
 import { OpenAiTtsProvider } from './platforms/openai-tts.provider';
 import { OpenAiProvider } from './platforms/openai.provider';
+import { OpenAiConfigValidatorService } from './services/openai-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_OPENAI_PLUGIN_NAME,
@@ -32,7 +33,7 @@ import { OpenAiProvider } from './platforms/openai.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [OpenAiProvider, OpenAiSttProvider, OpenAiTtsProvider],
+	providers: [OpenAiProvider, OpenAiSttProvider, OpenAiTtsProvider, OpenAiConfigValidatorService],
 	exports: [OpenAiProvider, OpenAiSttProvider, OpenAiTtsProvider],
 })
 export class BuddyOpenaiPlugin implements OnModuleInit {

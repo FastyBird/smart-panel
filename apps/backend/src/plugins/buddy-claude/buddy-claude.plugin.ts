@@ -19,6 +19,7 @@ import { BUDDY_CLAUDE_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-claude.openapi
 import { UpdateBuddyClaudeConfigDto } from './dto/update-config.dto';
 import { BuddyClaudeConfigModel } from './models/config.model';
 import { ClaudeProvider } from './platforms/claude.provider';
+import { ClaudeConfigValidatorService } from './services/claude-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_CLAUDE_PLUGIN_NAME,
@@ -27,7 +28,7 @@ import { ClaudeProvider } from './platforms/claude.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [ClaudeProvider],
+	providers: [ClaudeProvider, ClaudeConfigValidatorService],
 	exports: [ClaudeProvider],
 })
 export class BuddyClaudePlugin implements OnModuleInit {

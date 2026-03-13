@@ -167,8 +167,8 @@
 
 			<!-- Error Display -->
 			<el-alert
-				v-if="service.state === 'error' && service.lastError"
-				type="error"
+				v-if="service.lastError"
+				:type="service.state === ExtensionsModuleServiceState.error ? 'error' : 'warning'"
 				:title="t('extensionsModule.services.labels.lastError')"
 				:description="service.lastError"
 				show-icon
@@ -221,13 +221,14 @@ const isStopped = computed<boolean>(() => {
 });
 
 const isRunning = computed<boolean>(() => {
-	return props.service.state === ExtensionsModuleServiceState.started;
+	return props.service.state === ExtensionsModuleServiceState.started ||
+		props.service.state === ExtensionsModuleServiceState.starting;
 });
 
 // Visibility
 const canStart = computed<boolean>(() => isStopped.value);
 const canStop = computed<boolean>(() => isRunning.value);
-const canRestart = computed<boolean>(() => isRunning.value);
+const canRestart = computed<boolean>(() => props.service.state === ExtensionsModuleServiceState.started);
 
 // Action availability
 const canStartAction = computed<boolean>(() => {
@@ -235,7 +236,7 @@ const canStartAction = computed<boolean>(() => {
 });
 
 const canStopAction = computed<boolean>(() => {
-	return canStop.value && !isTransitioning.value && !props.acting;
+	return canStop.value && props.service.state !== ExtensionsModuleServiceState.stopping && !props.acting;
 });
 
 const canRestartAction = computed<boolean>(() => {
@@ -254,7 +255,7 @@ const startTooltip = computed<string>(() => {
 });
 
 const stopTooltip = computed<string>(() => {
-	if (isTransitioning.value) {
+	if (props.service.state === ExtensionsModuleServiceState.stopping) {
 		return t('extensionsModule.services.tooltips.transitioning');
 	}
 	return t('extensionsModule.services.tooltips.stopService');

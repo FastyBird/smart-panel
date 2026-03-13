@@ -20,6 +20,7 @@ import { BUDDY_DISCORD_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-discord.opena
 import { UpdateBuddyDiscordConfigDto } from './dto/update-config.dto';
 import { BuddyDiscordConfigModel } from './models/config.model';
 import { DiscordBotProvider } from './platforms/discord-bot.provider';
+import { DiscordConfigValidatorService } from './services/discord-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_DISCORD_PLUGIN_NAME,
@@ -28,7 +29,7 @@ import { DiscordBotProvider } from './platforms/discord-bot.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [DiscordBotProvider],
+	providers: [DiscordBotProvider, DiscordConfigValidatorService],
 	exports: [DiscordBotProvider],
 })
 export class BuddyDiscordPlugin implements OnModuleInit {

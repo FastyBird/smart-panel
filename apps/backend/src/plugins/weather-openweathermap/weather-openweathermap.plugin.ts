@@ -22,6 +22,7 @@ import { UpdateOpenWeatherMapLocationDto } from './dto/update-location.dto';
 import { OpenWeatherMapLocationEntity } from './entities/locations-openweathermap.entity';
 import { OpenWeatherMapConfigModel } from './models/config.model';
 import { OpenWeatherMapProvider } from './platforms/openweathermap.provider';
+import { OpenWeatherMapConfigValidatorService } from './services/openweathermap-config-validator.service';
 import { OpenWeatherMapHttpService } from './services/openweathermap-http.service';
 import {
 	WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION,
@@ -44,7 +45,7 @@ import { WEATHER_OPENWEATHERMAP_PLUGIN_SWAGGER_EXTRA_MODELS } from './weather-op
 		SwaggerModule,
 		ExtensionsModule,
 	],
-	providers: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
+	providers: [OpenWeatherMapHttpService, OpenWeatherMapProvider, OpenWeatherMapConfigValidatorService],
 	exports: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
 })
 export class WeatherOpenweathermapPlugin implements OnModuleInit {

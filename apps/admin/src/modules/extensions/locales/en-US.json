@@ -193,6 +193,7 @@
 		},
 		"messages": {
 			"started": "Service has been started",
+			"serviceStarting": "Service is starting up — it may take a moment to become fully ready",
 			"stopped": "Service has been stopped",
 			"restarted": "Service has been restarted",
 			"startError": "Failed to start service",

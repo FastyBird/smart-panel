@@ -20,6 +20,7 @@ import { BuddyOpenaiCodexOauthController } from './controllers/oauth.controller'
 import { UpdateBuddyOpenaiCodexConfigDto } from './dto/update-config.dto';
 import { BuddyOpenaiCodexConfigModel } from './models/config.model';
 import { OpenAiCodexProvider } from './platforms/openai-codex.provider';
+import { OpenAiCodexConfigValidatorService } from './services/openai-codex-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
@@ -29,7 +30,7 @@ import { OpenAiCodexProvider } from './platforms/openai-codex.provider';
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
 	controllers: [BuddyOpenaiCodexOauthController],
-	providers: [OpenAiCodexProvider],
+	providers: [OpenAiCodexProvider, OpenAiCodexConfigValidatorService],
 	exports: [OpenAiCodexProvider],
 })
 export class BuddyOpenaiCodexPlugin implements OnModuleInit {
