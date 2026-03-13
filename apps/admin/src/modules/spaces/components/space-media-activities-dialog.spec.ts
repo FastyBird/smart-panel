@@ -1,6 +1,5 @@
 import { nextTick } from 'vue';
 
-import { ElCollapseItem, ElOption, ElSlider } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -199,6 +198,61 @@ const mockSpace = {
 	draft: false,
 };
 
+// --- Lightweight Element Plus stubs ---
+
+const elDialogStub = {
+	template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
+	props: ['modelValue'],
+	emits: ['update:modelValue', 'open', 'close'],
+	mounted() {
+		this.$emit('open');
+	},
+};
+
+const stubs = {
+	'el-dialog': elDialogStub,
+	'el-collapse': { template: '<div class="collapse-stub"><slot /></div>' },
+	'el-collapse-item': {
+		template: '<div class="collapse-item-stub" :data-name="name"><slot name="title" /><slot /></div>',
+		props: ['name'],
+	},
+	'el-form': { template: '<div class="form-stub"><slot /></div>' },
+	'el-form-item': {
+		template: '<div class="form-item-stub">{{ label }}<slot /></div>',
+		props: ['label'],
+	},
+	'el-select': {
+		template: '<div class="select-stub"><slot /></div>',
+		props: ['modelValue', 'placeholder', 'clearable'],
+	},
+	'el-option': {
+		template: '<div class="option-stub" :data-value="value">{{ label }}</div>',
+		props: ['label', 'value'],
+	},
+	'el-slider': {
+		template: '<div class="slider-stub"></div>',
+		props: ['modelValue', 'min', 'max', 'showInput'],
+	},
+	'el-tag': {
+		template: '<span class="tag-stub"><slot /></span>',
+		props: ['type', 'size', 'round', 'effect'],
+	},
+	'el-button': {
+		template: '<button class="button-stub"><slot /><slot name="icon" /></button>',
+		props: ['size', 'type', 'circle', 'loading', 'disabled', 'title', 'plain'],
+	},
+	'el-alert': {
+		template: '<div class="alert-stub">{{ title }} {{ description }}<slot /></div>',
+		props: ['type', 'closable', 'showIcon', 'title', 'description'],
+	},
+	'el-input': {
+		template: '<input class="input-stub" />',
+		props: ['modelValue', 'placeholder', 'clearable'],
+	},
+	'el-icon': { template: '<i class="icon-stub"><slot /></i>' },
+	Icon: { template: '<i />' },
+};
+
 describe('SpaceMediaActivitiesDialog', () => {
 	let wrapper: VueWrapper;
 
@@ -209,17 +263,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 				space: mockSpace,
 			},
 			global: {
-				stubs: {
-					'el-dialog': {
-						template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
-						props: ['modelValue'],
-						emits: ['update:modelValue', 'open', 'close'],
-						mounted() {
-							this.$emit('open');
-						},
-					},
-					Icon: { template: '<i />' },
-				},
+				stubs,
 				directives: {
 					loading: () => {},
 				},
@@ -230,6 +274,12 @@ describe('SpaceMediaActivitiesDialog', () => {
 		await flushPromises();
 		await nextTick();
 		await flushPromises();
+	};
+
+	const findCollapseItems = () => wrapper.findAll('.collapse-item-stub');
+
+	const findCollapseItemByName = (name: string) => {
+		return wrapper.findAll('.collapse-item-stub').find((el) => el.attributes('data-name') === name)!;
 	};
 
 	beforeEach(() => {
@@ -249,11 +299,11 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('renders all 4 activity collapse panels', async () => {
 			await createWrapper();
 
-			const items = wrapper.findAllComponents(ElCollapseItem);
+			const items = findCollapseItems();
 
 			expect(items).toHaveLength(4);
 
-			const names = items.map((item) => item.props('name'));
+			const names = items.map((item) => item.attributes('data-name'));
 
 			expect(names).toEqual(['watch', 'listen', 'gaming', 'background']);
 		});
@@ -269,7 +319,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('shows configured status for activity with binding', async () => {
 			await createWrapper();
 
-			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+			const watchPanel = findCollapseItemByName('watch');
 
 			expect(watchPanel.text()).toContain('spacesModule.media.activities.status.configured');
 		});
@@ -277,7 +327,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('shows unconfigured status for activity without binding', async () => {
 			await createWrapper();
 
-			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+			const listenPanel = findCollapseItemByName('listen');
 
 			expect(listenPanel.text()).toContain('spacesModule.media.activities.status.unconfigured');
 		});
@@ -287,7 +337,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('shows display input override when endpoint has inputSelect capability', async () => {
 			await createWrapper();
 
-			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
+			const watchPanel = findCollapseItemByName('watch');
 
 			expect(watchPanel.text()).toContain('spacesModule.media.activities.overrides.displayInput');
 		});
@@ -295,8 +345,8 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('shows volume slider when audio endpoint has volume capability', async () => {
 			await createWrapper();
 
-			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
-			const sliders = watchPanel.findAllComponents(ElSlider);
+			const watchPanel = findCollapseItemByName('watch');
+			const sliders = watchPanel.findAll('.slider-stub');
 
 			expect(sliders).toHaveLength(1);
 		});
@@ -304,13 +354,13 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('hides overrides for activity without configured endpoints', async () => {
 			await createWrapper();
 
-			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+			const listenPanel = findCollapseItemByName('listen');
 
 			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.displayInput');
 			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioInput');
 			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioVolume');
 
-			const sliders = listenPanel.findAllComponents(ElSlider);
+			const sliders = listenPanel.findAll('.slider-stub');
 
 			expect(sliders).toHaveLength(0);
 		});
@@ -318,11 +368,11 @@ describe('SpaceMediaActivitiesDialog', () => {
 		it('configured activity has more options than unconfigured due to override selects', async () => {
 			await createWrapper();
 
-			const watchPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'watch')!;
-			const listenPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'listen')!;
+			const watchPanel = findCollapseItemByName('watch');
+			const listenPanel = findCollapseItemByName('listen');
 
-			const watchOptions = watchPanel.findAllComponents(ElOption);
-			const listenOptions = listenPanel.findAllComponents(ElOption);
+			const watchOptions = watchPanel.findAll('.option-stub');
+			const listenOptions = listenPanel.findAll('.option-stub');
 
 			// Watch: 4 main selects × 1 endpoint each + 3 input override options = 7
 			expect(watchOptions.length).toBeGreaterThan(listenOptions.length);
@@ -336,11 +386,11 @@ describe('SpaceMediaActivitiesDialog', () => {
 
 			// With 1 endpoint per type, all unconfigured activities should have exactly 4 options
 			// (display, audio, source, remote — one each)
-			const gamingPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'gaming')!;
-			const backgroundPanel = wrapper.findAllComponents(ElCollapseItem).find((c) => c.props('name') === 'background')!;
+			const gamingPanel = findCollapseItemByName('gaming');
+			const backgroundPanel = findCollapseItemByName('background');
 
-			expect(gamingPanel.findAllComponents(ElOption)).toHaveLength(4);
-			expect(backgroundPanel.findAllComponents(ElOption)).toHaveLength(4);
+			expect(gamingPanel.findAll('.option-stub')).toHaveLength(4);
+			expect(backgroundPanel.findAll('.option-stub')).toHaveLength(4);
 		});
 	});
 });
