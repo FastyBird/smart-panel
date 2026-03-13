@@ -1296,7 +1296,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String space_empty_state_description(String spaceName) {
-    return 'Configure \"$spaceName\" in the Admin or Gateway app to add devices and controls to this display.';
+    return 'To add devices and controls, set up \"$spaceName\" through the gateway.';
   }
 
   @override
@@ -1309,7 +1309,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get house_overview_no_spaces_title => 'No Spaces Configured';
 
   @override
-  String get house_overview_no_spaces_description => 'Create spaces in the admin app to see them here';
+  String get house_overview_no_spaces_description => 'Create spaces through the gateway to see them here';
 
   @override
   String get house_overview_no_space_page => 'No room page configured for this space';

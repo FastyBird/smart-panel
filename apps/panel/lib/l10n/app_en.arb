@@ -1696,7 +1696,7 @@
   "@space_empty_state_title": {
     "description": "Title shown when space has no controllable devices"
   },
-  "space_empty_state_description": "Configure \"{spaceName}\" in the Admin or Gateway app to add devices and controls to this display.",
+  "space_empty_state_description": "To add devices and controls, set up \"{spaceName}\" through the gateway.",
   "@space_empty_state_description": {
     "description": "Description shown when space has no controllable devices",
     "placeholders": {
@@ -1718,7 +1718,7 @@
   "@house_overview_no_spaces_title": {
     "description": "Title shown when house overview has no spaces"
   },
-  "house_overview_no_spaces_description": "Create spaces in the admin app to see them here",
+  "house_overview_no_spaces_description": "Create spaces through the gateway to see them here",
   "@house_overview_no_spaces_description": {
     "description": "Description shown when house overview has no spaces"
   },

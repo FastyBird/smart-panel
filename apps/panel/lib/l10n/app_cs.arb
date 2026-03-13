@@ -392,11 +392,11 @@
   "space_undo_success": "Akce byla vrácena",
   "space_undo_button": "Zpět",
   "space_empty_state_title": "Displej je připraven",
-  "space_empty_state_description": "Nakonfigurujte \"{spaceName}\" v aplikaci Admin nebo Gateway pro přidání zařízení a ovládacích prvků.",
+  "space_empty_state_description": "Pro přidání zařízení a ovládacích prvků nastavte \"{spaceName}\" přes bránu.",
   "space_sensors_only_title": "Pouze senzory",
   "space_sensors_only_description": "Tato místnost má pouze senzory — žádná ovladatelná zařízení",
   "house_overview_no_spaces_title": "Žádné místnosti nejsou nakonfigurovány",
-  "house_overview_no_spaces_description": "Vytvořte místnosti v administrační aplikaci",
+  "house_overview_no_spaces_description": "Vytvořte místnosti přes bránu, aby se zde zobrazily",
   "house_overview_no_space_page": "Pro tuto místnost není nakonfigurována stránka",
   "house_overview_tap_to_view": "Klepnutím zobrazíte",
 

@@ -2450,7 +2450,7 @@ abstract class AppLocalizations {
   /// Description shown when space has no controllable devices
   ///
   /// In en, this message translates to:
-  /// **'Configure \"{spaceName}\" in the Admin or Gateway app to add devices and controls to this display.'**
+  /// **'To add devices and controls, set up \"{spaceName}\" through the gateway.'**
   String space_empty_state_description(String spaceName);
 
   /// Title shown when space only has sensors
@@ -2474,7 +2474,7 @@ abstract class AppLocalizations {
   /// Description shown when house overview has no spaces
   ///
   /// In en, this message translates to:
-  /// **'Create spaces in the admin app to see them here'**
+  /// **'Create spaces through the gateway to see them here'**
   String get house_overview_no_spaces_description;
 
   /// Message shown when trying to navigate to a space without a page

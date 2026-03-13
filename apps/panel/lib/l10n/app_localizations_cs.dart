@@ -1307,7 +1307,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String space_empty_state_description(String spaceName) {
-    return 'Nakonfigurujte \"$spaceName\" v aplikaci Admin nebo Gateway pro přidání zařízení a ovládacích prvků.';
+    return 'Pro přidání zařízení a ovládacích prvků nastavte \"$spaceName\" přes bránu.';
   }
 
   @override
@@ -1320,7 +1320,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get house_overview_no_spaces_title => 'Žádné místnosti nejsou nakonfigurovány';
 
   @override
-  String get house_overview_no_spaces_description => 'Vytvořte místnosti v administrační aplikaci';
+  String get house_overview_no_spaces_description => 'Vytvořte místnosti přes bránu, aby se zde zobrazily';
 
   @override
   String get house_overview_no_space_page => 'Pro tuto místnost není nakonfigurována stránka';
