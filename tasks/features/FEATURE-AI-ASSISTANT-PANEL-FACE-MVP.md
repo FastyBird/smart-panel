@@ -259,8 +259,8 @@ class BuddyEmotionMapper extends ChangeNotifier {
         _setEmotion(EmotionPresets.thinking);
         break;
       case VoiceActivationState.stopped:
-        // Don't override - let other handlers decide
-        break;
+        // Voice cancelled or finished — fall back to state-derived emotion
+        _setEmotion(_deriveBaseEmotion());
     }
   }
 
@@ -309,16 +309,7 @@ class BuddyEmotionMapper extends ChangeNotifier {
 
   void _onPlaybackChanged() {
     _markActivity();
-    if (_audioPlaybackService.isPlaying) {
-      _setEmotion(EmotionPresets.speaking);
-    } else if (_buddyService.isSendingMessage) {
-      _setEmotion(EmotionPresets.thinking);
-    } else if (_voiceActivationService.state == VoiceActivationState.listening ||
-               _voiceActivationService.state == VoiceActivationState.recording) {
-      _setEmotion(EmotionPresets.listening);
-    } else {
-      _setEmotion(EmotionPresets.neutral);
-    }
+    _setEmotion(_deriveBaseEmotion());
   }
 
   void _markActivity() {
@@ -350,12 +341,29 @@ class BuddyEmotionMapper extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Returns the emotion that should be active based on current service state,
+  /// ignoring any temporary overrides. Used as the fallback after temporary
+  /// emotions expire and when voice activation stops.
+  EmotionPreset _deriveBaseEmotion() {
+    if (_audioPlaybackService.isPlaying) return EmotionPresets.speaking;
+    if (_buddyService.isSendingMessage) return EmotionPresets.thinking;
+    final voiceState = _voiceActivationService.state;
+    if (voiceState == VoiceActivationState.listening ||
+        voiceState == VoiceActivationState.recording) {
+      return EmotionPresets.listening;
+    }
+    if (voiceState == VoiceActivationState.processing) {
+      return EmotionPresets.thinking;
+    }
+    return EmotionPresets.neutral;
+  }
+
   void _setEmotionTemporary(EmotionPreset emotion, Duration duration) {
     _temporaryEmotionTimer?.cancel();
     _setEmotion(emotion);
     _temporaryEmotionTimer = Timer(duration, () {
       if (_currentEmotion == emotion) {
-        _setEmotion(EmotionPresets.neutral);
+        _setEmotion(_deriveBaseEmotion());
       }
     });
   }
