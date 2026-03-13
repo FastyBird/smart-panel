@@ -44,9 +44,17 @@ const mockGetPlugins = vi.fn().mockReturnValue([
 
 vi.mock('../../../common', async () => {
 	const utils = await vi.importActual('../../../common/utils/utils');
+	const composables = await vi.importActual('../../../common/composables/composables');
+	const services = await vi.importActual('../../../common/services/services');
+	const store = await vi.importActual('../../../common/store/stores');
+	const constants = await vi.importActual('../../../common/common.constants');
 
 	return {
 		...utils,
+		...composables,
+		...services,
+		...store,
+		...constants,
 		useBackend: vi.fn(() => ({
 			client: mockBackendClient,
 		})),

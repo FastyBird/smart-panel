@@ -86,7 +86,7 @@
 		<el-alert
 			v-if="error"
 			type="error"
-			:title="error"
+			:title="t(error)"
 			class="mt-4"
 			:closable="false"
 		/>

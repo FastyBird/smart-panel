@@ -140,7 +140,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				applyInfoResponse(responseData.data);
 			}
 		} catch (err) {
-			error.value = 'Failed to check for updates';
+			error.value = 'systemModule.messages.update.checkFailed';
 
 			throw err;
 		} finally {
@@ -160,7 +160,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		} catch (err) {
 			installing.value = false;
 			status.value = 'failed';
-			error.value = 'Failed to start update';
+			error.value = 'systemModule.messages.update.installFailed';
 
 			throw err;
 		}
