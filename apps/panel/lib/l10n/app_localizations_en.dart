@@ -1232,6 +1232,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discovery_button_cancel => 'Cancel';
 
   @override
+  String get room_selection_title => 'Select a Room';
+
+  @override
+  String room_selection_description(int count) {
+    return 'Choose which room this display belongs to ($count available):';
+  }
+
+  @override
+  String get room_selection_button_confirm => 'Assign to This Room';
+
+  @override
+  String get room_selection_saving => 'Assigning Room...';
+
+  @override
+  String get room_selection_error => 'Failed to assign room. Please try again.';
+
+  @override
+  String get room_selection_empty_title => 'No Rooms Available';
+
+  @override
+  String get room_selection_empty_description => 'No rooms have been created yet. Please open the admin interface and add at least one room.';
+
+  @override
   String get action_success => 'Action completed successfully';
 
   @override
@@ -1465,15 +1488,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get battery_title => 'Battery';
-
-  @override
-  String get config_error_title => 'Configuration Required';
-
-  @override
-  String get config_error_hint_prefix => 'Configure this display in';
-
-  @override
-  String get config_error_hint_path => 'Admin > Displays';
 
   @override
   String get connection_lost_title => 'Connection Lost';

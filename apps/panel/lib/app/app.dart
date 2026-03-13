@@ -9,6 +9,9 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/discovery.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/room_selection.dart';
+import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
@@ -98,6 +101,9 @@ enum AppState {
   /// Connection to stored backend failed, retrying discovery
   connectionFailed,
 
+  /// Room selection needed (display has no room assigned)
+  roomSelection,
+
   /// Initialization successful
   ready,
 
@@ -154,6 +160,43 @@ class _MyAppState extends State<MyApp> {
     _appState.value = AppState.discovery;
   }
 
+  /// Check if room selection is needed and transition to the appropriate state
+  bool _needsRoomSelection() {
+    try {
+      final displayRepo = locator<DisplayRepository>();
+      final display = displayRepo.display;
+
+      if (display != null &&
+          display.role == DisplayRole.room &&
+          display.roomId == null) {
+        return true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[APP] Could not check room selection: $e');
+      }
+    }
+
+    return false;
+  }
+
+  /// Transition to ready or room selection based on display state
+  void _transitionToReadyOrRoomSelection() {
+    if (_needsRoomSelection()) {
+      _appState.value = AppState.roomSelection;
+    } else {
+      _appState.value = AppState.ready;
+    }
+  }
+
+  void _onRoomSelected(String roomId) {
+    if (kDebugMode) {
+      debugPrint('[APP] Room selected: $roomId');
+    }
+
+    _appState.value = AppState.ready;
+  }
+
   Future<void> _initializeApp() async {
     _appState.value = AppState.loading;
     _errorInfo = null;
@@ -166,7 +209,7 @@ class _MyAppState extends State<MyApp> {
 
       switch (result) {
         case InitializationResult.success:
-          _appState.value = AppState.ready;
+          _transitionToReadyOrRoomSelection();
           break;
 
         case InitializationResult.needsDiscovery:
@@ -203,7 +246,7 @@ class _MyAppState extends State<MyApp> {
 
       switch (result) {
         case InitializationResult.success:
-          _appState.value = AppState.ready;
+          _transitionToReadyOrRoomSelection();
           break;
 
         case InitializationResult.connectionFailed:
@@ -266,7 +309,7 @@ class _MyAppState extends State<MyApp> {
         case InitializationResult.success:
           // Store the URL for future use
           await _startupManager.storeBackendUrl(normalizedUrl);
-          _appState.value = AppState.ready;
+          _transitionToReadyOrRoomSelection();
           break;
 
         case InitializationResult.connectionFailed:
@@ -312,6 +355,9 @@ class _MyAppState extends State<MyApp> {
 
           case AppState.connectionFailed:
             return _buildDiscoveryApp(isRetry: true);
+
+          case AppState.roomSelection:
+            return _buildRoomSelectionApp();
 
           case AppState.error:
             return AppError(
@@ -387,6 +433,34 @@ class _MyAppState extends State<MyApp> {
         onManualUrlEntered: _onManualUrlEntered,
         errorInfo: _errorInfo,
         isRetry: isRetry,
+      ),
+    );
+  }
+
+  Widget _buildRoomSelectionApp() {
+    return MaterialApp(
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: Language.values.map(
+        (item) => Locale(
+          item.value.split('_')[0],
+          item.value.split('_')[1],
+        ),
+      ),
+      locale: Locale(
+        Language.english.value.split('_')[0],
+        Language.english.value.split('_')[1],
+      ),
+      home: RoomSelectionScreen(
+        onRoomSelected: _onRoomSelected,
       ),
     );
   }

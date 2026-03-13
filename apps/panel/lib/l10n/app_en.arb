@@ -1612,6 +1612,40 @@
     "description": "Cancel search button text"
   },
 
+  "room_selection_title": "Select a Room",
+  "@room_selection_title": {
+    "description": "Title for room selection screen during onboarding"
+  },
+  "room_selection_description": "Choose which room this display belongs to ({count} available):",
+  "@room_selection_description": {
+    "description": "Description for room selection screen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "room_selection_button_confirm": "Assign to This Room",
+  "@room_selection_button_confirm": {
+    "description": "Confirm room selection button text"
+  },
+  "room_selection_saving": "Assigning Room...",
+  "@room_selection_saving": {
+    "description": "Loading text while saving room assignment"
+  },
+  "room_selection_error": "Failed to assign room. Please try again.",
+  "@room_selection_error": {
+    "description": "Error message when room assignment fails"
+  },
+  "room_selection_empty_title": "No Rooms Available",
+  "@room_selection_empty_title": {
+    "description": "Title shown when no rooms exist in the backend"
+  },
+  "room_selection_empty_description": "No rooms have been created yet. Please open the admin interface and add at least one room.",
+  "@room_selection_empty_description": {
+    "description": "Description shown when no rooms exist in the backend"
+  },
+
   "action_success": "Action completed successfully",
   "@action_success": {
     "description": "Success message when an action completes"
@@ -1933,18 +1967,6 @@
   "battery_title": "Battery",
   "@battery_title": {
     "description": "Title label for battery level display"
-  },
-  "config_error_title": "Configuration Required",
-  "@config_error_title": {
-    "description": "Title shown when display configuration is invalid"
-  },
-  "config_error_hint_prefix": "Configure this display in",
-  "@config_error_hint_prefix": {
-    "description": "First part of hint text explaining how to fix configuration error"
-  },
-  "config_error_hint_path": "Admin > Displays",
-  "@config_error_hint_path": {
-    "description": "Path part of hint text (Admin > Displays)"
   },
   "connection_lost_title": "Connection Lost",
   "@connection_lost_title": {

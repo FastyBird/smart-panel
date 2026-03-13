@@ -202,17 +202,3 @@ DeckResult buildDeck(DeckBuildInput input) {
   );
 }
 
-/// Validates display configuration for deck building.
-///
-/// Returns a validation error message if the configuration is invalid,
-/// or null if the configuration is valid.
-String? validateDisplayConfig(DisplayModel display) {
-  // Room role requires a non-empty roomId
-  final roomId = display.roomId;
-  if (display.role == DisplayRole.room &&
-      (roomId == null || roomId.isEmpty)) {
-    return 'Room display requires a space (room) to be assigned.';
-  }
-
-  return null;
-}

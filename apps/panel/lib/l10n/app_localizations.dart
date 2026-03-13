@@ -2321,6 +2321,48 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get discovery_button_cancel;
 
+  /// Title for room selection screen during onboarding
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Room'**
+  String get room_selection_title;
+
+  /// Description for room selection screen
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which room this display belongs to ({count} available):'**
+  String room_selection_description(int count);
+
+  /// Confirm room selection button text
+  ///
+  /// In en, this message translates to:
+  /// **'Assign to This Room'**
+  String get room_selection_button_confirm;
+
+  /// Loading text while saving room assignment
+  ///
+  /// In en, this message translates to:
+  /// **'Assigning Room...'**
+  String get room_selection_saving;
+
+  /// Error message when room assignment fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to assign room. Please try again.'**
+  String get room_selection_error;
+
+  /// Title shown when no rooms exist in the backend
+  ///
+  /// In en, this message translates to:
+  /// **'No Rooms Available'**
+  String get room_selection_empty_title;
+
+  /// Description shown when no rooms exist in the backend
+  ///
+  /// In en, this message translates to:
+  /// **'No rooms have been created yet. Please open the admin interface and add at least one room.'**
+  String get room_selection_empty_description;
+
   /// Success message when an action completes
   ///
   /// In en, this message translates to:
@@ -2782,24 +2824,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Battery'**
   String get battery_title;
-
-  /// Title shown when display configuration is invalid
-  ///
-  /// In en, this message translates to:
-  /// **'Configuration Required'**
-  String get config_error_title;
-
-  /// First part of hint text explaining how to fix configuration error
-  ///
-  /// In en, this message translates to:
-  /// **'Configure this display in'**
-  String get config_error_hint_prefix;
-
-  /// Path part of hint text (Admin > Displays)
-  ///
-  /// In en, this message translates to:
-  /// **'Admin > Displays'**
-  String get config_error_hint_path;
 
   /// Title shown when connection to gateway is lost
   ///
