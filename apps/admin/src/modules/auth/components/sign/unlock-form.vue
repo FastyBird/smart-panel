@@ -50,9 +50,9 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules, type InputInstance } from 'element-plus';
 
-import { injectStoresManager, useFlashMessage } from '../../../../common';
+import { useFlashMessage } from '../../../../common';
+import { injectAccountManager } from '../../../../common/services/account-manager';
 import { FormResult, type FormResultType } from '../../auth.constants';
-import { sessionStoreKey } from '../../store/keys';
 
 import type { UnlockFormFields, UnlockFormProps } from './unlock-form.types';
 
@@ -74,9 +74,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-
-const sessionStore = storesManager.getStore(sessionStoreKey);
+const accountManager = injectAccountManager();
 
 const unlockFormEl = ref<FormInstance | undefined>(undefined);
 const passwordInputEl = ref<InputInstance | undefined>(undefined);
@@ -94,7 +92,7 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 
 	await formEl.validate(async (valid: boolean): Promise<void> => {
 		if (valid) {
-			const username = sessionStore.profile?.username;
+			const username = accountManager?.details.value?.username;
 
 			if (!username) {
 				emit('update:remoteFormResult', FormResult.ERROR);
@@ -105,9 +103,15 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 			emit('update:remoteFormResult', FormResult.WORKING);
 
 			try {
-				await sessionStore.create({ data: { username, password: unlockForm.password } });
+				const success = await accountManager!.signIn({ username, password: unlockForm.password });
 
-				emit('update:remoteFormResult', FormResult.OK);
+				if (success) {
+					emit('update:remoteFormResult', FormResult.OK);
+				} else {
+					emit('update:remoteFormResult', FormResult.ERROR);
+
+					flashMessage.error(t('authModule.messages.invalidPassword'));
+				}
 			} catch {
 				emit('update:remoteFormResult', FormResult.ERROR);
 

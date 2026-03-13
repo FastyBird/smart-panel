@@ -38,10 +38,6 @@ watch(
 			eventBus.emit('loadingOverlay', false);
 
 			if (state === FormResult.OK) {
-				if (accountManager?.unlock) {
-					accountManager.unlock();
-				}
-
 				router.push({ name: AppRouteNames.ROOT });
 			}
 		}
