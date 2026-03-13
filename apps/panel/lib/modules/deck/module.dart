@@ -66,6 +66,16 @@ class DeckModuleService {
     _deckService.dispose();
     _intentsService.dispose();
 
+    if (locator.isRegistered<BottomNavModeNotifier>()) {
+      locator.unregister<BottomNavModeNotifier>();
+    }
+    if (locator.isRegistered<DeckService>()) {
+      locator.unregister<DeckService>();
+    }
+    if (locator.isRegistered<IntentsService>()) {
+      locator.unregister<IntentsService>();
+    }
+
     if (kDebugMode) {
       debugPrint('[DECK MODULE] Module disposed');
     }

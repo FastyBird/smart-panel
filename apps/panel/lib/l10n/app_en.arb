@@ -1692,13 +1692,19 @@
   "@space_undo_button": {
     "description": "Label for the undo button"
   },
-  "space_empty_state_title": "No Controls Available",
+  "space_empty_state_title": "Display Is Ready",
   "@space_empty_state_title": {
     "description": "Title shown when space has no controllable devices"
   },
-  "space_empty_state_description": "This space has no controllable devices configured yet",
+  "space_empty_state_description": "To add devices and controls, set up \"{spaceName}\" through the gateway.",
   "@space_empty_state_description": {
-    "description": "Description shown when space has no controllable devices"
+    "description": "Description shown when space has no controllable devices",
+    "placeholders": {
+      "spaceName": {
+        "type": "String",
+        "example": "Living Room"
+      }
+    }
   },
   "space_sensors_only_title": "Sensors Only",
   "@space_sensors_only_title": {
@@ -1712,7 +1718,7 @@
   "@house_overview_no_spaces_title": {
     "description": "Title shown when house overview has no spaces"
   },
-  "house_overview_no_spaces_description": "Create spaces in the admin app to see them here",
+  "house_overview_no_spaces_description": "Create spaces through the gateway to see them here",
   "@house_overview_no_spaces_description": {
     "description": "Description shown when house overview has no spaces"
   },

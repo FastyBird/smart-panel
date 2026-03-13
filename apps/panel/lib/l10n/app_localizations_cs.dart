@@ -1303,10 +1303,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_undo_button => 'Zpět';
 
   @override
-  String get space_empty_state_title => 'Žádná ovládání nejsou k dispozici';
+  String get space_empty_state_title => 'Displej je připraven';
 
   @override
-  String get space_empty_state_description => 'Tato místnost nemá nakonfigurovaná žádná ovladatelná zařízení';
+  String space_empty_state_description(String spaceName) {
+    return 'Pro přidání zařízení a ovládacích prvků nastavte \"$spaceName\" přes bránu.';
+  }
 
   @override
   String get space_sensors_only_title => 'Pouze senzory';
@@ -1318,7 +1320,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get house_overview_no_spaces_title => 'Žádné místnosti nejsou nakonfigurovány';
 
   @override
-  String get house_overview_no_spaces_description => 'Vytvořte místnosti v administrační aplikaci';
+  String get house_overview_no_spaces_description => 'Vytvořte místnosti přes bránu, aby se zde zobrazily';
 
   @override
   String get house_overview_no_space_page => 'Pro tuto místnost není nakonfigurována stránka';

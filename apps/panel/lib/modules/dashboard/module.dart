@@ -99,6 +99,22 @@ class DashboardModuleService {
       PagesCardsPluginConstants.pluginWildcardEvent,
       _socketEventHandler,
     );
+
+    if (locator.isRegistered<DashboardService>()) {
+      locator.unregister<DashboardService>();
+    }
+    if (locator.isRegistered<DataSourcesRepository>()) {
+      locator.unregister<DataSourcesRepository>();
+    }
+    if (locator.isRegistered<TilesRepository>()) {
+      locator.unregister<TilesRepository>();
+    }
+    if (locator.isRegistered<CardsRepository>()) {
+      locator.unregister<CardsRepository>();
+    }
+    if (locator.isRegistered<PagesRepository>()) {
+      locator.unregister<PagesRepository>();
+    }
   }
 
   /// ////////////////

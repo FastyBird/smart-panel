@@ -57,6 +57,13 @@ class IntentsModuleService {
       _socketEventHandler,
     );
     _socketService.removeConnectionListener(_handleConnectionChange);
+
+    if (locator.isRegistered<IntentOverlayService>()) {
+      locator.unregister<IntentOverlayService>();
+    }
+    if (locator.isRegistered<IntentsRepository>()) {
+      locator.unregister<IntentsRepository>();
+    }
   }
 
   /// Handle socket connection state changes

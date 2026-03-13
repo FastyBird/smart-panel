@@ -184,6 +184,10 @@ class DisplaysModuleService {
 
   void dispose() {
     _unregisterSocketEventHandlers();
+
+    if (locator.isRegistered<DisplayRepository>()) {
+      locator.unregister<DisplayRepository>();
+    }
   }
 
   void _registerSocketEventHandlers() {

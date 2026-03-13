@@ -73,6 +73,16 @@ class ScenesModuleService {
       ScenesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    if (locator.isRegistered<ScenesService>()) {
+      locator.unregister<ScenesService>();
+    }
+    if (locator.isRegistered<ScenesRepository>()) {
+      locator.unregister<ScenesRepository>();
+    }
+    if (locator.isRegistered<ActionsRepository>()) {
+      locator.unregister<ActionsRepository>();
+    }
   }
 
   /// ////////////////
