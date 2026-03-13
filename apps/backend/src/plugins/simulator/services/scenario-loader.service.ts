@@ -37,7 +37,7 @@ export class ScenarioLoaderService implements OnModuleInit {
 	// Paths for scenario files
 	private readonly builtinScenariosPath = join(__dirname, '../scenarios/definitions');
 	private readonly userScenariosPath = process.env.SIMULATOR_SCENARIOS_PATH ?? null;
-	private readonly userDataDir = join(__dirname, '../../../../../../../var/data');
+	private readonly userDataDir = join(__dirname, '../../../../../../var/data');
 	private static readonly USER_FILE_PREFIX = 'plugin.simulator.';
 
 	constructor() {
