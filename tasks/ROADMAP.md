@@ -95,6 +95,23 @@ No remaining active tasks in this epic.
 
 ---
 
+## 4a. AI Buddy Face (Epic)
+
+> [EPIC-AI-BUDDY-FACE](features/EPIC-AI-BUDDY-FACE.md) — Status: :clipboard: Planned
+
+Give the AI buddy a visual personality with an animated face on the panel display.
+The backend buddy module (LLM, STT, TTS, voice, chat) is already fully implemented.
+This epic adds the missing visual face layer on top.
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [FEATURE-AI-ASSISTANT-PANEL-FACE-MVP](features/FEATURE-AI-ASSISTANT-PANEL-FACE-MVP.md) | panel | :clipboard: Planned |
+| 2 | [FEATURE-AI-ASSISTANT-PANEL-FACE](features/FEATURE-AI-ASSISTANT-PANEL-FACE.md) | panel | :clipboard: Planned |
+
+**Next up:** MVP face widget with 12 emotions, blink/look system, and buddy state integration.
+
+---
+
 ## 4b. Buddy Module Hardening (Epic)
 
 > [EPIC-BUDDY-HARDENING](epics/EPIC-BUDDY-HARDENING.md) — Status: :clipboard: Planned
