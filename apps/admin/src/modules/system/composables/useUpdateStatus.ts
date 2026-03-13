@@ -61,6 +61,22 @@ const applyInfoResponse = (data: Record<string, unknown>): void => {
 };
 
 const applyStatusEvent = (payload: Record<string, unknown>): void => {
+	if (payload.update_available !== undefined) {
+		updateAvailable.value = payload.update_available as boolean;
+	}
+
+	if (payload.latest_version !== undefined) {
+		latestVersion.value = payload.latest_version as string | null;
+	}
+
+	if (payload.current_version !== undefined) {
+		currentVersion.value = payload.current_version as string | null;
+	}
+
+	if (payload.update_type !== undefined) {
+		updateType.value = payload.update_type as 'patch' | 'minor' | 'major' | null;
+	}
+
 	if (payload.status !== undefined) {
 		status.value = payload.status as string;
 	}
