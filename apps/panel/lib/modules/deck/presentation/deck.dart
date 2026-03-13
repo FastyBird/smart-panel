@@ -205,15 +205,6 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   Widget build(BuildContext context) {
     return Consumer<DeckService>(
       builder: (context, deckService, _) {
-        // Show configuration error if present
-        // Note: No retry button shown because configuration errors (e.g., room
-        // display without roomId) require Admin configuration, not a retry.
-        if (deckService.hasConfigError) {
-          return ConfigErrorScreen(
-            errorMessage: deckService.configError!,
-          );
-        }
-
         // Show loading while deck is being built
         if (!deckService.isInitialized) {
           return Scaffold(

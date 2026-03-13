@@ -530,53 +530,6 @@ void main() {
     });
   });
 
-  group('validateDisplayConfig', () {
-    test('should return error for room role without spaceId', () {
-      final display = createTestDisplay(
-        role: DisplayRole.room,
-        roomId: null,
-      );
-
-      final error = validateDisplayConfig(display);
-
-      expect(error, isNotNull);
-      expect(error, contains('Room display requires'));
-    });
-
-    test('should return null for room role with spaceId', () {
-      final display = createTestDisplay(
-        role: DisplayRole.room,
-        roomId: 'space-123',
-      );
-
-      final error = validateDisplayConfig(display);
-
-      expect(error, isNull);
-    });
-
-    test('should return null for master role', () {
-      final display = createTestDisplay(
-        role: DisplayRole.master,
-        roomId: null,
-      );
-
-      final error = validateDisplayConfig(display);
-
-      expect(error, isNull);
-    });
-
-    test('should return null for entry role', () {
-      final display = createTestDisplay(
-        role: DisplayRole.entry,
-        roomId: null,
-      );
-
-      final error = validateDisplayConfig(display);
-
-      expect(error, isNull);
-    });
-  });
-
   group('DeckResult', () {
     test('isEmpty should return true for empty deck', () {
       final result = DeckResult(items: [], startIndex: 0);

@@ -1629,10 +1629,6 @@
   "@room_selection_button_confirm": {
     "description": "Confirm room selection button text"
   },
-  "room_selection_button_skip": "Skip for Now",
-  "@room_selection_button_skip": {
-    "description": "Skip room selection button text"
-  },
   "room_selection_saving": "Assigning Room...",
   "@room_selection_saving": {
     "description": "Loading text while saving room assignment"
@@ -1963,18 +1959,6 @@
   "battery_title": "Battery",
   "@battery_title": {
     "description": "Title label for battery level display"
-  },
-  "config_error_title": "Configuration Required",
-  "@config_error_title": {
-    "description": "Title shown when display configuration is invalid"
-  },
-  "config_error_hint_prefix": "Configure this display in",
-  "@config_error_hint_prefix": {
-    "description": "First part of hint text explaining how to fix configuration error"
-  },
-  "config_error_hint_path": "Admin > Displays",
-  "@config_error_hint_path": {
-    "description": "Path part of hint text (Admin > Displays)"
   },
   "connection_lost_title": "Connection Lost",
   "@connection_lost_title": {

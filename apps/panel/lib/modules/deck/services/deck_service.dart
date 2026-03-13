@@ -44,9 +44,6 @@ class DeckService extends ChangeNotifier {
   int? _coversTargetsCount;
   int? _mediaBindingsCount;
 
-  /// Configuration validation error.
-  String? _configError;
-
   /// Whether the deck has been initialized.
   bool _isInitialized = false;
 
@@ -67,14 +64,8 @@ class DeckService extends ChangeNotifier {
   /// Returns the current display, or null if not set.
   DisplayModel? get display => _display;
 
-  /// Returns the configuration error, or null if valid.
-  String? get configError => _configError;
-
   /// Returns true if the deck has been initialized.
   bool get isInitialized => _isInitialized;
-
-  /// Returns true if there's a configuration error.
-  bool get hasConfigError => _configError != null;
 
   /// Returns all deck items.
   List<DeckItem> get items => _deck?.items ?? [];
@@ -108,14 +99,6 @@ class DeckService extends ChangeNotifier {
         '[DECK SERVICE] Initialize called. '
         'role: ${display.role}, roomId: ${display.roomId}',
       );
-    }
-
-    // Validate display configuration
-    _configError = validateDisplayConfig(display);
-    if (_configError != null) {
-      _isInitialized = false;
-      notifyListeners();
-      return;
     }
 
     // Build initial deck (may not have device categories yet for ROOM role)
@@ -254,7 +237,7 @@ class DeckService extends ChangeNotifier {
   }
 
   void _onDashboardChanged() {
-    if (_display != null && _configError == null) {
+    if (_display != null) {
       _buildDeck();
       notifyListeners();
     }
@@ -440,26 +423,23 @@ class DeckService extends ChangeNotifier {
   void updateDisplay(DisplayModel display) {
     final oldRoomId = _display?.roomId;
     _display = display;
-    _configError = validateDisplayConfig(display);
 
-    if (_configError == null) {
-      // If room changed, reset device categories and config counts, then refetch
-      if (display.role == DisplayRole.room &&
-          display.roomId != null &&
-          display.roomId != oldRoomId) {
-        _deviceCategories = [];
-        _energyDeviceCount = 0;
-        _sensorReadingsCount = 0;
-        _lightTargetsCount = null;
-        _climateTargetsCount = null;
-        _coversTargetsCount = null;
-        _mediaBindingsCount = null;
-        _buildDeck();
-        _fetchDeviceCategoriesAsync(display.roomId!);
-        _prefetchDomainData(display.roomId!);
-      } else {
-        _buildDeck();
-      }
+    // If room changed, reset device categories and config counts, then refetch
+    if (display.role == DisplayRole.room &&
+        display.roomId != null &&
+        display.roomId != oldRoomId) {
+      _deviceCategories = [];
+      _energyDeviceCount = 0;
+      _sensorReadingsCount = 0;
+      _lightTargetsCount = null;
+      _climateTargetsCount = null;
+      _coversTargetsCount = null;
+      _mediaBindingsCount = null;
+      _buildDeck();
+      _fetchDeviceCategoriesAsync(display.roomId!);
+      _prefetchDomainData(display.roomId!);
+    } else {
+      _buildDeck();
     }
 
     notifyListeners();

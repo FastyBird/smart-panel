@@ -200,14 +200,6 @@ class _MyAppState extends State<MyApp> {
     _appState.value = AppState.ready;
   }
 
-  void _onRoomSelectionSkipped() {
-    if (kDebugMode) {
-      debugPrint('[APP] Room selection skipped');
-    }
-
-    _appState.value = AppState.ready;
-  }
-
   Future<void> _initializeApp() async {
     _appState.value = AppState.loading;
     _errorInfo = null;
@@ -472,7 +464,6 @@ class _MyAppState extends State<MyApp> {
       ),
       home: RoomSelectionScreen(
         onRoomSelected: _onRoomSelected,
-        onSkip: _onRoomSelectionSkipped,
       ),
     );
   }

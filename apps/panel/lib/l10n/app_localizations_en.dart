@@ -1243,9 +1243,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get room_selection_button_confirm => 'Assign to This Room';
 
   @override
-  String get room_selection_button_skip => 'Skip for Now';
-
-  @override
   String get room_selection_saving => 'Assigning Room...';
 
   @override
@@ -1485,15 +1482,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get battery_title => 'Battery';
-
-  @override
-  String get config_error_title => 'Configuration Required';
-
-  @override
-  String get config_error_hint_prefix => 'Configure this display in';
-
-  @override
-  String get config_error_hint_path => 'Admin > Displays';
 
   @override
   String get connection_lost_title => 'Connection Lost';

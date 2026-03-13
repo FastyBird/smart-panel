@@ -1254,9 +1254,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get room_selection_button_confirm => 'Přiřadit k této místnosti';
 
   @override
-  String get room_selection_button_skip => 'Zatím přeskočit';
-
-  @override
   String get room_selection_saving => 'Přiřazování místnosti...';
 
   @override
@@ -1496,15 +1493,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get battery_title => 'Baterie';
-
-  @override
-  String get config_error_title => 'Vyžadována konfigurace';
-
-  @override
-  String get config_error_hint_prefix => 'Nakonfigurujte tento displej v';
-
-  @override
-  String get config_error_hint_path => 'Správci > Displeje';
 
   @override
   String get connection_lost_title => 'Spojení ztraceno';

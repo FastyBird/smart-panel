@@ -2339,12 +2339,6 @@ abstract class AppLocalizations {
   /// **'Assign to This Room'**
   String get room_selection_button_confirm;
 
-  /// Skip room selection button text
-  ///
-  /// In en, this message translates to:
-  /// **'Skip for Now'**
-  String get room_selection_button_skip;
-
   /// Loading text while saving room assignment
   ///
   /// In en, this message translates to:
@@ -2818,24 +2812,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Battery'**
   String get battery_title;
-
-  /// Title shown when display configuration is invalid
-  ///
-  /// In en, this message translates to:
-  /// **'Configuration Required'**
-  String get config_error_title;
-
-  /// First part of hint text explaining how to fix configuration error
-  ///
-  /// In en, this message translates to:
-  /// **'Configure this display in'**
-  String get config_error_hint_prefix;
-
-  /// Path part of hint text (Admin > Displays)
-  ///
-  /// In en, this message translates to:
-  /// **'Admin > Displays'**
-  String get config_error_hint_path;
 
   /// Title shown when connection to gateway is lost
   ///

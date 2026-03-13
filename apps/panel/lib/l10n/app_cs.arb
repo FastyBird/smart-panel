@@ -374,7 +374,6 @@
   "room_selection_title": "Vyberte místnost",
   "room_selection_description": "Zvolte, ke které místnosti tento displej patří ({count} k dispozici):",
   "room_selection_button_confirm": "Přiřadit k této místnosti",
-  "room_selection_button_skip": "Zatím přeskočit",
   "room_selection_saving": "Přiřazování místnosti...",
   "room_selection_error": "Přiřazení místnosti se nezdařilo. Zkuste to znovu.",
 
@@ -457,9 +456,6 @@
   "window_covering_obstruction_clear": "Volno",
   "window_covering_position_open_percent": "{position}% Otevřeno",
   "battery_title": "Baterie",
-  "config_error_title": "Vyžadována konfigurace",
-  "config_error_hint_prefix": "Nakonfigurujte tento displej v",
-  "config_error_hint_path": "Správci > Displeje",
   "connection_lost_title": "Spojení ztraceno",
   "connection_lost_message": "Nelze se připojit k bráně. Zkontrolujte síťové připojení a zkuste to znovu.",
   "connection_lost_button_reconnect": "Znovu připojit",

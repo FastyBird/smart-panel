@@ -20,12 +20,8 @@ class RoomSelectionScreen extends StatefulWidget {
   /// Callback when a room is selected and confirmed
   final void Function(String roomId) onRoomSelected;
 
-  /// Callback to skip room selection
-  final VoidCallback onSkip;
-
   const RoomSelectionScreen({
     required this.onRoomSelected,
-    required this.onSkip,
     super.key,
   });
 
@@ -258,34 +254,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               ),
             ),
           ),
-          AppSpacings.spacingLgVertical,
-          // Skip action
-          Center(
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                textButtonTheme: isDark
-                    ? AppTextButtonsDarkThemes.neutral
-                    : AppTextButtonsLightThemes.neutral,
-              ),
-              child: TextButton.icon(
-                onPressed: widget.onSkip,
-                icon: Icon(
-                  MdiIcons.arrowRight,
-                  size: AppFontSize.base,
-                  color: isDark
-                      ? AppTextButtonsDarkThemes.neutralForegroundColor
-                      : AppTextButtonsLightThemes.neutralForegroundColor,
-                ),
-                label: Text(localizations.room_selection_button_skip),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                    vertical: AppSpacings.pMd,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -389,34 +357,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                       label:
                           Text(localizations.room_selection_button_confirm),
                       style: FilledButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pMd,
-                          vertical: AppSpacings.pMd,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                AppSpacings.spacingLgVertical,
-                Center(
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      textButtonTheme: isDark
-                          ? AppTextButtonsDarkThemes.neutral
-                          : AppTextButtonsLightThemes.neutral,
-                    ),
-                    child: TextButton.icon(
-                      onPressed: widget.onSkip,
-                      icon: Icon(
-                        MdiIcons.arrowRight,
-                        size: AppFontSize.base,
-                        color: isDark
-                            ? AppTextButtonsDarkThemes.neutralForegroundColor
-                            : AppTextButtonsLightThemes
-                                .neutralForegroundColor,
-                      ),
-                      label: Text(localizations.room_selection_button_skip),
-                      style: TextButton.styleFrom(
                         padding: EdgeInsets.symmetric(
                           horizontal: AppSpacings.pMd,
                           vertical: AppSpacings.pMd,
