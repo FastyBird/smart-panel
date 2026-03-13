@@ -19,6 +19,8 @@
 		</div>
 
 		<div class="flex flex-row items-center gap-5">
+			<update-notification-badge />
+
 			<div @click.stop="onSwitchTheme">
 				<el-switch
 					v-model="darkMode"
@@ -101,6 +103,7 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
+import { UpdateNotificationBadge } from '../../modules/system/components/components';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
 

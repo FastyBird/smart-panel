@@ -25,6 +25,7 @@ import { UpdatePanelCommand } from './commands/update-panel.command';
 import { UpdateServerCommand } from './commands/update-server.command';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
+import { UpdateController } from './controllers/update.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
@@ -34,6 +35,7 @@ import { OnboardingService } from './services/onboarding.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
+import { UpdateExecutorService } from './services/update-executor.service';
 import { UpdateService } from './services/update.service';
 import {
 	EventHandlerName,
@@ -73,11 +75,12 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		HouseModeActionsService,
 		OnboardingService,
 		UpdateService,
+		UpdateExecutorService,
 		UpdateCheckCommand,
 		UpdateServerCommand,
 		UpdatePanelCommand,
 	],
-	controllers: [SystemController, LogsController],
+	controllers: [SystemController, LogsController, UpdateController],
 	exports: [SystemService, SystemLoggerService],
 })
 export class SystemModule implements OnModuleInit, OnApplicationBootstrap {

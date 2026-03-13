@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: FEATURE-LINUX-DEVICE-INSTALLATION
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -92,44 +92,44 @@ The project already has a basic update mechanism via the CLI:
 - [x] Compare current version with latest available using semver
 - [x] Cache version check results (refresh every 6 hours or on demand)
 - [x] Detect update type (patch, minor, major) and include in response
-- [ ] Fetch release notes/changelog from GitHub releases API
-- [ ] Track update status (idle, checking, downloading, installing, migrating, restarting, complete, failed)
-- [ ] Implement update lock to prevent concurrent updates
+- [x] Fetch release notes/changelog from GitHub releases API
+- [x] Track update status (idle, checking, downloading, installing, migrating, restarting, complete, failed)
+- [x] Implement update lock to prevent concurrent updates
 - [x] Log all update operations for debugging
 
 ### 4.2 Backend - REST API Endpoints
 
-- [ ] `GET /api/v1/system/update/status` - Get current update status and available version
+- [x] `GET /api/v1/system/update/status` - Get current update status and available version
   - Returns: `{ current_version, latest_version, update_available, update_type, status, last_checked, changelog_url }`
-- [ ] `POST /api/v1/system/update/check` - Force check for updates (invalidate cache)
+- [x] `POST /api/v1/system/update/check` - Force check for updates (invalidate cache)
   - Returns: Same as status endpoint with fresh data
-- [ ] `POST /api/v1/system/update/install` - Trigger update installation
+- [x] `POST /api/v1/system/update/install` - Trigger update installation
   - Accepts: `{ version?: string, allow_major?: boolean }`
   - Returns: `{ status: 'started', message: string }`
-- [ ] All endpoints require authentication and admin role
-- [ ] Update OpenAPI documentation for new endpoints
+- [x] All endpoints require authentication and admin role
+- [x] Update OpenAPI documentation for new endpoints
 
 ### 4.3 Backend - WebSocket Events
 
-- [ ] Emit `system.update.status` event when update status changes
-- [ ] Emit `system.update.progress` event during update with phase info
-- [ ] Event payload: `{ status, phase, progress_percent, message, error? }`
-- [ ] Phases: `checking`, `downloading`, `stopping`, `installing`, `migrating`, `starting`, `complete`, `failed`
+- [x] Emit `system.update.status` event when update status changes
+- [x] Emit `system.update.progress` event during update with phase info
+- [x] Event payload: `{ status, phase, progress_percent, message, error? }`
+- [x] Phases: `checking`, `downloading`, `stopping`, `installing`, `migrating`, `starting`, `complete`, `failed`
 
 ### 4.4 Backend - Update Execution
 
-- [ ] Create `UpdateExecutorService` to handle the update process
-- [ ] Execute update in a detached child process (survive parent restart)
-- [ ] Write update status to a status file for recovery (`/var/lib/smart-panel/update-status.json`)
-- [ ] On startup, check for pending update status and report completion/failure
-- [ ] Handle graceful service restart after update
-- [ ] Implement timeout for update operations (10 minutes max)
-- [ ] Clean up temporary files after update
+- [x] Create `UpdateExecutorService` to handle the update process
+- [x] Execute update in a detached child process (survive parent restart)
+- [x] Write update status to a status file for recovery (`/var/lib/smart-panel/update-status.json`)
+- [x] On startup, check for pending update status and report completion/failure
+- [x] Handle graceful service restart after update
+- [x] Implement timeout for update operations (10 minutes max)
+- [x] Clean up temporary files after update
 
 ### 4.5 CLI - Enhanced Update Command
 
 - [x] Add `--check` flag to only check for updates without installing
-- [ ] Add `--changelog` flag to display release notes
+- [x] Add `--changelog` flag to display release notes
 - [x] Add `--yes` / `-y` flag to skip confirmation prompts
 - [x] Display update type (patch/minor/major) with appropriate warnings
 - [x] Show progress with spinner and phase information
@@ -138,35 +138,35 @@ The project already has a basic update mechanism via the CLI:
 
 ### 4.6 Admin - Update Status Display
 
-- [ ] Create `useUpdateStatus` composable for fetching and tracking update status
-- [ ] Create `UpdateStatusStore` Pinia store for caching update information
-- [ ] Display current version in system info page
-- [ ] Display available update with version number and type badge
-- [ ] Show last checked timestamp
-- [ ] Link to changelog/release notes
+- [x] Create `useUpdateStatus` composable for fetching and tracking update status
+- [x] Create `UpdateStatusStore` Pinia store for caching update information
+- [x] Display current version in system info page
+- [x] Display available update with version number and type badge
+- [x] Show last checked timestamp
+- [x] Link to changelog/release notes
 
 ### 4.7 Admin - Update Trigger UI
 
-- [ ] Add "Check for Updates" button in system info page
-- [ ] Add "Install Update" button when update is available
-- [ ] Show confirmation dialog before installing (especially for major updates)
-- [ ] Display progress overlay during update with phase information
-- [ ] Handle reconnection after service restart
-- [ ] Show success/failure notification after update completes
+- [x] Add "Check for Updates" button in system info page
+- [x] Add "Install Update" button when update is available
+- [x] Show confirmation dialog before installing (especially for major updates)
+- [x] Display progress overlay during update with phase information
+- [x] Handle reconnection after service restart
+- [x] Show success/failure notification after update completes
 - [ ] Add update option to manage-system component
 
 ### 4.8 Admin - Update Notification
 
-- [ ] Show notification badge/indicator when update is available
-- [ ] Add notification in header or system tray area
-- [ ] Notification links to update page/dialog
-- [ ] Persist notification dismissal until new version available
+- [x] Show notification badge/indicator when update is available
+- [x] Add notification in header or system tray area
+- [x] Notification links to update page/dialog
+- [x] Persist notification dismissal until new version available
 
 ### 4.9 Quality
 
-- [ ] All lint checks pass (`pnpm run lint:js`)
-- [ ] Code is formatted (`pnpm run pretty`)
-- [ ] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
+- [x] All lint checks pass (`pnpm run lint:js`)
+- [x] Code is formatted (`pnpm run pretty`)
+- [x] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
 - [ ] Unit tests for UpdateService (version comparison, cache logic)
 - [ ] Unit tests for UpdateExecutorService (status file handling)
 - [ ] E2E tests for update API endpoints

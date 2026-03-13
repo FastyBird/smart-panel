@@ -13,6 +13,9 @@ export enum EventType {
 	SYSTEM_REBOOT_SET = 'SystemModule.System.Reboot.Set',
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
+
+	SYSTEM_UPDATE_STATUS = 'SystemModule.System.Update.Status',
+	SYSTEM_UPDATE_PROGRESS = 'SystemModule.System.Update.Progress',
 }
 
 export enum EventHandlerName {

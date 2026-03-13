@@ -31,6 +31,32 @@ export enum EventType {
 	DISPLAY_FACTORY_RESET_SET = 'SystemModule.Display.FactoryReset.Set',
 
 	HOUSE_MODE_CHANGED = 'SystemModule.HouseMode.Changed',
+
+	SYSTEM_UPDATE_STATUS = 'SystemModule.System.Update.Status',
+	SYSTEM_UPDATE_PROGRESS = 'SystemModule.System.Update.Progress',
+}
+
+export enum UpdateStatusType {
+	IDLE = 'idle',
+	CHECKING = 'checking',
+	DOWNLOADING = 'downloading',
+	STOPPING = 'stopping',
+	INSTALLING = 'installing',
+	MIGRATING = 'migrating',
+	STARTING = 'starting',
+	COMPLETE = 'complete',
+	FAILED = 'failed',
+}
+
+export enum UpdatePhase {
+	CHECKING = 'checking',
+	DOWNLOADING = 'downloading',
+	STOPPING = 'stopping',
+	INSTALLING = 'installing',
+	MIGRATING = 'migrating',
+	STARTING = 'starting',
+	COMPLETE = 'complete',
+	FAILED = 'failed',
 }
 
 export enum LogEntryType {
