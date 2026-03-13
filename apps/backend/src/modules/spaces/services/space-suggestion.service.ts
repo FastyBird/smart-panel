@@ -43,6 +43,13 @@ export interface SuggestionContext {
 export const spaceCooldowns = new CooldownManager<SuggestionType>();
 
 /**
+ * Tracks the last emitted suggestion type per space.
+ * The heartbeat skips re-emitting the same type while conditions remain unchanged.
+ * Cleared when no rule matches (conditions changed) or the user interacts (feedback).
+ */
+export const lastEmittedSuggestions = new Map<string, SuggestionType>();
+
+/**
  * Check if a space name matches any of the given bedroom patterns
  */
 export function isBedroomSpace(spaceName: string, patterns: string[]): boolean {
@@ -188,6 +195,10 @@ export class SpaceSuggestionService {
 
 		// Validate space exists - throws if not found
 		await this.spacesService.getOneOrThrow(spaceId);
+
+		// User interacted — clear last-emitted tracker so the heartbeat can
+		// re-evaluate this space after the cooldown expires.
+		lastEmittedSuggestions.delete(spaceId);
 
 		// If dismissed, set cooldown and return
 		if (feedback === SuggestionFeedback.DISMISSED) {

@@ -14,7 +14,7 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 
-import { SpaceSuggestionService, spaceCooldowns } from './space-suggestion.service';
+import { SpaceSuggestionService, lastEmittedSuggestions, spaceCooldowns } from './space-suggestion.service';
 import { SpacesService } from './spaces.service';
 
 const HEARTBEAT_INTERVAL_NAME = 'spaceSuggestionHeartbeat';
@@ -94,6 +94,10 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 					const suggestion = await this.suggestionService.getSuggestion(space.id);
 
 					if (suggestion === null) {
+						// No rule matches — conditions changed, clear tracker so a
+						// future match will be emitted fresh.
+						lastEmittedSuggestions.delete(space.id);
+
 						continue;
 					}
 
@@ -102,8 +106,19 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 						continue;
 					}
 
+					// Skip if the same suggestion type was already emitted and the
+					// user hasn't interacted (applied/dismissed). Prevents the same
+					// toast from reappearing every cooldown cycle while conditions
+					// remain unchanged (e.g. absent user).
+					if (lastEmittedSuggestions.get(space.id) === suggestion.type) {
+						continue;
+					}
+
 					// Set cooldown to prevent re-emitting on next cycle
 					spaceCooldowns.setCooldown(space.id, suggestion.type, SUGGESTION_COOLDOWN_MS);
+
+					// Record this type so we don't re-emit while conditions stay the same
+					lastEmittedSuggestions.set(space.id, suggestion.type);
 
 					const event: SpaceSuggestionEvent = {
 						id: uuid(),

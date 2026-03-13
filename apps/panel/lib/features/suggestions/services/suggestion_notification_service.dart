@@ -15,7 +15,10 @@ import 'package:fastybird_smart_panel/features/suggestions/types/suggestion.dart
 /// callbacks are routed to the correct module without coupling.
 class SuggestionNotificationService extends ChangeNotifier {
 	/// Default auto-dismiss duration.
-	static const Duration defaultAutoDismiss = Duration(seconds: 15);
+	///
+	/// 30 seconds gives wall-mounted displays enough time for the user to
+	/// notice the toast from across the room.
+	static const Duration defaultAutoDismiss = Duration(seconds: 30);
 
 	final Queue<AppSuggestion> _queue = Queue<AppSuggestion>();
 	AppSuggestion? _current;
@@ -30,8 +33,15 @@ class SuggestionNotificationService extends ChangeNotifier {
 	/// Duration before auto-dismissing the current notification.
 	final Duration autoDismissDuration;
 
+	/// Optional callback invoked when a new suggestion is displayed.
+	///
+	/// Used to wake the screen (dismiss screensaver, restore brightness)
+	/// so that the suggestion is visible on wall-mounted displays.
+	final VoidCallback? onSuggestionShown;
+
 	SuggestionNotificationService({
 		this.autoDismissDuration = defaultAutoDismiss,
+		this.onSuggestionShown,
 	});
 
 	/// The currently displayed suggestion notification, or null.
@@ -154,6 +164,7 @@ class SuggestionNotificationService extends ChangeNotifier {
 	void _showNext(AppSuggestion suggestion) {
 		_current = suggestion;
 		_startAutoDismissTimer();
+		onSuggestionShown?.call();
 		notifyListeners();
 	}
 
@@ -172,7 +183,9 @@ class SuggestionNotificationService extends ChangeNotifier {
 	void _startAutoDismissTimer() {
 		_cancelTimer();
 		_autoDismissTimer = Timer(autoDismissDuration, () {
-			dismissCurrent();
+			// Auto-dismiss is not a user action — don't send feedback to the
+			// backend so it won't set a cooldown for an unattended toast.
+			dismissCurrent(sendFeedback: false);
 		});
 	}
 

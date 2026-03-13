@@ -4,7 +4,13 @@ import { SpaceEntity } from '../entities/space.entity';
 import { SpaceType, SuggestionType } from '../spaces.constants';
 import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
-import { SuggestionContext, evaluateSuggestionRules, isBedroomSpace, spaceCooldowns } from './space-suggestion.service';
+import {
+	SuggestionContext,
+	evaluateSuggestionRules,
+	isBedroomSpace,
+	lastEmittedSuggestions,
+	spaceCooldowns,
+} from './space-suggestion.service';
 
 /**
  * Default bedroom patterns matching the builtin suggestions.yaml
@@ -56,6 +62,7 @@ const DEFAULT_RULES: ResolvedSuggestionRule[] = [
 describe('SpaceSuggestionService - Pure Functions', () => {
 	beforeEach(() => {
 		spaceCooldowns.clearAll();
+		lastEmittedSuggestions.clear();
 	});
 
 	describe('isBedroomSpace', () => {
@@ -457,6 +464,45 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 				const result = evaluateSuggestionRules(context, DEFAULT_RULES, BEDROOM_PATTERNS);
 
 				expect(result?.type).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+		});
+
+		describe('lastEmittedSuggestions tracker', () => {
+			it('should track last emitted type per space', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_RELAX);
+			});
+
+			it('should allow clearing when conditions change', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.delete(spaceId);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBeUndefined();
+			});
+
+			it('should track different types per space independently', () => {
+				const spaceId1 = uuid();
+				const spaceId2 = uuid();
+
+				lastEmittedSuggestions.set(spaceId1, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId2, SuggestionType.LIGHTING_NIGHT);
+
+				expect(lastEmittedSuggestions.get(spaceId1)).toBe(SuggestionType.LIGHTING_RELAX);
+				expect(lastEmittedSuggestions.get(spaceId2)).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+
+			it('should update when a different type is emitted', () => {
+				const spaceId = uuid();
+
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_NIGHT);
+
+				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_NIGHT);
 			});
 		});
 
