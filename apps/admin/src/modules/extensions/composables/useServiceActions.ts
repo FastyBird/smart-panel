@@ -34,7 +34,7 @@ export const useServiceActions = (): IUseServiceActions => {
 				flashMessage.warning(t('extensionsModule.services.messages.startError'));
 			}
 
-			return service.state === ExtensionsModuleServiceState.started;
+			return service.state === ExtensionsModuleServiceState.started || service.state === ExtensionsModuleServiceState.starting;
 		} catch (error: unknown) {
 			if (error instanceof ExtensionsApiException) {
 				flashMessage.error(t('extensionsModule.services.messages.startError'));

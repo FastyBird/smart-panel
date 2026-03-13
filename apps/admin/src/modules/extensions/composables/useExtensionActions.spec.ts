@@ -4,8 +4,13 @@ import { ExtensionsApiException } from '../extensions.exceptions';
 
 import { useExtensionActions } from './useExtensionActions';
 
-const mockStore = {
+const mockExtensionsStore = {
 	update: vi.fn(),
+};
+
+const mockServicesStore = {
+	fetch: vi.fn().mockResolvedValue(undefined),
+	findAll: vi.fn().mockReturnValue([]),
 };
 
 const mockFlashMessage = {
@@ -21,9 +26,20 @@ vi.mock('vue-i18n', () => ({
 	})),
 }));
 
+vi.mock('../store/keys', () => ({
+	extensionsStoreKey: 'extensions',
+	servicesStoreKey: 'services',
+}));
+
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => mockStore),
+		getStore: vi.fn((key: string) => {
+			if (key === 'services') {
+				return mockServicesStore;
+			}
+
+			return mockExtensionsStore;
+		}),
 	})),
 	useFlashMessage: vi.fn(() => mockFlashMessage),
 }));
@@ -35,14 +51,14 @@ describe('useExtensionActions', () => {
 
 	describe('toggleEnabled', () => {
 		it('should enable extension successfully', async () => {
-			mockStore.update.mockResolvedValue({ type: 'test-module', enabled: true });
+			mockExtensionsStore.update.mockResolvedValue({ type: 'test-module', enabled: true });
 
 			const { toggleEnabled } = useExtensionActions();
 
 			const result = await toggleEnabled('test-module', true);
 
 			expect(result).toBe(true);
-			expect(mockStore.update).toHaveBeenCalledWith({
+			expect(mockExtensionsStore.update).toHaveBeenCalledWith({
 				type: 'test-module',
 				data: { enabled: true },
 			});
@@ -50,14 +66,14 @@ describe('useExtensionActions', () => {
 		});
 
 		it('should disable extension successfully', async () => {
-			mockStore.update.mockResolvedValue({ type: 'test-module', enabled: false });
+			mockExtensionsStore.update.mockResolvedValue({ type: 'test-module', enabled: false });
 
 			const { toggleEnabled } = useExtensionActions();
 
 			const result = await toggleEnabled('test-module', false);
 
 			expect(result).toBe(true);
-			expect(mockStore.update).toHaveBeenCalledWith({
+			expect(mockExtensionsStore.update).toHaveBeenCalledWith({
 				type: 'test-module',
 				data: { enabled: false },
 			});
@@ -65,7 +81,7 @@ describe('useExtensionActions', () => {
 		});
 
 		it('should show error message on API error with code 400', async () => {
-			mockStore.update.mockRejectedValue(new ExtensionsApiException('Not configurable', 400));
+			mockExtensionsStore.update.mockRejectedValue(new ExtensionsApiException('Not configurable', 400));
 
 			const { toggleEnabled } = useExtensionActions();
 
@@ -76,7 +92,7 @@ describe('useExtensionActions', () => {
 		});
 
 		it('should show generic error message on other API errors', async () => {
-			mockStore.update.mockRejectedValue(new ExtensionsApiException('Server error', 500));
+			mockExtensionsStore.update.mockRejectedValue(new ExtensionsApiException('Server error', 500));
 
 			const { toggleEnabled } = useExtensionActions();
 
@@ -87,7 +103,7 @@ describe('useExtensionActions', () => {
 		});
 
 		it('should show generic error message on unknown errors', async () => {
-			mockStore.update.mockRejectedValue(new Error('Unknown error'));
+			mockExtensionsStore.update.mockRejectedValue(new Error('Unknown error'));
 
 			const { toggleEnabled } = useExtensionActions();
 
