@@ -218,7 +218,7 @@ class BuddyEmotionMapper extends ChangeNotifier {
   EmotionPreset _currentEmotion = EmotionPresets.neutral;
   Timer? _inactivityTimer;
   Timer? _temporaryEmotionTimer;
-  DateTime? _lastInteractionTime;
+  DateTime _lastInteractionTime = DateTime.now();
   int _lastSeenMessageCount = 0;
   int _lastSeenSuggestionCount = 0;
 
@@ -302,7 +302,12 @@ class BuddyEmotionMapper extends ChangeNotifier {
     _markActivity();
     if (_audioPlaybackService.isPlaying) {
       _setEmotion(EmotionPresets.speaking);
-    } else if (!_buddyService.isSendingMessage) {
+    } else if (_buddyService.isSendingMessage) {
+      _setEmotion(EmotionPresets.thinking);
+    } else if (_voiceActivationService.state == VoiceActivationState.listening ||
+               _voiceActivationService.state == VoiceActivationState.recording) {
+      _setEmotion(EmotionPresets.listening);
+    } else {
       _setEmotion(EmotionPresets.neutral);
     }
   }
@@ -321,7 +326,7 @@ class BuddyEmotionMapper extends ChangeNotifier {
   void _startInactivityTimer() {
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      final elapsed = DateTime.now().difference(_lastInteractionTime ?? DateTime.now());
+      final elapsed = DateTime.now().difference(_lastInteractionTime);
       if (elapsed > _idleTimeout) {
         _setEmotion(EmotionPresets.idle);  // Deep idle, minimal animation
       } else if (elapsed > _sleepyTimeout) {
