@@ -5,10 +5,6 @@
 				:is="isMDDevice ? ElCard : 'div'"
 				class="mb-5"
 			>
-				<div class="block w-[8rem] my-0 mx-a">
-					<logo class="fill-brand-primary" />
-				</div>
-
 				<div class="flex flex-col items-center my-6">
 					<user-avatar
 						:size="80"
@@ -128,7 +124,6 @@ import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import Logo from '../../../assets/images/fb_bird.svg?component';
 import { useBreakpoints } from '../../../common';
 import { injectAccountManager } from '../../../common/services/account-manager';
 import UserAvatar from '../../../common/components/user-avatar.vue';

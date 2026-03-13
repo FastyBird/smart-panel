@@ -153,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
@@ -185,7 +185,7 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-const { enabled, loaded: modulesLoaded } = useConfigModules();
+const { enabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 // Optimistic for template — prevents flashing the "disabled" card before config loads
 const isModuleEnabled = computed(() => !modulesLoaded.value || enabled(BUDDY_MODULE_NAME));
 // Strict for data loading — only load data when we know the module is enabled
@@ -258,17 +258,25 @@ const loadChatData = async (): Promise<void> => {
 	}
 };
 
+const chatDataLoaded = ref(false);
+
 onBeforeMount(async (): Promise<void> => {
+	if (!modulesLoaded.value) {
+		await fetchConfigModules();
+	}
+
 	if (!isModuleConfirmedEnabled.value) {
 		return;
 	}
 
 	await loadChatData();
+	chatDataLoaded.value = true;
 });
 
 watch(isModuleConfirmedEnabled, async (confirmed): Promise<void> => {
-	if (confirmed) {
+	if (confirmed && !chatDataLoaded.value) {
 		await loadChatData();
+		chatDataLoaded.value = true;
 	}
 });
 </script>
