@@ -182,7 +182,21 @@ const mockWatchBinding: IMediaActivityBinding = {
 	updatedAt: null,
 };
 
-const mockSpace = { id: 'space-1', name: 'Living Room' };
+const mockSpace = {
+	id: 'space-1',
+	name: 'Living Room',
+	description: null,
+	type: 'room',
+	category: null,
+	icon: null,
+	displayOrder: 0,
+	parentId: null,
+	suggestionsEnabled: false,
+	statusWidgets: null,
+	createdAt: new Date(),
+	updatedAt: null,
+	draft: false,
+};
 
 describe('SpaceMediaActivitiesDialog', () => {
 	let wrapper: VueWrapper;
