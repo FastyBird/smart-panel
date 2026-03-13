@@ -99,7 +99,7 @@ const applyStatusEvent = (payload: Record<string, unknown>): void => {
 
 // Module-level singleton subscription — keep the unsubscribe handle so Vite HMR
 // can clean up the stale listener before re-registering on module re-evaluation.
-let unsubscribe = onUpdateEvent(applyStatusEvent);
+const unsubscribe = onUpdateEvent(applyStatusEvent);
 
 if (import.meta.hot) {
 	import.meta.hot.dispose(() => {
