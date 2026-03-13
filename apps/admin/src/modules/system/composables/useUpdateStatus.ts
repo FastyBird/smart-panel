@@ -54,8 +54,6 @@ const applyInfoResponse = (data: Record<string, unknown>): void => {
 
 	if (data.error !== undefined) {
 		error.value = data.error as string | null;
-	} else {
-		error.value = null;
 	}
 
 	// Update installing state

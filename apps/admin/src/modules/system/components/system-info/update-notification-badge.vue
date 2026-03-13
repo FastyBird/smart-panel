@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { ElBadge, ElButton } from 'element-plus';
@@ -39,7 +39,7 @@ const router = useRouter();
 
 const DISMISSED_VERSION_KEY = 'smart-panel:update-dismissed-version';
 
-const { updateAvailable, latestVersion, fetchStatus } = useUpdateStatus();
+const { updateAvailable, latestVersion } = useUpdateStatus();
 
 const dismissedVersion = ref<string | null>(localStorage.getItem(DISMISSED_VERSION_KEY));
 
@@ -69,9 +69,6 @@ watch(latestVersion, (newVersion: string | null): void => {
 	}
 });
 
-onMounted((): void => {
-	void fetchStatus();
-});
 </script>
 
 <style scoped>
