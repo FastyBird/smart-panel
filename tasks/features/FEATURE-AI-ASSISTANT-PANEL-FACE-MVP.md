@@ -279,10 +279,16 @@ class BuddyEmotionMapper extends ChangeNotifier {
       return;
     }
 
-    // Check for NEW assistant message (track count to avoid re-triggering)
+    // Check for NEW assistant message (track count to avoid re-triggering).
+    // If count decreased, a conversation switch or clear occurred — resync
+    // the watermark so new messages in the new conversation are detected.
     final messages = _buddyService.messages;
-    if (messages.length > _lastSeenMessageCount) {
-      _lastSeenMessageCount = messages.length;
+    final messageCount = messages.length;
+    if (messageCount < _lastSeenMessageCount) {
+      // Conversation switched/cleared — resync to current state
+      _lastSeenMessageCount = messageCount;
+    } else if (messageCount > _lastSeenMessageCount) {
+      _lastSeenMessageCount = messageCount;
       if (messages.last.role == BuddyMessageRole.assistant) {
         if (!_audioPlaybackService.isPlaying) {
           _setEmotionTemporary(EmotionPresets.happy, _happyDuration);
@@ -290,10 +296,13 @@ class BuddyEmotionMapper extends ChangeNotifier {
       }
     }
 
-    // NEW suggestions → brief excited (track count to avoid re-triggering)
-    final suggestions = _buddyService.suggestions;
-    if (suggestions.length > _lastSeenSuggestionCount) {
-      _lastSeenSuggestionCount = suggestions.length;
+    // NEW suggestions → brief excited (track count to avoid re-triggering).
+    // Same resync logic for suggestion removal/refresh.
+    final suggestionCount = _buddyService.suggestions.length;
+    if (suggestionCount < _lastSeenSuggestionCount) {
+      _lastSeenSuggestionCount = suggestionCount;
+    } else if (suggestionCount > _lastSeenSuggestionCount) {
+      _lastSeenSuggestionCount = suggestionCount;
       _setEmotionTemporary(EmotionPresets.excited, _excitedDuration);
     }
   }
