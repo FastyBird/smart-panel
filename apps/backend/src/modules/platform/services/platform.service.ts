@@ -3,22 +3,27 @@ import si from 'systeminformation';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PLATFORM_MODULE_NAME } from '../platform.constants';
+import { PLATFORM_MODULE_NAME, PLATFORM_TYPE_ENV, PlatformType } from '../platform.constants';
 import { Platform } from '../platforms/abstract.platform';
+import { DevelopmentPlatform } from '../platforms/development.platform';
+import { DockerPlatform } from '../platforms/docker.platform';
 import { GenericPlatform } from '../platforms/generic.platform';
+import { HomeAssistantPlatform } from '../platforms/home-assistant.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
 
 @Injectable()
 export class PlatformService {
 	private platform: Platform;
+	private platformType: PlatformType;
 	private readonly logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'PlatformService');
 
 	constructor() {
 		this.detectPlatform()
-			.then((platform) => {
+			.then(({ platform, type }) => {
 				this.platform = platform;
+				this.platformType = type;
 
-				this.logger.log(`Platform detected: ${platform.constructor.name}`);
+				this.logger.log(`Platform detected: ${type} (${platform.constructor.name})`);
 			})
 			.catch((error) => {
 				const err = error as Error;
@@ -28,6 +33,7 @@ export class PlatformService {
 				});
 
 				this.platform = new GenericPlatform();
+				this.platformType = PlatformType.GENERIC;
 			});
 	}
 
@@ -95,7 +101,29 @@ export class PlatformService {
 		return this.platform.powerOffDevice();
 	}
 
-	private async detectPlatform(): Promise<Platform> {
+	private async detectPlatform(): Promise<{ platform: Platform; type: PlatformType }> {
+		// Check for explicit platform type via environment variable
+		const envPlatformType = process.env[PLATFORM_TYPE_ENV]?.toLowerCase();
+
+		if (envPlatformType) {
+			const platformType = Object.values(PlatformType).find((t: string) => t === envPlatformType);
+
+			if (platformType) {
+				this.logger.log(`Platform type set via ${PLATFORM_TYPE_ENV} env var: ${platformType}`);
+
+				return { platform: this.createPlatform(platformType), type: platformType };
+			}
+
+			this.logger.warn(
+				`Unknown ${PLATFORM_TYPE_ENV} value: "${envPlatformType}". Valid values: ${Object.values(PlatformType).join(', ')}. Falling back to auto-detection.`,
+			);
+		}
+
+		// Auto-detect platform
+		return this.autoDetectPlatform();
+	}
+
+	private async autoDetectPlatform(): Promise<{ platform: Platform; type: PlatformType }> {
 		const systemInfo = await si.system();
 		const osInfo = await si.osInfo();
 
@@ -108,11 +136,27 @@ export class PlatformService {
 		) {
 			this.logger.log('Raspberry Pi platform detected');
 
-			return new RaspberryPlatform();
+			return { platform: this.createPlatform(PlatformType.RASPBERRY), type: PlatformType.RASPBERRY };
 		}
 
 		this.logger.log('Generic platform detected');
 
-		return new GenericPlatform();
+		return { platform: this.createPlatform(PlatformType.GENERIC), type: PlatformType.GENERIC };
+	}
+
+	private createPlatform(type: PlatformType): Platform {
+		switch (type) {
+			case PlatformType.RASPBERRY:
+				return new RaspberryPlatform();
+			case PlatformType.DOCKER:
+				return new DockerPlatform();
+			case PlatformType.DEVELOPMENT:
+				return new DevelopmentPlatform();
+			case PlatformType.HOME_ASSISTANT:
+				return new HomeAssistantPlatform();
+			case PlatformType.GENERIC:
+			default:
+				return new GenericPlatform();
+		}
 	}
 }
