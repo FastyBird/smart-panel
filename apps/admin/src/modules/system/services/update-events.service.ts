@@ -23,7 +23,3 @@ export const emitUpdateEvent = (payload: Record<string, unknown>): void => {
 		listener(payload);
 	}
 };
-
-export const getLastUpdateEvent = (): Record<string, unknown> | null => {
-	return updateEventPayload.value;
-};

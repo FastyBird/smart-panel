@@ -113,8 +113,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 			if (responseData?.data) {
 				applyInfoResponse(responseData.data);
 			}
-		} catch {
+		} catch (err) {
 			error.value = 'Failed to check for updates';
+
+			throw err;
 		} finally {
 			loading.value = false;
 		}

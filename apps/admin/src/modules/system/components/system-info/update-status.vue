@@ -184,12 +184,17 @@ const onInstallUpdate = async (): Promise<void> => {
 				type: isMajor ? 'warning' : 'info',
 			}
 		);
+	} catch {
+		// User cancelled the confirmation dialog
+		return;
+	}
 
+	try {
 		await installUpdate(isMajor);
 
 		ElNotification.success(t('systemModule.messages.update.updateStarted'));
 	} catch {
-		// User cancelled or install failed
+		ElNotification.error(t('systemModule.messages.update.installFailed'));
 	}
 };
 

@@ -94,7 +94,8 @@
       "updateStarted": "Update process has been started. The system will restart automatically.",
       "updateComplete": "Update completed successfully!",
       "updateFailed": "Update failed. Please check the system logs for details.",
-      "checkFailed": "Failed to check for updates. Please try again later."
+      "checkFailed": "Failed to check for updates. Please try again later.",
+      "installFailed": "Failed to start the update. Please try again later."
     }
   },
   "texts": {
