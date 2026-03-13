@@ -95,6 +95,39 @@ No remaining active tasks in this epic.
 
 ---
 
+## 4b. Buddy Module Hardening (Epic)
+
+> [EPIC-BUDDY-HARDENING](epics/EPIC-BUDDY-HARDENING.md) — Status: :clipboard: Planned
+
+Reliability and correctness fixes identified during code review audit.
+
+### Priority 1 — Critical fixes
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :clipboard: Planned |
+| 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :clipboard: Planned |
+| 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :clipboard: Planned |
+
+### Priority 2 — Medium fixes
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :clipboard: Planned |
+| 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :clipboard: Planned |
+| 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :clipboard: Planned |
+
+### Priority 3 — Polish
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 7 | [TECH-BUDDY-PANEL-ROBUSTNESS](technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | panel | :clipboard: Planned |
+| 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :clipboard: Planned |
+
+**Next up:** Suggestion persistence (P1), then timezone safety and timeout enforcement.
+
+---
+
 ## 5. App Onboarding (Epic)
 
 > [EPIC-APP-ONBOARDING](epics/EPIC-APP-ONBOARDING.md) — Status: :clipboard: Planned
@@ -176,6 +209,7 @@ No remaining active tasks in this epic.
 | Media | 5 | 3 | 0 | 8 |
 | Domains Epic | 2 | 0 | 7 | 9 |
 | Buddy Epic | 9 | 0 | 0 | 9 |
+| Buddy Hardening | 0 | 0 | 8 | 8 |
 | Onboarding Epic | 0 | 0 | 3 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
@@ -183,4 +217,4 @@ No remaining active tasks in this epic.
 | Technical | 2 | 0 | 3 | 5 |
 | Other Features | 0 | 0 | 5 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **29** | **4** | **20** | **53** |
+| **Total** | **29** | **4** | **28** | **61** |
