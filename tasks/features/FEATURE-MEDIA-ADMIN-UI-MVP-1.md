@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -47,7 +47,7 @@ I want to view derived media endpoints and edit activity bindings per space
 - [x] No "guessing" in UI (only show what backend supports)
 - [x] Empty states are informative
 - [x] Switching activities never loses saved state
-- [ ] Component test for Activities editor form rendering + filtering logic
+- [x] Component test for Activities editor form rendering + filtering logic
 - [x] Store tests for fetch/save/apply defaults (mock API)
 
 ## 5. Example scenarios (optional, Gherkin-style)
