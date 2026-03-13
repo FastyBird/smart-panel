@@ -2,10 +2,10 @@
 # FastyBird Smart Panel - Production Docker Compose
 #
 # Usage:
-#   docker compose -f docker/docker-compose.yml up -d
+#   docker compose -f docker/prod/docker-compose.yml up -d
 #
 # With InfluxDB (for time-series data):
-#   docker compose -f docker/docker-compose.yml --profile influxdb up -d
+#   docker compose -f docker/prod/docker-compose.yml --profile influxdb up -d
 #
 # Environment variables (set in .env or export):
 #   FB_BACKEND_PORT  - Backend port (default: 3000)
@@ -15,8 +15,8 @@
 services:
   smart-panel:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ../..
+      dockerfile: docker/prod/Dockerfile
     image: ghcr.io/fastybird/smart-panel:latest
     container_name: smart-panel
     restart: unless-stopped
