@@ -95,6 +95,10 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		final languageLabels = {
 			Language.english.value: 'English',
 			Language.czech.value: 'Česky',
+			Language.german.value: 'Deutsch',
+			Language.spanish.value: 'Español',
+			Language.polish.value: 'Polski',
+			Language.slovak.value: 'Slovensky',
 		};
 
 		final cards = <Widget>[

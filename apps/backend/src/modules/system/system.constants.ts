@@ -112,6 +112,10 @@ export enum TimeFormatType {
 export enum LanguageType {
 	ENGLISH = 'en_US',
 	CZECH = 'cs_CZ',
+	GERMAN = 'de_DE',
+	SPANISH = 'es_ES',
+	POLISH = 'pl_PL',
+	SLOVAK = 'sk_SK',
 }
 
 export enum LogLevelType {

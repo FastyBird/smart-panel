@@ -6,7 +6,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_cs.dart';
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_pl.dart';
+import 'app_localizations_sk.dart';
 
 // ignore_for_file: type=lint
 
@@ -92,7 +96,11 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('cs'),
-    Locale('en')
+    Locale('de'),
+    Locale('en'),
+    Locale('es'),
+    Locale('pl'),
+    Locale('sk')
   ];
 
   /// Displayed when no value is available for a property
@@ -2360,7 +2368,7 @@ abstract class AppLocalizations {
   /// Description shown when no rooms exist in the backend
   ///
   /// In en, this message translates to:
-  /// **'No rooms have been created yet. Please open the admin interface and add at least one room.'**
+  /// **'No rooms have been created yet. Please open the administration and add at least one room.'**
   String get room_selection_empty_description;
 
   /// Success message when an action completes
@@ -2492,7 +2500,7 @@ abstract class AppLocalizations {
   /// Description shown when space has no controllable devices
   ///
   /// In en, this message translates to:
-  /// **'To add devices and controls, set up \"{spaceName}\" through the gateway.'**
+  /// **'To add devices and controls, set up \"{spaceName}\" through the administration.'**
   String space_empty_state_description(String spaceName);
 
   /// Title shown when space only has sensors
@@ -2516,7 +2524,7 @@ abstract class AppLocalizations {
   /// Description shown when house overview has no spaces
   ///
   /// In en, this message translates to:
-  /// **'Create spaces through the gateway to see them here'**
+  /// **'Create spaces through the administration to see them here'**
   String get house_overview_no_spaces_description;
 
   /// Message shown when trying to navigate to a space without a page
@@ -2912,7 +2920,7 @@ abstract class AppLocalizations {
   /// Description shown when lighting roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'Lighting roles have not been set up for this room. Configure roles in the admin panel to control your lights.'**
+  /// **'Lighting roles have not been set up for this room. Configure roles in the administration to control your lights.'**
   String get domain_lights_empty_description;
 
   /// Count of lights that are on in a role group
@@ -2978,7 +2986,7 @@ abstract class AppLocalizations {
   /// Description shown when climate control is not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'No thermostats or climate actuators are set up for this room. Add climate devices in the admin panel.'**
+  /// **'No thermostats or climate actuators are set up for this room. Add climate devices in the administration.'**
   String get domain_climate_empty_description;
 
   /// Title for media domain view in room navigation
@@ -4238,7 +4246,7 @@ abstract class AppLocalizations {
   /// Description shown when shading roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'Window covering roles have not been set up for this room. Configure roles in the admin panel to control your shades.'**
+  /// **'Window covering roles have not been set up for this room. Configure roles in the administration to control your shades.'**
   String get domain_shading_empty_description;
 
   /// Title for modes section in shading domain
@@ -5522,7 +5530,7 @@ abstract class AppLocalizations {
   /// Description shown when no media activity bindings are configured for this room
   ///
   /// In en, this message translates to:
-  /// **'Media activities have not been set up for this room. Configure activity bindings in the admin panel.'**
+  /// **'Media activities have not been set up for this room. Configure activity bindings in the administration.'**
   String get media_not_configured_description;
 
   /// Shown when an activity is being activated
@@ -6386,7 +6394,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensors_domain_empty_description.
   ///
   /// In en, this message translates to:
-  /// **'Sensor roles have not been set up for this room. Configure sensor assignments in the admin panel.'**
+  /// **'Sensor roles have not been set up for this room. Configure sensor assignments in the administration.'**
   String get sensors_domain_empty_description;
 
   /// No description provided for @sensors_domain_alerts_active.
@@ -6944,7 +6952,7 @@ abstract class AppLocalizations {
   /// Hint for permit join error
   ///
   /// In en, this message translates to:
-  /// **'Please ask the administrator to activate \"Permit Join\" in the admin panel, then restart the application.'**
+  /// **'Please ask the administrator to activate \"Permit Join\" in the administration, then restart the application.'**
   String get app_error_permit_join_hint;
 
   /// Error when stored backend connection fails
@@ -6980,7 +6988,7 @@ abstract class AppLocalizations {
   /// Description for empty deck state
   ///
   /// In en, this message translates to:
-  /// **'Please configure your dashboard in Admin.'**
+  /// **'Please configure your dashboard in the administration.'**
   String get deck_empty_description;
 
   /// Button label on alert banner
@@ -7094,7 +7102,7 @@ abstract class AppLocalizations {
   /// Description when AI provider is not configured
   ///
   /// In en, this message translates to:
-  /// **'Configure an AI provider in admin settings to enable chat.'**
+  /// **'Configure an AI provider in the administration to enable chat.'**
   String get buddy_provider_not_configured_description;
 
   /// Status text while buddy is processing
@@ -7323,7 +7331,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['cs', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['cs', 'de', 'en', 'es', 'pl', 'sk'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -7335,7 +7343,11 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'cs': return AppLocalizationsCs();
+    case 'de': return AppLocalizationsDe();
     case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
+    case 'pl': return AppLocalizationsPl();
+    case 'sk': return AppLocalizationsSk();
   }
 
   throw FlutterError(

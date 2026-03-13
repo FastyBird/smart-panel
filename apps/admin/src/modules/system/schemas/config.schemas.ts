@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ConfigModuleEditFormSchema } from '../../config';
 
 export const SystemConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
-	language: z.enum(['en_US', 'cs_CZ']),
+	language: z.enum(['en_US', 'cs_CZ', 'de_DE', 'es_ES', 'pl_PL', 'sk_SK']),
 	timezone: z.string().min(1),
 	timeFormat: z.enum(['12h', '24h']),
 	temperatureUnit: z.enum(['celsius', 'fahrenheit']),

@@ -15,7 +15,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const SystemConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(SYSTEM_MODULE_NAME),
-	language: z.enum(['en_US', 'cs_CZ']),
+	language: z.enum(['en_US', 'cs_CZ', 'de_DE', 'es_ES', 'pl_PL', 'sk_SK']),
 	timezone: z.string(),
 	timeFormat: z.enum(['12h', '24h']),
 	temperatureUnit: z.enum(['celsius', 'fahrenheit']),
@@ -33,7 +33,7 @@ export const SystemConfigSchema = ConfigModuleSchema.extend({
 export const SystemConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(SYSTEM_MODULE_NAME),
-		language: z.enum(['en_US', 'cs_CZ']).optional(),
+		language: z.enum(['en_US', 'cs_CZ', 'de_DE', 'es_ES', 'pl_PL', 'sk_SK']).optional(),
 		timezone: z.string().optional(),
 		time_format: z.enum(['12h', '24h']).optional(),
 		temperature_unit: z.enum(['celsius', 'fahrenheit']).optional(),
@@ -49,7 +49,7 @@ export const SystemConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Confi
 export const SystemConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(SYSTEM_MODULE_NAME),
-		language: z.enum(['en_US', 'cs_CZ']),
+		language: z.enum(['en_US', 'cs_CZ', 'de_DE', 'es_ES', 'pl_PL', 'sk_SK']),
 		timezone: z.string(),
 		time_format: z.enum(['12h', '24h']),
 		temperature_unit: z.enum(['celsius', 'fahrenheit']),

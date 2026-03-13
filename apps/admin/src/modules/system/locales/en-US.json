@@ -142,7 +142,11 @@
         "placeholder": "Select language",
         "values": {
           "english": "English",
-          "czech": "Czech"
+          "czech": "Czech",
+          "german": "German",
+          "spanish": "Spanish",
+          "polish": "Polish",
+          "slovak": "Slovak"
         },
         "validation": {
           "required": "Language is required"

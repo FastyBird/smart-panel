@@ -2,7 +2,11 @@ import 'package:fastybird_smart_panel/core/utils/enum.dart';
 
 enum Language {
   english('en_US'),
-  czech('cs_CZ');
+  czech('cs_CZ'),
+  german('de_DE'),
+  spanish('es_ES'),
+  polish('pl_PL'),
+  slovak('sk_SK');
 
   final String value;
 

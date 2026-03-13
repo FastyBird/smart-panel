@@ -31,6 +31,22 @@
 					:label="t('systemModule.fields.config.language.values.czech')"
 					value="cs_CZ"
 				/>
+				<el-option
+					:label="t('systemModule.fields.config.language.values.german')"
+					value="de_DE"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.language.values.spanish')"
+					value="es_ES"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.language.values.polish')"
+					value="pl_PL"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.language.values.slovak')"
+					value="sk_SK"
+				/>
 			</el-select>
 		</el-form-item>
 
