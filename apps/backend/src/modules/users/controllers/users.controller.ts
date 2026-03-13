@@ -266,8 +266,11 @@ export class UsersController {
 
 		const { auth } = req;
 
+		// Resolve the authenticated user's ID (works for both access tokens and long-live tokens)
+		const authenticatedUserId = auth?.type === 'user' ? auth.id : auth?.type === 'token' ? auth.ownerId : null;
+
 		// Prevent user from deleting themselves
-		if (auth && auth.type === 'user' && auth.id === id) {
+		if (authenticatedUserId !== null && authenticatedUserId === id) {
 			throw new UnprocessableEntityException('You cannot delete your own account');
 		}
 
