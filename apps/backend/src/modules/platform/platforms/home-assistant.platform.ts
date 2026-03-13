@@ -1,11 +1,11 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 import { PlatformException } from '../platform.exceptions';
 
 import { GenericPlatform } from './generic.platform';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export class HomeAssistantPlatform extends GenericPlatform {
 	private readonly supervisorToken: string | null;
@@ -40,9 +40,16 @@ export class HomeAssistantPlatform extends GenericPlatform {
 		const url = `${this.supervisorUrl}${endpoint}`;
 
 		try {
-			const { stdout } = await execAsync(
-				`curl -s -X ${method} -H "Authorization: Bearer ${this.supervisorToken}" -H "Content-Type: application/json" "${url}"`,
-			);
+			const { stdout } = await execFileAsync('curl', [
+				'-s',
+				'-X',
+				method,
+				'-H',
+				`Authorization: Bearer ${this.supervisorToken}`,
+				'-H',
+				'Content-Type: application/json',
+				url,
+			]);
 
 			return stdout;
 		} catch (error) {

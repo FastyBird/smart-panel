@@ -110,7 +110,7 @@ export class PlatformService {
 		const envPlatformType = process.env[PLATFORM_TYPE_ENV]?.toLowerCase();
 
 		if (envPlatformType) {
-			const platformType = Object.values(PlatformType).find((t) => t === envPlatformType);
+			const platformType = Object.values(PlatformType).find((t: string) => t === envPlatformType);
 
 			if (platformType) {
 				this.logger.log(`Platform type set via ${PLATFORM_TYPE_ENV} env var: ${platformType}`);
@@ -140,12 +140,12 @@ export class PlatformService {
 		) {
 			this.logger.log('Raspberry Pi platform detected');
 
-			return { platform: new RaspberryPlatform(), type: PlatformType.RASPBERRY };
+			return { platform: this.createPlatform(PlatformType.RASPBERRY), type: PlatformType.RASPBERRY };
 		}
 
 		this.logger.log('Generic platform detected');
 
-		return { platform: new GenericPlatform(), type: PlatformType.GENERIC };
+		return { platform: this.createPlatform(PlatformType.GENERIC), type: PlatformType.GENERIC };
 	}
 
 	private createPlatform(type: PlatformType): Platform {
