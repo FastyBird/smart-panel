@@ -1,8 +1,8 @@
 <template>
 	<div class="flex flex-row items-center align-center w-full h-full">
 		<div class="mx-a w-[25rem]">
-			<el-card
-				v-if="isMDDevice"
+			<component
+				:is="isMDDevice ? ElCard : 'div'"
 				class="mb-5"
 			>
 				<div class="block w-[8rem] my-0 mx-a">
@@ -39,44 +39,7 @@
 				</h1>
 
 				<router-view />
-			</el-card>
-
-			<div
-				v-else
-				class="mb-5"
-			>
-				<div class="block w-[8rem] my-0 mx-a">
-					<logo class="fill-brand-primary" />
-				</div>
-
-				<div class="flex flex-col items-center my-6">
-					<user-avatar
-						:size="80"
-						:email="accountManager?.details.value?.email"
-						class="mb-3"
-					/>
-
-					<span
-						v-if="accountManager?.details.value?.name"
-						class="text-lg font-500"
-					>
-						{{ accountManager.details.value.name }}
-					</span>
-
-					<span
-						v-if="accountManager?.details.value?.email"
-						class="text-sm text-gray-500"
-					>
-						{{ accountManager.details.value.email }}
-					</span>
-				</div>
-
-				<h1 class="text-center capitalize mx-0 mb-6 mt-0 font-300 font-size-[1.4rem]">
-					{{ t('authModule.headings.lockScreen') }}
-				</h1>
-
-				<router-view />
-			</div>
+			</component>
 
 			<div class="text-center">
 				<div

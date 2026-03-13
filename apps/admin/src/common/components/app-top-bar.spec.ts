@@ -36,9 +36,11 @@ vi.mock('../services/account-manager', () => ({
 			username: 'johndoe',
 		})),
 		signOut: vi.fn(),
+		lock: vi.fn(),
 		routes: {
 			signIn: 'sign-in',
 			signUp: 'sign-up',
+			lock: 'lock-screen',
 		},
 	}),
 }));

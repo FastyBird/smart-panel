@@ -15,6 +15,14 @@ const lockedGuard = (accountManager: IAccountManager | undefined, to: RouteRecor
 	const isSignedIn = accountManager.isSignedIn.value;
 	const isLockRoute = to.name === RouteNames.LOCK || to.name === RouteNames.LOCK_SCREEN;
 
+	// If locked but session expired, clear stale lock and let the
+	// authenticated guard redirect to sign-in
+	if (isLocked && !isSignedIn) {
+		accountManager.unlock?.();
+
+		return true;
+	}
+
 	// If user is locked and signed in, redirect to lock screen (unless already there)
 	if (isLocked && isSignedIn && !isLockRoute) {
 		return { name: RouteNames.LOCK_SCREEN };
