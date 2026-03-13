@@ -157,6 +157,16 @@ class SystemModuleService {
     );
 
     ErrorReporter.instance.clearApiClient();
+
+    if (locator.isRegistered<SystemService>()) {
+      locator.unregister<SystemService>();
+    }
+    if (locator.isRegistered<ThrottleStatusRepository>()) {
+      locator.unregister<ThrottleStatusRepository>();
+    }
+    if (locator.isRegistered<SystemInfoRepository>()) {
+      locator.unregister<SystemInfoRepository>();
+    }
   }
 
   /// Check if the system is in gateway mode (display is separate from backend)

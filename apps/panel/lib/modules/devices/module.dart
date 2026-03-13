@@ -156,6 +156,34 @@ class DevicesModuleService {
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    if (locator.isRegistered<DevicesService>()) {
+      locator.unregister<DevicesService>();
+    }
+    if (locator.isRegistered<DeviceControlStateService>()) {
+      locator.unregister<DeviceControlStateService>();
+    }
+    if (locator.isRegistered<RoleControlStateRepository>()) {
+      locator.unregister<RoleControlStateRepository>();
+    }
+    if (locator.isRegistered<DeviceValidationRepository>()) {
+      locator.unregister<DeviceValidationRepository>();
+    }
+    if (locator.isRegistered<ChannelPropertiesRepository>()) {
+      locator.unregister<ChannelPropertiesRepository>();
+    }
+    if (locator.isRegistered<ChannelControlsRepository>()) {
+      locator.unregister<ChannelControlsRepository>();
+    }
+    if (locator.isRegistered<ChannelsRepository>()) {
+      locator.unregister<ChannelsRepository>();
+    }
+    if (locator.isRegistered<DeviceControlsRepository>()) {
+      locator.unregister<DeviceControlsRepository>();
+    }
+    if (locator.isRegistered<DevicesRepository>()) {
+      locator.unregister<DevicesRepository>();
+    }
   }
 
   /// ////////////////

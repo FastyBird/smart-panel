@@ -149,6 +149,31 @@ class SpacesModuleService {
       DevicesModuleConstants.deviceUpdatedEvent,
       _deviceSocketEventHandler,
     );
+
+    if (locator.isRegistered<SpacesService>()) {
+      locator.unregister<SpacesService>();
+    }
+    if (locator.isRegistered<MediaActivityService>()) {
+      locator.unregister<MediaActivityService>();
+    }
+    if (locator.isRegistered<MediaActivityRepository>()) {
+      locator.unregister<MediaActivityRepository>();
+    }
+    if (locator.isRegistered<SpaceStateRepository>()) {
+      locator.unregister<SpaceStateRepository>();
+    }
+    if (locator.isRegistered<CoversTargetsRepository>()) {
+      locator.unregister<CoversTargetsRepository>();
+    }
+    if (locator.isRegistered<ClimateTargetsRepository>()) {
+      locator.unregister<ClimateTargetsRepository>();
+    }
+    if (locator.isRegistered<LightTargetsRepository>()) {
+      locator.unregister<LightTargetsRepository>();
+    }
+    if (locator.isRegistered<SpacesRepository>()) {
+      locator.unregister<SpacesRepository>();
+    }
   }
 
   /// ////////////////

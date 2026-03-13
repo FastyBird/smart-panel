@@ -248,6 +248,22 @@ class WeatherModuleService {
       WeatherModuleConstants.locationDeletedEvent,
       _locationDeletedHandler,
     );
+
+    if (locator.isRegistered<WeatherService>()) {
+      locator.unregister<WeatherService>();
+    }
+    if (locator.isRegistered<CurrentWeatherRepository>()) {
+      locator.unregister<CurrentWeatherRepository>();
+    }
+    if (locator.isRegistered<ForecastWeatherRepository>()) {
+      locator.unregister<ForecastWeatherRepository>();
+    }
+    if (locator.isRegistered<HourlyForecastWeatherRepository>()) {
+      locator.unregister<HourlyForecastWeatherRepository>();
+    }
+    if (locator.isRegistered<LocationsRepository>()) {
+      locator.unregister<LocationsRepository>();
+    }
   }
 
   Future<void> _initializeLocations() async {

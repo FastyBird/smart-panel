@@ -174,6 +174,16 @@ class BuddyModuleService {
 
 		_buddyService.dispose();
 		_buddyRepository.dispose();
+
+		if (locator.isRegistered<VoiceActivationService>()) {
+			locator.unregister<VoiceActivationService>();
+		}
+		if (locator.isRegistered<BuddyService>()) {
+			locator.unregister<BuddyService>();
+		}
+		if (locator.isRegistered<BuddyRepository>()) {
+			locator.unregister<BuddyRepository>();
+		}
 	}
 
 	void _socketEventHandler(String event, Map<String, dynamic> payload) {
