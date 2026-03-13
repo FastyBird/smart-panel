@@ -111,6 +111,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 		try {
 			_scenesService = locator<ScenesService>();
+			_scenesService?.addListener(_onScenesDataChanged);
 		} catch (_) {}
 
 		try {
@@ -157,6 +158,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
+	void _onScenesDataChanged() {
+		// Scenes data updated (created, deleted, or modified via WS), rebuild model
+		if (mounted) {
+			_rebuildModel();
+		}
+	}
+
 	Future<void> _refreshLiveData() async {
 		await _fetchLiveDeviceData();
 		if (mounted) {
@@ -170,6 +178,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		_optimisticCleanupTimer?.cancel();
 		_deckService.removeListener(_onDeckServiceChanged);
 		_devicesService?.removeListener(_onDevicesDataChanged);
+		_scenesService?.removeListener(_onScenesDataChanged);
 		_spacesService?.removeListener(_onSpacesDataChanged);
 		_mediaActivityService?.removeListener(_onSpacesDataChanged);
 		super.dispose();
@@ -1058,12 +1067,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					),
 
 				// Scene pills row (portrait only — landscape shows them on the sky panel)
-				if (isPortrait && model.hasScenes) ...[
+				if (isPortrait && model.hasScenes)
 					Padding(
 						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pMd),
 						child: _buildScenePills(context, isDark, model),
-					),
-				],
+					)
+				else if (isPortrait)
+					SizedBox(height: AppSpacings.pMd),
 
 				// Domain cards grid
 				if (model.domainCards.isNotEmpty)
