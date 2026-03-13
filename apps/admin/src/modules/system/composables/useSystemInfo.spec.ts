@@ -68,14 +68,9 @@ const mockAudio: ISystemInfo = {
 	},
 };
 
-vi.mock('../../../common', async () => {
-	const actual = await vi.importActual('../../../common');
-
-	return {
-		...actual,
-		injectStoresManager: vi.fn(),
-	};
-});
+vi.mock('../../../common', () => ({
+	injectStoresManager: vi.fn(),
+}));
 
 describe('useSystemInfo', () => {
 	let get: Mock;

@@ -43,10 +43,10 @@ const mockGetPlugins = vi.fn().mockReturnValue([
 ]);
 
 vi.mock('../../../common', async () => {
-	const actual = await vi.importActual('../../../common');
+	const utils = await vi.importActual('../../../common/utils/utils');
 
 	return {
-		...actual,
+		...utils,
 		useBackend: vi.fn(() => ({
 			client: mockBackendClient,
 		})),
