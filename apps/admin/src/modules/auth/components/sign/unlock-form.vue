@@ -32,21 +32,13 @@
 			{{ t('authModule.buttons.unlock.title') }}
 		</el-button>
 
-		<div class="flex flex-row justify-between items-center mt-4">
+		<div class="flex flex-row justify-center items-center mt-4">
 			<el-button
 				type="danger"
 				link
 				@click="onSignOut"
 			>
 				{{ t('authModule.buttons.signOut.title') }}
-			</el-button>
-
-			<el-button
-				type="info"
-				link
-				@click="onSignInAsOther"
-			>
-				{{ t('authModule.buttons.signInAsOther.title') }}
 			</el-button>
 		</div>
 	</el-form>
@@ -77,7 +69,6 @@ const emit = defineEmits<{
 	(e: 'update:remoteFormResult', remoteFormResult: FormResultType): void;
 	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
 	(e: 'signOut'): void;
-	(e: 'signInAsOther'): void;
 }>();
 
 const { t } = useI18n();
@@ -128,10 +119,6 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 
 const onSignOut = (): void => {
 	emit('signOut');
-};
-
-const onSignInAsOther = (): void => {
-	emit('signInAsOther');
 };
 
 onMounted((): void => {

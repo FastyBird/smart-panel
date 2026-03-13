@@ -2,7 +2,6 @@
 	<unlock-form
 		v-model:remote-form-result="remoteFormResult"
 		@sign-out="onSignOut"
-		@sign-in-as-other="onSignInAsOther"
 	/>
 </template>
 
@@ -54,14 +53,6 @@ const onSignOut = (): void => {
 		accountManager.signOut();
 
 		router.push({ name: accountManager.routes.signIn });
-	}
-};
-
-const onSignInAsOther = (): void => {
-	if (accountManager) {
-		accountManager.signOut();
-
-		router.push({ name: accountManager.routes.signUp });
 	}
 };
 
