@@ -194,19 +194,19 @@ export class UsersController {
 		const { auth } = req;
 
 		// Prevent users from changing their own role
-		if (auth && auth.type === 'user' && auth.id === id && updateDto.data.role !== undefined) {
+		if (auth && auth.type === 'user' && auth.id === id && updateDto.data.role !== undefined && updateDto.data.role !== user.role) {
 			throw new UnprocessableEntityException('You cannot change your own role');
 		}
 
-		// Prevent assigning owner role to any user
-		if (updateDto.data.role === UserRole.OWNER) {
+		// Prevent assigning owner role to any user who is not already the owner
+		if (updateDto.data.role === UserRole.OWNER && user.role !== UserRole.OWNER) {
 			this.logger.warn('Attempted to assign owner role');
 
 			throw new UnprocessableEntityException('The owner role cannot be assigned to other users');
 		}
 
 		// Prevent changing the role of the owner account
-		if (user.role === UserRole.OWNER && updateDto.data.role !== undefined) {
+		if (user.role === UserRole.OWNER && updateDto.data.role !== undefined && updateDto.data.role !== UserRole.OWNER) {
 			this.logger.warn('Attempted to change owner role');
 
 			throw new UnprocessableEntityException('The owner role cannot be changed');
