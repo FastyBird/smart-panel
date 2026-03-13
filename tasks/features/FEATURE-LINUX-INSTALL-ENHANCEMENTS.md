@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: FEATURE-LINUX-DEVICE-INSTALLATION
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -48,14 +48,14 @@ I want enhanced setup automation, ARM tarball builds for production releases, an
 - [x] Build ARMv7 (32-bit) tarball for production releases
 - [x] Build ARM64 (64-bit) tarball for production releases
 - [x] Attach ARM tarballs to GitHub releases
-- [ ] Update documentation with manual tarball installation
+- [x] Update documentation with manual tarball installation
 
 ### 4.2 Docker Support
 
 - [x] Create `Dockerfile` for Smart Panel
 - [x] Create `docker-compose.yml` with backend + admin
 - [x] Include InfluxDB service in docker-compose (optional)
-- [ ] Document Docker installation method
+- [x] Document Docker installation method
 - [x] Publish Docker image to GitHub Container Registry
 - [x] Add Docker build to release workflows
 

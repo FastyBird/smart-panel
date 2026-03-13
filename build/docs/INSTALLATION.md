@@ -55,6 +55,69 @@ This script will:
 - Install Smart Panel globally via npm
 - Configure and start the systemd service
 
+### Option 3: Manual Tarball Install
+
+For environments where npm is not available or you prefer a self-contained installation, download the
+pre-built tarball from GitHub Releases.
+
+Choose the tarball that matches your architecture:
+
+| Architecture | Tarball | Typical devices |
+|-------------|---------|-----------------|
+| ARMv7 (32-bit) | `smart-panel.tar.gz` | Raspberry Pi 3B+, Pi Zero 2W (32-bit OS) |
+| ARM64 (64-bit) | `smart-panel-arm64.tar.gz` | Raspberry Pi 4/5, Pi Zero 2W (64-bit OS) |
+
+> **Tip:** Check your architecture with `uname -m`. `armv7l` = ARMv7, `aarch64` = ARM64.
+
+```bash
+# Create installation directory
+sudo mkdir -p /opt/smart-panel
+sudo chown -R ${USER}:${USER} /opt/smart-panel
+cd /opt/smart-panel
+
+# Download (ARMv7 example — replace with smart-panel-arm64.tar.gz for 64-bit)
+curl --http1.1 -L -C - -o smart-panel.tar.gz \
+    https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+tar -xzf smart-panel.tar.gz -C .
+rm smart-panel.tar.gz
+
+# Optional: verify download integrity
+curl -LO https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.sha256
+sha256sum -c smart-panel.sha256
+
+# Create data directory
+sudo mkdir -p /var/smart-panel
+sudo chown -R ${USER}:${USER} /var/smart-panel
+
+# Run database migrations
+npm run migration:run
+```
+
+Then create a systemd service at `/etc/systemd/system/smart-panel-backend.service`:
+
+```ini
+[Unit]
+Description=Smart Panel Backend & Admin Service
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/opt/smart-panel
+ExecStart=npm start
+Restart=always
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable smart-panel-backend
+sudo systemctl start smart-panel-backend
+```
+
 ## Installation Options
 
 The `smart-panel-service install` command supports several options:
@@ -285,6 +348,87 @@ sudo smart-panel-service uninstall --force
 sudo npm uninstall -g @fastybird/smart-panel
 sudo npm install -g @fastybird/smart-panel
 sudo smart-panel-service install
+```
+
+---
+
+# Docker Installation
+
+If you prefer running Smart Panel in a container, Docker is the quickest way to get a production server running.
+
+## Prerequisites
+
+- Linux host with [Docker](https://docs.docker.com/engine/install/) and Docker Compose installed
+- At least 512 MB RAM and 300 MB free disk space
+
+## Quick Start
+
+```bash
+# Create a project directory
+mkdir -p ~/smart-panel && cd ~/smart-panel
+
+# Download the production Docker Compose file
+curl -sL "https://raw.githubusercontent.com/FastyBird/smart-panel/main/docker/prod/docker-compose.yml" \
+    -o docker-compose.yml
+
+# Generate a JWT secret and save it
+export FB_TOKEN_SECRET=$(openssl rand -base64 32)
+echo "FB_TOKEN_SECRET=${FB_TOKEN_SECRET}" > .env
+
+# Start Smart Panel
+docker compose up -d
+```
+
+The container runs database migrations on first startup and then starts the server. Access the admin interface at `http://<host-ip>:3000`.
+
+## With InfluxDB
+
+To include InfluxDB for time-series data (temperature history, energy monitoring):
+
+```bash
+curl -sL "https://raw.githubusercontent.com/FastyBird/smart-panel/main/docker/prod/docker-compose.influxdb.yml" \
+    -o docker-compose.influxdb.yml
+docker compose -f docker-compose.yml -f docker-compose.influxdb.yml up -d
+```
+
+## Configuration
+
+Set environment variables in your `.env` file:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_BACKEND_PORT` | `3000` | HTTP server port (host-side mapping) |
+| `FB_TOKEN_SECRET` | **Required** | JWT authentication secret |
+| `FB_MDNS_ENABLED` | `true` | Enable mDNS discovery |
+| `FB_OPENWEATHERMAP_API_KEY` | - | OpenWeatherMap API key |
+
+## Data Persistence
+
+Application data is stored in a Docker named volume `smart-panel-data`. Back up with:
+
+```bash
+docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
+    tar czf /backup/smart-panel-backup.tar.gz -C /data .
+```
+
+## Updating
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+## Container Management
+
+```bash
+# View logs
+docker compose logs -f smart-panel
+
+# Restart
+docker compose restart smart-panel
+
+# Stop
+docker compose down
 ```
 
 ---

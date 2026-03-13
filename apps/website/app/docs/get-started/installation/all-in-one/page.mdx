@@ -203,9 +203,31 @@ If you prefer full control, follow these detailed steps.
 	cd /opt/smart-panel
 	```
 
+	Download the tarball that matches your device's architecture:
+
+	| Architecture | Tarball | Typical devices |
+	|-------------|---------|-----------------|
+	| ARMv7 (32-bit) | `smart-panel.tar.gz` | Raspberry Pi 3B+, Pi Zero 2W (32-bit OS) |
+	| ARM64 (64-bit) | `smart-panel-arm64.tar.gz` | Raspberry Pi 4/5, Pi Zero 2W (64-bit OS) |
+
+	<Callout type="info">
+		Check your architecture with `uname -m`. If it shows `armv7l`, use the ARMv7 tarball.
+		If it shows `aarch64`, use the ARM64 tarball.
+	</Callout>
+
 	```bash copy
+	# For ARMv7 (32-bit):
 	curl --http1.1 -L -C - -o smart-panel.tar.gz \
 		https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+
+	# For ARM64 (64-bit):
+	# curl --http1.1 -L -C - -o smart-panel.tar.gz \
+	#     https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-arm64.tar.gz
+	```
+
+	Extract the tarball:
+
+	```bash copy
 	tar -xzf smart-panel.tar.gz -C .
 	rm smart-panel.tar.gz
 	```
