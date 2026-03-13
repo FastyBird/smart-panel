@@ -13,7 +13,7 @@
 			<template #icon>
 				<icon
 					icon="mdi:cellphone-arrow-down"
-					class="w[18px] h[18px]"
+					class="w-[18px] h-[18px]"
 				/>
 			</template>
 		</el-button>

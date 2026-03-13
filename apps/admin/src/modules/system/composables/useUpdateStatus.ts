@@ -97,9 +97,15 @@ const applyStatusEvent = (payload: Record<string, unknown>): void => {
 	installing.value = isUpdating.value;
 };
 
-// Module-level singleton subscription — registered once, never unsubscribed.
-// Since the refs are shared singletons, a single listener is sufficient.
-onUpdateEvent(applyStatusEvent);
+// Module-level singleton subscription — keep the unsubscribe handle so Vite HMR
+// can clean up the stale listener before re-registering on module re-evaluation.
+let unsubscribe = onUpdateEvent(applyStatusEvent);
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => {
+		unsubscribe();
+	});
+}
 
 export const useUpdateStatus = (): IUseUpdateStatus => {
 	const backend = useBackend();
