@@ -221,13 +221,14 @@ const isStopped = computed<boolean>(() => {
 });
 
 const isRunning = computed<boolean>(() => {
-	return props.service.state === ExtensionsModuleServiceState.started;
+	return props.service.state === ExtensionsModuleServiceState.started ||
+		props.service.state === ExtensionsModuleServiceState.starting;
 });
 
 // Visibility
 const canStart = computed<boolean>(() => isStopped.value);
 const canStop = computed<boolean>(() => isRunning.value);
-const canRestart = computed<boolean>(() => isRunning.value);
+const canRestart = computed<boolean>(() => props.service.state === ExtensionsModuleServiceState.started);
 
 // Action availability
 const canStartAction = computed<boolean>(() => {
@@ -235,7 +236,7 @@ const canStartAction = computed<boolean>(() => {
 });
 
 const canStopAction = computed<boolean>(() => {
-	return canStop.value && !isTransitioning.value && !props.acting;
+	return canStop.value && props.service.state !== ExtensionsModuleServiceState.stopping && !props.acting;
 });
 
 const canRestartAction = computed<boolean>(() => {
