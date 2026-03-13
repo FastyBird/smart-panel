@@ -4,8 +4,8 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../module
 import { BUDDY_TELEGRAM_PLUGIN_NAME } from '../buddy-telegram.constants';
 
 export const TelegramConfigSchema = ConfigPluginSchema.extend({
-	botToken: z.string().trim().nullable(),
-	allowedUserIds: z.string().trim().nullable(),
+	botToken: z.string().trim().nullable().default(null),
+	allowedUserIds: z.string().trim().nullable().default(null),
 });
 
 // BACKEND API

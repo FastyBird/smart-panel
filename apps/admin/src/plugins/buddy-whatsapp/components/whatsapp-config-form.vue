@@ -151,13 +151,13 @@ const fetchStatus = async (): Promise<void> => {
 	try {
 		const { data } = await backend.client.GET(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/status` as never);
 
-		const result = data as { status: string; qr: string | null } | undefined;
+		const result = data as { data: {status: string; qr: string | null } } | undefined;
 
 		if (result) {
-			connectionStatus.value = result.status;
+			connectionStatus.value = result.data.status;
 
-			if (result.qr) {
-				qrDataUrl.value = await QRCode.toDataURL(result.qr, { width: 260, margin: 2 });
+			if (result.data.qr) {
+				qrDataUrl.value = await QRCode.toDataURL(result.data.qr, { width: 260, margin: 2 });
 			} else {
 				qrDataUrl.value = null;
 			}

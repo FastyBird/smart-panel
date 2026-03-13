@@ -21,361 +21,540 @@
 			/>
 		</el-steps>
 
+		<el-alert
+			v-if="currentStepName === 'provider'"
+			type="info"
+			:title="t('buddyModule.wizard.providerDescription')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
+		<el-alert
+			v-else-if="currentStepName === 'voice'"
+			type="info"
+			:title="t('buddyModule.wizard.voiceDescription')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
+		<el-alert
+			v-else-if="currentStepName === 'messaging'"
+			type="info"
+			:title="t('buddyModule.wizard.messagingDescription')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		/>
+
 		<div
 			v-loading="isLoading"
 			class="min-h-[200px]"
 		>
 			<!-- Step 1: LLM Provider Selection -->
 			<template v-if="currentStepName === 'provider'">
-				<p class="text-[var(--el-text-color-secondary)] mb-4">
-					{{ t('buddyModule.wizard.providerDescription') }}
-				</p>
-
-				<div
-					v-if="llmProviders.length === 0 && !isLoading"
-					class="text-center py-8"
-				>
-					<el-empty :description="t('buddyModule.wizard.noProvidersAvailable')" />
-				</div>
-
-				<div
-					v-else
-					class="flex flex-col gap-2"
-				>
+				<el-scrollbar max-height="40vh">
 					<div
-						v-for="provider in llmProviders"
-						:key="provider.type"
-						class="border border-solid rounded-lg p-3 cursor-pointer transition-all"
-						:class="[
-							selectedLlmProvider === provider.type
-								? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-								: 'border-[var(--el-border-color)] hover:border-[var(--el-color-primary-light-5)]',
-							!provider.enabled ? 'opacity-50 cursor-not-allowed' : '',
-						]"
-						@click="provider.enabled ? selectLlmProvider(provider.type) : undefined"
+						v-if="llmProviders.length === 0 && !isLoading"
+						class="text-center py-8"
 					>
-						<div class="flex items-center justify-between">
-							<div>
-								<span class="font-medium">{{ provider.name }}</span>
-								<span
-									v-if="provider.default_model"
-									class="text-xs text-[var(--el-text-color-secondary)] ml-2"
+						<el-empty :description="t('buddyModule.wizard.noProvidersAvailable')" />
+					</div>
+
+					<div
+						v-else
+						class="flex flex-col gap-3"
+					>
+						<div
+							v-for="provider in llmProviders"
+							:key="provider.type"
+							class="rounded-lg border transition-all duration-300"
+							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+						>
+							<div class="flex items-center gap-3 p-3">
+								<el-radio
+									v-model="selectedLlmProvider"
+									:value="provider.type"
+									:disabled="!provider.enabled"
+									class="mr-0! shrink-0"
+								/>
+								<div
+									class="flex items-center gap-3 flex-1 min-w-0"
+									:class="provider.enabled ? 'cursor-pointer' : ''"
+									@click="provider.enabled && (selectedLlmProvider = provider.type)"
 								>
-									{{ provider.default_model }}
-								</span>
+									<el-icon
+										:size="32"
+										class="shrink-0"
+										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+									>
+										<icon :icon="getPluginIcon(provider.type)" />
+									</el-icon>
+									<div class="flex-1 min-w-0">
+										<div class="font-medium">
+											{{ provider.name }}
+											<span
+												v-if="provider.default_model"
+												class="text-xs text-[var(--el-text-color-secondary)] ml-2"
+											>
+												{{ provider.default_model }}
+											</span>
+										</div>
+										<div
+											v-if="provider.description"
+											class="text-xs text-gray-500 truncate"
+										>
+											{{ provider.description }}
+										</div>
+									</div>
+								</div>
+								<el-switch
+									:model-value="provider.enabled"
+									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
+									:loading="isTogglingPlugin(provider.type)"
+									@update:model-value="(val: string | number | boolean) => toggleLlmPlugin(provider.type, !!val)"
+								/>
 							</div>
-							<div class="flex items-center gap-2">
-								<el-tag
-									v-if="!provider.enabled"
+
+							<!-- Expanded section when enabled -->
+							<div
+								v-if="provider.enabled"
+								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+							>
+								<div class="flex items-center gap-2 text-xs min-w-0">
+									<template v-if="provider.configured">
+										<el-icon
+											:size="14"
+											class="text-green-500"
+										>
+											<icon icon="mdi:check-circle" />
+										</el-icon>
+										<span class="text-green-600">
+											{{ t('buddyModule.wizard.configured') }}
+										</span>
+									</template>
+									<template v-else>
+										<el-icon
+											:size="14"
+											class="text-orange-500"
+										>
+											<icon icon="mdi:alert-circle-outline" />
+										</el-icon>
+										<span class="text-orange-600">
+											{{ t('buddyModule.wizard.configRequired') }}
+										</span>
+									</template>
+								</div>
+								<el-button
+									v-if="hasPluginConfigForm(provider.type)"
 									size="small"
-									type="info"
+									text
+									type="primary"
+									@click="openConfigDialog(provider.type, provider.name)"
 								>
-									{{ t('buddyModule.wizard.disabled') }}
-								</el-tag>
-								<el-tag
-									v-else-if="provider.configured"
-									size="small"
-									type="success"
-								>
-									{{ t('buddyModule.wizard.configured') }}
-								</el-tag>
-								<el-tag
-									v-else
-									size="small"
-									type="warning"
-								>
-									{{ t('buddyModule.wizard.needsSetup') }}
-								</el-tag>
-								<el-icon
-									v-if="selectedLlmProvider === provider.type"
-									color="var(--el-color-primary)"
-								>
-									<icon icon="mdi:check-circle" />
-								</el-icon>
+									<el-icon
+										:size="14"
+										class="mr-1"
+									>
+										<icon icon="mdi:cog-outline" />
+									</el-icon>
+									{{ t('buddyModule.wizard.buttons.configure') }}
+								</el-button>
 							</div>
-						</div>
-						<div class="text-sm text-[var(--el-text-color-secondary)] mt-1">
-							{{ provider.description }}
 						</div>
 					</div>
-				</div>
-
-				<!-- Inline config form for selected provider that needs configuration -->
-				<template v-if="selectedLlmProvider && selectedLlmProviderNeedsConfig">
-					<el-divider />
-					<h4 class="m-0 mb-3">
-						{{ t('buddyModule.wizard.configureProvider', { name: selectedLlmProviderName }) }}
-					</h4>
-					<el-scrollbar max-height="40vh">
-						<component
-							:is="selectedLlmConfigForm"
-							v-if="selectedLlmConfigPlugin && selectedLlmConfigForm"
-							v-model:remote-form-submit="llmFormSubmit"
-							v-model:remote-form-result="llmFormResult"
-							v-model:remote-form-reset="llmFormReset"
-							v-model:remote-form-changed="llmFormChanged"
-							:config="selectedLlmConfigPlugin"
-						/>
-					</el-scrollbar>
-				</template>
+				</el-scrollbar>
 			</template>
 
 			<!-- Step 2: Voice (TTS / STT) -->
 			<template v-if="currentStepName === 'voice'">
-				<p class="text-[var(--el-text-color-secondary)] mb-4">
-					{{ t('buddyModule.wizard.voiceDescription') }}
-				</p>
-
-				<!-- TTS -->
-				<h4 class="m-0 mb-2">
-					{{ t('buddyModule.wizard.ttsHeading') }}
-				</h4>
-				<div class="flex flex-col gap-2 mb-4">
-					<div
-						v-for="provider in ttsProviders"
-						:key="provider.type"
-						class="border border-solid rounded-lg p-3 cursor-pointer transition-all"
-						:class="[
-							selectedTtsProvider === provider.type
-								? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-								: 'border-[var(--el-border-color)] hover:border-[var(--el-color-primary-light-5)]',
-							!provider.enabled ? 'opacity-50 cursor-not-allowed' : '',
-						]"
-						@click="provider.enabled ? selectTtsProvider(provider.type) : undefined"
-					>
-						<div class="flex items-center justify-between">
-							<span class="font-medium">{{ provider.name }}</span>
-							<div class="flex items-center gap-2">
-								<el-tag
-									v-if="!provider.enabled"
-									size="small"
-									type="info"
-								>
-									{{ t('buddyModule.wizard.disabled') }}
-								</el-tag>
-								<el-tag
-									v-else-if="provider.configured"
-									size="small"
-									type="success"
-								>
-									{{ t('buddyModule.wizard.configured') }}
-								</el-tag>
-								<el-tag
-									v-else
-									size="small"
-									type="warning"
-								>
-									{{ t('buddyModule.wizard.needsSetup') }}
-								</el-tag>
-								<el-icon
-									v-if="selectedTtsProvider === provider.type"
-									color="var(--el-color-primary)"
-								>
-									<icon icon="mdi:check-circle" />
-								</el-icon>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- STT -->
-				<h4 class="m-0 mb-2">
-					{{ t('buddyModule.wizard.sttHeading') }}
-				</h4>
-				<div class="flex flex-col gap-2">
-					<div
-						v-for="provider in sttProviders"
-						:key="provider.type"
-						class="border border-solid rounded-lg p-3 cursor-pointer transition-all"
-						:class="[
-							selectedSttProvider === provider.type
-								? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-								: 'border-[var(--el-border-color)] hover:border-[var(--el-color-primary-light-5)]',
-							!provider.enabled ? 'opacity-50 cursor-not-allowed' : '',
-						]"
-						@click="provider.enabled ? selectSttProvider(provider.type) : undefined"
-					>
-						<div class="flex items-center justify-between">
-							<span class="font-medium">{{ provider.name }}</span>
-							<div class="flex items-center gap-2">
-								<el-tag
-									v-if="!provider.enabled"
-									size="small"
-									type="info"
-								>
-									{{ t('buddyModule.wizard.disabled') }}
-								</el-tag>
-								<el-tag
-									v-else-if="provider.configured"
-									size="small"
-									type="success"
-								>
-									{{ t('buddyModule.wizard.configured') }}
-								</el-tag>
-								<el-tag
-									v-else
-									size="small"
-									type="warning"
-								>
-									{{ t('buddyModule.wizard.needsSetup') }}
-								</el-tag>
-								<el-icon
-									v-if="selectedSttProvider === provider.type"
-									color="var(--el-color-primary)"
-								>
-									<icon icon="mdi:check-circle" />
-								</el-icon>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Inline config form for selected voice provider that needs configuration -->
-				<template v-if="activeVoiceProviderNeedsConfig && activeVoiceConfigPlugin && activeVoiceConfigForm">
-					<el-divider />
-					<h4 class="m-0 mb-3">
-						{{ t('buddyModule.wizard.configureProvider', { name: activeVoiceProviderName }) }}
+				<el-scrollbar max-height="40vh">
+					<!-- TTS -->
+					<h4 class="m-0 mb-2">
+						{{ t('buddyModule.wizard.ttsHeading') }}
 					</h4>
-					<el-scrollbar max-height="40vh">
-						<component
-							:is="activeVoiceConfigForm"
-							v-model:remote-form-submit="voiceFormSubmit"
-							v-model:remote-form-result="voiceFormResult"
-							v-model:remote-form-reset="voiceFormReset"
-							v-model:remote-form-changed="voiceFormChanged"
-							:config="activeVoiceConfigPlugin"
-						/>
-					</el-scrollbar>
-				</template>
+					<div class="flex flex-col gap-3 mb-4">
+						<div
+							v-for="provider in ttsProviders"
+							:key="provider.type"
+							class="rounded-lg border transition-all duration-300"
+							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+						>
+							<div class="flex items-center gap-3 p-3">
+								<el-radio
+									v-model="selectedTtsProvider"
+									:value="provider.type"
+									:disabled="!provider.enabled"
+									class="mr-0! shrink-0"
+								/>
+								<div
+									class="flex items-center gap-3 flex-1 min-w-0"
+									:class="provider.enabled ? 'cursor-pointer' : ''"
+									@click="provider.enabled && (selectedTtsProvider = provider.type)"
+								>
+									<el-icon
+										:size="32"
+										class="shrink-0"
+										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+									>
+										<icon :icon="getPluginIcon(provider.type)" />
+									</el-icon>
+									<div class="flex-1 min-w-0">
+										<div class="font-medium">{{ provider.name }}</div>
+										<div
+											v-if="provider.description"
+											class="text-xs text-gray-500 truncate"
+										>
+											{{ provider.description }}
+										</div>
+									</div>
+								</div>
+								<el-switch
+									:model-value="provider.enabled"
+									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
+									:loading="isTogglingPlugin(provider.type)"
+									@update:model-value="(val: string | number | boolean) => toggleTtsPlugin(provider.type, !!val)"
+								/>
+							</div>
+
+							<div
+								v-if="provider.enabled"
+								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+							>
+								<div class="flex items-center gap-2 text-xs min-w-0">
+									<template v-if="provider.configured">
+										<el-icon
+											:size="14"
+											class="text-green-500"
+										>
+											<icon icon="mdi:check-circle" />
+										</el-icon>
+										<span class="text-green-600">
+											{{ t('buddyModule.wizard.configured') }}
+										</span>
+									</template>
+									<template v-else>
+										<el-icon
+											:size="14"
+											class="text-orange-500"
+										>
+											<icon icon="mdi:alert-circle-outline" />
+										</el-icon>
+										<span class="text-orange-600">
+											{{ t('buddyModule.wizard.configRequired') }}
+										</span>
+									</template>
+								</div>
+								<el-button
+									v-if="hasPluginConfigForm(provider.type)"
+									size="small"
+									text
+									type="primary"
+									@click="openConfigDialog(provider.type, provider.name)"
+								>
+									<el-icon
+										:size="14"
+										class="mr-1"
+									>
+										<icon icon="mdi:cog-outline" />
+									</el-icon>
+									{{ t('buddyModule.wizard.buttons.configure') }}
+								</el-button>
+							</div>
+						</div>
+					</div>
+
+					<!-- STT -->
+					<h4 class="m-0 mb-2">
+						{{ t('buddyModule.wizard.sttHeading') }}
+					</h4>
+					<div class="flex flex-col gap-3">
+						<div
+							v-for="provider in sttProviders"
+							:key="provider.type"
+							class="rounded-lg border transition-all duration-300"
+							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+						>
+							<div class="flex items-center gap-3 p-3">
+								<el-radio
+									v-model="selectedSttProvider"
+									:value="provider.type"
+									:disabled="!provider.enabled"
+									class="mr-0! shrink-0"
+								/>
+								<div
+									class="flex items-center gap-3 flex-1 min-w-0"
+									:class="provider.enabled ? 'cursor-pointer' : ''"
+									@click="provider.enabled && (selectedSttProvider = provider.type)"
+								>
+									<el-icon
+										:size="32"
+										class="shrink-0"
+										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+									>
+										<icon :icon="getPluginIcon(provider.type)" />
+									</el-icon>
+									<div class="flex-1 min-w-0">
+										<div class="font-medium">{{ provider.name }}</div>
+										<div
+											v-if="provider.description"
+											class="text-xs text-gray-500 truncate"
+										>
+											{{ provider.description }}
+										</div>
+									</div>
+								</div>
+								<el-switch
+									:model-value="provider.enabled"
+									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
+									:loading="isTogglingPlugin(provider.type)"
+									@update:model-value="(val: string | number | boolean) => toggleSttPlugin(provider.type, !!val)"
+								/>
+							</div>
+
+							<div
+								v-if="provider.enabled"
+								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+							>
+								<div class="flex items-center gap-2 text-xs min-w-0">
+									<template v-if="provider.configured">
+										<el-icon
+											:size="14"
+											class="text-green-500"
+										>
+											<icon icon="mdi:check-circle" />
+										</el-icon>
+										<span class="text-green-600">
+											{{ t('buddyModule.wizard.configured') }}
+										</span>
+									</template>
+									<template v-else>
+										<el-icon
+											:size="14"
+											class="text-orange-500"
+										>
+											<icon icon="mdi:alert-circle-outline" />
+										</el-icon>
+										<span class="text-orange-600">
+											{{ t('buddyModule.wizard.configRequired') }}
+										</span>
+									</template>
+								</div>
+								<el-button
+									v-if="hasPluginConfigForm(provider.type)"
+									size="small"
+									text
+									type="primary"
+									@click="openConfigDialog(provider.type, provider.name)"
+								>
+									<el-icon
+										:size="14"
+										class="mr-1"
+									>
+										<icon icon="mdi:cog-outline" />
+									</el-icon>
+									{{ t('buddyModule.wizard.buttons.configure') }}
+								</el-button>
+							</div>
+						</div>
+					</div>
+				</el-scrollbar>
 			</template>
 
 			<!-- Step 3: Messaging -->
 			<template v-if="currentStepName === 'messaging'">
-				<p class="text-[var(--el-text-color-secondary)] mb-4">
-					{{ t('buddyModule.wizard.messagingDescription') }}
-				</p>
+				<el-scrollbar max-height="40vh">
+					<div class="flex flex-col gap-3">
+						<div
+							v-for="provider in messagingProviders"
+							:key="provider.type"
+							class="rounded-lg border transition-all duration-300"
+							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+						>
+							<div class="flex items-center gap-3 p-3">
+								<el-radio
+									v-model="selectedMessagingProvider"
+									:value="provider.type"
+									:disabled="!provider.enabled"
+									class="mr-0! shrink-0"
+								/>
+								<div
+									class="flex items-center gap-3 flex-1 min-w-0"
+									:class="provider.enabled ? 'cursor-pointer' : ''"
+									@click="provider.enabled && (selectedMessagingProvider = provider.type)"
+								>
+									<el-icon
+										:size="32"
+										class="shrink-0"
+										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+									>
+										<icon :icon="getPluginIcon(provider.type)" />
+									</el-icon>
+									<div class="flex-1 min-w-0">
+										<div class="font-medium">{{ provider.name }}</div>
+										<div
+											v-if="provider.description"
+											class="text-xs text-gray-500 truncate"
+										>
+											{{ provider.description }}
+										</div>
+									</div>
+								</div>
+								<el-switch
+									:model-value="provider.enabled"
+									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
+									:loading="isTogglingPlugin(provider.type)"
+									@update:model-value="(val: string | number | boolean) => toggleMessagingPlugin(provider.type, !!val)"
+								/>
+							</div>
 
-				<div class="flex flex-col gap-2">
-					<div
-						v-for="provider in messagingProviders"
-						:key="provider.type"
-						class="border border-solid rounded-lg p-3 cursor-pointer transition-all"
-						:class="[
-							selectedMessagingProvider === provider.type
-								? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-								: 'border-[var(--el-border-color)] hover:border-[var(--el-color-primary-light-5)]',
-							!provider.enabled ? 'opacity-50 cursor-not-allowed' : '',
-						]"
-						@click="provider.enabled ? selectMessagingProvider(provider.type) : undefined"
-					>
-						<div class="flex items-center justify-between">
-							<span class="font-medium">{{ provider.name }}</span>
-							<div class="flex items-center gap-2">
-								<el-tag
-									v-if="!provider.enabled"
+							<div
+								v-if="provider.enabled"
+								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+							>
+								<div class="flex items-center gap-2 text-xs min-w-0">
+									<template v-if="provider.configured">
+										<el-icon
+											:size="14"
+											class="text-green-500"
+										>
+											<icon icon="mdi:check-circle" />
+										</el-icon>
+										<span class="text-green-600">
+											{{ t('buddyModule.wizard.configured') }}
+										</span>
+									</template>
+									<template v-else>
+										<el-icon
+											:size="14"
+											class="text-orange-500"
+										>
+											<icon icon="mdi:alert-circle-outline" />
+										</el-icon>
+										<span class="text-orange-600">
+											{{ t('buddyModule.wizard.configRequired') }}
+										</span>
+									</template>
+								</div>
+								<el-button
+									v-if="hasPluginConfigForm(provider.type)"
 									size="small"
-									type="info"
+									text
+									type="primary"
+									@click="openConfigDialog(provider.type, provider.name)"
 								>
-									{{ t('buddyModule.wizard.disabled') }}
-								</el-tag>
-								<el-tag
-									v-else-if="provider.configured"
-									size="small"
-									type="success"
-								>
-									{{ t('buddyModule.wizard.configured') }}
-								</el-tag>
-								<el-tag
-									v-else
-									size="small"
-									type="warning"
-								>
-									{{ t('buddyModule.wizard.needsSetup') }}
-								</el-tag>
-								<el-icon
-									v-if="selectedMessagingProvider === provider.type"
-									color="var(--el-color-primary)"
-								>
-									<icon icon="mdi:check-circle" />
-								</el-icon>
+									<el-icon
+										:size="14"
+										class="mr-1"
+									>
+										<icon icon="mdi:cog-outline" />
+									</el-icon>
+									{{ t('buddyModule.wizard.buttons.configure') }}
+								</el-button>
 							</div>
 						</div>
-						<div class="text-sm text-[var(--el-text-color-secondary)] mt-1">
-							{{ provider.description }}
-						</div>
 					</div>
-				</div>
-
-				<!-- Inline config form for selected messaging provider that needs configuration -->
-				<template v-if="selectedMessagingProviderNeedsConfig && selectedMessagingConfigPlugin && selectedMessagingConfigForm">
-					<el-divider />
-					<h4 class="m-0 mb-3">
-						{{ t('buddyModule.wizard.configureProvider', { name: selectedMessagingProviderName }) }}
-					</h4>
-					<el-scrollbar max-height="40vh">
-						<component
-							:is="selectedMessagingConfigForm"
-							v-model:remote-form-submit="messagingFormSubmit"
-							v-model:remote-form-result="messagingFormResult"
-							v-model:remote-form-reset="messagingFormReset"
-							v-model:remote-form-changed="messagingFormChanged"
-							:config="selectedMessagingConfigPlugin"
-						/>
-					</el-scrollbar>
-				</template>
+				</el-scrollbar>
 			</template>
 
 			<!-- Step 4: Done -->
 			<template v-if="currentStepName === 'done'">
-				<div class="text-center py-6">
+				<div class="flex flex-col items-center text-center py-8 px-4">
 					<el-icon
-						:size="48"
-						color="var(--el-color-success)"
-						class="mb-4"
+						:size="80"
+						class="mb-6 text-green-500"
 					>
 						<icon icon="mdi:check-circle-outline" />
 					</el-icon>
 
-					<h3 class="m-0 mb-2">
+					<h2 class="text-2xl font-bold mb-4">
 						{{ t('buddyModule.wizard.doneTitle') }}
-					</h3>
-					<p class="text-[var(--el-text-color-secondary)] m-0 mb-4">
-						{{ t('buddyModule.wizard.doneDescription') }}
-					</p>
+					</h2>
 
-					<div class="flex flex-col gap-2 max-w-sm mx-auto text-left">
-						<div class="flex items-center gap-2">
-							<el-icon :color="selectedLlmProvider ? 'var(--el-color-success)' : 'var(--el-color-info)'">
-								<icon :icon="selectedLlmProvider ? 'mdi:check-circle' : 'mdi:minus-circle'" />
+					<el-alert
+						type="info"
+						:title="t('buddyModule.wizard.doneDescription')"
+						:closable="false"
+						show-icon
+						class="mb-8! max-w-md"
+					/>
+
+					<div class="flex flex-col gap-3 max-w-sm w-full">
+						<!-- AI Provider -->
+						<div
+							v-if="selectedLlmProvider"
+							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+						>
+							<el-icon
+								:size="20"
+								class="text-green-500 shrink-0"
+							>
+								<icon icon="mdi:check" />
 							</el-icon>
-							<span>
-								{{ t('buddyModule.wizard.summaryLlm') }}:
-								<strong>{{ selectedLlmProviderName || t('buddyModule.wizard.notSelected') }}</strong>
-							</span>
+							<span>{{ t('buddyModule.wizard.summaryLlm', { name: selectedLlmProviderName }) }}</span>
 						</div>
 						<div
-							v-if="hasVoiceProviders"
-							class="flex items-center gap-2"
+							v-else
+							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
 						>
-							<el-icon :color="selectedTtsProvider || selectedSttProvider ? 'var(--el-color-success)' : 'var(--el-color-info)'">
-								<icon :icon="selectedTtsProvider || selectedSttProvider ? 'mdi:check-circle' : 'mdi:minus-circle'" />
+							<el-icon
+								:size="20"
+								class="text-gray-400 shrink-0"
+							>
+								<icon icon="mdi:minus" />
 							</el-icon>
-							<span>
-								{{ t('buddyModule.wizard.summaryVoice') }}:
-								<strong>{{ voiceSummary || t('buddyModule.wizard.skipped') }}</strong>
-							</span>
+							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryLlmSkipped') }}</span>
+						</div>
+
+						<!-- Voice -->
+						<div
+							v-if="hasVoiceProviders && voiceSummary"
+							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+						>
+							<el-icon
+								:size="20"
+								class="text-green-500 shrink-0"
+							>
+								<icon icon="mdi:check" />
+							</el-icon>
+							<span>{{ t('buddyModule.wizard.summaryVoice', { summary: voiceSummary }) }}</span>
 						</div>
 						<div
-							v-if="hasMessagingProviders"
-							class="flex items-center gap-2"
+							v-else-if="hasVoiceProviders"
+							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
 						>
-							<el-icon :color="selectedMessagingProvider ? 'var(--el-color-success)' : 'var(--el-color-info)'">
-								<icon :icon="selectedMessagingProvider ? 'mdi:check-circle' : 'mdi:minus-circle'" />
+							<el-icon
+								:size="20"
+								class="text-gray-400 shrink-0"
+							>
+								<icon icon="mdi:minus" />
 							</el-icon>
-							<span>
-								{{ t('buddyModule.wizard.summaryMessaging') }}:
-								<strong>{{ selectedMessagingProviderName || t('buddyModule.wizard.skipped') }}</strong>
-							</span>
+							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryVoiceSkipped') }}</span>
+						</div>
+
+						<!-- Messaging -->
+						<div
+							v-if="hasMessagingProviders && selectedMessagingProvider"
+							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+						>
+							<el-icon
+								:size="20"
+								class="text-green-500 shrink-0"
+							>
+								<icon icon="mdi:check" />
+							</el-icon>
+							<span>{{ t('buddyModule.wizard.summaryMessaging', { name: selectedMessagingProviderName }) }}</span>
+						</div>
+						<div
+							v-else-if="hasMessagingProviders"
+							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+						>
+							<el-icon
+								:size="20"
+								class="text-gray-400 shrink-0"
+							>
+								<icon icon="mdi:minus" />
+							</el-icon>
+							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryMessagingSkipped') }}</span>
 						</div>
 					</div>
 				</div>
@@ -401,33 +580,6 @@
 					</el-button>
 
 					<el-button
-						v-if="currentStepName === 'provider' && selectedLlmProvider && selectedLlmProviderNeedsConfig && llmFormChanged"
-						type="success"
-						:loading="isSavingLlmConfig"
-						@click="saveLlmConfig"
-					>
-						{{ t('buddyModule.wizard.buttons.saveConfig') }}
-					</el-button>
-
-					<el-button
-						v-if="currentStepName === 'voice' && activeVoiceProviderNeedsConfig && activeVoiceConfigForm && voiceFormChanged"
-						type="success"
-						:loading="isSavingVoiceConfig"
-						@click="saveVoiceConfig"
-					>
-						{{ t('buddyModule.wizard.buttons.saveConfig') }}
-					</el-button>
-
-					<el-button
-						v-if="currentStepName === 'messaging' && selectedMessagingProviderNeedsConfig && selectedMessagingConfigForm && messagingFormChanged"
-						type="success"
-						:loading="isSavingMessagingConfig"
-						@click="saveMessagingConfig"
-					>
-						{{ t('buddyModule.wizard.buttons.saveConfig') }}
-					</el-button>
-
-					<el-button
 						v-if="currentStepName === 'done'"
 						type="primary"
 						@click="handleFinish"
@@ -446,22 +598,31 @@
 				</div>
 			</div>
 		</template>
+
+		<integration-config-dialog
+			v-model:visible="configDialogVisible"
+			:plugin-type="configDialogPluginType"
+			:plugin-name="configDialogPluginName"
+			@saved="onConfigSaved"
+		/>
 	</el-dialog>
 </template>
 
 <script setup lang="ts">
-import { type Component, computed, onBeforeMount, ref, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElDivider, ElEmpty, ElIcon, ElScrollbar, ElStep, ElSteps, ElTag, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElEmpty, ElIcon, ElRadio, ElScrollbar, ElStep, ElSteps, ElSwitch, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../config/config.constants';
+import { CONFIG_MODULE_PLUGIN_TYPE } from '../../config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../config/config.types';
 import { usePlugins } from '../../config/composables/usePlugins';
 import { configModulesStoreKey, configPluginsStoreKey } from '../../config/store/keys';
+import { extensionsStoreKey } from '../../extensions/store/keys';
+import IntegrationConfigDialog from '../../onboarding/components/integration-config-dialog.vue';
 import { LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import type { IProviderStatus } from '../composables/useBuddyProviders';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
@@ -488,6 +649,7 @@ const flashMessage = useFlashMessage();
 const storesManager = injectStoresManager();
 const configModulesStore = storesManager.getStore(configModulesStoreKey);
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const { getByName } = usePlugins();
 
 const { providerStatuses: llmProviders, fetchProviderStatuses: fetchLlmProviders } = useBuddyProviders();
@@ -499,14 +661,19 @@ const isLoading = ref(false);
 const currentStep = ref(0);
 const isSavingModuleConfig = ref(false);
 
-// Selected providers
-const selectedLlmProvider = ref<string | null>(null);
-const selectedTtsProvider = ref<string | null>(null);
-const selectedSttProvider = ref<string | null>(null);
-const selectedMessagingProvider = ref<string | null>(null);
+// Selected providers (bound to radio buttons)
+const selectedLlmProvider = ref<string | undefined>(undefined);
+const selectedTtsProvider = ref<string | undefined>(undefined);
+const selectedSttProvider = ref<string | undefined>(undefined);
+const selectedMessagingProvider = ref<string | undefined>(undefined);
 
-// Track which voice provider the user last clicked for inline config
-const activeVoiceConfigType = ref<string | null>(null);
+// Plugin toggle state
+const togglingPlugins = reactive<Set<string>>(new Set());
+
+// Config dialog state
+const configDialogVisible = ref(false);
+const configDialogPluginType = ref('');
+const configDialogPluginName = ref('');
 
 // Dynamic step names based on available providers
 const hasVoiceProviders = computed(() => ttsProviders.value.length > 0 || sttProviders.value.length > 0);
@@ -554,14 +721,14 @@ const isNextDisabled = computed<boolean>(() => {
 	const step = currentStepName.value;
 
 	if (step === 'provider') {
-		// Must select a provider, and if it needs config, it must be saved first
 		if (!selectedLlmProvider.value) return true;
 
-		return selectedLlmProviderNeedsConfig.value;
+		const provider = llmProviders.value.find((p) => p.type === selectedLlmProvider.value);
+
+		return !!provider && !provider.configured;
 	}
 
 	if (step === 'voice') {
-		// Check both TTS and STT independently — not just the active/focused one
 		if (selectedTtsProvider.value) {
 			const tts = ttsProviders.value.find((p) => p.type === selectedTtsProvider.value);
 
@@ -578,11 +745,57 @@ const isNextDisabled = computed<boolean>(() => {
 	}
 
 	if (step === 'messaging') {
-		return selectedMessagingProviderNeedsConfig.value;
+		if (selectedMessagingProvider.value) {
+			const msg = messagingProviders.value.find((p) => p.type === selectedMessagingProvider.value);
+
+			if (msg && !msg.configured) return true;
+		}
+
+		return false;
 	}
 
 	return false;
 });
+
+// Plugin icon mapping
+const pluginIcons: Record<string, string> = {
+	'buddy-openai-plugin': 'mdi:creation',
+	'buddy-openai-codex-plugin': 'mdi:code-braces',
+	'buddy-claude-plugin': 'mdi:head-snowflake',
+	'buddy-claude-setup-token-plugin': 'mdi:key-variant',
+	'buddy-ollama-plugin': 'mdi:server',
+	'buddy-elevenlabs-plugin': 'mdi:waveform',
+	'buddy-system-tts-plugin': 'mdi:text-to-speech',
+	'buddy-stt-whisper-local-plugin': 'mdi:microphone',
+	'buddy-voiceai-plugin': 'mdi:account-voice',
+	'buddy-telegram-plugin': 'mdi:send',
+	'buddy-whatsapp-plugin': 'mdi:chat',
+	'buddy-discord-plugin': 'mdi:forum',
+};
+
+const getPluginIcon = (type: string): string => {
+	return pluginIcons[type] ?? 'mdi:robot';
+};
+
+const isTogglingPlugin = (type: string): boolean => togglingPlugins.has(type);
+
+const canTogglePlugin = (type: string): boolean => {
+	const ext = extensionsStore.findByType(type);
+
+	return ext?.canToggleEnabled ?? true;
+};
+
+const hasPluginConfigForm = (type: string): boolean => {
+	const plugin = getByName(type);
+
+	if (!plugin) return false;
+
+	const element = plugin.elements?.find(
+		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE,
+	);
+
+	return !!element?.components?.pluginConfigEditForm;
+};
 
 // LLM provider helpers
 const selectedLlmProviderData = computed<IProviderStatus | undefined>(() => {
@@ -591,116 +804,9 @@ const selectedLlmProviderData = computed<IProviderStatus | undefined>(() => {
 
 const selectedLlmProviderName = computed<string>(() => selectedLlmProviderData.value?.name ?? '');
 
-const selectedLlmProviderNeedsConfig = computed<boolean>(() => {
-	const data = selectedLlmProviderData.value;
-
-	return !!data && !data.configured;
-});
-
-// LLM config form
-const llmFormSubmit = ref(false);
-const llmFormResult = ref<FormResultType>(FormResult.NONE);
-const llmFormReset = ref(false);
-const llmFormChanged = ref(false);
-const isSavingLlmConfig = ref(false);
-
-const selectedLlmConfigForm = computed<Component | null>(() => {
-	if (!selectedLlmProvider.value) return null;
-
-	const plugin = getByName(selectedLlmProvider.value);
-	const element = plugin?.elements?.find(
-		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE,
-	);
-
-	return (element?.components?.pluginConfigEditForm as Component) ?? null;
-});
-
-const selectedLlmConfigPlugin = computed(() => {
-	if (!selectedLlmProvider.value) return null;
-
-	return configPluginsStore.findByType(selectedLlmProvider.value);
-});
-
-// Voice config form
-const voiceFormSubmit = ref(false);
-const voiceFormResult = ref<FormResultType>(FormResult.NONE);
-const voiceFormReset = ref(false);
-const voiceFormChanged = ref(false);
-const isSavingVoiceConfig = ref(false);
-
-const activeVoiceProviderName = computed<string>(() => {
-	if (!activeVoiceConfigType.value) return '';
-
-	const tts = ttsProviders.value.find((p) => p.type === activeVoiceConfigType.value);
-
-	if (tts) return tts.name;
-
-	const stt = sttProviders.value.find((p) => p.type === activeVoiceConfigType.value);
-
-	return stt?.name ?? '';
-});
-
-const activeVoiceProviderNeedsConfig = computed<boolean>(() => {
-	if (!activeVoiceConfigType.value) return false;
-
-	const tts = ttsProviders.value.find((p) => p.type === activeVoiceConfigType.value);
-
-	if (tts) return !tts.configured;
-
-	const stt = sttProviders.value.find((p) => p.type === activeVoiceConfigType.value);
-
-	return !!stt && !stt.configured;
-});
-
-const activeVoiceConfigForm = computed<Component | null>(() => {
-	if (!activeVoiceConfigType.value) return null;
-
-	const plugin = getByName(activeVoiceConfigType.value);
-	const element = plugin?.elements?.find(
-		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE,
-	);
-
-	return (element?.components?.pluginConfigEditForm as Component) ?? null;
-});
-
-const activeVoiceConfigPlugin = computed(() => {
-	if (!activeVoiceConfigType.value) return null;
-
-	return configPluginsStore.findByType(activeVoiceConfigType.value);
-});
-
-// Messaging config form
-const messagingFormSubmit = ref(false);
-const messagingFormResult = ref<FormResultType>(FormResult.NONE);
-const messagingFormReset = ref(false);
-const messagingFormChanged = ref(false);
-const isSavingMessagingConfig = ref(false);
-
+// Messaging provider helpers
 const selectedMessagingProviderName = computed<string>(() => {
 	return messagingProviders.value.find((p) => p.type === selectedMessagingProvider.value)?.name ?? '';
-});
-
-const selectedMessagingProviderNeedsConfig = computed<boolean>(() => {
-	const data = messagingProviders.value.find((p) => p.type === selectedMessagingProvider.value);
-
-	return !!data && !data.configured;
-});
-
-const selectedMessagingConfigForm = computed<Component | null>(() => {
-	if (!selectedMessagingProvider.value) return null;
-
-	const plugin = getByName(selectedMessagingProvider.value);
-	const element = plugin?.elements?.find(
-		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE,
-	);
-
-	return (element?.components?.pluginConfigEditForm as Component) ?? null;
-});
-
-const selectedMessagingConfigPlugin = computed(() => {
-	if (!selectedMessagingProvider.value) return null;
-
-	return configPluginsStore.findByType(selectedMessagingProvider.value);
 });
 
 // Summary
@@ -722,86 +828,100 @@ const voiceSummary = computed<string>(() => {
 	return parts.join(', ');
 });
 
-// Actions
-const selectLlmProvider = (type: string): void => {
-	selectedLlmProvider.value = selectedLlmProvider.value === type ? null : type;
+// Plugin toggle handlers — auto-select on enable, clear on disable
+const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	togglingPlugins.add(type);
 
-	// Reset form refs so stale state from a previous provider's form doesn't carry over
-	isSavingLlmConfig.value = false;
-	llmFormSubmit.value = false;
-	llmFormResult.value = FormResult.NONE;
-	llmFormChanged.value = false;
+	try {
+		await extensionsStore.update({ type, data: { enabled } });
+		await fetchLlmProviders();
 
-	// Fetch config for this plugin if not loaded
-	if (selectedLlmProvider.value) {
-		fetchPluginConfig(selectedLlmProvider.value);
+		if (enabled) {
+			selectedLlmProvider.value = type;
+			fetchPluginConfig(type);
+		} else if (selectedLlmProvider.value === type) {
+			selectedLlmProvider.value = undefined;
+		}
+	} catch {
+		// Toggle failed, provider statuses will reflect actual state
+	} finally {
+		togglingPlugins.delete(type);
 	}
 };
 
-const resetVoiceFormRefs = (): void => {
-	isSavingVoiceConfig.value = false;
-	voiceFormSubmit.value = false;
-	voiceFormResult.value = FormResult.NONE;
-	voiceFormChanged.value = false;
-};
+const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	togglingPlugins.add(type);
 
-const pickActiveVoiceConfig = (): void => {
-	const ttsType = selectedTtsProvider.value;
-	const sttType = selectedSttProvider.value;
+	try {
+		await extensionsStore.update({ type, data: { enabled } });
+		await fetchTtsProviders();
 
-	const ttsNeedsConfig = ttsType ? !ttsProviders.value.find((p) => p.type === ttsType)?.configured : false;
-	const sttNeedsConfig = sttType ? !sttProviders.value.find((p) => p.type === sttType)?.configured : false;
-
-	const prevActive = activeVoiceConfigType.value;
-
-	// Prefer showing the unconfigured provider's form so the user can resolve it
-	if (ttsNeedsConfig) {
-		activeVoiceConfigType.value = ttsType;
-	} else if (sttNeedsConfig) {
-		activeVoiceConfigType.value = sttType;
-	} else {
-		// Both configured (or none selected) — show the most recently toggled one
-		activeVoiceConfigType.value = ttsType ?? sttType;
-	}
-
-	// Reset form refs when the active provider changes to prevent stale state
-	if (activeVoiceConfigType.value !== prevActive) {
-		resetVoiceFormRefs();
+		if (enabled) {
+			selectedTtsProvider.value = type;
+			fetchPluginConfig(type);
+		} else if (selectedTtsProvider.value === type) {
+			selectedTtsProvider.value = undefined;
+		}
+	} catch {
+		// Toggle failed
+	} finally {
+		togglingPlugins.delete(type);
 	}
 };
 
-const selectTtsProvider = (type: string): void => {
-	selectedTtsProvider.value = selectedTtsProvider.value === type ? null : type;
+const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	togglingPlugins.add(type);
 
-	pickActiveVoiceConfig();
+	try {
+		await extensionsStore.update({ type, data: { enabled } });
+		await fetchSttProviders();
 
-	if (selectedTtsProvider.value) {
-		fetchPluginConfig(selectedTtsProvider.value);
+		if (enabled) {
+			selectedSttProvider.value = type;
+			fetchPluginConfig(type);
+		} else if (selectedSttProvider.value === type) {
+			selectedSttProvider.value = undefined;
+		}
+	} catch {
+		// Toggle failed
+	} finally {
+		togglingPlugins.delete(type);
 	}
 };
 
-const selectSttProvider = (type: string): void => {
-	selectedSttProvider.value = selectedSttProvider.value === type ? null : type;
+const toggleMessagingPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	togglingPlugins.add(type);
 
-	pickActiveVoiceConfig();
+	try {
+		await extensionsStore.update({ type, data: { enabled } });
+		await fetchMessagingProviders();
 
-	if (selectedSttProvider.value) {
-		fetchPluginConfig(selectedSttProvider.value);
+		if (enabled) {
+			selectedMessagingProvider.value = type;
+			fetchPluginConfig(type);
+		} else if (selectedMessagingProvider.value === type) {
+			selectedMessagingProvider.value = undefined;
+		}
+	} catch {
+		// Toggle failed
+	} finally {
+		togglingPlugins.delete(type);
 	}
 };
 
-const selectMessagingProvider = (type: string): void => {
-	selectedMessagingProvider.value = selectedMessagingProvider.value === type ? null : type;
+// Config dialog
+const openConfigDialog = (type: string, name: string): void => {
+	configDialogPluginType.value = type;
+	configDialogPluginName.value = name;
+	configDialogVisible.value = true;
+};
 
-	// Reset form refs so stale state from a previous provider's form doesn't carry over
-	isSavingMessagingConfig.value = false;
-	messagingFormSubmit.value = false;
-	messagingFormResult.value = FormResult.NONE;
-	messagingFormChanged.value = false;
-
-	if (selectedMessagingProvider.value) {
-		fetchPluginConfig(selectedMessagingProvider.value);
-	}
+const onConfigSaved = (): void => {
+	// Refresh all provider statuses to update configured state
+	fetchLlmProviders();
+	fetchTtsProviders();
+	fetchSttProviders();
+	fetchMessagingProviders();
 };
 
 const fetchPluginConfig = async (type: string): Promise<void> => {
@@ -814,62 +934,7 @@ const fetchPluginConfig = async (type: string): Promise<void> => {
 	}
 };
 
-const saveLlmConfig = (): void => {
-	isSavingLlmConfig.value = true;
-	llmFormSubmit.value = true;
-};
-
-const saveVoiceConfig = (): void => {
-	isSavingVoiceConfig.value = true;
-	voiceFormSubmit.value = true;
-};
-
-const saveMessagingConfig = (): void => {
-	isSavingMessagingConfig.value = true;
-	messagingFormSubmit.value = true;
-};
-
-// Watch form results for save completion
-watch(llmFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR) {
-		isSavingLlmConfig.value = false;
-	}
-
-	if (val === FormResult.OK) {
-		flashMessage.success(t('buddyModule.wizard.configSaved'));
-
-		// Refresh provider statuses
-		fetchLlmProviders();
-	}
-});
-
-watch(voiceFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR) {
-		isSavingVoiceConfig.value = false;
-	}
-
-	if (val === FormResult.OK) {
-		flashMessage.success(t('buddyModule.wizard.configSaved'));
-
-		// Refresh provider statuses, then switch to the next unconfigured provider if any
-		Promise.all([fetchTtsProviders(), fetchSttProviders()]).then(() => {
-			pickActiveVoiceConfig();
-		});
-	}
-});
-
-watch(messagingFormResult, (val: FormResultType) => {
-	if (val === FormResult.OK || val === FormResult.ERROR) {
-		isSavingMessagingConfig.value = false;
-	}
-
-	if (val === FormResult.OK) {
-		flashMessage.success(t('buddyModule.wizard.configSaved'));
-		fetchMessagingProviders();
-	}
-});
-
-const saveModuleConfig = async (includeVoice: boolean = false): Promise<boolean> => {
+const saveModuleConfig = async (includeAll: boolean = false): Promise<boolean> => {
 	isSavingModuleConfig.value = true;
 
 	try {
@@ -882,9 +947,7 @@ const saveModuleConfig = async (includeVoice: boolean = false): Promise<boolean>
 			configData.provider = selectedLlmProvider.value;
 		}
 
-		// Only include voice fields when explicitly saving voice config,
-		// so we don't overwrite existing voice settings when saving from the provider step
-		if (includeVoice) {
+		if (includeAll) {
 			const hasVoiceSelection = !!(selectedTtsProvider.value || selectedSttProvider.value);
 
 			configData.voiceEnabled = hasVoiceSelection;
@@ -918,46 +981,26 @@ const prevStep = (): void => {
 	}
 };
 
-const handleSkip = async (): Promise<void> => {
-	// Clear selections for the skipped step and persist to the server
+const handleSkip = (): void => {
 	if (currentStepName.value === 'voice') {
-		selectedTtsProvider.value = null;
-		selectedSttProvider.value = null;
-		activeVoiceConfigType.value = null;
-
-		const saved = await saveModuleConfig(true);
-
-		if (!saved) return;
+		selectedTtsProvider.value = undefined;
+		selectedSttProvider.value = undefined;
 	} else if (currentStepName.value === 'messaging') {
-		selectedMessagingProvider.value = null;
+		selectedMessagingProvider.value = undefined;
 	}
 
 	nextStep();
 };
 
-const handleNext = async (): Promise<void> => {
-	// When leaving the provider step, save the module config
-	if (currentStepName.value === 'provider' && selectedLlmProvider.value) {
-		const saved = await saveModuleConfig();
-
-		if (!saved) return;
-	}
-
-	// When leaving the voice step, always save (even when deselecting to clear old values)
-	if (currentStepName.value === 'voice') {
-		const saved = await saveModuleConfig(true);
-
-		if (!saved) return;
-	}
-
-	// Messaging plugins are configured entirely through their inline config forms
-	// (saveMessagingConfig). No module-level config field exists for messaging,
-	// so no saveModuleConfig call is needed here.
-
+const handleNext = (): void => {
 	nextStep();
 };
 
-const handleFinish = (): void => {
+const handleFinish = async (): Promise<void> => {
+	const saved = await saveModuleConfig(true);
+
+	if (!saved) return;
+
 	emit('update:visible', false);
 	emit('completed');
 };
@@ -966,12 +1009,21 @@ const loadAllData = async (): Promise<void> => {
 	isLoading.value = true;
 
 	try {
-		await Promise.all([fetchLlmProviders(), fetchTtsProviders(), fetchSttProviders(), fetchMessagingProviders()]);
+		await Promise.all([
+			extensionsStore.fetch(),
+			fetchLlmProviders(),
+			fetchTtsProviders(),
+			fetchSttProviders(),
+			fetchMessagingProviders(),
+		]);
 
-		// Pre-select currently selected providers and fetch their configs in parallel
-		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected);
-		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
-		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
+		// Pre-select currently selected providers, falling back to first enabled
+		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected)
+			?? llmProviders.value.find((p: IProviderStatus) => p.enabled);
+		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected)
+			?? ttsProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
+		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected)
+			?? sttProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
 
 		if (selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
@@ -979,16 +1031,10 @@ const loadAllData = async (): Promise<void> => {
 
 		if (selectedTts) {
 			selectedTtsProvider.value = selectedTts.type;
-			activeVoiceConfigType.value = selectedTts.type;
 		}
 
 		if (selectedStt) {
 			selectedSttProvider.value = selectedStt.type;
-
-			// Only override activeVoiceConfigType if TTS wasn't pre-selected
-			if (!selectedTts) {
-				activeVoiceConfigType.value = selectedStt.type;
-			}
 		}
 
 		// Fetch all pre-selected plugin configs before clearing isLoading
@@ -1016,31 +1062,14 @@ watch(
 	() => props.visible,
 	(val: boolean) => {
 		if (val) {
-			// Reset all wizard state so stale values from a previous session don't persist
 			currentStep.value = 0;
-			selectedLlmProvider.value = null;
-			selectedTtsProvider.value = null;
-			selectedSttProvider.value = null;
-			selectedMessagingProvider.value = null;
-			activeVoiceConfigType.value = null;
-
-			// Reset saving flags and form refs to prevent perpetual spinners
-			isSavingLlmConfig.value = false;
-			isSavingVoiceConfig.value = false;
-			isSavingMessagingConfig.value = false;
+			selectedLlmProvider.value = undefined;
+			selectedTtsProvider.value = undefined;
+			selectedSttProvider.value = undefined;
+			selectedMessagingProvider.value = undefined;
 			isSavingModuleConfig.value = false;
-			llmFormSubmit.value = false;
-			llmFormResult.value = FormResult.NONE;
-			llmFormReset.value = false;
-			llmFormChanged.value = false;
-			voiceFormSubmit.value = false;
-			voiceFormResult.value = FormResult.NONE;
-			voiceFormReset.value = false;
-			voiceFormChanged.value = false;
-			messagingFormSubmit.value = false;
-			messagingFormResult.value = FormResult.NONE;
-			messagingFormReset.value = false;
-			messagingFormChanged.value = false;
+			configDialogVisible.value = false;
+			togglingPlugins.clear();
 
 			loadAllData();
 		}

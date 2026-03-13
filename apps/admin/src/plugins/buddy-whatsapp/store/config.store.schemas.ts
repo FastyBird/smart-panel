@@ -4,7 +4,7 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../module
 import { BUDDY_WHATSAPP_PLUGIN_NAME } from '../buddy-whatsapp.constants';
 
 export const WhatsappConfigSchema = ConfigPluginSchema.extend({
-	allowedPhoneNumbers: z.string().trim().nullable(),
+	allowedPhoneNumbers: z.string().trim().nullable().default(null),
 });
 
 // BACKEND API

@@ -3,6 +3,7 @@ import { computed, type MaybeRef, unref } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { type IPlugin, injectStoresManager } from '../../../common';
+import { extensionsStoreKey } from '../../extensions/store/keys';
 import type { IConfigPlugin } from '../store/config-plugins.store.types';
 import { configPluginsStoreKey } from '../store/keys';
 
@@ -16,6 +17,7 @@ export const useConfigPlugin = ({ type }: IUseConfigPluginProps): IUseConfigPlug
 	const storesManager = injectStoresManager();
 
 	const configPluginStore = storesManager.getStore(configPluginsStoreKey);
+	const extensionsStore = storesManager.getStore(extensionsStoreKey);
 
 	const { data, semaphore } = storeToRefs(configPluginStore);
 
@@ -27,7 +29,20 @@ export const useConfigPlugin = ({ type }: IUseConfigPluginProps): IUseConfigPlug
 	});
 
 	const fetchConfigPlugin = async (): Promise<void> => {
-		await configPluginStore.get({ type: typeRef.value });
+		try {
+			await configPluginStore.get({ type: typeRef.value });
+		} catch {
+			// Config may not exist yet — seed a default entry so the form can render
+			if (!configPlugin.value) {
+				try {
+					const extension = extensionsStore.findByType(typeRef.value);
+
+					configPluginStore.set({ data: { type: typeRef.value, enabled: extension?.enabled ?? false } });
+				} catch {
+					// Schema validation failure — nothing we can do
+				}
+			}
+		}
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
