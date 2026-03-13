@@ -31,6 +31,7 @@ class RoomSelectionScreen extends StatefulWidget {
 
 class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   final ScreenService _screenService = locator<ScreenService>();
+  final SpacesRepository _spacesRepo = locator<SpacesRepository>();
 
   late List<SpaceModel> _rooms;
   SpaceModel? _selectedRoom;
@@ -40,12 +41,39 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   void initState() {
     super.initState();
 
-    final spacesRepo = locator<SpacesRepository>();
-    _rooms = spacesRepo.rooms;
+    _rooms = _spacesRepo.rooms;
+    _spacesRepo.addListener(_onSpacesChanged);
 
     // Auto-select if only one room
     if (_rooms.length == 1) {
       _selectedRoom = _rooms.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _spacesRepo.removeListener(_onSpacesChanged);
+    super.dispose();
+  }
+
+  void _onSpacesChanged() {
+    final updatedRooms = _spacesRepo.rooms;
+
+    if (updatedRooms.length != _rooms.length) {
+      setState(() {
+        _rooms = updatedRooms;
+
+        // Clear selection if the selected room was removed
+        if (_selectedRoom != null &&
+            !_rooms.any((r) => r.id == _selectedRoom!.id)) {
+          _selectedRoom = null;
+        }
+
+        // Auto-select if only one room
+        if (_rooms.length == 1) {
+          _selectedRoom = _rooms.first;
+        }
+      });
     }
   }
 
