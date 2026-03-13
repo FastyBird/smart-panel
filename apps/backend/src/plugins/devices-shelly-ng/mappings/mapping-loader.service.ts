@@ -98,8 +98,9 @@ export class MappingLoaderService implements OnModuleInit {
 
 	// Default paths for mapping files
 	private readonly builtinMappingsPath = join(__dirname, 'definitions');
-	private readonly userMappingsPath =
-		process.env.SHELLY_NG_MAPPINGS_PATH ?? join(__dirname, '../../../../../../var/data/shelly-ng/mappings');
+	private readonly userMappingsPath = process.env.SHELLY_NG_MAPPINGS_PATH ?? null;
+	private readonly userDataDir = join(__dirname, '../../../../../../var/data');
+	private static readonly USER_FILE_PREFIX = 'plugin.devices-shelly-ng.';
 
 	constructor(private readonly transformerRegistry: TransformerRegistry) {
 		this.ajv = new Ajv({ allErrors: true, strict: false });
@@ -184,14 +185,20 @@ export class MappingLoaderService implements OnModuleInit {
 		}
 
 		// Load user mappings (highest priority, can override built-in)
-		if (existsSync(this.userMappingsPath)) {
-			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', MAPPING_PRIORITY.USER, true);
-			for (const fileInfo of userFiles) {
-				const result = this.loadMappingFile(fileInfo);
-				this.loadedSources.push(result);
-				if (result.success && result.resolvedMappings) {
-					this.resolvedMappings.push(...result.resolvedMappings);
-				}
+		const userFiles = this.userMappingsPath
+			? this.discoverMappingFiles(this.userMappingsPath, 'user', MAPPING_PRIORITY.USER, true)
+			: this.discoverMappingFiles(
+					this.userDataDir,
+					'user',
+					MAPPING_PRIORITY.USER,
+					false,
+					MappingLoaderService.USER_FILE_PREFIX,
+				);
+		for (const fileInfo of userFiles) {
+			const result = this.loadMappingFile(fileInfo);
+			this.loadedSources.push(result);
+			if (result.success && result.resolvedMappings) {
+				this.resolvedMappings.push(...result.resolvedMappings);
 			}
 		}
 
@@ -236,6 +243,7 @@ export class MappingLoaderService implements OnModuleInit {
 		source: MappingSource,
 		basePriority: number,
 		recursive: boolean = false,
+		filePrefix?: string,
 	): MappingFileInfo[] {
 		const files: MappingFileInfo[] = [];
 
@@ -264,6 +272,10 @@ export class MappingLoaderService implements OnModuleInit {
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
 					// Skip derivation-rules.yaml - it's loaded separately and has a different schema
 					if (entry.name === 'derivation-rules.yaml') {
+						continue;
+					}
+					// Skip files that don't match the prefix filter
+					if (filePrefix && !entry.name.startsWith(filePrefix)) {
 						continue;
 					}
 					files.push({

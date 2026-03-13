@@ -36,8 +36,9 @@ export class ScenarioLoaderService implements OnModuleInit {
 
 	// Paths for scenario files
 	private readonly builtinScenariosPath = join(__dirname, '../scenarios/definitions');
-	private readonly userScenariosPath =
-		process.env.SIMULATOR_SCENARIOS_PATH ?? join(__dirname, '../../../../../../../var/data/simulator/scenarios');
+	private readonly userScenariosPath = process.env.SIMULATOR_SCENARIOS_PATH ?? null;
+	private readonly userDataDir = join(__dirname, '../../../../../../../var/data');
+	private static readonly USER_FILE_PREFIX = 'plugin.simulator.';
 
 	constructor() {
 		this.ajv = new Ajv({ allErrors: true, strict: false });
@@ -63,10 +64,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 		this.discoveredScenarios.push(...builtinScenarios);
 
 		// Discover user scenarios
-		if (existsSync(this.userScenariosPath)) {
-			const userScenarios = this.discoverScenariosInDirectory(this.userScenariosPath, 'user');
-			this.discoveredScenarios.push(...userScenarios);
-		}
+		const userScenarios = this.userScenariosPath
+			? this.discoverScenariosInDirectory(this.userScenariosPath, 'user')
+			: this.discoverScenariosInDirectory(this.userDataDir, 'user', ScenarioLoaderService.USER_FILE_PREFIX);
+		this.discoveredScenarios.push(...userScenarios);
 
 		this.logger.log(`Discovered ${this.discoveredScenarios.length} scenarios`);
 	}
@@ -74,7 +75,11 @@ export class ScenarioLoaderService implements OnModuleInit {
 	/**
 	 * Discover scenario files in a directory
 	 */
-	private discoverScenariosInDirectory(dirPath: string, source: 'builtin' | 'user'): ScenarioFileInfo[] {
+	private discoverScenariosInDirectory(
+		dirPath: string,
+		source: 'builtin' | 'user',
+		filePrefix?: string,
+	): ScenarioFileInfo[] {
 		const scenarios: ScenarioFileInfo[] = [];
 
 		if (!existsSync(dirPath)) {
@@ -86,6 +91,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 
 			for (const entry of entries) {
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+					// Skip files that don't match the prefix filter
+					if (filePrefix && !entry.name.startsWith(filePrefix)) {
+						continue;
+					}
 					const fullPath = join(dirPath, entry.name);
 					const name = basename(entry.name, entry.name.endsWith('.yaml') ? '.yaml' : '.yml');
 

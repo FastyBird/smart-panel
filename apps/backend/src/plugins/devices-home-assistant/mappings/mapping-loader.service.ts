@@ -98,8 +98,9 @@ export class MappingLoaderService implements OnModuleInit {
 
 	// Default paths for mapping files
 	private readonly builtinMappingsPath = join(__dirname, 'definitions');
-	private readonly userMappingsPath =
-		process.env.HA_MAPPINGS_PATH ?? join(__dirname, '../../../../../../var/data/home-assistant/mappings');
+	private readonly userMappingsPath = process.env.HA_MAPPINGS_PATH ?? null;
+	private readonly userDataDir = join(__dirname, '../../../../../../var/data');
+	private static readonly USER_FILE_PREFIX = 'plugin.devices-home-assistant.';
 
 	constructor(private readonly transformerRegistry: TransformerRegistry) {
 		this.ajv = new Ajv({ allErrors: true, strict: false });
@@ -159,26 +160,26 @@ export class MappingLoaderService implements OnModuleInit {
 		}
 
 		// Load user mappings (highest priority)
-		if (existsSync(this.userMappingsPath)) {
-			const userFiles = await this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true);
-			for (const fileInfo of userFiles) {
-				if (fileInfo.path.endsWith('virtual-properties.yaml')) {
-					const result = await this.loadVirtualPropertiesFile(fileInfo);
-					this.logLoadResult(result, fileInfo.path);
-					if (result.success && result.resolvedProperties) {
-						for (const [category, props] of result.resolvedProperties.entries()) {
-							const existing = this.virtualProperties.get(category) ?? [];
-							// Prepend user properties so they override built-in ones (find() returns first match)
-							this.virtualProperties.set(category, [...props, ...existing]);
-						}
+		const userFiles = this.userMappingsPath
+			? await this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true)
+			: await this.discoverMappingFiles(this.userDataDir, 'user', 1000, false, MappingLoaderService.USER_FILE_PREFIX);
+		for (const fileInfo of userFiles) {
+			if (fileInfo.path.endsWith('virtual-properties.yaml')) {
+				const result = await this.loadVirtualPropertiesFile(fileInfo);
+				this.logLoadResult(result, fileInfo.path);
+				if (result.success && result.resolvedProperties) {
+					for (const [category, props] of result.resolvedProperties.entries()) {
+						const existing = this.virtualProperties.get(category) ?? [];
+						// Prepend user properties so they override built-in ones (find() returns first match)
+						this.virtualProperties.set(category, [...props, ...existing]);
 					}
-				} else {
-					const result = await this.loadMappingFile(fileInfo);
-					this.loadedSources.push(result);
-					this.logLoadResult(result, fileInfo.path);
-					if (result.success && result.resolvedMappings) {
-						this.resolvedMappings.push(...result.resolvedMappings);
-					}
+				}
+			} else {
+				const result = await this.loadMappingFile(fileInfo);
+				this.loadedSources.push(result);
+				this.logLoadResult(result, fileInfo.path);
+				if (result.success && result.resolvedMappings) {
+					this.resolvedMappings.push(...result.resolvedMappings);
 				}
 			}
 		}
@@ -215,6 +216,7 @@ export class MappingLoaderService implements OnModuleInit {
 		source: MappingSource,
 		basePriority: number,
 		recursive: boolean = false,
+		filePrefix?: string,
 	): Promise<MappingFileInfo[]> {
 		const files: MappingFileInfo[] = [];
 
@@ -229,6 +231,10 @@ export class MappingLoaderService implements OnModuleInit {
 				const fullPath = join(dirPath, entry.name);
 
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+					// Skip files that don't match the prefix filter
+					if (filePrefix && !entry.name.startsWith(filePrefix)) {
+						continue;
+					}
 					files.push({
 						path: fullPath,
 						source,
