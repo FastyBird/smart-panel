@@ -20,6 +20,7 @@ import { BUDDY_TELEGRAM_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-telegram.ope
 import { UpdateBuddyTelegramConfigDto } from './dto/update-config.dto';
 import { BuddyTelegramConfigModel } from './models/config.model';
 import { TelegramBotProvider } from './platforms/telegram-bot.provider';
+import { TelegramConfigValidatorService } from './services/telegram-config-validator.service';
 
 @ApiTag({
 	tagName: BUDDY_TELEGRAM_PLUGIN_NAME,
@@ -28,7 +29,7 @@ import { TelegramBotProvider } from './platforms/telegram-bot.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
-	providers: [TelegramBotProvider],
+	providers: [TelegramBotProvider, TelegramConfigValidatorService],
 	exports: [TelegramBotProvider],
 })
 export class BuddyTelegramPlugin implements OnModuleInit {

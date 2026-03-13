@@ -167,8 +167,8 @@
 
 			<!-- Error Display -->
 			<el-alert
-				v-if="service.state === 'error' && service.lastError"
-				type="error"
+				v-if="service.lastError"
+				:type="service.state === ExtensionsModuleServiceState.error ? 'error' : 'warning'"
 				:title="t('extensionsModule.services.labels.lastError')"
 				:description="service.lastError"
 				show-icon

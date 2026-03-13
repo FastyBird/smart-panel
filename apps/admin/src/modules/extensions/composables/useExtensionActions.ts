@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ExtensionsApiException } from '../extensions.exceptions';
 import type { IExtension } from '../store/extensions.store.types';
-import { extensionsStoreKey } from '../store/keys';
+import { extensionsStoreKey, servicesStoreKey } from '../store/keys';
 
 interface IUseExtensionActions {
 	toggleEnabled: (type: IExtension['type'], enabled: boolean) => Promise<boolean>;
@@ -19,6 +19,7 @@ export const useExtensionActions = (): IUseExtensionActions => {
 	const flashMessage = useFlashMessage();
 
 	const extensionsStore = storesManager.getStore(extensionsStoreKey);
+	const servicesStore = storesManager.getStore(servicesStoreKey);
 
 	const toggleEnabled = async (type: IExtension['type'], enabled: boolean): Promise<boolean> => {
 		try {
@@ -28,6 +29,21 @@ export const useExtensionActions = (): IUseExtensionActions => {
 			});
 
 			flashMessage.success(enabled ? t('extensionsModule.messages.extensionEnabled') : t('extensionsModule.messages.extensionDisabled'));
+
+			// After enabling, re-fetch services to check for startup errors
+			if (enabled) {
+				setTimeout(() => {
+					void servicesStore.fetch().then(() => {
+						const services = servicesStore.findAll().filter((s) => s.pluginName === type);
+
+						for (const service of services) {
+							if (service.lastError) {
+								flashMessage.warning(service.lastError);
+							}
+						}
+					});
+				}, 1500);
+			}
 
 			return true;
 		} catch (error: unknown) {
