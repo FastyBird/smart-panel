@@ -302,13 +302,28 @@
 
 			<!-- Apply defaults at bottom (matches lighting roles pattern) -->
 			<div class="flex justify-between items-center mt-2">
-				<el-button
-					size="small"
-					:loading="applyingDefaults"
-					@click="onApplyDefaults"
-				>
-					{{ t('spacesModule.media.activities.applyDefaults') }}
-				</el-button>
+				<div class="flex items-center gap-2">
+					<el-button
+						size="small"
+						:loading="applyingDefaults"
+						@click="onApplyDefaults"
+					>
+						{{ t('spacesModule.media.activities.applyDefaults') }}
+					</el-button>
+					<el-button
+						v-if="activeState && activeState.state !== 'deactivated'"
+						size="small"
+						type="warning"
+						:loading="deactivating"
+						:disabled="activating"
+						@click="onDeactivate"
+					>
+						<template #icon>
+							<icon icon="mdi:stop" />
+						</template>
+						{{ t('spacesModule.media.activities.deactivate') }}
+					</el-button>
+				</div>
 				<div class="text-xs text-gray-400">
 					{{ t('spacesModule.media.activities.applyDefaultsHint') }}
 				</div>
@@ -405,6 +420,7 @@ const {
 	fetchBindings,
 	fetchActiveState,
 	activate,
+	deactivate,
 	saveBinding,
 	createBinding,
 	deleteBinding,
@@ -715,6 +731,19 @@ const onActivate = async (key: MediaActivityKey): Promise<void> => {
 		flashMessage.error(t('spacesModule.media.activities.activateFailed'));
 	} finally {
 		activatingKey.value = null;
+	}
+};
+
+const onDeactivate = async (): Promise<void> => {
+	try {
+		await deactivate();
+		flashMessage.success(t('spacesModule.media.activities.deactivateSuccess'));
+	} catch {
+		// Clear activationError set by deactivate() to prevent the inline alert
+		// from showing the misleading "activateFailed" title — the flash message
+		// already provides the correct feedback.
+		activationError.value = null;
+		flashMessage.error(t('spacesModule.media.activities.deactivateFailed'));
 	}
 };
 

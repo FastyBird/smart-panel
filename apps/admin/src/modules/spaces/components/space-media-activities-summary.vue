@@ -100,6 +100,62 @@
 					</div>
 				</el-card>
 
+				<!-- Failures detail (when previewed activity is active and has failures) -->
+				<el-card
+					v-if="isPreviewedActivityActive && activeStateFailures.length > 0"
+					shadow="never"
+					class="border-l-4 border-red-500"
+				>
+					<div class="flex flex-col gap-2">
+						<div class="flex items-center justify-between">
+							<span class="text-sm font-medium">{{ t('spacesModule.media.activities.failures.title') }}</span>
+							<div class="flex gap-3 text-xs text-gray-500">
+								<span>{{ t('spacesModule.media.activities.failures.total') }}: {{ activeState!.summary?.stepsTotal ?? 0 }}</span>
+								<span class="text-green-600">{{ t('spacesModule.media.activities.failures.succeeded') }}: {{ activeState!.summary?.stepsSucceeded ?? 0 }}</span>
+								<span class="text-red-600">{{ t('spacesModule.media.activities.failures.failed') }}: {{ activeState!.summary?.stepsFailed ?? 0 }}</span>
+							</div>
+						</div>
+						<el-table
+							:data="activeStateFailures"
+							size="small"
+							border
+						>
+							<el-table-column
+								:label="t('spacesModule.media.activities.failures.stepIndex')"
+								width="70"
+							>
+								<template #default="{ row }">
+									{{ row.stepIndex }}
+								</template>
+							</el-table-column>
+							<el-table-column
+								:label="t('spacesModule.media.activities.failures.device')"
+								min-width="140"
+							>
+								<template #default="{ row }">
+									{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '—' }}
+								</template>
+							</el-table-column>
+							<el-table-column
+								:label="t('spacesModule.media.activities.failures.property')"
+								min-width="100"
+							>
+								<template #default="{ row }">
+									{{ row.propertyId ?? '—' }}
+								</template>
+							</el-table-column>
+							<el-table-column
+								:label="t('spacesModule.media.activities.failures.reason')"
+								min-width="180"
+							>
+								<template #default="{ row }">
+									{{ row.reason }}
+								</template>
+							</el-table-column>
+						</el-table>
+					</div>
+				</el-card>
+
 				<!-- Resolved devices -->
 				<div>
 					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.resolvedDevices') }}</div>
@@ -231,6 +287,7 @@ import {
 	getActivityIcon,
 	type IMediaDryRunPreview,
 	type IDerivedMediaEndpoint,
+	type IMediaStepFailure,
 	MediaActivityKey,
 	useSpaceMedia,
 } from '../composables/useSpaceMedia';
@@ -318,6 +375,11 @@ const previewDialogTitle = computed(() => {
 const isPreviewedActivityActive = computed(() => {
 	if (!activeState.value || !previewActivityKey.value) return false;
 	return activeState.value.activityKey === previewActivityKey.value && activeState.value.state !== 'deactivated';
+});
+
+const activeStateFailures = computed<IMediaStepFailure[]>(() => {
+	if (!activeState.value?.summary?.failures) return [];
+	return activeState.value.summary.failures;
 });
 
 const activeStateBorderClass = computed(() => {
