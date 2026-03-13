@@ -140,7 +140,7 @@ const fetchConfig = async (): Promise<void> => {
 		if (!configPlugin.value) {
 			try {
 				const extension = extensionsStore.findByType(props.pluginType);
-				configPluginsStore.set({ data: { type: props.pluginType, enabled: extension?.enabled ?? false } });
+				configPluginsStore.set({ data: { type: props.pluginType, enabled: extension?.enabled ?? false } as { type: string } });
 			} catch {
 				// Schema validation failure — nothing we can do
 			}

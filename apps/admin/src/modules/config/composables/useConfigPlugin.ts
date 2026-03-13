@@ -37,7 +37,7 @@ export const useConfigPlugin = ({ type }: IUseConfigPluginProps): IUseConfigPlug
 				try {
 					const extension = extensionsStore.findByType(typeRef.value);
 
-					configPluginStore.set({ data: { type: typeRef.value, enabled: extension?.enabled ?? false } });
+					configPluginStore.set({ data: { type: typeRef.value, enabled: extension?.enabled ?? false } as { type: string } });
 				} catch {
 					// Schema validation failure — nothing we can do
 				}
