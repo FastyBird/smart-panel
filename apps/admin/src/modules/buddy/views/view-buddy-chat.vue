@@ -153,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
@@ -258,6 +258,8 @@ const loadChatData = async (): Promise<void> => {
 	}
 };
 
+const chatDataLoaded = ref(false);
+
 onBeforeMount(async (): Promise<void> => {
 	if (!modulesLoaded.value) {
 		await fetchConfigModules();
@@ -268,11 +270,13 @@ onBeforeMount(async (): Promise<void> => {
 	}
 
 	await loadChatData();
+	chatDataLoaded.value = true;
 });
 
 watch(isModuleConfirmedEnabled, async (confirmed): Promise<void> => {
-	if (confirmed) {
+	if (confirmed && !chatDataLoaded.value) {
 		await loadChatData();
+		chatDataLoaded.value = true;
 	}
 });
 </script>
