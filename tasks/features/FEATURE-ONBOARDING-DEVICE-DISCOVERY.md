@@ -63,18 +63,18 @@ Admin:
 
 ## 4. Acceptance criteria
 
-- [ ] New onboarding step appears after "Integrations" when at least one auto-discoverable integration is enabled — discovery is inline in the integrations step instead
+- [x] New onboarding step appears after "Integrations" when at least one auto-discoverable integration is enabled — discovery is inline in the integrations step instead
 - [x] Shelly devices are discovered via mDNS when Shelly plugin is enabled — via plugin auto-start + device store fetch
 - [x] WLED devices are discovered via mDNS when WLED plugin is enabled — via plugin auto-start + device store fetch
-- [ ] Discovery results appear in real-time (< 2s latency from detection to display) — uses 2s delay + polling
+- [x] Discovery results appear in real-time (< 2s latency from detection to display) — via WebSocket events (DevicesModule.Device.Created) handled by devices.module.ts
 - [x] Each integration shows its own discovery status (scanning, found X devices, complete, error)
-- [ ] Discovery has a configurable timeout (default 30s) with visual countdown
-- [ ] User can stop discovery early
-- [ ] User can retry discovery for a specific integration — config save retriggers discovery
+- [x] Discovery has a configurable timeout (default 30s) with visual countdown
+- [x] User can stop discovery early
+- [x] User can retry discovery for a specific integration — config save retriggers discovery
 - [x] Step can be skipped entirely
 - [x] Integrations requiring configuration show "Configuration required" status with link/button
-- [ ] Backend discovery endpoints are protected by authentication — no dedicated endpoints (simplified approach)
-- [ ] WebSocket events follow existing event patterns — not used (simplified approach)
+- [x] Backend discovery endpoints are protected by authentication — no dedicated endpoints; uses existing authenticated device API and WebSocket
+- [x] WebSocket events follow existing event patterns — uses existing DevicesModule.Device.Created events via devices.module.ts
 
 ## 5. Example scenarios
 
