@@ -70,11 +70,26 @@ class SuggestionNotificationService extends ChangeNotifier {
 	///
 	/// Expired suggestions are silently dropped. If no notification is currently
 	/// showing, it is displayed immediately. Otherwise it is added to the queue.
+	///
+	/// Suggestions are deduplicated by [AppSuggestion.id]. If a suggestion with
+	/// the same id is already showing, it is refreshed in-place (timer restarted).
+	/// If one is already queued, the queued copy is replaced.
 	void enqueue(AppSuggestion suggestion, {required String providerId}) {
 		if (suggestion.isExpired) return;
 		if (!_providers.containsKey(providerId)) return;
 
 		_suggestionProviderMap[suggestion.id] = providerId;
+
+		// Deduplicate: if this id is already showing, refresh in-place
+		if (_current != null && _current!.id == suggestion.id) {
+			_current = suggestion;
+			_startAutoDismissTimer();
+			notifyListeners();
+			return;
+		}
+
+		// Deduplicate: remove any queued entry with the same id
+		_queue.removeWhere((s) => s.id == suggestion.id);
 
 		if (_current == null) {
 			_showNext(suggestion);
