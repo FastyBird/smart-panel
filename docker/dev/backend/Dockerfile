@@ -10,10 +10,10 @@ WORKDIR /app
 ENV NODE_OPTIONS="--max_old_space_size=4096"
 
 # Copy entrypoint script
-COPY .docker/dev/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/dev/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 3003
+EXPOSE 3000
 
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["pnpm", "--filter", "@fastybird/smart-panel-admin", "start:dev"]
+CMD ["pnpm", "--filter", "@fastybird/smart-panel-backend", "start:dev"]

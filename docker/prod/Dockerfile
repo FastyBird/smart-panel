@@ -5,7 +5,7 @@
 # served together as a single container.
 #
 # Build:
-#   docker build -t fastybird/smart-panel -f docker/Dockerfile .
+#   docker build -t fastybird/smart-panel -f docker/prod/Dockerfile .
 #
 # Run:
 #   docker run -d -p 3000:3000 -v smart-panel-data:/data fastybird/smart-panel

@@ -2,7 +2,7 @@
 # FastyBird Smart Panel - InfluxDB Override
 #
 # Use this file to connect Smart Panel to InfluxDB:
-#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.influxdb.yml up -d
+#   docker compose -f docker/prod/docker-compose.yml -f docker/prod/docker-compose.influxdb.yml up -d
 #
 # This override:
 #   - Enables the InfluxDB profile automatically
