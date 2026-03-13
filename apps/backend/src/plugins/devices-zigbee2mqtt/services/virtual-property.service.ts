@@ -156,6 +156,9 @@ export class Z2mVirtualPropertyService {
 			case DerivationType.BATTERY_STATUS_FROM_PERCENTAGE:
 				return this.deriveBatteryStatus(definition, context, derivation.params);
 
+			case DerivationType.BATTERY_STATUS_WITH_CHARGING:
+				return this.deriveBatteryStatusWithCharging(definition, context, derivation.params);
+
 			case DerivationType.ILLUMINANCE_LEVEL_FROM_DENSITY:
 				return this.deriveIlluminanceLevel(definition, context, derivation.params);
 
@@ -181,6 +184,41 @@ export class Z2mVirtualPropertyService {
 		const defaultStatus = (params?.defaultStatus as 'ok' | 'low') ?? 'ok';
 
 		// Get battery percentage from Z2M state
+		const sourceProperty = definition.source_property ?? 'battery';
+		const batteryValue = context.state[sourceProperty];
+
+		if (batteryValue === undefined || batteryValue === null) {
+			return defaultStatus;
+		}
+
+		const percentage = Number(batteryValue);
+		if (isNaN(percentage)) {
+			return defaultStatus;
+		}
+
+		return percentage <= lowThreshold ? 'low' : 'ok';
+	}
+
+	/**
+	 * Derive battery status from percentage with charging awareness
+	 * Returns: 'charging' if device is charging, 'ok' or 'low' based on percentage
+	 */
+	private deriveBatteryStatusWithCharging(
+		definition: DerivedVirtualPropertyDefinition,
+		context: VirtualPropertyContext,
+		params?: Record<string, unknown>,
+	): 'ok' | 'low' | 'charging' {
+		const lowThreshold = (params?.lowThreshold as number) ?? 20;
+		const defaultStatus = (params?.defaultStatus as 'ok' | 'low') ?? 'ok';
+		const chargingProperty = (params?.chargingProperty as string) ?? 'charging';
+
+		// Check if device is currently charging
+		const chargingValue = context.state[chargingProperty];
+		if (chargingValue === true || chargingValue === 'true') {
+			return 'charging';
+		}
+
+		// Fall back to percentage-based status
 		const sourceProperty = definition.source_property ?? 'battery';
 		const batteryValue = context.state[sourceProperty];
 

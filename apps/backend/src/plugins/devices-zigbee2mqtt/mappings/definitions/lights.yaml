@@ -84,14 +84,23 @@ mappings:
                   format: [0, 100]
                   unit: "%"
 
-          # Transition time
-          # DISABLED: Smart Panel spec doesn't support TRANSITION property yet
-          # Enable when PropertyCategory.TRANSITION is added to the spec
-          # - z2m_feature: transition
-          #   direction: write_only
-          #   panel:
-          #     identifier: TRANSITION
-          #     name: Transition
-          #     data_type: FLOAT
-          #     unit: "s"
-          #     queryable: false
+          # Effect (internal property)
+          # Z2M light devices may expose effect selection (colorloop, blink, etc.)
+          # Stored as MODE property on light channel; format derived from device's effect_list
+          - z2m_feature: effect
+            panel:
+              identifier: MODE
+              name: Effect
+              data_type: ENUM
+              # format derived from device's actual effect values
+
+          # Transition time (internal property)
+          # Z2M supports fade/transition time for brightness and color changes
+          # Stored as DURATION property on light channel
+          - z2m_feature: transition
+            direction: write_only
+            panel:
+              identifier: DURATION
+              name: Transition
+              data_type: FLOAT
+              unit: "s"

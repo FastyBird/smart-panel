@@ -155,6 +155,13 @@ export enum DerivationType {
 	 * Position 0 = closed, position 100 = opened, other = stopped
 	 */
 	COVER_STATUS_FROM_POSITION = 'cover_status_from_position',
+
+	/**
+	 * Derive battery status considering charging state
+	 * Checks for 'charging' boolean in Z2M state alongside battery percentage
+	 * Returns: 'charging' if charging, 'low' if below threshold, 'ok' otherwise
+	 */
+	BATTERY_STATUS_WITH_CHARGING = 'battery_status_with_charging',
 }
 
 /**
@@ -245,19 +252,20 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 	{
 		channel_category: ChannelCategory.BATTERY,
 		virtual_properties: [
-			// Status property - derived from percentage
+			// Status property - derived from percentage with charging awareness
 			{
 				property_category: PropertyCategory.STATUS,
 				virtual_type: VirtualPropertyType.DERIVED,
 				data_type: DataTypeType.ENUM,
 				permissions: [PermissionType.READ_ONLY],
-				format: ['ok', 'low'],
+				format: ['ok', 'low', 'charging'],
 				source_property: 'battery',
 				derivation: {
-					type: DerivationType.BATTERY_STATUS_FROM_PERCENTAGE,
+					type: DerivationType.BATTERY_STATUS_WITH_CHARGING,
 					params: {
 						lowThreshold: 20,
 						defaultStatus: 'ok',
+						chargingProperty: 'charging',
 					},
 				},
 			},
@@ -316,6 +324,26 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 					close: 'CLOSE',
 					stop: 'STOP',
 				},
+			},
+			// Position command type - indicates how Z2M sets position
+			// Z2M normalizes commands internally (position, lift_percentage, goto_lift_percentage)
+			{
+				property_category: PropertyCategory.MODE,
+				virtual_type: VirtualPropertyType.STATIC,
+				data_type: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['position', 'lift_percentage', 'goto_lift_percentage'],
+				static_value: 'position',
+			},
+			// Tilt command type - indicates how Z2M sets tilt
+			// Z2M normalizes tilt commands internally (tilt, tilt_percentage)
+			{
+				property_category: PropertyCategory.TILT,
+				virtual_type: VirtualPropertyType.STATIC,
+				data_type: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['tilt', 'tilt_percentage'],
+				static_value: 'tilt',
 			},
 		],
 	},

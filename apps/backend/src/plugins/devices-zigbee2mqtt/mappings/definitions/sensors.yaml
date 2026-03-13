@@ -506,6 +506,53 @@ mappings:
             source_property: PERCENTAGE
             derivation: battery_status_from_percentage
 
+  # Battery voltage
+  # Some Z2M devices expose voltage alongside battery percentage
+  # Maps to VOLTAGE property on the battery channel as an internal property
+  - name: battery_voltage_sensor
+    description: "Battery voltage"
+    priority: 30
+    match:
+      expose_type: numeric
+      property: voltage
+    device_category: SENSOR
+    channels:
+      - identifier: battery
+        name: Battery
+        category: BATTERY
+        properties:
+          - z2m_property: voltage
+            direction: read_only
+            panel:
+              identifier: VOLTAGE
+              name: Battery Voltage
+              data_type: FLOAT
+              unit: "V"
+              settable: false
+
+  # Battery charging state
+  # Some Z2M devices expose a charging boolean indicator
+  # Maps to STATUS property on the battery channel with "charging" value
+  - name: battery_charging_sensor
+    description: "Battery charging state"
+    priority: 35
+    match:
+      expose_type: binary
+      property: charging
+    device_category: SENSOR
+    channels:
+      - identifier: battery
+        name: Battery
+        category: BATTERY
+        properties:
+          - z2m_property: charging
+            direction: read_only
+            panel:
+              identifier: STATE
+              name: Charging
+              data_type: BOOL
+              settable: false
+
   # Battery low indicator
   # Z2M reports battery_low as boolean, Panel uses status enum ["ok", "low", "charging"]
   - name: battery_low_sensor
