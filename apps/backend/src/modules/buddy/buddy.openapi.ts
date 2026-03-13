@@ -6,6 +6,10 @@ import { BuddyMessageEntity } from './entities/buddy-message.entity';
 import { BuddyConfigModel } from './models/config.model';
 import { ConversationResponseModel, ConversationsResponseModel } from './models/conversation-response.model';
 import { MessageResponseModel, MessagesResponseModel } from './models/message-response.model';
+import {
+	MessagingProviderStatusDataModel,
+	MessagingProviderStatusesResponseModel,
+} from './models/messaging-provider-status.model';
 import { PersonalityDataModel, PersonalityResponseModel } from './models/personality-response.model';
 import { ProviderStatusDataModel, ProviderStatusesResponseModel } from './models/provider-status.model';
 import {
@@ -44,4 +48,6 @@ export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	SuggestionsResponseModel,
 	SuggestionFeedbackResultDataModel,
 	SuggestionFeedbackResponseModel,
+	MessagingProviderStatusDataModel,
+	MessagingProviderStatusesResponseModel,
 ];

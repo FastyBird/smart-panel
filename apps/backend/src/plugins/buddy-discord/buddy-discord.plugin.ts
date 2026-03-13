@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { BuddyCapability } from '../../modules/buddy/buddy.constants';
 import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -55,7 +56,7 @@ export class BuddyDiscordPlugin implements OnModuleInit {
 			name: 'Discord',
 			description: 'Discord bot adapter for Buddy module with multi-channel space mapping',
 			author: 'FastyBird',
-			capabilities: [],
+			capabilities: [BuddyCapability.MESSAGING],
 			readme: `# Buddy Discord Plugin
 
 Discord bot adapter plugin for the Buddy module. Enables remote conversations and alert forwarding via Discord with multi-channel space mapping.

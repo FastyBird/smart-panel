@@ -4,11 +4,11 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../module
 import { BUDDY_DISCORD_PLUGIN_NAME } from '../buddy-discord.constants';
 
 export const DiscordConfigSchema = ConfigPluginSchema.extend({
-	botToken: z.string().trim().nullable(),
-	guildId: z.string().trim().nullable(),
-	generalChannelId: z.string().trim().nullable(),
-	spaceChannelMappings: z.string().trim().nullable(),
-	allowedRoleId: z.string().trim().nullable(),
+	botToken: z.string().trim().nullable().default(null),
+	guildId: z.string().trim().nullable().default(null),
+	generalChannelId: z.string().trim().nullable().default(null),
+	spaceChannelMappings: z.string().trim().nullable().default(null),
+	allowedRoleId: z.string().trim().nullable().default(null),
 });
 
 // BACKEND API

@@ -10,7 +10,7 @@
 			"botToken": {
 				"title": "Bot token",
 				"placeholder": "Enter your Telegram bot token",
-				"description": "Get your bot token from @BotFather on Telegram"
+				"description": "Get your bot token from {'@'}BotFather on Telegram"
 			},
 			"allowedUserIds": {
 				"title": "Allowed user IDs",
@@ -26,6 +26,6 @@
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Configure your Telegram bot integration. Create a bot via @BotFather on Telegram to get a bot token, then optionally restrict access to specific user IDs."
+		"aboutTelegramSettings": "Configure your Telegram bot integration. Create a bot via {'@'}BotFather on Telegram to get a bot token, then optionally restrict access to specific user IDs."
 	}
 }

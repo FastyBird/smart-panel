@@ -69,6 +69,7 @@ import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/confi
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import type { IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
+import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 
 defineOptions({
 	name: 'IntegrationConfigDialog',
@@ -89,6 +90,7 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const { getByName } = usePlugins();
 
 const isLoading = ref(false);
@@ -134,7 +136,15 @@ const fetchConfig = async (): Promise<void> => {
 	try {
 		await configPluginsStore.get({ type: props.pluginType });
 	} catch {
-		// Config may not exist yet
+		// Config may not exist yet — seed a default entry so the form can render
+		if (!configPlugin.value) {
+			try {
+				const extension = extensionsStore.findByType(props.pluginType);
+				configPluginsStore.set({ data: { type: props.pluginType, enabled: extension?.enabled ?? false } as { type: string } });
+			} catch {
+				// Schema validation failure — nothing we can do
+			}
+		}
 	} finally {
 		isLoading.value = false;
 	}
