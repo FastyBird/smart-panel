@@ -130,8 +130,8 @@ import { Icon } from '@iconify/vue';
 
 import Logo from '../../../assets/images/fb_bird.svg?component';
 import { useBreakpoints } from '../../../common';
-import { injectAccountManager } from '../../../common/services/account-manager';
 import UserAvatar from '../../../common/components/user-avatar.vue';
+import { injectAccountManager } from '../../../common/services/account-manager';
 
 defineOptions({
 	name: 'LayoutLock',

@@ -291,8 +291,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 
 	const storedViewMode = isStoredValid && stored?.viewMode && viewMode?.options.includes(stored.viewMode) ? stored.viewMode : undefined;
 
-	const initialViewMode: V | undefined =
-		fromQueryViewMode ?? storedViewMode ?? viewModeDefault;
+	const initialViewMode: V | undefined = fromQueryViewMode ?? storedViewMode ?? viewModeDefault;
 
 	// State
 	const filtersRef = ref<FF>(initialFilters) as Ref<FF>;
@@ -367,16 +366,13 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 
 	// Persist view mode
 	if (viewMode) {
-		watch(
-			viewModeRef,
-			(val) => {
-				window.clearTimeout(tV);
+		watch(viewModeRef, (val) => {
+			window.clearTimeout(tV);
 
-				tV = window.setTimeout(() => {
-					store.patch({ key, data: { viewMode: val }, version });
-				}, debounceMs);
-			}
-		);
+			tV = window.setTimeout(() => {
+				store.patch({ key, data: { viewMode: val }, version });
+			}, debounceMs);
+		});
 	}
 
 	// URL sync (debounced)
@@ -492,26 +488,23 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 
 	// Sync view mode (?view=table|cards)
 	if (syncQuery && viewMode) {
-		watch(
-			viewModeRef,
-			(val) => {
-				if (qV) {
-					window.clearTimeout(qV);
+		watch(viewModeRef, (val) => {
+			if (qV) {
+				window.clearTimeout(qV);
+			}
+
+			qV = window.setTimeout(() => {
+				const next: LocationQueryRaw = { ...route.query };
+
+				if (!includeInQuery(VIEW_Q) || !val || val === viewModeDefault) {
+					delete next[VIEW_Q];
+				} else {
+					next[VIEW_Q] = val;
 				}
 
-				qV = window.setTimeout(() => {
-					const next: LocationQueryRaw = { ...route.query };
-
-					if (!includeInQuery(VIEW_Q) || !val || val === viewModeDefault) {
-						delete next[VIEW_Q];
-					} else {
-						next[VIEW_Q] = val;
-					}
-
-					replaceQuery(next);
-				}, debounceMs);
-			}
-		);
+				replaceQuery(next);
+			}, debounceMs);
+		});
 	}
 
 	// Hydrate URL once from store if no relevant keys present

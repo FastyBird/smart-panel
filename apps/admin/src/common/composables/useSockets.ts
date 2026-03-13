@@ -21,7 +21,7 @@ export const useSockets = (): IUseSockets => {
 		event: string,
 		payload: Payload | null,
 		handler: string,
-		timeout = 1000,
+		timeout = 1000
 	): Promise<true | string> => {
 		// Generate a unique request ID for tracking this command through the intent system
 		const requestId = uuid();
