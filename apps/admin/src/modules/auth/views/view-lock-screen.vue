@@ -61,7 +61,7 @@ const onSignInAsOther = (): void => {
 	if (accountManager) {
 		accountManager.signOut();
 
-		router.push({ name: accountManager.routes.signIn });
+		router.push({ name: accountManager.routes.signUp });
 	}
 };
 

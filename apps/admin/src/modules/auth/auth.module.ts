@@ -195,7 +195,7 @@ export default {
 					role: profile.role,
 				};
 			}),
-			signIn: async (credentials): Promise<boolean> => {
+			signIn: async (credentials: { username: string; password: string }): Promise<boolean> => {
 				try {
 					await sessionStore.create({
 						data: {
@@ -203,6 +203,11 @@ export default {
 							password: credentials.password,
 						},
 					});
+
+					// Clear lock state on fresh sign-in so expired sessions
+					// don't redirect back to the lock screen
+					locked.value = false;
+					localStorage.removeItem(LOCK_SCREEN_STORAGE_KEY);
 
 					return true;
 				} catch {

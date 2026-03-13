@@ -115,7 +115,7 @@
 
 					<el-link
 						underline="never"
-						href="http://www.facebook.com/fastybird"
+						href="http://www.discord.com/invite/fastybird"
 						target="_blank"
 						class="mx-5"
 					>
