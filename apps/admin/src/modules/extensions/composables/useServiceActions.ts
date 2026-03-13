@@ -26,10 +26,10 @@ export const useServiceActions = (): IUseServiceActions => {
 
 			if (service.state === ExtensionsModuleServiceState.started) {
 				flashMessage.success(t('extensionsModule.services.messages.started'));
-			} else if (service.lastError) {
-				flashMessage.warning(service.lastError);
 			} else if (service.state === ExtensionsModuleServiceState.starting) {
 				flashMessage.info(t('extensionsModule.services.messages.serviceStarting'));
+			} else if (service.lastError) {
+				flashMessage.warning(service.lastError);
 			} else {
 				flashMessage.warning(t('extensionsModule.services.messages.startError'));
 			}
