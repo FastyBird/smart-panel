@@ -11,62 +11,80 @@ const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/up
 const UPDATE_CHECK_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/check`;
 const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/install`;
 
+// Shared singleton refs — all callers share the same reactive state
+const currentVersion = ref<string | null>(null);
+const latestVersion = ref<string | null>(null);
+const updateAvailable = ref<boolean>(false);
+const updateType = ref<'patch' | 'minor' | 'major' | null>(null);
+const lastChecked = ref<Date | null>(null);
+const changelogUrl = ref<string | null>(null);
+
+const status = ref<string>('idle');
+const phase = ref<string | null>(null);
+const progressPercent = ref<number | null>(null);
+const error = ref<string | null>(null);
+
+const loading = ref<boolean>(false);
+const installing = ref<boolean>(false);
+
+const isUpdating = computed<boolean>((): boolean => {
+	return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
+});
+
+const applyInfoResponse = (data: Record<string, unknown>): void => {
+	currentVersion.value = (data.current_version as string) ?? null;
+	latestVersion.value = (data.latest_version as string) ?? null;
+	updateAvailable.value = (data.update_available as boolean) ?? false;
+	updateType.value = (data.update_type as 'patch' | 'minor' | 'major' | null) ?? null;
+	lastChecked.value = data.last_checked ? new Date(data.last_checked as string) : null;
+	changelogUrl.value = (data.changelog_url as string) ?? null;
+
+	// Apply process status fields if present in the response
+	if (data.status !== undefined) {
+		status.value = data.status as string;
+	}
+
+	if (data.phase !== undefined) {
+		phase.value = data.phase as string | null;
+	}
+
+	if (data.progress_percent !== undefined) {
+		progressPercent.value = data.progress_percent as number | null;
+	}
+
+	if (data.error !== undefined) {
+		error.value = data.error as string | null;
+	} else {
+		error.value = null;
+	}
+
+	// Update installing state
+	installing.value = isUpdating.value;
+};
+
+const applyStatusEvent = (payload: Record<string, unknown>): void => {
+	if (payload.status !== undefined) {
+		status.value = payload.status as string;
+	}
+
+	if (payload.phase !== undefined) {
+		phase.value = payload.phase as string | null;
+	}
+
+	if (payload.progress_percent !== undefined) {
+		progressPercent.value = payload.progress_percent as number | null;
+	}
+
+	if (payload.error !== undefined) {
+		error.value = payload.error as string | null;
+	}
+
+	// Update installing state
+	installing.value = isUpdating.value;
+};
+
 export const useUpdateStatus = (): IUseUpdateStatus => {
 	const backend = useBackend();
-
-	const currentVersion = ref<string | null>(null);
-	const latestVersion = ref<string | null>(null);
-	const updateAvailable = ref<boolean>(false);
-	const updateType = ref<'patch' | 'minor' | 'major' | null>(null);
-	const lastChecked = ref<Date | null>(null);
-	const changelogUrl = ref<string | null>(null);
-
-	const status = ref<string>('idle');
-	const phase = ref<string | null>(null);
-	const progressPercent = ref<number | null>(null);
-	const error = ref<string | null>(null);
-
-	const loading = ref<boolean>(false);
-	const installing = ref<boolean>(false);
-
-	const isUpdating = computed<boolean>((): boolean => {
-		return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
-	});
-
-	const applyInfoResponse = (data: Record<string, unknown>): void => {
-		currentVersion.value = (data.current_version as string) ?? null;
-		latestVersion.value = (data.latest_version as string) ?? null;
-		updateAvailable.value = (data.update_available as boolean) ?? false;
-		updateType.value = (data.update_type as 'patch' | 'minor' | 'major' | null) ?? null;
-		lastChecked.value = data.last_checked ? new Date(data.last_checked as string) : null;
-		changelogUrl.value = (data.changelog_url as string) ?? null;
-		error.value = null;
-	};
-
-	const applyStatusEvent = (payload: Record<string, unknown>): void => {
-		if (payload.status !== undefined) {
-			status.value = payload.status as string;
-		}
-
-		if (payload.phase !== undefined) {
-			phase.value = payload.phase as string | null;
-		}
-
-		if (payload.progress_percent !== undefined) {
-			progressPercent.value = payload.progress_percent as number | null;
-		}
-
-		if (payload.message !== undefined) {
-			// Not directly exposed but used internally
-		}
-
-		if (payload.error !== undefined) {
-			error.value = payload.error as string | null;
-		}
-
-		// Update installing state
-		installing.value = isUpdating.value;
-	};
 
 	const fetchStatus = async (): Promise<void> => {
 		loading.value = true;
@@ -124,7 +142,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		}
 	};
 
-	// Subscribe to WebSocket update events
+	// Subscribe to WebSocket update events (each component instance gets its own subscription)
 	const unsubscribe = onUpdateEvent(applyStatusEvent);
 
 	onUnmounted((): void => {

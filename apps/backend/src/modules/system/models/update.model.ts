@@ -35,6 +35,26 @@ export class UpdateInfoModel {
 	@ApiPropertyOptional({ description: 'URL to changelog/release notes', type: 'string', nullable: true })
 	@Expose({ name: 'changelog_url' })
 	changelogUrl: string | null;
+
+	@ApiProperty({
+		description: 'Current update process status',
+		enum: ['idle', 'checking', 'downloading', 'stopping', 'installing', 'migrating', 'starting', 'complete', 'failed'],
+		example: 'idle',
+	})
+	@Expose()
+	status: string;
+
+	@ApiPropertyOptional({ description: 'Current phase description', type: 'string', nullable: true })
+	@Expose()
+	phase: string | null;
+
+	@ApiPropertyOptional({ description: 'Progress percentage (0-100)', type: 'number', nullable: true })
+	@Expose({ name: 'progress_percent' })
+	progressPercent: number | null;
+
+	@ApiPropertyOptional({ description: 'Error message if status is failed', type: 'string', nullable: true })
+	@Expose()
+	error: string | null;
 }
 
 /**

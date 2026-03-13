@@ -51,6 +51,7 @@ export class UpdateController {
 
 		try {
 			const info = await this.updateService.checkServerUpdate();
+			const updateStatus = this.updateService.getStatus();
 
 			const data = toInstance(UpdateInfoModel, {
 				currentVersion: info.current,
@@ -59,6 +60,10 @@ export class UpdateController {
 				updateType: info.updateType,
 				lastChecked: new Date().toISOString(),
 				changelogUrl: info.latest ? `https://github.com/FastyBird/smart-panel/releases/tag/v${info.latest}` : null,
+				status: updateStatus.status,
+				phase: updateStatus.phase,
+				progressPercent: updateStatus.progressPercent,
+				error: updateStatus.error,
 			});
 
 			const response = new UpdateInfoResponseModel();
