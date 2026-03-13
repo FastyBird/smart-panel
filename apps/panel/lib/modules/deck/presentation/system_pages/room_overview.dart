@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
-import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -1001,46 +1000,47 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		BuildContext context,
 		AppLocalizations localizations,
 	) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final spaceName = _model?.title ?? widget.viewItem.title;
+
 		return Center(
 			child: Padding(
-        padding: AppSpacings.paddingXl,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            IconContainer(
-              screenService: locator<ScreenService>(),
-              icon: MdiIcons.homeOffOutline,
-              color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.placeholder
-                : AppTextColorDark.placeholder,
-              isLandscape: locator<ScreenService>().isLandscape,
-              useContainer: false,
-            ),
-            Text(
-              localizations.space_empty_state_title,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.regular
-                  : AppTextColorDark.regular,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              localizations.space_empty_state_description,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+				padding: AppSpacings.paddingXl,
+				child: Column(
+					mainAxisAlignment: MainAxisAlignment.center,
+					spacing: AppSpacings.pMd,
+					children: [
+						Icon(
+							MdiIcons.checkCircleOutline,
+							size: AppSpacings.scale(48),
+							color: isDark
+								? AppColorsDark.success
+								: AppColorsLight.success,
+						),
+						Text(
+							localizations.space_empty_state_title,
+							style: TextStyle(
+								fontSize: AppFontSize.large,
+								fontWeight: FontWeight.w600,
+								color: isDark
+									? AppTextColorDark.regular
+									: AppTextColorLight.regular,
+							),
+							textAlign: TextAlign.center,
+						),
+						Text(
+							localizations.space_empty_state_description(spaceName),
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: isDark
+									? AppTextColorDark.placeholder
+									: AppTextColorLight.placeholder,
+							),
+							textAlign: TextAlign.center,
+						),
+					],
+				),
+			),
 		);
 	}
 

@@ -1303,10 +1303,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_undo_button => 'Zpět';
 
   @override
-  String get space_empty_state_title => 'Žádná ovládání nejsou k dispozici';
+  String get space_empty_state_title => 'Displej je připraven';
 
   @override
-  String get space_empty_state_description => 'Tato místnost nemá nakonfigurovaná žádná ovladatelná zařízení';
+  String space_empty_state_description(String spaceName) {
+    return 'Nakonfigurujte \"$spaceName\" v aplikaci Admin nebo Gateway pro přidání zařízení a ovládacích prvků.';
+  }
 
   @override
   String get space_sensors_only_title => 'Pouze senzory';

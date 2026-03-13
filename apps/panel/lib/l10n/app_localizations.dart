@@ -2444,14 +2444,14 @@ abstract class AppLocalizations {
   /// Title shown when space has no controllable devices
   ///
   /// In en, this message translates to:
-  /// **'No Controls Available'**
+  /// **'Display Is Ready'**
   String get space_empty_state_title;
 
   /// Description shown when space has no controllable devices
   ///
   /// In en, this message translates to:
-  /// **'This space has no controllable devices configured yet'**
-  String get space_empty_state_description;
+  /// **'Configure \"{spaceName}\" in the Admin or Gateway app to add devices and controls to this display.'**
+  String space_empty_state_description(String spaceName);
 
   /// Title shown when space only has sensors
   ///

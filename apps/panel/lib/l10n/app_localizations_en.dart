@@ -1292,10 +1292,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get space_undo_button => 'Undo';
 
   @override
-  String get space_empty_state_title => 'No Controls Available';
+  String get space_empty_state_title => 'Display Is Ready';
 
   @override
-  String get space_empty_state_description => 'This space has no controllable devices configured yet';
+  String space_empty_state_description(String spaceName) {
+    return 'Configure \"$spaceName\" in the Admin or Gateway app to add devices and controls to this display.';
+  }
 
   @override
   String get space_sensors_only_title => 'Sensors Only';
