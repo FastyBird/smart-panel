@@ -568,11 +568,97 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										),
 									],
 								),
+								// Blocking overlay when WebSocket is disconnected.
+								// Only shown when SocketService was resolved — if the service
+								// is unavailable, _wsConnected stays false but we must not
+								// block the entire UI permanently.
+								if (_socketService != null && !_wsConnected)
+									_buildWsOfflineOverlay(context, isDark),
 							],
 						),
 					),
 				);
 			},
+		);
+	}
+
+	// =============================================================================
+	// WS OFFLINE OVERLAY
+	// =============================================================================
+
+	Widget _buildWsOfflineOverlay(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
+		final overlayColor = isDark
+				? Colors.black.withValues(alpha: 0.75)
+				: Colors.black.withValues(alpha: 0.55);
+		final cardColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+		final subtitleColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		return Positioned.fill(
+			child: Container(
+				color: overlayColor,
+				child: Center(
+					child: Container(
+						margin: AppSpacings.paddingXl,
+						padding: AppSpacings.paddingXl,
+						decoration: BoxDecoration(
+							color: cardColor,
+							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						),
+						child: Column(
+							mainAxisSize: MainAxisSize.min,
+							spacing: AppSpacings.pMd,
+							children: [
+								Icon(
+									MdiIcons.wifiOff,
+									size: AppSpacings.scale(40),
+									color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+								),
+								Text(
+									localizations.media_ws_offline_title,
+									style: TextStyle(
+										fontSize: AppFontSize.large,
+										fontWeight: FontWeight.w600,
+										color: textColor,
+									),
+									textAlign: TextAlign.center,
+								),
+								Text(
+									localizations.media_ws_offline_description,
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+										color: subtitleColor,
+									),
+									textAlign: TextAlign.center,
+								),
+								AppSpacings.spacingSmVertical,
+								Theme(
+									data: ThemeData(
+										filledButtonTheme: isDark
+											? AppFilledButtonsDarkThemes.primary
+											: AppFilledButtonsLightThemes.primary,
+									),
+									child: FilledButton.icon(
+										icon: Icon(
+											MdiIcons.refresh,
+											size: AppFontSize.small,
+											color: isDark
+												? AppFilledButtonsDarkThemes.primaryForegroundColor
+												: AppFilledButtonsLightThemes.primaryForegroundColor,
+										),
+										label: Text(localizations.media_activity_retry),
+										onPressed: () => _socketService?.reconnect(),
+										style: FilledButton.styleFrom(
+											textStyle: TextStyle(fontSize: AppFontSize.small),
+										),
+									),
+								),
+							],
+						),
+					),
+				),
+			),
 		);
 	}
 
@@ -1336,13 +1422,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			mainAxisAlignment: MainAxisAlignment.center,
 			spacing: cardSpacing,
 			children: [
-					// Warning banner
+					// Warning banner (active with non-critical issues) – amber
+					// Note: failed state uses _buildFailureDetails below (with retry/deactivate actions)
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
 						_buildWarningBannerForState(context, activeState),
 					],
 
 					// Offline device banner
-					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
+					if (offlineRoles.isNotEmpty && !activeState.hasWarnings && !activeState.isFailed) ...[
 						_buildOfflineDeviceBanner(context, offlineRoles),
 					],
 
@@ -1360,7 +1447,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						_buildVolumeControl(context),
 					],
 
-					// Failure details
+					// Failure action buttons (retry/deactivate) for failed state
 				if (activeState.isFailed) ...[
 					_buildFailureDetails(context, activeState),
 				],
@@ -1378,6 +1465,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				: localizations.media_warning_steps_had_issues;
 		return AlertBanner(
 			text: label,
+			icon: MdiIcons.alertOutline,
 			color: ThemeColors.warning,
 			onTap: () => _showFailureDetailsSheet(context, state),
 		);

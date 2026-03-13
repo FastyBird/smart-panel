@@ -465,6 +465,46 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.warnings).toBeDefined();
 		});
 
+		it('should include requiresRealtime flag in activation result', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, { displayEndpointId });
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			const mockDevice = {
+				id: deviceTvId,
+				type: 'test-platform',
+				channels: [{ id: uuid(), properties: [{ id: powerPropertyId, value: false }] }],
+			};
+
+			mockSpacesService.findDevicesByIds.mockResolvedValue([mockDevice]);
+			mockPlatformRegistry.get.mockReturnValue({ processBatch: jest.fn().mockResolvedValue(true) });
+
+			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			expect(result.requiresRealtime).toBe(true);
+		});
+
+		it('should include requiresRealtime flag in deactivation result', async () => {
+			mockActiveRepository.findOne.mockResolvedValue(null);
+
+			const result = await service.deactivate(spaceId);
+
+			expect(result.requiresRealtime).toBe(true);
+		});
+
 		it('should include steps array in ACTIVATING event payload', async () => {
 			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
 			const binding = buildBinding(MediaActivityKey.WATCH, {
