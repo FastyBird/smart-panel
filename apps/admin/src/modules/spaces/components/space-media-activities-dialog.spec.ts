@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -200,14 +200,14 @@ const mockSpace = {
 
 // --- Lightweight Element Plus stubs ---
 
-const elDialogStub = {
+const elDialogStub = defineComponent({
 	template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
 	props: ['modelValue'],
 	emits: ['update:modelValue', 'open', 'close'],
 	mounted() {
 		this.$emit('open');
 	},
-};
+});
 
 const stubs = {
 	'el-dialog': elDialogStub,
