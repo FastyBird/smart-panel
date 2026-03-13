@@ -1419,12 +1419,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			mainAxisAlignment: MainAxisAlignment.center,
 			spacing: cardSpacing,
 			children: [
-					// Error banner (failed state) – red, distinct from warning
-					if (activeState.isFailed) ...[
-						_buildErrorBannerForState(context, activeState),
-					],
-
 					// Warning banner (active with non-critical issues) – amber
+					// Note: failed state uses _buildFailureDetails below (with retry/deactivate actions)
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
 						_buildWarningBannerForState(context, activeState),
 					],
@@ -1468,18 +1464,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			text: label,
 			icon: MdiIcons.alertOutline,
 			color: ThemeColors.warning,
-			onTap: () => _showFailureDetailsSheet(context, state),
-		);
-	}
-
-	Widget _buildErrorBannerForState(BuildContext context, MediaActiveStateModel state) {
-		final localizations = AppLocalizations.of(context)!;
-		final errorCount = state.lastResult?.errorCount ?? 0;
-		final warningCount = state.lastResult?.warningCount ?? 0;
-		return AlertBanner(
-			text: localizations.media_failure_inline(errorCount, warningCount),
-			icon: MdiIcons.alertCircleOutline,
-			color: ThemeColors.error,
 			onTap: () => _showFailureDetailsSheet(context, state),
 		);
 	}
