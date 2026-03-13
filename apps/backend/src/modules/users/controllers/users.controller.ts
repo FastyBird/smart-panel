@@ -30,9 +30,10 @@ import {
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
+import { Roles } from '../guards/roles.guard';
 import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
 import { UsersService } from '../services/users.service';
-import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME, USERS_MODULE_PREFIX } from '../users.constants';
+import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME, USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
 @ApiTags(USERS_MODULE_API_TAG_NAME)
 @Controller('users')
@@ -54,6 +55,7 @@ export class UsersController {
 	)
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Get()
 	async findAll(): Promise<UsersResponseModel> {
 		this.logger.debug('Fetching all users');
@@ -84,6 +86,7 @@ export class UsersController {
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('User not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UserResponseModel> {
 		this.logger.debug(`Fetching page id=${id}`);
@@ -114,6 +117,7 @@ export class UsersController {
 	@ApiBadRequestResponse('Invalid request data or unsupported user data')
 	@ApiUnprocessableEntityResponse('Username or email already exists')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Post()
 	async create(
 		@Body() createDto: ReqCreateUserDto,
@@ -121,6 +125,13 @@ export class UsersController {
 		@Req() req: Request,
 	): Promise<UserResponseModel> {
 		this.logger.debug('Incoming request to create a new user');
+
+		// Prevent assigning owner role to new users
+		if (createDto.data.role === UserRole.OWNER) {
+			this.logger.warn('Attempted to create user with owner role');
+
+			throw new UnprocessableEntityException('The owner role cannot be assigned to other users');
+		}
 
 		const existingUsername = await this.usersService.findByUsername(createDto.data.username);
 
@@ -169,14 +180,45 @@ export class UsersController {
 	@ApiNotFoundResponse('User not found')
 	@ApiUnprocessableEntityResponse('Email already exists')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateUserDto,
+		@Req() req: AuthenticatedRequest,
 	): Promise<UserResponseModel> {
 		this.logger.debug(`Incoming update request for user id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
+
+		const { auth } = req;
+
+		// Resolve the authenticated user's ID (works for both access tokens and long-live tokens)
+		const authenticatedUserId = auth?.type === 'user' ? auth.id : auth?.type === 'token' ? auth.ownerId : null;
+
+		// Prevent users from changing their own role
+		if (
+			authenticatedUserId !== null &&
+			authenticatedUserId === id &&
+			updateDto.data.role !== undefined &&
+			updateDto.data.role !== user.role
+		) {
+			throw new UnprocessableEntityException('You cannot change your own role');
+		}
+
+		// Prevent assigning owner role to any user who is not already the owner
+		if (updateDto.data.role === UserRole.OWNER && user.role !== UserRole.OWNER) {
+			this.logger.warn('Attempted to assign owner role');
+
+			throw new UnprocessableEntityException('The owner role cannot be assigned to other users');
+		}
+
+		// Prevent changing the role of the owner account
+		if (user.role === UserRole.OWNER && updateDto.data.role !== undefined && updateDto.data.role !== UserRole.OWNER) {
+			this.logger.warn('Attempted to change owner role');
+
+			throw new UnprocessableEntityException('The owner role cannot be changed');
+		}
 
 		if (updateDto.data.email) {
 			const existingEmail = await this.usersService.findByEmail(updateDto.data.email);
@@ -212,6 +254,7 @@ export class UsersController {
 	@ApiNotFoundResponse('User not found')
 	@ApiUnprocessableEntityResponse('Cannot delete your own account')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Delete(':id')
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -223,9 +266,17 @@ export class UsersController {
 
 		const { auth } = req;
 
+		// Resolve the authenticated user's ID (works for both access tokens and long-live tokens)
+		const authenticatedUserId = auth?.type === 'user' ? auth.id : auth?.type === 'token' ? auth.ownerId : null;
+
 		// Prevent user from deleting themselves
-		if (auth && auth.type === 'user' && auth.id === id) {
+		if (authenticatedUserId !== null && authenticatedUserId === id) {
 			throw new UnprocessableEntityException('You cannot delete your own account');
+		}
+
+		// Prevent deleting the owner account
+		if (user.role === UserRole.OWNER) {
+			throw new UnprocessableEntityException('The owner account cannot be deleted');
 		}
 
 		await this.usersService.remove(user.id);

@@ -100,6 +100,7 @@
 			<el-select
 				v-model="model.role"
 				:placeholder="t('usersModule.fields.role.placeholder')"
+				:disabled="isRoleDisabled"
 				name="role"
 			>
 				<el-option
@@ -168,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
@@ -176,6 +177,7 @@ import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, E
 import { Icon } from '@iconify/vue';
 
 import { UsersModuleUserRole } from '../../../openapi.constants';
+import { useSession } from '../../auth/composables/composables';
 import { type IUserEditForm, useUserEditForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
@@ -202,7 +204,23 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const { profile } = useSession();
+
 const { model, formEl, formChanged, submit, formResult } = useUserEditForm({ user: props.user });
+
+const isRoleDisabled = computed<boolean>((): boolean => {
+	// Users cannot change their own role
+	if (profile.value !== null && profile.value.id === props.user.id) {
+		return true;
+	}
+
+	// The owner role cannot be changed
+	if (props.user.role === UsersModuleUserRole.owner) {
+		return true;
+	}
+
+	return false;
+});
 
 const usernameFormVisible = ref(false);
 
@@ -220,20 +238,28 @@ const rules = reactive<FormRules<IUserEditForm>>({
 	email: [{ type: 'email', message: t('usersModule.fields.email.validation.email'), trigger: 'change' }],
 });
 
-const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
-	{
-		value: UsersModuleUserRole.user,
-		label: t('usersModule.fields.role.options.user'),
-	},
-	{
-		value: UsersModuleUserRole.admin,
-		label: t('usersModule.fields.role.options.admin'),
-	},
-	{
-		value: UsersModuleUserRole.owner,
-		label: t('usersModule.fields.role.options.owner'),
-	},
-];
+const roleOptions = computed<{ value: UsersModuleUserRole; label: string }[]>(() => {
+	const options: { value: UsersModuleUserRole; label: string }[] = [
+		{
+			value: UsersModuleUserRole.user,
+			label: t('usersModule.fields.role.options.user'),
+		},
+		{
+			value: UsersModuleUserRole.admin,
+			label: t('usersModule.fields.role.options.admin'),
+		},
+	];
+
+	// Include owner option when viewing the owner user so the label displays correctly
+	if (props.user.role === UsersModuleUserRole.owner) {
+		options.push({
+			value: UsersModuleUserRole.owner,
+			label: t('usersModule.fields.role.options.owner'),
+		});
+	}
+
+	return options;
+});
 
 const onChangePassword = (): void => {
 	passwordFormVisible.value = true;

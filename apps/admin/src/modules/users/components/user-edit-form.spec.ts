@@ -18,6 +18,16 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+vi.mock('../../auth/composables/composables', () => ({
+	useSession: () => ({
+		profile: ref({
+			id: 'current-user-id',
+			username: 'currentuser',
+			role: UsersModuleUserRole.admin,
+		}),
+	}),
+}));
+
 const editFormMock = {
 	model: reactive({
 		username: 'admin',

@@ -129,19 +129,24 @@ describe('UsersController', () => {
 	describe('update', () => {
 		it('should update and return the user', async () => {
 			const updateDto: UpdateUserDto = { first_name: 'UpdatedName' };
+			const auth = { type: 'user', id: 'other-user-id', role: UserRole.ADMIN };
+			const requestMock = { auth } as unknown as AuthenticatedRequest;
 
-			const updatedUser = await controller.update(mockUser.id, { data: updateDto });
+			const updatedUser = await controller.update(mockUser.id, { data: updateDto }, requestMock);
 
 			expect(updatedUser.data.firstName).toBe('UpdatedName');
 			expect(service.update).toHaveBeenCalledWith(mockUser.id, updateDto);
 		});
 
 		it('should throw NotFoundException if user does not exist', async () => {
+			const auth = { type: 'user', id: 'other-user-id', role: UserRole.ADMIN };
+			const requestMock = { auth } as unknown as AuthenticatedRequest;
+
 			mockUserService.findOne.mockResolvedValueOnce(null);
 
-			await expect(controller.update('invalid-id', { data: { first_name: 'UpdatedName' } })).rejects.toThrow(
-				NotFoundException,
-			);
+			await expect(
+				controller.update('invalid-id', { data: { first_name: 'UpdatedName' } }, requestMock),
+			).rejects.toThrow(NotFoundException);
 		});
 	});
 
