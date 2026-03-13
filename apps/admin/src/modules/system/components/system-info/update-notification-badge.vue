@@ -65,9 +65,11 @@ onMounted((): void => {
 	void fetchStatus();
 });
 
-// Reset dismissal when a new version becomes available
-watch(latestVersion, (newVersion: string | null): void => {
-	if (newVersion && newVersion !== dismissedVersion.value) {
+// Reset dismissal only when a genuinely new version appears.
+// Ignore null transitions (e.g. during re-fetch) to avoid clearing
+// a dismissal the user already made for the current version.
+watch(latestVersion, (newVersion: string | null, oldVersion: string | null): void => {
+	if (newVersion && newVersion !== oldVersion && newVersion !== dismissedVersion.value) {
 		dismissedVersion.value = null;
 		localStorage.removeItem(DISMISSED_VERSION_KEY);
 	}

@@ -154,9 +154,19 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		error.value = null;
 
 		try {
-			await backend.client.POST(UPDATE_INSTALL_PATH as never, {
+			const response = await backend.client.POST(UPDATE_INSTALL_PATH as never, {
 				body: { allow_major: allowMajor },
 			} as never);
+
+			const responseError = (response as { error?: unknown }).error;
+
+			if (responseError) {
+				installing.value = false;
+				status.value = 'failed';
+				error.value = 'systemModule.messages.update.installFailed';
+
+				throw new Error('Failed to start update');
+			}
 		} catch (err) {
 			installing.value = false;
 			status.value = 'failed';
