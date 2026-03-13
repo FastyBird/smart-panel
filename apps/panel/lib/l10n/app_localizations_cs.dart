@@ -1260,6 +1260,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get room_selection_error => 'Přiřazení místnosti se nezdařilo. Zkuste to znovu.';
 
   @override
+  String get room_selection_empty_title => 'Žádné místnosti';
+
+  @override
+  String get room_selection_empty_description => 'Zatím nebyly vytvořeny žádné místnosti. Otevřete administrační rozhraní a přidejte alespoň jednu místnost.';
+
+  @override
   String get action_success => 'Akce byla úspěšně dokončena';
 
   @override

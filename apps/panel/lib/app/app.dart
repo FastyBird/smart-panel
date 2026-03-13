@@ -12,7 +12,6 @@ import 'package:fastybird_smart_panel/features/discovery/presentation/discovery.
 import 'package:fastybird_smart_panel/features/discovery/presentation/room_selection.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
@@ -165,13 +164,11 @@ class _MyAppState extends State<MyApp> {
   bool _needsRoomSelection() {
     try {
       final displayRepo = locator<DisplayRepository>();
-      final spacesRepo = locator<SpacesRepository>();
       final display = displayRepo.display;
 
       if (display != null &&
           display.role == DisplayRole.room &&
-          display.roomId == null &&
-          spacesRepo.rooms.isNotEmpty) {
+          display.roomId == null) {
         return true;
       }
     } catch (e) {

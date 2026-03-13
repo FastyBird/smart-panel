@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_data_display_home_mode.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_data_display_role.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_req_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_distance_unit.dart';
@@ -244,47 +246,7 @@ class DisplayRepository extends ChangeNotifier {
       if (response.response.statusCode == 200) {
         final data = response.data.data;
 
-        _display = DisplayModel(
-          id: data.id,
-          macAddress: data.macAddress,
-          version: data.version,
-          build: data.build,
-          name: data.name,
-          screenWidth: data.screenWidth,
-          screenHeight: data.screenHeight,
-          pixelRatio: data.pixelRatio.toDouble(),
-          unitSize: data.unitSize.toDouble(),
-          rows: data.rows,
-          cols: data.cols,
-          darkMode: data.darkMode,
-          brightness: data.brightness,
-          screenLockDuration: data.screenLockDuration,
-          screenSaver: data.screenSaver,
-          audioOutputSupported: data.audioOutputSupported,
-          audioInputSupported: data.audioInputSupported,
-          speaker: data.speaker,
-          speakerVolume: data.speakerVolume,
-          microphone: data.microphone,
-          microphoneVolume: data.microphoneVolume,
-          temperatureUnit: data.temperatureUnit?.json != null
-              ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
-              : null,
-          windSpeedUnit: data.windSpeedUnit?.json != null
-              ? WindSpeedUnit.fromValue(data.windSpeedUnit!.json!)
-              : null,
-          pressureUnit: data.pressureUnit?.json != null
-              ? PressureUnit.fromValue(data.pressureUnit!.json!)
-              : null,
-          precipitationUnit: data.precipitationUnit?.json != null
-              ? PrecipitationUnit.fromValue(data.precipitationUnit!.json!)
-              : null,
-          distanceUnit: data.distanceUnit?.json != null
-              ? DistanceUnit.fromValue(data.distanceUnit!.json!)
-              : null,
-          weatherLocationId: data.weatherLocationId,
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt,
-        );
+        _display = _displayModelFromApiData(data);
 
         _isLoading = false;
         notifyListeners();
@@ -332,47 +294,7 @@ class DisplayRepository extends ChangeNotifier {
       if (response.response.statusCode == 200) {
         final data = response.data.data;
 
-        _display = DisplayModel(
-          id: data.id,
-          macAddress: data.macAddress,
-          version: data.version,
-          build: data.build,
-          name: data.name,
-          screenWidth: data.screenWidth,
-          screenHeight: data.screenHeight,
-          pixelRatio: data.pixelRatio.toDouble(),
-          unitSize: data.unitSize.toDouble(),
-          rows: data.rows,
-          cols: data.cols,
-          darkMode: data.darkMode,
-          brightness: data.brightness,
-          screenLockDuration: data.screenLockDuration,
-          screenSaver: data.screenSaver,
-          audioOutputSupported: data.audioOutputSupported,
-          audioInputSupported: data.audioInputSupported,
-          speaker: data.speaker,
-          speakerVolume: data.speakerVolume,
-          microphone: data.microphone,
-          microphoneVolume: data.microphoneVolume,
-          temperatureUnit: data.temperatureUnit?.json != null
-              ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
-              : null,
-          windSpeedUnit: data.windSpeedUnit?.json != null
-              ? WindSpeedUnit.fromValue(data.windSpeedUnit!.json!)
-              : null,
-          pressureUnit: data.pressureUnit?.json != null
-              ? PressureUnit.fromValue(data.pressureUnit!.json!)
-              : null,
-          precipitationUnit: data.precipitationUnit?.json != null
-              ? PrecipitationUnit.fromValue(data.precipitationUnit!.json!)
-              : null,
-          distanceUnit: data.distanceUnit?.json != null
-              ? DistanceUnit.fromValue(data.distanceUnit!.json!)
-              : null,
-          weatherLocationId: data.weatherLocationId,
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt,
-        );
+        _display = _displayModelFromApiData(data);
 
         _isLoading = false;
         notifyListeners();
@@ -447,6 +369,80 @@ class DisplayRepository extends ChangeNotifier {
 
       return FetchDisplayResult.error;
     }
+  }
+
+  /// Convert API display role enum to local DisplayRole
+  static DisplayRole _fromApiRole(DisplaysModuleDataDisplayRole role) {
+    switch (role) {
+      case DisplaysModuleDataDisplayRole.master:
+        return DisplayRole.master;
+      case DisplaysModuleDataDisplayRole.entry:
+        return DisplayRole.entry;
+      case DisplaysModuleDataDisplayRole.room:
+      default:
+        return DisplayRole.room;
+    }
+  }
+
+  /// Convert API home mode enum to local HomeMode
+  static HomeMode _fromApiHomeMode(DisplaysModuleDataDisplayHomeMode mode) {
+    switch (mode) {
+      case DisplaysModuleDataDisplayHomeMode.explicit:
+        return HomeMode.explicit;
+      case DisplaysModuleDataDisplayHomeMode.autoSpace:
+      default:
+        return HomeMode.autoSpace;
+    }
+  }
+
+  /// Create a DisplayModel from API response data
+  static DisplayModel _displayModelFromApiData(dynamic data) {
+    return DisplayModel(
+      id: data.id,
+      macAddress: data.macAddress,
+      version: data.version,
+      build: data.build,
+      name: data.name,
+      screenWidth: data.screenWidth,
+      screenHeight: data.screenHeight,
+      pixelRatio: data.pixelRatio.toDouble(),
+      unitSize: data.unitSize.toDouble(),
+      rows: data.rows,
+      cols: data.cols,
+      darkMode: data.darkMode,
+      brightness: data.brightness,
+      screenLockDuration: data.screenLockDuration,
+      screenSaver: data.screenSaver,
+      audioOutputSupported: data.audioOutputSupported,
+      audioInputSupported: data.audioInputSupported,
+      speaker: data.speaker,
+      speakerVolume: data.speakerVolume,
+      microphone: data.microphone,
+      microphoneVolume: data.microphoneVolume,
+      role: _fromApiRole(data.role),
+      roomId: data.roomId,
+      homeMode: _fromApiHomeMode(data.homeMode),
+      homePageId: data.homePageId,
+      resolvedHomePageId: data.resolvedHomePageId,
+      temperatureUnit: data.temperatureUnit?.json != null
+          ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
+          : null,
+      windSpeedUnit: data.windSpeedUnit?.json != null
+          ? WindSpeedUnit.fromValue(data.windSpeedUnit!.json!)
+          : null,
+      pressureUnit: data.pressureUnit?.json != null
+          ? PressureUnit.fromValue(data.pressureUnit!.json!)
+          : null,
+      precipitationUnit: data.precipitationUnit?.json != null
+          ? PrecipitationUnit.fromValue(data.precipitationUnit!.json!)
+          : null,
+      distanceUnit: data.distanceUnit?.json != null
+          ? DistanceUnit.fromValue(data.distanceUnit!.json!)
+          : null,
+      weatherLocationId: data.weatherLocationId,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    );
   }
 
   /// Convert local DisplayRole to API DisplaysModuleUpdateDisplayRole

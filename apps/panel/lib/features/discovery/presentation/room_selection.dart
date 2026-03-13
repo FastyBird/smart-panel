@@ -114,12 +114,66 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               return _buildSavingState(context, isDark, isLandscape);
             }
 
+            if (_rooms.isEmpty) {
+              return _buildEmptyState(context, isDark, isLandscape);
+            }
+
             if (isLandscape) {
               return _buildLandscapeLayout(context, isDark);
             }
 
             return _buildPortraitLayout(context, isDark);
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final accent = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconContainer(
+              screenService: _screenService,
+              icon: MdiIcons.homeCityOutline,
+              color: accent,
+              isLandscape: isLandscape,
+              useContainer: false,
+            ),
+            SizedBox(height: _screenService.iconBottomSpacing(isLandscape)),
+            Text(
+              localizations.room_selection_empty_title,
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.primary
+                    : AppTextColorLight.primary,
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            AppSpacings.spacingSmVertical,
+            Text(
+              localizations.room_selection_empty_description,
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.placeholder
+                    : AppTextColorLight.placeholder,
+                fontSize: AppFontSize.small,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

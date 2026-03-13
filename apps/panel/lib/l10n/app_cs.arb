@@ -376,6 +376,8 @@
   "room_selection_button_confirm": "Přiřadit k této místnosti",
   "room_selection_saving": "Přiřazování místnosti...",
   "room_selection_error": "Přiřazení místnosti se nezdařilo. Zkuste to znovu.",
+  "room_selection_empty_title": "Žádné místnosti",
+  "room_selection_empty_description": "Zatím nebyly vytvořeny žádné místnosti. Otevřete administrační rozhraní a přidejte alespoň jednu místnost.",
 
   "action_success": "Akce byla úspěšně dokončena",
   "space_lighting_controls_title": "Ovládání osvětlení",

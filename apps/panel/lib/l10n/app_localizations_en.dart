@@ -1249,6 +1249,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get room_selection_error => 'Failed to assign room. Please try again.';
 
   @override
+  String get room_selection_empty_title => 'No Rooms Available';
+
+  @override
+  String get room_selection_empty_description => 'No rooms have been created yet. Please open the admin interface and add at least one room.';
+
+  @override
   String get action_success => 'Action completed successfully';
 
   @override

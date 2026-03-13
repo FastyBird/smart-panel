@@ -2351,6 +2351,18 @@ abstract class AppLocalizations {
   /// **'Failed to assign room. Please try again.'**
   String get room_selection_error;
 
+  /// Title shown when no rooms exist in the backend
+  ///
+  /// In en, this message translates to:
+  /// **'No Rooms Available'**
+  String get room_selection_empty_title;
+
+  /// Description shown when no rooms exist in the backend
+  ///
+  /// In en, this message translates to:
+  /// **'No rooms have been created yet. Please open the admin interface and add at least one room.'**
+  String get room_selection_empty_description;
+
   /// Success message when an action completes
   ///
   /// In en, this message translates to:
