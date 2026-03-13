@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: large
 Parent: FEATURE-MEDIA-ADMIN-UI-MVP-1
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -43,7 +43,7 @@ I want to activate/deactivate media activities, see live status, and inspect fai
 ## 4. Acceptance criteria
 
 - [x] Admin can activate each activityKey via Run button
-- [ ] Admin can deactivate via global Deactivate button
+- [x] Admin can deactivate via global Deactivate button
 - [x] UI shows current active activity and resolved device composition
 - [x] UI shows failures with actionable details (step index, device, reason)
 - [x] Polling fallback refreshes status after activate/deactivate
@@ -51,7 +51,7 @@ I want to activate/deactivate media activities, see live status, and inspect fai
 - [x] Failures never disappear silently
 - [x] "Copy debug JSON" available for support/reporting
 - [x] Store tests for activate/deactivate flows (mock API)
-- [ ] Component test for rendering failed state and failures list
+- [x] Component test for rendering failed state and failures list
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
