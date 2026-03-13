@@ -141,7 +141,10 @@ export class ScenarioCommand extends CommandRunner {
 		if (scenarios.length === 0) {
 			console.log('  No scenarios found.\n');
 			console.log(`  Builtin path: ${this.scenarioLoader.getBuiltinScenariosPath()}`);
-			console.log(`  User path: ${this.scenarioLoader.getUserScenariosPath()}\n`);
+			const userPath =
+				this.scenarioLoader.getUserScenariosPath() ??
+				`${this.scenarioLoader.getUserDataDir()} (prefix: plugin.simulator.)`;
+			console.log(`  User path: ${userPath}\n`);
 			return;
 		}
 

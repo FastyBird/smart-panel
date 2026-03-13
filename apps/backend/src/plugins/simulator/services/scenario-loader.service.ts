@@ -433,8 +433,15 @@ export class ScenarioLoaderService implements OnModuleInit {
 	/**
 	 * Get user scenarios path for external configuration
 	 */
-	getUserScenariosPath(): string {
+	getUserScenariosPath(): string | null {
 		return this.userScenariosPath;
+	}
+
+	/**
+	 * Get user data directory (for flat prefix-based overrides)
+	 */
+	getUserDataDir(): string {
+		return this.userDataDir;
 	}
 
 	/**

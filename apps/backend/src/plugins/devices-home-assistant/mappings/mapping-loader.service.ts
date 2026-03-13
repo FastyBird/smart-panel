@@ -689,8 +689,15 @@ export class MappingLoaderService implements OnModuleInit {
 	/**
 	 * Get user mappings path
 	 */
-	getUserMappingsPath(): string {
+	getUserMappingsPath(): string | null {
 		return this.userMappingsPath;
+	}
+
+	/**
+	 * Get user data directory (for flat prefix-based overrides)
+	 */
+	getUserDataDir(): string {
+		return this.userDataDir;
 	}
 
 	/**

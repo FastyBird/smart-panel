@@ -307,11 +307,12 @@ export class MappingLoaderService implements OnModuleInit {
 		try {
 			// Path traversal protection for user mappings
 			if (source === 'user' || source === 'custom') {
-				const userMappingsPath = normalize(resolve(this.userMappingsPath));
-				if (!this.validatePath(userMappingsPath, filePath)) {
+				const allowedDir = this.userMappingsPath ?? this.userDataDir;
+				const allowedDirResolved = normalize(resolve(allowedDir));
+				if (!this.validatePath(allowedDirResolved, filePath)) {
 					return {
 						success: false,
-						errors: [`Path traversal attempt detected: ${filePath} is outside allowed directory ${userMappingsPath}`],
+						errors: [`Path traversal: ${filePath} is outside ${allowedDirResolved}`],
 						source: filePath,
 					};
 				}
@@ -834,8 +835,15 @@ export class MappingLoaderService implements OnModuleInit {
 	/**
 	 * Get user mappings path for external configuration
 	 */
-	getUserMappingsPath(): string {
+	getUserMappingsPath(): string | null {
 		return this.userMappingsPath;
+	}
+
+	/**
+	 * Get user data directory (for flat prefix-based overrides)
+	 */
+	getUserDataDir(): string {
+		return this.userDataDir;
 	}
 
 	/**
