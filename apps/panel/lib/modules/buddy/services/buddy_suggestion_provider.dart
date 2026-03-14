@@ -44,32 +44,32 @@ class BuddySuggestionProvider implements SuggestionProvider {
 	String get providerId => 'buddy';
 
 	@override
-	void onSuggestionTapped(AppSuggestion suggestion) {
+	void onSuggestionTapped(AppSuggestion suggestion) async {
 		if (kDebugMode) {
 			debugPrint('[BUDDY SUGGESTION] Accepted: ${suggestion.id}');
 		}
 
 		try {
 			final service = locator<BuddyService>();
-			service.acceptSuggestion(suggestion.id);
+			await service.acceptSuggestion(suggestion.id);
 			service.removeSuggestion(suggestion.id);
 		} catch (_) {
-			// BuddyService not available
+			// BuddyService not available or feedback failed
 		}
 	}
 
 	@override
-	void onSuggestionDismissed(AppSuggestion suggestion) {
+	void onSuggestionDismissed(AppSuggestion suggestion) async {
 		if (kDebugMode) {
 			debugPrint('[BUDDY SUGGESTION] Dismissed: ${suggestion.id}');
 		}
 
 		try {
 			final service = locator<BuddyService>();
-			service.dismissSuggestion(suggestion.id);
+			await service.dismissSuggestion(suggestion.id);
 			service.removeSuggestion(suggestion.id);
 		} catch (_) {
-			// BuddyService not available
+			// BuddyService not available or feedback failed
 		}
 	}
 }
