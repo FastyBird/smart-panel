@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
-import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_input_overlay.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
@@ -152,19 +151,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		}
 	}
 
-	Future<bool> _handleSuggestionFeedback(
-		String suggestionId,
-		String feedback,
-	) async {
-		final buddyService = context.read<BuddyService>();
-
-		if (feedback == 'applied') {
-			return buddyService.acceptSuggestion(suggestionId);
-		} else {
-			return buddyService.dismissSuggestion(suggestionId);
-		}
-	}
-
 	void _onBuddyServiceChanged() {
 		if (!mounted) return;
 
@@ -271,28 +257,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 										: _buildInitFailedState(context, isDark)
 									: Consumer<BuddyService>(
 										builder: (context, buddyService, _) {
-											final suggestions = buddyService.suggestions;
-
-											return Stack(
-												children: [
-													_buildBody(context, isDark, buddyService),
-													if (suggestions.isNotEmpty)
-														Positioned(
-															top: 0,
-															left: 0,
-															right: 0,
-															child: BuddySuggestionCard(
-																key: ValueKey(suggestions.first.id),
-																suggestion: suggestions.first,
-																onFeedback: (id, feedback) =>
-																	_handleSuggestionFeedback(id, feedback),
-																onAnimationComplete: (id) {
-																	context.read<BuddyService>().removeSuggestion(id);
-																},
-															),
-														),
-												],
-											);
+											return _buildBody(context, isDark, buddyService);
 										},
 									)
 								: Center(
