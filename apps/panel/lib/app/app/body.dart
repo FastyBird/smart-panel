@@ -2,6 +2,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
+import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/modules/displays/services/inactivity_overlay_provider.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -46,8 +47,10 @@ class _AppBodyState extends State<AppBody> {
   final SecurityStatusRepository _securityStatusRepository = locator<SecurityStatusRepository>();
   final OverlayManager _overlayManager = locator<OverlayManager>();
 
-  bool _hasDarkMode = false;
-  Language _language = Language.english;
+  final LocalPreferencesService _localPrefs = locator<LocalPreferencesService>();
+
+  late bool _hasDarkMode = _localPrefs.darkMode;
+  late Language _language = _localPrefs.language;
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
@@ -226,13 +229,25 @@ class _AppBodyState extends State<AppBody> {
 
   void _syncStateWithRepository() {
     final config = _systemConfigRepository.data;
-    final newLanguage = config?.language ?? Language.english;
+    final newDarkMode = _displayRepository.hasDarkMode;
+
+    // Only update language when config is loaded from backend.
+    // When config is null (not yet fetched), keep the cached value
+    // from local preferences to avoid overwriting it with English.
+    final newLanguage = config?.language ?? _language;
     final languageChanged = newLanguage != _language;
 
     setState(() {
-      _hasDarkMode = _displayRepository.hasDarkMode;
+      _hasDarkMode = newDarkMode;
       _language = newLanguage;
     });
+
+    // Persist to local storage so next startup uses correct values immediately.
+    // Only persist language when we have actual backend data.
+    if (config != null) {
+      _localPrefs.setLanguage(newLanguage);
+    }
+    _localPrefs.setDarkMode(newDarkMode);
 
     // Synchronize Intl locale so DeckService._resolveLocalizations() works
     // before MaterialApp renders (initState runs before build).

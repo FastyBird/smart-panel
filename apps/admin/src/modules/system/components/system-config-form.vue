@@ -60,12 +60,20 @@
 				name="timezone"
 				filterable
 			>
-				<el-option
-					v-for="tz in timezones"
-					:key="tz"
-					:label="tz"
-					:value="tz"
-				/>
+				<el-option-group
+					v-for="group in timezoneGroups"
+					:key="group.label"
+					:label="group.label"
+				>
+					<template #default>
+						<el-option
+							v-for="tz in group.zones"
+							:key="tz"
+							:label="tz.replace(/_/g, ' ')"
+							:value="tz"
+						/>
+					</template>
+				</el-option-group>
 			</el-select>
 		</el-form-item>
 
@@ -248,7 +256,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElSelect, ElOption, ElOptionGroup, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { ISystemConfigEditForm } from '../schemas/config.types';
@@ -283,18 +291,70 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const timezones = [
-	'Africa/Cairo',
-	'Africa/Johannesburg',
-	'America/New_York',
-	'America/Los_Angeles',
-	'Asia/Dubai',
-	'Asia/Tokyo',
-	'Asia/Kolkata',
-	'Australia/Sydney',
-	'Europe/London',
-	'Europe/Berlin',
-	'Europe/Prague',
+const timezoneGroups = [
+	{
+		label: 'Africa',
+		zones: ['Africa/Cairo', 'Africa/Johannesburg'],
+	},
+	{
+		label: 'Americas',
+		zones: [
+			'America/Anchorage',
+			'America/Chicago',
+			'America/Denver',
+			'America/Halifax',
+			'America/Los_Angeles',
+			'America/Mexico_City',
+			'America/New_York',
+			'America/Phoenix',
+			'America/St_Johns',
+			'America/Toronto',
+			'America/Vancouver',
+		],
+	},
+	{
+		label: 'Asia',
+		zones: ['Asia/Dubai', 'Asia/Kolkata', 'Asia/Tokyo'],
+	},
+	{
+		label: 'Australia',
+		zones: ['Australia/Sydney'],
+	},
+	{
+		label: 'Europe',
+		zones: [
+			'Europe/Amsterdam',
+			'Europe/Athens',
+			'Europe/Belgrade',
+			'Europe/Berlin',
+			'Europe/Bratislava',
+			'Europe/Brussels',
+			'Europe/Bucharest',
+			'Europe/Budapest',
+			'Europe/Copenhagen',
+			'Europe/Dublin',
+			'Europe/Helsinki',
+			'Europe/Istanbul',
+			'Europe/Kyiv',
+			'Europe/Lisbon',
+			'Europe/London',
+			'Europe/Madrid',
+			'Europe/Moscow',
+			'Europe/Oslo',
+			'Europe/Paris',
+			'Europe/Prague',
+			'Europe/Rome',
+			'Europe/Stockholm',
+			'Europe/Vienna',
+			'Europe/Vilnius',
+			'Europe/Warsaw',
+			'Europe/Zurich',
+		],
+	},
+	{
+		label: 'Pacific',
+		zones: ['Pacific/Honolulu'],
+	},
 ];
 
 const logLevels = [

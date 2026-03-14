@@ -4,6 +4,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/app/app.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
@@ -23,12 +24,18 @@ class AppError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final prefs = locator.isRegistered<LocalPreferencesService>()
+        ? locator<LocalPreferencesService>()
+        : null;
+    final isDark = prefs?.darkMode ?? false;
+    final language = prefs?.language ?? Language.english;
 
     return MaterialApp(
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: prefs != null
+          ? (prefs.darkMode ? ThemeMode.dark : ThemeMode.light)
+          : ThemeMode.system,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -37,7 +44,10 @@ class AppError extends StatelessWidget {
       supportedLocales: Language.values.map(
         (item) => Locale(item.value.split('_')[0], item.value.split('_')[1]),
       ),
-      locale: const Locale('en', 'US'),
+      locale: Locale(
+        language.value.split('_')[0],
+        language.value.split('_')[1],
+      ),
       home: Builder(
         builder: (innerContext) {
           final localizations = AppLocalizations.of(innerContext)!;

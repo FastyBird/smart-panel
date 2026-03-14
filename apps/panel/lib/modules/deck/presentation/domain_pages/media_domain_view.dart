@@ -1744,9 +1744,25 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final size = AppSpacings.scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
 		final iconSize = AppSpacings.scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
 		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isDisabled = onTap == null;
 		final themeData = isActive
 			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
 			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+
+		Color iconColor;
+		if (isDisabled) {
+			iconColor = isDark
+				? AppColorsDark.neutralLight5
+				: AppColorsLight.neutralLight5;
+		} else if (isActive) {
+			iconColor = isDark
+				? AppFilledButtonsDarkThemes.primaryForegroundColor
+				: AppFilledButtonsLightThemes.primaryForegroundColor;
+		} else {
+			iconColor = isDark
+				? AppFilledButtonsDarkThemes.neutralForegroundColor
+				: AppFilledButtonsLightThemes.neutralForegroundColor;
+		}
 
 		return SizedBox(
 			width: size,
@@ -1754,7 +1770,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Theme(
 				data: themeData,
 				child: FilledButton(
-					onPressed: onTap == null
+					onPressed: isDisabled
 						? null
 						: () {
 							HapticFeedback.lightImpact();
@@ -1770,13 +1786,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: Icon(
 						icon,
 						size: iconSize,
-						color: isDark
-							? (isActive
-								? AppFilledButtonsDarkThemes.primaryForegroundColor
-								: AppFilledButtonsDarkThemes.neutralForegroundColor)
-							: (isActive
-								? AppFilledButtonsLightThemes.primaryForegroundColor
-								: AppFilledButtonsLightThemes.neutralForegroundColor),
+						color: iconColor,
 					),
 				),
 			),
