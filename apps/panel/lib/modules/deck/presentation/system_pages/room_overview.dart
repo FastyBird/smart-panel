@@ -1421,6 +1421,34 @@ class _RoomDomainCard extends StatelessWidget {
 		}
 	}
 
+	static Color _domainOutlinedButtonDisabledColor(
+		DomainType domain,
+		bool isDark,
+	) {
+		switch (domain) {
+			case DomainType.lights:
+				return isDark
+						? AppColorsDark.warningLight5
+						: AppColorsLight.warningLight5;
+			case DomainType.climate:
+				return isDark
+						? AppColorsDark.infoLight5
+						: AppColorsLight.infoLight5;
+			case DomainType.shading:
+				return isDark
+						? AppColorsDark.tealLight5
+						: AppColorsLight.tealLight5;
+			case DomainType.media:
+				return isDark
+						? AppColorsDark.dangerLight5
+						: AppColorsLight.dangerLight5;
+			default:
+				return isDark
+						? AppBorderColorDark.light
+						: AppBorderColorLight.light;
+		}
+	}
+
 	@override
 	Widget build(BuildContext context) {
 		final colorFamily = ThemeColorFamily.get(
@@ -1622,6 +1650,10 @@ class _RoomDomainCard extends StatelessWidget {
 									cardInfo.domain,
 									isDark,
 								);
+								final disabledColor = _domainOutlinedButtonDisabledColor(
+									cardInfo.domain,
+									isDark,
+								);
 								final btnTheme = _domainOutlinedButtonTheme(
 									cardInfo.domain,
 									isDark,
@@ -1652,7 +1684,7 @@ class _RoomDomainCard extends StatelessWidget {
 															child: Icon(
 																action.icon,
 																size: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
-																color: action.disabled ? null : fgColor,
+																color: action.disabled ? disabledColor : fgColor,
 															),
 														);
 													}
@@ -1670,7 +1702,7 @@ class _RoomDomainCard extends StatelessWidget {
 																fontSize: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
 																fontWeight: FontWeight.w600,
 																height: 1.0,
-																color: action.disabled ? null : fgColor,
+																color: action.disabled ? disabledColor : fgColor,
 															),
 														),
 													);
