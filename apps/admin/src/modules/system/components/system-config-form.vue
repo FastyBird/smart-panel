@@ -69,7 +69,7 @@
 						<el-option
 							v-for="tz in group.zones"
 							:key="tz"
-							:label="tz.split('/').pop()?.replace(/_/g, ' ')"
+							:label="tz.replace(/_/g, ' ')"
 							:value="tz"
 						/>
 					</template>
