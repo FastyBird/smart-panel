@@ -1817,7 +1817,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get entry_cameras => 'Kameras';
 
   @override
-  String get air_quality_level_excellent => 'Ausgezeichnet';
+  String get air_quality_level_excellent => 'Sehr gut';
 
   @override
   String get air_quality_level_good => 'Gut';
@@ -2257,7 +2257,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shading_state_open => 'Offen';
 
   @override
-  String get shading_state_closed => 'Geschlossen';
+  String get shading_state_closed => 'Zu';
 
   @override
   String shading_state_partial(int position) {
@@ -2277,7 +2277,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get covers_mode_open => 'Offen';
 
   @override
-  String get covers_mode_closed => 'Geschlossen';
+  String get covers_mode_closed => 'Zu';
 
   @override
   String get covers_mode_privacy => 'Privatsphäre';
@@ -3393,7 +3393,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sensors_domain_avg_temperature => 'Durchschn. Temperatur';
 
   @override
-  String get sensors_domain_avg_humidity => 'Durchschn. Luftfeuchtigkeit';
+  String get sensors_domain_avg_humidity => 'Durchschn. Feuchte';
 
   @override
   String get sensors_domain_all_sensors => 'Alle Sensoren';
