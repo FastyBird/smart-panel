@@ -57,23 +57,27 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   /// Notifier to trigger bottom sheet rebuild when channel selection changes.
   final ValueNotifier<int> _channelListVersion = ValueNotifier(0);
 
+  /// Whether the initial channel has been resolved from [widget.initialChannelId].
+  bool _initialChannelResolved = false;
+
   // --------------------------------------------------------------------------
   // LIFECYCLE
   // --------------------------------------------------------------------------
 
   @override
-  void initState() {
-    super.initState();
-    final allChannels = _getAllSensorChannels();
-    if (allChannels.isEmpty) return;
-    if (widget.initialChannelId != null) {
-      final index =
-          allChannels.indexWhere((s) => s.channel.id == widget.initialChannelId);
-      if (index >= 0) {
-        _selectedChannelIndex = index;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialChannelResolved) {
+      _initialChannelResolved = true;
+      final allChannels = _getAllSensorChannels();
+      if (allChannels.isEmpty) return;
+      if (widget.initialChannelId != null) {
+        final index = allChannels
+            .indexWhere((s) => s.channel.id == widget.initialChannelId);
+        if (index >= 0) {
+          _selectedChannelIndex = index;
+        }
       }
-    } else {
-      _selectedChannelIndex = 0;
     }
   }
 
