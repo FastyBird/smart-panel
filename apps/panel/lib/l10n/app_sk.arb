@@ -701,7 +701,7 @@
   "shading_devices_title": "Zariadenia",
   "shading_devices_count": "{count, plural, =1{1 zariadenie} few{{count} zariadenia} other{{count} zariadení}}",
   "shading_action_open": "Otvoriť",
-  "shading_action_close": "Zatvoriť",
+  "shading_action_close": "Zavrieť",
   "shading_action_stop": "Zastaviť",
   "shading_state_open": "Otvorené",
   "shading_state_closed": "Zatvorené",

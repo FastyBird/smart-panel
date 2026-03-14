@@ -443,13 +443,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get electrical_power_over_power_description => 'Ostrzeżenie: Zużycie mocy jest zbyt wysokie.';
 
   @override
-  String get light_state_on => 'Włączone';
+  String get light_state_on => 'Wł.';
 
   @override
   String get light_state_on_description => 'Światło jest włączone';
 
   @override
-  String get light_state_off => 'Wyłączone';
+  String get light_state_off => 'Wył.';
 
   @override
   String get light_state_failed => 'Błąd';
@@ -2276,7 +2276,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get shading_action_open => 'Otwórz';
 
   @override
-  String get shading_action_close => 'Zamknij';
+  String get shading_action_close => 'Zamk.';
 
   @override
   String get shading_action_stop => 'Zatrzymaj';

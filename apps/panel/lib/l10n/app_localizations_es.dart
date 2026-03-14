@@ -421,7 +421,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get electrical_power_over_power_description => 'Advertencia: El consumo de energía es demasiado alto';
 
   @override
-  String get light_state_on => 'Encendido';
+  String get light_state_on => 'Enc.';
 
   @override
   String get light_state_on_description => 'La luz está encendida';

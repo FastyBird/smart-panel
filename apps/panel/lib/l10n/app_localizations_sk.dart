@@ -2262,7 +2262,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get shading_action_open => 'Otvoriť';
 
   @override
-  String get shading_action_close => 'Zatvoriť';
+  String get shading_action_close => 'Zavrieť';
 
   @override
   String get shading_action_stop => 'Zastaviť';

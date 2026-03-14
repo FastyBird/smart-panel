@@ -106,7 +106,7 @@
   "electrical_power_over_voltage_description": "Advertencia: La electricidad es demasiado fuerte",
   "electrical_power_over_power_title": "Sobrepotencia",
   "electrical_power_over_power_description": "Advertencia: El consumo de energía es demasiado alto",
-  "light_state_on": "Encendido",
+  "light_state_on": "Enc.",
   "light_state_on_description": "La luz está encendida",
   "light_state_off": "Apagado",
   "light_state_failed": "Error",
