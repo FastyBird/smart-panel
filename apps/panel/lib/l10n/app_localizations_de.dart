@@ -2248,7 +2248,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shading_action_open => 'Öffnen';
 
   @override
-  String get shading_action_close => 'Schließen';
+  String get shading_action_close => 'Zu';
 
   @override
   String get shading_action_stop => 'Stopp';
@@ -2286,7 +2286,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get covers_mode_daylight => 'Tageslicht';
 
   @override
-  String get domain_mode_custom => 'Benutzerdefiniert';
+  String get domain_mode_custom => 'Eigen';
 
   @override
   String get covers_role_primary => 'Haupt';

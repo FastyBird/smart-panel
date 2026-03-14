@@ -2286,7 +2286,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get covers_mode_daylight => 'Luz natural';
 
   @override
-  String get domain_mode_custom => 'Personalizado';
+  String get domain_mode_custom => 'Propio';
 
   @override
   String get covers_role_primary => 'Principal';
