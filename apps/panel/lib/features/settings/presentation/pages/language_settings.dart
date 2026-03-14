@@ -79,17 +79,56 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
 		final List<String> timezones = [
+			// Africa
 			'Africa/Cairo',
 			'Africa/Johannesburg',
-			'America/New_York',
+			// Americas
+			'America/Anchorage',
+			'America/Chicago',
+			'America/Denver',
+			'America/Halifax',
 			'America/Los_Angeles',
+			'America/Mexico_City',
+			'America/New_York',
+			'America/Phoenix',
+			'America/St_Johns',
+			'America/Toronto',
+			'America/Vancouver',
+			// Asia
 			'Asia/Dubai',
-			'Asia/Tokyo',
 			'Asia/Kolkata',
+			'Asia/Tokyo',
+			// Australia
 			'Australia/Sydney',
-			'Europe/London',
+			// Europe
+			'Europe/Amsterdam',
+			'Europe/Athens',
+			'Europe/Belgrade',
 			'Europe/Berlin',
+			'Europe/Bratislava',
+			'Europe/Brussels',
+			'Europe/Bucharest',
+			'Europe/Budapest',
+			'Europe/Copenhagen',
+			'Europe/Dublin',
+			'Europe/Helsinki',
+			'Europe/Istanbul',
+			'Europe/Kyiv',
+			'Europe/Lisbon',
+			'Europe/London',
+			'Europe/Madrid',
+			'Europe/Moscow',
+			'Europe/Oslo',
+			'Europe/Paris',
 			'Europe/Prague',
+			'Europe/Rome',
+			'Europe/Stockholm',
+			'Europe/Vienna',
+			'Europe/Vilnius',
+			'Europe/Warsaw',
+			'Europe/Zurich',
+			// Pacific
+			'Pacific/Honolulu',
 		];
 
 		final languageLabels = {
