@@ -24,11 +24,10 @@ class AppError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final prefs = locator.isRegistered<LocalPreferencesService>()
         ? locator<LocalPreferencesService>()
         : null;
+    final isDark = prefs?.darkMode ?? false;
     final language = prefs?.language ?? Language.english;
 
     return MaterialApp(
