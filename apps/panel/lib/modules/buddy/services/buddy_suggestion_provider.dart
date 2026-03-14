@@ -50,7 +50,9 @@ class BuddySuggestionProvider implements SuggestionProvider {
 		}
 
 		try {
-			locator<BuddyService>().acceptSuggestion(suggestion.id);
+			final service = locator<BuddyService>();
+			service.acceptSuggestion(suggestion.id);
+			service.removeSuggestion(suggestion.id);
 		} catch (_) {
 			// BuddyService not available
 		}
@@ -63,7 +65,9 @@ class BuddySuggestionProvider implements SuggestionProvider {
 		}
 
 		try {
-			locator<BuddyService>().dismissSuggestion(suggestion.id);
+			final service = locator<BuddyService>();
+			service.dismissSuggestion(suggestion.id);
+			service.removeSuggestion(suggestion.id);
 		} catch (_) {
 			// BuddyService not available
 		}
