@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/app/app/body.dart';
 import 'package:fastybird_smart_panel/app/app/error.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -123,6 +124,9 @@ class _MyAppState extends State<MyApp> {
   late ValueNotifier<AppState> _appState;
   AppErrorInfo? _errorInfo;
 
+  Language _cachedLanguage = Language.english;
+  bool _cachedDarkMode = false;
+
   StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
 
   @override
@@ -200,6 +204,15 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initializeApp() async {
     _appState.value = AppState.loading;
     _errorInfo = null;
+
+    // Load cached UI preferences (language, dark mode) before anything else
+    // so the first frame uses the correct locale and theme
+    final prefs = locator<LocalPreferencesService>();
+    await prefs.load();
+    setState(() {
+      _cachedLanguage = prefs.language;
+      _cachedDarkMode = prefs.darkMode;
+    });
 
     try {
       final result = await _startupManager.tryInitialize();
@@ -376,7 +389,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       theme: AppTheme.startThemeLight,
       darkTheme: AppTheme.startThemeDark,
-      themeMode: ThemeMode.system,
+      themeMode: _cachedDarkMode ? ThemeMode.dark : ThemeMode.light,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -391,8 +404,8 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       locale: Locale(
-        Language.english.value.split('_')[0],
-        Language.english.value.split('_')[1],
+        _cachedLanguage.value.split('_')[0],
+        _cachedLanguage.value.split('_')[1],
       ),
       home: Scaffold(
         body: Center(
@@ -410,7 +423,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: _cachedDarkMode ? ThemeMode.dark : ThemeMode.light,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -425,8 +438,8 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       locale: Locale(
-        Language.english.value.split('_')[0],
-        Language.english.value.split('_')[1],
+        _cachedLanguage.value.split('_')[0],
+        _cachedLanguage.value.split('_')[1],
       ),
       home: DiscoveryScreen(
         onBackendSelected: _onBackendSelected,
@@ -441,7 +454,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: _cachedDarkMode ? ThemeMode.dark : ThemeMode.light,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -456,8 +469,8 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       locale: Locale(
-        Language.english.value.split('_')[0],
-        Language.english.value.split('_')[1],
+        _cachedLanguage.value.split('_')[0],
+        _cachedLanguage.value.split('_')[1],
       ),
       home: RoomSelectionScreen(
         onRoomSelected: _onRoomSelected,

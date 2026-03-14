@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
+import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -157,6 +158,10 @@ class StartupManagerService {
     } else {
       locator.registerSingleton(_securedStorageFallback);
     }
+    locator.registerSingleton(LocalPreferencesService(
+      securedStorage: Platform.isAndroid || Platform.isIOS ? _securedStorage : null,
+      securedStorageFallback: Platform.isAndroid || Platform.isIOS ? null : _securedStorageFallback,
+    ));
     locator.registerSingleton(_eventBus);
   }
 
