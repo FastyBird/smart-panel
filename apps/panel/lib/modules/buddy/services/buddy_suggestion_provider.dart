@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/features/suggestions/types/suggestion.dart';
 import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_provider.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
-import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 
 /// Wraps [BuddySuggestionModel] as an [AppSuggestion].
@@ -39,41 +37,39 @@ class BuddyAppSuggestion implements AppSuggestion {
 
 /// Suggestion provider for the buddy module.
 ///
-/// Tapping a buddy suggestion opens the buddy chat page.
+/// Tapping a buddy suggestion sends `applied` feedback via [BuddyService].
 /// Dismissing sends `dismissed` feedback via [BuddyService].
 class BuddySuggestionProvider implements SuggestionProvider {
 	@override
 	String get providerId => 'buddy';
 
 	@override
-	void onSuggestionTapped(AppSuggestion suggestion) {
+	void onSuggestionTapped(AppSuggestion suggestion) async {
 		if (kDebugMode) {
 			debugPrint('[BUDDY SUGGESTION] Accepted: ${suggestion.id}');
 		}
 
 		try {
-			final navigationService = locator<NavigationService>();
-			final context = navigationService.navigatorKey.currentContext;
-			if (context != null) {
-				Navigator.of(context).push(
-					MaterialPageRoute(builder: (_) => const BuddyChatPage()),
-				);
-			}
+			final service = locator<BuddyService>();
+			await service.acceptSuggestion(suggestion.id);
+			service.removeSuggestion(suggestion.id);
 		} catch (_) {
-			// Navigation service not available
+			// BuddyService not available or feedback failed
 		}
 	}
 
 	@override
-	void onSuggestionDismissed(AppSuggestion suggestion) {
+	void onSuggestionDismissed(AppSuggestion suggestion) async {
 		if (kDebugMode) {
 			debugPrint('[BUDDY SUGGESTION] Dismissed: ${suggestion.id}');
 		}
 
 		try {
-			locator<BuddyService>().dismissSuggestion(suggestion.id);
+			final service = locator<BuddyService>();
+			await service.dismissSuggestion(suggestion.id);
+			service.removeSuggestion(suggestion.id);
 		} catch (_) {
-			// BuddyService not available
+			// BuddyService not available or feedback failed
 		}
 	}
 }

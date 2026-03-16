@@ -22,6 +22,4 @@ export 'package:fastybird_smart_panel/modules/buddy/module.dart';
 // Presentation
 export 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
-export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
-export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_activation_indicator.dart';

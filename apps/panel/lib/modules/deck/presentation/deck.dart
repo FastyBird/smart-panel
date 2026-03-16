@@ -10,7 +10,6 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/features/suggestions/presentation/suggestion_toast.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
-import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_activation_indicator.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
@@ -472,14 +471,6 @@ class _BuddyFab extends StatelessWidget {
                   size: AppSpacings.scale(24),
                 ),
               ),
-              if (buddyService.suggestionCount > 0)
-                Positioned(
-                  right: -AppSpacings.scale(4),
-                  top: -AppSpacings.scale(4),
-                  child: BuddySuggestionBadge(
-                    count: buddyService.suggestionCount,
-                  ),
-                ),
             ],
           ),
         );
