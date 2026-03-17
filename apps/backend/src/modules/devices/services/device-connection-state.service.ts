@@ -16,19 +16,27 @@ export class DeviceConnectionStateService {
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
 	/**
-	 * Returns the number of devices currently online according to the
-	 * in-memory cache (updated on every state-change write).
+	 * Returns the number of devices currently online.
+	 *
+	 * Uses the in-memory cache when it has been populated by plugin syncs.
+	 * On cold start (cache empty) falls back to an InfluxDB query so the
+	 * count is available immediately after a server restart.
 	 */
-	getCachedOnlineCount(): number {
-		let count = 0;
+	async getOnlineCountWithFallback(): Promise<number> {
+		if (this.statusMap.size > 0) {
+			let count = 0;
 
-		for (const entry of this.statusMap.values()) {
-			if (entry.online) {
-				count++;
+			for (const entry of this.statusMap.values()) {
+				if (entry.online) {
+					count++;
+				}
 			}
+
+			return count;
 		}
 
-		return count;
+		// Cold-start fallback — query InfluxDB directly
+		return this.getOnlineCount();
 	}
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
@@ -155,15 +163,15 @@ export class DeviceConnectionStateService {
 		}
 	}
 
-	async getOnlineCount(windowMinutes = 15): Promise<number> {
+	async getOnlineCount(windowMinutes = 60 * 24): Promise<number> {
 		if (!this.influxDbService.isConnected()) {
 			return 0;
 		}
 
 		const query = `
-      SELECT SUM(v) FROM (
-        SELECT LAST("online") AS v
-        FROM device_status
+      SELECT SUM("onlineI") AS sum FROM (
+        SELECT LAST("onlineI") AS "onlineI"
+        FROM "device_status"
         WHERE time > now() - ${windowMinutes}m
         GROUP BY "deviceId"
       )
