@@ -164,6 +164,8 @@ class SystemActionsOverlayProvider {
   }
 
   void _hideAction({Duration delay = Duration.zero}) {
+    if (_disposed) return;
+
     _hideTimer?.cancel();
 
     if (delay == Duration.zero) {

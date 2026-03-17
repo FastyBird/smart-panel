@@ -223,9 +223,10 @@ class SocketService {
     // Enable reconnection for new initialization
     _shouldReconnect = true;
 
-    // Reset retry state on new initialization
+    // Reset retry and disposed state on new initialization
     _retryAttempt = 0;
     _reconnectInProgress = false;
+    _disposed = false;
 
     // Store callback for token invalidation
     _onTokenInvalid = onTokenInvalid;

@@ -88,18 +88,27 @@ class FlipClock extends StatefulWidget {
 }
 
 class _FlipClockState extends State<FlipClock> {
-  late final Stream<DateTime> _timeStream;
+  late final StreamController<DateTime> _timeController;
+  late final Timer _timer;
 
   @override
   void initState() {
     super.initState();
     var time = widget.startTime;
-    _timeStream = Stream<DateTime>.periodic(
-      const Duration(milliseconds: 1000),
-      (_) {
-        return time = time.add(const Duration(seconds: 1));
-      },
-    ).asBroadcastStream();
+    _timeController = StreamController<DateTime>.broadcast();
+    _timer = Timer.periodic(const Duration(milliseconds: 1000), (_) {
+      time = time.add(const Duration(seconds: 1));
+      if (!_timeController.isClosed) {
+        _timeController.add(time);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _timeController.close();
+    super.dispose();
   }
 
   @override
@@ -109,7 +118,7 @@ class _FlipClockState extends State<FlipClock> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildSegment(
-          _timeStream,
+          _timeController.stream,
           (DateTime time) => (time.hour) ~/ 10,
           (DateTime time) => (time.hour) % 10,
           widget.startTime,
@@ -124,7 +133,7 @@ class _FlipClockState extends State<FlipClock> {
           ],
         ),
         _buildSegment(
-          _timeStream,
+          _timeController.stream,
           (DateTime time) => (time.minute) ~/ 10,
           (DateTime time) => (time.minute) % 10,
           widget.startTime,
