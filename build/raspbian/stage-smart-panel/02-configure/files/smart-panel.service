@@ -1,8 +1,9 @@
 [Unit]
 Description=FastyBird Smart Panel
 Documentation=https://smart-panel.fastybird.com
-After=network-online.target influxdb.service
+After=network-online.target influxdb.service smart-panel-firstboot.service
 Wants=network-online.target influxdb.service
+Requires=smart-panel-firstboot.service
 
 [Service]
 Type=simple
