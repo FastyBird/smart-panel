@@ -67,11 +67,8 @@ prepare_app_files() {
 	jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])' \
 		"${PROJECT_ROOT}/apps/backend/package.json" > "${APP_FILES_DIR}/app/package.json"
 
-	# Install production-only dependencies
-	cd "${APP_FILES_DIR}/app"
-	# Copy the lockfile and workspace config for reproducible installs
+	# Copy the lockfile for reproducible installs
 	cp "${PROJECT_ROOT}/pnpm-lock.yaml" "${APP_FILES_DIR}/app/"
-	cp "${PROJECT_ROOT}/pnpm-workspace.yaml" "${APP_FILES_DIR}/app/"
 
 	# Admin static files
 	mkdir -p "${APP_FILES_DIR}/app/static"

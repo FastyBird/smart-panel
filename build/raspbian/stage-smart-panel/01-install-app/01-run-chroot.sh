@@ -21,6 +21,11 @@ mkdir -p /etc/smart-panel
 cp -r /tmp/smart-panel-files/app/dist "${APP_INSTALL_DIR}/dist"
 cp /tmp/smart-panel-files/app/package.json "${APP_INSTALL_DIR}/package.json"
 
+# Copy lockfile for reproducible installs (if present)
+if [ -f /tmp/smart-panel-files/app/pnpm-lock.yaml ]; then
+	cp /tmp/smart-panel-files/app/pnpm-lock.yaml "${APP_INSTALL_DIR}/pnpm-lock.yaml"
+fi
+
 # Copy admin static files
 cp -r /tmp/smart-panel-files/app/static "${APP_INSTALL_DIR}/static"
 
@@ -31,11 +36,11 @@ fi
 
 # Install production dependencies
 cd "${APP_INSTALL_DIR}"
-pnpm install --prod --ignore-scripts 2>/dev/null || true
+pnpm install --prod --ignore-scripts
 
 # Rebuild native modules for ARM
-pnpm rebuild sqlite3 2>/dev/null || true
-pnpm rebuild bcrypt 2>/dev/null || true
+pnpm rebuild sqlite3 || true
+pnpm rebuild bcrypt || true
 
 # Set ownership
 chown -R smart-panel:smart-panel "${APP_INSTALL_DIR}"

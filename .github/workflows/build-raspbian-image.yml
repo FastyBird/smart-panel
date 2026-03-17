@@ -48,6 +48,8 @@ jobs:
           # Copy package.json and strip workspace: protocol deps (already bundled in dist)
           jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])' \
             apps/backend/package.json > build/raspbian/stage-smart-panel/01-install-app/files/app/package.json
+          # Copy lockfile for reproducible installs
+          cp pnpm-lock.yaml build/raspbian/stage-smart-panel/01-install-app/files/app/
 
           # Admin static files
           mkdir -p build/raspbian/stage-smart-panel/01-install-app/files/app/static
