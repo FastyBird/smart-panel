@@ -287,6 +287,7 @@ export class UpdatePanelCommand extends CommandRunner {
 			const fileStream = createWriteStream(tmpFile);
 
 			// Convert web ReadableStream to Node stream
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const nodeStream = Readable.fromWeb(response.body as any);
 
 			await pipeline(nodeStream, fileStream);
@@ -370,6 +371,7 @@ export class UpdatePanelCommand extends CommandRunner {
 			}
 
 			const fileStream = createWriteStream(tmpFile);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const nodeStream = Readable.fromWeb(response.body as any);
 
 			await pipeline(nodeStream, fileStream);

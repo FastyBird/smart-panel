@@ -201,12 +201,14 @@ const mockSpace = {
 // --- Lightweight Element Plus stubs ---
 
 const elDialogStub = defineComponent({
-	template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
-	props: ['modelValue'],
+	props: {
+		modelValue: { type: Boolean },
+	},
 	emits: ['update:modelValue', 'open', 'close'],
 	mounted() {
 		this.$emit('open');
 	},
+	template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>',
 });
 
 const stubs = {
