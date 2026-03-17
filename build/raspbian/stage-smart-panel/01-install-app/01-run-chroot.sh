@@ -21,6 +21,11 @@ mkdir -p /etc/smart-panel
 cp -r /tmp/smart-panel-files/app/dist "${APP_INSTALL_DIR}/dist"
 cp /tmp/smart-panel-files/app/package.json "${APP_INSTALL_DIR}/package.json"
 
+# Copy extension-sdk (referenced as file:./extension-sdk in package.json)
+if [ -d /tmp/smart-panel-files/app/extension-sdk ]; then
+	cp -r /tmp/smart-panel-files/app/extension-sdk "${APP_INSTALL_DIR}/extension-sdk"
+fi
+
 # Copy lockfile for reproducible installs (if present)
 if [ -f /tmp/smart-panel-files/app/pnpm-lock.yaml ]; then
 	cp /tmp/smart-panel-files/app/pnpm-lock.yaml "${APP_INSTALL_DIR}/pnpm-lock.yaml"
