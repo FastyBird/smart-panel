@@ -1,22 +1,19 @@
 // Standalone Energy Screen — whole-installation energy overview.
 //
-// Mirrors SecurityScreen: registered as a deck item, supports embedded mode.
-// Uses spaceId='home' for whole-installation data.
+// Mirrors the energy domain view visually, but uses EnergyRepository
+// (ChangeNotifier via Provider) with spaceId='home' for whole-installation data.
 //
 // Sections:
 // - ENERGY SCREEN (state, lifecycle, build)
 // - HEADER
-// - RANGE SELECTOR
-// - SUMMARY CARDS
-// - TIMESERIES CHART
-// - TOP CONSUMERS LIST
-// - EMPTY STATE
+// - PORTRAIT LAYOUT
+// - LANDSCAPE LAYOUT
+// - TOP CONSUMERS (sheet / drawer)
 
-import 'dart:math';
+import 'dart:async';
 
-import 'package:fl_chart/fl_chart.dart';
+import 'package:event_bus/event_bus.dart';
 import 'package:flutter/material.dart';
-
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -24,17 +21,25 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/energy/models/energy_breakdown.dart';
-import 'package:fastybird_smart_panel/modules/energy/models/energy_summary.dart';
-import 'package:fastybird_smart_panel/modules/energy/models/energy_timeseries.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_consumption_card.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_consumer_tile.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_range_options.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_timeseries_chart.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
-import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
+import 'package:fastybird_smart_panel/modules/energy/utils/energy_format.dart';
 
 // =============================================================================
 // CONSTANTS
@@ -47,871 +52,501 @@ const String _homeSpaceId = 'home';
 // =============================================================================
 
 class EnergyScreen extends StatefulWidget {
-	/// When true, hides back/home navigation buttons (used when embedded in deck).
-	final bool embedded;
+  /// When true, hides back/home navigation buttons (used when embedded in deck).
+  final bool embedded;
 
-	const EnergyScreen({super.key, this.embedded = false});
+  const EnergyScreen({super.key, this.embedded = false});
 
-	@override
-	State<EnergyScreen> createState() => _EnergyScreenState();
+  @override
+  State<EnergyScreen> createState() => _EnergyScreenState();
 }
 
 class _EnergyScreenState extends State<EnergyScreen> {
-	@override
-	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+  final ScreenService _screenService = locator<ScreenService>();
 
-		return Consumer<EnergyRepository>(
-			builder: (context, repository, _) {
-				final summary = repository.summary;
-				final timeseries = repository.timeseries;
-				final breakdown = repository.breakdown;
-				final selectedRange = repository.selectedRange;
+  // Deck integration
+  EventBus? _eventBus;
+  BottomNavModeNotifier? _bottomNavModeNotifier;
+  StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+  bool _isActivePage = false;
 
-				return Scaffold(
-					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-					body: SafeArea(
-						child: Column(
-							children: [
-								_buildHeader(context, repository),
-								Expanded(
-									child: LayoutBuilder(
-										builder: (context, constraints) {
-											final isLandscape = constraints.maxWidth > constraints.maxHeight;
+  @override
+  void initState() {
+    super.initState();
 
-											if (repository.state == EnergyDataState.loading && summary == null) {
-												return _buildLoading(context);
-											}
+    if (widget.embedded) {
+      if (locator.isRegistered<EventBus>()) {
+        _eventBus = locator<EventBus>();
+      }
+      if (locator.isRegistered<BottomNavModeNotifier>()) {
+        _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
+      }
 
-											if (repository.state == EnergyDataState.error && summary == null) {
-												return _buildError(context, repository);
-											}
+      _pageActivatedSubscription =
+          _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
+    }
+  }
 
-											if (summary == null) {
-												return _buildEmptyState(context);
-											}
+  @override
+  void dispose() {
+    _pageActivatedSubscription?.cancel();
+    super.dispose();
+  }
 
-											if (isLandscape) {
-												return _buildLandscape(
-													context,
-													summary: summary,
-													timeseries: timeseries,
-													breakdown: breakdown,
-													selectedRange: selectedRange,
-													repository: repository,
-												);
-											}
+  // ─────────────────────────────────────────────────────────────────────────
+  // DECK INTEGRATION
+  // ─────────────────────────────────────────────────────────────────────────
 
-											return _buildPortrait(
-												context,
-												summary: summary,
-												timeseries: timeseries,
-												breakdown: breakdown,
-												selectedRange: selectedRange,
-												repository: repository,
-											);
-										},
-									),
-								),
-							],
-						),
-					),
-				);
-			},
-		);
-	}
+  void _onPageActivated(DeckPageActivatedEvent event) {
+    if (!mounted) return;
 
-	// ===========================================================================
-	// HEADER
-	// ===========================================================================
+    _isActivePage = event.item is EnergyViewItem;
 
-	Widget _buildHeader(BuildContext context, EnergyRepository repository) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+    if (_isActivePage) {
+      _registerRangeModeConfig(context.read<EnergyRepository>());
+    }
+  }
 
-		String subtitle;
-		if (repository.summary != null) {
-			final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
-				repository.summary!.consumption,
-				decimalPlaces: 2,
-			);
-			subtitle = '$consumption ${localizations.energy_unit_kwh}';
-			if (repository.summary!.hasProduction) {
-				final production = NumberFormatUtils.defaultFormat.formatDecimal(
-					repository.summary!.production!,
-					decimalPlaces: 2,
-				);
-				subtitle += ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
-			}
-		} else {
-			subtitle = localizations.energy_empty_title;
-		}
+  void _registerRangeModeConfig(EnergyRepository repo) {
+    if (!widget.embedded || !_isActivePage) return;
 
-		return PageHeader(
-			title: localizations.domain_energy,
-			subtitle: subtitle,
-			subtitleColor: repository.summary != null ? infoColor : null,
-			onBack: widget.embedded ? null : () => Navigator.pop(context),
-			leading: HeaderMainIcon(
-				icon: MdiIcons.flashOutline,
-				color: ThemeColors.info,
-			),
-		);
-	}
+    // During loading (range switch in-flight) keep the existing chip;
+    // only clear when we have a definitive "no data" state.
+    if (repo.summary == null) {
+      if (repo.state != EnergyDataState.loading) {
+        _bottomNavModeNotifier?.clear();
+      }
+      return;
+    }
 
-	// ===========================================================================
-	// LAYOUTS
-	// ===========================================================================
+    final localizations = AppLocalizations.of(context)!;
+    final rangeOptions = getEnergyRangeOptions(localizations);
+    final currentOption = rangeOptions.firstWhere(
+      (o) => o.value == repo.selectedRange,
+      orElse: () => rangeOptions.first,
+    );
 
-	Widget _buildPortrait(
-		BuildContext context, {
-		required EnergySummary summary,
-		required EnergyTimeseries? timeseries,
-		required EnergyBreakdown? breakdown,
-		required EnergyRange selectedRange,
-		required EnergyRepository repository,
-	}) {
-		return PortraitViewLayout(
-			content: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				spacing: AppSpacings.pLg,
-				children: [
-					_buildRangeSelector(context, selectedRange, repository),
-					_buildSummaryCards(context, summary),
-					if (timeseries != null && timeseries.isNotEmpty)
-						_buildTimeseriesChart(context, timeseries, selectedRange),
-					if (breakdown != null && breakdown.isNotEmpty)
-						_buildTopConsumers(context, breakdown),
-				],
-			),
-		);
-	}
+    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+      icon: currentOption.icon,
+      label: currentOption.label,
+      color: ThemeColors.info,
+      popupBuilder: (context, dismiss) {
+        final localizations = AppLocalizations.of(context)!;
+        return EnergyRangeOptionsList(
+          selectedRange: repo.selectedRange,
+          rangeOptions: getEnergyRangeOptions(localizations),
+          onSelected: (range) async {
+            dismiss();
+            await repo.setRange(_homeSpaceId, range);
+            if (mounted) _registerRangeModeConfig(repo);
+          },
+        );
+      },
+    ));
+  }
 
-	Widget _buildLandscape(
-		BuildContext context, {
-		required EnergySummary summary,
-		required EnergyTimeseries? timeseries,
-		required EnergyBreakdown? breakdown,
-		required EnergyRange selectedRange,
-		required EnergyRepository repository,
-	}) {
-		return LandscapeViewLayout(
-			mainContentScrollable: true,
-			mainContent: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				spacing: AppSpacings.pLg,
-				children: [
-					_buildRangeSelector(context, selectedRange, repository),
-					_buildSummaryCards(context, summary),
-					if (timeseries != null && timeseries.isNotEmpty)
-						_buildTimeseriesChart(context, timeseries, selectedRange),
-				],
-			),
-			additionalContent: breakdown != null && breakdown.isNotEmpty
-				? _buildTopConsumers(context, breakdown)
-				: null,
-		);
-	}
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────────
 
-	// ===========================================================================
-	// RANGE SELECTOR
-	// ===========================================================================
+  DomainLoadState _mapState(EnergyRepository repo) {
+    if (repo.state == EnergyDataState.loading && repo.summary == null) {
+      return DomainLoadState.loading;
+    }
+    if (repo.state == EnergyDataState.error && repo.summary == null) {
+      return DomainLoadState.error;
+    }
+    if (repo.summary == null &&
+        (repo.state == EnergyDataState.loaded ||
+            repo.state == EnergyDataState.initial)) {
+      return DomainLoadState.empty;
+    }
+    return DomainLoadState.loaded;
+  }
 
-	Widget _buildRangeSelector(
-		BuildContext context,
-		EnergyRange selectedRange,
-		EnergyRepository repository,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
 
-		final ranges = [
-			(EnergyRange.today, localizations.energy_range_today),
-			(EnergyRange.week, localizations.energy_range_week),
-			(EnergyRange.month, localizations.energy_range_month),
-		];
+    return Consumer<EnergyRepository>(
+      builder: (context, repo, _) {
+        final loadState = _mapState(repo);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		final infoFamily = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.info,
-		);
+        return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context, repo),
+                Expanded(
+                  child: _buildContent(
+                      context, repo, loadState, localizations),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-		return Row(
-			children: ranges.map((entry) {
-				final (range, label) = entry;
-				final isSelected = range == selectedRange;
+  Widget _buildContent(
+    BuildContext context,
+    EnergyRepository repo,
+    DomainLoadState loadState,
+    AppLocalizations localizations,
+  ) {
+    if (loadState == DomainLoadState.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-				return Padding(
-					padding: EdgeInsets.only(right: AppSpacings.pSm),
-					child: GestureDetector(
-						onTap: () => repository.setRange(_homeSpaceId, range),
-						child: Container(
-							padding: EdgeInsets.symmetric(
-								horizontal: AppSpacings.pMd,
-								vertical: AppSpacings.pSm,
-							),
-							decoration: BoxDecoration(
-								color: isSelected ? infoFamily.light8 : Colors.transparent,
-								borderRadius: BorderRadius.circular(AppBorderRadius.base),
-								border: Border.all(
-									color: isSelected
-										? infoFamily.light5
-										: (isDark ? AppFillColorDark.light : AppBorderColorLight.darker),
-									width: AppSpacings.scale(1),
-								),
-							),
-							child: Text(
-								label,
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-									color: isSelected
-										? infoFamily.base
-										: (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
-								),
-							),
-						),
-					),
-				);
-			}).toList(),
-		);
-	}
+    if (loadState == DomainLoadState.error) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final warningColor =
+          isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
-	// ===========================================================================
-	// SUMMARY CARDS
-	// ===========================================================================
+      return Center(
+        child: Padding(
+          padding: AppSpacings.paddingXl,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
+            children: [
+              Icon(MdiIcons.alertCircleOutline,
+                  size: AppSpacings.scale(48), color: warningColor),
+              Text(
+                localizations.domain_data_load_failed(
+                    localizations.domain_energy),
+                style: TextStyle(
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTextColorDark.primary
+                      : AppTextColorLight.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                localizations.domain_data_load_failed_description,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Theme(
+                data: ThemeData(
+                  filledButtonTheme: isDark
+                      ? AppFilledButtonsDarkThemes.primary
+                      : AppFilledButtonsLightThemes.primary,
+                ),
+                child: FilledButton.icon(
+                  onPressed: () => repo.fetchData(_homeSpaceId),
+                  icon: Icon(
+                    MdiIcons.refresh,
+                    size: AppFontSize.base,
+                    color: isDark
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.primaryForegroundColor,
+                  ),
+                  label: Text(localizations.action_retry),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-	Widget _buildSummaryCards(BuildContext context, EnergySummary summary) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+    if (repo.summary == null) {
+      return DomainStateView(
+        state: DomainLoadState.notConfigured,
+        onRetry: () => repo.fetchData(_homeSpaceId),
+        domainName: localizations.domain_energy,
+        notConfiguredIcon: MdiIcons.flashOff,
+        notConfiguredTitle: localizations.energy_empty_title,
+        notConfiguredDescription: localizations.energy_empty_description,
+        child: const SizedBox.shrink(),
+      );
+    }
 
-		final cards = <Widget>[];
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return orientation == Orientation.landscape
+            ? _buildLandscapeLayout(context, repo)
+            : _buildPortraitLayout(context, repo);
+      },
+    );
+  }
 
-		cards.add(Expanded(
-			child: _buildSummaryCard(
-				context,
-				title: localizations.energy_consumption,
-				value: NumberFormatUtils.defaultFormat.formatDecimal(
-					summary.consumption,
-					decimalPlaces: 2,
-				),
-				unit: localizations.energy_unit_kwh,
-				icon: MdiIcons.flashOutline,
-				color: infoColor,
-			),
-		));
+  // =============================================================================
+  // HEADER
+  // =============================================================================
 
-		if (summary.hasProduction) {
-			cards.add(Expanded(
-				child: _buildSummaryCard(
-					context,
-					title: localizations.energy_production,
-					value: NumberFormatUtils.defaultFormat.formatDecimal(
-						summary.production!,
-						decimalPlaces: 2,
-					),
-					unit: localizations.energy_unit_kwh,
-					icon: MdiIcons.solarPower,
-					color: successColor,
-				),
-			));
-		}
+  Widget _buildHeader(BuildContext context, EnergyRepository repo) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final infoFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.info,
+    );
 
-		if (summary.hasProduction && summary.net != null) {
-			final netColor = summary.net! > 0
-				? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
-				: successColor;
+    String subtitle;
+    if (repo.summary != null) {
+      final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
+        repo.summary!.consumption,
+        decimalPlaces:
+            energyDecimals(repo.summary!.consumption),
+      );
+      subtitle = '$consumption ${localizations.energy_unit_kwh}';
+      if (repo.summary!.hasProduction) {
+        final production = NumberFormatUtils.defaultFormat.formatDecimal(
+          repo.summary!.production!,
+          decimalPlaces:
+              energyDecimals(repo.summary!.production!),
+        );
+        subtitle +=
+            ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
+      }
+    } else {
+      subtitle = localizations.energy_empty_title;
+    }
 
-			cards.add(Expanded(
-				child: _buildSummaryCard(
-					context,
-					title: localizations.energy_net,
-					value: NumberFormatUtils.defaultFormat.formatDecimal(
-						summary.net!,
-						decimalPlaces: 2,
-					),
-					unit: localizations.energy_unit_kwh,
-					icon: MdiIcons.swapVertical,
-					color: netColor,
-				),
-			));
-		}
+    return PageHeader(
+      title: localizations.domain_energy,
+      subtitle: subtitle,
+      subtitleColor: repo.summary != null ? infoFamily.base : null,
+      onBack: widget.embedded ? null : () => Navigator.pop(context),
+      leading: HeaderMainIcon(
+        icon: MdiIcons.flashOutline,
+        color: ThemeColors.info,
+      ),
+      landscapeAction: widget.embedded ? const DeckModeChip() : null,
+      trailing: _buildHeaderTrailing(context, repo),
+    );
+  }
 
-		return IntrinsicHeight(
-			child: Row(
-				crossAxisAlignment: CrossAxisAlignment.stretch,
-				spacing: AppSpacings.pMd,
-				children: cards,
-			),
-		);
-	}
+  Widget? _buildHeaderTrailing(BuildContext context, EnergyRepository repo) {
+    final hasBreakdown = repo.breakdown != null && repo.breakdown!.isNotEmpty;
+    final showRangeButton = !widget.embedded && repo.summary != null;
 
-	Widget _buildSummaryCard(
-		BuildContext context, {
-		required String title,
-		required String value,
-		required String unit,
-		required IconData icon,
-		required Color color,
-	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (!hasBreakdown && !showRangeButton) return null;
 
-		return Container(
-			padding: AppSpacings.paddingMd,
-			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: Border.all(
-					color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-					width: AppSpacings.scale(1),
-				),
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				spacing: AppSpacings.pSm,
-				children: [
-					Row(
-						spacing: AppSpacings.pSm,
-						children: [
-							Icon(icon, size: AppSpacings.scale(18), color: color),
-							Expanded(
-								child: Text(
-									title,
-									style: TextStyle(
-										color: isDark
-											? AppTextColorDark.secondary
-											: AppTextColorLight.secondary,
-										fontSize: AppFontSize.extraSmall,
-										fontWeight: FontWeight.w500,
-									),
-									overflow: TextOverflow.ellipsis,
-								),
-							),
-						],
-					),
-					FittedBox(
-						fit: BoxFit.scaleDown,
-						alignment: Alignment.centerLeft,
-						child: RichText(
-							maxLines: 1,
-							text: TextSpan(
-								children: [
-									TextSpan(
-										text: value,
-										style: TextStyle(
-											color: color,
-											fontSize: AppSpacings.scale(28),
-											fontWeight: FontWeight.w300,
-										),
-									),
-									TextSpan(
-										text: ' $unit',
-										style: TextStyle(
-											color: color,
-											fontSize: AppFontSize.base,
-											fontWeight: FontWeight.w400,
-										),
-									),
-								],
-							),
-						),
-					),
-				],
-			),
-		);
-	}
+    final children = <Widget>[];
 
-	// ===========================================================================
-	// TIMESERIES CHART
-	// ===========================================================================
+    if (showRangeButton) {
+      final localizations = AppLocalizations.of(context)!;
+      final rangeOptions = getEnergyRangeOptions(localizations);
+      final currentOption = rangeOptions.firstWhere(
+        (o) => o.value == repo.selectedRange,
+        orElse: () => rangeOptions.first,
+      );
 
-	Widget _buildTimeseriesChart(BuildContext context, EnergyTimeseries timeseries, EnergyRange selectedRange) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final screenService = locator<ScreenService>();
-		final infoFamily = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.info,
-		);
-		final successFamily = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.success,
-		);
+      children.add(
+        HeaderIconButton(
+          icon: currentOption.icon,
+          color: ThemeColors.info,
+          onTap: () => _showStandaloneRangePopup(context, repo),
+        ),
+      );
+    }
 
-		final points = timeseries.points;
-		final hasProduction = timeseries.hasProduction;
+    if (hasBreakdown) {
+      children.add(
+        HeaderIconButton(
+          icon: MdiIcons.podium,
+          color: ThemeColors.info,
+          onTap: () => _showTopConsumers(context, repo),
+        ),
+      );
+    }
 
-		double maxY = 0;
-		for (final p in points) {
-			maxY = max(maxY, p.consumption);
-			if (hasProduction) {
-				maxY = max(maxY, p.production);
-			}
-		}
-		maxY = maxY > 0 ? maxY * 1.2 : 1.0;
+    if (children.length == 1) return children.first;
 
-		final barWidth = screenService.isSmallScreen
-			? AppSpacings.scale(8)
-			: AppSpacings.scale(12);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pSm,
+      children: children,
+    );
+  }
 
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			spacing: AppSpacings.pMd,
-			children: [
-				SectionTitle(
-					icon: MdiIcons.chartBar,
-					title: localizations.energy_chart_title,
-				),
-				Container(
-					height: AppSpacings.scale(200),
-					padding: AppSpacings.paddingMd,
-					decoration: BoxDecoration(
-						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						border: Border.all(
-							color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-							width: AppSpacings.scale(1),
-						),
-					),
-					child: BarChart(
-						BarChartData(
-							alignment: BarChartAlignment.spaceAround,
-							maxY: maxY,
-							barTouchData: BarTouchData(
-								enabled: true,
-								touchTooltipData: BarTouchTooltipData(
-									getTooltipColor: (group) => isDark
-										? AppFillColorDark.darker
-										: AppFillColorLight.darker,
-									tooltipPadding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pSm,
-										vertical: AppSpacings.pXs,
-									),
-									getTooltipItem: (group, groupIndex, rod, rodIndex) {
-										final value = NumberFormatUtils.defaultFormat.formatDecimal(
-											rod.toY,
-											decimalPlaces: 2,
-										);
-										final label = rodIndex == 0
-											? localizations.energy_consumption
-											: localizations.energy_production;
-										return BarTooltipItem(
-											'$label\n$value ${localizations.energy_unit_kwh}',
-											TextStyle(
-												color: isDark
-													? AppTextColorDark.primary
-													: AppTextColorLight.primary,
-												fontSize: AppFontSize.extraSmall,
-												fontWeight: FontWeight.w500,
-											),
-										);
-									},
-								),
-							),
-							titlesData: FlTitlesData(
-								show: true,
-								topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-								rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-								leftTitles: AxisTitles(
-									sideTitles: SideTitles(
-										showTitles: true,
-										reservedSize: AppSpacings.scale(40),
-										getTitlesWidget: (value, meta) {
-											return Text(
-												NumberFormatUtils.defaultFormat.formatDecimal(
-													value,
-													decimalPlaces: 1,
-												),
-												style: TextStyle(
-													fontSize: AppFontSize.extraSmall,
-													color: isDark
-														? AppTextColorDark.placeholder
-														: AppTextColorLight.placeholder,
-												),
-											);
-										},
-									),
-								),
-								bottomTitles: AxisTitles(
-									sideTitles: SideTitles(
-										showTitles: true,
-										getTitlesWidget: (value, meta) {
-											final index = value.toInt();
-											if (index < 0 || index >= points.length) {
-												return const SizedBox.shrink();
-											}
-											final step = (points.length / 6).ceil().clamp(1, points.length);
-											if (index % step != 0 && index != points.length - 1) {
-												return const SizedBox.shrink();
-											}
-											final point = points[index];
-											final hour = point.timestamp.hour.toString().padLeft(2, '0');
-											String label;
-											if (selectedRange == EnergyRange.month) {
-												label = '${point.timestamp.day}';
-											} else if (selectedRange == EnergyRange.week) {
-												label = '${point.timestamp.day}/${point.timestamp.month} $hour:00';
-											} else {
-												label = '$hour:00';
-											}
-											return Padding(
-												padding: EdgeInsets.only(top: AppSpacings.pXs),
-												child: Text(
-													label,
-													style: TextStyle(
-														fontSize: AppFontSize.extraSmall,
-														color: isDark
-															? AppTextColorDark.placeholder
-															: AppTextColorLight.placeholder,
-													),
-												),
-											);
-										},
-									),
-								),
-							),
-							gridData: FlGridData(
-								show: true,
-								drawVerticalLine: false,
-								horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-								getDrawingHorizontalLine: (value) {
-									return FlLine(
-										color: isDark
-											? AppFillColorDark.darker
-											: AppBorderColorLight.base,
-										strokeWidth: AppSpacings.scale(1),
-									);
-								},
-							),
-							borderData: FlBorderData(show: false),
-							barGroups: List.generate(points.length, (index) {
-								final point = points[index];
-								final rods = <BarChartRodData>[
-									BarChartRodData(
-										toY: point.consumption,
-										color: infoFamily.base,
-										width: barWidth,
-										borderRadius: BorderRadius.vertical(
-											top: Radius.circular(AppSpacings.scale(2)),
-										),
-									),
-								];
+  void _showStandaloneRangePopup(BuildContext context, EnergyRepository repo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
-								if (hasProduction) {
-									rods.add(BarChartRodData(
-										toY: point.production,
-										color: successFamily.base,
-										width: barWidth,
-										borderRadius: BorderRadius.vertical(
-											top: Radius.circular(AppSpacings.scale(2)),
-										),
-									));
-								}
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor:
+            isDark ? AppFillColorDark.base : AppFillColorLight.base,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        ),
+        contentPadding: AppSpacings.paddingMd,
+        content: EnergyRangeOptionsList(
+          selectedRange: repo.selectedRange,
+          rangeOptions: getEnergyRangeOptions(localizations),
+          onSelected: (range) async {
+            Navigator.pop(dialogContext);
+            await repo.setRange(_homeSpaceId, range);
+          },
+        ),
+      ),
+    );
+  }
 
-								return BarChartGroupData(
-									x: index,
-									barRods: rods,
-									barsSpace: hasProduction ? AppSpacings.scale(2) : 0,
-								);
-							}),
-						),
-					),
-				),
-				if (hasProduction)
-					Row(
-						mainAxisAlignment: MainAxisAlignment.center,
-						spacing: AppSpacings.pLg,
-						children: [
-							_buildLegendItem(context, color: infoFamily.base, label: localizations.energy_consumption),
-							_buildLegendItem(context, color: successFamily.base, label: localizations.energy_production),
-						],
-					),
-			],
-		);
-	}
+  // =============================================================================
+  // PORTRAIT LAYOUT
+  // =============================================================================
 
-	Widget _buildLegendItem(BuildContext context, {required Color color, required String label}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildPortraitLayout(BuildContext context, EnergyRepository repo) {
+    return PortraitViewLayout(
+      scrollable: false,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
+        children: [
+          EnergyConsumptionCard(
+            summary: repo.summary!,
+            selectedRange: repo.selectedRange,
+            onRangeBadgeTap: widget.embedded
+                ? null
+                : () => _showStandaloneRangePopup(context, repo),
+          ),
+          if (repo.timeseries != null && repo.timeseries!.isNotEmpty)
+            Expanded(
+              child: EnergyTimeseriesChart(
+                timeseries: repo.timeseries!,
+                selectedRange: repo.selectedRange,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-		return Row(
-			mainAxisSize: MainAxisSize.min,
-			spacing: AppSpacings.pXs,
-			children: [
-				Container(
-					width: AppSpacings.scale(12),
-					height: AppSpacings.scale(12),
-					decoration: BoxDecoration(
-						color: color,
-						borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
-					),
-				),
-				Text(
-					label,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-						color: isDark
-							? AppTextColorDark.secondary
-							: AppTextColorLight.secondary,
-					),
-				),
-			],
-		);
-	}
+  // =============================================================================
+  // LANDSCAPE LAYOUT
+  // =============================================================================
 
-	// ===========================================================================
-	// TOP CONSUMERS
-	// ===========================================================================
+  Widget _buildLandscapeLayout(BuildContext context, EnergyRepository repo) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+    final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
+    final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
+    final summary = repo.summary!;
 
-	Widget _buildTopConsumers(BuildContext context, EnergyBreakdown breakdown) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final infoFamily = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.info,
-		);
+    return LandscapeViewLayout(
+      mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      mainContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pLg,
+        children: [
+          if (repo.timeseries != null && repo.timeseries!.isNotEmpty)
+            Expanded(
+              child: EnergyTimeseriesChart(
+                timeseries: repo.timeseries!,
+                selectedRange: repo.selectedRange,
+              ),
+            ),
+        ],
+      ),
+      additionalContentScrollable: false,
+      additionalContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        right: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      additionalContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
+        children: [
+          Expanded(
+            child: EnergyConsumptionCard(
+              summary: summary,
+              selectedRange: repo.selectedRange,
+              onRangeBadgeTap: widget.embedded
+                  ? null
+                  : () => _showStandaloneRangePopup(context, repo),
+            ),
+          ),
+          if (summary.hasProduction) ...[
+            BaseCard(
+              child: EnergySecondaryValue(
+                icon: MdiIcons.solarPower,
+                label: localizations.energy_production,
+                value: NumberFormatUtils.defaultFormat.formatDecimal(
+                  summary.production!,
+                  decimalPlaces: energyDecimals(summary.production!),
+                ),
+                unit: localizations.energy_unit_kwh,
+                colorFamily: successFamily,
+              ),
+            ),
+            if (summary.net != null)
+              BaseCard(
+                child: EnergySecondaryValue(
+                  icon: MdiIcons.swapVertical,
+                  label: localizations.energy_net,
+                  value: NumberFormatUtils.defaultFormat.formatDecimal(
+                    summary.net!,
+                    decimalPlaces: energyDecimals(summary.net!),
+                  ),
+                  unit: localizations.energy_unit_kwh,
+                  colorFamily:
+                      summary.net! > 0 ? warningFamily : successFamily,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
 
-		final devices = breakdown.devices;
+  // =============================================================================
+  // TOP CONSUMERS (SHEET / DRAWER)
+  // =============================================================================
 
-		final maxConsumption = devices.isNotEmpty
-			? devices.map((d) => d.consumption).reduce(max)
-			: 1.0;
+  void _showTopConsumers(BuildContext context, EnergyRepository repo) {
+    if (repo.breakdown == null || repo.breakdown!.isEmpty) return;
 
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			spacing: AppSpacings.pMd,
-			children: [
-				SectionTitle(
-					icon: MdiIcons.formatListBulleted,
-					title: localizations.energy_top_consumers,
-					trailing: Text(
-						localizations.energy_device_count(devices.length),
-						style: TextStyle(
-							color: isDark
-								? AppTextColorDark.placeholder
-								: AppTextColorLight.placeholder,
-							fontSize: AppFontSize.extraSmall,
-						),
-					),
-				),
-				Container(
-					decoration: BoxDecoration(
-						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						border: Border.all(
-							color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-							width: AppSpacings.scale(1),
-						),
-					),
-					child: Column(
-						children: List.generate(devices.length, (index) {
-							final device = devices[index];
-							final isLast = index == devices.length - 1;
-							final ratio = maxConsumption > 0
-								? device.consumption / maxConsumption
-								: 0.0;
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape = _screenService.isLandscape;
+    final devices = repo.breakdown!.devices;
+    final maxConsumption = devices
+        .map((d) => d.consumption)
+        .reduce((a, b) => a > b ? a : b);
 
-							return Container(
-								padding: AppSpacings.paddingMd,
-								decoration: !isLast
-									? BoxDecoration(
-											border: Border(
-												bottom: BorderSide(
-													color: isDark
-														? AppFillColorDark.darker
-														: AppBorderColorLight.base,
-													width: AppSpacings.scale(1),
-												),
-											),
-										)
-									: null,
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									spacing: AppSpacings.pSm,
-									children: [
-										Row(
-											children: [
-												Icon(
-													MdiIcons.flashOutline,
-													size: AppSpacings.scale(16),
-													color: infoFamily.base,
-												),
-												AppSpacings.spacingSmHorizontal,
-												Expanded(
-													child: Text(
-														device.deviceName,
-														style: TextStyle(
-															fontSize: AppFontSize.base,
-															fontWeight: FontWeight.w500,
-															color: isDark
-																? AppTextColorDark.primary
-																: AppTextColorLight.primary,
-														),
-														maxLines: 1,
-														overflow: TextOverflow.ellipsis,
-													),
-												),
-												Text(
-													'${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: 2)} ${localizations.energy_unit_kwh}',
-													style: TextStyle(
-														fontSize: AppFontSize.base,
-														fontWeight: FontWeight.w600,
-														color: infoFamily.base,
-													),
-												),
-											],
-										),
-										ClipRRect(
-											borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
-											child: LinearProgressIndicator(
-												value: ratio,
-												minHeight: AppSpacings.scale(4),
-												backgroundColor: isDark
-													? AppFillColorDark.darker
-													: AppBorderColorLight.base,
-												valueColor: AlwaysStoppedAnimation<Color>(
-													infoFamily.base.withValues(alpha: 0.6),
-												),
-											),
-										),
-										if (device.roomName != null)
-											Text(
-												device.roomName!,
-												style: TextStyle(
-													fontSize: AppFontSize.extraSmall,
-													color: isDark
-														? AppTextColorDark.placeholder
-														: AppTextColorLight.placeholder,
-												),
-											),
-									],
-								),
-							);
-						}),
-					),
-				),
-			],
-		);
-	}
-
-	// ===========================================================================
-	// LOADING / ERROR / EMPTY
-	// ===========================================================================
-
-	Widget _buildLoading(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final screenService = locator<ScreenService>();
-
-		return Center(
-			child: SizedBox(
-				width: screenService.scale(20),
-				height: screenService.scale(20),
-				child: CircularProgressIndicator(
-					strokeWidth: 2,
-					color: isDark
-						? AppTextColorDark.placeholder
-						: AppTextColorLight.placeholder,
-				),
-			),
-		);
-	}
-
-	Widget _buildError(BuildContext context, EnergyRepository repository) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final localizations = AppLocalizations.of(context)!;
-
-		return Center(
-			child: Column(
-				mainAxisSize: MainAxisSize.min,
-				spacing: AppSpacings.pMd,
-				children: [
-					Text(
-						localizations.energy_load_failed,
-						style: TextStyle(
-							fontSize: AppFontSize.base,
-							color: isDark
-								? AppTextColorDark.secondary
-								: AppTextColorLight.secondary,
-						),
-					),
-					Theme(
-						data: Theme.of(context).copyWith(
-							filledButtonTheme: isDark
-								? AppFilledButtonsDarkThemes.primary
-								: AppFilledButtonsLightThemes.primary,
-						),
-						child: FilledButton.icon(
-							onPressed: () => repository.fetchData(_homeSpaceId),
-							style: FilledButton.styleFrom(
-								padding: EdgeInsets.symmetric(
-									horizontal: AppSpacings.scale(AppSpacings.pMd),
-									vertical: AppSpacings.scale(AppSpacings.pSm),
-								),
-							),
-							icon: Icon(
-								MdiIcons.refresh,
-								size: AppFontSize.small,
-								color: isDark
-									? AppFilledButtonsDarkThemes.primaryForegroundColor
-									: AppFilledButtonsLightThemes.primaryForegroundColor,
-							),
-							label: Text(
-								localizations.button_retry,
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-								),
-							),
-						),
-					),
-				],
-			),
-		);
-	}
-
-	Widget _buildEmptyState(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final localizations = AppLocalizations.of(context)!;
-		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-	
-		return Center(
-			child: Padding(
-				padding: AppSpacings.paddingXl,
-				child: Column(
-					mainAxisAlignment: MainAxisAlignment.center,
-					spacing: AppSpacings.pMd,
-					children: [
-						IconContainer(
-							screenService: locator<ScreenService>(),
-							icon: MdiIcons.flashOff,
-							color: infoColor,
-							isLandscape: locator<ScreenService>().isLandscape,
-						),
-						Text(
-							localizations.energy_empty_title,
-							style: TextStyle(
-								fontSize: AppFontSize.large,
-								fontWeight: FontWeight.w600,
-								color: isDark
-									? AppTextColorDark.primary
-									: AppTextColorLight.primary,
-							),
-							textAlign: TextAlign.center,
-						),
-						Text(
-							localizations.energy_empty_description,
-							style: TextStyle(
-								fontSize: AppFontSize.base,
-								color: isDark
-									? AppTextColorDark.secondary
-									: AppTextColorLight.secondary,
-							),
-							textAlign: TextAlign.center,
-						),
-					],
-				),
-			),
-		);
-	}
+    if (isLandscape) {
+      DeckItemDrawer.showItemDrawer(
+        context,
+        title: localizations.energy_top_consumers,
+        icon: MdiIcons.podium,
+        itemCount: devices.length,
+        itemBuilder: (context, index) => EnergyConsumerTile(
+          device: devices[index],
+          maxConsumption: maxConsumption,
+        ),
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.energy_top_consumers,
+        icon: MdiIcons.podium,
+        itemCount: devices.length,
+        itemBuilder: (context, index) => EnergyConsumerTile(
+          device: devices[index],
+          maxConsumption: maxConsumption,
+        ),
+      );
+    }
+  }
 }
