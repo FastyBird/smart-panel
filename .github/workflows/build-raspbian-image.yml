@@ -120,6 +120,7 @@ jobs:
           IMAGE_FILE=$(ls *.img 2>/dev/null | head -1)
           if [ -n "$IMAGE_FILE" ]; then
             VERSION="${GITHUB_REF_NAME:-dev}"
+            VERSION="${VERSION//\//-}"
             SUFFIX="${{ github.event.inputs.image_name }}"
             if [ -n "$SUFFIX" ]; then
               VERSION="${VERSION}-${SUFFIX}"

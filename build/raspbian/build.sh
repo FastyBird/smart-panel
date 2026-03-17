@@ -63,7 +63,9 @@ prepare_app_files() {
 
 	# Backend dist + production dependencies
 	cp -r "${PROJECT_ROOT}/apps/backend/dist" "${APP_FILES_DIR}/app/dist"
-	cp "${PROJECT_ROOT}/apps/backend/package.json" "${APP_FILES_DIR}/app/package.json"
+	# Strip workspace: protocol deps (already bundled in dist)
+	jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])' \
+		"${PROJECT_ROOT}/apps/backend/package.json" > "${APP_FILES_DIR}/app/package.json"
 
 	# Install production-only dependencies
 	cd "${APP_FILES_DIR}/app"
@@ -111,7 +113,8 @@ echo "==> Configuring pi-gen..."
 # Copy our config
 cp "${SCRIPT_DIR}/config" "${PI_GEN_DIR}/config"
 
-# Skip stages we don't need (desktop, etc.)
+# Skip intermediate image from stage2 and desktop stages
+touch "${PI_GEN_DIR}/stage2/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage3/SKIP" "${PI_GEN_DIR}/stage3/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage4/SKIP" "${PI_GEN_DIR}/stage4/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage5/SKIP" "${PI_GEN_DIR}/stage5/SKIP_IMAGES"
