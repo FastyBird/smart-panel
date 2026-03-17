@@ -65,10 +65,10 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
 
       - name: "Setup Node"
-        uses: "actions/setup-node@v4"
+        uses: "actions/setup-node@v5"
         with:
           node-version: "${{ matrix.node-version }}"
 
@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -108,7 +108,7 @@ jobs:
         run: git pull origin ${{ github.ref_name }}
 
       - name: "Generate CHANGELOG.md from Releases"
-        uses: "mikepenz/release-changelog-builder-action@v4"
+        uses: "mikepenz/release-changelog-builder-action@v5"
         with:
           outputFile: "CHANGELOG.md"
         env:
@@ -143,7 +143,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -197,7 +197,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -251,7 +251,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -305,7 +305,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -313,7 +313,7 @@ jobs:
         run: git pull origin ${{ github.ref_name }}
 
       - name: "Setup Node"
-        uses: "actions/setup-node@v4"
+        uses: "actions/setup-node@v5"
         with:
           node-version: "${{ matrix.node-version }}"
           registry-url: "https://registry.npmjs.org"
@@ -337,7 +337,7 @@ jobs:
         shell: bash
 
       - name: "Setup GitHub NPM Registry"
-        uses: "actions/setup-node@v4"
+        uses: "actions/setup-node@v5"
         with:
           node-version: "${{ matrix.node-version }}"
           registry-url: "https://npm.pkg.github.com"
@@ -363,7 +363,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -394,7 +394,7 @@ jobs:
           shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "flutter-assets"
           path: |
@@ -413,7 +413,7 @@ jobs:
           shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
 
       - name: "Upload ARM64 Artifact (64-bit)"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "flutter-assets-arm64"
           path: |
@@ -436,7 +436,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -450,7 +450,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Setup Java"
-        uses: "actions/setup-java@v4"
+        uses: "actions/setup-java@v5"
         with:
           distribution: "temurin"
           java-version: "${{ matrix.java-version }}"
@@ -473,7 +473,7 @@ jobs:
           shasum -a 256 smart-panel-display.apk > SHASUMS256-android.txt
 
       - name: "Upload Android Artifact"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "android-apk"
           path: |
@@ -495,7 +495,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -534,7 +534,7 @@ jobs:
           shasum -a 256 smart-panel-display-linux-x64.tar.gz > SHASUMS256-linux-x64.txt
 
       - name: "Upload Linux Desktop Artifact"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "linux-desktop"
           path: |
@@ -556,7 +556,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -592,7 +592,7 @@ jobs:
           shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
 
       - name: "Upload eLinux Artifact"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "elinux-x64"
           path: |
@@ -610,7 +610,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -624,7 +624,7 @@ jobs:
           rm ./pnpm-workspace.yaml
 
       - name: "Download Display Assets (32-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: flutter-assets
 
@@ -664,7 +664,7 @@ jobs:
             shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "application-build-armv7"
           path: |
@@ -672,7 +672,7 @@ jobs:
             SHASUMS256.txt
 
       - name: "Download Display Assets (64-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "flutter-assets-arm64"
 
@@ -712,7 +712,7 @@ jobs:
             shasum -a 256 smart-panel-arm64.tar.gz > SHASUMS256-arm64.txt
 
       - name: "Upload ARM64 Artifact (64-bit)"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v5"
         with:
           name: "application-build-arm64"
           path: |
@@ -730,7 +730,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -745,7 +745,7 @@ jobs:
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download ARMv7 Application Build (32-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "application-build-armv7"
 
@@ -757,7 +757,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download ARM64 Application Build (64-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "application-build-arm64"
 
@@ -769,7 +769,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "flutter-assets"
 
@@ -781,7 +781,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "flutter-assets-arm64"
 
@@ -793,7 +793,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download Android APK"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "android-apk"
 
@@ -805,7 +805,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download Linux Desktop Build"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "linux-desktop"
 
@@ -817,7 +817,7 @@ jobs:
           release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download eLinux Build"
-        uses: "actions/download-artifact@v4"
+        uses: "actions/download-artifact@v5"
         with:
           name: "elinux-x64"
 
@@ -849,7 +849,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
@@ -893,7 +893,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           fetch-depth: 0
 
