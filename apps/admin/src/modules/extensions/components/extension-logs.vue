@@ -19,11 +19,55 @@
 					:active-text="t('extensionsModule.labels.live')"
 				/>
 			</div>
+
+			<div class="flex items-center gap-2">
+				<el-select
+					v-model="filterLevels"
+					size="small"
+					class="w-[200px]!"
+					clearable
+					multiple
+					collapse-tags
+					collapse-tags-tooltip
+					:placeholder="t('extensionsModule.texts.logs.allLevels')"
+				>
+					<el-option
+						v-for="l in levels"
+						:key="l"
+						:label="t(`systemModule.levels.${l}`)"
+						:value="l"
+					/>
+				</el-select>
+
+				<el-select
+					v-model="filterTimeRange"
+					size="small"
+					class="w-[140px]!"
+				>
+					<el-option
+						v-for="preset in timeRangePresets"
+						:key="preset.value"
+						:label="preset.label"
+						:value="preset.value"
+					/>
+				</el-select>
+
+				<el-button
+					v-if="filtersActive"
+					size="small"
+					@click="clearFilters"
+				>
+					<template #icon>
+						<icon icon="mdi:filter-off" />
+					</template>
+					{{ t('extensionsModule.buttons.resetFilters.title') }}
+				</el-button>
+			</div>
 		</div>
 
 		<!-- Loading state -->
 		<div
-			v-if="logs.length === 0 && isLoading"
+			v-if="!loaded && isLoading"
 			class="flex-1 flex items-center justify-center"
 		>
 			<el-result>
@@ -40,9 +84,46 @@
 			</el-result>
 		</div>
 
+		<!-- No filtered logs state -->
+		<div
+			v-else-if="filtersActive && logs.length === 0"
+			class="flex-1 flex items-center justify-center"
+		>
+			<el-result>
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:console" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:filter-multiple" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					{{ t('extensionsModule.texts.logs.noFilteredLogs') }}
+				</template>
+
+				<template #sub-title>
+					<el-button
+						type="primary"
+						plain
+						class="mt-2"
+						@click="clearFilters"
+					>
+						<template #icon>
+							<icon icon="mdi:filter-off" />
+						</template>
+						{{ t('extensionsModule.buttons.resetFilters.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</div>
+
 		<!-- No logs state -->
 		<div
-			v-else-if="logs.length === 0 && !isLoading"
+			v-else-if="logs.length === 0"
 			class="flex-1 flex items-center justify-center"
 		>
 			<el-result>
@@ -70,6 +151,7 @@
 		<!-- Logs list -->
 		<el-scrollbar
 			v-else
+			v-loading="isLoading && logs.length > 0"
 			class="flex-1"
 		>
 			<div>
@@ -128,17 +210,17 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, type Ref, toRef, watch } from 'vue';
+import { computed, onBeforeMount, type Ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
+import { ElButton, ElOption, ElResult, ElScrollbar, ElSelect, ElSwitch, ElTag, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
 import { IconWithChild } from '../../../common';
 import { SystemModuleLogEntryType } from '../../../openapi.constants';
-import { useExtensionLogs } from '../composables/useExtensionLogs';
+import { type TimeRangePreset, useExtensionLogs } from '../composables/useExtensionLogs';
 
 import type { IExtensionLogsProps } from './extension-logs.types';
 
@@ -154,11 +236,31 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { logs, hasMore, isLoading, live, fetchLogs, loadMoreLogs, refreshLogs } = useExtensionLogs({
-	extensionType: toRef(() => props.extensionType),
-});
+const { logs, hasMore, isLoading, loaded, live, filterLevels, filterTimeRange, filtersActive, clearFilters, fetchLogs, loadMoreLogs, refreshLogs } =
+	useExtensionLogs({
+		extensionType: toRef(() => props.extensionType),
+	});
 
 const innerLive: Ref<boolean> = useVModel(props, 'live', emit, { defaultValue: false });
+
+const levels = [
+	SystemModuleLogEntryType.error,
+	SystemModuleLogEntryType.warn,
+	SystemModuleLogEntryType.info,
+	SystemModuleLogEntryType.debug,
+	SystemModuleLogEntryType.fatal,
+	SystemModuleLogEntryType.log,
+	SystemModuleLogEntryType.success,
+	SystemModuleLogEntryType.fail,
+];
+
+const timeRangePresets = computed<{ value: TimeRangePreset; label: string }[]>(() => [
+	{ value: 'all', label: t('extensionsModule.texts.logs.timeRange.all') },
+	{ value: '1h', label: t('extensionsModule.texts.logs.timeRange.1h') },
+	{ value: '6h', label: t('extensionsModule.texts.logs.timeRange.6h') },
+	{ value: '24h', label: t('extensionsModule.texts.logs.timeRange.24h') },
+	{ value: '7d', label: t('extensionsModule.texts.logs.timeRange.7d') },
+]);
 
 // Sync live state between parent prop and composable
 watch(

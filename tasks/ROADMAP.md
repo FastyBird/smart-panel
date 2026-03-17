@@ -215,7 +215,7 @@ All onboarding device setup tasks complete.
 | # | Task | Scope | Status |
 |---|------|-------|--------|
 | 1 | [FEATURE-APP-UPDATES](features/FEATURE-APP-UPDATES.md) | backend, admin, panel | :white_check_mark: Done |
-| 2 | [FEATURE-EXTENSION-LOGS-FILTERS](features/FEATURE-EXTENSION-LOGS-FILTERS.md) | admin | :clipboard: Planned |
+| 2 | [FEATURE-EXTENSION-LOGS-FILTERS](features/FEATURE-EXTENSION-LOGS-FILTERS.md) | admin | :white_check_mark: Done |
 | 3 | [FEATURE-LINUX-INSTALL-ENHANCEMENTS](features/FEATURE-LINUX-INSTALL-ENHANCEMENTS.md) | backend | :white_check_mark: Done |
 | 4 | [FEATURE-PANEL-SENSOR-DEVICE-PAGE](features/FEATURE-PANEL-SENSOR-DEVICE-PAGE.md) | panel | :white_check_mark: Done |
 | 5 | [FEATURE-WEATHER-PANEL-ENHANCEMENTS](features/FEATURE-WEATHER-PANEL-ENHANCEMENTS.md) | panel | :clipboard: Planned |
@@ -238,13 +238,14 @@ All onboarding device setup tasks complete.
 | Media | 8 | 0 | 0 | 8 |
 | Domains Epic | 2 | 0 | 7 | 9 |
 | Buddy Epic | 9 | 0 | 0 | 9 |
+| AI Buddy Face | 0 | 0 | 2 | 2 |
 | Buddy Hardening | 0 | 0 | 8 | 8 |
 | Onboarding Epic | 3 | 0 | 0 | 3 |
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
 | Plugins | 1 | 0 | 1 | 2 |
-| Technical | 4 | 0 | 1 | 5 |
-| Other Features | 3 | 0 | 2 | 5 |
+| Technical | 5 | 0 | 0 | 5 |
+| Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **44** | **0** | **20** | **64** |
+| **Total** | **46** | **0** | **20** | **66** |
