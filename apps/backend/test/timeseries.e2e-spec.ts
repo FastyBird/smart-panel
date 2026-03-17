@@ -169,7 +169,8 @@ describe('Property Timeseries (e2e)', () => {
 	});
 
 	beforeEach(() => {
-		influxDbMock.query.mockClear();
+		influxDbMock.query.mockReset();
+		influxDbMock.query.mockResolvedValue([]);
 	});
 
 	// Helper to make authenticated GET requests
