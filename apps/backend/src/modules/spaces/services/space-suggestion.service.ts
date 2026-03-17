@@ -204,27 +204,28 @@ export class SpaceSuggestionService {
 		// Validate space exists - throws if not found
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		// Mark the suggestion as dismissed so the heartbeat won't re-emit it
-		// while the same conditions persist.
 		const entry = lastEmittedSuggestions.get(spaceId);
 
-		if (entry && entry.type === suggestionType) {
-			entry.dismissed = true;
-		}
-
-		// If dismissed, set cooldown and return
+		// If dismissed, mark as dismissed and set cooldown
 		if (feedback === SuggestionFeedback.DISMISSED) {
+			if (entry && entry.type === suggestionType) {
+				entry.dismissed = true;
+			}
+
 			spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 
 			return { success: true };
 		}
 
-		// If applied, execute the intent and only set cooldown on success
+		// If applied, execute the intent — only mark dismissed and set cooldown on success
 		if (feedback === SuggestionFeedback.APPLIED) {
 			const intentResult = await this.executeIntent(spaceId, suggestionType);
 
-			// Only set cooldown if intent execution succeeded
 			if (intentResult) {
+				if (entry && entry.type === suggestionType) {
+					entry.dismissed = true;
+				}
+
 				spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 			}
 
