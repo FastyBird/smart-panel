@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://docs.anthropic.com',
 				devDocumentation: 'https://docs.anthropic.com',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

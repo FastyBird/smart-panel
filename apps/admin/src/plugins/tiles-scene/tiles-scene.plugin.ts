@@ -34,9 +34,9 @@ export default {
 			name: 'Scene tile',
 			description: 'A compact tile for displaying and triggering scenes. Ideal for quick access to your favorite scenes from the dashboard.',
 			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com',
+				devDocumentation: 'https://smart-panel.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

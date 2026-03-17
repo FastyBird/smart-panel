@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "FastyBird Smart Panel" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "FastyBird Smart Panel" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 FastyBird s.r.o. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 Studio81 Labs s.r.o. All rights reserved." "\0"
             VALUE "OriginalFilename", "fb-smart-panel.exe" "\0"
             VALUE "ProductName", "FastyBird Smart Panel" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

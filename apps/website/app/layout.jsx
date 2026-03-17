@@ -75,7 +75,7 @@ export default async function RootLayout({ children }) {
 
         {/* Copyright */}
         <div className="text-sm text-neutral-400 text-center md:text-left">
-          © {new Date().getFullYear()} FastyBird. All rights reserved.
+          © {new Date().getFullYear()} Studio81 Labs s.r.o. All rights reserved.
         </div>
 
         {/* Links */}

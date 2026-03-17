@@ -54,9 +54,9 @@ export default {
 			description:
 				'Enables dashboard tiles, pages, and UI elements to pull real-time weather data. Supports current weather conditions and daily forecasts for displaying temperature, humidity, weather icons, and other meteorological information.',
 			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com',
+				devDocumentation: 'https://smart-panel.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

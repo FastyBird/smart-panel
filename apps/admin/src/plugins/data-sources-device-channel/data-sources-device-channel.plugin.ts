@@ -37,9 +37,9 @@ export default {
 			description:
 				'Enables dashboard tiles, pages, etc. to pull real-time data directly from specific channels within your IoT devices. Ideal for visualizing sensor values, statuses, or actuator states in a granular and dynamic way.',
 			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com',
+				devDocumentation: 'https://smart-panel.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

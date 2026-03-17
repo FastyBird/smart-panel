@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://elevenlabs.io/docs',
 				devDocumentation: 'https://elevenlabs.io/docs',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

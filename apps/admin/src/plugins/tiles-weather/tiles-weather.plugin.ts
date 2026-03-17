@@ -51,9 +51,9 @@ export default {
 			description:
 				"Displays current weather conditions and daily details alongside a multi-day forecast. Provides temperature, conditions, and icons in a clear, compact tile layout - perfect for checking today's weather or planning ahead at a glance.",
 			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com',
+				devDocumentation: 'https://smart-panel.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

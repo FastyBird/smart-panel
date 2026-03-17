@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://platform.openai.com/docs',
 				devDocumentation: 'https://platform.openai.com/docs',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

@@ -26,9 +26,9 @@
   "bugs": "https://github.com/FastyBird/smart-panel/issues",
   "license": "Apache-2.0",
   "author": {
-    "name": "FastyBird s.r.o.",
-    "email": "code@fastybird.com",
-    "url": "https://www.fastybird.com/"
+    "name": "Studio81 Labs s.r.o.",
+    "email": "dev@studio81.cz",
+    "url": "https://www.studio81.cz"
   },
   "repository": {
     "type": "git",

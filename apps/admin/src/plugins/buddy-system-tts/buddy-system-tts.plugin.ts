@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				devDocumentation: 'https://smart-panel.fastybird.com/docs',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

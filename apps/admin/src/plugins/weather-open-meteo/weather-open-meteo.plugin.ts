@@ -37,7 +37,7 @@ export default {
 			links: {
 				documentation: 'https://open-meteo.com/en/docs',
 				devDocumentation: 'https://open-meteo.com/en/docs',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{
