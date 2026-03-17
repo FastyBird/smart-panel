@@ -206,7 +206,7 @@ All onboarding device setup tasks complete.
 | 2 | [TECH-ELIMINATE-FORWARD-REF](technical/TECH-ELIMINATE-FORWARD-REF.md) | backend | :white_check_mark: Done |
 | 3 | [TECH-EXTENSIONS-CAN-REMOVE-OPENAPI](technical/TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md) | backend, admin | :white_check_mark: Done |
 | 4 | [TECH-ONBOARDING-ROUTER-GUARDS](technical/TECH-ONBOARDING-ROUTER-GUARDS.md) | admin | :white_check_mark: Done |
-| 5 | [TECH-PROPERTY-TIMESERIES-E2E](technical/TECH-PROPERTY-TIMESERIES-E2E.md) | backend | :clipboard: Planned |
+| 5 | [TECH-PROPERTY-TIMESERIES-E2E](technical/TECH-PROPERTY-TIMESERIES-E2E.md) | backend | :white_check_mark: Done |
 
 ---
 
