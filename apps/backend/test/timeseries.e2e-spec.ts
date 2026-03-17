@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 */
 import { useContainer } from 'class-validator';
 import request from 'supertest';
@@ -8,9 +8,18 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../src/modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../src/modules/devices/devices.constants';
 import { InfluxDbService } from '../src/modules/influxdb/services/influxdb.service';
-import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX, DEVICES_THIRD_PARTY_TYPE } from '../src/plugins/devices-third-party/devices-third-party.constants';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_PREFIX,
+	DEVICES_THIRD_PARTY_TYPE,
+} from '../src/plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from '../src/plugins/devices-third-party/devices-third-party.plugin';
 
 describe('Property Timeseries (e2e)', () => {
@@ -35,7 +44,7 @@ describe('Property Timeseries (e2e)', () => {
 					mockFns.set(prop, jest.fn().mockResolvedValue(undefined));
 				}
 
-				return mockFns.get(prop)!;
+				return mockFns.get(prop);
 			},
 			has() {
 				return true;
@@ -152,7 +161,7 @@ describe('Property Timeseries (e2e)', () => {
 		}
 
 		channelId = deviceBody.data.channels[0].id;
-		propertyId = deviceBody.data.channels[0].properties![0].id;
+		propertyId = deviceBody.data.channels[0].properties?.[0]?.id ?? '';
 	}, 60_000);
 
 	afterAll(async () => {
@@ -170,13 +179,15 @@ describe('Property Timeseries (e2e)', () => {
 
 	// ─── Timeseries endpoint ────────────────────────────────────────
 
+	function timeseriesUrl(chId: string = channelId, propId: string = propertyId): string {
+		return `/modules/devices/channels/${chId}/properties/${propId}/timeseries`;
+	}
+
 	describe('GET /modules/devices/channels/:channelId/properties/:id/timeseries', () => {
 		it('should return correct response format with empty data', async () => {
 			influxDbMock.query.mockResolvedValue([]);
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			).expect(200);
+			const response = await authGet(timeseriesUrl()).expect(200);
 
 			expect(response.body).toHaveProperty('data');
 			expect(response.body.data).toHaveProperty('property', propertyId);
@@ -202,9 +213,7 @@ describe('Property Timeseries (e2e)', () => {
 				},
 			]);
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			)
+			const response = await authGet(timeseriesUrl())
 				.query({
 					from: '2025-01-01T00:00:00Z',
 					to: '2025-01-02T00:00:00Z',
@@ -226,11 +235,7 @@ describe('Property Timeseries (e2e)', () => {
 			const from = '2025-06-01T00:00:00Z';
 			const to = '2025-06-01T12:00:00Z';
 
-			await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			)
-				.query({ from, to })
-				.expect(200);
+			await authGet(timeseriesUrl()).query({ from, to }).expect(200);
 
 			expect(influxDbMock.query).toHaveBeenCalledTimes(1);
 
@@ -244,9 +249,7 @@ describe('Property Timeseries (e2e)', () => {
 		it('should support bucket size downsampling', async () => {
 			influxDbMock.query.mockResolvedValue([]);
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			)
+			const response = await authGet(timeseriesUrl())
 				.query({
 					from: '2025-01-01T00:00:00Z',
 					to: '2025-01-02T00:00:00Z',
@@ -264,9 +267,7 @@ describe('Property Timeseries (e2e)', () => {
 		it('should use default time range when from/to are not provided', async () => {
 			influxDbMock.query.mockResolvedValue([]);
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			).expect(200);
+			const response = await authGet(timeseriesUrl()).expect(200);
 
 			// Default is last 24 hours, so bucket should be '5m'
 			expect(response.body.data.bucket).toBe('5m');
@@ -277,9 +278,7 @@ describe('Property Timeseries (e2e)', () => {
 		it('should handle empty data gracefully when InfluxDB returns no results', async () => {
 			influxDbMock.query.mockResolvedValue([]);
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			)
+			const response = await authGet(timeseriesUrl())
 				.query({
 					from: '2025-01-01T00:00:00Z',
 					to: '2025-01-02T00:00:00Z',
@@ -293,9 +292,7 @@ describe('Property Timeseries (e2e)', () => {
 		it('should handle InfluxDB errors gracefully and return empty points', async () => {
 			influxDbMock.query.mockRejectedValue(new Error('InfluxDB connection failed'));
 
-			const response = await authGet(
-				`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`,
-			)
+			const response = await authGet(timeseriesUrl())
 				.query({
 					from: '2025-01-01T00:00:00Z',
 					to: '2025-01-02T00:00:00Z',
@@ -306,27 +303,19 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		it('should return 404 for non-existent channel', async () => {
-			await authGet(
-				`/modules/devices/channels/00000000-0000-4000-a000-000000000000/properties/${propertyId}/timeseries`,
-			).expect(404);
+			await authGet(timeseriesUrl('00000000-0000-4000-a000-000000000000', propertyId)).expect(404);
 		});
 
 		it('should return 404 for non-existent property', async () => {
-			await authGet(
-				`/modules/devices/channels/${channelId}/properties/00000000-0000-4000-a000-000000000000/timeseries`,
-			).expect(404);
+			await authGet(timeseriesUrl(channelId, '00000000-0000-4000-a000-000000000000')).expect(404);
 		});
 
 		it('should return 400 for invalid UUID format', async () => {
-			await authGet(
-				`/modules/devices/channels/not-a-uuid/properties/${propertyId}/timeseries`,
-			).expect(400);
+			await authGet(timeseriesUrl('not-a-uuid', propertyId)).expect(400);
 		});
 
 		it('should return 401 for unauthenticated requests', async () => {
-			await request(app.getHttpServer())
-				.get(`/modules/devices/channels/${channelId}/properties/${propertyId}/timeseries`)
-				.expect(401);
+			await request(app.getHttpServer()).get(timeseriesUrl()).expect(401);
 		});
 	});
 });
