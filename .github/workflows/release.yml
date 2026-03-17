@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: "Get Release Tag"
         id: "get-version"
-        uses: "jannemattila/get-version-from-tag@v3"
+        uses: "jannemattila/get-version-from-tag@v4"
 
       - name: "Tag Info"
         run: |
@@ -65,7 +65,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
 
       - name: "Setup Node"
         uses: "actions/setup-node@v6"
@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -108,7 +108,7 @@ jobs:
         run: git pull origin ${{ github.ref_name }}
 
       - name: "Generate CHANGELOG.md from Releases"
-        uses: "mikepenz/release-changelog-builder-action@v5"
+        uses: "mikepenz/release-changelog-builder-action@v6"
         with:
           outputFile: "CHANGELOG.md"
         env:
@@ -143,7 +143,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -197,7 +197,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -251,7 +251,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -305,7 +305,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -363,7 +363,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -394,7 +394,7 @@ jobs:
           shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "flutter-assets"
           path: |
@@ -413,7 +413,7 @@ jobs:
           shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
 
       - name: "Upload ARM64 Artifact (64-bit)"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "flutter-assets-arm64"
           path: |
@@ -436,7 +436,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -473,7 +473,7 @@ jobs:
           shasum -a 256 smart-panel-display.apk > SHASUMS256-android.txt
 
       - name: "Upload Android Artifact"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "android-apk"
           path: |
@@ -495,7 +495,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -534,7 +534,7 @@ jobs:
           shasum -a 256 smart-panel-display-linux-x64.tar.gz > SHASUMS256-linux-x64.txt
 
       - name: "Upload Linux Desktop Artifact"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "linux-desktop"
           path: |
@@ -556,7 +556,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -592,7 +592,7 @@ jobs:
           shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
 
       - name: "Upload eLinux Artifact"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "elinux-x64"
           path: |
@@ -610,7 +610,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -624,7 +624,7 @@ jobs:
           rm ./pnpm-workspace.yaml
 
       - name: "Download Display Assets (32-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: flutter-assets
 
@@ -664,7 +664,7 @@ jobs:
             shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
 
       - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "application-build-armv7"
           path: |
@@ -672,7 +672,7 @@ jobs:
             SHASUMS256.txt
 
       - name: "Download Display Assets (64-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "flutter-assets-arm64"
 
@@ -712,7 +712,7 @@ jobs:
             shasum -a 256 smart-panel-arm64.tar.gz > SHASUMS256-arm64.txt
 
       - name: "Upload ARM64 Artifact (64-bit)"
-        uses: "actions/upload-artifact@v5"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "application-build-arm64"
           path: |
@@ -730,7 +730,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -745,37 +745,37 @@ jobs:
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download ARMv7 Application Build (32-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "application-build-armv7"
 
       - name: "Download ARM64 Application Build (64-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "application-build-arm64"
 
       - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "flutter-assets"
 
       - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "flutter-assets-arm64"
 
       - name: "Download Android APK"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "android-apk"
 
       - name: "Download Linux Desktop Build"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "linux-desktop"
 
       - name: "Download eLinux Build"
-        uses: "actions/download-artifact@v5"
+        uses: "actions/download-artifact@v8"
         with:
           name: "elinux-x64"
 
@@ -817,7 +817,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -825,20 +825,20 @@ jobs:
         run: git pull origin ${{ github.ref_name }}
 
       - name: "Set up Docker Buildx"
-        uses: "docker/setup-buildx-action@v3"
+        uses: "docker/setup-buildx-action@v4"
 
       - name: "Set up QEMU"
-        uses: "docker/setup-qemu-action@v3"
+        uses: "docker/setup-qemu-action@v4"
 
       - name: "Login to GitHub Container Registry"
-        uses: "docker/login-action@v3"
+        uses: "docker/login-action@v4"
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Build and Push Docker Image"
-        uses: "docker/build-push-action@v6"
+        uses: "docker/build-push-action@v7"
         with:
           context: .
           file: docker/prod/Dockerfile
@@ -861,7 +861,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
