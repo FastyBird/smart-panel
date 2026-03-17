@@ -204,7 +204,7 @@ All onboarding device setup tasks complete.
 |---|------|-------|--------|
 | 1 | [TECH-ADMIN-MODULE-CONFIG-TESTS](technical/TECH-ADMIN-MODULE-CONFIG-TESTS.md) | admin | :white_check_mark: Done |
 | 2 | [TECH-ELIMINATE-FORWARD-REF](technical/TECH-ELIMINATE-FORWARD-REF.md) | backend | :white_check_mark: Done |
-| 3 | [TECH-EXTENSIONS-CAN-REMOVE-OPENAPI](technical/TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md) | backend, admin | :clipboard: Planned |
+| 3 | [TECH-EXTENSIONS-CAN-REMOVE-OPENAPI](technical/TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md) | backend, admin | :white_check_mark: Done |
 | 4 | [TECH-ONBOARDING-ROUTER-GUARDS](technical/TECH-ONBOARDING-ROUTER-GUARDS.md) | admin | :white_check_mark: Done |
 | 5 | [TECH-PROPERTY-TIMESERIES-E2E](technical/TECH-PROPERTY-TIMESERIES-E2E.md) | backend | :clipboard: Planned |
 
@@ -244,7 +244,7 @@ All onboarding device setup tasks complete.
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
 | Plugins | 1 | 0 | 1 | 2 |
-| Technical | 3 | 0 | 2 | 5 |
+| Technical | 4 | 0 | 1 | 5 |
 | Other Features | 2 | 0 | 3 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **42** | **0** | **22** | **64** |
+| **Total** | **43** | **0** | **21** | **64** |
