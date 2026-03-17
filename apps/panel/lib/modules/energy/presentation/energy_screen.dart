@@ -33,6 +33,7 @@ import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
@@ -111,13 +112,13 @@ class _EnergyScreenState extends State<EnergyScreen> {
   void _onPageActivated(DeckPageActivatedEvent event) {
     if (!mounted) return;
 
-    // The energy screen is a deck item — check if this event is for us.
-    // When embedded, we register the range selector whenever activated.
-    _isActivePage = true;
+    _isActivePage = event.item is EnergyViewItem;
 
-    final repo = context.read<EnergyRepository>();
-    if (repo.summary != null) {
-      _registerRangeModeConfig(repo);
+    if (_isActivePage) {
+      final repo = context.read<EnergyRepository>();
+      if (repo.summary != null) {
+        _registerRangeModeConfig(repo);
+      }
     }
   }
 
@@ -296,17 +297,6 @@ class _EnergyScreenState extends State<EnergyScreen> {
     return Consumer<EnergyRepository>(
       builder: (context, repo, _) {
         final loadState = _mapState(repo);
-
-        if (loadState != DomainLoadState.loaded &&
-            loadState != DomainLoadState.empty) {
-          return DomainStateView(
-            state: loadState,
-            onRetry: () => repo.fetchData(_homeSpaceId),
-            domainName: localizations.domain_energy,
-            child: const SizedBox.shrink(),
-          );
-        }
-
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Scaffold(
@@ -316,30 +306,104 @@ class _EnergyScreenState extends State<EnergyScreen> {
               children: [
                 _buildHeader(context, repo),
                 Expanded(
-                  child: repo.summary == null
-                      ? DomainStateView(
-                          state: DomainLoadState.notConfigured,
-                          onRetry: () => repo.fetchData(_homeSpaceId),
-                          domainName: localizations.domain_energy,
-                          notConfiguredIcon: MdiIcons.flashOff,
-                          notConfiguredTitle:
-                              localizations.energy_empty_title,
-                          notConfiguredDescription:
-                              localizations.energy_empty_description,
-                          child: const SizedBox.shrink(),
-                        )
-                      : OrientationBuilder(
-                          builder: (context, orientation) {
-                            return orientation == Orientation.landscape
-                                ? _buildLandscapeLayout(context, repo)
-                                : _buildPortraitLayout(context, repo);
-                          },
-                        ),
+                  child: _buildContent(
+                      context, repo, loadState, localizations),
                 ),
               ],
             ),
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    EnergyRepository repo,
+    DomainLoadState loadState,
+    AppLocalizations localizations,
+  ) {
+    if (loadState == DomainLoadState.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (loadState == DomainLoadState.error) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final warningColor =
+          isDark ? AppColorsDark.warning : AppColorsLight.warning;
+
+      return Center(
+        child: Padding(
+          padding: AppSpacings.paddingXl,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
+            children: [
+              Icon(MdiIcons.alertCircleOutline,
+                  size: AppSpacings.scale(48), color: warningColor),
+              Text(
+                localizations.domain_data_load_failed(
+                    localizations.domain_energy),
+                style: TextStyle(
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTextColorDark.primary
+                      : AppTextColorLight.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                localizations.domain_data_load_failed_description,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Theme(
+                data: ThemeData(
+                  filledButtonTheme: isDark
+                      ? AppFilledButtonsDarkThemes.primary
+                      : AppFilledButtonsLightThemes.primary,
+                ),
+                child: FilledButton.icon(
+                  onPressed: () => repo.fetchData(_homeSpaceId),
+                  icon: Icon(
+                    MdiIcons.refresh,
+                    size: AppFontSize.base,
+                    color: isDark
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.primaryForegroundColor,
+                  ),
+                  label: Text(localizations.action_retry),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (repo.summary == null) {
+      return DomainStateView(
+        state: DomainLoadState.notConfigured,
+        onRetry: () => repo.fetchData(_homeSpaceId),
+        domainName: localizations.domain_energy,
+        notConfiguredIcon: MdiIcons.flashOff,
+        notConfiguredTitle: localizations.energy_empty_title,
+        notConfiguredDescription: localizations.energy_empty_description,
+        child: const SizedBox.shrink(),
+      );
+    }
+
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return orientation == Orientation.landscape
+            ? _buildLandscapeLayout(context, repo)
+            : _buildPortraitLayout(context, repo);
       },
     );
   }
@@ -387,13 +451,157 @@ class _EnergyScreenState extends State<EnergyScreen> {
         color: ThemeColors.info,
       ),
       landscapeAction: widget.embedded ? const DeckModeChip() : null,
-      trailing: repo.breakdown != null && repo.breakdown!.isNotEmpty
-          ? HeaderIconButton(
-              icon: MdiIcons.podium,
-              color: ThemeColors.info,
-              onTap: () => _showTopConsumers(context, repo),
-            )
-          : null,
+      trailing: _buildHeaderTrailing(context, repo),
+    );
+  }
+
+  Widget? _buildHeaderTrailing(BuildContext context, EnergyRepository repo) {
+    final hasBreakdown = repo.breakdown != null && repo.breakdown!.isNotEmpty;
+    final showRangeButton = !widget.embedded && repo.summary != null;
+
+    if (!hasBreakdown && !showRangeButton) return null;
+
+    final children = <Widget>[];
+
+    if (showRangeButton) {
+      final localizations = AppLocalizations.of(context)!;
+      final rangeOptions = _getRangeOptions(localizations);
+      final currentOption = rangeOptions.firstWhere(
+        (o) => o.value == repo.selectedRange,
+        orElse: () => rangeOptions.first,
+      );
+
+      children.add(
+        HeaderIconButton(
+          icon: currentOption.icon,
+          color: ThemeColors.info,
+          onTap: () => _showStandaloneRangePopup(context, repo),
+        ),
+      );
+    }
+
+    if (hasBreakdown) {
+      children.add(
+        HeaderIconButton(
+          icon: MdiIcons.podium,
+          color: ThemeColors.info,
+          onTap: () => _showTopConsumers(context, repo),
+        ),
+      );
+    }
+
+    if (children.length == 1) return children.first;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pSm,
+      children: children,
+    );
+  }
+
+  void _showStandaloneRangePopup(BuildContext context, EnergyRepository repo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final infoFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.info,
+    );
+    final rangeOptions = _getRangeOptions(localizations);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor:
+            isDark ? AppFillColorDark.base : AppFillColorLight.base,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        ),
+        contentPadding: AppSpacings.paddingMd,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+              child: Text(
+                localizations.popup_label_mode.toUpperCase(),
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: AppSpacings.scale(1),
+                  color: isDark
+                      ? AppTextColorDark.placeholder
+                      : AppTextColorLight.placeholder,
+                ),
+              ),
+            ),
+            for (final option in rangeOptions)
+              GestureDetector(
+                onTap: () async {
+                  Navigator.pop(dialogContext);
+                  await repo.setRange(_homeSpaceId, option.value);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: AppSpacings.pMd,
+                    horizontal: AppSpacings.pMd,
+                  ),
+                  margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+                  decoration: BoxDecoration(
+                    color: option.value == repo.selectedRange
+                        ? infoFamily.light9
+                        : Colors.transparent,
+                    borderRadius:
+                        BorderRadius.circular(AppBorderRadius.small),
+                    border: option.value == repo.selectedRange
+                        ? Border.all(
+                            color: infoFamily.light7,
+                            width: AppSpacings.scale(1),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    spacing: AppSpacings.pMd,
+                    children: [
+                      Icon(
+                        option.icon,
+                        color: option.value == repo.selectedRange
+                            ? infoFamily.base
+                            : (isDark
+                                ? AppTextColorDark.secondary
+                                : AppTextColorLight.secondary),
+                        size: AppSpacings.scale(20),
+                      ),
+                      Expanded(
+                        child: Text(
+                          option.label,
+                          style: TextStyle(
+                            fontSize: AppFontSize.base,
+                            fontWeight: option.value == repo.selectedRange
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: option.value == repo.selectedRange
+                                ? infoFamily.base
+                                : (isDark
+                                    ? AppTextColorDark.regular
+                                    : AppTextColorLight.regular),
+                          ),
+                        ),
+                      ),
+                      if (option.value == repo.selectedRange)
+                        Icon(
+                          Icons.check,
+                          color: infoFamily.base,
+                          size: AppSpacings.scale(16),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -550,39 +758,44 @@ class _EnergyScreenState extends State<EnergyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 spacing: AppSpacings.pSm,
                 children: [
-                  // Badge pill (portrait only)
+                  // Badge pill (portrait only) — tappable in standalone mode
                   if (!isLandscape)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacings.pMd,
-                        vertical: AppSpacings.pXs,
-                      ),
-                      height: AppSpacings.scale(24),
-                      decoration: BoxDecoration(
-                        color: infoFamily.light9,
-                        borderRadius: BorderRadius.circular(
-                          AppBorderRadius.round,
+                    GestureDetector(
+                      onTap: widget.embedded
+                          ? null
+                          : () => _showStandaloneRangePopup(context, repo),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pXs,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: AppSpacings.pSm,
-                        children: [
-                          Icon(
-                            rangeIcon,
-                            size: badgeFontSize,
-                            color: infoFamily.base,
+                        height: AppSpacings.scale(24),
+                        decoration: BoxDecoration(
+                          color: infoFamily.light9,
+                          borderRadius: BorderRadius.circular(
+                            AppBorderRadius.round,
                           ),
-                          Text(
-                            rangeLabel.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: badgeFontSize,
-                              fontWeight: FontWeight.w700,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: AppSpacings.pSm,
+                          children: [
+                            Icon(
+                              rangeIcon,
+                              size: badgeFontSize,
                               color: infoFamily.base,
-                              letterSpacing: AppSpacings.scale(0.3),
                             ),
-                          ),
-                        ],
+                            Text(
+                              rangeLabel.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: badgeFontSize,
+                                fontWeight: FontWeight.w700,
+                                color: infoFamily.base,
+                                letterSpacing: AppSpacings.scale(0.3),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   // Giant value
