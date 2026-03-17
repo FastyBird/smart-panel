@@ -94,9 +94,16 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 					const suggestion = await this.suggestionService.getSuggestion(space.id);
 
 					if (suggestion === null) {
-						// No rule matches — conditions changed, clear tracker so a
-						// future match will be emitted fresh.
-						lastEmittedSuggestions.delete(space.id);
+						// Only clear the tracker if the null is because conditions
+						// genuinely changed (no rule matches), not because the
+						// suggestion is still on cooldown. Otherwise the tracker
+						// gets wiped during the cooldown window and the same
+						// suggestion re-fires once the cooldown expires.
+						const lastType = lastEmittedSuggestions.get(space.id);
+
+						if (!lastType || !spaceCooldowns.isOnCooldown(space.id, lastType)) {
+							lastEmittedSuggestions.delete(space.id);
+						}
 
 						continue;
 					}
