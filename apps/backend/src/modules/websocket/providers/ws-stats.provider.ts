@@ -34,14 +34,16 @@ export class WsStatsProvider implements StatsProvider {
 
 		const availability5m = Math.min(100, +((k / expected) * 100).toFixed(2));
 
+		const now = new Date();
+
 		return toInstance(ModuleStatsModel, {
 			clientsNow: {
 				value: clientsNow,
-				lastUpdated: rowsC?.[0]?.time ?? new Date(),
+				lastUpdated: now,
 			},
 			availability5m: {
 				value: availability5m,
-				lastUpdated: rowsH?.[0]?.time ?? new Date(),
+				lastUpdated: now,
 			},
 		});
 	}

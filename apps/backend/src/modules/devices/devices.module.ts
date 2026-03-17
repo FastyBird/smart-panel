@@ -277,14 +277,6 @@ The module uses a flexible type mapping system that allows plugins to register t
            GROUP BY time(1m), "deviceId" fill(previous)`,
 				resample: 'RESAMPLE EVERY 1m FOR 24h',
 			},
-			{
-				name: 'cq_online_count_1m',
-				body: `SELECT SUM("onlineI") AS online_count
-           INTO "min_14d"."online_count_1m"
-           FROM "min_14d"."device_status_1m"
-           GROUP BY time(1m) fill(previous)`,
-				resample: 'RESAMPLE EVERY 1m FOR 24h',
-			},
 		];
 
 		const results = await Promise.allSettled(
