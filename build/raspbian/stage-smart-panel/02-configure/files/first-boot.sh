@@ -34,19 +34,25 @@ fi
 log "Configuring InfluxDB..."
 
 # Wait for InfluxDB to be ready (up to 30 seconds)
+INFLUXDB_READY=false
 for i in $(seq 1 30); do
 	if influx -execute "SHOW DATABASES" >/dev/null 2>&1; then
+		INFLUXDB_READY=true
 		break
 	fi
 	sleep 1
 done
 
-# Create the default database and retention policies
-influx -execute "CREATE DATABASE fastybird" 2>/dev/null || true
-influx -execute "CREATE RETENTION POLICY raw_24h ON fastybird DURATION 24h REPLICATION 1 DEFAULT" 2>/dev/null || true
-influx -execute "CREATE RETENTION POLICY min_14d ON fastybird DURATION 14d REPLICATION 1" 2>/dev/null || true
-
-log "InfluxDB database 'fastybird' configured with retention policies"
+if [ "${INFLUXDB_READY}" = true ]; then
+	# Create the default database and retention policies
+	influx -execute "CREATE DATABASE fastybird"
+	influx -execute "CREATE RETENTION POLICY raw_24h ON fastybird DURATION 24h REPLICATION 1 DEFAULT"
+	influx -execute "CREATE RETENTION POLICY min_14d ON fastybird DURATION 14d REPLICATION 1"
+	log "InfluxDB database 'fastybird' configured with retention policies"
+else
+	log "WARNING: InfluxDB not ready after 30s, skipping database setup — metrics features will be unavailable"
+	touch "${DATA_DIR}/.influxdb-pending"
+fi
 
 # ──────────────────────────────────────────────────────────────
 # 3. Ensure data directories exist with correct permissions
