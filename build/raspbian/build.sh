@@ -140,14 +140,32 @@ cd "${PI_GEN_DIR}"
 ./build-docker.sh
 
 # ──────────────────────────────────────────────────────────────
-# Step 5: Copy output
+# Step 5: Collect, rename, and compress output
 # ──────────────────────────────────────────────────────────────
 echo "==> Collecting output..."
 
 mkdir -p "${OUTPUT_DIR}"
-cp "${PI_GEN_DIR}/deploy/"*.img.xz "${OUTPUT_DIR}/" 2>/dev/null || true
-cp "${PI_GEN_DIR}/deploy/"*.zip "${OUTPUT_DIR}/" 2>/dev/null || true
+
+# pi-gen produces raw .img files in deploy/. Rename and compress them
+# (mirroring the CI workflow).
+IMAGE_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.img 2>/dev/null | head -1)
+
+if [ -z "${IMAGE_FILE}" ]; then
+	echo "ERROR: No .img file found in ${PI_GEN_DIR}/deploy/" >&2
+	exit 1
+fi
+
+VERSION=$(git -C "${PROJECT_ROOT}" describe --tags --always 2>/dev/null || echo "dev")
+VERSION="${VERSION//\//-}"
+NEW_NAME="smart-panel-${VERSION}-arm64.img"
+
+cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
+echo "  -> Compressing image..."
+xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
+sha256sum "${OUTPUT_DIR}/${NEW_NAME}.xz" > "${OUTPUT_DIR}/${NEW_NAME}.xz.sha256"
+
+# Copy any additional deploy artifacts
 cp "${PI_GEN_DIR}/deploy/"*.info "${OUTPUT_DIR}/" 2>/dev/null || true
 
-echo "==> Build complete! Image(s) available in ${OUTPUT_DIR}/"
+echo "==> Build complete! Image available in ${OUTPUT_DIR}/"
 ls -lh "${OUTPUT_DIR}/"
