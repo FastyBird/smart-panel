@@ -144,6 +144,15 @@ export class ExtensionModel {
 	@IsBoolean()
 	canToggleEnabled: boolean;
 
+	@ApiProperty({
+		description: 'Whether the extension can be removed (core extensions cannot be removed)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'can_remove' })
+	@IsBoolean()
+	canRemove: boolean;
+
 	@ApiPropertyOptional({
 		description: 'Capability identifiers declared by the extension (e.g., llm, tts, stt, tools)',
 		type: [String],

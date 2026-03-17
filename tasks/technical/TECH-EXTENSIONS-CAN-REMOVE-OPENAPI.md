@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: tiny
 Parent: CHORE-EXTENSIONS-CORE-CONTROL
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -31,9 +31,9 @@ I want the canRemove field documented in the OpenAPI specification
 
 ## 4. Acceptance criteria
 
-- [ ] canRemove field is documented in OpenAPI spec
-- [ ] Field type and description are accurate
-- [ ] Generated admin client includes the field
+- [x] canRemove field is documented in OpenAPI spec
+- [x] Field type and description are accurate
+- [x] Generated admin client includes the field
 
 ## 5. Technical constraints
 

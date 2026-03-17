@@ -220,6 +220,7 @@ export class ExtensionsService {
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;
+		extension.canRemove = !isCore;
 		extension.capabilities = metadata?.capabilities;
 
 		if (metadata?.links) {
@@ -275,6 +276,7 @@ export class ExtensionsService {
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;
+		extension.canRemove = !isCore;
 		extension.capabilities = metadata?.capabilities;
 
 		if (metadata?.links) {

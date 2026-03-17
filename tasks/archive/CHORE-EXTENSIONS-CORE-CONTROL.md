@@ -173,7 +173,7 @@ Create dedicated endpoint that returns all registered extensions:
 - [x] All 15 plugin files - Added README metadata registration
 - [x] `apps/backend/src/modules/config/models/module-config.model.ts` - NEW: Config module model
 - [x] `apps/backend/src/modules/config/dto/update-module-config.dto.ts` - NEW: Config module DTO
-- [ ] `apps/backend/src/modules/extensions/models/extension.model.ts` - Add `canRemove` field (deferred)
+- [x] `apps/backend/src/modules/extensions/models/extension.model.ts` - Add `canRemove` field
 
 ### Admin
 - [x] `apps/admin/src/modules/extensions/components/extension-card.vue` - Update UI tooltips
@@ -201,6 +201,6 @@ Create dedicated endpoint that returns all registered extensions:
 3. [x] Core plugins can be enabled/disabled normally
 4. [x] Remove button disabled for all core extensions with tooltip: "Core extensions cannot be removed"
 5. [x] Non-core extensions (when available) can be toggled and show remove option
-6. [ ] OpenAPI spec regenerated with `canRemove` field (deferred - not needed yet)
+6. [x] OpenAPI spec regenerated with `canRemove` field
 7. [x] All linting passes
 8. [x] Unit tests pass (backend: 873 tests, admin: 1047 tests)
