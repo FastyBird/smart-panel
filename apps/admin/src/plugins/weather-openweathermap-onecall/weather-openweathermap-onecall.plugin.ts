@@ -37,7 +37,7 @@ export default {
 			links: {
 				documentation: 'https://openweathermap.org/api/one-call-3',
 				devDocumentation: 'https://openweathermap.org/api/one-call-3',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

@@ -111,7 +111,7 @@
 				<div class="flex flex-row justify-center items-baseline gap-[0.5rem]">
 					&copy;
 					<el-link
-						href="https://www.fastybird.com"
+						href="https://smart-panel.fastybird.com"
 						target="_blank"
 						data-test-id="author-link"
 					>

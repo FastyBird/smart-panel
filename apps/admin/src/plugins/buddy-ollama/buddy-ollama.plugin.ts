@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://ollama.com',
 				devDocumentation: 'https://ollama.com',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

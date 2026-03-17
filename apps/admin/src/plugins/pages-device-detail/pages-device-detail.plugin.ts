@@ -32,9 +32,9 @@ export default {
 			name: 'Device detail page',
 			description: 'A dedicated page focused on a single device. Perfect for viewing and controlling all properties of a specific device in detail.',
 			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com',
+				devDocumentation: 'https://smart-panel.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

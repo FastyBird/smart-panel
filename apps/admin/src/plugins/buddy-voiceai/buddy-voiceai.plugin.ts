@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://voice.ai/docs',
 				devDocumentation: 'https://voice.ai/docs',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

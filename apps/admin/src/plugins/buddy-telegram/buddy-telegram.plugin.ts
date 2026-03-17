@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://core.telegram.org/bots',
 				devDocumentation: 'https://core.telegram.org/bots/api',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

@@ -33,7 +33,7 @@ export default {
 			links: {
 				documentation: 'https://discord.com/developers/docs',
 				devDocumentation: 'https://discord.com/developers/docs/intro',
-				bugsTracking: 'http://www.fastybird.com',
+				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
 			elements: [
 				{

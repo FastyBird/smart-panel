@@ -92,6 +92,6 @@ describe('LayoutSign', (): void => {
 
 	it('should display copyright information', (): void => {
 		expect(wrapper.text()).toContain('©');
-		expect(wrapper.find('[data-test-id="author-link"]').attributes('href')).toBe('https://www.fastybird.com');
+		expect(wrapper.find('[data-test-id="author-link"]').attributes('href')).toBe('https://smart-panel.fastybird.com');
 	});
 });
