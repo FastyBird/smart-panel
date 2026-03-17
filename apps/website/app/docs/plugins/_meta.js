@@ -8,4 +8,9 @@ export default {
     type: "separator",
     title: "Dashboard Plugins",
   },
+  "extension-development": {
+    type: "separator",
+    title: "Extension Development",
+  },
+  "building-extensions": "Building Extensions",
 };

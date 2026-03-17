@@ -14,4 +14,12 @@ export default {
   },
   "dashboard-overview": "Overview",
   pages: "Pages",
+  "home-management": {
+    type: "separator",
+    title: "Home Management",
+  },
+  spaces: "Spaces & Rooms",
+  scenes: "Scenes",
+  energy: "Energy Monitoring",
+  users: "Users & Roles",
 };

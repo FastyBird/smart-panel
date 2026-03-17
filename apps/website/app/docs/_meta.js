@@ -7,4 +7,6 @@ export default {
   "configuration-reference": "Configuration Reference",
   "api-reference": "API Reference",
   faq: "FAQ",
+  troubleshooting: "Troubleshooting",
+  updating: "Updating & Backup",
 };

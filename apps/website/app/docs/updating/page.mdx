@@ -1,0 +1,187 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Updating & Backup
+
+Smart Panel is actively developed, and updates bring new features, bug fixes, and security patches. This guide
+covers how to safely update your installation and back up your data.
+
+---
+
+## Before You Update
+
+<Callout type="warning">
+	Always back up your data before updating. While updates include automatic database migrations, it's good practice
+	to have a recovery point.
+</Callout>
+
+---
+
+## Backup
+
+Your Smart Panel stores two important files:
+
+- `config/config.yaml` — system configuration (plugins, weather, display settings)
+- `data/database.sqlite` — all devices, dashboards, users, and scenes
+
+The location depends on your installation method:
+
+| Installation Method | Data Location |
+|---|---|
+| One-liner script or npm global | `/var/lib/smart-panel/` |
+| Manual tarball | `/var/smart-panel/` |
+| Docker | Inside the `smart-panel-data` Docker volume |
+
+### Systemd Installations (npm, tarball, one-liner)
+
+<Steps>
+	### Stop the services
+
+	```bash copy
+	sudo systemctl stop smart-panel-backend smart-panel-display
+	```
+
+	### Create a backup
+
+	```bash copy
+	sudo tar czf ~/smart-panel-backup-$(date +%Y%m%d).tar.gz -C /var/lib/smart-panel .
+	```
+
+	### Restart the services
+
+	```bash copy
+	sudo systemctl start smart-panel-backend smart-panel-display
+	```
+</Steps>
+
+### Docker Installation
+
+```bash copy
+docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
+	tar czf /backup/smart-panel-backup-$(date +%Y%m%d).tar.gz -C /data .
+```
+
+<Callout type="info">
+	You don't need to stop the Docker container to back up, but stopping it ensures data consistency.
+</Callout>
+
+---
+
+## Restore from Backup
+
+### Systemd Installations
+
+```bash copy
+sudo systemctl stop smart-panel-backend smart-panel-display
+sudo tar xzf ~/smart-panel-backup-YYYYMMDD.tar.gz -C /var/lib/smart-panel
+sudo systemctl start smart-panel-backend smart-panel-display
+```
+
+### Docker Installation
+
+```bash copy
+docker compose down
+docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
+	sh -c "rm -rf /data/* && tar xzf /backup/smart-panel-backup-YYYYMMDD.tar.gz -C /data"
+docker compose up -d
+```
+
+---
+
+## Updating
+
+### Docker
+
+```bash copy
+docker compose pull
+docker compose up -d
+```
+
+The container automatically runs pending database migrations on startup.
+
+### One-Liner / npm Global Install
+
+```bash copy
+sudo smart-panel-service update
+```
+
+This downloads the latest version, runs migrations, and restarts the services.
+
+### Manual Tarball Install
+
+<Steps>
+	### Stop services
+
+	```bash copy
+	sudo systemctl stop smart-panel-backend smart-panel-display
+	```
+
+	### Download the latest release
+
+	```bash copy
+	curl -sL https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz \
+		-o /tmp/smart-panel.tar.gz
+	```
+
+	### Extract over existing installation
+
+	```bash copy
+	sudo tar xzf /tmp/smart-panel.tar.gz -C /opt/smart-panel --strip-components=1
+	```
+
+	### Install dependencies
+
+	```bash copy
+	cd /opt/smart-panel && pnpm install --production
+	```
+
+	### Start services
+
+	```bash copy
+	sudo systemctl start smart-panel-backend smart-panel-display
+	```
+</Steps>
+
+Database migrations run automatically when the backend starts.
+
+---
+
+## Pinning a Version
+
+### Docker
+
+Edit your `docker-compose.yml` to use a specific tag:
+
+```yaml
+services:
+  smart-panel:
+    image: ghcr.io/fastybird/smart-panel:1.2.3
+```
+
+### npm
+
+```bash copy
+npm install -g @fastybird/smart-panel@1.2.3
+```
+
+---
+
+## Rolling Back
+
+If an update causes problems:
+
+1. Stop the services
+2. Restore your backup (see above)
+3. Install the previous version using the pinning method above
+4. Start the services
+
+<Callout type="warning">
+	Rolling back after a database migration may cause issues if the schema has changed. Always test updates on a
+	non-critical setup first if possible.
+</Callout>
+
+---
+
+## What's Next?
+
+- Check the [Troubleshooting](/docs/troubleshooting) guide if you encounter issues after updating
+- Visit the [GitHub Releases](https://github.com/fastybird/smart-panel/releases) page for changelogs

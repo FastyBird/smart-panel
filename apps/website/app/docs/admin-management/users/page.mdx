@@ -1,0 +1,123 @@
+import { Callout } from 'nextra/components'
+
+# Users & Roles
+
+Smart Panel includes a built-in user management system with role-based access control. You can add family members,
+housemates, or other users and control what they can do.
+
+---
+
+## Roles
+
+There are three roles, each with different levels of access:
+
+| Role | Description |
+|------|-------------|
+| **Owner** | Full system access. Can manage all users, devices, settings, and plugins. There is exactly one owner account, created during [onboarding](/docs/get-started/onboarding). |
+| **Admin** | Can manage users, devices, dashboards, and system configuration. Cannot change the owner account. |
+| **User** | Regular access. Can view devices and dashboards, trigger scenes, and interact with the panel display. Cannot manage system settings or other users. |
+
+<Callout type="info">
+	The owner account is created during the initial onboarding process. You cannot create a second owner or change
+	the owner role via the API.
+</Callout>
+
+---
+
+## Managing Users via the API
+
+User management requires **Owner** or **Admin** role.
+
+### List all users
+
+```bash copy
+curl http://smart-panel.local:3000/api/users \
+  -H "Authorization: Bearer <token>"
+```
+
+### Create a new user
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "username": "alice",
+      "password": "securepassword",
+      "first_name": "Alice",
+      "last_name": "Smith",
+      "email": "alice@example.com",
+      "role": "user"
+    }
+  }'
+```
+
+### Update a user
+
+```bash copy
+curl -X PATCH http://smart-panel.local:3000/api/users/<user-id> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "first_name": "Alice",
+      "role": "admin"
+    }
+  }'
+```
+
+### Delete a user
+
+```bash copy
+curl -X DELETE http://smart-panel.local:3000/api/users/<user-id> \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## User Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `username` | string | Yes | Unique login name |
+| `password` | string | Yes (create) | Password (hashed with bcrypt) |
+| `email` | string | No | Unique email address |
+| `first_name` | string | No | First name |
+| `last_name` | string | No | Last name |
+| `role` | string | Yes | One of `owner`, `admin`, or `user` |
+
+<Callout type="warning">
+	Usernames and emails must be unique. Attempting to create a user with a duplicate username or email will
+	return a validation error.
+</Callout>
+
+---
+
+## Authentication
+
+Smart Panel uses **JWT (JSON Web Token)** authentication. To obtain a token:
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "username": "alice",
+      "password": "securepassword"
+    }
+  }'
+```
+
+The response includes an access token that you include in the `Authorization` header for subsequent requests:
+
+```
+Authorization: Bearer <access-token>
+```
+
+---
+
+## What's Next?
+
+- Learn about organizing devices into [Spaces](/docs/admin-management/spaces)
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for full endpoint documentation

@@ -1,0 +1,205 @@
+import { Callout } from 'nextra/components'
+
+# Troubleshooting
+
+Running into issues? This guide covers the most common problems and how to resolve them. For quick answers to
+frequently asked questions, see the [FAQ](/docs/faq) page.
+
+---
+
+## Backend Won't Start
+
+### Check the service status
+
+```bash copy
+sudo systemctl status smart-panel-backend
+```
+
+### View recent logs
+
+```bash copy
+sudo journalctl -u smart-panel-backend -b --no-pager -n 50
+```
+
+### Common causes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| `EADDRINUSE` error | Port 3000 already in use | Stop the conflicting service or change the port in `config.yaml` |
+| `SQLITE_CANTOPEN` | Database file permissions | Run `sudo chown -R pi:pi /var/lib/smart-panel/data` |
+| `JWT secret` error | Missing `FB_TOKEN_SECRET` | Set the environment variable or add it to your `.env` file |
+| Migration errors | Corrupted database after crash | Restore from backup or delete `database.sqlite` to start fresh |
+
+<Callout type="warning">
+	Deleting the database will erase all your devices, pages, and settings. Always try restoring from a backup first.
+	See the [Updating & Backup](/docs/updating) guide for backup instructions.
+</Callout>
+
+---
+
+## Display App Won't Start
+
+The panel display runs as a separate service using `flutter-pi`.
+
+### Check service status
+
+```bash copy
+sudo systemctl status smart-panel-display
+```
+
+### View display logs
+
+```bash copy
+sudo journalctl -u smart-panel-display -b --no-pager -n 50
+```
+
+### Common causes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| Black screen | Display service not running | `sudo systemctl start smart-panel-display` |
+| `DRM` or `KMS` error | Missing GPU driver | Ensure `dtoverlay=vc4-kms-v3d` is in `/boot/config.txt` |
+| Touch not working | Wrong touch driver | Check your display's documentation for the correct overlay |
+| Wrong orientation | Display rotation | Add `display_rotate=X` to `/boot/config.txt` (0, 1, 2, or 3) |
+
+---
+
+## Can't Access the Admin UI
+
+If you can't reach `http://smart-panel.local:3000` in your browser:
+
+1. **Check the backend is running**: `sudo systemctl status smart-panel-backend`
+2. **Try the IP address directly**: Find it with `hostname -I` on the Pi, then visit `http://<ip>:3000`
+3. **Check firewall rules**: Ensure port 3000 is open — `sudo ufw status` (if UFW is active)
+4. **Verify mDNS**: `.local` domains require mDNS support. See the [Network Requirements](/docs/get-started/network-requirements) page
+
+---
+
+## Devices Not Showing Up
+
+### Plugin-synced devices (Home Assistant, Shelly)
+
+- **Home Assistant**: Verify the API key and hostname in your `config.yaml`. The token must be a valid long-lived access token.
+- **Shelly**: Ensure mDNS is enabled and Shelly devices are on the same network subnet. Check the
+  [Network Requirements](/docs/get-started/network-requirements) page for details.
+
+### Manually created devices
+
+- Make sure you selected the correct plugin type when creating the device.
+- Check that the device has at least one channel configured.
+
+### Check plugin logs
+
+```bash copy
+sudo journalctl -u smart-panel-backend -b | grep -i "plugin\|device\|discovery"
+```
+
+---
+
+## WebSocket Connection Issues
+
+The panel display communicates with the backend over WebSocket. If the display shows stale data or a
+connection indicator:
+
+1. **Verify the backend is reachable** from the display device
+2. **Check for proxy interference** — reverse proxies must be configured to forward WebSocket upgrades
+3. **Restart both services**:
+
+```bash copy
+sudo systemctl restart smart-panel-backend
+sudo systemctl restart smart-panel-display
+```
+
+---
+
+## Docker-Specific Issues
+
+### Container keeps restarting
+
+```bash copy
+docker compose logs --tail 50 smart-panel
+```
+
+Look for migration errors or missing environment variables.
+
+### Health check failing
+
+```bash copy
+docker inspect --format='{{.State.Health.Status}}' smart-panel
+```
+
+If the health check reports `unhealthy`, the backend may be stuck. Restart the container:
+
+```bash copy
+docker compose restart smart-panel
+```
+
+### Permission issues with volumes
+
+If the container can't write to the data volume:
+
+```bash copy
+docker compose down
+docker run --rm -v smart-panel-data:/data alpine chown -R 1000:1000 /data
+docker compose up -d
+```
+
+---
+
+## Performance Issues
+
+### High CPU usage
+
+- Check if a plugin is stuck in a reconnection loop (look for repeated connection errors in logs)
+- Reduce the number of enabled plugins if running on limited hardware
+
+### High memory usage
+
+- SQLite can consume memory with large datasets. Consider enabling InfluxDB for time-series data
+- Restart the backend to free memory: `sudo systemctl restart smart-panel-backend`
+
+---
+
+## Factory Reset
+
+If nothing else works, you can perform a full factory reset. This erases all data and returns the panel
+to its initial state.
+
+<Callout type="warning">
+	This will delete all devices, dashboards, users, and settings. This action cannot be undone.
+</Callout>
+
+The data location depends on your installation method:
+
+| Installation Method | Data Location |
+|---|---|
+| One-liner script or npm global | `/var/lib/smart-panel/` |
+| Manual tarball | `/var/smart-panel/` |
+| Docker | Inside the `smart-panel-data` Docker volume |
+
+```bash copy
+# Stop services
+sudo systemctl stop smart-panel-backend smart-panel-display
+
+# Delete data (adjust path for your install method)
+sudo rm /var/lib/smart-panel/config/config.yaml
+sudo rm /var/lib/smart-panel/data/database.sqlite
+
+# Restart — onboarding will begin fresh
+sudo systemctl start smart-panel-backend smart-panel-display
+```
+
+For Docker:
+
+```bash copy
+docker compose down -v
+docker compose up -d
+```
+
+---
+
+## Still Stuck?
+
+- [GitHub Discussions](https://github.com/fastybird/smart-panel/discussions) — ask the community
+- [Report an issue](https://github.com/fastybird/smart-panel/issues) — file a bug report
+- Join our [Discord](https://discord.gg/H7pHN3hbqq) — get real-time help

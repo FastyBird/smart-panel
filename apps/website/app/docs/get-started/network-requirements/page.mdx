@@ -1,0 +1,100 @@
+import { Callout } from 'nextra/components'
+
+# Network Requirements
+
+Smart Panel relies on local network communication to discover and control your devices. This page explains
+what your network needs to support for everything to work properly.
+
+---
+
+## Required Ports
+
+| Port | Protocol | Service | Required? |
+|------|----------|---------|-----------|
+| **3000** | TCP | Backend HTTP server & Admin UI | Yes |
+| **5353** | UDP | mDNS (`.local` hostname resolution) | Recommended |
+| Various | TCP | WebSocket connections to devices | Yes |
+
+<Callout type="info">
+	Port 3000 is the default. You can change it via the `FB_BACKEND_PORT` environment variable or in your
+	`docker-compose.yml` configuration.
+</Callout>
+
+---
+
+## mDNS (Multicast DNS)
+
+Smart Panel uses mDNS for two purposes:
+
+1. **Hostname resolution** — so you can access `http://smart-panel.local:3000` from your browser
+2. **Device discovery** — plugins like Shelly use mDNS to automatically find devices on the network
+
+### Requirements for mDNS
+
+- Devices must be on the **same subnet** (same VLAN / broadcast domain)
+- Your router must **allow multicast traffic** on UDP port 5353
+- On Windows, you may need [Bonjour](https://support.apple.com/kb/dl999?locale=en_US) installed
+
+### Common mDNS issues
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| `.local` domain doesn't resolve | mDNS not supported on client | Use the IP address directly instead |
+| Shelly devices not discovered | Devices on different VLAN | Move devices to the same subnet as Smart Panel |
+| Intermittent discovery | Router blocking multicast | Enable IGMP snooping or allow multicast on the network |
+
+<Callout type="warning">
+	Many home networks with IoT VLANs or guest network isolation will block mDNS traffic between segments.
+	If you use network segmentation, ensure Smart Panel and your IoT devices share the same broadcast domain,
+	or configure an mDNS reflector/repeater.
+</Callout>
+
+---
+
+## Firewall Configuration
+
+If you run a firewall on the Raspberry Pi (e.g., UFW), allow the required ports:
+
+```bash copy
+sudo ufw allow 3000/tcp comment "Smart Panel"
+sudo ufw allow 5353/udp comment "mDNS"
+```
+
+---
+
+## Device Communication
+
+Different plugins communicate with devices in different ways:
+
+| Plugin | Protocol | Notes |
+|--------|----------|-------|
+| **Shelly (NG)** | WebSocket + mDNS | Requires same subnet for discovery |
+| **Home Assistant** | HTTP REST API | Only needs network route to HA instance |
+| **Third-Party** | Manual | Devices are created manually, no network discovery |
+
+---
+
+## Reverse Proxy
+
+If you run Smart Panel behind a reverse proxy (nginx, Caddy, etc.), you must forward WebSocket connections:
+
+```nginx
+location / {
+    proxy_pass http://localhost:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+```
+
+<Callout type="warning">
+	Without WebSocket forwarding, the panel display will not receive real-time updates from the backend.
+</Callout>
+
+---
+
+## What's Next?
+
+- Continue to [Preparation](/docs/get-started/preparation) to set up your Raspberry Pi
+- See the [Troubleshooting](/docs/troubleshooting) guide if you're having connectivity issues
