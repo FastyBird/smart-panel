@@ -1,10 +1,10 @@
 #!/bin/bash -e
 #
-# Install Node.js 22.x from NodeSource and InfluxDB 1.8
+# Install Node.js 24.x from NodeSource and InfluxDB 1.8
 #
 
 # Install NodeSource repository
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 
 # Install Node.js
 apt-get install -y nodejs
