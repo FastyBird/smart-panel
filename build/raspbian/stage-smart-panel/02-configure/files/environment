@@ -1,0 +1,10 @@
+# Smart Panel Environment Configuration
+# Managed by smart-panel-firstboot on first run
+
+NODE_ENV=production
+FB_BACKEND_PORT=3000
+FB_ADMIN_UI_PATH=/usr/lib/smart-panel/static
+FB_DB_PATH=/var/lib/smart-panel/data
+FB_CONFIG_PATH=/var/lib/smart-panel/config
+FB_DB_SYNC=false
+# FB_TOKEN_SECRET is generated on first boot

@@ -1,0 +1,8 @@
+git
+curl
+wget
+avahi-daemon
+libnss-mdns
+alsa-utils
+i2c-tools
+sqlite3
