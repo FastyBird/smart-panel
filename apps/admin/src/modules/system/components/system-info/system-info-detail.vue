@@ -5,6 +5,14 @@
 			:sm="12"
 			:md="8"
 		>
+			<update-status />
+		</el-col>
+
+		<el-col
+			:xs="24"
+			:sm="12"
+			:md="8"
+		>
 			<el-card
 				class="md:m-2 xs:my-1"
 				body-class="p-0!"
@@ -268,6 +276,7 @@ import { formatNumber } from '../../../../common';
 import { Layout } from '../../system.constants';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';
+import UpdateStatus from './update-status.vue';
 
 defineOptions({
 	name: 'SystemInfoDetail',

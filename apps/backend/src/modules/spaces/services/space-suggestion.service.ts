@@ -43,11 +43,19 @@ export interface SuggestionContext {
 export const spaceCooldowns = new CooldownManager<SuggestionType>();
 
 /**
- * Tracks the last emitted suggestion type per space.
- * The heartbeat skips re-emitting the same type while conditions remain unchanged.
- * Cleared when no rule matches (conditions changed) or the user interacts (feedback).
+ * Tracks the last emitted suggestion per space.
+ * - `type`: the suggestion type that was emitted
+ * - `emittedAt`: timestamp of emission (used for re-emit after expiry)
+ * - `dismissed`: true if the user explicitly dismissed or applied — blocks
+ *   re-emission while conditions remain the same
  */
-export const lastEmittedSuggestions = new Map<string, SuggestionType>();
+export interface EmittedSuggestionEntry {
+	type: SuggestionType;
+	emittedAt: number;
+	dismissed: boolean;
+}
+
+export const lastEmittedSuggestions = new Map<string, EmittedSuggestionEntry>();
 
 /**
  * Check if a space name matches any of the given bedroom patterns
@@ -196,23 +204,28 @@ export class SpaceSuggestionService {
 		// Validate space exists - throws if not found
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		// User interacted — clear last-emitted tracker so the heartbeat can
-		// re-evaluate this space after the cooldown expires.
-		lastEmittedSuggestions.delete(spaceId);
+		const entry = lastEmittedSuggestions.get(spaceId);
 
-		// If dismissed, set cooldown and return
+		// If dismissed, mark as dismissed and set cooldown
 		if (feedback === SuggestionFeedback.DISMISSED) {
+			if (entry && entry.type === suggestionType) {
+				entry.dismissed = true;
+			}
+
 			spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 
 			return { success: true };
 		}
 
-		// If applied, execute the intent and only set cooldown on success
+		// If applied, execute the intent — only mark dismissed and set cooldown on success
 		if (feedback === SuggestionFeedback.APPLIED) {
 			const intentResult = await this.executeIntent(spaceId, suggestionType);
 
-			// Only set cooldown if intent execution succeeded
 			if (intentResult) {
+				if (entry && entry.type === suggestionType) {
+					entry.dismissed = true;
+				}
+
 				spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 			}
 

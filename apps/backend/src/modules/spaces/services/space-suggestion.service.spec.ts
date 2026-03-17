@@ -468,18 +468,24 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 		});
 
 		describe('lastEmittedSuggestions tracker', () => {
-			it('should track last emitted type per space', () => {
+			it('should track last emitted entry per space', () => {
 				const spaceId = uuid();
+				const entry = { type: SuggestionType.LIGHTING_RELAX, emittedAt: Date.now(), dismissed: false };
 
-				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId, entry);
 
-				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_RELAX);
+				expect(lastEmittedSuggestions.get(spaceId)?.type).toBe(SuggestionType.LIGHTING_RELAX);
+				expect(lastEmittedSuggestions.get(spaceId)?.dismissed).toBe(false);
 			});
 
 			it('should allow clearing when conditions change', () => {
 				const spaceId = uuid();
 
-				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
+				lastEmittedSuggestions.set(spaceId, {
+					type: SuggestionType.LIGHTING_RELAX,
+					emittedAt: Date.now(),
+					dismissed: false,
+				});
 				lastEmittedSuggestions.delete(spaceId);
 
 				expect(lastEmittedSuggestions.get(spaceId)).toBeUndefined();
@@ -489,20 +495,46 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 				const spaceId1 = uuid();
 				const spaceId2 = uuid();
 
-				lastEmittedSuggestions.set(spaceId1, SuggestionType.LIGHTING_RELAX);
-				lastEmittedSuggestions.set(spaceId2, SuggestionType.LIGHTING_NIGHT);
+				lastEmittedSuggestions.set(spaceId1, {
+					type: SuggestionType.LIGHTING_RELAX,
+					emittedAt: Date.now(),
+					dismissed: false,
+				});
+				lastEmittedSuggestions.set(spaceId2, {
+					type: SuggestionType.LIGHTING_NIGHT,
+					emittedAt: Date.now(),
+					dismissed: false,
+				});
 
-				expect(lastEmittedSuggestions.get(spaceId1)).toBe(SuggestionType.LIGHTING_RELAX);
-				expect(lastEmittedSuggestions.get(spaceId2)).toBe(SuggestionType.LIGHTING_NIGHT);
+				expect(lastEmittedSuggestions.get(spaceId1)?.type).toBe(SuggestionType.LIGHTING_RELAX);
+				expect(lastEmittedSuggestions.get(spaceId2)?.type).toBe(SuggestionType.LIGHTING_NIGHT);
 			});
 
 			it('should update when a different type is emitted', () => {
 				const spaceId = uuid();
 
-				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_RELAX);
-				lastEmittedSuggestions.set(spaceId, SuggestionType.LIGHTING_NIGHT);
+				lastEmittedSuggestions.set(spaceId, {
+					type: SuggestionType.LIGHTING_RELAX,
+					emittedAt: Date.now(),
+					dismissed: false,
+				});
+				lastEmittedSuggestions.set(spaceId, {
+					type: SuggestionType.LIGHTING_NIGHT,
+					emittedAt: Date.now(),
+					dismissed: false,
+				});
 
-				expect(lastEmittedSuggestions.get(spaceId)).toBe(SuggestionType.LIGHTING_NIGHT);
+				expect(lastEmittedSuggestions.get(spaceId)?.type).toBe(SuggestionType.LIGHTING_NIGHT);
+			});
+
+			it('should support dismissed flag to prevent re-emission', () => {
+				const spaceId = uuid();
+				const entry = { type: SuggestionType.LIGHTING_RELAX, emittedAt: Date.now(), dismissed: false };
+
+				lastEmittedSuggestions.set(spaceId, entry);
+				entry.dismissed = true;
+
+				expect(lastEmittedSuggestions.get(spaceId)?.dismissed).toBe(true);
 			});
 		});
 

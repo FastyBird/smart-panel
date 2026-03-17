@@ -55,8 +55,6 @@
 		</template>
 	</view-header>
 
-	<update-status />
-
 	<div
 		v-loading="isLoadingSystemInfo || isLoadingThrottleStatus || systemInfo === null"
 		:element-loading-text="t('systemModule.texts.system.loadingSystemInfo')"
@@ -111,7 +109,7 @@ import { ElButton, ElDialog, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, ManageSystem, SystemInfoDetail, UpdateStatus } from '../components/components';
+import { AboutApplication, ManageSystem, SystemInfoDetail } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { RouteNames } from '../system.constants';
 import { SystemException } from '../system.exceptions';
