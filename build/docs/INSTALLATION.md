@@ -17,7 +17,7 @@ Smart Panel has two main components that can be installed independently or toget
 ## Server Requirements
 
 - **Operating System**: Linux with systemd (Debian, Ubuntu, Raspberry Pi OS, Fedora, etc.)
-- **Node.js**: Version 20 or higher
+- **Node.js**: Version 24 or higher
 - **Architecture**: ARM (32-bit), ARM64 (64-bit), or x64
 - **RAM**: 512 MB minimum, 1 GB recommended
 - **Storage**: 300 MB free space

@@ -64,11 +64,11 @@ export class LinuxInstaller implements BaseInstaller {
 			errors.push('Node.js executable not found');
 		}
 
-		// Check Node.js version (>= 20 required)
+		// Check Node.js version (>= 24 required)
 		const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
 
-		if (nodeMajor < 20) {
-			errors.push(`Node.js >= 20 is required (found v${process.versions.node})`);
+		if (nodeMajor < 24) {
+			errors.push(`Node.js >= 24 is required (found v${process.versions.node})`);
 		}
 
 		// Check disk space (need at least 200 MB)

@@ -25,7 +25,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 PACKAGE_NAME="@fastybird/smart-panel"
-NODE_MIN_VERSION=20
+NODE_MIN_VERSION=24
 DEFAULT_PORT=3000
 
 # Parse arguments

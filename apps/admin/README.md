@@ -90,7 +90,7 @@ src/
 
 Before starting, ensure you have:
 
-- Node.js v20+
+- Node.js v24+
 - PNPM v10+
 - Backend API running (FastyBird Smart Panel Backend)
 

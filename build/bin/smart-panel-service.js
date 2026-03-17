@@ -909,10 +909,10 @@ program
 		const nodeVersion = process.versions.node;
 		const nodeMajor = parseInt(nodeVersion.split('.')[0], 10);
 
-		if (nodeMajor >= 20) {
-			ok(`Node.js: v${nodeVersion} (>= 20 required)`);
+		if (nodeMajor >= 24) {
+			ok(`Node.js: v${nodeVersion} (>= 24 required)`);
 		} else {
-			fail(`Node.js: v${nodeVersion} (>= 20 required)`);
+			fail(`Node.js: v${nodeVersion} (>= 24 required)`);
 			info('Update Node.js: https://nodejs.org/en/download/');
 		}
 

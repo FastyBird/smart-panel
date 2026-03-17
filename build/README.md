@@ -79,7 +79,7 @@ sudo smart-panel migration:run
 ## Requirements
 
 - Linux with systemd
-- Node.js 20+
+- Node.js 24+
 - ARM, ARM64, or x64 architecture
 
 ## Documentation

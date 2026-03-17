@@ -143,7 +143,7 @@ For detailed installation instructions, see the [Installation Guide](build/docs/
 
 ### Prerequisites
 
-- **Node.js** >= 20
+- **Node.js** >= 24
 - **pnpm** >= 10
 - **Flutter/Dart** (for panel app development)
 

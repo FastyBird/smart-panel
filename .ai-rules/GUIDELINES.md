@@ -12,7 +12,7 @@ The project uses **pnpm workspaces** for Node.js packages and **melos** for Dart
 
 ## Requirements
 
-- **Node.js**: >= 20
+- **Node.js**: >= 24
 - **pnpm**: >= 10
 - **Dart/Flutter**: For panel app development
 

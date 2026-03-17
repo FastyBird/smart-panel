@@ -16,7 +16,7 @@ This GitHub Action sets up a Node.js project using PNPM, installs dependencies, 
 - name: Setup Node.js Project
   uses: ./.github/actions/setup-node-project
   with:
-    node-version: 22        # Optional, defaults to 22
+    node-version: 24        # Optional, defaults to 24
     pnpm-version: 10.12.0    # Optional, defaults to 10.12.0
 ```
 
@@ -24,7 +24,7 @@ This GitHub Action sets up a Node.js project using PNPM, installs dependencies, 
 
 | Name               | Description                                         | Default                      | Required |
 |--------------------|-----------------------------------------------------|------------------------------|----------|
-| `node-version`     | Node.js version to install                          | `22`                         | ❌        |
+| `node-version`     | Node.js version to install                          | `24`                         | ❌        |
 | `pnpm-version`     | PNPM version to install                             | `10.12.0`                    | ❌        |
 | `npm-registry-url` | NPM registry URL (e.g., https://npm.pkg.github.com) | `https://registry.npmjs.org` | ❌        |
 

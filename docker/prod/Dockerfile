@@ -14,7 +14,7 @@
 # ============================================================
 # Stage 1: Build admin UI static files
 # ============================================================
-FROM node:22-alpine AS admin-builder
+FROM node:24-alpine AS admin-builder
 
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
@@ -47,7 +47,7 @@ RUN pnpm run generate:spec && \
 # ============================================================
 # Stage 2: Build backend
 # ============================================================
-FROM node:22-alpine AS backend-builder
+FROM node:24-alpine AS backend-builder
 
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
@@ -78,7 +78,7 @@ RUN pnpm run generate:spec && \
 # ============================================================
 # Stage 3: Production runtime
 # ============================================================
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 
 RUN apk add --no-cache tini
 

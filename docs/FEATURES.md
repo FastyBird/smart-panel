@@ -857,7 +857,7 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 | pnpm | Package manager (monorepo workspaces) |
 | Turborepo | Monorepo build orchestration |
 | ESLint / Prettier | Code quality and formatting |
-| Node.js 20+ | Runtime environment |
+| Node.js 24+ | Runtime environment |
 
 ---
 

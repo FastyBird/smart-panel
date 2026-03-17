@@ -124,7 +124,7 @@ Each module and plugin defines its own controllers, services, entities, DTOs, an
 ## 🚧 Prerequisites
 
 Before starting, make sure you have the following installed:
-- Node.js v20+
+- Node.js v24+
 - PNPM v10+
 - SQLite (bundled, no external installation needed)
 
