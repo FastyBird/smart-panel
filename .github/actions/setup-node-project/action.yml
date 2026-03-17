@@ -32,7 +32,9 @@ runs:
       run: |
         npm install -g pnpm@${{ inputs.pnpm-version }}
         echo "Adding pnpm to PATH"
-        echo "$(npm bin -g)" >> $GITHUB_PATH
+        GLOBAL_BIN="$(npm prefix -g)/bin"
+        echo "$GLOBAL_BIN" >> $GITHUB_PATH
+        export PATH="$GLOBAL_BIN:$PATH"
 
     - name: "Get pnpm store directory"
       shell: bash
