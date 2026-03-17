@@ -58,17 +58,18 @@ sudo journalctl -u smart-panel-display -b
 
 ## How do I reset or reconfigure my Smart Panel?
 
-- SSH into your Raspberry Pi.
-- All runtime data is stored in:
+SSH into your Raspberry Pi. The location of runtime data depends on your installation method:
 
-```bash copy
-/opt/smart-panel/var
-```
+| Installation Method | Data Location |
+|---|---|
+| One-liner script or npm global | `/var/lib/smart-panel/` |
+| Manual tarball | `/var/smart-panel/` |
+| Docker | Inside the `smart-panel-data` Docker volume |
 
-This includes:
+The data directory contains:
 
-- `data/config.yaml` – Your panel configuration
-- `db/database.sqlite` – The main system database
+- `config/config.yaml` – Your panel configuration
+- `data/database.sqlite` – The main system database
 
 To fully reset your panel:
 
@@ -79,11 +80,16 @@ sudo systemctl stop smart-panel-backend
 sudo systemctl stop smart-panel-display
 ```
 
-2. Delete the config and database files:
+2. Delete the config and database files (adjust the path for your install method):
 
 ```bash copy
-sudo rm /opt/smart-panel/var/data/config.yaml
-sudo rm /opt/smart-panel/var/db/database.sqlite
+# For one-liner / npm installs:
+sudo rm /var/lib/smart-panel/config/config.yaml
+sudo rm /var/lib/smart-panel/data/database.sqlite
+
+# For tarball installs:
+# sudo rm /var/smart-panel/config/config.yaml
+# sudo rm /var/smart-panel/data/database.sqlite
 ```
 
 3. Restart the services and the onboarding will start fresh:
