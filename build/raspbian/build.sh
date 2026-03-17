@@ -37,6 +37,11 @@ for arg in "$@"; do
 	esac
 done
 
+if [ "${PREPARE_ONLY}" = true ] && [ "${SKIP_PREPARE}" = true ]; then
+	echo "Error: --prepare-only and --skip-prepare cannot be used together." >&2
+	exit 1
+fi
+
 # ──────────────────────────────────────────────────────────────
 # Step 1: Build the Smart Panel application
 # ──────────────────────────────────────────────────────────────
