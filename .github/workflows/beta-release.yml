@@ -663,18 +663,6 @@ jobs:
       - name: "Pull Updated Branch"
         run: git pull origin ${{ github.ref_name }}
 
-      - name: "Create Pre-Release"
-        uses: "viperproject/create-nightly-release@v1"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.sync-versions.outputs.version }}
-          release_name: v${{ needs.sync-versions.outputs.version }}
-          body: |
-            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
-          keep_num: 5
-          keep_tags: false
-
       - name: "Summary"
         run: |
           echo "### ✅ Beta Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
@@ -687,60 +675,25 @@ jobs:
         with:
           name: "application-build-armv7"
 
-      - name: "Attach ARMv7 Application Build (32-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel.tar.gz;SHASUMS256.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
-
       - name: "Download ARM64 Application Build (64-bit)"
         uses: "actions/download-artifact@v5"
         with:
           name: "application-build-arm64"
-
-      - name: "Attach ARM64 Application Build (64-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
 
       - name: "Download Android APK"
         uses: "actions/download-artifact@v5"
         with:
           name: "android-apk"
 
-      - name: "Attach Android APK"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display.apk;SHASUMS256-android.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
-
       - name: "Download Linux Desktop Build"
         uses: "actions/download-artifact@v5"
         with:
           name: "linux-desktop"
 
-      - name: "Attach Linux Desktop Build"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-linux-x64.tar.gz;SHASUMS256-linux-x64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
-
       - name: "Download eLinux Build"
         uses: "actions/download-artifact@v5"
         with:
           name: "elinux-x64"
-
-      - name: "Attach eLinux Build"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-elinux-x64.tar.gz;SHASUMS256-elinux-x64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
 
       - name: "Prepare Installation Scripts"
         run: |
@@ -749,12 +702,40 @@ jobs:
           chmod +x scripts/install-panel.sh
           cp scripts/install-panel.sh install-panel.sh
 
-      - name: "Attach Installation Scripts"
-        uses: "AButler/upload-release-assets@v3.0"
+      - name: "Create Pre-Release & Upload Assets"
+        uses: "softprops/action-gh-release@v2"
         with:
-          files: "install.sh;install-panel.sh"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
+          tag_name: v${{ needs.sync-versions.outputs.version }}
+          name: v${{ needs.sync-versions.outputs.version }}
+          body: |
+            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
+          prerelease: true
+          files: |
+            smart-panel.tar.gz
+            SHASUMS256.txt
+            smart-panel-arm64.tar.gz
+            SHASUMS256-arm64.txt
+            smart-panel-display.apk
+            SHASUMS256-android.txt
+            smart-panel-display-linux-x64.tar.gz
+            SHASUMS256-linux-x64.txt
+            smart-panel-display-elinux-x64.tar.gz
+            SHASUMS256-elinux-x64.txt
+            install.sh
+            install-panel.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Cleanup Old Beta Pre-Releases"
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq '[.[] | select(.isPrerelease) | select(.tagName | test("beta"; "i"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' | \
+            while read -r tag; do
+              echo "Deleting old beta pre-release: $tag"
+              gh release delete "$tag" --yes --cleanup-tag || true
+            done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-docker:
     needs: "sync-versions"

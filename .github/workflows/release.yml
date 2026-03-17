@@ -749,84 +749,35 @@ jobs:
         with:
           name: "application-build-armv7"
 
-      - name: "Attach ARMv7 Application Build (32-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel.tar.gz;SHASUMS256.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
-
       - name: "Download ARM64 Application Build (64-bit)"
         uses: "actions/download-artifact@v5"
         with:
           name: "application-build-arm64"
-
-      - name: "Attach ARM64 Application Build (64-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
         uses: "actions/download-artifact@v5"
         with:
           name: "flutter-assets"
 
-      - name: "Attach ARMv7 Display Assets (flutter-pi 32-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-armv7.tar.gz;SHASUMS256-display-armv7.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
-
       - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
         uses: "actions/download-artifact@v5"
         with:
           name: "flutter-assets-arm64"
-
-      - name: "Attach ARM64 Display Assets (flutter-pi 64-bit)"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-arm64.tar.gz;SHASUMS256-display-arm64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Download Android APK"
         uses: "actions/download-artifact@v5"
         with:
           name: "android-apk"
 
-      - name: "Attach Android APK"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display.apk;SHASUMS256-android.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
-
       - name: "Download Linux Desktop Build"
         uses: "actions/download-artifact@v5"
         with:
           name: "linux-desktop"
 
-      - name: "Attach Linux Desktop Build"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-linux-x64.tar.gz;SHASUMS256-linux-x64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
-
       - name: "Download eLinux Build"
         uses: "actions/download-artifact@v5"
         with:
           name: "elinux-x64"
-
-      - name: "Attach eLinux Build"
-        uses: "AButler/upload-release-assets@v3.0"
-        with:
-          files: "smart-panel-display-elinux-x64.tar.gz;SHASUMS256-elinux-x64.txt"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
 
       - name: "Prepare Installation Scripts"
         run: |
@@ -835,12 +786,29 @@ jobs:
           chmod +x scripts/install-panel.sh
           cp scripts/install-panel.sh install-panel.sh
 
-      - name: "Attach Installation Scripts"
-        uses: "AButler/upload-release-assets@v3.0"
+      - name: "Upload Release Assets"
+        uses: "softprops/action-gh-release@v2"
         with:
-          files: "install.sh;install-panel.sh"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.tag.outputs.version }}
+          tag_name: v${{ needs.tag.outputs.version }}
+          files: |
+            smart-panel.tar.gz
+            SHASUMS256.txt
+            smart-panel-arm64.tar.gz
+            SHASUMS256-arm64.txt
+            smart-panel-display-armv7.tar.gz
+            SHASUMS256-display-armv7.txt
+            smart-panel-display-arm64.tar.gz
+            SHASUMS256-display-arm64.txt
+            smart-panel-display.apk
+            SHASUMS256-android.txt
+            smart-panel-display-linux-x64.tar.gz
+            SHASUMS256-linux-x64.txt
+            smart-panel-display-elinux-x64.tar.gz
+            SHASUMS256-elinux-x64.txt
+            install.sh
+            install-panel.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-docker:
     needs: ["tag", "sync-versions", "changelog"]
