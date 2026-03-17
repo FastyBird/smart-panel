@@ -9,7 +9,7 @@ enum FlipDirection { up, down }
 typedef DigitBuilder = Widget Function(BuildContext context, int? digit);
 
 // ignore: must_be_immutable
-class FlipClock extends StatelessWidget {
+class FlipClock extends StatefulWidget {
   late DateTime startTime;
 
   final double spacing;
@@ -84,42 +84,50 @@ class FlipClock extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    var time = startTime;
+  State<FlipClock> createState() => _FlipClockState();
+}
 
-    final initStream = Stream<DateTime>.periodic(
+class _FlipClockState extends State<FlipClock> {
+  late final Stream<DateTime> _timeStream;
+
+  @override
+  void initState() {
+    super.initState();
+    var time = widget.startTime;
+    _timeStream = Stream<DateTime>.periodic(
       const Duration(milliseconds: 1000),
       (_) {
         return time = time.add(const Duration(seconds: 1));
       },
-    );
+    ).asBroadcastStream();
+  }
 
-    final timeStream = initStream.asBroadcastStream();
-
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildSegment(
-          timeStream,
+          _timeStream,
           (DateTime time) => (time.hour) ~/ 10,
           (DateTime time) => (time.hour) % 10,
-          startTime,
+          widget.startTime,
         ),
         Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 2.0),
-              child: _separator,
+              child: widget._separator,
             ),
           ],
         ),
         _buildSegment(
-          timeStream,
+          _timeStream,
           (DateTime time) => (time.minute) ~/ 10,
           (DateTime time) => (time.minute) % 10,
-          startTime,
+          widget.startTime,
         ),
       ],
     );
@@ -140,22 +148,22 @@ class FlipClock extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
               child: FlipPanel(
                 stream: stream.map<int>(tensDigit as int Function(DateTime)),
-                itemBuilder: _digitBuilder,
+                itemBuilder: widget._digitBuilder,
                 initValue: tensDigit(startTime),
-                duration: duration,
+                duration: widget.duration,
                 direction: FlipDirection.down,
-                spacing: spacing,
+                spacing: widget.spacing,
               ),
             ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
               child: FlipPanel(
                 stream: stream.map<int>(onesDigit as int Function(DateTime)),
-                itemBuilder: _digitBuilder,
+                itemBuilder: widget._digitBuilder,
                 initValue: onesDigit(startTime),
-                duration: duration,
+                duration: widget.duration,
                 direction: FlipDirection.down,
-                spacing: spacing,
+                spacing: widget.spacing,
               ),
             ),
           ],

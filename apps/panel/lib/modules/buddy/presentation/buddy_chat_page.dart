@@ -77,7 +77,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		_audioPlaybackService = AudioPlaybackService(
 			getToken: () => _buddyService.getCurrentToken(),
 		);
-		_audioPlaybackService.addListener(_onPlaybackChanged);
 
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			_initializeConversation();
@@ -200,17 +199,10 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		});
 	}
 
-	void _onPlaybackChanged() {
-		if (!mounted) return;
-
-		setState(() {});
-	}
-
 	@override
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
 		_buddyConfigRepo.removeListener(_onBuddyConfigChanged);
-		_audioPlaybackService.removeListener(_onPlaybackChanged);
 		_audioPlaybackService.dispose();
 		_inputController.dispose();
 		_scrollController.dispose();

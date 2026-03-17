@@ -160,6 +160,7 @@ class SocketService {
   // Retry state for backend down scenarios
   int _retryAttempt = 0;
   bool _reconnectInProgress = false;
+  bool _disposed = false;
   static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
   static const int _initialRetryIntervalSeconds = 2;
 
@@ -263,6 +264,8 @@ class SocketService {
     );
 
     _socket!.onConnect((_) {
+      if (_disposed) return;
+
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
@@ -277,6 +280,8 @@ class SocketService {
       // This prevents rapid reconnect loops when server immediately rejects auth
       _connectionStabilityTimer?.cancel();
       _connectionStabilityTimer = Timer(_connectionStabilityThreshold, () {
+        if (_disposed) return;
+
         if (_socket?.connected == true) {
           if (kDebugMode) {
             debugPrint('[SOCKETS] Connection stable, resetting retry counter');
@@ -291,6 +296,8 @@ class SocketService {
     });
 
     _socket!.onDisconnect((reason) {
+      if (_disposed) return;
+
       if (kDebugMode) {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend. Reason: $reason');
       }
@@ -317,6 +324,8 @@ class SocketService {
     _socket!.on(
       'event',
       (data) {
+        if (_disposed) return;
+
         try {
           SocketEventModel event = SocketEventModel.fromJson(data);
 
@@ -336,6 +345,8 @@ class SocketService {
 
     // Handle connection errors (authentication failures, etc.)
     _socket!.onConnectError((data) {
+      if (_disposed) return;
+
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connection error: $data');
       }
@@ -344,6 +355,8 @@ class SocketService {
 
     // Handle general errors
     _socket!.onError((data) {
+      if (_disposed) return;
+
       if (kDebugMode) {
         debugPrint('[SOCKETS] Socket error: $data');
       }
@@ -525,7 +538,7 @@ class SocketService {
 
     // Schedule backoff retry if this immediate attempt fails
     _reconnectCheckTimer = Timer(const Duration(seconds: 2), () {
-      if (_socket != null && !_socket!.connected && _shouldReconnect) {
+      if (!_disposed && _socket != null && !_socket!.connected && _shouldReconnect) {
         _attemptReconnectWithBackoff();
       }
     });
@@ -533,6 +546,8 @@ class SocketService {
 
   /// Notify all connection listeners of state change
   void _notifyConnectionListeners(bool isConnected) {
+    if (_disposed) return;
+
     for (final listener in _connectionListeners) {
       try {
         listener(isConnected);
@@ -547,6 +562,8 @@ class SocketService {
 
   /// Notify all error type listeners of an error
   void _notifyErrorTypeListeners(ConnectionErrorType errorType) {
+    if (_disposed) return;
+
     for (final listener in _errorTypeListeners) {
       try {
         listener(errorType);
@@ -560,6 +577,8 @@ class SocketService {
   }
 
   void dispose() {
+    _disposed = true;
+
     // Disable reconnection before disposing to prevent reconnection attempts
     _shouldReconnect = false;
 
@@ -572,6 +591,12 @@ class SocketService {
     _connectionStabilityTimer = null;
 
     if (_socket != null) {
+      // Unregister event handlers before disposing
+      _socket!.off('connect');
+      _socket!.off('disconnect');
+      _socket!.off('event');
+      _socket!.off('connect_error');
+      _socket!.off('error');
       _socket!.disconnect();
       _socket!.dispose();
       _socket = null;
@@ -745,7 +770,7 @@ class SocketService {
     _reconnectCheckTimer?.cancel();
 
     _reconnectTimer = Timer(Duration(seconds: retryInterval), () {
-      if (_socket == null || !_shouldReconnect) {
+      if (_disposed || _socket == null || !_shouldReconnect) {
         _reconnectInProgress = false;
         return;
       }
@@ -768,7 +793,7 @@ class SocketService {
 
       // Schedule next retry if still not connected after a short delay
       _reconnectCheckTimer = Timer(Duration(seconds: 2), () {
-        if (_socket != null && !_socket!.connected && _shouldReconnect) {
+        if (!_disposed && _socket != null && !_socket!.connected && _shouldReconnect) {
           _attemptReconnectWithBackoff();
         }
       });
