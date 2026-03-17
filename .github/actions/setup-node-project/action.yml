@@ -22,7 +22,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Node.js"
-      uses: "actions/setup-node@v4"
+      uses: "actions/setup-node@v6"
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}
@@ -32,14 +32,16 @@ runs:
       run: |
         npm install -g pnpm@${{ inputs.pnpm-version }}
         echo "Adding pnpm to PATH"
-        echo "$(npm bin -g)" >> $GITHUB_PATH
+        GLOBAL_BIN="$(npm prefix -g)/bin"
+        echo "$GLOBAL_BIN" >> $GITHUB_PATH
+        export PATH="$GLOBAL_BIN:$PATH"
 
     - name: "Get pnpm store directory"
       shell: bash
       run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
     - name: "Cache pnpm dependencies"
-      uses: "actions/cache@v4"
+      uses: "actions/cache@v5"
       with:
         path: "${{ env.PNPM_STORE_PATH }}"
         key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"

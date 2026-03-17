@@ -18,4 +18,4 @@ jobs:
 
     steps:
       - name: "Label"
-        uses: "actions/labeler@v5"
+        uses: "actions/labeler@v6"

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "main"
-  pull_request: # required for autolabeler
+  pull_request:
     branches:
       - "main"
     types:
@@ -19,20 +19,21 @@ permissions:
   contents: write
   pull-requests: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   draft-release:
     name: "Draft new release"
-    runs-on: "${{ matrix.operating-system }}"
-
-    strategy:
-      matrix:
-        operating-system: [ "ubuntu-latest" ]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: "ubuntu-latest"
 
     steps:
       - name: "Draft new release"
-        uses: "release-drafter/release-drafter@v6"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: "release-drafter/release-drafter@v7"
+
+  autolabel:
+    name: "Auto-label PR"
+    if: github.event_name == 'pull_request'
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Auto-label PR"
+        uses: "release-drafter/release-drafter/autolabeler@v7"
