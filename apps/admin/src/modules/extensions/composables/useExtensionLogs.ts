@@ -2,10 +2,13 @@ import { computed, type ComputedRef, type MaybeRefOrGetter, onScopeDispose, ref,
 
 import { useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { SystemModuleLogEntryType } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../../system/system.constants';
 import { transformLogEntryResponse } from '../../system/store/logs-entries.transformers';
 import type { ILogEntry, ILogEntryRes } from '../../system/store/logs-entries.store.types';
 import type { IExtension } from '../store/extensions.store.types';
+
+export type TimeRangePreset = '1h' | '6h' | '24h' | '7d' | 'all';
 
 interface IUseExtensionLogsProps {
 	extensionType: MaybeRefOrGetter<IExtension['type']>;
@@ -13,10 +16,15 @@ interface IUseExtensionLogsProps {
 
 export interface IUseExtensionLogs {
 	logs: ComputedRef<ILogEntry[]>;
+	allLogs: ComputedRef<ILogEntry[]>;
 	hasMore: Ref<boolean>;
 	isLoading: Ref<boolean>;
 	loaded: Ref<boolean>;
 	live: Ref<boolean>;
+	filterLevels: Ref<SystemModuleLogEntryType[]>;
+	filterTimeRange: Ref<TimeRangePreset>;
+	filtersActive: ComputedRef<boolean>;
+	clearFilters: () => void;
 	fetchLogs: () => Promise<void>;
 	loadMoreLogs: () => Promise<void>;
 	refreshLogs: () => Promise<void>;
@@ -33,14 +41,51 @@ export const useExtensionLogs = (props: IUseExtensionLogsProps): IUseExtensionLo
 	const nextCursor = ref<string | undefined>(undefined);
 	const live = ref<boolean>(false);
 
+	// Filter state
+	const filterLevels = ref<SystemModuleLogEntryType[]>([]);
+	const filterTimeRange = ref<TimeRangePreset>('all');
+
 	// Track the current extension type to detect stale responses
 	let currentFetchExtension: string | null = null;
 
-	const logs = computed<ILogEntry[]>(() => {
+	const timeRangeMs: Record<TimeRangePreset, number> = {
+		'1h': 60 * 60 * 1000,
+		'6h': 6 * 60 * 60 * 1000,
+		'24h': 24 * 60 * 60 * 1000,
+		'7d': 7 * 24 * 60 * 60 * 1000,
+		all: 0,
+	};
+
+	const allLogs = computed<ILogEntry[]>(() => {
 		return Object.values(logsData.value).sort((a, b) => {
 			return new Date(b.ts).getTime() - new Date(a.ts).getTime();
 		});
 	});
+
+	const logs = computed<ILogEntry[]>(() => {
+		let result = allLogs.value;
+
+		if (filterLevels.value.length > 0) {
+			result = result.filter((log) => filterLevels.value.includes(log.type));
+		}
+
+		if (filterTimeRange.value !== 'all') {
+			const cutoff = Date.now() - timeRangeMs[filterTimeRange.value];
+
+			result = result.filter((log) => new Date(log.ts).getTime() >= cutoff);
+		}
+
+		return result;
+	});
+
+	const filtersActive = computed<boolean>(() => {
+		return filterLevels.value.length > 0 || filterTimeRange.value !== 'all';
+	});
+
+	const clearFilters = (): void => {
+		filterLevels.value = [];
+		filterTimeRange.value = 'all';
+	};
 
 	const fetchLogs = async (): Promise<void> => {
 		const extensionType = toValue(props.extensionType);
@@ -190,10 +235,15 @@ export const useExtensionLogs = (props: IUseExtensionLogsProps): IUseExtensionLo
 
 	return {
 		logs,
+		allLogs,
 		hasMore,
 		isLoading,
 		loaded,
 		live,
+		filterLevels,
+		filterTimeRange,
+		filtersActive,
+		clearFilters,
 		fetchLogs,
 		loadMoreLogs,
 		refreshLogs,

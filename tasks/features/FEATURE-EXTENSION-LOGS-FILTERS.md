@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: small
 Parent: FEATURE-UNIFIED-EXTENSION-LOGS
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -33,11 +33,11 @@ I want to filter extension logs by level (info, warn, error, debug) and time ran
 
 ## 4. Acceptance criteria
 
-- [ ] Level filter dropdown allows selecting: All, Info, Warn, Error, Debug
-- [ ] Time range selector with presets (Last 1h, 6h, 24h, 7d) or custom
-- [ ] Filters persist during the session
-- [ ] Clear filters button resets to defaults
-- [ ] Loading state shown while applying filters
+- [x] Level filter dropdown allows selecting: All, Info, Warn, Error, Debug
+- [x] Time range selector with presets (Last 1h, 6h, 24h, 7d) or custom
+- [x] Filters persist during the session
+- [x] Clear filters button resets to defaults
+- [x] Loading state shown while applying filters
 
 ## 5. Technical constraints
 

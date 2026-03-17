@@ -103,8 +103,17 @@
 		"logs": {
 			"noLogs": "No logs available",
 			"noLogsDescription": "This extension has not produced any log entries yet",
+			"noFilteredLogs": "No logs match your current filters",
 			"noMessage": "No message",
-			"noMoreEntries": "No more log entries"
+			"noMoreEntries": "No more log entries",
+			"allLevels": "All levels",
+			"timeRange": {
+				"all": "All time",
+				"1h": "Last 1 hour",
+				"6h": "Last 6 hours",
+				"24h": "Last 24 hours",
+				"7d": "Last 7 days"
+			}
 		}
 	},
 	"buttons": {
