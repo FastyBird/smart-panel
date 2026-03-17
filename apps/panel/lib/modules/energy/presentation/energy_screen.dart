@@ -124,8 +124,12 @@ class _EnergyScreenState extends State<EnergyScreen> {
   void _registerRangeModeConfig(EnergyRepository repo) {
     if (!widget.embedded || !_isActivePage) return;
 
+    // During loading (range switch in-flight) keep the existing chip;
+    // only clear when we have a definitive "no data" state.
     if (repo.summary == null) {
-      _bottomNavModeNotifier?.clear();
+      if (repo.state != EnergyDataState.loading) {
+        _bottomNavModeNotifier?.clear();
+      }
       return;
     }
 
@@ -200,10 +204,10 @@ class _EnergyScreenState extends State<EnergyScreen> {
         ),
         for (final option in rangeOptions)
           GestureDetector(
-            onTap: () {
-              repo.setRange(_homeSpaceId, option.value);
-              _registerRangeModeConfig(repo);
+            onTap: () async {
               dismiss();
+              await repo.setRange(_homeSpaceId, option.value);
+              if (mounted) _registerRangeModeConfig(repo);
             },
             behavior: HitTestBehavior.opaque,
             child: Container(
