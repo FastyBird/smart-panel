@@ -31,11 +31,11 @@ fi
 
 # Install production dependencies
 cd "${APP_INSTALL_DIR}"
-npm install --omit=dev --ignore-scripts 2>/dev/null || true
+pnpm install --prod --ignore-scripts 2>/dev/null || true
 
 # Rebuild native modules for ARM
-npm rebuild better-sqlite3 2>/dev/null || true
-npm rebuild bcrypt 2>/dev/null || true
+pnpm rebuild sqlite3 2>/dev/null || true
+pnpm rebuild bcrypt 2>/dev/null || true
 
 # Set ownership
 chown -R smart-panel:smart-panel "${APP_INSTALL_DIR}"
