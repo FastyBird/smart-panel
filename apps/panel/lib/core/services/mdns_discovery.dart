@@ -149,8 +149,6 @@ class MdnsDiscoveryService {
       await _discovery!.ready;
 
       // Listen for discovery events
-      final completer = Completer<List<DiscoveredBackend>>();
-
       _subscription = _discovery!.eventStream?.listen((event) {
         if (event.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
           if (kDebugMode) {
@@ -218,10 +216,6 @@ class MdnsDiscoveryService {
           _discoveredBackends.add(fallback);
           onBackendFound?.call(fallback);
         }
-      }
-
-      if (!completer.isCompleted) {
-        completer.complete(_discoveredBackends);
       }
 
       return _discoveredBackends;

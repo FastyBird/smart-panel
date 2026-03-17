@@ -34,6 +34,7 @@ class SystemActionsOverlayProvider {
   final EventBus _eventBus;
 
   bool _isInitialized = false;
+  bool _disposed = false;
   Timer? _hideTimer;
 
   StreamSubscription? _rebootInProgressSub;
@@ -103,6 +104,8 @@ class SystemActionsOverlayProvider {
 
   /// Clean up listeners and unregister overlay.
   void dispose() {
+    _disposed = true;
+
     if (!_isInitialized) return;
     _isInitialized = false;
 
@@ -125,6 +128,8 @@ class SystemActionsOverlayProvider {
   }
 
   void _showAction(SystemActionType actionType) {
+    if (_disposed) return;
+
     _hideTimer?.cancel();
     _hideTimer = null;
 
@@ -159,6 +164,8 @@ class SystemActionsOverlayProvider {
   }
 
   void _hideAction({Duration delay = Duration.zero}) {
+    if (_disposed) return;
+
     _hideTimer?.cancel();
 
     if (delay == Duration.zero) {
@@ -166,6 +173,8 @@ class SystemActionsOverlayProvider {
       _overlayManager.hide(SystemActionOverlayIds.action);
     } else {
       _hideTimer = Timer(delay, () {
+        if (_disposed) return;
+
         _hideTimer = null;
         _overlayManager.hide(SystemActionOverlayIds.action);
       });

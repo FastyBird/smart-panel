@@ -130,43 +130,49 @@ class MessageBubble extends StatelessWidget {
 
 	Widget _buildSpeakerButton(bool isDark, Color iconColor) {
 		final service = audioPlaybackService!;
-		final isPlaying = service.isPlayingMessage(message.id);
-		final isLoading = service.isLoadingMessage(message.id);
-		final hasError = service.currentMessageId == message.id && service.error != null;
 
-		return Padding(
-			padding: EdgeInsets.only(left: AppSpacings.pSm),
-			child: GestureDetector(
-				onTap: () {
-					if (isPlaying || isLoading) {
-						service.stop();
-					} else {
-						service.playMessageAudio(message.id, audioUrl!);
-					}
-				},
-				child: SizedBox(
-					width: AppSpacings.scale(18),
-					height: AppSpacings.scale(18),
-					child: isLoading
-						? SizedBox(
-								width: AppSpacings.scale(12),
-								height: AppSpacings.scale(12),
-								child: CircularProgressIndicator(
-									strokeWidth: 1.5,
-									color: iconColor,
-								),
-							)
-						: Icon(
-								hasError
-									? MdiIcons.volumeOff
-									: isPlaying
-										? MdiIcons.stopCircleOutline
-										: MdiIcons.volumeHigh,
-								size: AppSpacings.scale(14),
-								color: hasError ? Colors.red.shade300 : iconColor,
-							),
-				),
-			),
+		return ListenableBuilder(
+			listenable: service,
+			builder: (context, _) {
+				final isPlaying = service.isPlayingMessage(message.id);
+				final isLoading = service.isLoadingMessage(message.id);
+				final hasError = service.currentMessageId == message.id && service.error != null;
+
+				return Padding(
+					padding: EdgeInsets.only(left: AppSpacings.pSm),
+					child: GestureDetector(
+						onTap: () {
+							if (isPlaying || isLoading) {
+								service.stop();
+							} else {
+								service.playMessageAudio(message.id, audioUrl!);
+							}
+						},
+						child: SizedBox(
+							width: AppSpacings.scale(18),
+							height: AppSpacings.scale(18),
+							child: isLoading
+								? SizedBox(
+										width: AppSpacings.scale(12),
+										height: AppSpacings.scale(12),
+										child: CircularProgressIndicator(
+											strokeWidth: 1.5,
+											color: iconColor,
+										),
+									)
+								: Icon(
+										hasError
+											? MdiIcons.volumeOff
+											: isPlaying
+												? MdiIcons.stopCircleOutline
+												: MdiIcons.volumeHigh,
+										size: AppSpacings.scale(14),
+										color: hasError ? Colors.red.shade300 : iconColor,
+									),
+						),
+					),
+				);
+			},
 		);
 	}
 

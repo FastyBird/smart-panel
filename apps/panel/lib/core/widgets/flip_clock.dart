@@ -9,7 +9,7 @@ enum FlipDirection { up, down }
 typedef DigitBuilder = Widget Function(BuildContext context, int? digit);
 
 // ignore: must_be_immutable
-class FlipClock extends StatelessWidget {
+class FlipClock extends StatefulWidget {
   late DateTime startTime;
 
   final double spacing;
@@ -84,42 +84,59 @@ class FlipClock extends StatelessWidget {
   }
 
   @override
+  State<FlipClock> createState() => _FlipClockState();
+}
+
+class _FlipClockState extends State<FlipClock> {
+  late final StreamController<DateTime> _timeController;
+  late final Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    var time = widget.startTime;
+    _timeController = StreamController<DateTime>.broadcast();
+    _timer = Timer.periodic(const Duration(milliseconds: 1000), (_) {
+      time = time.add(const Duration(seconds: 1));
+      if (!_timeController.isClosed) {
+        _timeController.add(time);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _timeController.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var time = startTime;
-
-    final initStream = Stream<DateTime>.periodic(
-      const Duration(milliseconds: 1000),
-      (_) {
-        return time = time.add(const Duration(seconds: 1));
-      },
-    );
-
-    final timeStream = initStream.asBroadcastStream();
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildSegment(
-          timeStream,
+          _timeController.stream,
           (DateTime time) => (time.hour) ~/ 10,
           (DateTime time) => (time.hour) % 10,
-          startTime,
+          widget.startTime,
         ),
         Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 2.0),
-              child: _separator,
+              child: widget._separator,
             ),
           ],
         ),
         _buildSegment(
-          timeStream,
+          _timeController.stream,
           (DateTime time) => (time.minute) ~/ 10,
           (DateTime time) => (time.minute) % 10,
-          startTime,
+          widget.startTime,
         ),
       ],
     );
@@ -140,22 +157,22 @@ class FlipClock extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
               child: FlipPanel(
                 stream: stream.map<int>(tensDigit as int Function(DateTime)),
-                itemBuilder: _digitBuilder,
+                itemBuilder: widget._digitBuilder,
                 initValue: tensDigit(startTime),
-                duration: duration,
+                duration: widget.duration,
                 direction: FlipDirection.down,
-                spacing: spacing,
+                spacing: widget.spacing,
               ),
             ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
               child: FlipPanel(
                 stream: stream.map<int>(onesDigit as int Function(DateTime)),
-                itemBuilder: _digitBuilder,
+                itemBuilder: widget._digitBuilder,
                 initValue: onesDigit(startTime),
-                duration: duration,
+                duration: widget.duration,
                 direction: FlipDirection.down,
-                spacing: spacing,
+                spacing: widget.spacing,
               ),
             ),
           ],
