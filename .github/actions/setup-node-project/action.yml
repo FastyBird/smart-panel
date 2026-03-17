@@ -7,7 +7,7 @@ description: "Setup Node.js, pnpm, install dependencies, and generate code"
 inputs:
   node-version:
     description: "Node.js version"
-    default: "22"
+    default: "24"
     required: false
   pnpm-version:
     description: "PNPM version"

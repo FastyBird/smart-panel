@@ -18,6 +18,9 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   publish:
     name: "Build web and publish it to Github pages"
@@ -25,7 +28,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 

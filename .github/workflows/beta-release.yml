@@ -12,6 +12,9 @@ permissions:
   id-token: write
   packages: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   sync-versions:
     name: "Sync packages versions"
@@ -19,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
@@ -58,7 +61,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 
@@ -112,7 +115,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 
@@ -166,7 +169,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 
@@ -220,7 +223,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
@@ -278,7 +281,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
@@ -350,7 +353,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
@@ -410,7 +413,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
@@ -471,7 +474,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ "22" ]
+        node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
