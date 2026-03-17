@@ -2,8 +2,7 @@
 Description=FastyBird Smart Panel
 Documentation=https://smart-panel.fastybird.com
 After=network-online.target influxdb.service
-Wants=network-online.target
-Requires=influxdb.service
+Wants=network-online.target influxdb.service
 
 [Service]
 Type=simple
