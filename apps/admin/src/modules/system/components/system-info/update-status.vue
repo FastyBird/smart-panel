@@ -64,7 +64,7 @@
 					v-else
 					size="small"
 					type="primary"
-					@click="showUpdateDialog = true"
+					@click="onOpenUpdateDialog"
 				>
 					<template #icon>
 						<icon icon="mdi:download" />
@@ -223,6 +223,17 @@ const lastCheckedFormatted = computed<string | null>((): string | null => {
 		timeStyle: 'short',
 	}).format(lastChecked.value);
 });
+
+const onOpenUpdateDialog = (): void => {
+	if (!isUpdating.value) {
+		status.value = 'idle';
+		phase.value = null;
+		progressPercent.value = null;
+		error.value = null;
+	}
+
+	showUpdateDialog.value = true;
+};
 
 const onCheckForUpdates = async (): Promise<void> => {
 	try {
