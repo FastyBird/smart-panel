@@ -16,27 +16,70 @@ export class DeviceConnectionStateService {
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
 	/**
-	 * Returns the number of devices currently online.
+	 * Returns the number of currently-registered devices that are online.
 	 *
-	 * Uses the in-memory cache when it has been populated by plugin syncs.
-	 * On cold start (cache empty) falls back to an InfluxDB query so the
-	 * count is available immediately after a server restart.
+	 * Merges two data sources so the count is accurate at every stage:
+	 * 1. In-memory cache — authoritative for devices that have already
+	 *    reported since this process started.
+	 * 2. InfluxDB `device_status_1m` (14-day RP) — fills gaps for devices
+	 *    that haven't reported yet (cold-start / slow-syncing plugins).
+	 *
+	 * Only device IDs present in [currentDeviceIds] are counted, which
+	 * filters out ghost entries for deleted/re-created devices in InfluxDB.
 	 */
-	async getOnlineCountWithFallback(): Promise<number> {
-		if (this.statusMap.size > 0) {
-			let count = 0;
+	async getOnlineCountForDevices(currentDeviceIds: Set<DeviceEntity['id']>): Promise<number> {
+		let count = 0;
+		const accountedFor = new Set<DeviceEntity['id']>();
 
-			for (const entry of this.statusMap.values()) {
-				if (entry.online) {
+		// Phase 1 — count from in-memory cache (most up-to-date)
+		for (const id of currentDeviceIds) {
+			if (this.statusMap.has(id)) {
+				accountedFor.add(id);
+
+				if (this.statusMap.get(id).online) {
 					count++;
 				}
 			}
+		}
 
+		// All current devices are cached — no need for InfluxDB
+		if (accountedFor.size === currentDeviceIds.size) {
 			return count;
 		}
 
-		// Cold-start fallback — query InfluxDB directly
-		return this.getOnlineCount();
+		// Phase 2 — fill gaps from InfluxDB for devices not yet in cache
+		if (!this.influxDbService.isConnected()) {
+			return count;
+		}
+
+		try {
+			const query = `
+				SELECT LAST("onlineI") AS "onlineI"
+				FROM "min_14d"."device_status_1m"
+				GROUP BY "deviceId"
+			`;
+
+			const rows = await this.influxDbService.query<{ onlineI: number; deviceId?: string }>(query);
+
+			for (const r of rows ?? []) {
+				if (!r.deviceId) continue;
+
+				// Only count if it's a current device AND not already counted from cache
+				if (currentDeviceIds.has(r.deviceId) && !accountedFor.has(r.deviceId)) {
+					if (Number(r.onlineI ?? 0) > 0) {
+						count++;
+					}
+				}
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to query online count from InfluxDB: ${err.message}`, {
+				stack: err.stack,
+			});
+		}
+
+		return count;
 	}
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
@@ -161,34 +204,6 @@ export class DeviceConnectionStateService {
 				lastChanged: null,
 			};
 		}
-	}
-
-	async getOnlineCount(): Promise<number> {
-		if (!this.influxDbService.isConnected()) {
-			return 0;
-		}
-
-		const query = `
-      SELECT SUM("onlineI") AS sum FROM (
-        SELECT LAST("onlineI") AS "onlineI"
-        FROM "min_14d"."device_status_1m"
-        GROUP BY "deviceId"
-      )
-  `;
-
-		const result = await this.influxDbService.query<{ sum: number }>(query);
-
-		if (!result.length) {
-			this.logger.debug('No stored statuses found');
-
-			return 0;
-		}
-
-		const row = result[0];
-
-		const sum = row.sum ?? 0;
-
-		return Number(sum) || 0;
 	}
 
 	async delete(device: DeviceEntity): Promise<void> {

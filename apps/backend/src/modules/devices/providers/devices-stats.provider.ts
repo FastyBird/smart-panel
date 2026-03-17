@@ -18,17 +18,19 @@ export class DevicesStatsProvider implements StatsProvider {
 	) {}
 
 	async getStats(): Promise<ModuleStatsModel> {
-		const [registeredDevices, registeredChannels, updatesPerMin, updatesToday, onlineCount] = await Promise.all([
-			this.devicesService.getCount(),
+		const [devices, registeredChannels, updatesPerMin, updatesToday] = await Promise.all([
+			this.devicesService.findAll(),
 			this.channelsService.getCount(),
 			this.stats.getUpdatesPerMin(),
 			this.stats.getUpdatesToday(new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()),
-			this.connectionState.getOnlineCountWithFallback(),
 		]);
+
+		const currentDeviceIds = new Set(devices.map((d) => d.id));
+		const onlineCount = await this.connectionState.getOnlineCountForDevices(currentDeviceIds);
 
 		return toInstance(ModuleStatsModel, {
 			registeredDevices: {
-				value: registeredDevices,
+				value: devices.length,
 				lastUpdated: new Date(),
 			},
 			registeredChannels: {
