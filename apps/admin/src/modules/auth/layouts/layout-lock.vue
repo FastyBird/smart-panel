@@ -44,7 +44,7 @@
 				>
 					<el-link
 						underline="never"
-						href="http://www.github.com/fastybird"
+						href="https://github.com/fastybird"
 						target="_blank"
 						class="mx-5"
 					>
@@ -59,13 +59,13 @@
 
 					<el-link
 						underline="never"
-						href="http://www.x.com/fastybird"
+						href="https://x.com/fastybird"
 						target="_blank"
 						class="mx-5"
 					>
 						<template #icon>
 							<el-icon :size="20">
-								<icon icon="mdi:twitter" />
+								<icon icon="fa6-brands:x-twitter" />
 							</el-icon>
 						</template>
 					</el-link>
@@ -74,7 +74,7 @@
 
 					<el-link
 						underline="never"
-						href="http://www.discord.com/invite/fastybird"
+						href="https://discord.gg/HPRJ2GzK"
 						target="_blank"
 						class="mx-5"
 					>
@@ -89,7 +89,7 @@
 
 					<el-link
 						underline="never"
-						href="http://www.facebook.com/fastybird"
+						href="https://www.facebook.com/fastybird"
 						target="_blank"
 						class="mx-5"
 					>
