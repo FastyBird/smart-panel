@@ -217,7 +217,7 @@ All onboarding device setup tasks complete.
 | 1 | [FEATURE-APP-UPDATES](features/FEATURE-APP-UPDATES.md) | backend, admin, panel | :white_check_mark: Done |
 | 2 | [FEATURE-EXTENSION-LOGS-FILTERS](features/FEATURE-EXTENSION-LOGS-FILTERS.md) | admin | :white_check_mark: Done |
 | 3 | [FEATURE-LINUX-INSTALL-ENHANCEMENTS](features/FEATURE-LINUX-INSTALL-ENHANCEMENTS.md) | backend | :white_check_mark: Done |
-| 4 | [FEATURE-PANEL-SENSOR-DEVICE-PAGE](features/FEATURE-PANEL-SENSOR-DEVICE-PAGE.md) | panel | :clipboard: Planned |
+| 4 | [FEATURE-PANEL-SENSOR-DEVICE-PAGE](features/FEATURE-PANEL-SENSOR-DEVICE-PAGE.md) | panel | :white_check_mark: Done |
 | 5 | [FEATURE-WEATHER-PANEL-ENHANCEMENTS](features/FEATURE-WEATHER-PANEL-ENHANCEMENTS.md) | panel | :clipboard: Planned |
 
 ---
@@ -246,6 +246,6 @@ All onboarding device setup tasks complete.
 | Security | 1 | 0 | 0 | 1 |
 | Plugins | 1 | 0 | 1 | 2 |
 | Technical | 5 | 0 | 0 | 5 |
-| Other Features | 3 | 0 | 2 | 5 |
+| Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **45** | **0** | **21** | **66** |
+| **Total** | **46** | **0** | **20** | **66** |

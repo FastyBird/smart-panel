@@ -54,6 +54,19 @@ export class DevicesService {
 		return devices;
 	}
 
+	async getAllIds(): Promise<DeviceEntity['id'][]> {
+		this.logger.debug('Fetching all device IDs');
+
+		const rows: { id: string }[] = await this.repository
+			.createQueryBuilder('device')
+			.select('device.id', 'id')
+			.getRawMany();
+
+		this.logger.debug(`Found ${rows.length} device IDs`);
+
+		return rows.map((r) => r.id);
+	}
+
 	// Devices
 	async findAll<TDevice extends DeviceEntity>(type?: string): Promise<TDevice[]> {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
