@@ -154,14 +154,14 @@ describe('Property Timeseries (e2e)', () => {
 			data?: { channels?: Array<{ id: string; properties?: Array<{ id: string }> }> };
 		};
 
-		if (!deviceBody.data?.channels?.[0]?.id) {
+		if (!deviceBody.data?.channels?.[0]?.id || !deviceBody.data?.channels?.[0]?.properties?.[0]?.id) {
 			throw new Error(
 				`E2E setup failed: device creation returned status ${deviceResponse.status} — ${JSON.stringify(deviceResponse.body)}`,
 			);
 		}
 
 		channelId = deviceBody.data.channels[0].id;
-		propertyId = deviceBody.data.channels[0].properties?.[0]?.id ?? '';
+		propertyId = deviceBody.data.channels[0].properties[0].id;
 	}, 60_000);
 
 	afterAll(async () => {
