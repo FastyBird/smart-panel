@@ -1,0 +1,151 @@
+name: Build Raspbian Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Image name suffix (e.g. "beta", "rc1")'
+        required: false
+        default: ''
+  release:
+    types: [published]
+
+jobs:
+  build-app:
+    name: Build Smart Panel Application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.12.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: |
+          pnpm run generate:spec
+          pnpm run generate:openapi
+          pnpm --filter @fastybird/smart-panel-extension-sdk build
+          pnpm --filter @fastybird/smart-panel-backend build
+          pnpm --filter @fastybird/smart-panel-admin build:no-check
+
+      - name: Package application files
+        run: |
+          mkdir -p build/raspbian/stage-smart-panel/01-install-app/files/app
+
+          # Backend
+          cp -r apps/backend/dist build/raspbian/stage-smart-panel/01-install-app/files/app/dist
+          # Copy extension-sdk (needed at runtime — tsc doesn't bundle, dist/ has require() calls)
+          mkdir -p build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk
+          cp -r packages/extension-sdk/dist build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk/dist
+          cp packages/extension-sdk/package.json build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk/package.json
+          # Rewrite workspace:* to file: reference so pnpm can resolve it outside the monorepo
+          jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"' \
+            apps/backend/package.json > build/raspbian/stage-smart-panel/01-install-app/files/app/package.json
+          # Copy lockfile for reproducible installs
+          cp pnpm-lock.yaml build/raspbian/stage-smart-panel/01-install-app/files/app/
+
+          # Admin static files
+          mkdir -p build/raspbian/stage-smart-panel/01-install-app/files/app/static
+          cp -r apps/admin/dist/* build/raspbian/stage-smart-panel/01-install-app/files/app/static/
+
+          # Seed data
+          cp -r var build/raspbian/stage-smart-panel/01-install-app/files/app/var
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: smart-panel-app
+          path: build/raspbian/stage-smart-panel/01-install-app/files/app
+          retention-days: 1
+
+  build-image:
+    name: Build Raspberry Pi Image (${{ matrix.arch }})
+    needs: build-app
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download app artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: smart-panel-app
+          path: build/raspbian/stage-smart-panel/01-install-app/files/app
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h
+
+      - name: Clone pi-gen
+        run: |
+          git clone --depth 1 --branch arm64 \
+            https://github.com/RPi-Distro/pi-gen.git \
+            build/raspbian/pi-gen
+
+      - name: Configure pi-gen
+        run: |
+          cd build/raspbian
+
+          # Copy config
+          cp config pi-gen/config
+
+          # Skip intermediate image from stage2 and desktop stages
+          touch pi-gen/stage2/SKIP_IMAGES
+          touch pi-gen/stage3/SKIP pi-gen/stage3/SKIP_IMAGES
+          touch pi-gen/stage4/SKIP pi-gen/stage4/SKIP_IMAGES
+          touch pi-gen/stage5/SKIP pi-gen/stage5/SKIP_IMAGES
+
+          # Link custom stage
+          ln -sf "$(pwd)/stage-smart-panel" pi-gen/stage-smart-panel
+
+      - name: Build image
+        run: |
+          cd build/raspbian/pi-gen
+          ./build-docker.sh
+
+      - name: Rename and compress image
+        run: |
+          cd build/raspbian/pi-gen/deploy
+          IMAGE_FILE=$(ls *.img 2>/dev/null | head -1)
+          if [ -n "$IMAGE_FILE" ]; then
+            VERSION="${GITHUB_REF_NAME:-dev}"
+            VERSION="${VERSION//\//-}"
+            SUFFIX="${{ github.event.inputs.image_name }}"
+            if [ -n "$SUFFIX" ]; then
+              VERSION="${VERSION}-${SUFFIX}"
+            fi
+            NEW_NAME="smart-panel-${VERSION}-${{ matrix.arch }}.img"
+            mv "$IMAGE_FILE" "$NEW_NAME"
+            xz -9 -T0 "$NEW_NAME"
+            sha256sum "${NEW_NAME}.xz" > "${NEW_NAME}.xz.sha256"
+          fi
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: smart-panel-image-${{ matrix.arch }}
+          path: |
+            build/raspbian/pi-gen/deploy/*.img.xz
+            build/raspbian/pi-gen/deploy/*.sha256
+          retention-days: 30
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/raspbian/pi-gen/deploy/*.img.xz
+            build/raspbian/pi-gen/deploy/*.sha256

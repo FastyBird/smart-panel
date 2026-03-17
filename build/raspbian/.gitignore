@@ -1,0 +1,8 @@
+# pi-gen clone
+pi-gen/
+
+# Build output
+output/
+
+# Pre-built app files (generated during build)
+stage-smart-panel/01-install-app/files/app/

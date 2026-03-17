@@ -1,0 +1,17 @@
+[Unit]
+Description=Smart Panel First Boot Setup
+After=network-online.target influxdb.service
+Wants=network-online.target influxdb.service
+ConditionPathExists=/var/lib/smart-panel/.first-boot
+Before=smart-panel.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/smart-panel/first-boot.sh
+RemainAfterExit=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-firstboot
+
+[Install]
+WantedBy=multi-user.target
