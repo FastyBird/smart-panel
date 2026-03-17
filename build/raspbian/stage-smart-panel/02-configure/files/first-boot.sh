@@ -29,14 +29,34 @@ if ! grep -q "^FB_TOKEN_SECRET=" "${ENV_FILE}" 2>/dev/null; then
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 2. Ensure data directories exist with correct permissions
+# 2. Create InfluxDB database and retention policies
+# ──────────────────────────────────────────────────────────────
+log "Configuring InfluxDB..."
+
+# Wait for InfluxDB to be ready (up to 30 seconds)
+for i in $(seq 1 30); do
+	if influx -execute "SHOW DATABASES" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 1
+done
+
+# Create the default database and retention policies
+influx -execute "CREATE DATABASE fastybird" 2>/dev/null || true
+influx -execute "CREATE RETENTION POLICY raw_24h ON fastybird DURATION 24h REPLICATION 1 DEFAULT" 2>/dev/null || true
+influx -execute "CREATE RETENTION POLICY min_14d ON fastybird DURATION 14d REPLICATION 1" 2>/dev/null || true
+
+log "InfluxDB database 'fastybird' configured with retention policies"
+
+# ──────────────────────────────────────────────────────────────
+# 3. Ensure data directories exist with correct permissions
 # ──────────────────────────────────────────────────────────────
 mkdir -p "${DATA_DIR}/data" "${DATA_DIR}/config"
 chown -R smart-panel:smart-panel "${DATA_DIR}"
 log "Data directories verified"
 
 # ──────────────────────────────────────────────────────────────
-# 3. Run database migrations
+# 4. Run database migrations
 # ──────────────────────────────────────────────────────────────
 log "Running database migrations..."
 
@@ -60,7 +80,7 @@ su -s /bin/bash smart-panel -c "
 log "Database migrations completed"
 
 # ──────────────────────────────────────────────────────────────
-# 4. Copy seed data if not already present
+# 5. Copy seed data if not already present
 # ──────────────────────────────────────────────────────────────
 if [ -d "${APP_DIR}/var/db/seed" ] && [ ! -d "${DATA_DIR}/data/seed" ]; then
 	cp -r "${APP_DIR}/var/db/seed" "${DATA_DIR}/data/seed"
@@ -69,7 +89,7 @@ if [ -d "${APP_DIR}/var/db/seed" ] && [ ! -d "${DATA_DIR}/data/seed" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 5. Remove first-boot marker
+# 6. Remove first-boot marker
 # ──────────────────────────────────────────────────────────────
 rm -f "${MARKER}"
 log "First boot setup complete! Smart Panel is ready."

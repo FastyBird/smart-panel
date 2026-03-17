@@ -10,8 +10,9 @@ The image is based on **Raspberry Pi OS Lite (Bookworm, arm64)** and includes:
 - **Smart Panel backend** (NestJS) with all dependencies
 - **Admin UI** (Vue.js) served as static files
 - **SQLite** database (pre-configured)
+- **InfluxDB 1.8** time-series database for device metrics and historical data
 - **systemd service** for auto-start on boot
-- **First-boot initialization** (JWT secret generation, DB migrations)
+- **First-boot initialization** (JWT secret generation, InfluxDB setup, DB migrations)
 - **mDNS/Avahi** for network discovery
 - **SSH** enabled by default
 
@@ -50,8 +51,9 @@ The output image will be in `build/raspbian/output/`.
 
 On first boot, the image will automatically:
 1. Generate a unique JWT secret
-2. Run database migrations
-3. Start the Smart Panel service
+2. Create the InfluxDB `fastybird` database with retention policies
+3. Run database migrations
+4. Start the Smart Panel service
 
 The panel will be accessible at `http://<pi-ip>:3000` after ~30 seconds.
 
@@ -67,7 +69,7 @@ The GitHub Actions workflow (`.github/workflows/build-raspbian-image.yml`) can:
 ```
 Raspberry Pi OS Lite (Bookworm arm64)
 └── stage-smart-panel/
-    ├── 00-install-deps/     → Node.js 22, system packages
+    ├── 00-install-deps/     → Node.js 22, InfluxDB 1.8, system packages
     ├── 01-install-app/      → Smart Panel backend + admin UI
     └── 02-configure/        → systemd services, first-boot setup
 ```
@@ -115,6 +117,11 @@ Edit `/etc/smart-panel/environment` on the Pi:
 sudo systemctl status smart-panel     # Check status
 sudo systemctl restart smart-panel    # Restart
 sudo journalctl -u smart-panel -f     # View logs
+
+# InfluxDB
+sudo systemctl status influxdb        # Check InfluxDB status
+sudo systemctl restart influxdb       # Restart InfluxDB
+influx -execute "SHOW DATABASES"      # Verify database
 ```
 
 ## Customization

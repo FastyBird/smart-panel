@@ -1,7 +1,8 @@
 [Unit]
 Description=Smart Panel First Boot Setup
-After=network-online.target
+After=network-online.target influxdb.service
 Wants=network-online.target
+Requires=influxdb.service
 ConditionPathExists=/var/lib/smart-panel/.first-boot
 Before=smart-panel.service
 
