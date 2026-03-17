@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -15,13 +13,13 @@ import 'package:fastybird_smart_panel/modules/energy/utils/energy_format.dart';
 /// Used in the top consumers sheet/drawer by both the standalone energy
 /// screen and the domain view.
 class EnergyConsumerTile extends StatelessWidget {
-  final List<EnergyBreakdownDevice> devices;
-  final int index;
+  final EnergyBreakdownDevice device;
+  final double maxConsumption;
 
   const EnergyConsumerTile({
     super.key,
-    required this.devices,
-    required this.index,
+    required this.device,
+    required this.maxConsumption,
   });
 
   @override
@@ -33,10 +31,6 @@ class EnergyConsumerTile extends StatelessWidget {
       ThemeColors.info,
     );
 
-    final device = devices[index];
-    final maxConsumption = devices.isNotEmpty
-        ? devices.map((d) => d.consumption).reduce(max)
-        : 1.0;
     final ratio =
         maxConsumption > 0 ? device.consumption / maxConsumption : 0.0;
 

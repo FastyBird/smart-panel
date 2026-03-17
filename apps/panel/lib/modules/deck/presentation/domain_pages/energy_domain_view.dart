@@ -546,6 +546,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final isLandscape = _screenService.isLandscape;
     final devices = _breakdown!.devices;
+    final maxConsumption = devices
+        .map((d) => d.consumption)
+        .reduce((a, b) => a > b ? a : b);
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(
@@ -554,8 +557,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         icon: MdiIcons.podium,
         itemCount: devices.length,
         itemBuilder: (context, index) => EnergyConsumerTile(
-          devices: devices,
-          index: index,
+          device: devices[index],
+          maxConsumption: maxConsumption,
         ),
       );
     } else {
@@ -565,8 +568,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         icon: MdiIcons.podium,
         itemCount: devices.length,
         itemBuilder: (context, index) => EnergyConsumerTile(
-          devices: devices,
-          index: index,
+          device: devices[index],
+          maxConsumption: maxConsumption,
         ),
       );
     }
