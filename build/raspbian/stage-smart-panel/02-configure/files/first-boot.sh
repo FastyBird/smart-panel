@@ -69,11 +69,6 @@ log "Data directories verified"
 # ──────────────────────────────────────────────────────────────
 log "Running database migrations..."
 
-# Source environment for the migration
-set -a
-source "${ENV_FILE}"
-set +a
-
 cd "${APP_DIR}"
 su -s /bin/bash smart-panel -c "
 	cd ${APP_DIR}
