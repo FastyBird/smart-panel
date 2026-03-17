@@ -115,8 +115,6 @@ jobs:
         run: |
           cd build/raspbian/pi-gen
           ./build-docker.sh
-        env:
-          CONTINUE: 0
 
       - name: Rename and compress image
         run: |

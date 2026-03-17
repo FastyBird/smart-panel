@@ -32,7 +32,7 @@ cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
 # Smart Panel system commands
 smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
 smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd *
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
 
