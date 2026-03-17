@@ -238,13 +238,14 @@ All onboarding device setup tasks complete.
 | Media | 8 | 0 | 0 | 8 |
 | Domains Epic | 2 | 0 | 7 | 9 |
 | Buddy Epic | 9 | 0 | 0 | 9 |
+| AI Buddy Face | 0 | 0 | 2 | 2 |
 | Buddy Hardening | 0 | 0 | 8 | 8 |
 | Onboarding Epic | 3 | 0 | 0 | 3 |
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
 | Plugins | 1 | 0 | 1 | 2 |
-| Technical | 4 | 0 | 1 | 5 |
+| Technical | 5 | 0 | 0 | 5 |
 | Other Features | 3 | 0 | 2 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **44** | **0** | **20** | **64** |
+| **Total** | **45** | **0** | **21** | **66** |
