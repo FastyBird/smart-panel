@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 Created: 2025-12-18
 
 ## 1. Business goal
@@ -54,32 +54,32 @@ I want a comprehensive sensor device detail page that dynamically displays all a
 
 ## 4. Acceptance criteria
 
-- [ ] Sensor device detail page displays all available channels from the device
-- [ ] Channels are grouped into logical sections:
-  - [ ] Environmental (temperature, humidity, pressure, illuminance)
-  - [ ] Air Quality (CO2, CO, O3, NO2, SO2, VOC, PM2.5/PM10)
-  - [ ] Detection (motion, occupancy, contact, leak, smoke)
-  - [ ] Electrical (power, energy)
-  - [ ] Device Info (battery, device information)
-- [ ] Each sensor displays:
-  - [ ] Appropriate icon (using Material Design Icons)
-  - [ ] Current value with unit
-  - [ ] Min/max range indicators where applicable
-  - [ ] Fault/tamper status indicators where applicable
-- [ ] A charting library is integrated (recommend `fl_chart`)
-- [ ] Historical data chart is available for numeric sensors:
-  - [ ] Temperature, humidity, pressure, illuminance
-  - [ ] CO2, CO, O3, NO2, SO2, VOC, PM levels
-  - [ ] Power consumption, energy usage
-- [ ] Time range selector allows switching between: 1h, 6h, 12h, 24h, 7d
-- [ ] Chart automatically selects appropriate downsampling bucket based on time range
-- [ ] API client includes method to fetch property timeseries
-- [ ] Loading indicator shown while fetching historical data
-- [ ] Error message displayed if timeseries fetch fails
-- [ ] Empty state shown when no historical data available
-- [ ] Page works correctly in both light and dark themes
-- [ ] All user-facing text is localized
-- [ ] Widget tests cover key components
+- [x] Sensor device detail page displays all available channels from the device
+- [x] Channels are grouped into logical sections:
+  - [x] Environmental (temperature, humidity, pressure, illuminance)
+  - [x] Air Quality (CO2, CO, O3, NO2, SO2, VOC, PM2.5/PM10)
+  - [x] Detection (motion, occupancy, contact, leak, smoke)
+  - [x] Electrical (power, energy)
+  - [x] Device Info (battery, device information)
+- [x] Each sensor displays:
+  - [x] Appropriate icon (using Material Design Icons)
+  - [x] Current value with unit
+  - [x] Min/max range indicators where applicable
+  - [x] Fault/tamper status indicators where applicable
+- [x] A charting library is integrated (custom `SensorChartPainter` — no external dependency needed)
+- [x] Historical data chart is available for numeric sensors:
+  - [x] Temperature, humidity, pressure, illuminance
+  - [x] CO2, CO, O3, NO2, SO2, VOC, PM levels
+  - [x] Power consumption, energy usage
+- [x] Time range selector allows switching between: 1H, 24H, 7D, 30D
+- [x] Chart automatically selects appropriate downsampling bucket based on time range
+- [x] API client includes method to fetch property timeseries
+- [x] Loading indicator shown while fetching historical data
+- [x] Error message displayed if timeseries fetch fails
+- [x] Empty state shown when no historical data available
+- [x] Page works correctly in both light and dark themes
+- [x] All user-facing text is localized
+- [x] Widget tests cover key components
 
 ## 5. Example scenarios
 
