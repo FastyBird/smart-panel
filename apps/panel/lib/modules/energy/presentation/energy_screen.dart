@@ -115,10 +115,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
     _isActivePage = event.item is EnergyViewItem;
 
     if (_isActivePage) {
-      final repo = context.read<EnergyRepository>();
-      if (repo.summary != null) {
-        _registerRangeModeConfig(repo);
-      }
+      _registerRangeModeConfig(context.read<EnergyRepository>());
     }
   }
 
@@ -172,11 +169,14 @@ class _EnergyScreenState extends State<EnergyScreen> {
     ];
   }
 
-  Widget _buildRangePopupContent(
-    BuildContext context,
-    VoidCallback dismiss,
-    EnergyRepository repo,
-  ) {
+  /// Builds the range selector options list (header label + option tiles).
+  ///
+  /// Shared by both the embedded bottom-nav popup and the standalone dialog.
+  Widget _buildRangeOptionsList({
+    required BuildContext context,
+    required EnergyRepository repo,
+    required ValueChanged<EnergyRange> onSelected,
+  }) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final rangeOptions = _getRangeOptions(localizations);
@@ -205,11 +205,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
         ),
         for (final option in rangeOptions)
           GestureDetector(
-            onTap: () async {
-              dismiss();
-              await repo.setRange(_homeSpaceId, option.value);
-              if (mounted) _registerRangeModeConfig(repo);
-            },
+            onTap: () => onSelected(option.value),
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -268,6 +264,22 @@ class _EnergyScreenState extends State<EnergyScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildRangePopupContent(
+    BuildContext context,
+    VoidCallback dismiss,
+    EnergyRepository repo,
+  ) {
+    return _buildRangeOptionsList(
+      context: context,
+      repo: repo,
+      onSelected: (range) async {
+        dismiss();
+        await repo.setRange(_homeSpaceId, range);
+        if (mounted) _registerRangeModeConfig(repo);
+      },
     );
   }
 
@@ -501,12 +513,6 @@ class _EnergyScreenState extends State<EnergyScreen> {
 
   void _showStandaloneRangePopup(BuildContext context, EnergyRepository repo) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final infoFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.info,
-    );
-    final rangeOptions = _getRangeOptions(localizations);
 
     showDialog(
       context: context,
@@ -517,89 +523,13 @@ class _EnergyScreenState extends State<EnergyScreen> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         contentPadding: AppSpacings.paddingMd,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-              child: Text(
-                localizations.popup_label_mode.toUpperCase(),
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: AppSpacings.scale(1),
-                  color: isDark
-                      ? AppTextColorDark.placeholder
-                      : AppTextColorLight.placeholder,
-                ),
-              ),
-            ),
-            for (final option in rangeOptions)
-              GestureDetector(
-                onTap: () async {
-                  Navigator.pop(dialogContext);
-                  await repo.setRange(_homeSpaceId, option.value);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: AppSpacings.pMd,
-                    horizontal: AppSpacings.pMd,
-                  ),
-                  margin: EdgeInsets.only(bottom: AppSpacings.pXs),
-                  decoration: BoxDecoration(
-                    color: option.value == repo.selectedRange
-                        ? infoFamily.light9
-                        : Colors.transparent,
-                    borderRadius:
-                        BorderRadius.circular(AppBorderRadius.small),
-                    border: option.value == repo.selectedRange
-                        ? Border.all(
-                            color: infoFamily.light7,
-                            width: AppSpacings.scale(1),
-                          )
-                        : null,
-                  ),
-                  child: Row(
-                    spacing: AppSpacings.pMd,
-                    children: [
-                      Icon(
-                        option.icon,
-                        color: option.value == repo.selectedRange
-                            ? infoFamily.base
-                            : (isDark
-                                ? AppTextColorDark.secondary
-                                : AppTextColorLight.secondary),
-                        size: AppSpacings.scale(20),
-                      ),
-                      Expanded(
-                        child: Text(
-                          option.label,
-                          style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            fontWeight: option.value == repo.selectedRange
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: option.value == repo.selectedRange
-                                ? infoFamily.base
-                                : (isDark
-                                    ? AppTextColorDark.regular
-                                    : AppTextColorLight.regular),
-                          ),
-                        ),
-                      ),
-                      if (option.value == repo.selectedRange)
-                        Icon(
-                          Icons.check,
-                          color: infoFamily.base,
-                          size: AppSpacings.scale(16),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+        content: _buildRangeOptionsList(
+          context: dialogContext,
+          repo: repo,
+          onSelected: (range) async {
+            Navigator.pop(dialogContext);
+            await repo.setRange(_homeSpaceId, range);
+          },
         ),
       ),
     );
