@@ -162,7 +162,7 @@ NEW_NAME="smart-panel-${VERSION}-arm64.img"
 cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
 echo "  -> Compressing image..."
 xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
-sha256sum "${OUTPUT_DIR}/${NEW_NAME}.xz" > "${OUTPUT_DIR}/${NEW_NAME}.xz.sha256"
+( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}.xz" > "${NEW_NAME}.xz.sha256" )
 
 # Copy any additional deploy artifacts
 cp "${PI_GEN_DIR}/deploy/"*.info "${OUTPUT_DIR}/" 2>/dev/null || true
