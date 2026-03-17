@@ -357,15 +357,15 @@ class EnergyComparisonBadge extends StatelessWidget {
     final String text;
 
     if (isZero) {
-      arrowIcon = Icons.remove;
+      arrowIcon = MdiIcons.minus;
       colorFamily = ThemeColorFamily.get(brightness, ThemeColors.neutral);
       text = localizations.energy_comparison_same(barePeriod);
     } else if (isDown) {
-      arrowIcon = Icons.arrow_downward;
+      arrowIcon = MdiIcons.arrowDown;
       colorFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
       text = '${changePercent.abs().toStringAsFixed(1)}% $periodLabel';
     } else {
-      arrowIcon = Icons.arrow_upward;
+      arrowIcon = MdiIcons.arrowUp;
       colorFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
       text = '${changePercent.abs().toStringAsFixed(1)}% $periodLabel';
     }

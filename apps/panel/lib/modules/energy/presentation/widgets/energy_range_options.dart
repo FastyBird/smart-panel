@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -12,17 +13,17 @@ List<ModeOption<EnergyRange>> getEnergyRangeOptions(
   return [
     ModeOption(
       value: EnergyRange.today,
-      icon: Icons.calendar_today,
+      icon: MdiIcons.calendarToday,
       label: localizations.energy_range_today,
     ),
     ModeOption(
       value: EnergyRange.week,
-      icon: Icons.calendar_view_week,
+      icon: MdiIcons.calendarWeek,
       label: localizations.energy_range_week,
     ),
     ModeOption(
       value: EnergyRange.month,
-      icon: Icons.calendar_month,
+      icon: MdiIcons.calendarMonth,
       label: localizations.energy_range_month,
     ),
   ];
@@ -122,7 +123,7 @@ class EnergyRangeOptionsList extends StatelessWidget {
                   ),
                   if (option.value == selectedRange)
                     Icon(
-                      Icons.check,
+                      MdiIcons.check,
                       color: infoFamily.base,
                       size: AppSpacings.scale(16),
                     ),
