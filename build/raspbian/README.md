@@ -6,7 +6,7 @@ Build a ready-to-flash Raspberry Pi OS image with the Smart Panel backend and ad
 
 The image is based on **Raspberry Pi OS Lite (Bookworm, arm64)** and includes:
 
-- **Node.js 22** (via NodeSource)
+- **Node.js 24** (via NodeSource)
 - **Smart Panel backend** (NestJS) with all dependencies
 - **Admin UI** (Vue.js) served as static files
 - **SQLite** database (pre-configured)
@@ -69,7 +69,7 @@ The GitHub Actions workflow (`.github/workflows/build-raspbian-image.yml`) can:
 ```
 Raspberry Pi OS Lite (Bookworm arm64)
 └── stage-smart-panel/
-    ├── 00-install-deps/     → Node.js 22, InfluxDB 1.8, system packages
+    ├── 00-install-deps/     → Node.js 24, InfluxDB 1.8, system packages
     ├── 01-install-app/      → Smart Panel backend + admin UI
     └── 02-configure/        → systemd services, first-boot setup
 ```
