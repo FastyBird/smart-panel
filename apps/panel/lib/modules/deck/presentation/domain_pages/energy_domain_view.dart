@@ -312,9 +312,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
       popupBuilder: (context, dismiss) {
         return EnergyRangeOptionsList(
           selectedRange: _selectedRange,
-          onSelected: (range) {
-            _onRangeChanged(range);
+          onSelected: (range) async {
             dismiss();
+            await _onRangeChanged(range);
           },
           rangeOptions: getEnergyRangeOptions(
             AppLocalizations.of(context)!,
