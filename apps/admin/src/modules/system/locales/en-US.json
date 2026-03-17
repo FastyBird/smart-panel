@@ -391,7 +391,8 @@
       "currentVersion": "Current version",
       "latestVersion": "Latest version",
       "lastChecked": "Last checked",
-      "updateStatus": "Status"
+      "updateStatus": "Status",
+      "actions": "Actions"
     }
   },
   "systemInfo": {

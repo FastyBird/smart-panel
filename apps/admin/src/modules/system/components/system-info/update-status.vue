@@ -1,21 +1,32 @@
 <template>
-	<el-card class="mb-4">
-		<template #header>
-			<div class="flex justify-between items-center">
-				<span class="font-600">{{ t('systemModule.headings.update.title') }}</span>
-				<el-tag
-					v-if="updateAvailable"
-					type="warning"
-				>
-					{{ t('systemModule.texts.update.available') }}
-				</el-tag>
-			</div>
-		</template>
-
+	<el-card
+		class="md:m-2 xs:my-1"
+		body-class="p-0!"
+	>
 		<el-descriptions
+			:label-width="170"
 			:column="1"
 			border
 		>
+			<template #title>
+				<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
+					<el-icon
+						class="mr-2"
+						size="28"
+					>
+						<icon icon="mdi:update" />
+					</el-icon>
+					{{ t('systemModule.headings.update.title') }}
+					<el-tag
+						v-if="updateAvailable"
+						type="warning"
+						class="ml-2"
+					>
+						{{ t('systemModule.texts.update.available') }}
+					</el-tag>
+				</div>
+			</template>
+
 			<el-descriptions-item :label="t('systemModule.labels.update.currentVersion')">
 				{{ currentVersion || '-' }}
 			</el-descriptions-item>
@@ -36,40 +47,62 @@
 			<el-descriptions-item :label="t('systemModule.labels.update.lastChecked')">
 				{{ lastCheckedFormatted || '-' }}
 			</el-descriptions-item>
+			<el-descriptions-item :label="t('systemModule.labels.update.actions')">
+				<el-button
+					v-if="!updateAvailable"
+					size="small"
+					:loading="loading"
+					:disabled="isUpdating"
+					@click="onCheckForUpdates"
+				>
+					<template #icon>
+						<icon icon="mdi:refresh" />
+					</template>
+					{{ t('systemModule.buttons.update.checkForUpdates') }}
+				</el-button>
+				<el-button
+					v-else
+					size="small"
+					type="primary"
+					@click="showUpdateDialog = true"
+				>
+					<template #icon>
+						<icon icon="mdi:download" />
+					</template>
+					{{ t('systemModule.buttons.update.installUpdate') }}
+				</el-button>
+			</el-descriptions-item>
 		</el-descriptions>
+	</el-card>
 
-		<div class="mt-4 flex gap-2">
-			<el-button
-				:loading="loading"
-				:disabled="isUpdating"
-				@click="onCheckForUpdates"
-			>
-				<template #icon>
-					<icon icon="mdi:refresh" />
-				</template>
-				{{ t('systemModule.buttons.update.checkForUpdates') }}
-			</el-button>
-			<el-button
-				v-if="updateAvailable && !isUpdating"
-				type="primary"
-				@click="onInstallUpdate"
-			>
-				<template #icon>
-					<icon icon="mdi:download" />
-				</template>
-				{{ t('systemModule.buttons.update.installUpdate') }}
-			</el-button>
+	<el-dialog
+		v-model="showUpdateDialog"
+		:title="t('systemModule.headings.update.title')"
+		:close-on-click-modal="!isUpdating"
+		:close-on-press-escape="!isUpdating"
+		:show-close="!isUpdating"
+	>
+		<div class="mb-4">
+			{{ t('systemModule.messages.update.confirmInstall', { version: latestVersion }) }}
 		</div>
+
+		<el-alert
+			v-if="updateType === 'major'"
+			type="warning"
+			:title="t('systemModule.messages.update.majorUpdateWarning', { version: latestVersion })"
+			class="mb-4"
+			:closable="false"
+		/>
 
 		<template v-if="isUpdating || status === 'failed'">
 			<el-progress
 				:percentage="progressPercent || 0"
 				:status="status === 'failed' ? 'exception' : undefined"
-				class="mt-4"
+				class="mb-2"
 			/>
 			<el-text
 				v-if="phase"
-				class="block mt-2"
+				class="block mb-4"
 			>
 				{{ phase }}
 			</el-text>
@@ -79,7 +112,7 @@
 			v-if="status === 'complete'"
 			type="success"
 			:title="t('systemModule.messages.update.updateComplete')"
-			class="mt-4"
+			class="mb-4"
 			:closable="false"
 		/>
 
@@ -87,14 +120,41 @@
 			v-if="error"
 			type="error"
 			:title="t(error)"
-			class="mt-4"
+			class="mb-4"
 			:closable="false"
 		/>
-	</el-card>
+
+		<template #footer>
+			<el-button
+				v-if="!isUpdating && status !== 'complete'"
+				link
+				@click="showUpdateDialog = false"
+			>
+				{{ t('systemModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				v-if="!isUpdating && status !== 'complete'"
+				type="primary"
+				@click="onInstallUpdate"
+			>
+				<template #icon>
+					<icon icon="mdi:download" />
+				</template>
+				{{ t('systemModule.buttons.update.installUpdate') }}
+			</el-button>
+			<el-button
+				v-if="status === 'complete'"
+				link
+				@click="showUpdateDialog = false"
+			>
+				{{ t('systemModule.buttons.close.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -103,7 +163,8 @@ import {
 	ElCard,
 	ElDescriptions,
 	ElDescriptionsItem,
-	ElMessageBox,
+	ElDialog,
+	ElIcon,
 	ElNotification,
 	ElProgress,
 	ElTag,
@@ -119,6 +180,8 @@ defineOptions({
 });
 
 const { t } = useI18n();
+
+const showUpdateDialog = ref<boolean>(false);
 
 const {
 	currentVersion,
@@ -170,27 +233,8 @@ const onCheckForUpdates = async (): Promise<void> => {
 };
 
 const onInstallUpdate = async (): Promise<void> => {
-	const isMajor = updateType.value === 'major';
-
 	try {
-		await ElMessageBox.confirm(
-			isMajor
-				? t('systemModule.messages.update.majorUpdateWarning', { version: latestVersion.value })
-				: t('systemModule.messages.update.confirmInstall', { version: latestVersion.value }),
-			t('systemModule.headings.update.confirmTitle'),
-			{
-				confirmButtonText: t('systemModule.buttons.yes.title'),
-				cancelButtonText: t('systemModule.buttons.cancel.title'),
-				type: isMajor ? 'warning' : 'info',
-			}
-		);
-	} catch {
-		// User cancelled the confirmation dialog
-		return;
-	}
-
-	try {
-		await installUpdate(isMajor);
+		await installUpdate(updateType.value === 'major');
 
 		ElNotification.success(t('systemModule.messages.update.updateStarted'));
 	} catch {

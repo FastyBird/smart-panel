@@ -143,6 +143,10 @@ export default {
 					refreshSignals.sensor.value++;
 					break;
 
+				case EventType.SUGGESTION_CREATED:
+					// Suggestions are handled by the panel app; no action needed in admin
+					break;
+
 				default:
 					logger.warn('Unhandled spaces module event:', data.event);
 			}

@@ -25,6 +25,7 @@ export enum EventType {
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
+	SUGGESTION_CREATED = 'SpacesModule.Suggestion.Created',
 }
 
 export const RouteNames = {
