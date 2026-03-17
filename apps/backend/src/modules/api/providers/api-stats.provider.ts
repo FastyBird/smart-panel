@@ -26,10 +26,12 @@ export class ApiStatsProvider implements StatsProvider {
 		const reqPerMin = Math.round(c / 5);
 		const errorRate5m = c ? +((e / c) * 100).toFixed(2) : 0;
 
+		const now = new Date();
+
 		return toInstance(ModuleStatsModel, {
-			reqPerMin: { value: reqPerMin, lastUpdated: r.time },
-			errorRate5m: { value: errorRate5m, lastUpdated: r.time },
-			p95ms5m: { value: p95, lastUpdated: r.time },
+			reqPerMin: { value: reqPerMin, lastUpdated: now },
+			errorRate5m: { value: errorRate5m, lastUpdated: now },
+			p95ms5m: { value: p95, lastUpdated: now },
 		});
 	}
 }

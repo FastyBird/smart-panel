@@ -20,27 +20,31 @@ export class StatsService {
 
 		const r = rows?.[0];
 
+		// If the latest data point is older than 2 minutes, there have been
+		// no recent property-value writes, so the per-minute rate is 0.
+		const rowTime = r?.time ? new Date(r.time) : new Date(0);
+		const isStale = Date.now() - rowTime.getTime() > 2 * 60 * 1000;
+
 		return {
-			value: Number(r?.cn ?? 0) + Number(r?.cs ?? 0),
-			lastUpdated: r?.time ?? new Date(0),
+			value: isStale ? 0 : Number(r?.cn ?? 0) + Number(r?.cs ?? 0),
+			lastUpdated: new Date(),
 		};
 	}
 
 	async getOnlineNow(): Promise<{ value: number; lastUpdated: Date }> {
-		const q = `
-			SELECT "online_count"
-			FROM "min_14d"."online_count_1m"
-			ORDER BY time DESC
-			LIMIT 1
-		`;
+		// Compute online count from per-device last-known state in the
+		// 14-day retention policy.  The previous approach queried the
+		// pre-aggregated "online_count_1m" measurement, but that is fed
+		// by a CQ chain rooted in "raw_24h" — once all devices are stable
+		// for >24 h the source data expires and the CQ stops producing
+		// output, making the count and timestamp stale.
+		const states = await this.getLatestStates();
 
-		const rows = await this.influx.query<{ online_count: number; time: Date }>(q);
-
-		const r = rows?.[0];
+		const onlineCount = Object.values(states).filter((s) => s.online).length;
 
 		return {
-			value: Number(r?.online_count ?? 0),
-			lastUpdated: r?.time ?? new Date(0),
+			value: onlineCount,
+			lastUpdated: new Date(),
 		};
 	}
 
