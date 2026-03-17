@@ -15,6 +15,22 @@ export class DeviceConnectionStateService {
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
+	/**
+	 * Returns the number of devices currently online according to the
+	 * in-memory cache (updated on every state-change write).
+	 */
+	getCachedOnlineCount(): number {
+		let count = 0;
+
+		for (const entry of this.statusMap.values()) {
+			if (entry.online) {
+				count++;
+			}
+		}
+
+		return count;
+	}
+
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
 		if (property.category !== PropertyCategory.STATUS) {
 			this.logger.error(`Failed to write device provided property if=${property.id} is not device status property`, {

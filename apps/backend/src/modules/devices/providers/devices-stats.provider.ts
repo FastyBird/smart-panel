@@ -4,6 +4,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { StatsProvider } from '../../stats/stats.interfaces';
 import { ModuleStatsModel } from '../models/devices.model';
 import { ChannelsService } from '../services/channels.service';
+import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 import { DevicesService } from '../services/devices.service';
 import { StatsService } from '../services/stats.service';
 
@@ -13,15 +14,15 @@ export class DevicesStatsProvider implements StatsProvider {
 		private readonly stats: StatsService,
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
+		private readonly connectionState: DeviceConnectionStateService,
 	) {}
 
 	async getStats(): Promise<ModuleStatsModel> {
-		const [registeredDevices, registeredChannels, updatesPerMin, updatesToday, onlineNow] = await Promise.all([
+		const [registeredDevices, registeredChannels, updatesPerMin, updatesToday] = await Promise.all([
 			this.devicesService.getCount(),
 			this.channelsService.getCount(),
 			this.stats.getUpdatesPerMin(),
 			this.stats.getUpdatesToday(new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString()),
-			this.stats.getOnlineNow(),
 		]);
 
 		return toInstance(ModuleStatsModel, {
@@ -35,7 +36,10 @@ export class DevicesStatsProvider implements StatsProvider {
 			},
 			updatesPerMin,
 			updatesToday,
-			onlineNow,
+			onlineNow: {
+				value: this.connectionState.getCachedOnlineCount(),
+				lastUpdated: new Date(),
+			},
 		});
 	}
 }
