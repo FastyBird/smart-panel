@@ -14,7 +14,12 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 
-import { SpaceSuggestionService, lastEmittedSuggestions, spaceCooldowns } from './space-suggestion.service';
+import {
+	type EmittedSuggestionEntry,
+	SpaceSuggestionService,
+	lastEmittedSuggestions,
+	spaceCooldowns,
+} from './space-suggestion.service';
 import { SpacesService } from './spaces.service';
 
 const HEARTBEAT_INTERVAL_NAME = 'spaceSuggestionHeartbeat';
@@ -99,9 +104,9 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 						// suggestion is still on cooldown. Otherwise the tracker
 						// gets wiped during the cooldown window and the same
 						// suggestion re-fires once the cooldown expires.
-						const lastType = lastEmittedSuggestions.get(space.id);
+						const entry = lastEmittedSuggestions.get(space.id);
 
-						if (!lastType || !spaceCooldowns.isOnCooldown(space.id, lastType)) {
+						if (!entry || !spaceCooldowns.isOnCooldown(space.id, entry.type)) {
 							lastEmittedSuggestions.delete(space.id);
 						}
 
@@ -113,19 +118,31 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 						continue;
 					}
 
-					// Skip if the same suggestion type was already emitted and the
-					// user hasn't interacted (applied/dismissed). Prevents the same
-					// toast from reappearing every cooldown cycle while conditions
-					// remain unchanged (e.g. absent user).
-					if (lastEmittedSuggestions.get(space.id) === suggestion.type) {
-						continue;
+					const entry: EmittedSuggestionEntry | undefined = lastEmittedSuggestions.get(space.id);
+
+					if (entry && entry.type === suggestion.type) {
+						// User explicitly dismissed/applied — don't re-emit while
+						// conditions remain the same.
+						if (entry.dismissed) {
+							continue;
+						}
+
+						// User missed it — only re-emit after the expiry window
+						// so the suggestion can reappear if the user wasn't around.
+						if (Date.now() - entry.emittedAt < SUGGESTION_EXPIRY_MS) {
+							continue;
+						}
 					}
 
 					// Set cooldown to prevent re-emitting on next cycle
 					spaceCooldowns.setCooldown(space.id, suggestion.type, SUGGESTION_COOLDOWN_MS);
 
-					// Record this type so we don't re-emit while conditions stay the same
-					lastEmittedSuggestions.set(space.id, suggestion.type);
+					// Record emission with timestamp
+					lastEmittedSuggestions.set(space.id, {
+						type: suggestion.type,
+						emittedAt: Date.now(),
+						dismissed: false,
+					});
 
 					const event: SpaceSuggestionEvent = {
 						id: uuid(),
