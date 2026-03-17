@@ -63,8 +63,12 @@ prepare_app_files() {
 
 	# Backend dist + production dependencies
 	cp -r "${PROJECT_ROOT}/apps/backend/dist" "${APP_FILES_DIR}/app/dist"
-	# Strip workspace: protocol deps (already bundled in dist)
-	jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])' \
+	# Copy extension-sdk (needed at runtime — tsc doesn't bundle, dist/ has require() calls)
+	mkdir -p "${APP_FILES_DIR}/app/extension-sdk"
+	cp -r "${PROJECT_ROOT}/packages/extension-sdk/dist" "${APP_FILES_DIR}/app/extension-sdk/dist"
+	cp "${PROJECT_ROOT}/packages/extension-sdk/package.json" "${APP_FILES_DIR}/app/extension-sdk/package.json"
+	# Rewrite workspace:* to file: reference so pnpm can resolve it outside the monorepo
+	jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"' \
 		"${PROJECT_ROOT}/apps/backend/package.json" > "${APP_FILES_DIR}/app/package.json"
 
 	# Copy the lockfile for reproducible installs

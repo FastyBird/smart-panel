@@ -45,8 +45,12 @@ jobs:
 
           # Backend
           cp -r apps/backend/dist build/raspbian/stage-smart-panel/01-install-app/files/app/dist
-          # Copy package.json and strip workspace: protocol deps (already bundled in dist)
-          jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])' \
+          # Copy extension-sdk (needed at runtime — tsc doesn't bundle, dist/ has require() calls)
+          mkdir -p build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk
+          cp -r packages/extension-sdk/dist build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk/dist
+          cp packages/extension-sdk/package.json build/raspbian/stage-smart-panel/01-install-app/files/app/extension-sdk/package.json
+          # Rewrite workspace:* to file: reference so pnpm can resolve it outside the monorepo
+          jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"' \
             apps/backend/package.json > build/raspbian/stage-smart-panel/01-install-app/files/app/package.json
           # Copy lockfile for reproducible installs
           cp pnpm-lock.yaml build/raspbian/stage-smart-panel/01-install-app/files/app/

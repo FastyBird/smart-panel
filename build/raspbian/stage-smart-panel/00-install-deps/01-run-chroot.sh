@@ -22,7 +22,7 @@ echo "pnpm version: $(pnpm --version)"
 # Install InfluxDB 1.8.x
 # ──────────────────────────────────────────────────────────────
 curl -fsSL https://repos.influxdata.com/influxdata-archive.key | gpg --dearmor -o /usr/share/keyrings/influxdb-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/influxdb-archive-keyring.gpg] https://repos.influxdata.com/debian bookworm stable" > /etc/apt/sources.list.d/influxdb.list
+echo "deb [signed-by=/usr/share/keyrings/influxdb-archive-keyring.gpg] https://repos.influxdata.com/debian stable main" > /etc/apt/sources.list.d/influxdb.list
 apt-get update
 apt-get install -y influxdb
 

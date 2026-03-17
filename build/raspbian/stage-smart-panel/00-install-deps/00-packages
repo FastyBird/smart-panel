@@ -6,3 +6,5 @@ libnss-mdns
 alsa-utils
 i2c-tools
 sqlite3
+build-essential
+python3
