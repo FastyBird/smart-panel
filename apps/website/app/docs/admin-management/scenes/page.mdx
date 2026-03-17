@@ -1,0 +1,148 @@
+import { Callout } from 'nextra/components'
+
+# Scenes
+
+Scenes let you trigger multiple device actions with a single tap. For example, a "Movie Night" scene could dim the
+lights, close the blinds, and turn on the TV — all at once.
+
+---
+
+## How Scenes Work
+
+A scene is a named collection of **actions**. When you trigger a scene, the system executes each action in order.
+Actions can target any device property — turning things on/off, setting brightness levels, changing temperatures,
+and more.
+
+Each scene has:
+
+- **Name** — a friendly label (e.g., "Good Morning", "Away Mode")
+- **Category** — an optional grouping like lighting, climate, media, security, or energy
+- **Actions** — the list of device commands to execute
+- **Space** — an optional room or zone the scene belongs to
+
+---
+
+## Scene Categories
+
+Scenes can be organized by category to make them easier to find:
+
+| Category | Use Case |
+|----------|----------|
+| Lighting | Control lights across rooms |
+| Climate | Set thermostats and HVAC |
+| Media | Control speakers, TVs, and streaming |
+| Security | Arm/disarm sensors and locks |
+| Energy | Optimize power consumption |
+| Morning / Night | Daily routines |
+| Work / Relax / Party / Movie | Activity-based presets |
+| Home / Away | Presence-based automation |
+| Custom / Generic | Anything else |
+
+---
+
+## Managing Scenes via the API
+
+Scenes are managed through the REST API. You can create, update, delete, and trigger scenes programmatically.
+
+### Create a Scene
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/scenes \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "name": "Movie Night",
+      "category": "movie",
+      "enabled": true,
+      "actions": [
+        {
+          "type": "local",
+          "configuration": {
+            "device_id": "<device-uuid>",
+            "channel_id": "<channel-uuid>",
+            "property_id": "<property-uuid>",
+            "expected_value": false
+          }
+        }
+      ]
+    }
+  }'
+```
+
+### Trigger a Scene
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/scenes/<scene-id>/trigger \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "source": "manual"
+    }
+  }'
+```
+
+### List All Scenes
+
+```bash copy
+curl http://smart-panel.local:3000/api/scenes \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## Scene Actions
+
+Each action within a scene targets a specific device property and sets it to an expected value. Actions execute
+**sequentially** in the order they are defined.
+
+Actions can be managed separately:
+
+- `GET /api/scenes/:id/actions` — list actions for a scene
+- `POST /api/scenes/:id/actions` — add a new action
+- `PATCH /api/scenes/:id/actions/:actionId` — update an action
+- `DELETE /api/scenes/:id/actions/:actionId` — remove an action
+
+---
+
+## Scene Execution
+
+When a scene is triggered:
+
+1. The system verifies the scene is **enabled** and **triggerable**
+2. Actions are executed in order, targeting the specified device properties
+3. Each action's result (success or failure) is tracked
+4. The scene's `last_triggered_at` timestamp is updated
+
+<Callout type="info">
+	By default, scene execution continues even if an individual action fails. This ensures that one unresponsive
+	device doesn't block the rest of your scene.
+</Callout>
+
+---
+
+## Scene Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Display name (required) |
+| `category` | string | Scene category (e.g., `lighting`, `movie`, `custom`) |
+| `description` | string | Optional description |
+| `enabled` | boolean | Whether the scene can be triggered (default: `true`) |
+| `triggerable` | boolean | Whether manual triggering is allowed (default: `true`) |
+| `editable` | boolean | Whether the scene can be modified (default: `true`) |
+| `order` | number | Display order in lists |
+| `primary_space_id` | UUID | Optional space (room/zone) association |
+
+<Callout>
+	Some scenes created by plugins may have `editable` set to `false`, meaning they cannot be modified or deleted
+	through the API.
+</Callout>
+
+---
+
+## What's Next?
+
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for the full scenes endpoint documentation
+- Learn how to organize devices into [Spaces](/docs/admin-management/spaces) for better scene targeting

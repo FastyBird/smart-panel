@@ -1,0 +1,157 @@
+import { Callout } from 'nextra/components'
+
+# Spaces & Rooms
+
+Spaces let you organize your devices by physical location — rooms, floors, and outdoor areas. This makes it easier
+to manage devices, build dashboards, and create scenes that target specific areas of your home.
+
+---
+
+## How Spaces Work
+
+Spaces use a two-level hierarchy:
+
+- **Zones** — larger groupings like floors or outdoor areas (e.g., "Ground Floor", "Backyard")
+- **Rooms** — individual spaces within zones (e.g., "Living Room", "Kitchen", "Bedroom")
+
+Rooms can optionally belong to a zone, but they can also exist independently.
+
+---
+
+## Zone Categories
+
+| Category | Examples |
+|----------|----------|
+| Floors | Ground Floor, First Floor, Second Floor, Basement, Attic |
+| Outdoor | Front Yard, Backyard, Garden, Terrace, Balcony, Driveway |
+| Utility | Utility areas, Security perimeter |
+
+---
+
+## Room Categories
+
+| Category | Examples |
+|----------|----------|
+| Living areas | Living Room, Bedroom, Guest Room, Nursery |
+| Kitchen & dining | Kitchen, Dining Room, Pantry |
+| Service areas | Bathroom, Toilet, Laundry |
+| Utility | Garage, Workshop, Office, Storage, Closet, Utility Room |
+| Entertainment | Media Room, Gym |
+| Access | Hallway, Entryway |
+
+---
+
+## Managing Spaces via the API
+
+### Create a zone
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/spaces \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "name": "Ground Floor",
+      "type": "zone",
+      "category": "floor_ground",
+      "icon": "mdi:home-floor-g"
+    }
+  }'
+```
+
+### Create a room within a zone
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/spaces \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "name": "Living Room",
+      "type": "room",
+      "category": "living_room",
+      "parent_id": "<zone-uuid>",
+      "icon": "mdi:sofa"
+    }
+  }'
+```
+
+### Assign devices to a space
+
+```bash copy
+curl -X POST http://smart-panel.local:3000/api/spaces/<space-id>/assign \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "data": {
+      "device_ids": ["<device-uuid-1>", "<device-uuid-2>"]
+    }
+  }'
+```
+
+### List all spaces
+
+```bash copy
+curl http://smart-panel.local:3000/api/spaces \
+  -H "Authorization: Bearer <token>"
+```
+
+### Get devices in a space
+
+```bash copy
+curl http://smart-panel.local:3000/api/spaces/<space-id>/devices \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## Space Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | string | Yes | Display name |
+| `type` | string | Yes | `room` or `zone` |
+| `category` | string | Yes (zones) | Specific room/zone type |
+| `parent_id` | UUID | No | Parent zone (rooms only) |
+| `icon` | string | No | MDI icon identifier (e.g., `mdi:sofa`) |
+| `display_order` | number | No | Sort order in lists |
+| `suggestions_enabled` | boolean | No | Enable automation suggestions |
+
+---
+
+## Smart Suggestions
+
+Smart Panel can analyze your device names and automatically suggest which spaces they belong to. Access
+this feature via:
+
+```bash copy
+curl http://smart-panel.local:3000/api/spaces/propose \
+  -H "Authorization: Bearer <token>"
+```
+
+This returns AI-powered suggestions based on device naming patterns — for example, a device named
+"Kitchen Light" would be suggested for a Kitchen room.
+
+<Callout type="info">
+	Space proposals are suggestions only. You still need to manually assign devices to confirm the placement.
+</Callout>
+
+---
+
+## Deleting a Space
+
+When you delete a zone, its child rooms become orphaned (they still exist but lose their parent).
+When you delete a room, its assigned devices are unassigned.
+
+```bash copy
+curl -X DELETE http://smart-panel.local:3000/api/spaces/<space-id> \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## What's Next?
+
+- Add devices to your spaces by following the [Devices](/docs/admin-management/devices) guide
+- Create room-specific [Scenes](/docs/admin-management/scenes) that target devices in a space
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for full endpoint documentation

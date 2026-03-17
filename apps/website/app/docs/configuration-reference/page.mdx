@@ -73,7 +73,7 @@ Contains configuration for individual plugin modules.
 
 ```yaml
 plugins:
-  devices-home-assistant-plugin:
+  devices-home-assistant:
     api_key: xxx                      # Long-lived access token
     hostname: 10.10.0.45:8123         # Hostname or IP of the Home Assistant instance
 ```
@@ -81,6 +81,27 @@ plugins:
 <Callout type="info">
 	Currently, this plugin requires manual mapping and manual token configuration.
 </Callout>
+
+### Shelly Next-Generation Plugin
+
+```yaml
+plugins:
+  devices-shelly-ng:
+    enabled: true
+    mdns:
+      enabled: false
+      interface: null
+    websockets:
+      request_timeout: 10
+      ping_interval: 60
+      reconnect_interval:
+        - 5
+        - 10
+        - 30
+        - 60
+        - 300
+        - 600
+```
 
 ---
 

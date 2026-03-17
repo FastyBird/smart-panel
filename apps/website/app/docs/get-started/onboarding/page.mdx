@@ -5,46 +5,43 @@ import { Callout } from 'nextra/components'
 Before you can start managing devices or customizing your dashboard, your Smart Panel needs to be **linked to a user account**.
 This process ensures secure access and allows your panel to communicate with backend services.
 
-Currently, onboarding is available **only via the command line**. In a future update, a web-based onboarding interface
-will make this even easier — stay tuned!
+If you installed via the **one-liner script** or **npm**, the install process may have already prompted you to create
+an owner account. If not, or if you used the **manual tarball method**, follow the steps below.
+
+In a future update, a web-based onboarding interface will make this even easier — stay tuned!
 
 ---
 
 ## Registering the Owner
 
-Run this command to register the owner of this Smart Panel:
+The command to register an owner depends on how you installed Smart Panel:
+
+**If you installed via npm (globally):**
 
 ```bash copy
-npm run onboard yourusername secretpassword
+sudo smart-panel auth:onboarding yourusername secretpassword
+```
+
+**If you installed via tarball (manual):**
+
+```bash copy
+cd /opt/smart-panel
+npm run cli auth:onboarding yourusername secretpassword
 ```
 
 <Callout type="info">
 	Use a secure username and password combination — these will be used to log in to the admin interface.
 </Callout>
 
+<Callout type="warning">
+	Replace `yourusername` and `secretpassword` with your actual credentials. Do not use default or weak passwords.
+</Callout>
+
 If everything goes well, you'll see:
 
 ```bash
-✔ Owner account successfully registered
+✅ Successfully created owner account: yourusername
 ```
-
-## Optional: Seed with Demo Data
-
-To try out the Smart Panel without having to manually create devices or dashboard pages, you can **seed the system with demo data**:
-
-```bash copy
-npm run seed
-```
-
-This will:
-- Add a few pre-configured demo devices
-- Set up a sample dashboard layout with pages and tiles
-
-<Callout>
-	This is ideal for first-time users or contributors evaluating the system.
-</Callout>
-
-You can still remove or override this data later using the admin interface.
 
 ---
 
@@ -67,4 +64,6 @@ There is **no manual onboarding required** for the display at this stage. It wil
 
 ## What’s Next?
 
-Jump to the next step: **Device Pairing** → where you’ll learn how to link your smart devices to the panel.
+Now that your owner account is set up, it’s time to start managing your Smart Panel.
+
+👉 Head over to the [**Admin & Management**](/docs/admin-management/devices-overview) section to add devices and build your dashboard.
