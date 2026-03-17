@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: tiny
 Parent: FEATURE-PROPERTY-TIMESERIES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -31,10 +31,10 @@ I want an E2E test covering the property timeseries API
 
 ## 4. Acceptance criteria
 
-- [ ] E2E test verifies endpoint returns correct response format
-- [ ] Test covers time range filtering (from/to parameters)
-- [ ] Test covers bucket size downsampling
-- [ ] Test handles empty data gracefully
+- [x] E2E test verifies endpoint returns correct response format
+- [x] Test covers time range filtering (from/to parameters)
+- [x] Test covers bucket size downsampling
+- [x] Test handles empty data gracefully
 
 ## 5. Technical constraints
 
