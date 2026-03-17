@@ -18,7 +18,8 @@ StandardError=journal
 SyslogIdentifier=smart-panel
 
 # Security hardening
-NoNewPrivileges=true
+# Note: NoNewPrivileges=true is NOT set because the app uses sudo for
+# reboot/poweroff via the sudoers policy in /etc/sudoers.d/smart-panel
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/smart-panel
