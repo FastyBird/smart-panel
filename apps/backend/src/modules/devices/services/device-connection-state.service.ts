@@ -163,7 +163,7 @@ export class DeviceConnectionStateService {
 		}
 	}
 
-	async getOnlineCount(windowMinutes = 60 * 24): Promise<number> {
+	async getOnlineCount(): Promise<number> {
 		if (!this.influxDbService.isConnected()) {
 			return 0;
 		}
@@ -171,8 +171,7 @@ export class DeviceConnectionStateService {
 		const query = `
       SELECT SUM("onlineI") AS sum FROM (
         SELECT LAST("onlineI") AS "onlineI"
-        FROM "device_status"
-        WHERE time > now() - ${windowMinutes}m
+        FROM "min_14d"."device_status_1m"
         GROUP BY "deviceId"
       )
   `;
