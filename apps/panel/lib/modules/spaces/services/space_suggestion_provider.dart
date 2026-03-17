@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/features/suggestions/types/suggestion.dart';
@@ -29,7 +30,7 @@ class SpaceAppSuggestion implements AppSuggestion {
 	String get reason => model.reason ?? '';
 
 	@override
-	IconData get icon => Icons.lightbulb_outline;
+	IconData get icon => MdiIcons.lightbulbOutline;
 
 	@override
 	bool get isWarning => false;

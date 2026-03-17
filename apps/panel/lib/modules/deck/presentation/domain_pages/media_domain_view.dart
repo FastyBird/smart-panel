@@ -1253,19 +1253,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		switch (step.status) {
 			case MediaStepStatus.succeeded:
 				iconColor = isDark ? AppColorsDark.success : AppColorsLight.success;
-				iconData = Icons.check;
+				iconData = MdiIcons.check;
 				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 			case MediaStepStatus.failed:
 				iconColor = isDark ? AppColorsDark.error : AppColorsLight.error;
-				iconData = Icons.close;
+				iconData = MdiIcons.close;
 				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 			case MediaStepStatus.executing:
 				iconColor = modeColorFamily.base;
-				iconData = Icons.circle;
+				iconData = MdiIcons.circle;
 				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 			case MediaStepStatus.pending:
 				iconColor = isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
-				iconData = Icons.circle_outlined;
+				iconData = MdiIcons.circleOutline;
 				textColor = isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
 		}
 

@@ -36,7 +36,7 @@ class GeneralSettingsPage extends StatelessWidget {
 			_TileData(
 				label: localizations.settings_general_settings_button_display_settings,
 				sublabel: localizations.settings_display_settings_title,
-				icon: Icons.desktop_mac_outlined,
+				icon: MdiIcons.monitorDashboard,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				route: 'display-settings',
@@ -44,7 +44,7 @@ class GeneralSettingsPage extends StatelessWidget {
 			_TileData(
 				label: localizations.settings_general_settings_button_language_settings,
 				sublabel: localizations.settings_language_settings_title,
-				icon: Icons.language,
+				icon: MdiIcons.translate,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				route: 'language-settings',
@@ -53,7 +53,7 @@ class GeneralSettingsPage extends StatelessWidget {
 				_TileData(
 					label: localizations.settings_general_settings_button_audio_settings,
 					sublabel: localizations.settings_audio_settings_title,
-					icon: Icons.volume_up_outlined,
+					icon: MdiIcons.volumeHigh,
 					iconColor: warningColor,
 					iconBgColor: warningBg,
 					route: 'audio-settings',
@@ -62,7 +62,7 @@ class GeneralSettingsPage extends StatelessWidget {
 				_TileData(
 					label: localizations.settings_general_settings_button_voice_activation,
 					sublabel: localizations.settings_voice_activation_settings_title,
-					icon: Icons.record_voice_over_outlined,
+					icon: MdiIcons.accountVoice,
 					iconColor: primaryColor,
 					iconBgColor: primaryBg,
 					route: 'voice-activation-settings',
@@ -70,7 +70,7 @@ class GeneralSettingsPage extends StatelessWidget {
 			_TileData(
 				label: localizations.settings_general_settings_button_weather_settings,
 				sublabel: localizations.settings_weather_settings_title,
-				icon: Icons.cloud_outlined,
+				icon: MdiIcons.cloudOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				route: 'weather-settings',
@@ -78,7 +78,7 @@ class GeneralSettingsPage extends StatelessWidget {
 			_TileData(
 				label: localizations.settings_general_settings_button_about,
 				sublabel: localizations.settings_about_title,
-				icon: Icons.info_outline,
+				icon: MdiIcons.informationOutline,
 				iconColor: successColor,
 				iconBgColor: successBg,
 				route: 'about',
@@ -86,7 +86,7 @@ class GeneralSettingsPage extends StatelessWidget {
 			_TileData(
 				label: localizations.settings_general_settings_button_maintenance,
 				sublabel: localizations.settings_maintenance_title,
-				icon: Icons.build_outlined,
+				icon: MdiIcons.wrenchOutline,
 				iconColor: dangerColor,
 				iconBgColor: dangerBg,
 				route: 'maintenance',

@@ -625,11 +625,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               ),
             ),
             if (isActive)
-              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
             if (isMatched)
-              Icon(Icons.sync, color: modeColorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.syncIcon, color: modeColorFamily.base, size: AppSpacings.scale(16)),
             if (isLastIntent)
-              Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],
         ),
       ),
@@ -1255,7 +1255,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       final position = _getRolePosition(roleData, effectiveRole);
       if (position > 0) {
         final colorFamily = _getPositionColorFamily(context, position);
-        statusIcons[roleData.role] = (Icons.circle, colorFamily.base);
+        statusIcons[roleData.role] = (MdiIcons.circle, colorFamily.base);
       }
     }
 

@@ -90,7 +90,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 							PageHeader(
 								title: localizations.settings_audio_settings_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),
@@ -185,10 +185,10 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
-			SectionTitle(title: localizations.settings_audio_settings_speaker_title, icon: Icons.volume_up_outlined),
+			SectionTitle(title: localizations.settings_audio_settings_speaker_title, icon: MdiIcons.volumeHigh),
 			AppSpacings.spacingSmVertical,
 			SettingsCard(
-				icon: Icons.volume_up_outlined,
+				icon: MdiIcons.volumeHigh,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_speaker_title,
@@ -200,7 +200,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			),
 			SizedBox(height: AppSpacings.pMd),
 			SettingsCard(
-				icon: Icons.volume_mute_outlined,
+				icon: MdiIcons.volumeMute,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_speaker_volume_title,
@@ -208,8 +208,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 				opacity: _hasSpeakerEnabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _speakerVolume / 100.0,
-					iconSmall: Icons.volume_mute,
-					iconLarge: Icons.volume_up,
+					iconSmall: MdiIcons.volumeMute,
+					iconLarge: MdiIcons.volumeHigh,
 					onChanged: _hasSpeakerEnabled
 							? (v) => _handleSpeakerVolumeChange(context, v * 100)
 							: null,
@@ -224,10 +224,10 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
-			SectionTitle(title: localizations.settings_audio_settings_microphone_title, icon: Icons.mic_outlined),
+			SectionTitle(title: localizations.settings_audio_settings_microphone_title, icon: MdiIcons.microphoneOutline),
 			AppSpacings.spacingSmVertical,
 			SettingsCard(
-				icon: Icons.mic_outlined,
+				icon: MdiIcons.microphoneOutline,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_microphone_title,
@@ -239,7 +239,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			),
 			SizedBox(height: AppSpacings.pMd),
 			SettingsCard(
-				icon: Icons.mic_none,
+				icon: MdiIcons.microphoneOutline,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_microphone_volume_title,
@@ -247,8 +247,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 				opacity: _hasMicrophoneEnabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _microphoneVolume / 100.0,
-					iconSmall: Icons.mic_none,
-					iconLarge: Icons.mic,
+					iconSmall: MdiIcons.microphoneOutline,
+					iconLarge: MdiIcons.microphone,
 					onChanged: _hasMicrophoneEnabled
 							? (v) => _handleMicrophoneVolumeChange(context, v * 100)
 							: null,

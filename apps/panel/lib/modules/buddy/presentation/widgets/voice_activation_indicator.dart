@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -127,13 +128,13 @@ class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 				iconColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 				bgColor = (isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9)
 					.withValues(alpha: 0.9);
-				icon = Icons.mic_none;
+				icon = MdiIcons.microphoneOutline;
 				label = localizations.buddy_voice_listening;
 			case VoiceActivationState.recording:
 				iconColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 				bgColor = (isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight9)
 					.withValues(alpha: 0.9);
-				icon = Icons.mic;
+				icon = MdiIcons.microphone;
 				final seconds = widget.voiceActivationService.recordingDuration.inSeconds;
 				final maxSeconds = widget.voiceActivationService.config.maxRecordingDurationSec;
 				label = localizations.buddy_voice_recording_progress(seconds, maxSeconds);
@@ -141,7 +142,7 @@ class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 				iconColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 				bgColor = (isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9)
 					.withValues(alpha: 0.9);
-				icon = Icons.hearing;
+				icon = MdiIcons.earHearing;
 				label = localizations.buddy_voice_processing;
 			case VoiceActivationState.stopped:
 				return const SizedBox.shrink();

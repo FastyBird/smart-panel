@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Dropdown value display with chevron icon for settings cards.
 class SettingsDropdownValue extends StatelessWidget {
@@ -33,7 +34,7 @@ class SettingsDropdownValue extends StatelessWidget {
 					),
 				),
 				SizedBox(width: AppSpacings.scale(3)),
-				Icon(Icons.expand_more, size: AppFontSize.base, color: hintColor),
+				Icon(MdiIcons.chevronDown, size: AppFontSize.base, color: hintColor),
 			],
 		);
 	}

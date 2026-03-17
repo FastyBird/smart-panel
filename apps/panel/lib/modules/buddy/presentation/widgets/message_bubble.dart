@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
@@ -157,10 +158,10 @@ class MessageBubble extends StatelessWidget {
 							)
 						: Icon(
 								hasError
-									? Icons.volume_off_outlined
+									? MdiIcons.volumeOff
 									: isPlaying
-										? Icons.stop_circle_outlined
-										: Icons.volume_up_outlined,
+										? MdiIcons.stopCircleOutline
+										: MdiIcons.volumeHigh,
 								size: AppSpacings.scale(14),
 								color: hasError ? Colors.red.shade300 : iconColor,
 							),

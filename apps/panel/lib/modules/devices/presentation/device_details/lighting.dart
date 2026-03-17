@@ -971,7 +971,7 @@ class _LightingHeroCard extends StatelessWidget {
     switch (selectedCapability) {
       case LightCapability.brightness:
         value = fmt.formatInteger(brightness);
-        unitIcon = Icons.wb_sunny_outlined;
+        unitIcon = MdiIcons.weatherSunny;
       case LightCapability.colorTemp:
         value = fmt.formatInteger(colorTemp);
         unitText = 'K';
@@ -986,17 +986,17 @@ class _LightingHeroCard extends StatelessWidget {
         swatchColor = HSVColor.fromAHSV(1, hsv.hue, 1, 1).toColor();
       case LightCapability.saturation:
         value = fmt.formatInteger((saturation * 100).round());
-        unitIcon = Icons.opacity;
+        unitIcon = MdiIcons.opacity;
         final currentColor = color ?? Colors.red;
         swatchColor = HSVColor.fromColor(currentColor)
             .withSaturation(saturation.clamp(0.0, 1.0))
             .toColor();
       case LightCapability.white:
         value = fmt.formatInteger(whiteChannel ?? 80);
-        unitIcon = Icons.square_rounded;
+        unitIcon = MdiIcons.squareRounded;
       default:
         value = fmt.formatInteger(brightness);
-        unitIcon = Icons.wb_sunny_outlined;
+        unitIcon = MdiIcons.weatherSunny;
     }
 
     return Row(

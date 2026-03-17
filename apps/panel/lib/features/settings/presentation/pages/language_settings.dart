@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LanguageSettingsPage extends StatefulWidget {
 	const LanguageSettingsPage({super.key});
@@ -142,7 +143,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
 		final cards = <Widget>[
 			SettingsCard(
-				icon: Icons.language,
+				icon: MdiIcons.translate,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_language_title,
@@ -167,7 +168,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.access_time,
+				icon: MdiIcons.clockOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_timezone_title,
@@ -197,7 +198,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.calendar_today_outlined,
+				icon: MdiIcons.calendarTodayOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_time_format_title,
@@ -244,7 +245,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 							PageHeader(
 								title: localizations.settings_language_settings_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),

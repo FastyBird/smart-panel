@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 enum BuddySuggestionType {
 	patternSceneCreate,
@@ -49,26 +50,26 @@ enum BuddySuggestionType {
 	IconData get icon {
 		switch (this) {
 			case BuddySuggestionType.patternSceneCreate:
-				return Icons.auto_fix_high;
+				return MdiIcons.autoFix;
 			case BuddySuggestionType.lightingOptimise:
-				return Icons.lightbulb_outline;
+				return MdiIcons.lightbulbOutline;
 			case BuddySuggestionType.anomalySensorDrift:
 			case BuddySuggestionType.anomalyStuckSensor:
 			case BuddySuggestionType.anomalyUnusualActivity:
-				return Icons.sensors_off_outlined;
+				return MdiIcons.accessPointOff;
 			case BuddySuggestionType.energyExcessSolar:
-				return Icons.solar_power_outlined;
+				return MdiIcons.solarPower;
 			case BuddySuggestionType.energyHighConsumption:
-				return Icons.bolt_outlined;
+				return MdiIcons.flashOutline;
 			case BuddySuggestionType.energyBatteryLow:
-				return Icons.battery_alert_outlined;
+				return MdiIcons.batteryAlertVariantOutline;
 			case BuddySuggestionType.conflictHeatingWindow:
 			case BuddySuggestionType.conflictAcWindow:
-				return Icons.warning_amber_rounded;
+				return MdiIcons.alert;
 			case BuddySuggestionType.conflictLightsUnoccupied:
-				return Icons.light_outlined;
+				return MdiIcons.ceilingLight;
 			case BuddySuggestionType.generalTip:
-				return Icons.tips_and_updates_outlined;
+				return MdiIcons.lightbulbOnOutline;
 		}
 	}
 

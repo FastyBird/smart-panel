@@ -240,7 +240,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 										onTap: () => Navigator.of(context).pop(),
 									),
 									HeaderMainIcon(
-										icon: Icons.smart_toy_outlined,
+										icon: MdiIcons.robotOutline,
 									),
 								],
 							),
@@ -332,7 +332,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					mainAxisAlignment: MainAxisAlignment.center,
 					children: [
 						Icon(
-							Icons.chat_bubble_outline,
+							MdiIcons.chatOutline,
 							size: AppSpacings.scale(48),
 							color: placeholderColor,
 						),
@@ -365,7 +365,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					mainAxisAlignment: MainAxisAlignment.center,
 					children: [
 						Icon(
-							Icons.cloud_off_outlined,
+							MdiIcons.cloudOffOutline,
 							size: AppSpacings.scale(48),
 							color: warningColor,
 						),
@@ -382,7 +382,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						TextButton.icon(
 							onPressed: _retryInitialization,
 							icon: Icon(
-								Icons.refresh,
+								MdiIcons.refresh,
 								size: AppSpacings.scale(16),
 							),
 							label: Text(
@@ -414,7 +414,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					mainAxisAlignment: MainAxisAlignment.center,
 					children: [
 						Icon(
-							Icons.smart_toy_outlined,
+							MdiIcons.robotOutline,
 							size: AppSpacings.scale(48),
 							color: placeholderColor,
 						),
@@ -629,7 +629,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					shape: BoxShape.circle,
 				),
 				child: Icon(
-					Icons.mic,
+					MdiIcons.microphone,
 					size: AppSpacings.scale(18),
 					color: Colors.white,
 				),
@@ -655,7 +655,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					shape: BoxShape.circle,
 				),
 				child: Icon(
-					Icons.send,
+					MdiIcons.send,
 					size: AppSpacings.scale(18),
 					color: Colors.white,
 				),

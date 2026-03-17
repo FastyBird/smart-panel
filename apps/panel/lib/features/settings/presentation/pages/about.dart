@@ -71,7 +71,7 @@ class _AboutPageState extends State<AboutPage> {
 							PageHeader(
 								title: localizations.settings_about_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),
@@ -197,7 +197,7 @@ class _AboutPageState extends State<AboutPage> {
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
 				SettingsCard(
-					icon: Icons.info_outline,
+					icon: MdiIcons.informationOutline,
 					iconColor: successColor,
 					iconBgColor: successBg,
 					label: localizations.settings_about_about_heading,
@@ -205,7 +205,7 @@ class _AboutPageState extends State<AboutPage> {
 				),
 				SizedBox(height: AppSpacings.pMd),
 				SettingsCard(
-					icon: Icons.code,
+					icon: MdiIcons.codeTags,
 					iconColor: successColor,
 					iconBgColor: successBg,
 					label: localizations.settings_about_developed_by_heading,
@@ -220,7 +220,7 @@ class _AboutPageState extends State<AboutPage> {
 				),
 				SizedBox(height: AppSpacings.pMd),
 				SettingsCard(
-					icon: Icons.article_outlined,
+					icon: MdiIcons.fileDocumentOutline,
 					iconColor: successColor,
 					iconBgColor: successBg,
 					label: localizations.settings_about_license_heading,

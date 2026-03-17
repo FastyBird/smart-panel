@@ -1342,11 +1342,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               ),
             ),
             if (isActive)
-              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
             if (isMatched)
-              Icon(Icons.sync, color: modeColorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.syncIcon, color: modeColorFamily.base, size: AppSpacings.scale(16)),
             if (isLastIntent)
-              Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],
         ),
       ),
@@ -2564,7 +2564,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       final pendingState = _getRolePendingState(role.role);
       final isActive = pendingState ?? role.hasLightsOn;
       if (isActive) {
-        statusIcons[role.role] = (Icons.circle, statusColorFamily.base);
+        statusIcons[role.role] = (MdiIcons.circle, statusColorFamily.base);
       }
     }
 
@@ -4070,7 +4070,7 @@ class _LightsHeroCard extends StatelessWidget {
           right: -unitFontSize,
           child: useIcon
               ? Icon(
-                  Icons.wb_sunny_outlined,
+                  MdiIcons.weatherSunny,
                   size: unitFontSize,
                   color: unitColor,
                 )
@@ -4133,11 +4133,11 @@ class _LightsHeroCard extends StatelessWidget {
 
   IconData _capIcon(LightHeroCapability cap) {
     return switch (cap) {
-      LightHeroCapability.brightness => Icons.wb_sunny_outlined,
-      LightHeroCapability.colorTemp => Icons.thermostat,
-      LightHeroCapability.hue => Icons.palette_outlined,
-      LightHeroCapability.saturation => Icons.opacity,
-      LightHeroCapability.whiteChannel => Icons.square_rounded,
+      LightHeroCapability.brightness => MdiIcons.weatherSunny,
+      LightHeroCapability.colorTemp => MdiIcons.thermometer,
+      LightHeroCapability.hue => MdiIcons.paletteOutline,
+      LightHeroCapability.saturation => MdiIcons.opacity,
+      LightHeroCapability.whiteChannel => MdiIcons.squareRounded,
     };
   }
 

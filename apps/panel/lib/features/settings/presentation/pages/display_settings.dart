@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class DisplaySettingsPage extends StatefulWidget {
 	const DisplaySettingsPage({super.key});
@@ -134,7 +135,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		final leftCards = <Widget>[
 			// Theme Mode
 			SettingsCard(
-				icon: Icons.dark_mode_outlined,
+				icon: MdiIcons.weatherNight,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_display_settings_theme_mode_title,
@@ -146,7 +147,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			),
 			// Screen Saver
 			SettingsCard(
-				icon: Icons.desktop_mac_outlined,
+				icon: MdiIcons.monitorDashboard,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_display_settings_screen_saver_title,
@@ -160,7 +161,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		// Screen Lock card — right column on landscape
 		final screenLockCard = SettingsCard(
-			icon: Icons.lock_outline,
+			icon: MdiIcons.lockOutline,
 			iconColor: primaryColor,
 			iconBgColor: primaryBg,
 			label: localizations.settings_display_settings_screen_lock_title,
@@ -190,15 +191,15 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		// Brightness card (with slider) — placed in right column on landscape
 		final brightnessCard = SettingsCard(
-			icon: Icons.wb_sunny_outlined,
+			icon: MdiIcons.weatherSunny,
 			iconColor: primaryColor,
 			iconBgColor: primaryBg,
 			label: localizations.settings_display_settings_brightness_title,
 			description: localizations.settings_display_settings_brightness_description,
 			bottom: SettingsSlider(
 				value: _brightness / 100.0,
-				iconSmall: Icons.wb_sunny_outlined,
-				iconLarge: Icons.wb_sunny,
+				iconSmall: MdiIcons.weatherSunny,
+				iconLarge: MdiIcons.weatherSunny,
 				onChanged: (v) => _handleBrightnessChange(context, v * 100),
 			),
 		);
@@ -210,7 +211,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		// Unit override cards
 		final unitOverrideCards = <Widget>[
 			SettingsCard(
-				icon: Icons.thermostat_outlined,
+				icon: MdiIcons.thermometer,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_display_settings_temperature_unit_title,
@@ -239,7 +240,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.air,
+				icon: MdiIcons.weatherWindy,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_display_settings_wind_speed_unit_title,
@@ -268,7 +269,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.speed,
+				icon: MdiIcons.speedometer,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_display_settings_pressure_unit_title,
@@ -297,7 +298,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.water_drop_outlined,
+				icon: MdiIcons.waterOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_display_settings_precipitation_unit_title,
@@ -326,7 +327,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				),
 			),
 			SettingsCard(
-				icon: Icons.straighten,
+				icon: MdiIcons.ruler,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_display_settings_distance_unit_title,
@@ -375,7 +376,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 								PageHeader(
 									title: localizations.settings_display_settings_title,
 									leading: HeaderIconButton(
-										icon: Icons.arrow_back,
+										icon: MdiIcons.arrowLeft,
 										onTap: () => Navigator.of(context).pop(),
 									),
 								),
@@ -417,7 +418,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 														SizedBox(height: AppSpacings.pLg),
 														SectionTitle(
 															title: localizations.settings_display_settings_unit_overrides_section,
-															icon: Icons.straighten,
+															icon: MdiIcons.ruler,
 														),
 														SizedBox(height: AppSpacings.pSm),
 														for (int i = 0; i < unitOverrideCards.length; i += 2) ...[
@@ -454,7 +455,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 														SizedBox(height: AppSpacings.pLg),
 														SectionTitle(
 															title: localizations.settings_display_settings_unit_overrides_section,
-															icon: Icons.straighten,
+															icon: MdiIcons.ruler,
 														),
 														SizedBox(height: AppSpacings.pSm),
 														for (int i = 0; i < unitOverrideCards.length; i++) ...[

@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// A selection option for [showSettingsSelectionDialog].
 class SelectionOption<T> {
@@ -238,7 +239,7 @@ class _SelectionItem<T> extends StatelessWidget {
 						),
 						if (isSelected)
 							Icon(
-								Icons.check,
+								MdiIcons.check,
 								size: AppFontSize.large,
 								color: accentColor,
 							),

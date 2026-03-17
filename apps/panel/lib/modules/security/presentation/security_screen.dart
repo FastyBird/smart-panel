@@ -1071,7 +1071,7 @@ class _AckButton extends StatelessWidget {
 					tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 				),
 				child: Icon(
-					Icons.check,
+					MdiIcons.check,
 					size: AppFontSize.small,
 					color: acknowledged
 						? (isDark

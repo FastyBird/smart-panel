@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Action button for maintenance-style actions in settings cards.
 class SettingsActionButton extends StatelessWidget {
@@ -27,7 +28,7 @@ class SettingsActionButton extends StatelessWidget {
 				child: SizedBox(
 					width: AppSpacings.scale(36),
 					height: AppSpacings.scale(36),
-					child: Icon(Icons.play_arrow, size: AppFontSize.large, color: color),
+					child: Icon(MdiIcons.play, size: AppFontSize.large, color: color),
 				),
 			),
 		);

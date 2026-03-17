@@ -466,7 +466,7 @@ class _BuddyFab extends StatelessWidget {
                   ],
                 ),
                 child: Icon(
-                  Icons.smart_toy_outlined,
+                  MdiIcons.robotOutline,
                   color: Colors.white,
                   size: AppSpacings.scale(24),
                 ),

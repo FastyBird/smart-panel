@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -94,7 +95,7 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 							PageHeader(
 								title: localizations.settings_voice_activation_settings_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),
@@ -131,11 +132,11 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		return [
 			SectionTitle(
 				title: localizations.settings_voice_activation_section_detection,
-				icon: Icons.record_voice_over_outlined,
+				icon: MdiIcons.accountVoice,
 			),
 			AppSpacings.spacingSmVertical,
 			SettingsCard(
-				icon: Icons.record_voice_over_outlined,
+				icon: MdiIcons.accountVoice,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_voice_activation_enable_label,
@@ -157,11 +158,11 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		return [
 			SectionTitle(
 				title: localizations.settings_voice_activation_section_sensitivity,
-				icon: Icons.tune,
+				icon: MdiIcons.tune,
 			),
 			AppSpacings.spacingSmVertical,
 			SettingsCard(
-				icon: Icons.tune,
+				icon: MdiIcons.tune,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_voice_activation_sensitivity_label,
@@ -169,8 +170,8 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 				opacity: _enabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _sensitivity,
-					iconSmall: Icons.mic_none,
-					iconLarge: Icons.mic,
+					iconSmall: MdiIcons.microphoneOutline,
+					iconLarge: MdiIcons.microphone,
 					onChanged: _enabled ? _handleSensitivityChanged : null,
 				),
 			),
@@ -206,11 +207,11 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		return [
 			SectionTitle(
 				title: localizations.settings_voice_activation_section_status,
-				icon: Icons.info_outline,
+				icon: MdiIcons.informationOutline,
 			),
 			AppSpacings.spacingSmVertical,
 			SettingsCard(
-				icon: Icons.radio_button_checked,
+				icon: MdiIcons.radioboxMarked,
 				iconColor: successColor,
 				iconBgColor: successBg,
 				label: localizations.settings_voice_activation_status_label,

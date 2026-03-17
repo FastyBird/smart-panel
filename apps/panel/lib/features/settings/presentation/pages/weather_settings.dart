@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class WeatherSettingsPage extends StatefulWidget {
 	const WeatherSettingsPage({super.key});
@@ -79,7 +80,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
 		final cards = <Widget>[
 			SettingsCard(
-				icon: Icons.location_on_outlined,
+				icon: MdiIcons.mapMarkerOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
 				label: localizations.settings_weather_settings_temperature_location_title,
@@ -121,7 +122,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 							PageHeader(
 								title: localizations.settings_weather_settings_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),

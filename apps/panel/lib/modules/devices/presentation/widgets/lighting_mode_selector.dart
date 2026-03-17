@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Lighting capabilities for mode selection.
 enum LightCapability {
@@ -50,17 +51,17 @@ class LightingModeSelector extends StatelessWidget {
 	IconData _getCapabilityIcon(LightCapability cap) {
 		switch (cap) {
 			case LightCapability.brightness:
-				return Icons.wb_sunny_outlined;
+				return MdiIcons.weatherSunny;
 			case LightCapability.colorTemp:
-				return Icons.thermostat;
+				return MdiIcons.thermometer;
 			case LightCapability.hue:
-				return Icons.palette_outlined;
+				return MdiIcons.paletteOutline;
 			case LightCapability.saturation:
-				return Icons.opacity;
+				return MdiIcons.opacity;
 			case LightCapability.white:
-				return Icons.square_rounded;
+				return MdiIcons.squareRounded;
 			default:
-				return Icons.lightbulb_outline;
+				return MdiIcons.lightbulbOutline;
 		}
 	}
 

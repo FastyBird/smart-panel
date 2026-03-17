@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_hour.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
 
@@ -137,7 +138,7 @@ class WeatherDetailPage extends StatelessWidget {
 									width: AppSpacings.scale(36),
 									height: AppSpacings.scale(36),
 									child: Icon(
-										Icons.arrow_back,
+										MdiIcons.arrowLeft,
 										size: AppSpacings.scale(18),
 										color: config.primaryTextColor,
 									),

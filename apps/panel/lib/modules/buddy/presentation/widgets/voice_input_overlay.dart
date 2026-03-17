@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -395,7 +396,7 @@ class _AnimatedOrbState extends State<_AnimatedOrb> with TickerProviderStateMixi
 						],
 					),
 					child: Icon(
-						Icons.mic,
+						MdiIcons.microphone,
 						color: Colors.white,
 						size: widget.size * 0.3,
 					),

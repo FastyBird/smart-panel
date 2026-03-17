@@ -448,7 +448,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               ),
             ),
             if (isActive)
-              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],
         ),
       ),

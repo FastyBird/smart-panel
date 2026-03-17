@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MaintenancePage extends StatelessWidget {
 	final SystemModuleService _systemModuleService =
@@ -62,7 +63,7 @@ class MaintenancePage extends StatelessWidget {
 
 		final systemCards = <Widget>[
 			SettingsCard(
-				icon: Icons.restart_alt,
+				icon: MdiIcons.restart,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_restart_title,
@@ -89,7 +90,7 @@ class MaintenancePage extends StatelessWidget {
 				),
 			),
 			SettingsCard(
-				icon: Icons.power_settings_new,
+				icon: MdiIcons.power,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_power_off_title,
@@ -119,7 +120,7 @@ class MaintenancePage extends StatelessWidget {
 
 		final dangerCards = <Widget>[
 			SettingsCard(
-				icon: Icons.warning_amber,
+				icon: MdiIcons.alert,
 				iconColor: dangerColor,
 				iconBgColor: dangerBg,
 				label: localizations.settings_maintenance_factory_reset_title,
@@ -160,7 +161,7 @@ class MaintenancePage extends StatelessWidget {
 							PageHeader(
 								title: localizations.settings_maintenance_title,
 								leading: HeaderIconButton(
-									icon: Icons.arrow_back,
+									icon: MdiIcons.arrowLeft,
 									onTap: () => Navigator.of(context).pop(),
 								),
 							),
@@ -179,7 +180,7 @@ class MaintenancePage extends StatelessWidget {
 																children: [
 																	SectionTitle(
 																		title: localizations.settings_maintenance_system_heading,
-																		icon: Icons.build_outlined,
+																		icon: MdiIcons.wrenchOutline,
 																	),
 																	AppSpacings.spacingSmVertical,
 																	for (int i = 0; i < systemCards.length; i++) ...[
@@ -197,7 +198,7 @@ class MaintenancePage extends StatelessWidget {
 																children: [
 																	SectionTitle(
 																		title: localizations.settings_maintenance_danger_heading,
-																		icon: Icons.warning_amber_outlined,
+																		icon: MdiIcons.alertOutline,
 																		color: dangerColor,
 																	),
 																	AppSpacings.spacingSmVertical,
@@ -216,7 +217,7 @@ class MaintenancePage extends StatelessWidget {
 													children: [
 														SectionTitle(
 															title: localizations.settings_maintenance_system_heading,
-															icon: Icons.build_outlined,
+															icon: MdiIcons.wrenchOutline,
 														),
 														AppSpacings.spacingSmVertical,
 														for (int i = 0; i < systemCards.length; i++) ...[
@@ -226,7 +227,7 @@ class MaintenancePage extends StatelessWidget {
 														SizedBox(height: AppSpacings.pLg),
 														SectionTitle(
 															title: localizations.settings_maintenance_danger_heading,
-															icon: Icons.warning_amber_outlined,
+															icon: MdiIcons.alertOutline,
 															color: dangerColor,
 														),
 														AppSpacings.spacingSmVertical,

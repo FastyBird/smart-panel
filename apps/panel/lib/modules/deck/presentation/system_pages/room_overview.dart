@@ -733,7 +733,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 																),
 															),
 															if (isActive)
-																Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+																Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
 														],
 													),
 												),

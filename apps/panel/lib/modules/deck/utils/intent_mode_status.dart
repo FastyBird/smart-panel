@@ -1,9 +1,9 @@
 /// Result of computing intent mode status for a mode selector.
 ///
 /// Each field maps to a specific icon in the popup:
-/// - [checkMode] → `Icons.check` — the active mode (selected + actively applied via intent)
-/// - [syncMode] → `Icons.sync` — externally applied mode (not selected + matches device state)
-/// - [historyMode] → `Icons.history` — overridden mode (selected but no longer active)
+/// - [checkMode] → `MdiIcons.check` — the active mode (selected + actively applied via intent)
+/// - [syncMode] → `MdiIcons.sync` — externally applied mode (not selected + matches device state)
+/// - [historyMode] → `MdiIcons.history` — overridden mode (selected but no longer active)
 class IntentModeStatus<T> {
   final T? checkMode;
   final T? syncMode;

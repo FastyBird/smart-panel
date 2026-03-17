@@ -1354,7 +1354,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ),
             ),
             if (isActive)
-              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],
         ),
       ),
@@ -2557,7 +2557,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       spacing: AppSpacings.pXl,
       children: [
         buildAdjustButton(
-          Icons.remove,
+          MdiIcons.minus,
           isOff
               ? null
               : () {
@@ -2566,7 +2566,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 },
         ),
         buildAdjustButton(
-          Icons.add,
+          MdiIcons.plus,
           isOff
               ? null
               : () {

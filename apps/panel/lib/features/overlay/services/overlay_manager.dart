@@ -46,7 +46,7 @@ Widget _unsetWidgetBuilder(BuildContext _) => const SizedBox.shrink();
 /// overlayManager.show(
 ///   'connection',
 ///   displayType: OverlayDisplayType.fullScreen,
-///   icon: Icons.wifi_off,
+///   icon: MdiIcons.wifiOff,
 ///   colorScheme: OverlayColorScheme.error,
 ///   showProgress: false,
 ///   title: (l) => l.connection_lost_title,
