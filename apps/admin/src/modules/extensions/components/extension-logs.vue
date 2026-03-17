@@ -67,7 +67,7 @@
 
 		<!-- Loading state -->
 		<div
-			v-if="logs.length === 0 && isLoading"
+			v-if="!loaded && isLoading"
 			class="flex-1 flex items-center justify-center"
 		>
 			<el-result>
@@ -86,7 +86,7 @@
 
 		<!-- No filtered logs state -->
 		<div
-			v-else-if="filtersActive && logs.length === 0 && !isLoading"
+			v-else-if="filtersActive && logs.length === 0"
 			class="flex-1 flex items-center justify-center"
 		>
 			<el-result>
@@ -123,7 +123,7 @@
 
 		<!-- No logs state -->
 		<div
-			v-else-if="logs.length === 0 && !isLoading"
+			v-else-if="logs.length === 0"
 			class="flex-1 flex items-center justify-center"
 		>
 			<el-result>
@@ -236,7 +236,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { logs, hasMore, isLoading, live, filterLevels, filterTimeRange, filtersActive, clearFilters, fetchLogs, loadMoreLogs, refreshLogs } =
+const { logs, hasMore, isLoading, loaded, live, filterLevels, filterTimeRange, filtersActive, clearFilters, fetchLogs, loadMoreLogs, refreshLogs } =
 	useExtensionLogs({
 		extensionType: toRef(() => props.extensionType),
 	});

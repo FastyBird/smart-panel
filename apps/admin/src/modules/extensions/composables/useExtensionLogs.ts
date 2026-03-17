@@ -16,7 +16,6 @@ interface IUseExtensionLogsProps {
 
 export interface IUseExtensionLogs {
 	logs: ComputedRef<ILogEntry[]>;
-	allLogs: ComputedRef<ILogEntry[]>;
 	hasMore: Ref<boolean>;
 	isLoading: Ref<boolean>;
 	loaded: Ref<boolean>;
@@ -235,7 +234,6 @@ export const useExtensionLogs = (props: IUseExtensionLogsProps): IUseExtensionLo
 
 	return {
 		logs,
-		allLogs,
 		hasMore,
 		isLoading,
 		loaded,
