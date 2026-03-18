@@ -76,7 +76,7 @@ export default function LandingPage() {
 						</div>
 						<h1 className="hero-fade-up hero-fade-up-1 font-syne text-[clamp(3rem,5.5vw,5.2rem)] font-extrabold leading-[1.06] tracking-[-0.02em] mb-7">
 							Control your home,
-							<span className="block lg:pl-[72px]">room <em className="not-italic italic text-[#e85a4f]">by room.</em></span>
+							<span className="block lg:pl-[72px]">room <em className="italic text-[#e85a4f]">by room.</em></span>
 						</h1>
 						<p className="hero-fade-up hero-fade-up-2 text-[1.05rem] text-[#7a8499] max-w-[460px] mx-auto lg:mx-0 mb-10 leading-[1.8]">
 							SmartPanel turns any touchscreen into a dedicated wall-mounted control center

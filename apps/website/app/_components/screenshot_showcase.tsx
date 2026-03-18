@@ -192,37 +192,37 @@ const tabs: Tab[] = [
 	{
 		id: "shading",
 		label: "Shading",
-		color: "#f97316",
+		color: "#14b8a6",
 		hasThemes: true,
 		lightImage: "/landing/screen_light_shading.png",
 		darkImage: "/landing/screen_dark_shading.png",
 		titleIcon: mdiBlindsHorizontalClosed,
 		titleText: "Shading",
-		badge: { text: "Domain", color: "rgba(249,115,22,.15)", borderColor: "rgba(249,115,22,.4)", textColor: "#f97316" },
+		badge: { text: "Domain", color: "rgba(20,184,166,.15)", borderColor: "rgba(20,184,166,.4)", textColor: "#14b8a6" },
 		description:
 			"Blinds, shutters, and curtains \u2014 open, close, or set any position for every window in the room.",
 		features: [
 			{
 				icon: mdiArrowExpandVertical,
-				bg: "rgba(249,115,22,.12)",
+				bg: "rgba(20,184,166,.12)",
 				title: "Drag to position",
 				desc: "Slide to set any cover position from fully closed to fully open. You can also tap preset positions for one-touch control \u2014 useful for quickly setting a favorite mid-day or evening position.",
 			},
 			{
 				icon: mdiArrowUp,
-				bg: "rgba(249,115,22,.12)",
+				bg: "rgba(20,184,166,.12)",
 				title: "One-tap actions",
 				desc: "Dedicated Open, Close, and Stop buttons sit right on the screen for each cover device. Simple and fast, even from across the room \u2014 no need to find a slider when you just want to open the blinds all the way.",
 			},
 			{
 				icon: mdiTagOutline,
-				bg: "rgba(249,115,22,.12)",
+				bg: "rgba(20,184,166,.12)",
 				title: "Grouped by window",
 				desc: "Covers are organized by their role \u2014 primary blinds, blackout shutters, decorative curtains. Each group has its own position controls, so you can lower the blackout shutters for sleep while leaving the decorative curtains open.",
 			},
 			{
 				icon: mdiAngleAcute,
-				bg: "rgba(249,115,22,.12)",
+				bg: "rgba(20,184,166,.12)",
 				title: "Tilt adjustment",
 				desc: "For slatted blinds, a separate tilt control lets you adjust the angle of the slats independently from the cover position. Fine-tune exactly how much light enters the room without changing the blind height.",
 			},
@@ -533,7 +533,7 @@ export function ScreenshotShowcase() {
 							{/* Tab title and badge */}
 							<div className="mb-2 flex items-center gap-3">
 								<h3 className="flex items-center gap-2 text-2xl font-bold text-white">
-									<Icon path={currentTab.titleIcon} size={1.1} className="text-[#e85a4f]" />
+									<Icon path={currentTab.titleIcon} size={1.1} style={{ color: currentTab.color }} />
 									{currentTab.titleText}
 								</h3>
 								<span
