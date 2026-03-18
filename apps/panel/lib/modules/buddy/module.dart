@@ -147,6 +147,15 @@ class BuddyModuleService {
 
 	bool get isLoading => _isLoading;
 
+	/// Re-fetch buddy suggestions.
+	Future<void> refresh() async {
+		try {
+			await _buddyRepository.fetchSuggestions();
+		} catch (_) {
+			// Buddy refresh is non-critical
+		}
+	}
+
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
 	VoiceActivationService get voiceActivationService => _voiceActivationService;

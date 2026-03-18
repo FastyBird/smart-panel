@@ -150,6 +150,17 @@ class SystemModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch system info and throttle status.
+  Future<void> refresh() async {
+    await _systemInfoRepository.fetchOne();
+
+    try {
+      await _throttleStatusRepository.fetchOne();
+    } catch (_) {
+      // Throttle status may not be available
+    }
+  }
+
   void dispose() {
     _socketService.unregisterEventHandler(
       SystemModuleConstants.moduleWildcardEvent,

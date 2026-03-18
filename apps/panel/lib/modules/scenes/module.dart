@@ -68,6 +68,11 @@ class ScenesModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch all scenes (with embedded actions).
+  Future<void> refresh() async {
+    await _scenesRepository.fetchAll();
+  }
+
   void dispose() {
     _socketService.unregisterEventHandler(
       ScenesModuleConstants.moduleWildcardEvent,
