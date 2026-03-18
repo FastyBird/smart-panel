@@ -418,19 +418,21 @@ class SpacesModuleService {
 
       // Refresh media endpoints when a device is created/updated
       // (e.g. assigned to this space via bulkAssign) — the derived
-      // endpoint list may have changed.  We refresh for the display's
-      // room unconditionally (the cache may be empty if no media device
-      // was previously assigned).
-      final roomId = payload['room_id'] as String?;
-      if (roomId != null) {
-        try {
-          final displayRoomId = locator<DisplayRepository>().display?.roomId;
-          if (displayRoomId != null && displayRoomId == roomId) {
-            _mediaActivityRepository.refreshEndpoints(roomId);
+      // endpoint list may have changed.
+      //
+      // When room_id matches the display's room the device was added to
+      // our space.  When room_id is null the device was unassigned and
+      // may have just LEFT our space, so we must also refresh.
+      try {
+        final displayRoomId = locator<DisplayRepository>().display?.roomId;
+        if (displayRoomId != null) {
+          final roomId = payload['room_id'] as String?;
+          if (roomId == null || roomId == displayRoomId) {
+            _mediaActivityRepository.refreshEndpoints(displayRoomId);
           }
-        } catch (_) {
-          // DisplayRepository not available
         }
+      } catch (_) {
+        // DisplayRepository not available
       }
     } else if (event == DevicesModuleConstants.deviceDeletedEvent) {
       // A device was removed — refresh endpoints for the display's space

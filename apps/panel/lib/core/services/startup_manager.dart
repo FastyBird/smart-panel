@@ -1354,6 +1354,10 @@ class StartupManagerService {
     // Clear backend URL to force rediscovery
     await _clearStoredBackendUrl();
 
+    // Stop periodic refresh before tearing down
+    _periodicRefreshService?.dispose();
+    _periodicRefreshService = null;
+
     // Disconnect sockets
     _socketClient.dispose();
 
