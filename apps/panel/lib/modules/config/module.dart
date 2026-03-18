@@ -86,6 +86,11 @@ class ConfigModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch all module/plugin configurations.
+  Future<void> refresh() async {
+    await _repositoryManager.fetchAllConfigurations();
+  }
+
   void dispose() {
     _socketService.unregisterEventHandler(
       ConfigModuleConstants.configUpdatedEvent,

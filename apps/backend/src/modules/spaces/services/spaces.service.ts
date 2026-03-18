@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
@@ -387,6 +388,19 @@ export class SpacesService {
 
 			devicesAssigned = result.affected || 0;
 			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
+
+			// Emit DEVICE_UPDATED events so connected clients (panel) learn
+			// about the room-assignment change and can refresh derived data
+			// (e.g. media endpoints).
+			if (devicesAssigned > 0) {
+				const updatedDevices = await this.deviceRepository.find({
+					where: { id: In(dtoInstance.deviceIds) },
+				});
+
+				for (const device of updatedDevices) {
+					this.eventEmitter.emit(DevicesEventType.DEVICE_UPDATED, device);
+				}
+			}
 		}
 
 		// Assign displays
@@ -423,6 +437,17 @@ export class SpacesService {
 
 		const unassigned = result.affected || 0;
 		this.logger.debug(`Unassigned ${unassigned} devices`);
+
+		// Emit DEVICE_UPDATED events so connected clients refresh derived data
+		if (unassigned > 0) {
+			const updatedDevices = await this.deviceRepository.find({
+				where: { id: In(deviceIds) },
+			});
+
+			for (const device of updatedDevices) {
+				this.eventEmitter.emit(DevicesEventType.DEVICE_UPDATED, device);
+			}
+		}
 
 		return unassigned;
 	}

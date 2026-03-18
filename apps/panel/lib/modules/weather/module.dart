@@ -190,6 +190,12 @@ class WeatherModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch weather locations and weather data.
+  Future<void> refresh() async {
+    await _initializeLocations();
+    await _initializeWeatherData();
+  }
+
   LocationsRepository get locationsRepository => _locationsRepository;
 
   /// Check if the resolved location ID changed and re-resolve if needed

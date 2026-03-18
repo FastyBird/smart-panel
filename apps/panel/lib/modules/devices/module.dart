@@ -151,6 +151,21 @@ class DevicesModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch all device, channel, property and control data.
+  Future<void> refresh() async {
+    await _devicesRepository.fetchAll();
+
+    for (var device in _devicesRepository.getItems()) {
+      await _deviceControlsRepository.fetchAll(device.id);
+    }
+
+    for (var channel in _channelsRepository.getItems()) {
+      await _channelControlsRepository.fetchAll(channel.id);
+    }
+
+    await _validationRepository.fetchAll();
+  }
+
   void dispose() {
     _socketService.unregisterEventHandler(
       DevicesModuleConstants.moduleWildcardEvent,

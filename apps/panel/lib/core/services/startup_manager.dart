@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
+import 'package:fastybird_smart_panel/core/services/periodic_refresh.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -49,6 +50,7 @@ import 'package:fastybird_smart_panel/modules/system/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/hourly_forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/security/module.dart';
@@ -114,6 +116,8 @@ class StartupManagerService {
   late SecureStorageFallback _securedStorageFallback;
 
   String? _currentBackendUrl;
+
+  PeriodicRefreshService? _periodicRefreshService;
 
   StartupManagerService({
     required this.screenWidth,
@@ -356,7 +360,35 @@ class StartupManagerService {
       );
     }
 
+    // Start periodic refresh as a safety net for missed socket events
+    _startPeriodicRefresh();
+
     return InitializationResult.success;
+  }
+
+  /// Start the periodic refresh service that re-fetches module data as a
+  /// safety net for missed WebSocket events.
+  void _startPeriodicRefresh() {
+    _periodicRefreshService?.dispose();
+
+    final service = PeriodicRefreshService(
+      socketService: _socketClient,
+    );
+
+    service.register('config', () => locator<ConfigModuleService>().refresh());
+    service.register('system', () => locator<SystemModuleService>().refresh());
+    service.register('security', () => locator<SecurityModuleService>().refresh());
+    service.register('weather', () => locator<WeatherModuleService>().refresh());
+    service.register('devices', () => locator<DevicesModuleService>().refresh());
+    service.register('spaces', () => locator<SpacesModuleService>().refresh());
+    service.register('scenes', () => locator<ScenesModuleService>().refresh());
+    service.register('dashboard', () => locator<DashboardModuleService>().refresh());
+    service.register('energy', () => locator<EnergyModuleService>().refresh());
+    service.register('buddy', () => locator<BuddyModuleService>().refresh());
+
+    service.start();
+
+    _periodicRefreshService = service;
   }
 
   /// Unregister modules if they are already registered
@@ -369,6 +401,10 @@ class StartupManagerService {
         locator.isRegistered<DisplayRepository>() ||
         locator.isRegistered<DevicesModuleService>() ||
         locator.isRegistered<DevicesRepository>();
+
+    // Stop periodic refresh before tearing down modules
+    _periodicRefreshService?.dispose();
+    _periodicRefreshService = null;
 
     if (!hasAnyRegistration) {
       return;
@@ -467,6 +503,10 @@ class StartupManagerService {
       try { locator<BuddyRepository>().dispose(); } catch (_) {}
       try { locator.unregister<BuddyRepository>(); } catch (_) {}
     }
+    if (locator.isRegistered<VoiceActivationService>()) {
+      try { locator<VoiceActivationService>().dispose(); } catch (_) {}
+      try { locator.unregister<VoiceActivationService>(); } catch (_) {}
+    }
 
     // Unregister all repositories and services registered by modules
     // Config module repositories (LanguageConfigRepository moved to system module)
@@ -501,6 +541,10 @@ class StartupManagerService {
     if (locator.isRegistered<ForecastWeatherRepository>()) {
       try { locator<ForecastWeatherRepository>().dispose(); } catch (_) {}
       try { locator.unregister<ForecastWeatherRepository>(); } catch (_) {}
+    }
+    if (locator.isRegistered<HourlyForecastWeatherRepository>()) {
+      try { locator<HourlyForecastWeatherRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<HourlyForecastWeatherRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<LocationsRepository>()) {
       try { locator<LocationsRepository>().dispose(); } catch (_) {}
@@ -1309,6 +1353,10 @@ class StartupManagerService {
 
     // Clear backend URL to force rediscovery
     await _clearStoredBackendUrl();
+
+    // Stop periodic refresh before tearing down
+    _periodicRefreshService?.dispose();
+    _periodicRefreshService = null;
 
     // Disconnect sockets
     _socketClient.dispose();

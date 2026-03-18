@@ -431,8 +431,19 @@ class MediaActivityRepository extends ChangeNotifier {
 	}
 
 	/// Re-fetch bindings for a space (called on WebSocket binding events).
+	///
+	/// Also refreshes endpoints because a binding change may reference
+	/// endpoints from newly assigned devices that are not yet cached.
 	Future<void> refreshBindings(String spaceId) async {
-		await fetchBindings(spaceId);
+		await Future.wait([
+			fetchBindings(spaceId),
+			fetchEndpoints(spaceId),
+		]);
+	}
+
+	/// Re-fetch endpoints for a space (called when device assignments change).
+	Future<void> refreshEndpoints(String spaceId) async {
+		await fetchEndpoints(spaceId);
 	}
 
 	/// Clear data for a specific space.

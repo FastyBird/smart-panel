@@ -21,6 +21,17 @@ class SecurityModuleService {
 	SecurityStatusRepository get statusRepository => _statusRepository;
 	SecurityEventsRepository get eventsRepository => _eventsRepository;
 
+	/// Re-fetch security status and events.
+	Future<void> refresh() async {
+		try {
+			await _statusRepository.fetchStatus();
+		} catch (_) {}
+
+		try {
+			await _eventsRepository.fetchEvents();
+		} catch (_) {}
+	}
+
 	Future<void> initialize() async {
 		try {
 			await _statusRepository.fetchStatus();

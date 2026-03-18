@@ -90,6 +90,27 @@ class DashboardModuleService {
 
   bool get isLoading => _isLoading;
 
+  /// Re-fetch all dashboard pages, cards, tiles and data sources.
+  Future<void> refresh() async {
+    await _pagesRepository.fetchAll();
+
+    for (var page in _pagesRepository.getItems()) {
+      await _cardsRepository.fetchAll(page.id);
+      await _tilesRepository.fetchAll('page', page.id);
+      await _dataSourcesRepository.fetchAll('page', page.id);
+    }
+
+    for (var card in _cardsRepository.getItems()) {
+      await _tilesRepository.fetchAll('card', card.id);
+      await _dataSourcesRepository.fetchAll('card', card.id);
+    }
+
+    for (var tile in _tilesRepository.getItems()) {
+      await _tilesRepository.fetchAll('tile', tile.id);
+      await _dataSourcesRepository.fetchAll('tile', tile.id);
+    }
+  }
+
   void dispose() {
     _socketService.unregisterEventHandler(
       DashboardModuleConstants.moduleWildcardEvent,

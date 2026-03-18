@@ -35,6 +35,19 @@ class EnergyModuleService {
 		}
 	}
 
+	/// Re-fetch energy support and data.
+	Future<void> refresh({String spaceId = 'home'}) async {
+		try {
+			final supported = await _repository.checkSupport(spaceId);
+
+			if (supported) {
+				await _repository.fetchData(spaceId);
+			}
+		} catch (_) {
+			// Energy refresh is non-critical
+		}
+	}
+
 	void dispose() {
 		// Repository disposal is handled by startup_manager cleanup,
 		// not here — mirroring SecurityModuleService pattern.
