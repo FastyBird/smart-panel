@@ -1,10 +1,12 @@
 import React from "react";
+import Icon from "@mdi/react";
+import { mdiRobotHappyOutline, mdiAccountOutline } from "@mdi/js";
 
 function BotMessage({ children }: { children: React.ReactNode }) {
 	return (
 		<div className="flex items-start gap-2">
-			<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e85a4f]/20 text-sm">
-				🤖
+			<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e85a4f]/20">
+				<Icon path={mdiRobotHappyOutline} size={0.65} className="text-[#e85a4f]" />
 			</div>
 			<div className="rounded-lg border border-white/10 bg-[#141a26] px-3 py-2 text-sm text-gray-300">
 				{children}
@@ -16,8 +18,8 @@ function BotMessage({ children }: { children: React.ReactNode }) {
 function UserMessage({ children }: { children: React.ReactNode }) {
 	return (
 		<div className="flex flex-row-reverse items-start gap-2">
-			<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e85a4f]/20 text-sm">
-				👤
+			<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e85a4f]/20">
+				<Icon path={mdiAccountOutline} size={0.65} className="text-white/60" />
 			</div>
 			<div className="rounded-lg bg-[#e85a4f]/15 px-3 py-2 text-sm text-gray-300">{children}</div>
 		</div>
@@ -45,8 +47,8 @@ export function ChatMockup() {
 				</BotMessage>
 			</div>
 
-			<div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#e85a4f] text-lg shadow-lg">
-				🤖
+			<div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#e85a4f] shadow-lg">
+				<Icon path={mdiRobotHappyOutline} size={0.9} className="text-white" />
 			</div>
 		</div>
 	);

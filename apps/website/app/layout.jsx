@@ -131,6 +131,7 @@ export default async function RootLayout({ children }) {
           docsRepositoryBase="https://github.com/FastyBird/smart-panel/docs"
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           pageMap={pageMap}
+          nextThemes={{ defaultTheme: "dark" }}
         >
           {children}
         </Layout>
