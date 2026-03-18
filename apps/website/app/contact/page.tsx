@@ -39,7 +39,7 @@ export default function Contact() {
               {
                 icon: mdiForum,
                 title: "Discord",
-                href: "https://discord.gg/H7pHN3hbqq",
+                href: "https://discord.gg/HPRJ2GzK",
                 label: "Join our Discord Server",
               },
               {

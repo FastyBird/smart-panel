@@ -29,29 +29,8 @@ body {
             'calt' 1;
 }
 
-.home-content p {
-    margin-top: 1.5em;
-    line-height: 1.75em;
-}
-
 code.text-\[\.9em\] {
     font-size: 14px;
-}
-
-@media screen and (max-width: 1200px) {
-    .home-content .hide-medium {
-        display: none;
-    }
-}
-
-@media screen and (max-width: 720px) {
-    .home-content p {
-        font-size: 0.9rem;
-    }
-
-    .home-content .hide-small {
-        display: none;
-    }
 }
 
 .fb-smart-panel-logo {
@@ -102,3 +81,171 @@ code.text-\[\.9em\] {
         }
     }
 }
+
+/* Banner override — accent red background */
+.nextra-banner {
+    background: #e85a4f !important;
+}
+
+/* Hero section animations */
+.hero-stars {
+    background-image:
+        radial-gradient(1.5px 1.5px at 8% 12%, rgba(255,255,255,.65) 0%, transparent 100%),
+        radial-gradient(1px 1px at 22% 7%, rgba(255,255,255,.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 38% 20%, rgba(255,255,255,.5) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 53% 4%, rgba(255,255,255,.35) 0%, transparent 100%),
+        radial-gradient(1px 1px at 68% 16%, rgba(255,255,255,.6) 0%, transparent 100%),
+        radial-gradient(2px 2px at 82% 9%, rgba(255,255,255,.45) 0%, transparent 100%),
+        radial-gradient(1px 1px at 15% 32%, rgba(255,255,255,.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 28%, rgba(255,255,255,.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 22%, rgba(255,255,255,.4) 0%, transparent 100%);
+}
+
+
+@keyframes hero-fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-fade-up {
+    animation: hero-fade-up 0.6s ease both;
+}
+
+.hero-fade-up-1 { animation-delay: 0.1s; }
+.hero-fade-up-2 { animation-delay: 0.2s; }
+.hero-fade-up-3 { animation-delay: 0.3s; }
+.hero-fade-up-4 { animation-delay: 0.4s; }
+
+/* Syne font for headings on landing page */
+.font-syne {
+    font-family: 'Syne', sans-serif;
+}
+
+.font-jakarta {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Override Nextra footer area background in dark mode to match page theme */
+.dark div[class*="bg-gray-100"][class*="bg-neutral-900"] {
+    background: #0c1018 !important;
+}
+
+.dark div[class*="bg-gray-100"][class*="bg-neutral-900"] hr {
+    border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/*
+ * Landing page: force dark mode on the entire Nextra chrome (navbar, footer,
+ * theme switch bar) even when the global theme is set to "light".
+ * The .landing-page class is on the page root; :has() bubbles up to html.
+ */
+html:has(.landing-page) {
+    color-scheme: dark !important;
+}
+
+html:has(.landing-page),
+html:has(.landing-page) body {
+    background: #0c1018 !important;
+}
+
+/* Force Nextra navbar dark on landing page */
+html:has(.landing-page) .nextra-navbar-blur {
+    background: rgba(12, 16, 24, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.07) !important;
+    backdrop-filter: blur(20px);
+}
+
+html:has(.landing-page) .nextra-navbar a,
+html:has(.landing-page) .nextra-navbar button {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+html:has(.landing-page) .nextra-navbar a:hover,
+html:has(.landing-page) .nextra-navbar button:hover {
+    color: white !important;
+}
+
+/* Force footer wrapper dark on landing page */
+html:has(.landing-page) div[class*="bg-gray-100"][class*="bg-neutral-900"] {
+    background: #0c1018 !important;
+}
+
+html:has(.landing-page) div[class*="bg-gray-100"][class*="bg-neutral-900"] hr {
+    border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Force footer text dark on landing page */
+html:has(.landing-page) footer {
+    color: rgba(122, 132, 153, 1) !important;
+}
+
+html:has(.landing-page) footer a {
+    color: rgba(122, 132, 153, 1) !important;
+}
+
+html:has(.landing-page) footer a:hover {
+    color: white !important;
+}
+
+/* Force logo to dark variant on landing page */
+html:has(.landing-page) .fb-smart-panel-logo .fb-bird {
+    filter: drop-shadow(2px 2px 6px #a91b0c);
+}
+
+html:has(.landing-page) .fb-smart-panel-logo .fb-fastybird-smart {
+    fill: #fff !important;
+}
+
+html:has(.landing-page) .fb-smart-panel-logo .fb-fastybird-panel {
+    fill: #fff !important;
+}
+
+html:has(.landing-page) .fb-logo .fb-bird {
+    filter: drop-shadow(2px 2px 6px #a91b0c);
+}
+
+html:has(.landing-page) .fb-logo .fb-fastybird-fasty {
+    fill: #fff !important;
+}
+
+html:has(.landing-page) .fb-logo .fb-fastybird-bird {
+    fill: #fff !important;
+}
+
+/* Force Nextra search box dark on landing page */
+html:has(.landing-page) .nextra-search input {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+html:has(.landing-page) .nextra-search input::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+html:has(.landing-page) .nextra-search input + kbd,
+html:has(.landing-page) .nextra-search span[class*="bg-nextra-bg"] {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Hide theme switcher on landing page */
+html:has(.landing-page) div[class*="bg-gray-100"][class*="bg-neutral-900"] button[aria-haspopup="listbox"] {
+    display: none !important;
+}
+
+/* Hero floating chips */
+.hero-float {
+    animation: hero-chip-float 4s ease-in-out infinite;
+}
+
+.hero-float-delayed {
+    animation: hero-chip-float 4s 2s ease-in-out infinite;
+}
+
+@keyframes hero-chip-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+

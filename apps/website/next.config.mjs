@@ -12,6 +12,9 @@ const withNextra = nextra({
 const nextraConfig = withNextra({
   reactStrictMode: true,
   output: "export",
+  images: {
+    unoptimized: true,
+  },
 });
 
 if (nextraConfig.experimental?.turbo) {
