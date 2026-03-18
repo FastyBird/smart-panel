@@ -77,6 +77,10 @@ class PeriodicRefreshService {
 
 	/// Run one refresh cycle: call each registered callback sequentially
 	/// with a stagger delay, skipping when disconnected.
+	///
+	/// A snapshot of [_entries] is taken at the start so that a concurrent
+	/// [dispose] (which clears the list) cannot cause a
+	/// [ConcurrentModificationError] while we are suspended on an `await`.
 	Future<void> _runRefreshCycle() async {
 		if (_refreshInProgress || _disposed) return;
 		if (!_socketService.isConnected) return;
@@ -87,7 +91,10 @@ class PeriodicRefreshService {
 			debugPrint('[PERIODIC REFRESH] Starting refresh cycle');
 		}
 
-		for (final entry in _entries) {
+		// Snapshot so dispose() can safely clear _entries mid-cycle.
+		final snapshot = List<_RefreshEntry>.of(_entries);
+
+		for (final entry in snapshot) {
 			if (_disposed || !_socketService.isConnected) break;
 
 			try {
