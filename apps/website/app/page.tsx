@@ -653,7 +653,7 @@ export default function LandingPage() {
 								<Icon path={mdiGithub} size={0.9} className="mr-2" />
 								Star on GitHub
 							</Button>
-							<Button variant={"outline"} href={"https://discord.gg/H7pHN3hbqq"} size={"lg"}>
+							<Button variant={"outline"} href={"https://discord.gg/HPRJ2GzK"} size={"lg"}>
 								<Icon path={mdiForum} size={0.9} className="mr-2" />
 								Discord
 							</Button>
