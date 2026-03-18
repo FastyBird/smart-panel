@@ -122,29 +122,6 @@ code.text-\[\.9em\] {
         radial-gradient(1px 1px at 90% 22%, rgba(255,255,255,.4) 0%, transparent 100%);
 }
 
-.hero-rain {
-    background-image: repeating-linear-gradient(
-        175deg,
-        transparent 0px, transparent 14px,
-        rgba(160,210,255,.3) 14px, rgba(160,210,255,.3) 15px
-    );
-    background-size: 18px 60px;
-    animation: hero-rain 1.4s linear infinite;
-}
-
-@keyframes hero-rain {
-    from { transform: translateY(-60px); }
-    to { transform: translateY(60px); }
-}
-
-.hero-pulse {
-    animation: hero-pulse 2s ease infinite;
-}
-
-@keyframes hero-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.7); }
-}
 
 @keyframes hero-fade-up {
     from { opacity: 0; transform: translateY(20px); }
@@ -293,24 +270,3 @@ html:has(.landing-page) div[class*="bg-gray-100"][class*="bg-neutral-900"] butto
     50% { transform: translateY(-6px); }
 }
 
-/* Phone mockup rain animation */
-.phone-mockup-rain {
-    background: repeating-linear-gradient(
-        115deg,
-        transparent,
-        transparent 3px,
-        rgba(174, 194, 224, 0.25) 3px,
-        rgba(174, 194, 224, 0.25) 4px
-    );
-    background-size: 100% 100%;
-    animation: phone-mockup-rain-fall 0.8s linear infinite;
-}
-
-@keyframes phone-mockup-rain-fall {
-    0% {
-        background-position: 0 0;
-    }
-    100% {
-        background-position: -10px 40px;
-    }
-}

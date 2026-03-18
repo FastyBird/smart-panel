@@ -13,7 +13,6 @@ import {
 	mdiRaspberryPi,
 	mdiApi,
 	mdiPuzzleOutline,
-	mdiZigbee,
 	mdiChatProcessingOutline,
 	mdiMagnify,
 	mdiHeadSnowflakeOutline,
