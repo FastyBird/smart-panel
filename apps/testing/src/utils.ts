@@ -111,8 +111,11 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 			if (testResults.length === 0) continue;
 			const hasPass = testResults.some(([, r]) => r.status === 'pass');
 			if (!hasPass) {
-				const allSkipped = testResults.every(([, r]) => r.status === 'skip' || r.status === 'pending');
-				if (!allSkipped) {
+				const allSkipped = testResults.every(([, r]) => r.status === 'skip');
+				const allPending = testResults.every(([, r]) => r.status === 'pending');
+				if (allPending) {
+					reasons.push(`${test.id} (${test.name}) not yet tested on any config`);
+				} else if (!allSkipped) {
 					reasons.push(`${test.id} (${test.name}) failed on all tested configs`);
 				}
 			}

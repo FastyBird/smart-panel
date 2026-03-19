@@ -131,7 +131,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 						)}
 					</h2>
 					{blockers.length === 0 ? (
-						<p className="text-xs text-panel-dim">No P0 or P1 failures.</p>
+						<p className="text-xs text-panel-dim">No smoke, P0, or P1 failures.</p>
 					) : (
 						<div className="space-y-2">
 							{blockers.map(([key, result]) => {
