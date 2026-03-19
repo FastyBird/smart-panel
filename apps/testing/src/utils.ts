@@ -70,11 +70,15 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 			return testId.startsWith(phaseId + '.');
 		});
 
-	// Smoke: all must pass (blocker if any fail)
+	// Smoke: all must pass
 	const smokeResults = getPhaseResults('smoke');
 	const smokeFailures = smokeResults.filter(([, r]) => r.status === 'fail');
 	if (smokeFailures.length > 0) {
 		reasons.push(`${smokeFailures.length} smoke test(s) failed — must all pass before Phase 2`);
+	}
+	const smokePending = smokeResults.filter(([, r]) => r.status === 'pending');
+	if (smokePending.length > 0) {
+		reasons.push(`${smokePending.length} smoke test(s) still pending`);
 	}
 
 	// P0: all must pass on all configs
@@ -93,6 +97,10 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 	const p1Failures = p1Results.filter(([, r]) => r.status === 'fail');
 	if (p1Failures.length > 0) {
 		reasons.push(`${p1Failures.length} P1 visual test(s) failed`);
+	}
+	const p1Pending = p1Results.filter(([, r]) => r.status === 'pending');
+	if (p1Pending.length > 0) {
+		reasons.push(`${p1Pending.length} P1 visual test(s) still pending`);
 	}
 
 	// P2: must pass on at least one config (except p2.10 which passes on any)
