@@ -125,7 +125,11 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 
 	// P3: no blocker (fail on soak or memory)
 	const p3Results = getPhaseResults('p3');
-	const p3Blockers = p3Results.filter(([k, r]) => r.status === 'fail' && (k.includes('p3.3') || k.includes('p3.9')));
+	const p3BlockerIds = new Set(['p3.3', 'p3.9']);
+	const p3Blockers = p3Results.filter(([k, r]) => {
+		const testId = k.split('::')[1];
+		return r.status === 'fail' && p3BlockerIds.has(testId);
+	});
 	if (p3Blockers.length > 0) {
 		reasons.push(`P3 blocker: memory leak or soak test failure`);
 	}

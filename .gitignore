@@ -46,7 +46,7 @@ logs/smart-panel-*
 .pnpm-store/
 
 # Build outputs
-**/dist/
+apps/testing/dist/
 **/tsconfig.tsbuildinfo
 
 # Superpowers brainstorm sessions
