@@ -235,16 +235,19 @@ describe('Property Timeseries (e2e)', () => {
 
 			const from = '2025-06-01T00:00:00Z';
 			const to = '2025-06-01T12:00:00Z';
+			const fromMs = new Date(from).getTime().toString();
+			const toMs = new Date(to).getTime().toString();
 
 			await authGet(timeseriesUrl()).query({ from, to }).expect(200);
 
-			expect(influxDbMock.query).toHaveBeenCalledTimes(1);
+			expect(influxDbMock.query).toHaveBeenCalled();
 
-			const query = influxDbMock.query.mock.calls[0][0] as string;
+			// Find the timeseries query by matching both time boundaries
+			// (entity subscriber queries won't contain these timestamps)
+			const calls = influxDbMock.query.mock.calls;
+			const query = calls.map((c) => c[0] as string).find((q) => q.includes(fromMs) && q.includes(toMs));
 
-			// Verify the query contains the correct time boundaries
-			expect(query).toContain(new Date(from).getTime().toString());
-			expect(query).toContain(new Date(to).getTime().toString());
+			expect(query).toBeDefined();
 		});
 
 		it('should support bucket size downsampling', async () => {

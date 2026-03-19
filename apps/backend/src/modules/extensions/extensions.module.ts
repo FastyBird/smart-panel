@@ -14,6 +14,7 @@ import {
 	StartServiceCommand,
 	StopServiceCommand,
 } from './commands/services.command';
+import { ActionsController } from './controllers/actions.controller';
 import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
 import { ServicesController } from './controllers/services.controller';
@@ -26,6 +27,7 @@ import {
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
+import { ExtensionActionRegistryService } from './services/extension-action-registry.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PluginServiceManagerService } from './services/plugin-service-manager.service';
@@ -38,10 +40,11 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 @Global()
 @Module({
 	imports: [NestConfigModule, StatsModule],
-	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController],
+	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController, ActionsController],
 	providers: [
 		ModuleResetService,
 		PluginServiceManagerService,
+		ExtensionActionRegistryService,
 		ExtensionsStatsProvider,
 		// CLI commands
 		ListServicesCommand,
@@ -49,7 +52,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 		StopServiceCommand,
 		RestartServiceCommand,
 	],
-	exports: [PluginServiceManagerService],
+	exports: [PluginServiceManagerService, ExtensionActionRegistryService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(
