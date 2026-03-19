@@ -137,7 +137,7 @@ export class ExtensionActionRegistryService {
 			throw new BadRequestException(`Action '${actionId}' has no execute handler`);
 		}
 
-		this.validateParams(action, params);
+		await this.validateParams(action, params);
 
 		this.logger.log(`Executing action '${actionId}' for extension '${extensionType}'`);
 
@@ -162,8 +162,9 @@ export class ExtensionActionRegistryService {
 	/**
 	 * Validate params against the action's declared parameter definitions.
 	 * Fills in defaults for missing optional parameters.
+	 * Resolves dynamic options for SELECT/MULTI_SELECT before validating allowed values.
 	 */
-	private validateParams(action: IExtensionAction, params: Record<string, unknown>): void {
+	private async validateParams(action: IExtensionAction, params: Record<string, unknown>): Promise<void> {
 		if (!action.parameters || action.parameters.length === 0) {
 			return;
 		}
@@ -188,7 +189,7 @@ export class ExtensionActionRegistryService {
 			}
 
 			this.validateParamType(param, value, errors);
-			this.validateParamConstraints(param, value, errors);
+			await this.validateParamConstraints(param, value, errors);
 		}
 
 		if (errors.length > 0) {
@@ -231,8 +232,9 @@ export class ExtensionActionRegistryService {
 
 	/**
 	 * Validate parameter constraints (min/max, pattern, minLength/maxLength, allowed options).
+	 * Resolves dynamic options for SELECT/MULTI_SELECT parameters.
 	 */
-	private validateParamConstraints(param: IActionParameter, value: unknown, errors: string[]): void {
+	private async validateParamConstraints(param: IActionParameter, value: unknown, errors: string[]): Promise<void> {
 		if (param.validation) {
 			const v = param.validation;
 
@@ -267,21 +269,36 @@ export class ExtensionActionRegistryService {
 			}
 		}
 
-		// Validate select values against declared options (static only — dynamic options validated client-side)
-		if (param.type === ActionParameterType.SELECT && param.options) {
-			const allowedValues = param.options.map((o) => o.value);
+		// Resolve allowed options: prefer dynamic resolveOptions, fall back to static options
+		const isSelectType = param.type === ActionParameterType.SELECT || param.type === ActionParameterType.MULTI_SELECT;
 
-			if (!allowedValues.includes(value as string | number | boolean)) {
-				errors.push(`Parameter '${param.name}' must be one of: ${allowedValues.join(', ')}`);
+		if (isSelectType && (param.options || param.resolveOptions)) {
+			let allowedOptions = param.options;
+
+			if (param.resolveOptions) {
+				try {
+					allowedOptions = await param.resolveOptions();
+				} catch {
+					// If dynamic resolution fails, skip option validation rather than blocking execution
+					this.logger.warn(`Failed to resolve options for parameter '${param.name}' during validation, skipping`);
+
+					return;
+				}
 			}
-		}
 
-		if (param.type === ActionParameterType.MULTI_SELECT && param.options && Array.isArray(value)) {
-			const allowedValues = param.options.map((o) => o.value);
+			if (allowedOptions && allowedOptions.length > 0) {
+				const allowedValues = allowedOptions.map((o) => o.value);
 
-			for (const item of value) {
-				if (!allowedValues.includes(item as string | number | boolean)) {
-					errors.push(`Parameter '${param.name}' contains invalid value: ${String(item)}`);
+				if (param.type === ActionParameterType.SELECT) {
+					if (!allowedValues.includes(value as string | number | boolean)) {
+						errors.push(`Parameter '${param.name}' must be one of: ${allowedValues.join(', ')}`);
+					}
+				} else if (Array.isArray(value)) {
+					for (const item of value) {
+						if (!allowedValues.includes(item as string | number | boolean)) {
+							errors.push(`Parameter '${param.name}' contains invalid value: ${String(item)}`);
+						}
+					}
 				}
 			}
 		}

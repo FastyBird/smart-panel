@@ -206,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -231,7 +231,7 @@ import {
 import { Icon } from '@iconify/vue';
 
 import type { IActionResult, IExtensionActionDescriptor } from '../composables/useActions';
-import { useActions } from '../composables/useActions';
+import { useActionsInjection } from '../composables/useActions';
 
 defineOptions({
 	name: 'ExtensionActions',
@@ -242,7 +242,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { actions, isLoading, executingActions, fetchActions, executeAction } = useActions();
+const { actions, isLoading, executingActions, executeAction } = useActionsInjection();
 
 // Per-action form models
 const formModels = reactive<Record<string, Record<string, string | number | boolean | undefined>>>({});
@@ -336,18 +336,8 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 	actionResults[action.id] = result;
 };
 
-watch(
-	() => props.extensionType,
-	() => {
-		fetchActions(props.extensionType).then(() => initFormDefaults());
-	},
-);
-
+// Initialize form defaults when actions change (parent manages fetching via shared useActions instance)
 watch(actions, () => {
 	initFormDefaults();
-});
-
-onMounted(() => {
-	fetchActions(props.extensionType).then(() => initFormDefaults());
-});
+}, { immediate: true });
 </script>

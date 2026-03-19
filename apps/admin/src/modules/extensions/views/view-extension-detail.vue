@@ -513,7 +513,7 @@ import { usePlugins } from '../../config/composables/usePlugins';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template as <extension-actions>
 import { ExtensionActions, ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
-import { useActions } from '../composables/useActions';
+import { useActionsProvider } from '../composables/useActions';
 import { useExtension } from '../composables/useExtension';
 import { ExtensionKind, RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -563,7 +563,7 @@ watch(
 const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
-const { actions: extensionActions, fetchActions } = useActions();
+const { actions: extensionActions, fetchActions } = useActionsProvider();
 
 const hasActions = computed<boolean>(() => extensionActions.value.length > 0);
 

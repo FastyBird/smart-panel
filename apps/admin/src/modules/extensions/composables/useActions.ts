@@ -1,4 +1,4 @@
-import { type Ref, ref } from 'vue';
+import { type InjectionKey, type Ref, inject, provide, ref } from 'vue';
 
 import { useBackend } from '../../../common';
 
@@ -147,4 +147,26 @@ export const useActions = (): IUseActions => {
 		fetchActions,
 		executeAction,
 	};
+};
+
+const ACTIONS_KEY: InjectionKey<IUseActions> = Symbol('useActions');
+
+/**
+ * Create and provide a useActions instance for child components to inject.
+ */
+export const useActionsProvider = (): IUseActions => {
+	const instance = useActions();
+	provide(ACTIONS_KEY, instance);
+
+	return instance;
+};
+
+/**
+ * Inject the useActions instance provided by a parent component.
+ * Falls back to creating a new instance if no parent provided one.
+ */
+export const useActionsInjection = (): IUseActions => {
+	const injected = inject(ACTIONS_KEY, null);
+
+	return injected ?? useActions();
 };
