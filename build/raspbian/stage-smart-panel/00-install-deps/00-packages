@@ -1,6 +1,7 @@
 git
 curl
 wget
+openssh-server
 avahi-daemon
 libnss-mdns
 alsa-utils

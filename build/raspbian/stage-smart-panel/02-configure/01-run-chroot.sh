@@ -24,8 +24,11 @@ touch "${DATA_DIR}/.first-boot"
 systemctl enable smart-panel.service
 systemctl enable smart-panel-firstboot.service
 
-# Enable SSH — sshswitch.service checks for this flag on boot
+# Enable SSH
 touch /boot/firmware/ssh
+systemctl enable ssh.service
+# Generate host keys (pi-gen removes them for security, each Pi needs unique keys)
+ssh-keygen -A
 
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
