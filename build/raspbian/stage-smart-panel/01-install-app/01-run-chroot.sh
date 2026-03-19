@@ -43,9 +43,12 @@ fi
 cd "${APP_INSTALL_DIR}"
 pnpm install --prod --ignore-scripts
 
-# Rebuild native modules for ARM
-pnpm rebuild sqlite3 || true
-pnpm rebuild bcrypt || true
+# Rebuild native modules for ARM64 (install compiled from source since
+# prebuild binaries may not exist for this Node.js version)
+npm install -g node-gyp
+cd "${APP_INSTALL_DIR}/node_modules/.pnpm/sqlite3@*/node_modules/sqlite3" && npm install --build-from-source 2>/dev/null || true
+cd "${APP_INSTALL_DIR}/node_modules/.pnpm/bcrypt@*/node_modules/bcrypt" && npm install --build-from-source 2>/dev/null || true
+cd "${APP_INSTALL_DIR}"
 
 # Set ownership
 chown -R smart-panel:smart-panel "${APP_INSTALL_DIR}"

@@ -20,6 +20,19 @@ log() {
 }
 
 # ──────────────────────────────────────────────────────────────
+# 0. Expand root partition to fill SD card
+# ──────────────────────────────────────────────────────────────
+ROOT_DEV=$(findmnt -n -o SOURCE /)
+ROOT_DISK=$(lsblk -no PKNAME "${ROOT_DEV}" | head -1)
+if [ -n "${ROOT_DISK}" ]; then
+	ROOT_PART_NUM=$(echo "${ROOT_DEV}" | grep -o '[0-9]*$')
+	parted -s "/dev/${ROOT_DISK}" resizepart "${ROOT_PART_NUM}" 100% 2>/dev/null && \
+	resize2fs "${ROOT_DEV}" 2>/dev/null && \
+	log "Root partition expanded to fill disk" || \
+	log "WARNING: Root partition expansion failed — run 'sudo raspi-config --expand-rootfs' manually"
+fi
+
+# ──────────────────────────────────────────────────────────────
 # 1. Generate JWT secret
 # ──────────────────────────────────────────────────────────────
 if ! grep -q "^FB_TOKEN_SECRET=" "${ENV_FILE}" 2>/dev/null; then
