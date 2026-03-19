@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Auto-generated from task audit on 2026-03-13. Reflects actual codebase state.
+> Last updated: 2026-03-19. Reflects actual codebase state.
 
 ---
 
@@ -198,7 +198,46 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 9. Technical Debt
+## 9. Extension Actions & Interactive Sessions (Epic)
+
+> [EPIC-EXTENSION-ACTIONS](epics/EPIC-EXTENSION-ACTIONS.md) — Status: :construction: In Progress
+
+Extensions expose callable actions and interactive terminal sessions from the admin UI. Inspired by HA add-on control panels.
+
+### Phase 1: Immediate Actions (Done)
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [FEATURE-EXTENSION-ACTIONS-MVP](features/FEATURE-EXTENSION-ACTIONS-MVP.md) | backend, admin | :white_check_mark: Done |
+
+### Phase 2: Interactive Session Infrastructure
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 2 | [FEATURE-INTERACTIVE-SESSION-PROTOCOL](features/FEATURE-INTERACTIVE-SESSION-PROTOCOL.md) | backend | :clipboard: Planned |
+| 3 | [FEATURE-INTERACTIVE-SESSION-ADMIN-UI](features/FEATURE-INTERACTIVE-SESSION-ADMIN-UI.md) | admin | :clipboard: Planned |
+
+### Phase 3: Interactive Session Consumers
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 4 | [FEATURE-INTERACTIVE-SIMULATOR-ACTIONS](features/FEATURE-INTERACTIVE-SIMULATOR-ACTIONS.md) | backend | :clipboard: Planned |
+| 5 | [FEATURE-INTERACTIVE-SYSTEM-UPDATES](features/FEATURE-INTERACTIVE-SYSTEM-UPDATES.md) | backend, admin | :clipboard: Planned |
+
+### Phase 4: Hardening & Marketplace
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 6 | [TECH-EXTENSION-ACTION-PERMISSIONS](technical/TECH-EXTENSION-ACTION-PERMISSIONS.md) | backend | :clipboard: Planned |
+| 7 | [TECH-EXTENSION-ACTION-AUDIT-LOG](technical/TECH-EXTENSION-ACTION-AUDIT-LOG.md) | backend, admin | :clipboard: Planned |
+| 8 | [FEATURE-EXTENSION-MARKETPLACE-SESSIONS](features/FEATURE-EXTENSION-MARKETPLACE-SESSIONS.md) | backend, admin | :clipboard: Planned |
+
+**Done:** Immediate actions with flat forms, dynamic parameters, simulator plugin with 6 actions, admin UI with Actions tab.
+**Next up:** Interactive session WebSocket protocol, then terminal UI component.
+
+---
+
+## 10. Technical Debt
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -210,7 +249,7 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 10. Other Planned Features
+## 11. Other Planned Features
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -222,7 +261,7 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 11. Plans
+## 12. Plans
 
 | # | Plan | Status |
 |---|------|--------|
@@ -245,7 +284,8 @@ All onboarding device setup tasks complete.
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
 | Plugins | 1 | 0 | 1 | 2 |
+| Extension Actions | 1 | 0 | 7 | 8 |
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **46** | **0** | **20** | **66** |
+| **Total** | **47** | **0** | **27** | **74** |
