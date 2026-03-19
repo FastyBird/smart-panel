@@ -211,7 +211,7 @@ export class SimulatorActionsService implements OnModuleInit {
 			execute: async (params) => {
 				const category = params.category as DeviceCategory;
 				const name = (params.name as string) || undefined;
-				const count = (params.count as number) || 1;
+				const count = (params.count as number) ?? 1;
 				const autoSimulate = params.auto_simulate as boolean | undefined;
 
 				const createdDevices: string[] = [];
@@ -289,7 +289,7 @@ export class SimulatorActionsService implements OnModuleInit {
 				},
 			],
 			execute: (params): Promise<IActionResult> => {
-				const interval = (params.interval as number) || 5000;
+				const interval = (params.interval as number) ?? 5000;
 
 				this.simulationService.configure({ simulationInterval: interval });
 				this.simulationService.startAutoSimulation();
