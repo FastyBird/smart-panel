@@ -3,7 +3,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
-import type { IActionResult, IExtensionAction } from './extension-action.interface';
+import type { IActionParameter, IActionResult, IExtensionAction } from './extension-action.interface';
+import { ActionParameterType } from './extension-action.interface';
 
 /**
  * Serialized action descriptor with resolved options (safe for API responses).
@@ -136,6 +137,8 @@ export class ExtensionActionRegistryService {
 			throw new BadRequestException(`Action '${actionId}' has no execute handler`);
 		}
 
+		this.validateParams(action, params);
+
 		this.logger.log(`Executing action '${actionId}' for extension '${extensionType}'`);
 
 		try {
@@ -153,6 +156,128 @@ export class ExtensionActionRegistryService {
 				success: false,
 				message: `Action failed: ${message}`,
 			};
+		}
+	}
+
+	/**
+	 * Validate params against the action's declared parameter definitions.
+	 * Fills in defaults for missing optional parameters.
+	 */
+	private validateParams(action: IExtensionAction, params: Record<string, unknown>): void {
+		if (!action.parameters || action.parameters.length === 0) {
+			return;
+		}
+
+		const errors: string[] = [];
+
+		for (const param of action.parameters) {
+			const value = params[param.name];
+
+			// Apply default for missing optional params
+			if (value === undefined || value === null) {
+				if (param.required) {
+					errors.push(`Parameter '${param.name}' is required`);
+					continue;
+				}
+
+				if (param.default !== undefined) {
+					params[param.name] = param.default;
+				}
+
+				continue;
+			}
+
+			this.validateParamType(param, value, errors);
+			this.validateParamConstraints(param, value, errors);
+		}
+
+		if (errors.length > 0) {
+			throw new BadRequestException(`Invalid action parameters: ${errors.join('; ')}`);
+		}
+	}
+
+	/**
+	 * Validate that a parameter value matches its declared type.
+	 */
+	private validateParamType(param: IActionParameter, value: unknown, errors: string[]): void {
+		switch (param.type) {
+			case ActionParameterType.STRING:
+				if (typeof value !== 'string') {
+					errors.push(`Parameter '${param.name}' must be a string`);
+				}
+				break;
+			case ActionParameterType.NUMBER:
+				if (typeof value !== 'number' || Number.isNaN(value)) {
+					errors.push(`Parameter '${param.name}' must be a number`);
+				}
+				break;
+			case ActionParameterType.BOOLEAN:
+				if (typeof value !== 'boolean') {
+					errors.push(`Parameter '${param.name}' must be a boolean`);
+				}
+				break;
+			case ActionParameterType.SELECT:
+				if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+					errors.push(`Parameter '${param.name}' must be a string, number, or boolean`);
+				}
+				break;
+			case ActionParameterType.MULTI_SELECT:
+				if (!Array.isArray(value)) {
+					errors.push(`Parameter '${param.name}' must be an array`);
+				}
+				break;
+		}
+	}
+
+	/**
+	 * Validate parameter constraints (min/max, pattern, minLength/maxLength, allowed options).
+	 */
+	private validateParamConstraints(param: IActionParameter, value: unknown, errors: string[]): void {
+		if (param.validation) {
+			const v = param.validation;
+
+			if (typeof value === 'number') {
+				if (v.min !== undefined && value < v.min) {
+					errors.push(`Parameter '${param.name}' must be >= ${v.min}`);
+				}
+
+				if (v.max !== undefined && value > v.max) {
+					errors.push(`Parameter '${param.name}' must be <= ${v.max}`);
+				}
+			}
+
+			if (typeof value === 'string') {
+				if (v.minLength !== undefined && value.length < v.minLength) {
+					errors.push(`Parameter '${param.name}' must be at least ${v.minLength} characters`);
+				}
+
+				if (v.maxLength !== undefined && value.length > v.maxLength) {
+					errors.push(`Parameter '${param.name}' must be at most ${v.maxLength} characters`);
+				}
+
+				if (v.pattern !== undefined && !new RegExp(v.pattern).test(value)) {
+					errors.push(`Parameter '${param.name}' does not match pattern '${v.pattern}'`);
+				}
+			}
+		}
+
+		// Validate select values against declared options (static only — dynamic options validated client-side)
+		if (param.type === ActionParameterType.SELECT && param.options) {
+			const allowedValues = param.options.map((o) => o.value);
+
+			if (!allowedValues.includes(value as string | number | boolean)) {
+				errors.push(`Parameter '${param.name}' must be one of: ${allowedValues.join(', ')}`);
+			}
+		}
+
+		if (param.type === ActionParameterType.MULTI_SELECT && param.options && Array.isArray(value)) {
+			const allowedValues = param.options.map((o) => o.value);
+
+			for (const item of value) {
+				if (!allowedValues.includes(item as string | number | boolean)) {
+					errors.push(`Parameter '${param.name}' contains invalid value: ${String(item)}`);
+				}
+			}
 		}
 	}
 
