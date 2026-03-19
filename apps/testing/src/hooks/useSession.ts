@@ -1,0 +1,114 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { Orientation, Status, TestSession } from '../types';
+import { buildResultKey } from '../utils';
+
+const STORAGE_KEY = 'smart-panel-test-session';
+const DEBOUNCE_MS = 500;
+
+export function useSession() {
+	// Synchronous init from localStorage — avoids race condition with useEffect
+	const [session, setSession] = useState<TestSession | null>(() => {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		if (stored) {
+			try {
+				return JSON.parse(stored) as TestSession;
+			} catch {
+				localStorage.removeItem(STORAGE_KEY);
+				return null;
+			}
+		}
+		return null;
+	});
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Keep a ref to current session for the beforeunload handler
+	const sessionRef = useRef(session);
+	useEffect(() => {
+		sessionRef.current = session;
+	}, [session]);
+
+	// Debounced save
+	const save = useCallback((updated: TestSession) => {
+		setSession(updated);
+		if (timeoutRef.current) clearTimeout(timeoutRef.current);
+		timeoutRef.current = setTimeout(() => {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+		}, DEBOUNCE_MS);
+	}, []);
+
+	// Flush on unload to prevent data loss from debounce window
+	useEffect(() => {
+		const flush = () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+				const current = sessionRef.current;
+				if (current) {
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+				}
+			}
+		};
+		window.addEventListener('beforeunload', flush);
+		return () => window.removeEventListener('beforeunload', flush);
+	}, []);
+
+	const startSession = useCallback((newSession: TestSession) => {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+		setSession(newSession);
+	}, []);
+
+	const updateResult = useCallback(
+		(configId: string, testId: string, orientation: Orientation, status: Status) => {
+			if (!session) return;
+			const key = buildResultKey(configId, testId, orientation);
+			const updated: TestSession = {
+				...session,
+				results: {
+					...session.results,
+					[key]: {
+						status,
+						notes: session.results[key]?.notes ?? '',
+						updatedAt: new Date().toISOString(),
+					},
+				},
+			};
+			save(updated);
+		},
+		[session, save],
+	);
+
+	const updateNotes = useCallback(
+		(configId: string, testId: string, orientation: Orientation, notes: string) => {
+			if (!session) return;
+			const key = buildResultKey(configId, testId, orientation);
+			const existing = session.results[key] ?? {
+				status: 'pending' as const,
+				notes: '',
+				updatedAt: new Date().toISOString(),
+			};
+			const updated: TestSession = {
+				...session,
+				results: {
+					...session.results,
+					[key]: { ...existing, notes, updatedAt: new Date().toISOString() },
+				},
+			};
+			save(updated);
+		},
+		[session, save],
+	);
+
+	const resetSession = useCallback(() => {
+		localStorage.removeItem(STORAGE_KEY);
+		setSession(null);
+	}, []);
+
+	return {
+		session,
+		hasExistingSession: session !== null,
+		startSession,
+		updateResult,
+		updateNotes,
+		resetSession,
+	};
+}
