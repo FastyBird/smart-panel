@@ -574,6 +574,7 @@ const logsLive = ref<boolean>(false);
 const defaultTab = computed<string>(() => {
 	if (extension.value?.readme) return 'readme';
 	if (extension.value?.docs) return 'docs';
+	if (hasActions.value) return 'actions';
 	return 'logs';
 });
 
