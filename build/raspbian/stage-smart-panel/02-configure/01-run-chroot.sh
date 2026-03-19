@@ -24,6 +24,9 @@ touch "${DATA_DIR}/.first-boot"
 systemctl enable smart-panel.service
 systemctl enable smart-panel-firstboot.service
 
+# Enable SSH — sshswitch.service checks for this flag on boot
+touch /boot/firmware/ssh
+
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
 
