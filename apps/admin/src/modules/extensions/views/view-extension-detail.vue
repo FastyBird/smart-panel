@@ -476,10 +476,7 @@
 				<template #header>
 					<span class="font-semibold">{{ t('extensionsModule.actions.labels.tab') }}</span>
 				</template>
-				<extension-actions
-					:extension-type="extension.type"
-					@update:has-actions="hasActions = $event"
-				/>
+				<extension-actions :extension-type="extension.type" />
 			</el-card>
 
 			<!-- Logs card -->
