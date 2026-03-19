@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsDefined, IsNotEmptyObject, IsObject, IsOptional, ValidateNested } from 'class-validator';
+import { IsDefined, IsObject, IsOptional, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -25,7 +25,6 @@ export class ReqExecuteActionDto {
 	})
 	@Expose()
 	@IsDefined()
-	@IsNotEmptyObject()
 	@IsObject()
 	@ValidateNested()
 	@Type(() => ExecuteActionDataDto)

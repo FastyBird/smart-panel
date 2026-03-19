@@ -61,7 +61,7 @@ export interface IActionResult {
 export interface IUseActions {
 	actions: Ref<IExtensionActionDescriptor[]>;
 	isLoading: Ref<boolean>;
-	executingActions: Ref<Set<string>>;
+	executingActions: Ref<Map<string, number>>;
 	fetchActions: (extensionType: string) => Promise<void>;
 	executeAction: (extensionType: string, actionId: string, params?: Record<string, unknown>) => Promise<IActionResult>;
 }
@@ -77,7 +77,7 @@ export const useActions = (): IUseActions => {
 
 	const actions = ref<IExtensionActionDescriptor[]>([]);
 	const isLoading = ref<boolean>(false);
-	const executingActions = ref<Set<string>>(new Set());
+	const executingActions = ref<Map<string, number>>(new Map());
 
 	let fetchSequence = 0;
 
@@ -121,7 +121,8 @@ export const useActions = (): IUseActions => {
 		actionId: string,
 		params?: Record<string, unknown>,
 	): Promise<IActionResult> => {
-		executingActions.value.add(actionId);
+		const count = executingActions.value.get(actionId) ?? 0;
+		executingActions.value.set(actionId, count + 1);
 
 		try {
 			/* eslint-disable @typescript-eslint/no-explicit-any -- action endpoints not yet in generated OpenAPI types */
@@ -151,7 +152,13 @@ export const useActions = (): IUseActions => {
 				message: err instanceof Error ? err.message : 'Action execution failed',
 			};
 		} finally {
-			executingActions.value.delete(actionId);
+			const remaining = (executingActions.value.get(actionId) ?? 1) - 1;
+
+			if (remaining <= 0) {
+				executingActions.value.delete(actionId);
+			} else {
+				executingActions.value.set(actionId, remaining);
+			}
 		}
 	};
 
