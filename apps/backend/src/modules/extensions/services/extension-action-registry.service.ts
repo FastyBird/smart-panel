@@ -62,10 +62,6 @@ export class ExtensionActionRegistryService {
 
 		const extensionActions = this.actions.get(extensionType);
 
-		if (extensionActions === undefined) {
-			return;
-		}
-
 		if (extensionActions.has(action.id)) {
 			this.logger.warn(`Action '${action.id}' already registered for extension '${extensionType}', overwriting`);
 		}

@@ -292,7 +292,7 @@
 						</template>
 
 						<el-scrollbar class="h-full">
-							<extension-actions :extension-type="extension.type" />
+							<extension-actions :extension-type="props.type" />
 						</el-scrollbar>
 					</el-tab-pane>
 					<el-tab-pane
@@ -308,7 +308,7 @@
 
 						<extension-logs
 							v-model:live="logsLive"
-							:extension-type="extension.type"
+							:extension-type="props.type"
 						/>
 					</el-tab-pane>
 				</el-tabs>
@@ -476,7 +476,7 @@
 				<template #header>
 					<span class="font-semibold">{{ t('extensionsModule.actions.labels.tab') }}</span>
 				</template>
-				<extension-actions :extension-type="extension.type" />
+				<extension-actions :extension-type="props.type" />
 			</el-card>
 
 			<!-- Logs card -->
@@ -490,7 +490,7 @@
 				</template>
 				<extension-logs
 					v-model:live="logsLive"
-					:extension-type="extension.type"
+					:extension-type="props.type"
 				/>
 			</el-card>
 		</template>
