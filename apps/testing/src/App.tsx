@@ -78,19 +78,7 @@ export default function App() {
 		);
 	}
 
-	if (screen === 'setup') {
-		return (
-			<SetupWizard
-				testPlan={testPlan}
-				onStart={(newSession) => {
-					startSession(newSession);
-					setScreen('execution');
-				}}
-			/>
-		);
-	}
-
-	if (!session) {
+	if (screen === 'setup' || !session) {
 		return (
 			<SetupWizard
 				testPlan={testPlan}
