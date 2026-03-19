@@ -54,7 +54,7 @@
 											size="small"
 											type="danger"
 										>
-											{{ t('extensionsModule.labels.status') }}
+											{{ t('extensionsModule.actions.labels.dangerous') }}
 										</el-tag>
 									</div>
 

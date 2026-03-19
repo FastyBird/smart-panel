@@ -510,6 +510,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
 import { useModules } from '../../config/composables/useModules';
 import { usePlugins } from '../../config/composables/usePlugins';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template as <extension-actions>
 import { ExtensionActions, ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
 import { useActions } from '../composables/useActions';
@@ -547,10 +548,14 @@ watch(
 // Re-fetch when navigating between extension detail pages (Vue Router reuses component)
 watch(
 	() => props.type,
-	(): void => {
+	(newType: string): void => {
 		fetchExtension().catch((error: unknown): void => {
 			const err = error as Error;
 			throw new ExtensionsException('Something went wrong', err);
+		});
+
+		fetchActions(newType).catch(() => {
+			// Actions are optional, silently ignore errors
 		});
 	}
 );

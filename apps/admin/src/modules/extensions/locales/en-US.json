@@ -179,6 +179,7 @@
 				"maintenance": "Maintenance"
 			},
 			"required": "Required",
+			"dangerous": "Dangerous",
 			"comingSoon": "Coming soon"
 		},
 		"buttons": {

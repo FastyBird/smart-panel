@@ -84,9 +84,11 @@ export const useActions = (): IUseActions => {
 		isLoading.value = true;
 
 		try {
+			/* eslint-disable @typescript-eslint/no-explicit-any -- action endpoints not yet in generated OpenAPI types */
 			const { data: responseData } = await (backend.client as any).GET(
 				`/modules/extensions/extensions/${extensionType}/actions` as any,
 			);
+			/* eslint-enable @typescript-eslint/no-explicit-any */
 
 			if (responseData?.data) {
 				actions.value = responseData.data as IExtensionActionDescriptor[];
@@ -108,6 +110,7 @@ export const useActions = (): IUseActions => {
 		executingActions.value.add(actionId);
 
 		try {
+			/* eslint-disable @typescript-eslint/no-explicit-any -- action endpoints not yet in generated OpenAPI types */
 			const { data: responseData, error } = await (backend.client as any).POST(
 				`/modules/extensions/extensions/${extensionType}/actions/${actionId}` as any,
 				{
@@ -118,6 +121,7 @@ export const useActions = (): IUseActions => {
 					},
 				},
 			);
+			/* eslint-enable @typescript-eslint/no-explicit-any */
 
 			if (responseData?.data) {
 				return responseData.data as IActionResult;

@@ -4,12 +4,13 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { ExtensionActionRegistryService } from '../../../modules/extensions/services/extension-action-registry.service';
 import {
 	ActionCategory,
 	ActionParameterType,
+	type IActionResult,
 	IExtensionAction,
 } from '../../../modules/extensions/services/extension-action.interface';
-import { ExtensionActionRegistryService } from '../../../modules/extensions/services/extension-action-registry.service';
 import { GenerateDeviceDto } from '../dto/generate-device.dto';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from '../simulator.constants';
@@ -82,13 +83,15 @@ export class SimulatorActionsService implements OnModuleInit {
 					description: 'Select a scenario to load',
 					type: ActionParameterType.SELECT,
 					required: true,
-					resolveOptions: async () => {
+					resolveOptions: () => {
 						const scenarios = this.scenarioLoader.getAvailableScenarios();
 
-						return scenarios.map((s) => ({
-							label: `${s.name} (${s.source})`,
-							value: s.name,
-						}));
+						return Promise.resolve(
+							scenarios.map((s) => ({
+								label: `${s.name} (${s.source})`,
+								value: s.name,
+							})),
+						);
 					},
 				},
 				{
@@ -214,11 +217,7 @@ export class SimulatorActionsService implements OnModuleInit {
 				const createdDevices: string[] = [];
 
 				for (let i = 0; i < count; i++) {
-					const deviceName = name
-						? count > 1
-							? `${name} ${i + 1}`
-							: name
-						: `Simulated ${category} ${Date.now()}`;
+					const deviceName = name ? (count > 1 ? `${name} ${i + 1}` : name) : `Simulated ${category} ${Date.now()}`;
 
 					const dto = new GenerateDeviceDto();
 					dto.category = category;
@@ -289,16 +288,16 @@ export class SimulatorActionsService implements OnModuleInit {
 					validation: { min: 1000, max: 300000 },
 				},
 			],
-			execute: async (params) => {
+			execute: (params): Promise<IActionResult> => {
 				const interval = (params.interval as number) || 5000;
 
 				this.simulationService.configure({ simulationInterval: interval });
 				this.simulationService.startAutoSimulation();
 
-				return {
+				return Promise.resolve({
 					success: true,
 					message: `Auto-simulation started with ${interval}ms interval`,
-				};
+				});
 			},
 		};
 	}
@@ -311,13 +310,13 @@ export class SimulatorActionsService implements OnModuleInit {
 			icon: 'mdi:stop',
 			category: ActionCategory.SIMULATION,
 			mode: 'immediate',
-			execute: async () => {
+			execute: (): Promise<IActionResult> => {
 				this.simulationService.stopAutoSimulation();
 
-				return {
+				return Promise.resolve({
 					success: true,
 					message: 'Auto-simulation stopped',
-				};
+				});
 			},
 		};
 	}
