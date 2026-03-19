@@ -79,7 +79,11 @@ export const useActions = (): IUseActions => {
 	const isLoading = ref<boolean>(false);
 	const executingActions = ref<Set<string>>(new Set());
 
+	let fetchSequence = 0;
+
 	const fetchActions = async (extensionType: string): Promise<void> => {
+		const thisSequence = ++fetchSequence;
+
 		isLoading.value = true;
 
 		try {
@@ -89,15 +93,26 @@ export const useActions = (): IUseActions => {
 			);
 			/* eslint-enable @typescript-eslint/no-explicit-any */
 
+			// Discard stale responses from earlier navigations
+			if (thisSequence !== fetchSequence) {
+				return;
+			}
+
 			if (responseData?.data) {
 				actions.value = responseData.data as IExtensionActionDescriptor[];
 			} else {
 				actions.value = [];
 			}
 		} catch {
+			if (thisSequence !== fetchSequence) {
+				return;
+			}
+
 			actions.value = [];
 		} finally {
-			isLoading.value = false;
+			if (thisSequence === fetchSequence) {
+				isLoading.value = false;
+			}
 		}
 	};
 

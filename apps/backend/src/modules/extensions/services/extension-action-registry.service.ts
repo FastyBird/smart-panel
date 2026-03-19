@@ -258,12 +258,21 @@ export class ExtensionActionRegistryService {
 				}
 
 				if (v.pattern !== undefined) {
-					try {
-						if (!new RegExp(v.pattern).test(value)) {
-							errors.push(`Parameter '${param.name}' does not match pattern '${v.pattern}'`);
+					// Limit tested string length to prevent ReDoS from catastrophic backtracking
+					const MAX_PATTERN_TEST_LENGTH = 1000;
+
+					if (value.length > MAX_PATTERN_TEST_LENGTH) {
+						errors.push(
+							`Parameter '${param.name}' is too long for pattern validation (max ${MAX_PATTERN_TEST_LENGTH} chars)`,
+						);
+					} else {
+						try {
+							if (!new RegExp(v.pattern).test(value)) {
+								errors.push(`Parameter '${param.name}' does not match pattern '${v.pattern}'`);
+							}
+						} catch {
+							errors.push(`Parameter '${param.name}' has invalid validation pattern '${v.pattern}'`);
 						}
-					} catch {
-						errors.push(`Parameter '${param.name}' has invalid validation pattern '${v.pattern}'`);
 					}
 				}
 			}
