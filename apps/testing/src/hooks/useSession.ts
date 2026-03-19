@@ -60,43 +60,45 @@ export function useSession() {
 
 	const updateResult = useCallback(
 		(configId: string, testId: string, orientation: Orientation, status: Status) => {
-			if (!session) return;
+			const current = sessionRef.current;
+			if (!current) return;
 			const key = buildResultKey(configId, testId, orientation);
 			const updated: TestSession = {
-				...session,
+				...current,
 				results: {
-					...session.results,
+					...current.results,
 					[key]: {
 						status,
-						notes: session.results[key]?.notes ?? '',
+						notes: current.results[key]?.notes ?? '',
 						updatedAt: new Date().toISOString(),
 					},
 				},
 			};
 			save(updated);
 		},
-		[session, save],
+		[save],
 	);
 
 	const updateNotes = useCallback(
 		(configId: string, testId: string, orientation: Orientation, notes: string) => {
-			if (!session) return;
+			const current = sessionRef.current;
+			if (!current) return;
 			const key = buildResultKey(configId, testId, orientation);
-			const existing = session.results[key] ?? {
+			const existing = current.results[key] ?? {
 				status: 'pending' as const,
 				notes: '',
 				updatedAt: new Date().toISOString(),
 			};
 			const updated: TestSession = {
-				...session,
+				...current,
 				results: {
-					...session.results,
+					...current.results,
 					[key]: { ...existing, notes, updatedAt: new Date().toISOString() },
 				},
 			};
 			save(updated);
 		},
-		[session, save],
+		[save],
 	);
 
 	const resetSession = useCallback(() => {
