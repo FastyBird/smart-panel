@@ -112,6 +112,38 @@ jobs:
       - name: "Generate Coverage Report"
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
 
+  testing-analyze:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Testing app code analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ "24" ]
+        pnpm-version: [ "10.12.0" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v6"
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Run Code Linting"
+        run: "pnpm --filter @fastybird/smart-panel-testing lint:js"
+
+      - name: "Run Prettier Check"
+        run: "pnpm --filter @fastybird/smart-panel-testing pretty:check"
+
+      - name: "TS Code Check"
+        run: "pnpm --filter @fastybird/smart-panel-testing type-check"
+
   admin-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'

@@ -45,6 +45,13 @@ logs/smart-panel-*
 # pnpm store
 .pnpm-store/
 
+# Build outputs
+apps/testing/dist/
+**/tsconfig.tsbuildinfo
+
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Auto Claude data directory
 .auto-claude/
 .claude_settings.json

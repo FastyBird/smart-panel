@@ -1,0 +1,523 @@
+version: 1
+
+devices:
+  - id: rpi-5
+    name: Raspberry Pi 5
+    roles: [backend]
+    display: null
+
+  - id: rpi-zero-2-waveshare
+    name: RPi Zero 2W + Waveshare 7"
+    roles: [panel, all-in-one]
+    display:
+      resolution: "1024x600"
+      size: '7"'
+      ppi: 170
+
+  - id: android-8
+    name: Android 8" Display
+    roles: [panel]
+    display:
+      resolution: "1280x800"
+      size: '8"'
+      ppi: 189
+
+  - id: reterminal-cm4
+    name: Seeed reTerminal CM4 5"
+    roles: [panel, all-in-one]
+    display:
+      resolution: "1280x720"
+      size: '5"'
+      ppi: 294
+
+integrations:
+  - id: shelly
+    name: Shelly Devices
+
+  - id: zigbee2mqtt
+    name: Zigbee2MQTT
+
+  - id: wled
+    name: WLED
+
+  - id: home-assistant
+    name: Home Assistant
+
+  - id: openai
+    name: OpenAI
+
+  - id: elevenlabs
+    name: ElevenLabs
+
+  - id: anthropic
+    name: Anthropic (Claude)
+
+phases:
+  - id: smoke
+    name: Smoke — Quick boot and connect validation
+    tests:
+      - id: smoke.1
+        name: Device boots and app launches
+        criteria: App launches without crash; reaches splash or onboarding screen
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: smoke.2
+        name: Backend service starts
+        criteria: "`systemctl status smart-panel-backend` is active; health endpoint returns 200"
+        roles: [backend, all-in-one]
+        orientations: false
+
+      - id: smoke.3
+        name: mDNS discovery
+        criteria: Panel discovers backend via mDNS; backend appears in gateway list
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: smoke.4
+        name: Connect and reach dashboard
+        criteria: Selects backend, completes room selection, dashboard renders with tiles visible
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: smoke.5
+        name: Admin UI loads
+        criteria: Browser on LAN opens admin UI; login page renders correctly
+        roles: [backend, all-in-one]
+        orientations: false
+
+      - id: smoke.6
+        name: Health endpoint responds
+        criteria: "`GET /api/system/health` returns HTTP 200 with valid JSON"
+        roles: [backend, all-in-one]
+        orientations: false
+
+      - id: smoke.7
+        name: Touch input works
+        criteria: Tap on tiles and navigation responds correctly; no dead zones
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: smoke.8
+        name: Orientation switch
+        criteria: Rotate device — UI re-layouts without crash or stuck state
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: smoke.9
+        name: Memory baseline (all-in-one)
+        criteria: "`free -m` — swap usage < 100MB; no active swap thrashing in `vmstat 1 5`"
+        roles: [all-in-one]
+        orientations: false
+
+  - id: p0
+    name: P0 — Must Work
+    tests:
+      - id: p0.1
+        name: Cold boot to dashboard
+        criteria: App reaches dashboard within 60 seconds from launch (generous P0 gate; P3.1 has stricter targets)
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p0.2
+        name: Onboarding first-run flow
+        criteria: Discovery → backend select → room select completes without error
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.3
+        name: Auth token persists across restart
+        criteria: Display token issued and persists — app reconnects after reboot without re-pairing
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.4
+        name: WebSocket real-time connection
+        criteria: Connection indicator shows online after dashboard loads
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.5
+        name: Reconnect after backend restart
+        criteria: Kill backend, restart it — panel reconnects automatically, shows reconnecting state then recovers
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.6
+        name: Navigation — all views load
+        criteria: Bottom nav — all domain views, room views, and dashboard pages load; no blank screens
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.7
+        name: Crash test — rapid navigation
+        criteria: Navigate rapidly through all views — no unhandled exceptions, no freezes
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.8
+        name: Lock screen on inactivity
+        criteria: Inactivity timeout triggers lock screen; PIN unlock works
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.9
+        name: Screensaver on inactivity
+        criteria: Inactivity triggers screensaver; touch dismisses it
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p0.10
+        name: Settings persist — language change
+        criteria: Open settings, change language, save — setting persists across app restart
+        roles: [panel, all-in-one]
+        orientations: false
+
+  - id: p1
+    name: P1 — Visual Quality
+    tests:
+      - id: p1.1
+        name: Dashboard card grid layout
+        criteria: Cards fill screen properly, no overflow, no clipping in either orientation
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.2
+        name: All tile types render correctly
+        criteria: Device preview, scene, time, and weather tiles are readable with visible icons and correct proportions
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.3
+        name: Text scaling on tiles
+        criteria: Labels and values not truncated, not overlapping at all 3 resolutions
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.4
+        name: Device detail panel fits screen
+        criteria: Detail panel for each available device category — UI fits screen, sliders/controls accessible
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.5
+        name: High DPI display (reTerminal 294 PPI)
+        criteria: All UI elements have touch targets large enough; text is sharp and readable at 294 PPI
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.6
+        name: Low resolution display (Waveshare 1024x600)
+        criteria: Nothing cropped on dashboard and detail views; scroll works where needed
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.7
+        name: Light and dark theme on each display
+        criteria: Colors correct in both themes; contrast readable; no invisible text
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.8
+        name: Orientation switch while active
+        criteria: Rotate while on dashboard / device detail / settings — re-layout smooth, no state loss, no crash
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.9
+        name: Deck navigation system views
+        criteria: Room, Master, and Entry views layout appropriately for each resolution
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.10
+        name: Domain views render correctly
+        criteria: Lights, Climate, Media, Shading, Sensors, Energy, Security, and Weather domain views all render correctly
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.11
+        name: CardSlider horizontal scroll
+        criteria: Smooth scrolling; cards fully visible; edge snapping works
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.12
+        name: Overlays render correctly
+        criteria: Connection lost overlay, intent overlay, and security overlay render centered, are dismissable, and don't break layout
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.13
+        name: Modals and dialogs
+        criteria: Settings dialogs, scene trigger confirm, and PIN entry fit screen with inputs accessible
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.14
+        name: Buddy chat UI
+        criteria: Chat UI renders on each display; keyboard accessible; no overflow
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.15
+        name: Multi-room navigation
+        criteria: Switch between 2+ rooms via deck navigation — room views load with correct devices, no stale data
+        roles: [panel, all-in-one]
+        orientations: true
+
+      - id: p1.16
+        name: Non-English locale
+        criteria: Switch to a non-English language, check all views — no text overflow, truncation, or missing translations on small screens
+        roles: [panel, all-in-one]
+        orientations: true
+
+  - id: p2
+    name: P2 — Core Flows
+    tests:
+      - id: p2.1
+        name: Light toggle from tile
+        criteria: Toggle light on/off from tile — state changes, tile updates in real-time
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.2
+        name: Light brightness and color temp sliders
+        criteria: Adjust brightness and color temp via sliders in detail view — slider responsive, value updates on device
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.3
+        name: Climate set temperature
+        criteria: Set temperature via room climate view — setpoint changes, thermostat responds
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.4
+        name: Climate HVAC mode change
+        criteria: Change HVAC mode (heat/cool/auto) in detail — mode switches, UI reflects new state
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.5
+        name: Cover open/close/stop
+        criteria: Open, close, and stop blinds from tile — position updates in real-time
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.6
+        name: Scene trigger from tile
+        criteria: Tap scene tile — scene executes, devices change state
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.7
+        name: Optimistic UI intent overlay
+        criteria: Toggle a light — immediate UI feedback shown via intent overlay, then confirmed by server
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.8
+        name: Intent failure handling
+        criteria: Send command to offline device — failure shown, UI reverts gracefully
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.9
+        name: Real-time sync from external source
+        criteria: Change device state from HA or external source — panel updates within 1-2 seconds
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.10
+        name: Multi-panel sync
+        criteria: Two panels connected — change state on one, observe update on the other
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.11
+        name: Settings persistence
+        criteria: Change display, audio, and weather settings — values survive app restart
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.12
+        name: Weather tile and domain view
+        criteria: Current conditions and forecast display correctly in tile and dedicated weather view
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.13
+        name: Energy domain view
+        criteria: Energy summary, chart, and breakdown render with data
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.14
+        name: Security domain view
+        criteria: Security status and events display correctly
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.15
+        name: Spaces aggregated state
+        criteria: Room view shows aggregated light/climate/cover states with correct values; controls work
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.16
+        name: Media control (if device available)
+        criteria: Play/pause and volume adjust from media device detail — controls respond, state updates in real-time (skip if no media device available)
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.17
+        name: Display brightness control
+        criteria: Adjust display brightness via settings slider — screen brightness changes on flutter-pi devices (hardware backlight)
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p2.18
+        name: Network resilience
+        criteria: Disconnect WiFi for 10 seconds, reconnect — panel shows disconnected state, recovers automatically after reconnect
+        roles: [panel, all-in-one]
+        orientations: false
+
+  - id: p3
+    name: P3 — Performance
+    tests:
+      - id: p3.1
+        name: Cold start time to dashboard
+        criteria: "Time from flutter-pi command (RPi) or app icon tap (Android) to dashboard fully rendered — RPi Zero 2: < 15s, Android/reTerminal: < 10s"
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.2
+        name: Memory idle baseline
+        criteria: "RPi: `free -m` after 5 min idle — no significant memory growth vs. initial baseline. Android: `adb shell dumpsys meminfo com.fastybird.smartpanel`"
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.3
+        name: Memory soak (1 hour)
+        criteria: Leave running 1 hour, check memory — no memory leak (stable RSS)
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.4
+        name: Card slider scroll FPS
+        criteria: Scroll through card slider with 10+ cards — smooth, no visible jank
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.5
+        name: Navigation transition FPS
+        criteria: Rapidly switch between domain views — transitions fluid
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.6
+        name: WebSocket throughput under load
+        criteria: Generate rapid updates via simulator or real device toggles — UI keeps up, no visible lag or frozen tiles
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.7
+        name: CPU idle usage
+        criteria: "CPU usage after dashboard loaded with no interaction — < 10% on RPi Zero 2, < 5% on CM4/Android"
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p3.8
+        name: All-in-one combined load
+        criteria: Backend + panel running — combined CPU/memory — system usable, not thrashing
+        roles: [all-in-one]
+        orientations: false
+
+      - id: p3.9
+        name: 24-hour soak test
+        criteria: Leave all-in-one running overnight — still responsive next morning, no crash
+        roles: [all-in-one]
+        orientations: false
+
+  - id: p4
+    name: P4 — Smoke Tests (integrations and extras)
+    tests:
+      - id: p4.1
+        name: RPi 5 Raspbian image builder
+        criteria: Image builds and boots — backend runs, correct packages installed
+        roles: [backend]
+        orientations: false
+
+      - id: p4.2
+        name: Shelly device integration
+        criteria: Discover and control a Shelly device — device appears, on/off works
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [shelly]
+
+      - id: p4.3
+        name: Zigbee2MQTT integration
+        criteria: Z2M devices appear in panel — device list populated, state updates arrive, toggle a Z2M light works
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [zigbee2mqtt]
+
+      - id: p4.4
+        name: WLED integration
+        criteria: WLED controller discovered and controllable — color and brightness control works
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [wled]
+
+      - id: p4.5
+        name: Home Assistant integration
+        criteria: HA devices synced — devices show correct state in panel
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [home-assistant]
+
+      - id: p4.6
+        name: Buddy chat via OpenAI
+        criteria: Open Buddy, send a text message — response received and displayed correctly
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [openai]
+
+      - id: p4.7
+        name: Buddy voice loop (STT + TTS)
+        criteria: Voice input → STT → response → TTS playback — full voice loop works on device with speaker
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [openai, elevenlabs]
+
+      - id: p4.8
+        name: Buddy via Anthropic Claude
+        criteria: Switch Buddy provider to Claude, send message — response received
+        roles: [panel, all-in-one]
+        orientations: false
+        requires: [anthropic]
+
+      - id: p4.9
+        name: Admin UI while panel runs
+        criteria: Access admin from browser while panel is running — admin loads, device management works
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p4.10
+        name: System info in About
+        criteria: Settings → About shows correct device info (model, firmware, memory)
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p4.11
+        name: Reboot from settings
+        criteria: Trigger reboot from settings — device reboots and recovers to dashboard
+        roles: [panel, all-in-one]
+        orientations: false
+
+      - id: p4.12
+        name: Factory reset
+        criteria: Trigger factory reset — device resets, onboarding flow starts fresh
+        roles: [panel, all-in-one]
+        orientations: false
