@@ -70,49 +70,28 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 			return testId.startsWith(phaseId + '.');
 		});
 
-	// Smoke: all must pass
-	const smokeResults = getPhaseResults('smoke');
-	const smokeNotPassed = smokeResults.filter(([, r]) => r.status !== 'pass');
-	if (smokeNotPassed.length > 0) {
-		const failed = smokeNotPassed.filter(([, r]) => r.status === 'fail').length;
-		const pending = smokeNotPassed.filter(([, r]) => r.status === 'pending').length;
-		const skipped = smokeNotPassed.filter(([, r]) => r.status === 'skip').length;
-		const parts: string[] = [];
-		if (failed > 0) parts.push(`${failed} failed`);
-		if (skipped > 0) parts.push(`${skipped} skipped`);
-		if (pending > 0) parts.push(`${pending} pending`);
-		reasons.push(`Smoke: ${parts.join(', ')} — all must pass`);
+	// Smoke, P0, P1: all must pass — any non-pass status blocks readiness
+	const mandatoryPhases: Array<{ phaseId: string; label: string }> = [
+		{ phaseId: 'smoke', label: 'Smoke' },
+		{ phaseId: 'p0', label: 'P0' },
+		{ phaseId: 'p1', label: 'P1' },
+	];
+	for (const { phaseId, label } of mandatoryPhases) {
+		const results = getPhaseResults(phaseId);
+		const notPassed = results.filter(([, r]) => r.status !== 'pass');
+		if (notPassed.length > 0) {
+			const failed = notPassed.filter(([, r]) => r.status === 'fail').length;
+			const skipped = notPassed.filter(([, r]) => r.status === 'skip').length;
+			const pending = notPassed.filter(([, r]) => r.status === 'pending').length;
+			const parts: string[] = [];
+			if (failed > 0) parts.push(`${failed} failed`);
+			if (skipped > 0) parts.push(`${skipped} skipped`);
+			if (pending > 0) parts.push(`${pending} pending`);
+			reasons.push(`${label}: ${parts.join(', ')} — all must pass`);
+		}
 	}
 
-	// P0: all must pass on all configs
-	const p0Results = getPhaseResults('p0');
-	const p0NotPassed = p0Results.filter(([, r]) => r.status !== 'pass');
-	if (p0NotPassed.length > 0) {
-		const failed = p0NotPassed.filter(([, r]) => r.status === 'fail').length;
-		const pending = p0NotPassed.filter(([, r]) => r.status === 'pending').length;
-		const skipped = p0NotPassed.filter(([, r]) => r.status === 'skip').length;
-		const parts: string[] = [];
-		if (failed > 0) parts.push(`${failed} failed`);
-		if (skipped > 0) parts.push(`${skipped} skipped`);
-		if (pending > 0) parts.push(`${pending} pending`);
-		reasons.push(`P0: ${parts.join(', ')} — all must pass`);
-	}
-
-	// P1: all must pass
-	const p1Results = getPhaseResults('p1');
-	const p1NotPassed = p1Results.filter(([, r]) => r.status !== 'pass');
-	if (p1NotPassed.length > 0) {
-		const failed = p1NotPassed.filter(([, r]) => r.status === 'fail').length;
-		const pending = p1NotPassed.filter(([, r]) => r.status === 'pending').length;
-		const skipped = p1NotPassed.filter(([, r]) => r.status === 'skip').length;
-		const parts: string[] = [];
-		if (failed > 0) parts.push(`${failed} failed`);
-		if (skipped > 0) parts.push(`${skipped} skipped`);
-		if (pending > 0) parts.push(`${pending} pending`);
-		reasons.push(`P1: ${parts.join(', ')} — all must pass`);
-	}
-
-	// P2: must pass on at least one config (except p2.10 which passes on any)
+	// P2: must pass on at least one config
 	const p2Phase = phases.find((p) => p.id === 'p2');
 	if (p2Phase) {
 		for (const test of p2Phase.tests) {
@@ -121,11 +100,13 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 			const hasPass = testResults.some(([, r]) => r.status === 'pass');
 			if (!hasPass) {
 				const allPending = testResults.every(([, r]) => r.status === 'pending');
-				const allUntested = testResults.every(([, r]) => r.status === 'skip' || r.status === 'pending');
+				const allSkipped = testResults.every(([, r]) => r.status === 'skip');
 				const hasFail = testResults.some(([, r]) => r.status === 'fail');
 				if (allPending) {
 					reasons.push(`${test.id} (${test.name}) not yet tested on any config`);
-				} else if (hasFail && !allUntested) {
+				} else if (allSkipped) {
+					reasons.push(`${test.id} (${test.name}) skipped on all configs — must pass on at least one`);
+				} else if (hasFail) {
 					reasons.push(`${test.id} (${test.name}) failed on all tested configs`);
 				}
 			}
