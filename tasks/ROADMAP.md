@@ -198,7 +198,46 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 9. Technical Debt
+## 9. Companion Display (Epic)
+
+> [EPIC-COMPANION-DISPLAY](epics/EPIC-COMPANION-DISPLAY.md) — Status: :clipboard: Planned
+
+ESP32-based knob with round LCD as a companion peripheral to the main panel display. Provides tactile rotary control for temperature, brightness, volume, and more.
+
+### Phase 1: Backend Foundation
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [FEATURE-COMPANION-BACKEND-PLUGIN](features/FEATURE-COMPANION-BACKEND-PLUGIN.md) | backend | :clipboard: Planned |
+| 2 | [FEATURE-COMPANION-ADMIN-UI](features/FEATURE-COMPANION-ADMIN-UI.md) | admin | :clipboard: Planned |
+
+### Phase 2: Firmware Generation & Provisioning
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 3 | [FEATURE-COMPANION-SCREEN-COMPILER](features/FEATURE-COMPANION-SCREEN-COMPILER.md) | backend | :clipboard: Planned |
+| 4 | [FEATURE-COMPANION-ESPHOME-GENERATOR](features/FEATURE-COMPANION-ESPHOME-GENERATOR.md) | backend | :clipboard: Planned |
+| 5 | [FEATURE-COMPANION-PROVISIONING](features/FEATURE-COMPANION-PROVISIONING.md) | backend, admin | :clipboard: Planned |
+
+### Phase 3: Runtime Communication
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 6 | [FEATURE-COMPANION-ESPHOME-COMPONENT](features/FEATURE-COMPANION-ESPHOME-COMPONENT.md) | firmware | :clipboard: Planned |
+| 7 | [FEATURE-COMPANION-PANEL-SERIAL](features/FEATURE-COMPANION-PANEL-SERIAL.md) | panel | :clipboard: Planned |
+
+### Phase 4: Screen Types & Polish
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 8 | [FEATURE-COMPANION-SCREEN-TYPES](features/FEATURE-COMPANION-SCREEN-TYPES.md) | firmware, backend | :clipboard: Planned |
+| 9 | [FEATURE-COMPANION-LED-RING](features/FEATURE-COMPANION-LED-RING.md) | firmware | :clipboard: Planned |
+
+**Next up:** Backend plugin with data model and CRUD API (Phase 1).
+
+---
+
+## 10. Technical Debt
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -210,7 +249,7 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 10. Other Planned Features
+## 11. Other Planned Features
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -222,7 +261,7 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 11. Plans
+## 12. Plans
 
 | # | Plan | Status |
 |---|------|--------|
@@ -244,8 +283,9 @@ All onboarding device setup tasks complete.
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
+| Companion Display | 0 | 0 | 9 | 9 |
 | Plugins | 1 | 0 | 1 | 2 |
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **46** | **0** | **20** | **66** |
+| **Total** | **46** | **0** | **29** | **75** |
