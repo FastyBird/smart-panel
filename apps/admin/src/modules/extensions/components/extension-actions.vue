@@ -308,15 +308,29 @@ const setMultiSelectModel = (actionId: string, paramName: string, value: (string
 	getFormModel(actionId)[paramName] = value;
 };
 
-// Initialize form defaults when actions are loaded
+// Initialize form defaults when actions are loaded, clearing stale entries
 const initFormDefaults = (): void => {
-	for (const action of actions.value) {
-		if (!formModels[action.id]) {
-			formModels[action.id] = {};
+	const currentActionIds = new Set(actions.value.map((a) => a.id));
+
+	// Remove stale entries for actions that no longer exist
+	for (const key of Object.keys(formModels)) {
+		if (!currentActionIds.has(key)) {
+			delete formModels[key];
 		}
+	}
+
+	for (const key of Object.keys(actionResults)) {
+		if (!currentActionIds.has(key)) {
+			delete actionResults[key];
+		}
+	}
+
+	// Initialize defaults for current actions from scratch
+	for (const action of actions.value) {
+		formModels[action.id] = {};
 
 		for (const param of action.parameters ?? []) {
-			if (param.default !== undefined && formModels[action.id][param.name] === undefined) {
+			if (param.default !== undefined) {
 				formModels[action.id][param.name] = param.default;
 			}
 		}

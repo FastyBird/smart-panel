@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-panel-bg: #0f172a;
+	--color-panel-surface: #1e293b;
+	--color-panel-border: #334155;
+	--color-panel-text: #e2e8f0;
+	--color-panel-muted: #94a3b8;
+	--color-panel-dim: #64748b;
+	--color-panel-subtle: #475569;
+
+	--color-status-pass: #22c55e;
+	--color-status-pass-bg: #14532d;
+	--color-status-fail: #ef4444;
+	--color-status-fail-bg: #450a0a;
+	--color-status-skip: #f59e0b;
+	--color-status-skip-bg: #78350f;
+
+	--font-mono: 'SF Mono', Monaco, Consolas, monospace;
+}

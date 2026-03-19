@@ -50,7 +50,9 @@
     "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli:prod auth:onboarding",
     "admin:extensions": "pnpm --filter @fastybird/smart-panel-backend run cli:prod config:generate-admin-extensions",
     "admin:build": "pnpm --filter @fastybird/smart-panel-admin build",
-    "admin:postinstall": "node -e \"process.exit(process.env.FB_NO_ADMIN_BUILD ? 0 : 1)\" || pnpm run admin:extensions && pnpm run admin:build"
+    "admin:postinstall": "node -e \"process.exit(process.env.FB_NO_ADMIN_BUILD ? 0 : 1)\" || pnpm run admin:extensions && pnpm run admin:build",
+    "testing:dev": "pnpm --filter @fastybird/smart-panel-testing start:dev",
+    "testing:build": "pnpm --filter @fastybird/smart-panel-testing build"
   },
   "engines": {
     "node": ">=20",
