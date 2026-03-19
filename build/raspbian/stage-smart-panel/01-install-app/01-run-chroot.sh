@@ -43,11 +43,21 @@ fi
 cd "${APP_INSTALL_DIR}"
 pnpm install --prod --ignore-scripts
 
-# Rebuild native modules for ARM64 (install compiled from source since
-# prebuild binaries may not exist for this Node.js version)
+# Rebuild native modules for ARM64
 npm install -g node-gyp
-cd "${APP_INSTALL_DIR}/node_modules/.pnpm/sqlite3@*/node_modules/sqlite3" && npm install --build-from-source 2>/dev/null || true
-cd "${APP_INSTALL_DIR}/node_modules/.pnpm/bcrypt@*/node_modules/bcrypt" && npm install --build-from-source 2>/dev/null || true
+
+SQLITE_DIR=$(find "${APP_INSTALL_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
+if [ -n "${SQLITE_DIR}" ]; then
+	echo "Building sqlite3 from source in ${SQLITE_DIR}..."
+	cd "${SQLITE_DIR}" && npm install --build-from-source
+fi
+
+BCRYPT_DIR=$(find "${APP_INSTALL_DIR}/node_modules/.pnpm" -path "*/bcrypt/package.json" -exec dirname {} \; | grep "bcrypt@" | head -1)
+if [ -n "${BCRYPT_DIR}" ]; then
+	echo "Building bcrypt from source in ${BCRYPT_DIR}..."
+	cd "${BCRYPT_DIR}" && npm install --build-from-source
+fi
+
 cd "${APP_INSTALL_DIR}"
 
 # Set ownership

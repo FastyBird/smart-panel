@@ -22,14 +22,17 @@ log() {
 # ──────────────────────────────────────────────────────────────
 # 0. Expand root partition to fill SD card
 # ──────────────────────────────────────────────────────────────
-ROOT_DEV=$(findmnt -n -o SOURCE /)
-ROOT_DISK=$(lsblk -no PKNAME "${ROOT_DEV}" | head -1)
-if [ -n "${ROOT_DISK}" ]; then
-	ROOT_PART_NUM=$(echo "${ROOT_DEV}" | grep -o '[0-9]*$')
-	parted -s "/dev/${ROOT_DISK}" resizepart "${ROOT_PART_NUM}" 100% 2>/dev/null && \
+if command -v raspi-config >/dev/null 2>&1; then
+	# raspi-config --expand-rootfs marks the partition for expansion and
+	# schedules resize2fs on next boot via init_resize.sh.
+	# We then run resize2fs immediately so the space is available now.
+	raspi-config --expand-rootfs >/dev/null 2>&1 || true
+	ROOT_DEV=$(findmnt -n -o SOURCE /)
 	resize2fs "${ROOT_DEV}" 2>/dev/null && \
-	log "Root partition expanded to fill disk" || \
-	log "WARNING: Root partition expansion failed — run 'sudo raspi-config --expand-rootfs' manually"
+		log "Root partition expanded to fill disk" || \
+		log "WARNING: Root partition expansion failed — will expand on next reboot"
+else
+	log "WARNING: raspi-config not found, cannot expand root partition"
 fi
 
 # ──────────────────────────────────────────────────────────────
