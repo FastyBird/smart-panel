@@ -176,7 +176,6 @@
 										v-if="action.mode === 'immediate'"
 										type="primary"
 										:loading="executingActions.has(action.id)"
-										:disabled="action.mode !== 'immediate'"
 										@click="onExecute(action)"
 									>
 										<template #icon>

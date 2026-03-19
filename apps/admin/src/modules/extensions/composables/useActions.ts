@@ -64,7 +64,6 @@ export interface IUseActions {
 	executingActions: Ref<Set<string>>;
 	fetchActions: (extensionType: string) => Promise<void>;
 	executeAction: (extensionType: string, actionId: string, params?: Record<string, unknown>) => Promise<IActionResult>;
-	isExecuting: (actionId: string) => boolean;
 }
 
 /**
@@ -141,16 +140,11 @@ export const useActions = (): IUseActions => {
 		}
 	};
 
-	const isExecuting = (actionId: string): boolean => {
-		return executingActions.value.has(actionId);
-	};
-
 	return {
 		actions,
 		isLoading,
 		executingActions,
 		fetchActions,
 		executeAction,
-		isExecuting,
 	};
 };
