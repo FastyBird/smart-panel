@@ -80,7 +80,7 @@
 												class="mb-2!"
 											>
 												<template
-													v-if="param.description"
+													v-if="param.description || param.required"
 													#label
 												>
 													<span>{{ param.label }}</span>
@@ -92,6 +92,7 @@
 														*
 													</el-text>
 													<el-text
+														v-if="param.description"
 														class="block text-xs! font-normal"
 														type="info"
 													>
@@ -239,16 +240,21 @@ const props = defineProps<{
 	extensionType: string;
 }>();
 
+const emit = defineEmits<{
+	'update:hasActions': [value: boolean];
+}>();
+
 const { t } = useI18n();
 const { actions, isLoading, executingActions, fetchActions, executeAction } = useActions();
 
-// Per-action form models
-const formModels = reactive<Record<string, Record<string, unknown>>>({});
+// Per-action form models — values are typed to satisfy Element Plus v-model bindings
+type FormValue = string | number | boolean | undefined;
+const formModels = reactive<Record<string, Record<string, FormValue>>>({});
 
 // Per-action result display
 const actionResults = reactive<Record<string, IActionResult | undefined>>({});
 
-const getFormModel = (actionId: string): Record<string, unknown> => {
+const getFormModel = (actionId: string): Record<string, FormValue> => {
 	if (!formModels[actionId]) {
 		formModels[actionId] = {};
 	}
@@ -320,15 +326,22 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 watch(
 	() => props.extensionType,
 	() => {
-		fetchActions(props.extensionType).then(() => initFormDefaults());
+		fetchActions(props.extensionType).then(() => {
+			initFormDefaults();
+			emit('update:hasActions', actions.value.length > 0);
+		});
 	},
 );
 
 watch(actions, () => {
 	initFormDefaults();
+	emit('update:hasActions', actions.value.length > 0);
 });
 
 onMounted(() => {
-	fetchActions(props.extensionType).then(() => initFormDefaults());
+	fetchActions(props.extensionType).then(() => {
+		initFormDefaults();
+		emit('update:hasActions', actions.value.length > 0);
+	});
 });
 </script>
