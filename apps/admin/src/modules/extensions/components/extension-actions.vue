@@ -122,15 +122,17 @@
 												<!-- Boolean switch -->
 												<el-switch
 													v-else-if="param.type === 'boolean'"
-													v-model="getFormModel(action.id)[param.name]"
+													:model-value="getBooleanModel(action.id, param.name)"
+													@update:model-value="setBooleanModel(action.id, param.name, Boolean($event))"
 												/>
 
 												<!-- Select -->
 												<el-select
 													v-else-if="param.type === 'select'"
-													v-model="getFormModel(action.id)[param.name]"
+													:model-value="getSelectModel(action.id, param.name)"
 													:placeholder="param.label"
 													class="w-full!"
+													@update:model-value="setSelectModel(action.id, param.name, $event)"
 												>
 													<el-option
 														v-for="opt in param.options"
@@ -143,10 +145,11 @@
 												<!-- Multi-select -->
 												<el-select
 													v-else-if="param.type === 'multi_select'"
-													v-model="getFormModel(action.id)[param.name]"
+													:model-value="getMultiSelectModel(action.id, param.name)"
 													:placeholder="param.label"
 													multiple
 													class="w-full!"
+													@update:model-value="setMultiSelectModel(action.id, param.name, $event)"
 												>
 													<el-option
 														v-for="opt in param.options"
@@ -245,12 +248,13 @@ const { t } = useI18n();
 const { actions, isLoading, executingActions, executeAction } = useActionsInjection();
 
 // Per-action form models
-const formModels = reactive<Record<string, Record<string, string | number | boolean | undefined>>>({});
+type FormValue = string | number | boolean | (string | number | boolean)[] | undefined;
+const formModels = reactive<Record<string, Record<string, FormValue>>>({});
 
 // Per-action result display
 const actionResults = reactive<Record<string, IActionResult | undefined>>({});
 
-const getFormModel = (actionId: string): Record<string, string | number | boolean | undefined> => {
+const getFormModel = (actionId: string): Record<string, FormValue> => {
 	if (!formModels[actionId]) {
 		formModels[actionId] = {};
 	}
@@ -271,6 +275,36 @@ const getNumberModel = (actionId: string, paramName: string): number | undefined
 };
 
 const setNumberModel = (actionId: string, paramName: string, value: number | undefined): void => {
+	getFormModel(actionId)[paramName] = value;
+};
+
+const getBooleanModel = (actionId: string, paramName: string): boolean => {
+	const val = getFormModel(actionId)[paramName];
+
+	return typeof val === 'boolean' ? val : false;
+};
+
+const setBooleanModel = (actionId: string, paramName: string, value: boolean): void => {
+	getFormModel(actionId)[paramName] = value;
+};
+
+const getSelectModel = (actionId: string, paramName: string): string | number | boolean | undefined => {
+	const val = getFormModel(actionId)[paramName];
+
+	return Array.isArray(val) ? undefined : val;
+};
+
+const setSelectModel = (actionId: string, paramName: string, value: string | number | boolean | undefined): void => {
+	getFormModel(actionId)[paramName] = value;
+};
+
+const getMultiSelectModel = (actionId: string, paramName: string): (string | number | boolean)[] => {
+	const val = getFormModel(actionId)[paramName];
+
+	return Array.isArray(val) ? val : [];
+};
+
+const setMultiSelectModel = (actionId: string, paramName: string, value: (string | number | boolean)[]): void => {
 	getFormModel(actionId)[paramName] = value;
 };
 

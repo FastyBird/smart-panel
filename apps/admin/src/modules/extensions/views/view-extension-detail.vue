@@ -545,6 +545,11 @@ watch(
 	}, { immediate: true }
 );
 
+const { toggleEnabled } = useExtensionActions();
+const { modules: configurableModules } = useModules();
+const { plugins: configurablePlugins } = usePlugins();
+const { actions: extensionActions, fetchActions } = useActionsProvider();
+
 // Re-fetch when navigating between extension detail pages (Vue Router reuses component)
 watch(
 	() => props.type,
@@ -559,11 +564,6 @@ watch(
 		});
 	}
 );
-
-const { toggleEnabled } = useExtensionActions();
-const { modules: configurableModules } = useModules();
-const { plugins: configurablePlugins } = usePlugins();
-const { actions: extensionActions, fetchActions } = useActionsProvider();
 
 const hasActions = computed<boolean>(() => extensionActions.value.length > 0);
 
