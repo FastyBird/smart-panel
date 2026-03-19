@@ -255,8 +255,14 @@ export class ExtensionActionRegistryService {
 					errors.push(`Parameter '${param.name}' must be at most ${v.maxLength} characters`);
 				}
 
-				if (v.pattern !== undefined && !new RegExp(v.pattern).test(value)) {
-					errors.push(`Parameter '${param.name}' does not match pattern '${v.pattern}'`);
+				if (v.pattern !== undefined) {
+					try {
+						if (!new RegExp(v.pattern).test(value)) {
+							errors.push(`Parameter '${param.name}' does not match pattern '${v.pattern}'`);
+						}
+					} catch {
+						errors.push(`Parameter '${param.name}' has invalid validation pattern '${v.pattern}'`);
+					}
 				}
 			}
 		}

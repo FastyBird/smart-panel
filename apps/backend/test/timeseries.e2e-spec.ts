@@ -238,9 +238,11 @@ describe('Property Timeseries (e2e)', () => {
 
 			await authGet(timeseriesUrl()).query({ from, to }).expect(200);
 
-			expect(influxDbMock.query).toHaveBeenCalledTimes(1);
+			expect(influxDbMock.query).toHaveBeenCalled();
 
-			const query = influxDbMock.query.mock.calls[0][0] as string;
+			// The timeseries query is the last call (entity subscribers fire earlier queries)
+			const calls = influxDbMock.query.mock.calls;
+			const query = calls[calls.length - 1][0] as string;
 
 			// Verify the query contains the correct time boundaries
 			expect(query).toContain(new Date(from).getTime().toString());
