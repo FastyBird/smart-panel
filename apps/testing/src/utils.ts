@@ -72,35 +72,44 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 
 	// Smoke: all must pass
 	const smokeResults = getPhaseResults('smoke');
-	const smokeFailures = smokeResults.filter(([, r]) => r.status === 'fail');
-	if (smokeFailures.length > 0) {
-		reasons.push(`${smokeFailures.length} smoke test(s) failed — must all pass before Phase 2`);
-	}
-	const smokePending = smokeResults.filter(([, r]) => r.status === 'pending');
-	if (smokePending.length > 0) {
-		reasons.push(`${smokePending.length} smoke test(s) still pending`);
+	const smokeNotPassed = smokeResults.filter(([, r]) => r.status !== 'pass');
+	if (smokeNotPassed.length > 0) {
+		const failed = smokeNotPassed.filter(([, r]) => r.status === 'fail').length;
+		const pending = smokeNotPassed.filter(([, r]) => r.status === 'pending').length;
+		const skipped = smokeNotPassed.filter(([, r]) => r.status === 'skip').length;
+		const parts: string[] = [];
+		if (failed > 0) parts.push(`${failed} failed`);
+		if (skipped > 0) parts.push(`${skipped} skipped`);
+		if (pending > 0) parts.push(`${pending} pending`);
+		reasons.push(`Smoke: ${parts.join(', ')} — all must pass`);
 	}
 
 	// P0: all must pass on all configs
 	const p0Results = getPhaseResults('p0');
-	const p0Failures = p0Results.filter(([, r]) => r.status === 'fail');
-	if (p0Failures.length > 0) {
-		reasons.push(`${p0Failures.length} P0 test(s) failed — must all pass`);
-	}
-	const p0Pending = p0Results.filter(([, r]) => r.status === 'pending');
-	if (p0Pending.length > 0) {
-		reasons.push(`${p0Pending.length} P0 test(s) still pending`);
+	const p0NotPassed = p0Results.filter(([, r]) => r.status !== 'pass');
+	if (p0NotPassed.length > 0) {
+		const failed = p0NotPassed.filter(([, r]) => r.status === 'fail').length;
+		const pending = p0NotPassed.filter(([, r]) => r.status === 'pending').length;
+		const skipped = p0NotPassed.filter(([, r]) => r.status === 'skip').length;
+		const parts: string[] = [];
+		if (failed > 0) parts.push(`${failed} failed`);
+		if (skipped > 0) parts.push(`${skipped} skipped`);
+		if (pending > 0) parts.push(`${pending} pending`);
+		reasons.push(`P0: ${parts.join(', ')} — all must pass`);
 	}
 
 	// P1: all must pass
 	const p1Results = getPhaseResults('p1');
-	const p1Failures = p1Results.filter(([, r]) => r.status === 'fail');
-	if (p1Failures.length > 0) {
-		reasons.push(`${p1Failures.length} P1 visual test(s) failed`);
-	}
-	const p1Pending = p1Results.filter(([, r]) => r.status === 'pending');
-	if (p1Pending.length > 0) {
-		reasons.push(`${p1Pending.length} P1 visual test(s) still pending`);
+	const p1NotPassed = p1Results.filter(([, r]) => r.status !== 'pass');
+	if (p1NotPassed.length > 0) {
+		const failed = p1NotPassed.filter(([, r]) => r.status === 'fail').length;
+		const pending = p1NotPassed.filter(([, r]) => r.status === 'pending').length;
+		const skipped = p1NotPassed.filter(([, r]) => r.status === 'skip').length;
+		const parts: string[] = [];
+		if (failed > 0) parts.push(`${failed} failed`);
+		if (skipped > 0) parts.push(`${skipped} skipped`);
+		if (pending > 0) parts.push(`${pending} pending`);
+		reasons.push(`P1: ${parts.join(', ')} — all must pass`);
 	}
 
 	// P2: must pass on at least one config (except p2.10 which passes on any)
