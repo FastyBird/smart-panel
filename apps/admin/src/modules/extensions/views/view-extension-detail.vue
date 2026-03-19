@@ -292,10 +292,7 @@
 						</template>
 
 						<el-scrollbar class="h-full">
-							<extension-actions
-								:extension-type="extension.type"
-								@update:has-actions="hasActions = $event"
-							/>
+							<extension-actions :extension-type="extension.type" />
 						</el-scrollbar>
 					</el-tab-pane>
 					<el-tab-pane
@@ -519,6 +516,7 @@ import { usePlugins } from '../../config/composables/usePlugins';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template as <extension-actions>
 import { ExtensionActions, ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
+import { useActions } from '../composables/useActions';
 import { useExtension } from '../composables/useExtension';
 import { ExtensionKind, RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -553,22 +551,24 @@ watch(
 // Re-fetch when navigating between extension detail pages (Vue Router reuses component)
 watch(
 	() => props.type,
-	(): void => {
+	(newType: string): void => {
 		fetchExtension().catch((error: unknown): void => {
 			const err = error as Error;
 			throw new ExtensionsException('Something went wrong', err);
 		});
 
-		// Reset actions state on navigation — child component will re-fetch
-		hasActions.value = false;
+		fetchActions(newType).catch(() => {
+			// Actions are optional, silently ignore errors
+		});
 	}
 );
 
 const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
+const { actions: extensionActions, fetchActions } = useActions();
 
-const hasActions = ref<boolean>(false);
+const hasActions = computed<boolean>(() => extensionActions.value.length > 0);
 
 const activeTab = ref<string>('readme');
 const logsLive = ref<boolean>(false);
@@ -669,6 +669,10 @@ onBeforeMount((): void => {
 		const err = error as Error;
 
 		throw new ExtensionsException('Something went wrong', err);
+	});
+
+	fetchActions(props.type).catch(() => {
+		// Actions are optional, silently ignore errors
 	});
 });
 </script>

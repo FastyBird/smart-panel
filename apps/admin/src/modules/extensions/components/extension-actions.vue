@@ -103,18 +103,20 @@
 												<!-- String input -->
 												<el-input
 													v-if="param.type === 'string'"
-													v-model="getFormModel(action.id)[param.name]"
+													:model-value="getStringModel(action.id, param.name)"
 													:placeholder="param.label"
+													@update:model-value="setStringModel(action.id, param.name, $event)"
 												/>
 
 												<!-- Number input -->
 												<el-input-number
 													v-else-if="param.type === 'number'"
-													v-model="getFormModel(action.id)[param.name]"
+													:model-value="getNumberModel(action.id, param.name)"
 													:min="param.validation?.min"
 													:max="param.validation?.max"
 													controls-position="right"
 													class="w-full!"
+													@update:model-value="setNumberModel(action.id, param.name, $event)"
 												/>
 
 												<!-- Boolean switch -->
@@ -240,25 +242,37 @@ const props = defineProps<{
 	extensionType: string;
 }>();
 
-const emit = defineEmits<{
-	'update:hasActions': [value: boolean];
-}>();
-
 const { t } = useI18n();
 const { actions, isLoading, executingActions, fetchActions, executeAction } = useActions();
 
-// Per-action form models — values are typed to satisfy Element Plus v-model bindings
-type FormValue = string | number | boolean | undefined;
-const formModels = reactive<Record<string, Record<string, FormValue>>>({});
+// Per-action form models
+const formModels = reactive<Record<string, Record<string, string | number | boolean | undefined>>>({});
 
 // Per-action result display
 const actionResults = reactive<Record<string, IActionResult | undefined>>({});
 
-const getFormModel = (actionId: string): Record<string, FormValue> => {
+const getFormModel = (actionId: string): Record<string, string | number | boolean | undefined> => {
 	if (!formModels[actionId]) {
 		formModels[actionId] = {};
 	}
 	return formModels[actionId];
+};
+
+// Typed accessors for Element Plus v-model bindings
+const getStringModel = (actionId: string, paramName: string): string | undefined => {
+	return getFormModel(actionId)[paramName] as string | undefined;
+};
+
+const setStringModel = (actionId: string, paramName: string, value: string | undefined): void => {
+	getFormModel(actionId)[paramName] = value;
+};
+
+const getNumberModel = (actionId: string, paramName: string): number | undefined => {
+	return getFormModel(actionId)[paramName] as number | undefined;
+};
+
+const setNumberModel = (actionId: string, paramName: string, value: number | undefined): void => {
+	getFormModel(actionId)[paramName] = value;
 };
 
 // Initialize form defaults when actions are loaded
@@ -326,22 +340,15 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 watch(
 	() => props.extensionType,
 	() => {
-		fetchActions(props.extensionType).then(() => {
-			initFormDefaults();
-			emit('update:hasActions', actions.value.length > 0);
-		});
+		fetchActions(props.extensionType).then(() => initFormDefaults());
 	},
 );
 
 watch(actions, () => {
 	initFormDefaults();
-	emit('update:hasActions', actions.value.length > 0);
 });
 
 onMounted(() => {
-	fetchActions(props.extensionType).then(() => {
-		initFormDefaults();
-		emit('update:hasActions', actions.value.length > 0);
-	});
+	fetchActions(props.extensionType).then(() => initFormDefaults());
 });
 </script>
