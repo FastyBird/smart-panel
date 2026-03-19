@@ -125,11 +125,83 @@ touch "${PI_GEN_DIR}/stage3/SKIP" "${PI_GEN_DIR}/stage3/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage4/SKIP" "${PI_GEN_DIR}/stage4/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage5/SKIP" "${PI_GEN_DIR}/stage5/SKIP_IMAGES"
 
-# Link our custom stage
-if [ -L "${PI_GEN_DIR}/stage-smart-panel" ]; then
-	rm "${PI_GEN_DIR}/stage-smart-panel"
+# Copy our custom stage into pi-gen (symlinks don't work inside Docker)
+rm -rf "${PI_GEN_DIR}/stage-smart-panel"
+cp -r "${SCRIPT_DIR}/stage-smart-panel" "${PI_GEN_DIR}/stage-smart-panel"
+
+# Fix Bookworm GPG keys: the debootstrapped rootfs has stale 2023 archive keys
+# that can't verify 2025 Bookworm repo signatures. We patch stage0 to copy the
+# Docker host's updated keyring files into the rootfs before apt-get update.
+STAGE0_APT_SCRIPT="${PI_GEN_DIR}/stage0/00-configure-apt/00-run.sh"
+if ! grep -q "debian-archive-keyring" "${STAGE0_APT_SCRIPT}"; then
+	cat > "${STAGE0_APT_SCRIPT}" << 'STAGE0_SCRIPT'
+#!/bin/bash -e
+
+true > "${ROOTFS_DIR}/etc/apt/sources.list"
+install -m 644 files/debian.sources "${ROOTFS_DIR}/etc/apt/sources.list.d/"
+install -m 644 files/raspi.sources "${ROOTFS_DIR}/etc/apt/sources.list.d/"
+sed -i "s/RELEASE/${RELEASE}/g" "${ROOTFS_DIR}/etc/apt/sources.list.d/debian.sources"
+sed -i "s/RELEASE/${RELEASE}/g" "${ROOTFS_DIR}/etc/apt/sources.list.d/raspi.sources"
+
+if [ -n "$APT_PROXY" ]; then
+	install -m 644 files/51cache "${ROOTFS_DIR}/etc/apt/apt.conf.d/51cache"
+	sed "${ROOTFS_DIR}/etc/apt/apt.conf.d/51cache" -i -e "s|APT_PROXY|${APT_PROXY}|"
+else
+	rm -f "${ROOTFS_DIR}/etc/apt/apt.conf.d/51cache"
 fi
-ln -sf "${SCRIPT_DIR}/stage-smart-panel" "${PI_GEN_DIR}/stage-smart-panel"
+
+if [ -n "$TEMP_REPO" ]; then
+	install -m 644 /dev/null "${ROOTFS_DIR}/etc/apt/sources.list.d/00-temp.list"
+	echo "$TEMP_REPO" | sed "s/RELEASE/$RELEASE/g" > "${ROOTFS_DIR}/etc/apt/sources.list.d/00-temp.list"
+else
+	rm -f "${ROOTFS_DIR}/etc/apt/sources.list.d/00-temp.list"
+fi
+
+install -m 644 files/raspberrypi-archive-keyring.pgp "${ROOTFS_DIR}/usr/share/keyrings/"
+
+# Fix: copy updated debian-archive-keyring from Docker host into rootfs
+# The debootstrapped rootfs has stale 2023 keys; the Docker container has 2025 keys
+# Use -L to dereference symlinks (.gpg -> .pgp) and copy actual key data
+cp -L /usr/share/keyrings/debian-archive-keyring.gpg "${ROOTFS_DIR}/usr/share/keyrings/debian-archive-keyring.pgp" 2>/dev/null || true
+cp -L /usr/share/keyrings/debian-archive-bookworm-automatic.gpg "${ROOTFS_DIR}/usr/share/keyrings/debian-archive-bookworm-automatic.pgp" 2>/dev/null || true
+cp -L /usr/share/keyrings/debian-archive-bookworm-security-automatic.gpg "${ROOTFS_DIR}/usr/share/keyrings/debian-archive-bookworm-security-automatic.pgp" 2>/dev/null || true
+cp -L /usr/share/keyrings/debian-archive-bookworm-stable.gpg "${ROOTFS_DIR}/usr/share/keyrings/debian-archive-bookworm-stable.pgp" 2>/dev/null || true
+
+on_chroot <<- \EOF
+	ARCH="$(dpkg --print-architecture)"
+	if [ "$ARCH" = "armhf" ]; then
+		dpkg --add-architecture arm64
+	elif [ "$ARCH" = "arm64" ]; then
+		dpkg --add-architecture armhf
+	fi
+	apt-get update
+	apt-get dist-upgrade -y
+EOF
+STAGE0_SCRIPT
+	chmod +x "${STAGE0_APT_SCRIPT}"
+fi
+
+# Fix stale arm64 branch: remove packages and services that no longer exist
+# in current Bookworm repos
+STAGE2_PACKAGES="${PI_GEN_DIR}/stage2/01-sys-tweaks/00-packages"
+sed 's/rpi-swap rpi-loop-utils//' "${STAGE2_PACKAGES}" \
+	| sed 's/rpi-usb-gadget //' \
+	> "${STAGE2_PACKAGES}.tmp" \
+	&& mv "${STAGE2_PACKAGES}.tmp" "${STAGE2_PACKAGES}"
+
+STAGE2_TWEAKS="${PI_GEN_DIR}/stage2/01-sys-tweaks/01-run.sh"
+sed 's/systemctl enable rpi-resize/systemctl enable rpi-resizerootfs 2>\/dev\/null || true/' \
+	"${STAGE2_TWEAKS}" > "${STAGE2_TWEAKS}.tmp" \
+	&& mv "${STAGE2_TWEAKS}.tmp" "${STAGE2_TWEAKS}" \
+	&& chmod +x "${STAGE2_TWEAKS}"
+
+# Skip cloud-init substage (rpi-cloud-init-mods package not available)
+touch "${PI_GEN_DIR}/stage2/04-cloud-init/SKIP"
+
+# Ensure the Docker container has the updated debian-archive-keyring package
+sed 's/binfmt-support ca-certificates/binfmt-support ca-certificates debian-archive-keyring/' \
+	"${PI_GEN_DIR}/Dockerfile" > "${PI_GEN_DIR}/Dockerfile.tmp" \
+	&& mv "${PI_GEN_DIR}/Dockerfile.tmp" "${PI_GEN_DIR}/Dockerfile"
 
 # ──────────────────────────────────────────────────────────────
 # Step 4: Build the image
@@ -146,23 +218,27 @@ echo "==> Collecting output..."
 
 mkdir -p "${OUTPUT_DIR}"
 
-# pi-gen produces raw .img files in deploy/. Rename and compress them
-# (mirroring the CI workflow).
-IMAGE_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.img 2>/dev/null | head -1)
-
-if [ -z "${IMAGE_FILE}" ]; then
-	echo "ERROR: No .img file found in ${PI_GEN_DIR}/deploy/" >&2
-	exit 1
-fi
-
 VERSION=$(git -C "${PROJECT_ROOT}" describe --tags --always 2>/dev/null || echo "dev")
 VERSION="${VERSION//\//-}"
-NEW_NAME="smart-panel-${VERSION}-arm64.img"
 
-cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
-echo "  -> Compressing image..."
-xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
-( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}.xz" > "${NEW_NAME}.xz.sha256" )
+# pi-gen produces either .img or .zip in deploy/
+IMAGE_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.img 2>/dev/null | head -1)
+ZIP_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.zip 2>/dev/null | head -1)
+
+if [ -n "${IMAGE_FILE}" ]; then
+	NEW_NAME="smart-panel-${VERSION}-arm64.img"
+	cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
+	echo "  -> Compressing image..."
+	xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
+	( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}.xz" > "${NEW_NAME}.xz.sha256" )
+elif [ -n "${ZIP_FILE}" ]; then
+	NEW_NAME="smart-panel-${VERSION}-arm64.zip"
+	cp "${ZIP_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
+	( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}" > "${NEW_NAME}.sha256" )
+else
+	echo "ERROR: No .img or .zip file found in ${PI_GEN_DIR}/deploy/" >&2
+	exit 1
+fi
 
 # Copy any additional deploy artifacts
 cp "${PI_GEN_DIR}/deploy/"*.info "${OUTPUT_DIR}/" 2>/dev/null || true
