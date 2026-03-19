@@ -280,6 +280,22 @@
 						</el-scrollbar>
 					</el-tab-pane>
 					<el-tab-pane
+						v-if="hasActions"
+						name="actions"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:lightning-bolt" />
+								{{ t('extensionsModule.actions.labels.tab') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<extension-actions :extension-type="extension.type" />
+						</el-scrollbar>
+					</el-tab-pane>
+					<el-tab-pane
 						name="logs"
 						class="h-full overflow-hidden"
 					>
@@ -450,6 +466,19 @@
 				<markdown-renderer :content="extension.docs" />
 			</el-card>
 
+			<!-- Actions card -->
+			<el-card
+				v-if="hasActions"
+				shadow="never"
+				class="mb-2"
+				body-class="p-0!"
+			>
+				<template #header>
+					<span class="font-semibold">{{ t('extensionsModule.actions.labels.tab') }}</span>
+				</template>
+				<extension-actions :extension-type="extension.type" />
+			</el-card>
+
 			<!-- Logs card -->
 			<el-card
 				shadow="never"
@@ -481,8 +510,9 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
 import { useModules } from '../../config/composables/useModules';
 import { usePlugins } from '../../config/composables/usePlugins';
-import { ExtensionLogs } from '../components/components';
+import { ExtensionActions, ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
+import { useActions } from '../composables/useActions';
 import { useExtension } from '../composables/useExtension';
 import { ExtensionKind, RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -528,6 +558,9 @@ watch(
 const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
+const { actions: extensionActions, fetchActions } = useActions();
+
+const hasActions = computed<boolean>(() => extensionActions.value.length > 0);
 
 const activeTab = ref<string>('readme');
 const logsLive = ref<boolean>(false);
@@ -554,7 +587,8 @@ watch(
 		const currentTabExists =
 			activeTab.value === 'logs' ||
 			(activeTab.value === 'readme' && extension.value?.readme) ||
-			(activeTab.value === 'docs' && extension.value?.docs);
+			(activeTab.value === 'docs' && extension.value?.docs) ||
+			(activeTab.value === 'actions' && hasActions.value);
 
 		if (!currentTabExists) {
 			activeTab.value = newDefault;
@@ -627,6 +661,10 @@ onBeforeMount((): void => {
 		const err = error as Error;
 
 		throw new ExtensionsException('Something went wrong', err);
+	});
+
+	fetchActions(props.type).catch(() => {
+		// Actions are optional, silently ignore errors
 	});
 });
 </script>

@@ -63,6 +63,7 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 import { ScenarioExecutorService } from './services/scenario-executor.service';
 import { ScenarioLoaderService } from './services/scenario-loader.service';
 import { SimulationService } from './services/simulation.service';
+import { SimulatorActionsService } from './services/simulator-actions.service';
 import {
 	SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
 	SIMULATOR_PLUGIN_API_TAG_NAME,
@@ -93,6 +94,7 @@ import { SIMULATOR_PLUGIN_SWAGGER_EXTRA_MODELS } from './simulator.openapi';
 		ScenarioExecutorService,
 		SimulationService,
 		DeviceBehaviorManagerService,
+		SimulatorActionsService,
 		GenerateDeviceCommand,
 		PopulateValuesCommand,
 		ScenarioCommand,

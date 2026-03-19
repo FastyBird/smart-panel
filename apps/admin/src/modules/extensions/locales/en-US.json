@@ -168,6 +168,33 @@
 		"noExtensionsToEnable": "No extensions to enable (all selected are already enabled or cannot be toggled)",
 		"noExtensionsToDisable": "No extensions to disable (all selected are already disabled or cannot be toggled)"
 	},
+	"actions": {
+		"labels": {
+			"tab": "Actions",
+			"category": {
+				"general": "General",
+				"simulation": "Simulation",
+				"data": "Data",
+				"diagnostics": "Diagnostics",
+				"maintenance": "Maintenance"
+			},
+			"required": "Required",
+			"comingSoon": "Coming soon"
+		},
+		"buttons": {
+			"run": "Run",
+			"confirm": "Confirm",
+			"cancel": "Cancel"
+		},
+		"messages": {
+			"success": "Action completed successfully",
+			"error": "Action failed",
+			"confirmDangerous": "This action may have significant effects. Are you sure you want to proceed?",
+			"noActions": "No actions available for this extension",
+			"interactiveNotAvailable": "Interactive actions will be available in a future update",
+			"loading": "Loading actions..."
+		}
+	},
 	"services": {
 		"headings": {
 			"list": "Plugin Services",

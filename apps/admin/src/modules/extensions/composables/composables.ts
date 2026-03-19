@@ -1,3 +1,4 @@
+export * from './useActions';
 export * from './useDiscoveredExtensions';
 export * from './useExtension';
 export * from './useExtensions';

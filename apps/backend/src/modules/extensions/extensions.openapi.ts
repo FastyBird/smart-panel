@@ -1,4 +1,13 @@
+import { ExecuteActionDataDto, ReqExecuteActionDto } from './dto/execute-action.dto';
 import { ReqUpdateExtensionDto, UpdateExtensionDataDto } from './dto/update-extension.dto';
+import {
+	ActionParameterModel,
+	ActionParameterOptionModel,
+	ActionParameterValidationModel,
+	ActionResultModel,
+	ExtensionActionModel,
+} from './models/action.model';
+import { ActionResultResponseModel, ExtensionActionsResponseModel } from './models/actions-response.model';
 import {
 	DiscoveredExtensionAdminModel,
 	DiscoveredExtensionBackendModel,
@@ -20,6 +29,16 @@ export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
 	ExtensionsResponseModel,
 	ReqUpdateExtensionDto,
 	UpdateExtensionDataDto,
+	// Action models
+	ExtensionActionModel,
+	ActionParameterModel,
+	ActionParameterOptionModel,
+	ActionParameterValidationModel,
+	ActionResultModel,
+	ExtensionActionsResponseModel,
+	ActionResultResponseModel,
+	ReqExecuteActionDto,
+	ExecuteActionDataDto,
 	// Discovered extensions models
 	DiscoveredExtensionBaseModel,
 	DiscoveredExtensionAdminModel,

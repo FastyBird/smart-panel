@@ -10,12 +10,39 @@ Inspired by Home Assistant's add-on control panels, this feature allows extensio
 
 ## Architecture
 
-### Concept: `IExtensionAction`
+### Two Complementary Systems (designed for upgrade path)
 
-Extensions register **action descriptors** with the central `ExtensionActionRegistryService`. Each action defines:
-- Metadata (id, label, description, icon, category, confirmation)
-- Parameters (typed form fields the admin UI renders dynamically)
-- An async handler function that executes the action
+```
+Actions (Phase 1 - now)              Sessions (Phase 2 - future)
+─────────────────────                ──────────────────────────
+REST-based, stateless                WebSocket-based, stateful
+Flat form → execute → result         Open session → prompts ↔ answers → progress → done
+Fire-and-forget                      Long-running, interactive
+
+POST /actions/:id                    WS /sessions/open
+  { params: {...} }                    → server sends prompts
+  → { success, message, data }        ← client sends answers
+                                       → server streams progress
+                                       → session completes
+```
+
+### Action Modes
+
+Each action declares a **mode**:
+- `immediate` (Phase 1) - Flat form with upfront parameters, REST execution, instant result
+- `interactive` (Phase 2 - future) - Opens a WebSocket terminal session for multi-step flows
+
+The `interactive` mode will be reusable across the platform:
+- System module: app updates, migrations
+- Future marketplace: plugin install/uninstall progress
+- Any long-running operation with progress reporting
+
+### Dynamic Parameters
+
+Action parameters support **dynamic options** resolved at fetch time (not registration time):
+- `resolveOptions()` callback returns current options when the API is called
+- Example: scenario list includes both built-in AND user-defined scenarios
+- Example: device list for connection state changes reflects current devices
 
 ### Data Flow
 
@@ -27,14 +54,13 @@ ExtensionActionRegistryService (central registry)
         │
         ▼
 ActionsController exposes REST API
-   GET  /extensions/:type/actions          → list actions
-   POST /extensions/:type/actions/:id      → execute action
-   GET  /extensions/:type/actions/:id/runs → execution history (optional)
+   GET  /extensions/:type/actions          → list actions (resolves dynamic options)
+   POST /extensions/:type/actions/:id      → execute immediate action
         │
         ▼
 Admin UI: "Actions" tab on extension detail page
-   → Renders action cards with parameter forms
-   → Shows execution results / progress
+   → mode=immediate: renders action cards with parameter forms
+   → mode=interactive: shows "Open Terminal" button (disabled until Phase 2)
 ```
 
 ---
@@ -46,9 +72,8 @@ Admin UI: "Actions" tab on extension detail page
 **File**: `apps/backend/src/modules/extensions/services/extension-action.interface.ts`
 
 ```typescript
-/**
- * Parameter types for action inputs
- */
+export type ActionMode = 'immediate' | 'interactive';
+
 export enum ActionParameterType {
     STRING = 'string',
     NUMBER = 'number',
@@ -57,25 +82,22 @@ export enum ActionParameterType {
     MULTI_SELECT = 'multi_select',
 }
 
-/**
- * Describes a single parameter for an extension action.
- */
-export interface IActionParameter {
-    /** Unique parameter key (used in the params object) */
-    name: string;
-    /** Human-readable label */
+export interface IActionParameterOption {
     label: string;
-    /** Optional description / help text */
+    value: string | number | boolean;
+}
+
+export interface IActionParameter {
+    name: string;
+    label: string;
     description?: string;
-    /** Parameter type determines the form control rendered in UI */
     type: ActionParameterType;
-    /** Whether the parameter is required */
     required?: boolean;
-    /** Default value */
     default?: string | number | boolean;
-    /** For SELECT / MULTI_SELECT: available options */
-    options?: { label: string; value: string | number | boolean }[];
-    /** Validation constraints */
+    /** Static options (for simple cases) */
+    options?: IActionParameterOption[];
+    /** Dynamic options resolver (called at fetch time) */
+    resolveOptions?(): Promise<IActionParameterOption[]>;
     validation?: {
         min?: number;
         max?: number;
@@ -85,9 +107,6 @@ export interface IActionParameter {
     };
 }
 
-/**
- * Categories to group actions visually in the UI.
- */
 export enum ActionCategory {
     GENERAL = 'general',
     SIMULATION = 'simulation',
@@ -96,37 +115,23 @@ export enum ActionCategory {
     MAINTENANCE = 'maintenance',
 }
 
-/**
- * Result of executing an action.
- */
 export interface IActionResult {
     success: boolean;
-    /** Short summary shown as a flash message */
     message?: string;
-    /** Optional structured data returned to the UI */
     data?: Record<string, unknown>;
 }
 
-/**
- * Describes an action that an extension makes available.
- */
 export interface IExtensionAction {
-    /** Unique action ID within the extension (e.g., 'load-scenario') */
     id: string;
-    /** Human-readable action name */
     label: string;
-    /** Longer description of what the action does */
     description?: string;
-    /** MDI icon name (e.g., 'mdi:play') */
     icon?: string;
-    /** Group actions visually */
     category?: ActionCategory;
-    /** If true, UI shows a confirmation dialog before executing */
+    mode: ActionMode;
     dangerous?: boolean;
-    /** Action parameters (rendered as a form in the UI) */
     parameters?: IActionParameter[];
-    /** The handler function. Receives validated parameters, returns result. */
-    execute(params: Record<string, unknown>): Promise<IActionResult>;
+    /** Handler for immediate mode actions */
+    execute?(params: Record<string, unknown>): Promise<IActionResult>;
 }
 ```
 
@@ -134,55 +139,32 @@ export interface IExtensionAction {
 
 **File**: `apps/backend/src/modules/extensions/services/extension-action-registry.service.ts`
 
-```typescript
-@Injectable()
-export class ExtensionActionRegistryService {
-    private readonly actions = new Map<string, Map<string, IExtensionAction>>();
-    // key: extensionType, value: Map<actionId, action>
-
-    /** Register an action for an extension */
-    register(extensionType: string, action: IExtensionAction): void;
-
-    /** Unregister all actions for an extension */
-    unregisterAll(extensionType: string): void;
-
-    /** Get all actions for an extension */
-    getActions(extensionType: string): IExtensionAction[];
-
-    /** Get a specific action */
-    getAction(extensionType: string, actionId: string): IExtensionAction | undefined;
-
-    /** Execute an action */
-    async execute(
-        extensionType: string,
-        actionId: string,
-        params: Record<string, unknown>,
-    ): Promise<IActionResult>;
-}
-```
+- `register(extensionType, action)` - Register an action
+- `unregisterAll(extensionType)` - Remove all actions
+- `getActions(extensionType)` - List actions (resolves dynamic options)
+- `getAction(extensionType, actionId)` - Get specific action
+- `execute(extensionType, actionId, params)` - Execute an immediate action
 
 ### 1.3 Actions Controller
 
 **File**: `apps/backend/src/modules/extensions/controllers/actions.controller.ts`
 
 ```
-GET  /modules/extensions/extensions/:type/actions
-     → Returns action descriptors (without the execute function)
+GET  /extensions/:type/actions
+     → Returns action descriptors with resolved options
 
-POST /modules/extensions/extensions/:type/actions/:actionId
+POST /extensions/:type/actions/:actionId
      Body: { data: { params: { ... } } }
-     → Validates params, executes action, returns result
+     → Validates mode=immediate, executes action, returns result
 ```
 
-### 1.4 Response Models
-
-**File**: `apps/backend/src/modules/extensions/models/action.model.ts`
+### 1.4 Response & DTO Models
 
 - `ExtensionActionModel` - Serializable action descriptor
-- `ActionParameterModel` - Parameter descriptor
+- `ActionParameterModel` - Parameter descriptor with resolved options
 - `ActionResultModel` - Execution result
-- `ExtensionActionsResponseModel` - List wrapper
-- `ActionResultResponseModel` - Result wrapper
+- `ExtensionActionsResponseModel` / `ActionResultResponseModel` - Wrappers
+- `ReqExecuteActionDto` - Request body for action execution
 
 ---
 
@@ -190,104 +172,47 @@ POST /modules/extensions/extensions/:type/actions/:actionId
 
 **File**: `apps/backend/src/plugins/simulator/services/simulator-actions.service.ts`
 
-Register these actions on `onModuleInit`:
-
-| Action ID | Label | Category | Parameters | Maps to |
+| Action ID | Label | Mode | Category | Parameters |
 |---|---|---|---|---|
-| `load-scenario` | Load Scenario | data | `scenario` (select from available), `truncate` (bool), `rooms` (bool), `scenes` (bool) | `ScenarioExecutorService` |
-| `generate-device` | Generate Device | data | `category` (select), `name` (string), `count` (number), `autoSimulate` (bool) | `DeviceGeneratorService` |
-| `simulate-all` | Simulate All Devices | simulation | (none) | `SimulationService.simulateAllDevices()` |
-| `start-auto-simulation` | Start Auto-Simulation | simulation | `interval` (number, default 5000) | `SimulationService.startAutoSimulation()` |
-| `stop-auto-simulation` | Stop Auto-Simulation | simulation | (none) | `SimulationService.stopAutoSimulation()` |
-| `set-all-connection-state` | Set Connection State | simulation | `state` (select: connected/disconnected/lost/...) | Iterate devices + `DeviceConnectivityService` |
+| `load-scenario` | Load Scenario | immediate | data | `scenario` (dynamic select), `truncate` (bool), `rooms` (bool), `scenes` (bool), `roles` (bool) |
+| `generate-device` | Generate Device | immediate | data | `category` (select), `name` (string), `count` (number), `autoSimulate` (bool) |
+| `simulate-all` | Simulate All Devices | immediate | simulation | (none) |
+| `start-auto-simulation` | Start Auto-Simulation | immediate | simulation | `interval` (number, default 5000) |
+| `stop-auto-simulation` | Stop Auto-Simulation | immediate | simulation | (none) |
+| `set-all-connection-state` | Set Connection State | immediate | simulation | `state` (select: connected/disconnected/...) |
 
-The `scenario` select options are populated dynamically from `ScenarioLoaderService.listScenarios()`.
+Key: `scenario` options use `resolveOptions()` to call `ScenarioLoaderService.getAvailableScenarios()` dynamically.
 
 ---
 
 ## Phase 3: Admin UI - Actions Tab
 
-### 3.1 Store
+### Components
+- **`extension-actions.vue`** - Actions panel grouped by category
+- **`action-parameter-form.vue`** - Dynamic form renderer (string→input, number→input-number, boolean→switch, select→select)
 
-**File**: `apps/admin/src/modules/extensions/store/actions.store.ts`
-
-```typescript
-// State: { [extensionType]: IExtensionAction[] }
-// Actions:
-//   fetch(extensionType)    → GET /modules/extensions/extensions/:type/actions
-//   execute(extensionType, actionId, params) → POST .../:actionId
-```
-
-### 3.2 Components
-
-**`extension-actions.vue`** - Actions panel for the extension detail page
-- Groups actions by category
-- Each action rendered as a card with:
-  - Icon, label, description
-  - Parameter form (dynamically rendered based on parameter types)
-  - "Run" button (with confirmation dialog if `dangerous`)
-  - Result display (success/error message)
-
-**`action-parameter-form.vue`** - Dynamic form renderer
-- `string` → `el-input`
-- `number` → `el-input-number`
-- `boolean` → `el-switch`
-- `select` → `el-select`
-- `multi_select` → `el-select` with `multiple`
-- Validation based on parameter constraints
-
-### 3.3 Extension Detail View Changes
-
-Add an **"Actions" tab** (between Documentation and Logs) on `view-extension-detail.vue`:
-- Only shown when the extension has registered actions
-- Tab icon: `mdi:lightning-bolt`
-- Content: `<extension-actions :extension-type="extension.type" />`
-
-### 3.4 Composable
-
-**`useExtensionActions.ts`** (extend existing or create `useActions.ts`)
-- `actions` - computed list of actions for current extension
-- `executeAction(actionId, params)` - calls API, shows flash message
-- `isExecuting(actionId)` - loading state per action
+### Extension Detail View
+- New "Actions" tab with icon `mdi:lightning-bolt`
+- Only visible when extension has registered actions
+- `mode=interactive` actions shown as disabled with "Coming soon" badge
 
 ---
 
-## Phase 4: Extension SDK Update
+## Future Phases
 
-Add the action interface to `packages/extension-sdk/src/types.ts` so external extensions can also register actions:
+### Phase 2: Interactive Sessions (WebSocket)
+- Platform-level WebSocket session system
+- Terminal-like UI component
+- Use cases: system updates, marketplace installs, complex wizards
+- Server drives conversation (sends prompts), client responds
 
-```typescript
-export type { IExtensionAction, IActionParameter, IActionResult } from './action.types';
-```
-
----
-
-## Phase 5 (Future): Advanced Features
-
-These are not part of the initial implementation but worth considering:
-
-1. **Long-running actions with progress** - WebSocket-based progress reporting for actions that take time (e.g., loading a large scenario)
-2. **Action permissions** - Role-based access control for dangerous actions
-3. **Action history/audit log** - Track who executed what and when
-4. **Conditional actions** - Actions that are only available based on extension state (e.g., "Stop Simulation" only when running)
-5. **Custom UI panels** - Extensions provide their own Vue components (like HA add-on panels), loaded dynamically from the discovered admin extension entry
-6. **Action scheduling** - Schedule actions to run at specific times or intervals
-7. **Webhook triggers** - Allow actions to be triggered via external webhooks
-
----
-
-## Implementation Order
-
-1. **Backend interfaces** (`IExtensionAction`, `IActionParameter`, `IActionResult`)
-2. **Registry service** (`ExtensionActionRegistryService`)
-3. **REST controller** + response models
-4. **Simulator plugin** registers its actions
-5. **Admin store** for fetching/executing actions
-6. **Admin components** (action cards, parameter forms)
-7. **Extension detail view** - add Actions tab
-8. **Extension SDK** - export action types
-9. **OpenAPI regeneration**
-10. **Tests**
+### Phase 3: Advanced Features
+- Action permissions (role-based)
+- Action history/audit log
+- Conditional actions (based on extension state)
+- Custom Vue panels loaded from extensions
+- Action scheduling
+- Webhook triggers
 
 ---
 
@@ -298,11 +223,13 @@ These are not part of the initial implementation but worth considering:
 - `apps/backend/src/modules/extensions/services/extension-action-registry.service.ts`
 - `apps/backend/src/modules/extensions/controllers/actions.controller.ts`
 - `apps/backend/src/modules/extensions/models/action.model.ts`
+- `apps/backend/src/modules/extensions/models/actions-response.model.ts`
 - `apps/backend/src/modules/extensions/dto/execute-action.dto.ts`
 - `apps/backend/src/plugins/simulator/services/simulator-actions.service.ts`
 
 ### Backend - Modified Files
 - `apps/backend/src/modules/extensions/extensions.module.ts` - Register new service + controller
+- `apps/backend/src/modules/extensions/extensions.openapi.ts` - Add new models
 - `apps/backend/src/plugins/simulator/simulator.plugin.ts` - Register actions service
 
 ### Admin - New Files
@@ -313,21 +240,10 @@ These are not part of the initial implementation but worth considering:
 
 ### Admin - Modified Files
 - `apps/admin/src/modules/extensions/views/view-extension-detail.vue` - Add Actions tab
-- `apps/admin/src/modules/extensions/extensions.constants.ts` - Action-related types
-- `apps/admin/src/modules/extensions/locales/` - i18n strings
+- `apps/admin/src/modules/extensions/components/components.ts` - Export new components
+- `apps/admin/src/modules/extensions/composables/composables.ts` - Export new composable
+- `apps/admin/src/modules/extensions/store/stores.ts` - Export new store
+- `apps/admin/src/modules/extensions/locales/en-US.json` - i18n strings
 
 ### SDK - Modified Files
 - `packages/extension-sdk/src/types.ts` - Export action interfaces
-
----
-
-## HA Inspiration Notes
-
-Home Assistant add-ons offer:
-- **Info panel** - Description, version, changelog → We have this (README + docs tabs)
-- **Configuration panel** - YAML/form-based config → We have this (config module link)
-- **Log panel** - Live logs → We have this (Logs tab)
-- **Control buttons** - Start/Stop/Restart/Rebuild → We have service controls
-- **Ingress panel** - Embedded web UI from the add-on → Future: custom UI panels (Phase 5)
-
-What we're adding is closest to HA's **"automation actions"** or **"developer tools > services"** concept - extensions expose callable services that users can invoke with parameters from the UI. This bridges the gap between CLI-only features and user-accessible functionality.
