@@ -28,8 +28,9 @@ export function useSession() {
 		sessionRef.current = session;
 	}, [session]);
 
-	// Debounced save
+	// Debounced save — sync ref immediately so beforeunload always has latest
 	const save = useCallback((updated: TestSession) => {
+		sessionRef.current = updated;
 		setSession(updated);
 		if (timeoutRef.current) clearTimeout(timeoutRef.current);
 		timeoutRef.current = setTimeout(() => {

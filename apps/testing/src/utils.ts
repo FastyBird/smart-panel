@@ -159,7 +159,7 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 
 	// Blockers
 	const failures = Object.entries(session.results).filter(
-		([k, r]) => r.status === 'fail' && (k.includes('::p0.') || k.includes('::p1.')),
+		([k, r]) => r.status === 'fail' && (k.includes('::smoke.') || k.includes('::p0.') || k.includes('::p1.')),
 	);
 	if (failures.length > 0) {
 		md += `\n## Blockers\n`;

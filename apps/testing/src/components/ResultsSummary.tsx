@@ -11,11 +11,11 @@ interface ResultsSummaryProps {
 export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSummaryProps) {
 	const verdict = computeReadiness(session, testPlan.phases);
 
-	// Collect P0 and P1 failures (blockers)
+	// Collect smoke, P0 and P1 failures (blockers)
 	const blockers = Object.entries(session.results).filter(([key, result]) => {
 		if (result.status !== 'fail') return false;
 		const testId = key.split('::')[1] ?? '';
-		return testId.startsWith('p0.') || testId.startsWith('p1.');
+		return testId.startsWith('smoke.') || testId.startsWith('p0.') || testId.startsWith('p1.');
 	});
 
 	// Collect P4 failures and skips (known limitations)
