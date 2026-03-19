@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "lint:js": "eslint src/",
     "lint:js:fix": "eslint src/ --fix",
-    "pretty": "prettier --write src/ && prettier --check src/",
+    "pretty": "pnpm pretty:write && pnpm pretty:check",
     "pretty:write": "prettier --write src/",
     "pretty:check": "prettier --check src/"
   },

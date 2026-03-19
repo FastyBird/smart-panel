@@ -166,9 +166,11 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 	}
 
 	// Blockers
-	const failures = Object.entries(session.results).filter(
-		([k, r]) => r.status === 'fail' && (k.includes('::smoke.') || k.includes('::p0.') || k.includes('::p1.')),
-	);
+	const failures = Object.entries(session.results).filter(([k, r]) => {
+		if (r.status !== 'fail') return false;
+		const testId = k.split('::')[1];
+		return testId.startsWith('smoke.') || testId.startsWith('p0.') || testId.startsWith('p1.');
+	});
 	if (failures.length > 0) {
 		md += `\n## Blockers\n`;
 		for (const [key, result] of failures) {

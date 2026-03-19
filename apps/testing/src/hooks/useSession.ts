@@ -54,6 +54,7 @@ export function useSession() {
 	}, []);
 
 	const startSession = useCallback((newSession: TestSession) => {
+		sessionRef.current = newSession;
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
 		setSession(newSession);
 	}, []);
