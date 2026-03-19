@@ -103,6 +103,11 @@ export function useSession() {
 	);
 
 	const resetSession = useCallback(() => {
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+			timeoutRef.current = null;
+		}
+		sessionRef.current = null;
 		localStorage.removeItem(STORAGE_KEY);
 		setSession(null);
 	}, []);
