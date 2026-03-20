@@ -100,6 +100,15 @@ fi
 # Install first-boot service
 cp /tmp/smart-panel-config/smart-panel-firstboot.service /etc/systemd/system/
 
+# Backend variants: add InfluxDB ordering to firstboot service
+# (display-only doesn't have InfluxDB, so we add it conditionally)
+if [ "${HAS_BACKEND}" = true ]; then
+	sed -i \
+		-e 's|^After=network-online.target|After=network-online.target influxdb.service|' \
+		-e 's|^Wants=network-online.target|Wants=network-online.target influxdb.service|' \
+		/etc/systemd/system/smart-panel-firstboot.service
+fi
+
 # Determine first-boot script install directory and data directory
 if [ "${HAS_BACKEND}" = true ]; then
 	FIRSTBOOT_DIR="${APP_INSTALL_DIR}"
