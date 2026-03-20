@@ -56,7 +56,7 @@ npm install -g node-gyp
 echo "Installing InfluxDB 1.8..."
 
 INFLUX_VERSION="1.8.10"
-curl -fsSL "https://repos.influxdata.com/debian/pool/stable/i/influxdb/influxdb_${INFLUX_VERSION}_${ARCH}.deb" \
+curl -fsSL "https://dl.influxdata.com/influxdb/releases/influxdb_${INFLUX_VERSION}_${ARCH}.deb" \
 	-o /tmp/influxdb.deb \
 	&& dpkg -i /tmp/influxdb.deb \
 	&& rm -f /tmp/influxdb.deb \
