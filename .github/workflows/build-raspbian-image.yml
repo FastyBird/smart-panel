@@ -30,9 +30,14 @@ jobs:
       - name: "Install dependencies"
         run: "pnpm install --frozen-lockfile"
 
-      - name: "Free disk space"
+      - name: "Free disk space and add swap"
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
           df -h
 
       - name: "Set up QEMU for ARM64 emulation"
