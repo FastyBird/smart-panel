@@ -1,29 +1,30 @@
-name: "Website Publisher"
+name: "Deploy Website"
 
 on:
   push:
     branches:
       - "main"
+    paths:
+      - "apps/website/**"
     tags:
       - v*
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "deploy-website"
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  publish:
-    name: "Build web and publish it to Github pages"
+  deploy:
+    name: "Build and deploy website to GitHub Pages"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -31,8 +32,6 @@ jobs:
         node-version: [ "24" ]
         pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
-
-    if: github.event_name == 'push' && contains(github.ref, 'refs/heads/main')
 
     steps:
       - name: "Checkout"
