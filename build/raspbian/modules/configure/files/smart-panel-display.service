@@ -1,0 +1,20 @@
+[Unit]
+Description=FastyBird Smart Panel Display (flutter-pi)
+Documentation=https://smart-panel.fastybird.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/smart-panel-display
+ExecStart=/usr/local/bin/flutter-pi --release /opt/smart-panel-display
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-display
+SupplementaryGroups=video render input
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,16 @@ name: Build Raspbian Image
 on:
   workflow_dispatch:
     inputs:
+      variant:
+        description: 'Image variant to build'
+        required: true
+        type: choice
+        options:
+          - server
+          - aio
+          - display
+          - all
+        default: 'server'
       image_name:
         description: 'Image name suffix (e.g. "beta", "rc1")'
         required: false
@@ -11,9 +21,30 @@ on:
     types: [published]
 
 jobs:
-  build:
-    name: "Build Raspberry Pi Image"
+  matrix-setup:
+    name: "Setup build matrix"
     runs-on: "ubuntu-latest"
+    outputs:
+      variants: "${{ steps.set-matrix.outputs.variants }}"
+    steps:
+      - name: "Determine variants to build"
+        id: "set-matrix"
+        run: |
+          VARIANT="${{ github.event.inputs.variant || 'all' }}"
+          if [ "${VARIANT}" = "all" ]; then
+            echo 'variants=["server","aio","display"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "variants=[\"${VARIANT}\"]" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: "Build ${{ matrix.variant }}"
+    needs: "matrix-setup"
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: "${{ fromJson(needs.matrix-setup.outputs.variants) }}"
 
     steps:
       - name: "Checkout"
@@ -29,6 +60,24 @@ jobs:
 
       - name: "Install dependencies"
         run: "pnpm install --frozen-lockfile"
+
+      - name: "Setup Flutter"
+        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
+        uses: "subosito/flutter-action@v2"
+        with:
+          channel: "stable"
+
+      - name: "Enable Flutter Linux desktop"
+        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
+        run: "flutter config --enable-linux-desktop"
+
+      - name: "Install Flutter Linux build dependencies"
+        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev
 
       - name: "Free disk space and add swap"
         run: |
@@ -51,7 +100,7 @@ jobs:
       - name: "Build image"
         run: |
           cd build/raspbian
-          ./build.sh
+          ./build.sh --variant=${{ matrix.variant }}
 
       - name: "Rename output"
         run: |
@@ -74,7 +123,7 @@ jobs:
       - name: "Upload image artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "smart-panel-image-arm64"
+          name: "smart-panel-${{ matrix.variant }}-image-arm64"
           path: "build/raspbian/output/*"
           retention-days: 30
 
