@@ -4,36 +4,16 @@ on:
   push:
     branches:
       - "main"
-  pull_request:
-    branches:
-      - "main"
-    types:
-      - "opened"
-      - "reopened"
-      - "synchronize"
-      - "ready_for_review"
-      - "review_requested"
   workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   draft-release:
     name: "Draft new release"
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: "ubuntu-latest"
 
     steps:
       - name: "Draft new release"
         uses: "release-drafter/release-drafter@v7"
-
-  autolabel:
-    name: "Auto-label PR"
-    if: github.event_name == 'pull_request'
-    runs-on: "ubuntu-latest"
-
-    steps:
-      - name: "Auto-label PR"
-        uses: "release-drafter/release-drafter/autolabeler@v7"
