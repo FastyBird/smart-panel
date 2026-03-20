@@ -36,9 +36,9 @@ jobs:
           df -h
 
       - name: "Set up QEMU for ARM64 emulation"
-        uses: "docker/setup-qemu-action@v3"
-        with:
-          platforms: "arm64"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static binfmt-support
 
       - name: "Build image"
         run: |
