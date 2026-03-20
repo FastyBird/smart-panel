@@ -221,20 +221,25 @@ mkdir -p "${OUTPUT_DIR}"
 VERSION=$(git -C "${PROJECT_ROOT}" describe --tags --always 2>/dev/null || echo "dev")
 VERSION="${VERSION//\//-}"
 
+echo "  -> Deploy directory contents:"
+ls -lh "${PI_GEN_DIR}/deploy/" 2>/dev/null || echo "  -> Deploy directory not found!"
+
 # pi-gen produces either .img or .zip in deploy/
-IMAGE_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.img 2>/dev/null | head -1)
-ZIP_FILE=$(ls "${PI_GEN_DIR}/deploy/"*.zip 2>/dev/null | head -1)
+IMAGE_FILE=$(find "${PI_GEN_DIR}/deploy/" -maxdepth 1 -name "*.img" -type f 2>/dev/null | head -1)
+ZIP_FILE=$(find "${PI_GEN_DIR}/deploy/" -maxdepth 1 -name "*.zip" -type f 2>/dev/null | head -1)
 
 if [ -n "${IMAGE_FILE}" ]; then
 	NEW_NAME="smart-panel-${VERSION}-arm64.img"
+	echo "  -> Copying ${IMAGE_FILE} to ${OUTPUT_DIR}/${NEW_NAME}"
 	cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
 	echo "  -> Compressing image..."
 	xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
-	( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}.xz" > "${NEW_NAME}.xz.sha256" )
+	sha256sum "${OUTPUT_DIR}/${NEW_NAME}.xz" > "${OUTPUT_DIR}/${NEW_NAME}.xz.sha256"
 elif [ -n "${ZIP_FILE}" ]; then
 	NEW_NAME="smart-panel-${VERSION}-arm64.zip"
+	echo "  -> Copying ${ZIP_FILE} to ${OUTPUT_DIR}/${NEW_NAME}"
 	cp "${ZIP_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
-	( cd "${OUTPUT_DIR}" && sha256sum "${NEW_NAME}" > "${NEW_NAME}.sha256" )
+	sha256sum "${OUTPUT_DIR}/${NEW_NAME}" > "${OUTPUT_DIR}/${NEW_NAME}.sha256"
 else
 	echo "ERROR: No .img or .zip file found in ${PI_GEN_DIR}/deploy/" >&2
 	exit 1
