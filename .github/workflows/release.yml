@@ -391,15 +391,15 @@ jobs:
       - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
           tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-display-armv7.txt
+          shasum -a 256 smart-panel-display-armv7.tar.gz > smart-panel-display-armv7.tar.gz.sha256
 
       - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "flutter-assets"
+          name: "display-panel-armv7"
           path: |
             smart-panel-display-armv7.tar.gz
-            SHASUMS256-display-armv7.txt
+            smart-panel-display-armv7.tar.gz.sha256
 
       - name: "Build ARM64 Flutter Bundle (64-bit)"
         env:
@@ -410,15 +410,15 @@ jobs:
       - name: "Archive ARM64 Flutter Assets (64-bit)"
         run: |
           tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-display-arm64.txt
+          shasum -a 256 smart-panel-display-arm64.tar.gz > smart-panel-display-arm64.tar.gz.sha256
 
       - name: "Upload ARM64 Artifact (64-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "flutter-assets-arm64"
+          name: "display-panel-arm64"
           path: |
             smart-panel-display-arm64.tar.gz
-            SHASUMS256-display-arm64.txt
+            smart-panel-display-arm64.tar.gz.sha256
 
   build-android:
     needs: [ "tag", "sync-versions", "changelog" ]
@@ -469,16 +469,16 @@ jobs:
 
       - name: "Rename APK"
         run: |
-          cp ./apps/panel/build/app/outputs/flutter-apk/app-release.apk smart-panel-display.apk
-          shasum -a 256 smart-panel-display.apk > SHASUMS256-android.txt
+          cp ./apps/panel/build/app/outputs/flutter-apk/app-release.apk smart-panel-display-android.apk
+          shasum -a 256 smart-panel-display-android.apk > smart-panel-display-android.apk.sha256
 
       - name: "Upload Android Artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "android-apk"
+          name: "display-panel-android"
           path: |
-            smart-panel-display.apk
-            SHASUMS256-android.txt
+            smart-panel-display-android.apk
+            smart-panel-display-android.apk.sha256
 
   build-linux-desktop:
     needs: [ "tag", "sync-versions", "changelog" ]
@@ -531,15 +531,15 @@ jobs:
       - name: "Archive Linux Desktop App"
         run: |
           tar -czvf smart-panel-display-linux-x64.tar.gz -C ./apps/panel/build/linux/x64/release/bundle .
-          shasum -a 256 smart-panel-display-linux-x64.tar.gz > SHASUMS256-linux-x64.txt
+          shasum -a 256 smart-panel-display-linux-x64.tar.gz > smart-panel-display-linux-x64.tar.gz.sha256
 
       - name: "Upload Linux Desktop Artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "linux-desktop"
+          name: "display-panel-linux-x64"
           path: |
             smart-panel-display-linux-x64.tar.gz
-            SHASUMS256-linux-x64.txt
+            smart-panel-display-linux-x64.tar.gz.sha256
 
   build-elinux:
     needs: [ "tag", "sync-versions", "changelog" ]
@@ -589,15 +589,15 @@ jobs:
       - name: "Archive eLinux App"
         run: |
           tar -czvf smart-panel-display-elinux-x64.tar.gz -C ./apps/panel/build/elinux/x64/release/bundle .
-          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > SHASUMS256-elinux-x64.txt
+          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > smart-panel-display-elinux-x64.tar.gz.sha256
 
       - name: "Upload eLinux Artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "elinux-x64"
+          name: "display-panel-elinux-x64"
           path: |
             smart-panel-display-elinux-x64.tar.gz
-            SHASUMS256-elinux-x64.txt
+            smart-panel-display-elinux-x64.tar.gz.sha256
 
   build-application:
     needs: ["tag", "sync-versions", "build-display", "publish-admin", "publish-backend"]
@@ -624,9 +624,9 @@ jobs:
           rm ./pnpm-workspace.yaml
 
       - name: "Download Display Assets (32-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: flutter-assets
+          name: display-panel-armv7
 
       - name: "Extract Flutter Assets to /build-armv7/display"
         run: |
@@ -648,7 +648,7 @@ jobs:
           cpu_info: "cpuinfo/raspberrypi_zero2_w"
           image_additional_mb: "4096"
           copy_repository_path: "/opt/smart-panel"
-          copy_artifact_path: "smart-panel.tar.gz;SHASUMS256.txt"
+          copy_artifact_path: "smart-panel-server-armv7.tar.gz;smart-panel-server-armv7.tar.gz.sha256"
           copy_artifact_dest: "."
           commands: |
             apt-get update
@@ -660,21 +660,21 @@ jobs:
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
             npm install --omit=dev
             cd /opt/smart-panel
-            tar -czvf smart-panel.tar.gz -C ./build-armv7 .
-            shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
+            tar -czvf smart-panel-server-armv7.tar.gz -C ./build-armv7 .
+            shasum -a 256 smart-panel-server-armv7.tar.gz > smart-panel-server-armv7.tar.gz.sha256
 
       - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "application-build-armv7"
+          name: "server-bundle-armv7"
           path: |
-            smart-panel.tar.gz
-            SHASUMS256.txt
+            smart-panel-server-armv7.tar.gz
+            smart-panel-server-armv7.tar.gz.sha256
 
       - name: "Download Display Assets (64-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "flutter-assets-arm64"
+          name: "display-panel-arm64"
 
       - name: "Extract Flutter Assets to /build-arm64/display"
         run: |
@@ -696,7 +696,7 @@ jobs:
           cpu_info: "cpuinfo/raspberrypi_zero2_w_arm64"
           image_additional_mb: "4096"
           copy_repository_path: "/opt/smart-panel"
-          copy_artifact_path: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"
+          copy_artifact_path: "smart-panel-server-arm64.tar.gz;smart-panel-server-arm64.tar.gz.sha256"
           copy_artifact_dest: "."
           commands: |
             apt-get update
@@ -708,16 +708,16 @@ jobs:
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
             npm install --omit=dev
             cd /opt/smart-panel
-            tar -czvf smart-panel-arm64.tar.gz -C ./build-arm64 .
-            shasum -a 256 smart-panel-arm64.tar.gz > SHASUMS256-arm64.txt
+            tar -czvf smart-panel-server-arm64.tar.gz -C ./build-arm64 .
+            shasum -a 256 smart-panel-server-arm64.tar.gz > smart-panel-server-arm64.tar.gz.sha256
 
       - name: "Upload ARM64 Artifact (64-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "application-build-arm64"
+          name: "server-bundle-arm64"
           path: |
-            smart-panel-arm64.tar.gz
-            SHASUMS256-arm64.txt
+            smart-panel-server-arm64.tar.gz
+            smart-panel-server-arm64.tar.gz.sha256
 
   attach-artifacts:
     needs: ["tag", "sync-versions", "publish-backend", "publish-admin", "publish-main-package", "build-display", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
@@ -745,39 +745,39 @@ jobs:
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download ARMv7 Application Build (32-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "application-build-armv7"
+          name: "server-bundle-armv7"
 
       - name: "Download ARM64 Application Build (64-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "application-build-arm64"
+          name: "server-bundle-arm64"
 
       - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "flutter-assets"
+          name: "display-panel-armv7"
 
       - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "flutter-assets-arm64"
+          name: "display-panel-arm64"
 
       - name: "Download Android APK"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "android-apk"
+          name: "display-panel-android"
 
       - name: "Download Linux Desktop Build"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "linux-desktop"
+          name: "display-panel-linux-x64"
 
       - name: "Download eLinux Build"
-        uses: "actions/download-artifact@v8"
+        uses: "actions/download-artifact@v7"
         with:
-          name: "elinux-x64"
+          name: "display-panel-elinux-x64"
 
       - name: "Prepare Installation Scripts"
         run: |
@@ -791,20 +791,20 @@ jobs:
         with:
           tag_name: v${{ needs.tag.outputs.version }}
           files: |
-            smart-panel.tar.gz
-            SHASUMS256.txt
-            smart-panel-arm64.tar.gz
-            SHASUMS256-arm64.txt
+            smart-panel-server-armv7.tar.gz
+            smart-panel-server-armv7.tar.gz.sha256
+            smart-panel-server-arm64.tar.gz
+            smart-panel-server-arm64.tar.gz.sha256
             smart-panel-display-armv7.tar.gz
-            SHASUMS256-display-armv7.txt
+            smart-panel-display-armv7.tar.gz.sha256
             smart-panel-display-arm64.tar.gz
-            SHASUMS256-display-arm64.txt
-            smart-panel-display.apk
-            SHASUMS256-android.txt
+            smart-panel-display-arm64.tar.gz.sha256
+            smart-panel-display-android.apk
+            smart-panel-display-android.apk.sha256
             smart-panel-display-linux-x64.tar.gz
-            SHASUMS256-linux-x64.txt
+            smart-panel-display-linux-x64.tar.gz.sha256
             smart-panel-display-elinux-x64.tar.gz
-            SHASUMS256-elinux-x64.txt
+            smart-panel-display-elinux-x64.tar.gz.sha256
             install.sh
             install-panel.sh
         env:
