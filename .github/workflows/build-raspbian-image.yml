@@ -39,6 +39,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq qemu-user-static binfmt-support
+          sudo ln -sf /usr/bin/qemu-aarch64-static /usr/bin/qemu-aarch64
 
       - name: "Build image"
         run: |
