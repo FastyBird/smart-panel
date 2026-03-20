@@ -50,13 +50,13 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-testing build"
 
       - name: "Create Cloudflare Pages project (if not exists)"
-        run: "npx wrangler pages project create fastybird-smart-panel-testing --production-branch=main 2>/dev/null || true"
+        run: "npx wrangler@4 pages project create fastybird-smart-panel-testing --production-branch=main 2>/dev/null || true"
         env:
           CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}"
           CLOUDFLARE_ACCOUNT_ID: "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
 
       - name: "Deploy to Cloudflare Pages"
-        run: "npx wrangler pages deploy apps/testing/dist --project-name=fastybird-smart-panel-testing --branch=main"
+        run: "npx wrangler@4 pages deploy apps/testing/dist --project-name=fastybird-smart-panel-testing --branch=main"
         env:
           CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}"
           CLOUDFLARE_ACCOUNT_ID: "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
