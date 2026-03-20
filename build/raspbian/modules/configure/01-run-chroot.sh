@@ -73,11 +73,13 @@ if [ "${HAS_DISPLAY}" = true ]; then
 
 	# Install display systemd service
 	if [ "${HAS_BACKEND}" = true ]; then
-		# AIO: make display service wait for backend + set localhost as backend URL
+		# AIO: make display service wait for backend to be ready.
+		# Note: the backend URL (localhost) is baked into the panel app at build
+		# time via --dart-define in build.sh — runtime env vars have no effect
+		# on Dart's String.fromEnvironment which is compile-time only.
 		sed \
 			-e 's|^After=.*|After=network-online.target smart-panel.service|' \
 			-e 's|^Wants=.*|Wants=network-online.target smart-panel.service|' \
-			-e '/^\[Service\]/a Environment=FB_APP_HOST=http://localhost\nEnvironment=FB_BACKEND_PORT=3000' \
 			/tmp/smart-panel-config/smart-panel-display.service \
 			> /etc/systemd/system/smart-panel-display.service
 	else
