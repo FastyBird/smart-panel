@@ -20,7 +20,14 @@ log() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 0. Expand root partition to fill SD card
+# 0a. Configure WiFi from boot partition (if config file exists)
+# ──────────────────────────────────────────────────────────────
+if [ -x "${APP_DIR}/setup-wifi.sh" ]; then
+	"${APP_DIR}/setup-wifi.sh" && log "WiFi setup complete" || log "WiFi setup skipped or failed"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# 0b. Expand root partition to fill SD card
 # ──────────────────────────────────────────────────────────────
 if command -v raspi-config >/dev/null 2>&1; then
 	# raspi-config --expand-rootfs marks the partition for expansion and

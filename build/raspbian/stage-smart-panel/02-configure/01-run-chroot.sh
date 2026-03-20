@@ -24,10 +24,10 @@ touch "${DATA_DIR}/.first-boot"
 systemctl enable smart-panel.service
 systemctl enable smart-panel-firstboot.service
 
-# Enable SSH fallback — Raspberry Pi Imager can override this,
-# but if someone flashes without Imager config, SSH still works
+# Enable SSH
 touch /boot/firmware/ssh
 systemctl enable ssh.service
+ssh-keygen -A
 
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
@@ -40,6 +40,36 @@ smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
+
+# Grant the pi user passwordless sudo access
+cat > /etc/sudoers.d/010_pi-nopasswd << 'SUDOERS'
+pi ALL=(ALL) NOPASSWD: ALL
+SUDOERS
+chmod 0440 /etc/sudoers.d/010_pi-nopasswd
+
+# Install WiFi setup script that reads from boot partition on first boot.
+# Users can create /boot/firmware/smart-panel-wifi.txt with:
+#   SSID=YourNetwork
+#   PASSWORD=YourPassword
+#   COUNTRY=US
+cat > /usr/lib/smart-panel/setup-wifi.sh << 'WIFI_SCRIPT'
+#!/bin/bash
+WIFI_CONFIG="/boot/firmware/smart-panel-wifi.txt"
+if [ -f "${WIFI_CONFIG}" ]; then
+	SSID=$(grep "^SSID=" "${WIFI_CONFIG}" | cut -d= -f2-)
+	PASSWORD=$(grep "^PASSWORD=" "${WIFI_CONFIG}" | cut -d= -f2-)
+	COUNTRY=$(grep "^COUNTRY=" "${WIFI_CONFIG}" | cut -d= -f2- || echo "US")
+	if [ -n "${SSID}" ] && [ -n "${PASSWORD}" ]; then
+		nmcli dev wifi connect "${SSID}" password "${PASSWORD}" 2>/dev/null || \
+		nmcli connection add type wifi con-name "${SSID}" ssid "${SSID}" \
+			wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${PASSWORD}" 2>/dev/null
+		iw reg set "${COUNTRY}" 2>/dev/null || true
+		rm -f "${WIFI_CONFIG}"
+		echo "WiFi configured for ${SSID}"
+	fi
+fi
+WIFI_SCRIPT
+chmod +x /usr/lib/smart-panel/setup-wifi.sh
 
 # Configure kernel modules for I2C (touchscreen support)
 echo "i2c-dev" >> /etc/modules
