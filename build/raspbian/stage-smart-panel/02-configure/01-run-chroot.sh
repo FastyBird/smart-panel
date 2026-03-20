@@ -41,51 +41,109 @@ smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
 
-# Grant the pi user passwordless sudo access
-cat > /etc/sudoers.d/010_pi-nopasswd << 'SUDOERS'
-pi ALL=(ALL) NOPASSWD: ALL
+# Grant the default user passwordless sudo access
+cat > /etc/sudoers.d/010_smartpanel-nopasswd << 'SUDOERS'
+smartpanel ALL=(ALL) NOPASSWD: ALL
 SUDOERS
-chmod 0440 /etc/sudoers.d/010_pi-nopasswd
+chmod 0440 /etc/sudoers.d/010_smartpanel-nopasswd
 
-# Install WiFi setup script that reads from boot partition on first boot.
-# Users can create /boot/firmware/smart-panel-wifi.txt with:
-#   SSID=YourNetwork
-#   PASSWORD=YourPassword
-#   COUNTRY=US
-cat > /usr/lib/smart-panel/setup-wifi.sh << 'WIFI_SCRIPT'
+# Force password change on first SSH login
+chage -d 0 "${FIRST_USER_NAME}"
+
+# Install boot config parser — reads /boot/firmware/smart-panel.conf on first boot.
+# Supports: WIFI_SSID, WIFI_PASSWORD, WIFI_COUNTRY, HOSTNAME, TIMEZONE, LOCALE, SSH_ENABLED
+cat > /usr/lib/smart-panel/apply-boot-config.sh << 'BOOT_CONFIG_SCRIPT'
 #!/bin/bash
-WIFI_CONFIG="/boot/firmware/smart-panel-wifi.txt"
-if [ -f "${WIFI_CONFIG}" ]; then
-	SSID=$(grep "^SSID=" "${WIFI_CONFIG}" | cut -d= -f2-)
-	PASSWORD=$(grep "^PASSWORD=" "${WIFI_CONFIG}" | cut -d= -f2-)
-	COUNTRY=$(grep "^COUNTRY=" "${WIFI_CONFIG}" | cut -d= -f2-)
-	COUNTRY="${COUNTRY:-US}"
+#
+# Apply user configuration from /boot/firmware/smart-panel.conf
+#
+# Supported options:
+#   WIFI_SSID=MyNetwork
+#   WIFI_PASSWORD=MyPassword
+#   WIFI_COUNTRY=US
+#   HOSTNAME=my-panel
+#   TIMEZONE=Europe/Prague
+#   LOCALE=cs_CZ.UTF-8
+#   SSH_ENABLED=yes|no
+#
+BOOT_CONFIG="/boot/firmware/smart-panel.conf"
 
-	if [ -n "${SSID}" ] && [ -n "${PASSWORD}" ]; then
-		# Set regulatory domain first — WiFi is rfkill-blocked without it
-		iw reg set "${COUNTRY}" 2>/dev/null || true
-		raspi-config nonint do_wifi_country "${COUNTRY}" 2>/dev/null || true
-		rfkill unblock wifi 2>/dev/null || true
-
-		# Wait for WiFi adapter to become available
-		for i in $(seq 1 10); do
-			if nmcli -t -f TYPE device | grep -q wifi; then
-				break
-			fi
-			sleep 1
-		done
-
-		# Connect
-		nmcli dev wifi connect "${SSID}" password "${PASSWORD}" 2>/dev/null || \
-		nmcli connection add type wifi con-name "${SSID}" ssid "${SSID}" \
-			wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${PASSWORD}" autoconnect yes 2>/dev/null
-
-		rm -f "${WIFI_CONFIG}"
-		echo "WiFi configured for ${SSID} (country: ${COUNTRY})"
-	fi
+if [ ! -f "${BOOT_CONFIG}" ]; then
+	exit 0
 fi
-WIFI_SCRIPT
-chmod +x /usr/lib/smart-panel/setup-wifi.sh
+
+# Parse config file — strip comments, blank lines, trim whitespace
+parse_value() {
+	grep -i "^${1}=" "${BOOT_CONFIG}" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^["'"'"']//;s/["'"'"']$//'
+}
+
+# ── WiFi ──
+WIFI_SSID=$(parse_value "WIFI_SSID")
+WIFI_PASSWORD=$(parse_value "WIFI_PASSWORD")
+WIFI_COUNTRY=$(parse_value "WIFI_COUNTRY")
+WIFI_COUNTRY="${WIFI_COUNTRY:-US}"
+
+if [ -n "${WIFI_SSID}" ] && [ -n "${WIFI_PASSWORD}" ]; then
+	iw reg set "${WIFI_COUNTRY}" 2>/dev/null || true
+	raspi-config nonint do_wifi_country "${WIFI_COUNTRY}" 2>/dev/null || true
+	rfkill unblock wifi 2>/dev/null || true
+
+	# Wait for WiFi adapter
+	for i in $(seq 1 10); do
+		if nmcli -t -f TYPE device | grep -q wifi; then
+			break
+		fi
+		sleep 1
+	done
+
+	nmcli dev wifi connect "${WIFI_SSID}" password "${WIFI_PASSWORD}" 2>/dev/null || \
+	nmcli connection add type wifi con-name "${WIFI_SSID}" ssid "${WIFI_SSID}" \
+		wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${WIFI_PASSWORD}" autoconnect yes 2>/dev/null
+
+	echo "WiFi configured for ${WIFI_SSID} (country: ${WIFI_COUNTRY})"
+elif [ -n "${WIFI_COUNTRY}" ]; then
+	iw reg set "${WIFI_COUNTRY}" 2>/dev/null || true
+	raspi-config nonint do_wifi_country "${WIFI_COUNTRY}" 2>/dev/null || true
+fi
+
+# ── Hostname ──
+NEW_HOSTNAME=$(parse_value "HOSTNAME")
+if [ -n "${NEW_HOSTNAME}" ]; then
+	hostnamectl set-hostname "${NEW_HOSTNAME}"
+	sed -i "s/127.0.1.1.*/127.0.1.1\t${NEW_HOSTNAME}/" /etc/hosts
+	echo "Hostname set to ${NEW_HOSTNAME}"
+fi
+
+# ── Timezone ──
+NEW_TIMEZONE=$(parse_value "TIMEZONE")
+if [ -n "${NEW_TIMEZONE}" ]; then
+	timedatectl set-timezone "${NEW_TIMEZONE}" 2>/dev/null && \
+		echo "Timezone set to ${NEW_TIMEZONE}" || \
+		echo "WARNING: Invalid timezone ${NEW_TIMEZONE}"
+fi
+
+# ── Locale ──
+NEW_LOCALE=$(parse_value "LOCALE")
+if [ -n "${NEW_LOCALE}" ]; then
+	sed -i "s/^# *${NEW_LOCALE}/${NEW_LOCALE}/" /etc/locale.gen 2>/dev/null
+	locale-gen 2>/dev/null
+	update-locale LANG="${NEW_LOCALE}" 2>/dev/null
+	echo "Locale set to ${NEW_LOCALE}"
+fi
+
+# ── SSH ──
+SSH_ENABLED=$(parse_value "SSH_ENABLED")
+if [ "${SSH_ENABLED}" = "no" ] || [ "${SSH_ENABLED}" = "false" ]; then
+	systemctl disable ssh.service 2>/dev/null
+	systemctl stop ssh.service 2>/dev/null
+	echo "SSH disabled"
+fi
+
+# Archive the config file (contains WiFi password — move off boot partition)
+mv "${BOOT_CONFIG}" "/var/lib/smart-panel/.boot-config.applied" 2>/dev/null || true
+echo "Boot configuration applied"
+BOOT_CONFIG_SCRIPT
+chmod +x /usr/lib/smart-panel/apply-boot-config.sh
 
 # Configure kernel modules for I2C (touchscreen support)
 echo "i2c-dev" >> /etc/modules

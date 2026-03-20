@@ -20,10 +20,10 @@ log() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 0a. Configure WiFi from boot partition (if config file exists)
+# 0a. Apply boot partition config (WiFi, hostname, timezone, etc.)
 # ──────────────────────────────────────────────────────────────
-if [ -x "${APP_DIR}/setup-wifi.sh" ]; then
-	"${APP_DIR}/setup-wifi.sh" && log "WiFi setup complete" || log "WiFi setup skipped or failed"
+if [ -x "${APP_DIR}/apply-boot-config.sh" ]; then
+	"${APP_DIR}/apply-boot-config.sh" && log "Boot configuration applied" || log "Boot configuration skipped or failed"
 fi
 
 # ──────────────────────────────────────────────────────────────

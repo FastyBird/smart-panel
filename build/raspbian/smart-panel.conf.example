@@ -1,0 +1,21 @@
+# Smart Panel — Boot Configuration
+#
+# Copy this file to the SD card's boot partition as "smart-panel.conf"
+# after flashing the image. It will be applied on first boot and then
+# archived to /var/lib/smart-panel/.boot-config.applied
+#
+# All settings are optional. Remove or comment out lines you don't need.
+
+# ── WiFi ──
+# WIFI_SSID=MyNetwork
+# WIFI_PASSWORD=MyPassword
+# WIFI_COUNTRY=US
+
+# ── System ──
+# HOSTNAME=smart-panel
+# TIMEZONE=Europe/Prague
+# LOCALE=en_US.UTF-8
+
+# ── SSH ──
+# SSH is enabled by default. Set to "no" to disable.
+# SSH_ENABLED=yes
