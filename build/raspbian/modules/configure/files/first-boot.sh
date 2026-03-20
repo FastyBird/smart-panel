@@ -223,8 +223,14 @@ if [ "${HAS_DISPLAY}" = true ]; then
 			log_warn "Backend will start without display. Run /opt/smart-panel-display/build-flutter-pi.sh manually to retry."
 		fi
 	else
-		log_warn "flutter-pi build script not found at ${DISPLAY_DIR}/build-flutter-pi.sh"
+		log_error "flutter-pi build script not found at ${DISPLAY_DIR}/build-flutter-pi.sh"
 		DISPLAY_OK=false
+		if [ "${VARIANT}" = "display" ]; then
+			# Display-only variant: missing build script is fatal — retry on next boot
+			echo "========================================" >> "${BOOT_LOG}"
+			echo "RESULT: FAILED" >> "${BOOT_LOG}"
+			exit 1
+		fi
 	fi
 fi
 
@@ -232,10 +238,9 @@ fi
 # Finalize (all variants)
 # ──────────────────────────────────────────────────────────────
 
-# Display-only: remove marker now that we've succeeded (or partially succeeded)
-# For display-only, reaching this point means flutter-pi built OK or the script
-# didn't exit 1, so we can safely remove the marker.
-if [ "${VARIANT}" = "display" ]; then
+# Display-only: remove marker only if display succeeded.
+# If DISPLAY_OK is false, the marker stays so systemd retries on next boot.
+if [ "${VARIANT}" = "display" ] && [ "${DISPLAY_OK}" = true ]; then
 	rm -f "${MARKER}"
 fi
 
