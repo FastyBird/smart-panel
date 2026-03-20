@@ -212,6 +212,16 @@ else
 	rm -rf "${ASSEMBLED_STAGE}"
 	mkdir -p "${ASSEMBLED_STAGE}"
 
+	# Create pi-gen marker files required for stage processing
+	cat > "${ASSEMBLED_STAGE}/prerun.sh" << 'PRERUN'
+#!/bin/bash -e
+if [ ! -d "${ROOTFS_DIR}" ]; then
+	copy_previous
+fi
+PRERUN
+	chmod +x "${ASSEMBLED_STAGE}/prerun.sh"
+	touch "${ASSEMBLED_STAGE}/EXPORT_IMAGE"
+
 	# Sub-stage counter
 	SUBSTAGE_IDX=0
 

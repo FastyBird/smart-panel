@@ -111,7 +111,8 @@ jobs:
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
           for f in smart-panel-*; do
-            NEW_NAME=$(echo "$f" | sed "s/smart-panel-[^-]*-/smart-panel-${VERSION}-/")
+            # Replace the git version hash (segment before -arm64) with the release version
+            NEW_NAME=$(echo "$f" | sed "s/-[a-f0-9]*-arm64/-${VERSION}-arm64/")
             if [ "$f" != "$NEW_NAME" ]; then
               mv "$f" "$NEW_NAME"
             fi
