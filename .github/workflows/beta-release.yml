@@ -702,6 +702,17 @@ jobs:
           chmod +x scripts/install-panel.sh
           cp scripts/install-panel.sh install-panel.sh
 
+      - name: "Generate version.json"
+        run: |
+          cat > version.json << VEOF
+          {
+            "version": "${{ needs.sync-versions.outputs.version }}",
+            "build": "$(date -u +%Y-%m-%d)",
+            "commit": "${GITHUB_SHA:0:7}",
+            "channel": "beta"
+          }
+          VEOF
+
       - name: "Create Pre-Release & Upload Assets"
         uses: "softprops/action-gh-release@v2"
         with:
@@ -711,6 +722,7 @@ jobs:
             Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
           prerelease: true
           files: |
+            version.json
             smart-panel-server-armv7.tar.gz
             smart-panel-server-armv7.tar.gz.sha256
             smart-panel-server-arm64.tar.gz

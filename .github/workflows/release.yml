@@ -786,11 +786,23 @@ jobs:
           chmod +x scripts/install-panel.sh
           cp scripts/install-panel.sh install-panel.sh
 
+      - name: "Generate version.json"
+        run: |
+          cat > version.json << VEOF
+          {
+            "version": "${{ needs.tag.outputs.version }}",
+            "build": "$(date -u +%Y-%m-%d)",
+            "commit": "${GITHUB_SHA:0:7}",
+            "channel": "latest"
+          }
+          VEOF
+
       - name: "Upload Release Assets"
         uses: "softprops/action-gh-release@v2"
         with:
           tag_name: v${{ needs.tag.outputs.version }}
           files: |
+            version.json
             smart-panel-server-armv7.tar.gz
             smart-panel-server-armv7.tar.gz.sha256
             smart-panel-server-arm64.tar.gz
