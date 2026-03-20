@@ -3,7 +3,7 @@
 # Install the Smart Panel application
 #
 
-APP_INSTALL_DIR="/usr/lib/smart-panel"
+APP_INSTALL_DIR="/opt/smart-panel"
 DATA_DIR="/var/lib/smart-panel"
 
 # Create system user
@@ -52,7 +52,7 @@ npm install -g node-gyp
 cat > "${APP_INSTALL_DIR}/rebuild-native.sh" << 'REBUILD_SCRIPT'
 #!/bin/bash
 set -e
-APP_DIR="/usr/lib/smart-panel"
+APP_DIR="/opt/smart-panel"
 cd "${APP_DIR}"
 
 SQLITE_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)

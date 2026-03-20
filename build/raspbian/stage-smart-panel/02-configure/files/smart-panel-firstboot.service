@@ -7,7 +7,7 @@ Before=smart-panel.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/lib/smart-panel/first-boot.sh
+ExecStart=/opt/smart-panel/first-boot.sh
 RemainAfterExit=true
 StandardOutput=journal
 StandardError=journal

@@ -14,7 +14,7 @@ set -euo pipefail
 LOG_TAG="smart-panel-firstboot"
 ENV_FILE="/etc/smart-panel/environment"
 DATA_DIR="/var/lib/smart-panel"
-APP_DIR="/usr/lib/smart-panel"
+APP_DIR="/opt/smart-panel"
 MARKER="${DATA_DIR}/.first-boot"
 BOOT_LOG="/boot/firmware/smart-panel-firstboot.log"
 

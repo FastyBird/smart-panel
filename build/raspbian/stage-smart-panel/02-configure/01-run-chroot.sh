@@ -3,7 +3,7 @@
 # Configure systemd services, first-boot, and system settings
 #
 
-APP_INSTALL_DIR="/usr/lib/smart-panel"
+APP_INSTALL_DIR="/opt/smart-panel"
 DATA_DIR="/var/lib/smart-panel"
 
 # Install systemd services
@@ -52,7 +52,7 @@ chage -d 0 "${FIRST_USER_NAME}"
 
 # Install boot config parser — reads /boot/firmware/smart-panel.conf on first boot.
 # Supports: WIFI_SSID, WIFI_PASSWORD, WIFI_COUNTRY, HOSTNAME, TIMEZONE, LOCALE, SSH_ENABLED
-cat > /usr/lib/smart-panel/apply-boot-config.sh << 'BOOT_CONFIG_SCRIPT'
+cat > /opt/smart-panel/apply-boot-config.sh << 'BOOT_CONFIG_SCRIPT'
 #!/bin/bash
 #
 # Apply user configuration from /boot/firmware/smart-panel.conf
@@ -143,7 +143,7 @@ fi
 mv "${BOOT_CONFIG}" "/var/lib/smart-panel/.boot-config.applied" 2>/dev/null || true
 echo "Boot configuration applied"
 BOOT_CONFIG_SCRIPT
-chmod +x /usr/lib/smart-panel/apply-boot-config.sh
+chmod +x /opt/smart-panel/apply-boot-config.sh
 
 # Configure kernel modules for I2C (touchscreen support)
 echo "i2c-dev" >> /etc/modules

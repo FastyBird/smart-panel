@@ -15,7 +15,7 @@ I want the update mechanism to detect the image install and update from GitHub r
 ## 2. Context
 
 - The current update mechanism (`build/scripts/update-worker.sh`) uses `npm update -g` / `npm install -g` which only works for NPM global installs.
-- The Raspbian image installs the app directly to `/usr/lib/smart-panel/` with `pnpm install --prod` from pre-built files — it's NOT a global NPM package.
+- The Raspbian image installs the app directly to `/opt/smart-panel/` with `pnpm install --prod` from pre-built files — it's NOT a global NPM package.
 - The update service (`apps/backend/src/modules/system/services/update.service.ts`) already checks GitHub releases for panel updates. The same approach can be used for backend image updates.
 - The alpha/beta/release workflows already produce app tarballs as GitHub release artifacts.
 - Native modules (sqlite3, bcrypt) must be rebuilt on the target device after update.

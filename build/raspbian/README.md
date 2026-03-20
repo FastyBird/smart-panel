@@ -77,7 +77,7 @@ Raspberry Pi OS Lite (Bookworm arm64)
 ### File Layout on the Image
 
 ```
-/usr/lib/smart-panel/          # Application
+/opt/smart-panel/          # Application
 ├── dist/                      # Compiled backend
 ├── static/                    # Admin UI
 ├── node_modules/              # Dependencies
