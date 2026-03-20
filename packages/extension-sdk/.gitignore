@@ -395,7 +395,7 @@ Temporary Items
 =======
 # Local
 .env
-dist
+# Note: dist/ is intentionally tracked — consumers need compiled output
 .webpack
 .serverless/**/*.zip
 
