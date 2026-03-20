@@ -130,6 +130,99 @@ get_arch() {
 	esac
 }
 
+install_build_deps() {
+	print_step "Installing build dependencies..."
+
+	local distro=$(get_distro)
+
+	case $distro in
+		debian|ubuntu|raspbian)
+			apt-get update -qq
+			apt-get install -y -qq build-essential python3 sqlite3 curl git
+			;;
+		fedora|centos|rhel|rocky|almalinux)
+			dnf install -y gcc gcc-c++ make python3 sqlite curl git || \
+			yum install -y gcc gcc-c++ make python3 sqlite curl git
+			;;
+		arch|manjaro)
+			pacman -Sy --noconfirm base-devel python sqlite curl git
+			;;
+		*)
+			print_warning "Could not install build dependencies for $distro — install manually if npm install fails"
+			return 0
+			;;
+	esac
+
+	print_success "Build dependencies installed"
+}
+
+install_influxdb() {
+	print_step "Checking InfluxDB installation..."
+
+	if command -v influxd &> /dev/null; then
+		print_success "InfluxDB is already installed ($(influxd version 2>&1 | head -1))"
+		# Ensure it's running
+		systemctl enable influxdb 2>/dev/null || true
+		systemctl start influxdb 2>/dev/null || true
+		return 0
+	fi
+
+	print_step "Installing InfluxDB 1.8..."
+
+	local distro=$(get_distro)
+	local arch=$(uname -m)
+
+	case $distro in
+		debian|ubuntu|raspbian)
+			curl -fsSL https://repos.influxdata.com/influxdata-archive.key | gpg --dearmor -o /usr/share/keyrings/influxdb-archive-keyring.gpg
+			echo "deb [signed-by=/usr/share/keyrings/influxdb-archive-keyring.gpg] https://repos.influxdata.com/debian stable main" > /etc/apt/sources.list.d/influxdb.list
+			apt-get update -qq
+			apt-get install -y -qq influxdb
+			;;
+		fedora|centos|rhel|rocky|almalinux)
+			cat > /etc/yum.repos.d/influxdb.repo << 'REPO'
+[influxdb]
+name = InfluxDB Repository
+baseurl = https://repos.influxdata.com/rhel/\$releasever/\$basearch/stable
+enabled = 1
+gpgcheck = 1
+gpgkey = https://repos.influxdata.com/influxdata-archive.key
+REPO
+			dnf install -y influxdb || yum install -y influxdb
+			;;
+		*)
+			print_warning "Could not install InfluxDB for $distro"
+			print_warning "Install InfluxDB 1.8 manually for metrics and historical data"
+			return 0
+			;;
+	esac
+
+	systemctl enable influxdb
+	systemctl start influxdb
+
+	# Wait for InfluxDB to be ready
+	local ready=false
+	for i in $(seq 1 15); do
+		if influx -execute "SHOW DATABASES" >/dev/null 2>&1; then
+			ready=true
+			break
+		fi
+		sleep 1
+	done
+
+	if [ "$ready" = true ]; then
+		# Create database and retention policies
+		influx -execute "CREATE DATABASE fastybird"
+		influx -execute "CREATE RETENTION POLICY raw_24h ON fastybird DURATION 24h REPLICATION 1 DEFAULT" 2>/dev/null \
+			|| influx -execute "ALTER RETENTION POLICY raw_24h ON fastybird DURATION 24h REPLICATION 1 DEFAULT"
+		influx -execute "CREATE RETENTION POLICY min_14d ON fastybird DURATION 14d REPLICATION 1" 2>/dev/null \
+			|| influx -execute "ALTER RETENTION POLICY min_14d ON fastybird DURATION 14d REPLICATION 1"
+		print_success "InfluxDB installed and configured (database: fastybird)"
+	else
+		print_warning "InfluxDB installed but failed to start — configure manually"
+	fi
+}
+
 install_nodejs() {
 	print_step "Checking Node.js installation..."
 
@@ -254,8 +347,12 @@ main() {
 	check_root
 	check_os
 
-	# Install
+	# Install dependencies
+	install_build_deps
 	install_nodejs
+	install_influxdb
+
+	# Install Smart Panel
 	install_smart_panel
 	configure_service
 
