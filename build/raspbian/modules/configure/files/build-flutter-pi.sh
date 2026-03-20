@@ -20,7 +20,7 @@ fi
 echo "Building flutter-pi from source..."
 
 rm -rf "${BUILD_DIR}"
-git clone --depth 1 https://github.com/niclas3332/flutter-pi.git "${BUILD_DIR}"
+git clone --depth 1 https://github.com/ardera/flutter-pi.git "${BUILD_DIR}"
 
 cd "${BUILD_DIR}"
 mkdir build && cd build

@@ -190,8 +190,17 @@ if [ "${HAS_BACKEND}" = true ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
-# Display-only steps (display + aio)
+# Remove first-boot marker BEFORE display steps
 # ──────────────────────────────────────────────────────────────
+# This ensures the backend can start even if flutter-pi build fails.
+# The marker must be removed here so systemd doesn't keep retrying
+# the entire first-boot on failure.
+rm -f "${MARKER}"
+
+# ──────────────────────────────────────────────────────────────
+# Display steps (display + aio) — non-fatal for AIO
+# ──────────────────────────────────────────────────────────────
+DISPLAY_OK=true
 if [ "${HAS_DISPLAY}" = true ]; then
 
 	# Build flutter-pi from source
@@ -200,20 +209,26 @@ if [ "${HAS_DISPLAY}" = true ]; then
 		if "${DISPLAY_DIR}/build-flutter-pi.sh" >> "${BOOT_LOG}" 2>&1; then
 			log_ok "flutter-pi compiled and installed"
 		else
-			log_error "flutter-pi compilation failed"
-			echo "========================================" >> "${BOOT_LOG}"
-			echo "RESULT: FAILED" >> "${BOOT_LOG}"
-			exit 1
+			log_error "flutter-pi compilation failed — display will not work"
+			DISPLAY_OK=false
+			if [ "${VARIANT}" = "display" ]; then
+				# Display-only variant: this is fatal
+				echo "========================================" >> "${BOOT_LOG}"
+				echo "RESULT: FAILED" >> "${BOOT_LOG}"
+				exit 1
+			fi
+			# AIO: continue — backend still works without display
+			log_warn "Backend will start without display. Run /opt/smart-panel-display/build-flutter-pi.sh manually to retry."
 		fi
 	else
 		log_warn "flutter-pi build script not found at ${DISPLAY_DIR}/build-flutter-pi.sh"
+		DISPLAY_OK=false
 	fi
 fi
 
 # ──────────────────────────────────────────────────────────────
 # Finalize (all variants)
 # ──────────────────────────────────────────────────────────────
-rm -f "${MARKER}"
 
 IP_ADDR=$(hostname -I | awk '{print $1}')
 
