@@ -24,11 +24,10 @@ touch "${DATA_DIR}/.first-boot"
 systemctl enable smart-panel.service
 systemctl enable smart-panel-firstboot.service
 
-# Enable SSH
+# Enable SSH fallback — Raspberry Pi Imager can override this,
+# but if someone flashes without Imager config, SSH still works
 touch /boot/firmware/ssh
 systemctl enable ssh.service
-# Generate host keys (pi-gen removes them for security, each Pi needs unique keys)
-ssh-keygen -A
 
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
@@ -41,15 +40,6 @@ smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
-
-# Grant the pi user passwordless sudo access.
-# When DISABLE_FIRST_BOOT_USER_RENAME is set in the pi-gen config, the
-# export-image/01-user-rename stage is skipped and the default sudoers
-# file for the pi user is never created. Create it explicitly.
-cat > /etc/sudoers.d/010_pi-nopasswd << 'SUDOERS'
-pi ALL=(ALL) NOPASSWD: ALL
-SUDOERS
-chmod 0440 /etc/sudoers.d/010_pi-nopasswd
 
 # Configure kernel modules for I2C (touchscreen support)
 echo "i2c-dev" >> /etc/modules
