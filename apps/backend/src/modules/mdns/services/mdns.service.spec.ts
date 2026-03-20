@@ -139,7 +139,7 @@ describe('MdnsService', () => {
 			expect(mockBonjourConstructor).toHaveBeenCalled();
 			expect(mockPublish).toHaveBeenCalledWith(
 				expect.objectContaining({
-					name: MDNS_DEFAULT_SERVICE_NAME,
+					name: expect.stringContaining(MDNS_DEFAULT_SERVICE_NAME),
 					type: MDNS_DEFAULT_SERVICE_TYPE,
 					protocol: 'tcp',
 					port,

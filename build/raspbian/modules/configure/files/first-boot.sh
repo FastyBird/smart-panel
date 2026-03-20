@@ -190,12 +190,14 @@ if [ "${HAS_BACKEND}" = true ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
-# Remove first-boot marker BEFORE display steps
+# Remove first-boot marker (conditionally)
 # ──────────────────────────────────────────────────────────────
-# This ensures the backend can start even if flutter-pi build fails.
-# The marker must be removed here so systemd doesn't keep retrying
-# the entire first-boot on failure.
-rm -f "${MARKER}"
+# AIO: remove marker NOW so the backend can start even if flutter-pi fails.
+# Display-only: keep marker until flutter-pi succeeds — it's the only
+# critical component, and we want systemd to retry on next boot if it fails.
+if [ "${VARIANT}" != "display" ]; then
+	rm -f "${MARKER}"
+fi
 
 # ──────────────────────────────────────────────────────────────
 # Display steps (display + aio) — non-fatal for AIO
@@ -230,16 +232,30 @@ fi
 # Finalize (all variants)
 # ──────────────────────────────────────────────────────────────
 
+# Display-only: remove marker now that we've succeeded (or partially succeeded)
+# For display-only, reaching this point means flutter-pi built OK or the script
+# didn't exit 1, so we can safely remove the marker.
+if [ "${VARIANT}" = "display" ]; then
+	rm -f "${MARKER}"
+fi
+
 IP_ADDR=$(hostname -I | awk '{print $1}')
 
-echo "========================================" >> "${BOOT_LOG}"
-echo "RESULT: SUCCESS" >> "${BOOT_LOG}"
+if [ "${DISPLAY_OK}" = false ]; then
+	echo "========================================" >> "${BOOT_LOG}"
+	echo "RESULT: PARTIAL (display failed)" >> "${BOOT_LOG}"
+else
+	echo "========================================" >> "${BOOT_LOG}"
+	echo "RESULT: SUCCESS" >> "${BOOT_LOG}"
+fi
 
 if [ "${HAS_BACKEND}" = true ]; then
 	log_ok "Smart Panel is ready at http://${IP_ADDR}:3000"
 	echo "Access: http://${IP_ADDR}:3000" >> "${BOOT_LOG}"
 fi
 
-if [ "${HAS_DISPLAY}" = true ]; then
+if [ "${HAS_DISPLAY}" = true ] && [ "${DISPLAY_OK}" = true ]; then
 	log_ok "Smart Panel display is ready"
+elif [ "${HAS_DISPLAY}" = true ]; then
+	log_warn "Smart Panel display failed — run /opt/smart-panel-display/build-flutter-pi.sh manually"
 fi

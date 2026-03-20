@@ -229,8 +229,12 @@ else
 	source "${VARIANT_CONF}"
 
 	# Update pi-gen config with variant-specific values
-	sed -i.bak "s/^IMG_NAME=.*/IMG_NAME=\"${IMG_NAME}\"/" "${PI_GEN_DIR}/config"
-	sed -i.bak "s/^TARGET_HOSTNAME=.*/TARGET_HOSTNAME=\"${TARGET_HOSTNAME}\"/" "${PI_GEN_DIR}/config"
+	sed -i.bak \
+		-e "s/^IMG_NAME=.*/IMG_NAME=\"${IMG_NAME}\"/" \
+		-e "s/^TARGET_HOSTNAME=.*/TARGET_HOSTNAME=\"${TARGET_HOSTNAME}\"/" \
+		-e "s/^FIRST_USER_NAME=.*/FIRST_USER_NAME=\"${FIRST_USER_NAME}\"/" \
+		-e "s/^FIRST_USER_PASS=.*/FIRST_USER_PASS=\"${FIRST_USER_PASS}\"/" \
+		"${PI_GEN_DIR}/config"
 	rm -f "${PI_GEN_DIR}/config.bak"
 
 	# Build the assembled stage
