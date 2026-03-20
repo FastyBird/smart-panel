@@ -23,6 +23,9 @@ I want the update mechanism to detect the image install and update from GitHub r
 ### Existing files to modify
 
 - `build/scripts/update-worker.sh` — add image-install branch
+- `build/raspbian/stage-smart-panel/01-install-app/01-run-chroot.sh` — change install layout
+- `build/raspbian/stage-smart-panel/02-configure/files/smart-panel.service` — update ExecStart path
+- `build/raspbian/stage-smart-panel/02-configure/files/first-boot.sh` — add boot logging
 - `apps/backend/src/modules/system/services/update.service.ts` — detect install type, provide GitHub download URL
 - `apps/backend/src/modules/system/services/update-executor.service.ts` — pass install type to worker
 
@@ -30,83 +33,152 @@ I want the update mechanism to detect the image install and update from GitHub r
 
 - `apps/backend/src/modules/system/commands/update-panel.command.ts` — already downloads from GitHub releases
 - `apps/backend/src/modules/system/commands/update-server.command.ts` — existing server update CLI
-- `build/raspbian/stage-smart-panel/01-install-app/01-run-chroot.sh` — how the image installs the app
 
 ## 3. Scope
 
 **In scope**
 
+- Versioned install directory layout with symlink switching
 - Detect image-install vs NPM-install at runtime
 - Download packed app tarball from GitHub releases for image installs
-- Atomic switch with rollback on failure
+- Symlink-based atomic version switch
 - Rebuild native modules (sqlite3, bcrypt) after update
 - Run database migrations
+- Keep 2 previous versions for rollback
 - Status tracking via existing update-status.json
 - Update via Admin UI and CLI
+- First-boot log file on boot partition for diagnostics
 
 **Out of scope**
 
 - Panel (Flutter) update on the same device (already handled separately)
 - Auto-update / scheduled updates (manual trigger only for v1)
 - Major version upgrades (same major version only)
-- Rollback UI (automatic rollback on failure is sufficient)
+- Rollback UI in Admin (manual rollback via CLI is sufficient for v1)
 
 ## 4. Acceptance criteria
 
-- [ ] Image installs have a marker file at `/usr/lib/smart-panel/.image-install`
-- [ ] `UpdateService` detects install type and returns appropriate download source (NPM registry vs GitHub release)
-- [ ] Update worker downloads the app tarball from GitHub releases when running on an image install
-- [ ] Update extracts to a staging directory (`/usr/lib/smart-panel.new/`)
-- [ ] Production dependencies are installed in the staging directory (`pnpm install --prod`)
-- [ ] Native modules (sqlite3, bcrypt) are rebuilt from source in the staging directory
-- [ ] Atomic switch: service stopped → old dir renamed to `.old` → new dir renamed to active → migrations run → service started
-- [ ] On failure: automatic rollback (`.new` removed, `.old` restored if switch was attempted)
-- [ ] On success: `.old` directory cleaned up
-- [ ] Update status tracked in `/var/lib/smart-panel/update-status.json` (same as NPM updates)
+### Install layout
+
+- [ ] Image installs use versioned directory layout:
+  ```
+  /opt/smart-panel/
+    current -> v1.0.0/          # symlink to active version
+    v1.0.0/                     # app files for this version
+      .image-install            # marker file
+      dist/
+      node_modules/
+      static/
+      ...
+  ```
+- [ ] Systemd service `ExecStart` points to `/opt/smart-panel/current/dist/main.js`
+- [ ] Data directory remains at `/var/lib/smart-panel/` (shared across versions)
+- [ ] Config remains at `/etc/smart-panel/environment` (shared across versions)
+
+### Update process
+
+- [ ] `UpdateService` detects install type via `/opt/smart-panel/current/.image-install` marker
+- [ ] `UpdateService` returns GitHub release download URL for image installs (NPM registry for NPM installs)
+- [ ] Update worker downloads app tarball from GitHub releases
+- [ ] Worker extracts to `/opt/smart-panel/vX.Y.Z/` (new version directory)
+- [ ] Production dependencies installed in new version dir (`pnpm install --prod`)
+- [ ] Native modules (sqlite3, bcrypt) rebuilt from source in new version dir
+- [ ] Version switch: stop service → update `current` symlink → run migrations → start service
+- [ ] On failure: symlink reverted to previous version, failed version dir removed
+- [ ] On success: old versions cleaned up (keep max 2 previous)
+- [ ] Update status tracked in `/var/lib/smart-panel/update-status.json`
 - [ ] Admin UI shows update available with version and release notes
 - [ ] CLI `system:update:server` works for both install types
 - [ ] Existing NPM-based update path continues to work unchanged
 
+### First-boot logging
+
+- [ ] First-boot script writes structured log to `/boot/firmware/smart-panel-firstboot.log`
+- [ ] Log format uses `[OK]` / `[ERROR]` / `[WARN]` prefixes for easy scanning
+- [ ] Log includes: partition expand, WiFi config, JWT generation, InfluxDB setup, migration, service start
+- [ ] On success, log ends with `[OK] Smart Panel ready at http://<ip>:3000`
+- [ ] On failure, log includes the error details for diagnostics
+- [ ] User can read the log by mounting SD card boot partition on any computer (FAT32)
+
+### Manual rollback (CLI)
+
+- [ ] CLI command `system:rollback` lists available versions in `/opt/smart-panel/`
+- [ ] Rollback switches `current` symlink to selected previous version
+- [ ] Rollback runs reverse migrations if needed, or skips if not possible
+
 ## 5. Example scenarios
 
-### Scenario: Image install detects update
+### Scenario: Fresh image boot
 
-Given the Smart Panel is running from a Raspbian image install
-And `/usr/lib/smart-panel/.image-install` exists
-When the user checks for updates via Admin UI
-Then the system queries GitHub releases for the latest version
-And shows the available update with release notes
+Given a freshly flashed Smart Panel image
+When the Pi boots for the first time
+Then `/opt/smart-panel/v1.0.0/` contains the app
+And `/opt/smart-panel/current` symlinks to `v1.0.0/`
+And `/boot/firmware/smart-panel-firstboot.log` contains the boot log
 
-### Scenario: Image install updates successfully
+### Scenario: Update from v1.0.0 to v1.1.0
 
-Given an update is available (v1.1.0 → v1.2.0)
-When the user triggers the update
-Then the worker downloads `smart-panel-v1.2.0-backend.tar.gz` from GitHub
-And extracts to `/usr/lib/smart-panel.new/`
+Given the Smart Panel is running v1.0.0 from an image install
+When the user triggers an update to v1.1.0
+Then the worker downloads `smart-panel-v1.1.0-backend.tar.gz` from GitHub
+And extracts to `/opt/smart-panel/v1.1.0/`
 And installs production dependencies
 And rebuilds sqlite3 and bcrypt from source
 And stops the Smart Panel service
-And renames `/usr/lib/smart-panel` → `/usr/lib/smart-panel.old`
-And renames `/usr/lib/smart-panel.new` → `/usr/lib/smart-panel`
+And updates `current` symlink: `v1.0.0/` → `v1.1.0/`
 And runs database migrations
 And starts the Smart Panel service
-And removes `/usr/lib/smart-panel.old`
 And reports status as "complete"
+And directory listing shows:
+```
+/opt/smart-panel/
+  current -> v1.1.0/
+  v1.0.0/
+  v1.1.0/
+```
 
-### Scenario: Image install update fails during migration
+### Scenario: Second update (v1.1.0 to v1.2.0) cleans old versions
 
-Given the update has switched directories
+Given the Smart Panel has v1.0.0 and v1.1.0 installed, running v1.1.0
+When the user updates to v1.2.0
+Then after successful update, v1.0.0 is removed (exceeds 2 previous versions limit)
+And directory listing shows:
+```
+/opt/smart-panel/
+  current -> v1.2.0/
+  v1.1.0/
+  v1.2.0/
+```
+
+### Scenario: Update fails during migration
+
+Given the update has installed v1.1.0 and switched the symlink
 When database migration fails
 Then the worker stops the service
-And renames `/usr/lib/smart-panel` → `/usr/lib/smart-panel.failed`
-And renames `/usr/lib/smart-panel.old` → `/usr/lib/smart-panel`
+And reverts `current` symlink back to `v1.0.0/`
 And starts the service with the old version
+And removes the failed `/opt/smart-panel/v1.1.0/` directory
 And reports status as "failed" with the migration error
+
+### Scenario: First-boot fails — user reads log from SD card
+
+Given the user flashed the image and booted, but cannot SSH in
+When the user removes the SD card and mounts it on their computer
+Then `/boot/firmware/smart-panel-firstboot.log` shows:
+```
+[OK] Root partition expanded
+[OK] WiFi configured for MyNetwork (192.168.1.45)
+[OK] JWT secret generated
+[ERROR] InfluxDB failed to start — timeout after 30s
+[OK] Database migrations completed
+[ERROR] Smart Panel service failed to start
+```
+And the user can share this log with support for investigation
 
 ### Scenario: NPM install still works
 
 Given the Smart Panel was installed via `npm install -g @fastybird/smart-panel`
-And `/usr/lib/smart-panel/.image-install` does NOT exist
+And `/opt/smart-panel/current/.image-install` does NOT exist
 When the user triggers an update
 Then the existing NPM-based update path is used unchanged
 
@@ -118,18 +190,24 @@ Then the existing NPM-based update path is used unchanged
 - GitHub API rate limits: use conditional requests (If-None-Match) and cache results.
 - The release artifact name must be consistent and predictable (e.g., `smart-panel-v1.2.0-backend.tar.gz`).
 - Native module rebuild requires `node-gyp` and build-essential (already in the image).
+- Symlink switch is atomic on the same filesystem — `/opt/smart-panel/` must be on the root partition.
+- The boot partition is FAT32 — log file must use plain text (no symlinks, no permissions).
+- Keep max 2 previous versions to avoid filling disk.
 - Do not modify generated code.
-- Tests are expected for the install-type detection logic.
+- Tests are expected for install-type detection and version management logic.
 
 ## 7. Implementation hints
 
-- **Marker file**: Add `touch /usr/lib/smart-panel/.image-install` to `build/raspbian/stage-smart-panel/01-install-app/01-run-chroot.sh`
-- **Install type detection**: Check for marker file in `UpdateService` or a new `InstallTypeService`
-- **GitHub download**: Reuse the pattern from `update-panel.command.ts` which already downloads from GitHub releases
-- **Worker script**: Add an `if [ -f /usr/lib/smart-panel/.image-install ]` branch that does download → extract → switch instead of `npm update -g`
+- **Install layout change**: Modify `build/raspbian/stage-smart-panel/01-install-app/` to install to `/opt/smart-panel/v1.0.0/` and create `current` symlink. Update systemd service `ExecStart` and `WorkingDirectory`.
+- **Marker file**: `touch /opt/smart-panel/v1.0.0/.image-install`
+- **Version detection**: Read `package.json` version from `/opt/smart-panel/current/`
+- **Install type detection**: Check for `.image-install` marker in active version dir
+- **GitHub download**: Reuse the pattern from `update-panel.command.ts`
+- **Worker script**: Add `if [ -f /opt/smart-panel/current/.image-install ]` branch
+- **Symlink switch**: `ln -sfn /opt/smart-panel/v1.1.0 /opt/smart-panel/current` (atomic)
+- **Version cleanup**: `ls -d /opt/smart-panel/v*/ | sort -V | head -n -2 | xargs rm -rf` (keep 2 newest)
+- **Boot log**: Write to `/boot/firmware/smart-panel-firstboot.log` from the first-boot script using a `boot_log()` function that both logs to journald and appends to the file
 - **Release artifacts**: Ensure the release workflow packages a standalone tarball with `dist/`, `extension-sdk/`, `package.json`, `pnpm-lock.yaml`, `static/`, and `var/`
-- **Atomic switch**: Use `mv` for rename (atomic on same filesystem). The staging dir must be on the same partition as the install dir.
-- **Rollback**: The `.old` dir is the safety net. Only remove it after the new version starts successfully and responds to health check.
 
 ## 8. AI instructions
 
@@ -140,3 +218,4 @@ Then the existing NPM-based update path is used unchanged
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
 - Read the existing update-worker.sh, update.service.ts, and update-executor.service.ts before proposing changes.
 - The update-panel.command.ts is a good reference for GitHub release downloads.
+- The install layout change affects the image build scripts AND the systemd service — update both.
