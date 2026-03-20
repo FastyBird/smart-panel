@@ -58,14 +58,30 @@ WIFI_CONFIG="/boot/firmware/smart-panel-wifi.txt"
 if [ -f "${WIFI_CONFIG}" ]; then
 	SSID=$(grep "^SSID=" "${WIFI_CONFIG}" | cut -d= -f2-)
 	PASSWORD=$(grep "^PASSWORD=" "${WIFI_CONFIG}" | cut -d= -f2-)
-	COUNTRY=$(grep "^COUNTRY=" "${WIFI_CONFIG}" | cut -d= -f2- || echo "US")
+	COUNTRY=$(grep "^COUNTRY=" "${WIFI_CONFIG}" | cut -d= -f2-)
+	COUNTRY="${COUNTRY:-US}"
+
 	if [ -n "${SSID}" ] && [ -n "${PASSWORD}" ]; then
+		# Set regulatory domain first — WiFi is rfkill-blocked without it
+		iw reg set "${COUNTRY}" 2>/dev/null || true
+		raspi-config nonint do_wifi_country "${COUNTRY}" 2>/dev/null || true
+		rfkill unblock wifi 2>/dev/null || true
+
+		# Wait for WiFi adapter to become available
+		for i in $(seq 1 10); do
+			if nmcli -t -f TYPE device | grep -q wifi; then
+				break
+			fi
+			sleep 1
+		done
+
+		# Connect
 		nmcli dev wifi connect "${SSID}" password "${PASSWORD}" 2>/dev/null || \
 		nmcli connection add type wifi con-name "${SSID}" ssid "${SSID}" \
-			wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${PASSWORD}" 2>/dev/null
-		iw reg set "${COUNTRY}" 2>/dev/null || true
+			wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${PASSWORD}" autoconnect yes 2>/dev/null
+
 		rm -f "${WIFI_CONFIG}"
-		echo "WiFi configured for ${SSID}"
+		echo "WiFi configured for ${SSID} (country: ${COUNTRY})"
 	fi
 fi
 WIFI_SCRIPT
