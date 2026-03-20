@@ -1,16 +1,16 @@
-# Add 'beta' label to any PR where the base branch name starts with `beta`
+# ── Branch-based labels ──
+
+# Base branch (target)
 beta:
   - base-branch: ['^beta', 'beta', 'beta*']
 
-# Add 'alpha' label to any PR where the base branch name starts with `alpha`
 alpha:
   - base-branch: ['^alpha', 'alpha', 'alpha*']
 
-# Add 'latest' label to any PR where the base branch name starts with `latest`
 latest:
   - base-branch: ['^latest', 'latest', 'latest*']
 
-# Add labels based on head branch name patterns
+# Head branch (source)
 feature:
   - head-branch: ['^feature/']
 
@@ -19,3 +19,41 @@ fix:
 
 chore:
   - head-branch: ['^chore/']
+
+# ── File-based labels ──
+
+backend:
+  - changed-files:
+    - any-glob-to-any-file: ['apps/backend/**']
+
+admin:
+  - changed-files:
+    - any-glob-to-any-file: ['apps/admin/**']
+
+panel:
+  - changed-files:
+    - any-glob-to-any-file: ['apps/panel/**']
+
+website:
+  - changed-files:
+    - any-glob-to-any-file: ['apps/website/**']
+
+testing:
+  - changed-files:
+    - any-glob-to-any-file: ['apps/testing/**']
+
+build:
+  - changed-files:
+    - any-glob-to-any-file: ['build/**', 'docker/**']
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file: ['.github/**']
+
+docs:
+  - changed-files:
+    - any-glob-to-any-file: ['docs/**', '*.md', 'tasks/**']
+
+extensions:
+  - changed-files:
+    - any-glob-to-any-file: ['packages/**']
