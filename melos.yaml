@@ -51,7 +51,8 @@ scripts:
         --arch=${FB_FLUTTERPI_ARCH:-arm64} \
         ${FB_FLUTTERPI_RELEASE:+--release} \
         --dart-define=APP_VERSION=${FB_FLUTTERPI_APP_VERSION:-1.0.0} \
-        --dart-define=APP_BUILD=${FB_FLUTTERPI_APP_BUILD:-1}
+        --dart-define=APP_BUILD=${FB_FLUTTERPI_APP_BUILD:-1} \
+        ${FB_FLUTTERPI_EXTRA_DART_DEFINES:-}
     description: Builds the Flutter Pi app for the specified architecture and mode.
 
   build-panel-arm:

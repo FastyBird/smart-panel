@@ -139,7 +139,16 @@ prepare_display_files() {
 	# Build the flutter-pi bundle (ARM64)
 	# This produces flutter_assets/ — NOT a Linux desktop app.
 	# flutter-pi uses flutter engine assets, not the desktop build path.
-	echo "  -> Building flutter-pi bundle (arm64 release)..."
+	echo "  -> Building flutter-pi bundle (arm64 release, variant: ${VARIANT})..."
+
+	# For AIO variant, bake in localhost as the backend URL so the panel
+	# connects to the local backend without mDNS discovery.
+	# FB_APP_HOST is a Dart compile-time constant (String.fromEnvironment),
+	# so it must be set at build time via --dart-define.
+	if [ "${VARIANT}" = "aio" ]; then
+		export FB_FLUTTERPI_EXTRA_DART_DEFINES="--dart-define=FB_APP_HOST=http://localhost --dart-define=FB_BACKEND_PORT=3000"
+	fi
+
 	melos run build-panel-arm64-release
 
 	# Copy the built flutter assets bundle
