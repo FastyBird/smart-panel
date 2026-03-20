@@ -61,23 +61,15 @@ jobs:
       - name: "Install dependencies"
         run: "pnpm install --frozen-lockfile"
 
-      - name: "Setup Flutter"
+      - name: "Setup Flutter and Dart"
         if: "matrix.variant == 'aio' || matrix.variant == 'display'"
         uses: "subosito/flutter-action@v2"
         with:
           channel: "stable"
 
-      - name: "Enable Flutter Linux desktop"
+      - name: "Install Melos"
         if: "matrix.variant == 'aio' || matrix.variant == 'display'"
-        run: "flutter config --enable-linux-desktop"
-
-      - name: "Install Flutter Linux build dependencies"
-        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev
+        run: "dart pub global activate melos"
 
       - name: "Free disk space and add swap"
         run: |
@@ -111,8 +103,8 @@ jobs:
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
           for f in smart-panel-*; do
-            # Replace the git version hash (segment before -arm64) with the release version
-            NEW_NAME=$(echo "$f" | sed "s/-[a-f0-9]*-arm64/-${VERSION}-arm64/")
+            # Replace the version segment (last part before -arm64) with the release version
+            NEW_NAME=$(echo "$f" | sed "s/-[^-]*-arm64/-${VERSION}-arm64/")
             if [ "$f" != "$NEW_NAME" ]; then
               mv "$f" "$NEW_NAME"
             fi

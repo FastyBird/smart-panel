@@ -120,13 +120,30 @@ prepare_display_files() {
 
 	mkdir -p "${DISPLAY_FILES_DIR}/display-app"
 
-	# Build Flutter app bundle for ARM64 Linux
-	echo "  -> Building Flutter panel app..."
-	cd "${PROJECT_ROOT}/apps/panel"
-	flutter build linux --release --target-platform linux-arm64
+	cd "${PROJECT_ROOT}"
 
-	# Copy the built bundle
-	cp -r "${PROJECT_ROOT}/apps/panel/build/linux/arm64/release/bundle/"* \
+	# Generate the OpenAPI spec if it doesn't already exist (prepare_app_files
+	# creates it for aio, but display-only needs it too for code generation).
+	if [ ! -f "${PROJECT_ROOT}/spec/api/v1/openapi.json" ]; then
+		echo "  -> Generating OpenAPI spec for panel code generation..."
+		pnpm install --frozen-lockfile
+		pnpm run generate:spec
+		pnpm run generate:openapi
+	fi
+
+	# Bootstrap Dart packages
+	echo "  -> Bootstrapping Dart packages..."
+	dart pub global activate melos
+	melos bootstrap
+
+	# Build the flutter-pi bundle (ARM64)
+	# This produces flutter_assets/ — NOT a Linux desktop app.
+	# flutter-pi uses flutter engine assets, not the desktop build path.
+	echo "  -> Building flutter-pi bundle (arm64 release)..."
+	melos run build-panel-arm64-release
+
+	# Copy the built flutter assets bundle
+	cp -r "${PROJECT_ROOT}/apps/panel/build/flutter_assets/"* \
 		"${DISPLAY_FILES_DIR}/display-app/"
 
 	echo "  -> Display files prepared in ${DISPLAY_FILES_DIR}/display-app"
