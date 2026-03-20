@@ -20,20 +20,20 @@ fi
 echo "Building flutter-pi from source..."
 
 rm -rf "${BUILD_DIR}"
-git clone --depth 1 https://github.com/ardera/flutter-pi.git "${BUILD_DIR}"
+mkdir -p "${BUILD_DIR}/build"
 
-cd "${BUILD_DIR}"
-mkdir build && cd build
+git clone --depth 1 https://github.com/ardera/flutter-pi.git "${BUILD_DIR}/src"
 
 cmake \
+	-S "${BUILD_DIR}/src" \
+	-B "${BUILD_DIR}/build" \
 	-DCMAKE_BUILD_TYPE=Release \
-	-DBUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN=OFF \
-	..
+	-DBUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN=OFF
 
-make -j"$(nproc)"
+make -C "${BUILD_DIR}/build" -j"$(nproc)"
 
-# Install binary
-cp flutter-pi "${FLUTTER_PI_BIN}"
+# Install binary (use full path — avoid getcwd issues)
+cp "${BUILD_DIR}/build/flutter-pi" "${FLUTTER_PI_BIN}"
 chmod +x "${FLUTTER_PI_BIN}"
 
 # Clean up build directory
