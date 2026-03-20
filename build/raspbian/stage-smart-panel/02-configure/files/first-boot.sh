@@ -87,7 +87,22 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 2. Create InfluxDB database and retention policies
+# 2. Build native modules (sqlite3, bcrypt) — must run before migrations
+# ──────────────────────────────────────────────────────────────
+log_info "Building native modules (this may take a minute)..."
+if [ -x "${APP_DIR}/rebuild-native.sh" ]; then
+	if "${APP_DIR}/rebuild-native.sh" >> "${BOOT_LOG}" 2>&1; then
+		log_ok "Native modules compiled"
+	else
+		log_error "Native module compilation failed"
+		echo "========================================" >> "${BOOT_LOG}"
+		echo "RESULT: FAILED" >> "${BOOT_LOG}"
+		exit 1
+	fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# 3. Create InfluxDB database and retention policies
 # ──────────────────────────────────────────────────────────────
 log_info "Configuring InfluxDB..."
 
@@ -113,14 +128,14 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 3. Ensure data directories exist with correct permissions
+# 4. Ensure data directories exist with correct permissions
 # ──────────────────────────────────────────────────────────────
 mkdir -p "${DATA_DIR}/data" "${DATA_DIR}/config"
 chown -R smart-panel:smart-panel "${DATA_DIR}"
 log_ok "Data directories verified"
 
 # ──────────────────────────────────────────────────────────────
-# 4. Run database migrations
+# 5. Run database migrations
 # ──────────────────────────────────────────────────────────────
 log_info "Running database migrations..."
 
@@ -141,7 +156,7 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 5. Copy seed data if not already present
+# 6. Copy seed data if not already present
 # ──────────────────────────────────────────────────────────────
 if [ -d "${APP_DIR}/var/db/seed" ] && [ ! -d "${DATA_DIR}/data/seed" ]; then
 	cp -r "${APP_DIR}/var/db/seed" "${DATA_DIR}/data/seed"
@@ -150,7 +165,7 @@ if [ -d "${APP_DIR}/var/db/seed" ] && [ ! -d "${DATA_DIR}/data/seed" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
-# 6. Remove first-boot marker and finalize
+# 7. Remove first-boot marker and finalize
 # ──────────────────────────────────────────────────────────────
 rm -f "${MARKER}"
 

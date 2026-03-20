@@ -43,20 +43,33 @@ fi
 cd "${APP_INSTALL_DIR}"
 pnpm install --prod --ignore-scripts
 
-# Rebuild native modules for ARM64
+# Native modules (sqlite3, bcrypt) are compiled on first boot instead of
+# during image build. QEMU-emulated ARM64 compilation on x86 CI runners
+# exhausts memory. Native ARM64 compilation on the Pi takes ~30 seconds.
 npm install -g node-gyp
 
-SQLITE_DIR=$(find "${APP_INSTALL_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
-if [ -n "${SQLITE_DIR}" ]; then
-	echo "Building sqlite3 from source in ${SQLITE_DIR}..."
+# Create a script for first-boot native module rebuild
+cat > "${APP_INSTALL_DIR}/rebuild-native.sh" << 'REBUILD_SCRIPT'
+#!/bin/bash
+set -e
+APP_DIR="/usr/lib/smart-panel"
+cd "${APP_DIR}"
+
+SQLITE_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
+if [ -n "${SQLITE_DIR}" ] && [ ! -f "${SQLITE_DIR}/build/Release/node_sqlite3.node" ]; then
+	echo "Building sqlite3 native module..."
 	cd "${SQLITE_DIR}" && npm install --build-from-source
 fi
 
-BCRYPT_DIR=$(find "${APP_INSTALL_DIR}/node_modules/.pnpm" -path "*/bcrypt/package.json" -exec dirname {} \; | grep "bcrypt@" | head -1)
-if [ -n "${BCRYPT_DIR}" ]; then
-	echo "Building bcrypt from source in ${BCRYPT_DIR}..."
+BCRYPT_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/bcrypt/package.json" -exec dirname {} \; | grep "bcrypt@" | head -1)
+if [ -n "${BCRYPT_DIR}" ] && [ ! -f "${BCRYPT_DIR}/build/Release/bcrypt_lib.node" ]; then
+	echo "Building bcrypt native module..."
 	cd "${BCRYPT_DIR}" && npm install --build-from-source
 fi
+
+echo "Native modules ready"
+REBUILD_SCRIPT
+chmod +x "${APP_INSTALL_DIR}/rebuild-native.sh"
 
 cd "${APP_INSTALL_DIR}"
 
