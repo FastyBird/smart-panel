@@ -7,7 +7,10 @@
 #   - Pre-built Smart Panel backend + admin artifacts in build/raspbian/stage-smart-panel/01-install-app/files/
 #
 # Usage:
-#   ./build.sh                    # Full build
+#   ./build.sh                    # Full build (server variant)
+#   ./build.sh --variant server   # Headless backend + admin UI
+#   ./build.sh --variant display  # Flutter-pi display only
+#   ./build.sh --variant aio      # All-in-one (backend + display)
 #   ./build.sh --prepare-only     # Only prepare app files, skip image build
 #   ./build.sh --skip-prepare     # Skip app preparation, use existing files
 #
@@ -19,23 +22,46 @@ PI_GEN_DIR="${SCRIPT_DIR}/pi-gen"
 PI_GEN_REPO="https://github.com/RPi-Distro/pi-gen.git"
 PI_GEN_BRANCH="arm64"
 APP_FILES_DIR="${SCRIPT_DIR}/stage-smart-panel/01-install-app/files"
+DISPLAY_FILES_DIR="${SCRIPT_DIR}/modules/install-display/files"
 OUTPUT_DIR="${SCRIPT_DIR}/output"
 
 PREPARE_ONLY=false
 SKIP_PREPARE=false
+VARIANT="server"
 
 for arg in "$@"; do
 	case "$arg" in
 		--prepare-only) PREPARE_ONLY=true ;;
 		--skip-prepare) SKIP_PREPARE=true ;;
+		--variant=*) VARIANT="${arg#--variant=}" ;;
 		--help)
-			echo "Usage: $0 [--prepare-only] [--skip-prepare]"
+			echo "Usage: $0 [--variant=server|display|aio] [--prepare-only] [--skip-prepare]"
+			echo "  --variant=NAME  Image variant: server (default), display, aio"
 			echo "  --prepare-only  Only build and package the app, don't build the image"
 			echo "  --skip-prepare  Skip app build, use existing files in stage files dir"
 			exit 0
 			;;
 	esac
 done
+
+# Handle --variant as separate argument (--variant display)
+ARGS=("$@")
+for i in "${!ARGS[@]}"; do
+	if [ "${ARGS[$i]}" = "--variant" ] && [ $((i + 1)) -lt ${#ARGS[@]} ]; then
+		VARIANT="${ARGS[$((i + 1))]}"
+	fi
+done
+
+# Validate variant
+case "${VARIANT}" in
+	server|display|aio) ;;
+	*)
+		echo "Error: Unknown variant '${VARIANT}'. Use server, display, or aio." >&2
+		exit 1
+		;;
+esac
+
+echo "==> Building variant: ${VARIANT}"
 
 if [ "${PREPARE_ONLY}" = true ] && [ "${SKIP_PREPARE}" = true ]; then
 	echo "Error: --prepare-only and --skip-prepare cannot be used together." >&2
@@ -89,12 +115,67 @@ prepare_app_files() {
 	echo "  -> App files prepared in ${APP_FILES_DIR}/app"
 }
 
+prepare_display_files() {
+	echo "==> Preparing Smart Panel display files..."
+
+	mkdir -p "${DISPLAY_FILES_DIR}/display-app"
+
+	cd "${PROJECT_ROOT}"
+
+	# Generate the OpenAPI spec if it doesn't already exist (prepare_app_files
+	# creates it for aio, but display-only needs it too for code generation).
+	if [ ! -f "${PROJECT_ROOT}/spec/api/v1/openapi.json" ]; then
+		echo "  -> Generating OpenAPI spec for panel code generation..."
+		pnpm install --frozen-lockfile
+		pnpm run generate:spec
+		pnpm run generate:openapi
+	fi
+
+	# Bootstrap Dart packages
+	echo "  -> Bootstrapping Dart packages..."
+	dart pub global activate melos
+	melos bootstrap
+
+	# Build the flutter-pi bundle (ARM64)
+	# This produces flutter_assets/ — NOT a Linux desktop app.
+	# flutter-pi uses flutter engine assets, not the desktop build path.
+	echo "  -> Building flutter-pi bundle (arm64 release, variant: ${VARIANT})..."
+
+	# For AIO variant, bake in localhost as the backend URL so the panel
+	# connects to the local backend without mDNS discovery.
+	# FB_APP_HOST is a Dart compile-time constant (String.fromEnvironment),
+	# so it must be set at build time via --dart-define.
+	if [ "${VARIANT}" = "aio" ]; then
+		export FB_FLUTTERPI_EXTRA_DART_DEFINES="--dart-define=FB_APP_HOST=http://localhost --dart-define=FB_BACKEND_PORT=3000"
+	fi
+
+	melos run build-panel-arm64-release
+
+	# Copy the built flutter assets bundle
+	cp -r "${PROJECT_ROOT}/apps/panel/build/flutter_assets/"* \
+		"${DISPLAY_FILES_DIR}/display-app/"
+
+	echo "  -> Display files prepared in ${DISPLAY_FILES_DIR}/display-app"
+}
+
+# Determine what to prepare based on variant
 if [ "${SKIP_PREPARE}" = false ]; then
-	prepare_app_files
+	case "${VARIANT}" in
+		server)
+			prepare_app_files
+			;;
+		display)
+			prepare_display_files
+			;;
+		aio)
+			prepare_app_files
+			prepare_display_files
+			;;
+	esac
 fi
 
 if [ "${PREPARE_ONLY}" = true ]; then
-	echo "==> Preparation complete. Files are in ${APP_FILES_DIR}/app"
+	echo "==> Preparation complete."
 	exit 0
 fi
 
@@ -116,7 +197,7 @@ fi
 # ──────────────────────────────────────────────────────────────
 echo "==> Configuring pi-gen..."
 
-# Copy our config
+# Start with base config
 cp "${SCRIPT_DIR}/config" "${PI_GEN_DIR}/config"
 
 # Skip intermediate image from stage2 and desktop stages
@@ -125,9 +206,95 @@ touch "${PI_GEN_DIR}/stage3/SKIP" "${PI_GEN_DIR}/stage3/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage4/SKIP" "${PI_GEN_DIR}/stage4/SKIP_IMAGES"
 touch "${PI_GEN_DIR}/stage5/SKIP" "${PI_GEN_DIR}/stage5/SKIP_IMAGES"
 
-# Copy our custom stage into pi-gen (symlinks don't work inside Docker)
-rm -rf "${PI_GEN_DIR}/stage-smart-panel"
-cp -r "${SCRIPT_DIR}/stage-smart-panel" "${PI_GEN_DIR}/stage-smart-panel"
+# ──────────────────────────────────────────────────────────────
+# Step 3a: Assemble stage based on variant
+# ──────────────────────────────────────────────────────────────
+if [ "${VARIANT}" = "server" ]; then
+	# Server variant: use the existing stage-smart-panel as-is
+	rm -rf "${PI_GEN_DIR}/stage-smart-panel"
+	cp -r "${SCRIPT_DIR}/stage-smart-panel" "${PI_GEN_DIR}/stage-smart-panel"
+else
+	# display/aio: assemble from modules
+	echo "  -> Assembling stage from modules for ${VARIANT} variant..."
+
+	# Load variant config for IMG_NAME and TARGET_HOSTNAME
+	VARIANT_CONF="${SCRIPT_DIR}/variants/${VARIANT}.conf"
+	if [ ! -f "${VARIANT_CONF}" ]; then
+		echo "Error: Variant config not found: ${VARIANT_CONF}" >&2
+		exit 1
+	fi
+
+	# Override pi-gen config values from variant
+	# shellcheck disable=SC1090
+	source "${VARIANT_CONF}"
+
+	# Update pi-gen config with variant-specific values
+	sed -i.bak \
+		-e "s/^IMG_NAME=.*/IMG_NAME=\"${IMG_NAME}\"/" \
+		-e "s/^TARGET_HOSTNAME=.*/TARGET_HOSTNAME=\"${TARGET_HOSTNAME}\"/" \
+		-e "s/^FIRST_USER_NAME=.*/FIRST_USER_NAME=\"${FIRST_USER_NAME}\"/" \
+		-e "s/^FIRST_USER_PASS=.*/FIRST_USER_PASS=\"${FIRST_USER_PASS}\"/" \
+		"${PI_GEN_DIR}/config"
+	rm -f "${PI_GEN_DIR}/config.bak"
+
+	# Build the assembled stage
+	ASSEMBLED_STAGE="${PI_GEN_DIR}/stage-smart-panel"
+	rm -rf "${ASSEMBLED_STAGE}"
+	mkdir -p "${ASSEMBLED_STAGE}"
+
+	# Create pi-gen marker files required for stage processing
+	cat > "${ASSEMBLED_STAGE}/prerun.sh" << 'PRERUN'
+#!/bin/bash -e
+if [ ! -d "${ROOTFS_DIR}" ]; then
+	copy_previous
+fi
+PRERUN
+	chmod +x "${ASSEMBLED_STAGE}/prerun.sh"
+	touch "${ASSEMBLED_STAGE}/EXPORT_IMAGE"
+
+	# Sub-stage counter
+	SUBSTAGE_IDX=0
+
+	for MODULE in ${MODULES}; do
+		SUBSTAGE_DIR="${ASSEMBLED_STAGE}/$(printf '%02d' ${SUBSTAGE_IDX})-${MODULE}"
+
+		case "${MODULE}" in
+			backend-deps)
+				# Map to existing stage-smart-panel/00-install-deps
+				cp -r "${SCRIPT_DIR}/stage-smart-panel/00-install-deps" "${SUBSTAGE_DIR}"
+				;;
+			display-deps)
+				cp -r "${SCRIPT_DIR}/modules/display-deps" "${SUBSTAGE_DIR}"
+				;;
+			install-backend)
+				# Map to existing stage-smart-panel/01-install-app
+				cp -r "${SCRIPT_DIR}/stage-smart-panel/01-install-app" "${SUBSTAGE_DIR}"
+				;;
+			install-display)
+				cp -r "${SCRIPT_DIR}/modules/install-display" "${SUBSTAGE_DIR}"
+				;;
+			configure)
+				cp -r "${SCRIPT_DIR}/modules/configure" "${SUBSTAGE_DIR}"
+				;;
+			*)
+				echo "Error: Unknown module '${MODULE}'" >&2
+				exit 1
+				;;
+		esac
+
+		SUBSTAGE_IDX=$((SUBSTAGE_IDX + 1))
+	done
+
+	# Write variant marker into the configure module's files/ directory.
+	# This file is copied into rootfs by 00-run.sh and read by 01-run-chroot.sh.
+	# Using a file avoids env-var propagation issues across the Docker boundary.
+	CONFIGURE_DIR=$(find "${ASSEMBLED_STAGE}" -maxdepth 1 -name "*-configure" -type d | head -1)
+	if [ -n "${CONFIGURE_DIR}" ]; then
+		echo "${VARIANT}" > "${CONFIGURE_DIR}/files/variant"
+	fi
+
+	echo "  -> Assembled ${SUBSTAGE_IDX} sub-stages for ${VARIANT}"
+fi
 
 # Fix Bookworm GPG keys: the debootstrapped rootfs has stale 2023 archive keys
 # that can't verify 2025 Bookworm repo signatures. We patch stage0 to copy the
@@ -206,7 +373,7 @@ sed 's/binfmt-support ca-certificates/binfmt-support ca-certificates debian-arch
 # ──────────────────────────────────────────────────────────────
 # Step 4: Build the image
 # ──────────────────────────────────────────────────────────────
-echo "==> Building Raspberry Pi OS image..."
+echo "==> Building Raspberry Pi OS image (${VARIANT})..."
 
 cd "${PI_GEN_DIR}"
 ./build-docker.sh
@@ -221,6 +388,13 @@ mkdir -p "${OUTPUT_DIR}"
 VERSION=$(git -C "${PROJECT_ROOT}" describe --tags --always 2>/dev/null || echo "dev")
 VERSION="${VERSION//\//-}"
 
+# Include variant in filename (server omits it for backwards compatibility)
+if [ "${VARIANT}" = "server" ]; then
+	NAME_PREFIX="smart-panel"
+else
+	NAME_PREFIX="smart-panel-${VARIANT}"
+fi
+
 echo "  -> Deploy directory contents:"
 ls -lh "${PI_GEN_DIR}/deploy/" 2>/dev/null || echo "  -> Deploy directory not found!"
 
@@ -229,14 +403,14 @@ IMAGE_FILE=$(find "${PI_GEN_DIR}/deploy/" -maxdepth 1 -name "*.img" -type f 2>/d
 ZIP_FILE=$(find "${PI_GEN_DIR}/deploy/" -maxdepth 1 -name "*.zip" -type f 2>/dev/null | head -1)
 
 if [ -n "${IMAGE_FILE}" ]; then
-	NEW_NAME="smart-panel-${VERSION}-arm64.img"
+	NEW_NAME="${NAME_PREFIX}-${VERSION}-arm64.img"
 	echo "  -> Copying ${IMAGE_FILE} to ${OUTPUT_DIR}/${NEW_NAME}"
 	cp "${IMAGE_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
 	echo "  -> Compressing image..."
 	xz -9 -T0 "${OUTPUT_DIR}/${NEW_NAME}"
 	sha256sum "${OUTPUT_DIR}/${NEW_NAME}.xz" > "${OUTPUT_DIR}/${NEW_NAME}.xz.sha256"
 elif [ -n "${ZIP_FILE}" ]; then
-	NEW_NAME="smart-panel-${VERSION}-arm64.zip"
+	NEW_NAME="${NAME_PREFIX}-${VERSION}-arm64.zip"
 	echo "  -> Copying ${ZIP_FILE} to ${OUTPUT_DIR}/${NEW_NAME}"
 	cp "${ZIP_FILE}" "${OUTPUT_DIR}/${NEW_NAME}"
 	sha256sum "${OUTPUT_DIR}/${NEW_NAME}" > "${OUTPUT_DIR}/${NEW_NAME}.sha256"

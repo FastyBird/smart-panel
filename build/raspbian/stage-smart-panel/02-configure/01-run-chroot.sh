@@ -32,6 +32,21 @@ ssh-keygen -A
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
 
+# Install CLI wrapper so users can run commands from anywhere.
+# Uses sudo -u to run as the smart-panel system user (owns the database)
+# and explicitly invokes bash since the system user has nologin shell.
+cat > /usr/local/bin/smart-panel-cli << 'CLI_WRAPPER'
+#!/bin/bash
+exec sudo -u smart-panel /bin/bash -c '
+	set -a
+	. /etc/smart-panel/environment
+	set +a
+	cd /opt/smart-panel
+	exec node dist/cli.js "$@"
+' -- "$@"
+CLI_WRAPPER
+chmod +x /usr/local/bin/smart-panel-cli
+
 # Allow smart-panel user to run specific system commands via sudoers
 cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
 # Smart Panel system commands

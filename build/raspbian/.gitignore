@@ -6,3 +6,6 @@ output/
 
 # Pre-built app files (generated during build)
 stage-smart-panel/01-install-app/files/app/
+
+# Pre-built display app files (generated during build)
+modules/install-display/files/display-app/

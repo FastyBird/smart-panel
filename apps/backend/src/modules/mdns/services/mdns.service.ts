@@ -107,10 +107,14 @@ export class MdnsService implements OnApplicationShutdown {
 			// Create the Bonjour instance
 			this.bonjour = new Bonjour();
 
-			const serviceName = this.getServiceName();
+			const baseServiceName = this.getServiceName();
 			const serviceType = this.getServiceType();
 			const version = this.getVersion();
 			const host = hostname();
+
+			// Include hostname in service name to ensure uniqueness on the network
+			// e.g., "FastyBird Smart Panel (smart-panel-aio)"
+			const serviceName = `${baseServiceName} (${host})`;
 
 			// Create TXT record data
 			const txtRecord: Record<string, string> = {

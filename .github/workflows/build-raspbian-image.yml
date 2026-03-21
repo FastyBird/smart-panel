@@ -3,6 +3,16 @@ name: Build Raspbian Image
 on:
   workflow_dispatch:
     inputs:
+      variant:
+        description: 'Image variant to build'
+        required: true
+        type: choice
+        options:
+          - server
+          - aio
+          - display
+          - all
+        default: 'server'
       image_name:
         description: 'Image name suffix (e.g. "beta", "rc1")'
         required: false
@@ -11,9 +21,30 @@ on:
     types: [published]
 
 jobs:
-  build:
-    name: "Build Raspberry Pi Image"
+  matrix-setup:
+    name: "Setup build matrix"
     runs-on: "ubuntu-latest"
+    outputs:
+      variants: "${{ steps.set-matrix.outputs.variants }}"
+    steps:
+      - name: "Determine variants to build"
+        id: "set-matrix"
+        run: |
+          VARIANT="${{ github.event.inputs.variant || 'all' }}"
+          if [ "${VARIANT}" = "all" ]; then
+            echo 'variants=["server","aio","display"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "variants=[\"${VARIANT}\"]" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: "Build ${{ matrix.variant }}"
+    needs: "matrix-setup"
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: "${{ fromJson(needs.matrix-setup.outputs.variants) }}"
 
     steps:
       - name: "Checkout"
@@ -29,6 +60,16 @@ jobs:
 
       - name: "Install dependencies"
         run: "pnpm install --frozen-lockfile"
+
+      - name: "Setup Flutter and Dart"
+        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
+        uses: "subosito/flutter-action@v2"
+        with:
+          channel: "stable"
+
+      - name: "Install Melos"
+        if: "matrix.variant == 'aio' || matrix.variant == 'display'"
+        run: "dart pub global activate melos"
 
       - name: "Free disk space and add swap"
         run: |
@@ -51,7 +92,7 @@ jobs:
       - name: "Build image"
         run: |
           cd build/raspbian
-          ./build.sh
+          ./build.sh --variant=${{ matrix.variant }}
 
       - name: "Rename output"
         run: |
@@ -62,7 +103,8 @@ jobs:
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
           for f in smart-panel-*; do
-            NEW_NAME=$(echo "$f" | sed "s/smart-panel-[^-]*-/smart-panel-${VERSION}-/")
+            # Replace the version segment (last part before -arm64) with the release version
+            NEW_NAME=$(echo "$f" | sed "s/-[^-]*-arm64/-${VERSION}-arm64/")
             if [ "$f" != "$NEW_NAME" ]; then
               mv "$f" "$NEW_NAME"
             fi
@@ -74,7 +116,7 @@ jobs:
       - name: "Upload image artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "smart-panel-image-arm64"
+          name: "smart-panel-${{ matrix.variant }}-image-arm64"
           path: "build/raspbian/output/*"
           retention-days: 30
 
