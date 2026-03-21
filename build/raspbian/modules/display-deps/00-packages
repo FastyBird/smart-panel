@@ -4,6 +4,8 @@ openssh-server
 avahi-daemon
 libnss-mdns
 i2c-tools
+fontconfig
+fonts-freefont-ttf
 cmake
 libdrm-dev
 libgbm-dev
