@@ -258,7 +258,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
             text: TextSpan(
               style: TextStyle(
                 fontSize: AppSpacings.scale(isCompact ? 56 : 72),
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w200,
                 color: _isOffline
                     ? (isDark
                         ? AppTextColorDark.placeholder
@@ -272,7 +272,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                     text: ' $_unit',
                     style: TextStyle(
                       fontSize: AppSpacings.scale(isCompact ? 18 : 24),
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w200,
                     ),
                   ),
               ],

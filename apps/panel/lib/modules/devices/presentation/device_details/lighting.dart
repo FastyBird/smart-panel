@@ -1010,7 +1010,7 @@ class _LightingHeroCard extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: fontSize,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w200,
                 fontFamily: 'DIN1451',
                 color: textColor,
                 height: 0.7,
@@ -1029,7 +1029,7 @@ class _LightingHeroCard extends StatelessWidget {
                       unitText ?? '',
                       style: TextStyle(
                         fontSize: unitFontSize,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w200,
                         color: unitColor,
                       ),
                     ),

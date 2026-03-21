@@ -2544,29 +2544,15 @@ ButtonStyle createButtonTheme({
         vertical: screenService.scale(8, density: visualDensityService.density),
       ),
     ),
-    textStyle: WidgetStateProperty.resolveWith<TextStyle>((states) {
-      // Explicit color in textStyle — flutter-pi's DRM/KMS renderer does not
-      // propagate foregroundColor → DefaultTextStyle, so button labels would
-      // be invisible without this.
-      Color textColor;
-      if (states.contains(WidgetState.pressed)) {
-        textColor = pressedColor;
-      } else if (states.contains(WidgetState.hovered)) {
-        textColor = hoveredColor;
-      } else if (states.contains(WidgetState.disabled)) {
-        textColor = disabledColor;
-      } else {
-        textColor = color;
-      }
-      return TextStyle(
+    textStyle: WidgetStateProperty.all(
+      TextStyle(
         fontSize: screenService.scale(
           14,
           density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
-        color: textColor,
-      );
-    }),
+      ),
+    ),
     shape: WidgetStateProperty.all(
       RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
