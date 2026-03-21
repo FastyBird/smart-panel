@@ -28,12 +28,6 @@ class SliderWithSteps extends StatelessWidget {
   /// Callback when value changes
   final ValueChanged<double>? onChanged;
 
-  /// Callback when drag starts
-  final ValueChanged<double>? onChangeStart;
-
-  /// Callback when drag ends
-  final ValueChanged<double>? onChangeEnd;
-
   /// Labels to show below the slider (e.g., ['Off', 'Low', 'Med', 'High', 'Max'])
   final List<String> steps;
 
@@ -74,8 +68,6 @@ class SliderWithSteps extends StatelessWidget {
     required this.value,
     this.themeColor = ThemeColors.primary,
     this.onChanged,
-    this.onChangeStart,
-    this.onChangeEnd,
     this.steps = const ['0%', '25%', '50%', '75%', '100%'],
     this.enabled = true,
     this.discrete = false,
@@ -170,8 +162,6 @@ class SliderWithSteps extends StatelessWidget {
           value: clampedValue,
           divisions: divisions,
           onChanged: enabled ? onChanged : null,
-          onChangeStart: enabled ? onChangeStart : null,
-          onChangeEnd: enabled ? onChangeEnd : null,
         ),
       ),
     );
@@ -283,24 +273,18 @@ class _SliderThumbWithBorder extends SliderComponentShape {
 }
 
 /// Custom track shape that paints a gradient across the full track.
-///
-/// The shader is cached and only recreated when the track rect changes,
-/// avoiding a [LinearGradient.createShader] call on every frame.
 class _GradientTrackShape extends SliderTrackShape {
   final List<Color> colors;
   final double trackHeight;
   final Color? borderColor;
   final double borderWidth;
 
-  _GradientTrackShape({
+  const _GradientTrackShape({
     required this.colors,
     required this.trackHeight,
     this.borderColor,
     this.borderWidth = 1.0,
   });
-
-  Rect? _cachedRect;
-  Paint? _cachedPaint;
 
   @override
   Rect getPreferredRect({
@@ -339,13 +323,10 @@ class _GradientTrackShape extends SliderTrackShape {
     final radius = Radius.circular(trackHeight / 2);
     final rrect = RRect.fromRectAndRadius(rect, radius);
 
-    if (_cachedRect != rect || _cachedPaint == null) {
-      final gradient = LinearGradient(colors: colors);
-      _cachedPaint = Paint()..shader = gradient.createShader(rect);
-      _cachedRect = rect;
-    }
+    final gradient = LinearGradient(colors: colors);
+    final paint = Paint()..shader = gradient.createShader(rect);
 
-    context.canvas.drawRRect(rrect, _cachedPaint!);
+    context.canvas.drawRRect(rrect, paint);
 
     if (borderColor != null) {
       final borderPaint = Paint()
