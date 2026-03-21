@@ -1,0 +1,73 @@
+name: "Build eLinux ARM64 (test)"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.4"
+          channel: "stable"
+
+      - name: "Setup flutter-elinux"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake pkg-config \
+            libegl1-mesa-dev libgles2-mesa-dev \
+            libxkbcommon-dev \
+            libdrm-dev libgbm-dev \
+            libinput-dev libudev-dev libsystemd-dev \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            libstdc++-12-dev-arm64-cross
+          git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
+          sudo mv /tmp/flutter-elinux /opt/flutter-elinux
+          echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
+
+      - name: "Remove flutterpi_tool (incompatible with elinux SDK)"
+        run: |
+          cd apps/panel
+          sed -i '/flutterpi_tool/d' pubspec.yaml
+          rm -f pubspec.lock
+
+      - name: "Create eLinux project"
+        run: |
+          cd apps/panel
+          flutter-elinux create --platforms elinux .
+
+      - name: "Get dependencies"
+        run: |
+          cd apps/panel
+          flutter-elinux pub get
+
+      - name: "Build eLinux ARM64 release"
+        run: |
+          cd apps/panel
+          flutter-elinux build elinux --release \
+            --target-backend-type=gbm \
+            --target-arch=arm64 \
+            --target-compiler-triple=aarch64-linux-gnu \
+            --target-sysroot=/usr/aarch64-linux-gnu \
+            --dart-define=APP_VERSION=1.0.0 \
+            --dart-define=APP_BUILD=1
+
+      - name: "Package artifact"
+        run: |
+          cd apps/panel/build/elinux/arm64/release/bundle
+          tar -czvf /tmp/smart-panel-elinux-arm64.tar.gz .
+
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-panel-elinux-arm64
+          path: /tmp/smart-panel-elinux-arm64.tar.gz
+          retention-days: 7
