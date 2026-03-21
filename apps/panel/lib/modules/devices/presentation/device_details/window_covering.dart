@@ -198,7 +198,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   @override
   void dispose() {
     _positionDebounceTimer?.cancel();
-    _positionUiThrottle?.cancel();
     _tiltDebounceTimer?.cancel();
     _devicesService.removeListener(_onDeviceChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
@@ -1181,22 +1180,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Timer? _positionUiThrottle;
-
   void _handlePositionChanged(double value) {
     final intValue = value.round();
 
-    // Store the value immediately for slider feedback
-    _localPosition = intValue;
-    _selectedPresetIndex = null;
-
-    // Throttle UI rebuilds to max ~20/sec to reduce frame drops
-    // on low-power devices (RPi Zero 2W) with animated visualizations
-    if (!(_positionUiThrottle?.isActive ?? false)) {
-      _positionUiThrottle = Timer(const Duration(milliseconds: 50), () {
-        if (mounted) setState(() {});
-      });
-    }
+    // Update local value immediately for smooth slider feedback
+    // Clear selected preset when user manually changes position
+    setState(() {
+      _localPosition = intValue;
+      _selectedPresetIndex = null;
+    });
 
     // Debounce the actual command
     _positionDebounceTimer?.cancel();
