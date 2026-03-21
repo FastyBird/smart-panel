@@ -284,8 +284,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // STATE HELPERS
   // --------------------------------------------------------------------------
 
-  // Get current position (local value takes precedence for smooth slider)
-  int get _position => _localPositionNotifier.value ?? _controller?.position ?? _selectedChannel.position;
+  // Get current position — uses controller/backend value only.
+  // The slider reads from _localPositionNotifier directly via ValueListenableBuilder.
+  int get _position => _controller?.position ?? _selectedChannel.position;
 
   // Get current tilt (local value takes precedence for smooth slider)
   int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _selectedChannel.tilt;
@@ -649,21 +650,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  /// Window visualization with custom size for landscape layout.
-  /// Wrapped in ValueListenableBuilder so it updates from the local
-  /// position notifier during drag without triggering parent setState.
+  /// Window visualization with custom size.
+  /// During drag, the visualization is frozen at the pre-drag position —
+  /// it only updates on drag end via setState, and AnimatedContainer
+  /// smoothly animates to the final position. This keeps the slider
+  /// responsive on low-power devices.
   Widget _buildWindowVisualizationSized(
-    BuildContext context,
-    double width,
-    double height,
-  ) {
-    return ValueListenableBuilder<int?>(
-      valueListenable: _localPositionNotifier,
-      builder: (context, _, __) => _buildWindowVisualizationContent(context, width, height),
-    );
-  }
-
-  Widget _buildWindowVisualizationContent(
     BuildContext context,
     double width,
     double height,
