@@ -254,8 +254,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text.rich(
-            TextSpan(
+          child: RichText(
+            text: TextSpan(
               style: TextStyle(
                 fontSize: AppSpacings.scale(isCompact ? 56 : 72),
                 fontWeight: FontWeight.w300,

@@ -288,8 +288,9 @@ class EnergySecondaryValue extends StatelessWidget {
           ),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text.rich(
-              TextSpan(
+            child: RichText(
+              maxLines: 1,
+              text: TextSpan(
                 children: [
                   TextSpan(
                     text: value,
@@ -309,7 +310,6 @@ class EnergySecondaryValue extends StatelessWidget {
                   ),
                 ],
               ),
-              maxLines: 1,
             ),
           ),
         ],

@@ -1417,8 +1417,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 children: [
                   if (!sensor.isBinary)
                     _buildTrendIcon(context, sensor.trend, isAlert),
-                  Text.rich(
-                    TextSpan(
+                  RichText(
+                    maxLines: 1,
+                    text: TextSpan(
                       style: TextStyle(
                         fontSize: AppSpacings.scale(24),
                         fontWeight: FontWeight.w300,
@@ -1450,7 +1451,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                               ),
                             ],
                     ),
-                    maxLines: 1,
                   ),
                 ],
               ),
