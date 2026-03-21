@@ -192,12 +192,19 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	}
 
 	/**
-	 * Group actions by (intentType, spaceId).
+	 * Group actions by (intentType, spaceId), deduplicating within a 5-minute
+	 * window. Multiple actions of the same type in the same space within 5
+	 * minutes count as a single occurrence — prevents e.g. setting up 3 lights
+	 * at once from immediately triggering a "pattern detected" suggestion.
 	 */
 	private groupActions(actions: ActionRecord[]): ActionGroup[] {
+		const DEDUP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 		const map = new Map<string, ActionGroup>();
 
-		for (const action of actions) {
+		// Sort by timestamp so dedup window works correctly
+		const sorted = [...actions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+		for (const action of sorted) {
 			const spaceId = action.spaceId;
 
 			if (!spaceId) {
@@ -214,6 +221,16 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 					actions: [],
 				};
 				map.set(key, group);
+			}
+
+			// Deduplicate: skip if last action in this group was within 5 minutes
+			const lastAction = group.actions[group.actions.length - 1];
+
+			if (lastAction && action.timestamp.getTime() - lastAction.timestamp.getTime() < DEDUP_WINDOW_MS) {
+				// Update the last action with the latest targets/value (keep most recent data)
+				group.actions[group.actions.length - 1] = action;
+
+				continue;
 			}
 
 			group.actions.push(action);
