@@ -10,8 +10,15 @@ class ConfigRepositoryManager {
   final ApiClient _apiClient;
   final Dio _dio;
 
-  final Map<String, ChangeNotifier> _moduleRepositories = {};
-  final Map<String, ChangeNotifier> _pluginRepositories = {};
+  /// Repositories stored as dynamic to avoid AOT generic type erasure issues.
+  ///
+  /// In release (AOT) mode, Dart erases generic type parameters, so
+  /// `ModuleConfigRepository<Model>` cannot be cast to
+  /// `ModuleConfigRepository<SystemConfigModel>`. By storing as dynamic
+  /// and ensuring the repository is always created with the correct
+  /// concrete type on first access, the cast works at runtime.
+  final Map<String, dynamic> _moduleRepositories = {};
+  final Map<String, dynamic> _pluginRepositories = {};
 
   ConfigRepositoryManager({
     required ConfigRegistrationService registrationService,
@@ -21,7 +28,7 @@ class ConfigRepositoryManager {
         _apiClient = apiClient,
         _dio = dio;
 
-  /// Get or create repository for a module
+  /// Get or create repository for a module.
   ModuleConfigRepository<T> getModuleRepository<T extends Model>(String moduleName) {
     if (!_moduleRepositories.containsKey(moduleName)) {
       final registration = _registrationService.getModuleRegistration(moduleName);
@@ -29,21 +36,19 @@ class ConfigRepositoryManager {
         throw Exception('Module $moduleName is not registered');
       }
 
-      final repository = ModuleConfigRepository<T>(
+      _moduleRepositories[moduleName] = ModuleConfigRepository<T>(
         moduleName: moduleName,
         apiClient: _apiClient,
         dio: _dio,
         fromJson: registration.fromJson as T Function(Map<String, dynamic>),
         updateHandler: registration.updateHandler,
       );
-
-      _moduleRepositories[moduleName] = repository;
     }
 
     return _moduleRepositories[moduleName] as ModuleConfigRepository<T>;
   }
 
-  /// Get or create repository for a plugin
+  /// Get or create repository for a plugin.
   ModuleConfigRepository<T> getPluginRepository<T extends Model>(String pluginName) {
     if (!_pluginRepositories.containsKey(pluginName)) {
       final registration = _registrationService.getPluginRegistration(pluginName);
@@ -51,23 +56,25 @@ class ConfigRepositoryManager {
         throw Exception('Plugin $pluginName is not registered');
       }
 
-      final repository = ModuleConfigRepository<T>(
+      _pluginRepositories[pluginName] = ModuleConfigRepository<T>(
         moduleName: pluginName,
         apiClient: _apiClient,
         dio: _dio,
         fromJson: registration.fromJson as T Function(Map<String, dynamic>),
         updateHandler: registration.updateHandler,
       );
-
-      _pluginRepositories[pluginName] = repository;
     }
 
     return _pluginRepositories[pluginName] as ModuleConfigRepository<T>;
   }
 
-  /// Fetch all registered configurations
+  /// Fetch all registered configurations.
+  ///
+  /// Only fetches from repositories that have already been created via
+  /// getModuleRepository/getPluginRepository with the correct type.
+  /// For repositories that haven't been accessed yet, fetches using
+  /// the raw API endpoint without creating a typed repository.
   Future<void> fetchAllConfigurations() async {
-    // Get list of registered modules and plugins
     final registeredModules = _registrationService.getRegisteredModules();
     final registeredPlugins = _registrationService.getRegisteredPlugins();
 
@@ -75,11 +82,31 @@ class ConfigRepositoryManager {
       return;
     }
 
-    // Fetch each registered module configuration
+    // Fetch from already-created module repositories
     for (final moduleName in registeredModules) {
       try {
-        final repo = getModuleRepository(moduleName);
-        await repo.fetchConfiguration();
+        if (_moduleRepositories.containsKey(moduleName)) {
+          final ModuleConfigRepository<Model> repo =
+              _moduleRepositories[moduleName] as ModuleConfigRepository<Model>;
+          await repo.fetchConfiguration();
+        } else {
+          // Create with base Model type — this repo will only be used for
+          // fetching, not for typed access. If a typed repo is needed later,
+          // getModuleRepository<T> will create a new one with the correct type.
+          final registration = _registrationService.getModuleRegistration(moduleName);
+          if (registration != null) {
+            final repo = ModuleConfigRepository<Model>(
+              moduleName: moduleName,
+              apiClient: _apiClient,
+              dio: _dio,
+              fromJson: registration.fromJson,
+              updateHandler: registration.updateHandler,
+            );
+            await repo.fetchConfiguration();
+            // Don't store in _moduleRepositories — let getModuleRepository<T>
+            // create the properly typed version on first typed access.
+          }
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
@@ -89,11 +116,26 @@ class ConfigRepositoryManager {
       }
     }
 
-    // Fetch each registered plugin configuration
+    // Fetch from already-created plugin repositories
     for (final pluginName in registeredPlugins) {
       try {
-        final repo = getPluginRepository(pluginName);
-        await repo.fetchConfiguration();
+        if (_pluginRepositories.containsKey(pluginName)) {
+          final ModuleConfigRepository<Model> repo =
+              _pluginRepositories[pluginName] as ModuleConfigRepository<Model>;
+          await repo.fetchConfiguration();
+        } else {
+          final registration = _registrationService.getPluginRegistration(pluginName);
+          if (registration != null) {
+            final repo = ModuleConfigRepository<Model>(
+              moduleName: pluginName,
+              apiClient: _apiClient,
+              dio: _dio,
+              fromJson: registration.fromJson,
+              updateHandler: registration.updateHandler,
+            );
+            await repo.fetchConfiguration();
+          }
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
