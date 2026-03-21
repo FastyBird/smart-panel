@@ -2,13 +2,14 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestj
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from '../buddy.constants';
+import { BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME, SuggestionType } from '../buddy.constants';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion-feedback.dto';
 import {
 	SuggestionDataModel,
@@ -16,6 +17,7 @@ import {
 	SuggestionFeedbackResultDataModel,
 	SuggestionsResponseModel,
 } from '../models/suggestion-response.model';
+import { SceneSuggestionEvaluator } from '../services/scene-suggestion-evaluator.service';
 import { BuddySuggestion, SuggestionEngineService } from '../services/suggestion-engine.service';
 
 @ApiTags(BUDDY_MODULE_API_TAG_NAME)
@@ -23,7 +25,10 @@ import { BuddySuggestion, SuggestionEngineService } from '../services/suggestion
 export class BuddySuggestionsController {
 	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddySuggestionsController');
 
-	constructor(private readonly suggestionEngine: SuggestionEngineService) {}
+	constructor(
+		private readonly suggestionEngine: SuggestionEngineService,
+		private readonly sceneSuggestionEvaluator: SceneSuggestionEvaluator,
+	) {}
 
 	@ApiOperation({
 		tags: [BUDDY_MODULE_API_TAG_NAME],
@@ -74,13 +79,28 @@ export class BuddySuggestionsController {
 	@ApiNotFoundResponse('Suggestion not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/feedback')
-	submitFeedback(
+	async submitFeedback(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqSuggestionFeedbackDto,
-	): SuggestionFeedbackResponseModel {
+	): Promise<SuggestionFeedbackResponseModel> {
 		this.logger.debug(`Submitting feedback "${body.data.feedback}" for suggestion id=${id}`);
 
 		const result = this.suggestionEngine.recordFeedback(id, body.data.feedback);
+
+		// Create a scene when the user accepts a scene creation suggestion
+		if (
+			body.data.feedback === SuggestionFeedback.APPLIED &&
+			result.suggestion.type === SuggestionType.PATTERN_SCENE_CREATE
+		) {
+			const sceneResult = await this.sceneSuggestionEvaluator.createSceneFromSuggestion(
+				result.suggestion.spaceId,
+				result.suggestion.metadata,
+			);
+
+			if ('error' in sceneResult) {
+				this.logger.warn(`Scene creation failed for suggestion id=${id}: ${sceneResult.error}`);
+			}
+		}
 
 		const resultData = new SuggestionFeedbackResultDataModel();
 		resultData.success = result.success;

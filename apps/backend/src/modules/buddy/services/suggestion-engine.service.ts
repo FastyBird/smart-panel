@@ -172,8 +172,9 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	/**
 	 * Record feedback for a suggestion.
 	 * Both 'applied' and 'dismissed' set a cooldown to prevent re-showing.
+	 * Returns the suggestion data so callers can act on it (e.g. create a scene).
 	 */
-	recordFeedback(id: string, feedback: SuggestionFeedback): { success: boolean } {
+	recordFeedback(id: string, feedback: SuggestionFeedback): { success: boolean; suggestion: BuddySuggestion } {
 		const suggestion = this.getSuggestionOrThrow(id);
 
 		this.cooldowns.setCooldown(suggestion.spaceId, suggestion.type, SUGGESTION_COOLDOWN_MS);
@@ -181,7 +182,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 
 		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}, cooldown set`);
 
-		return { success: true };
+		return { success: true, suggestion };
 	}
 
 	/**
