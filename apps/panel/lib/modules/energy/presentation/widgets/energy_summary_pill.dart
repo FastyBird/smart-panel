@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/energy/utils/energy_format.dart';
+
 import 'package:fastybird_smart_panel/modules/energy/models/energy_summary.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
@@ -74,7 +74,6 @@ class _EnergySummaryPillState extends State<EnergySummaryPill> {
 	@override
 	Widget build(BuildContext context) {
 		final brightness = Theme.of(context).brightness;
-		final localizations = AppLocalizations.of(context)!;
 
 		return Consumer<EnergyRepository>(
 			builder: (context, repository, _) {
@@ -88,10 +87,8 @@ class _EnergySummaryPillState extends State<EnergySummaryPill> {
 
 				final String consumptionText;
 				if (summary != null) {
-					consumptionText = '${NumberFormatUtils.defaultFormat.formatDecimal(
-						summary.consumption,
-						decimalPlaces: 1,
-					)} ${localizations.energy_unit_kwh}';
+					final scaled = formatEnergyScaled(summary.consumption);
+					consumptionText = '${scaled.value} ${scaled.unit}';
 				} else {
 					consumptionText = '\u2014'; // em dash
 				}
@@ -136,17 +133,19 @@ class _EnergySummaryPillState extends State<EnergySummaryPill> {
 									size: AppSpacings.scale(14),
 									color: colorFamily.base,
 								),
-								Text(
-									'${NumberFormatUtils.defaultFormat.formatDecimal(
-										summary.production!,
-										decimalPlaces: 1,
-									)} ${localizations.energy_unit_kwh}',
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										fontWeight: FontWeight.w700,
-										color: colorFamily.base,
-										letterSpacing: 0.3,
-									),
+								Builder(
+									builder: (context) {
+										final prodScaled = formatEnergyScaled(summary.production!);
+										return Text(
+											'${prodScaled.value} ${prodScaled.unit}',
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												fontWeight: FontWeight.w700,
+												color: colorFamily.base,
+												letterSpacing: 0.3,
+											),
+										);
+									},
 								),
 							],
 						],

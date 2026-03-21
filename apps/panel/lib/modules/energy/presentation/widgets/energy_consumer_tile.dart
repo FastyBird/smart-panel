@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
-import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+
 import 'package:fastybird_smart_panel/modules/energy/models/energy_breakdown.dart';
 import 'package:fastybird_smart_panel/modules/energy/utils/energy_format.dart';
 
@@ -24,7 +24,6 @@ class EnergyConsumerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final infoFamily = ThemeColorFamily.get(
       isDark ? Brightness.dark : Brightness.light,
@@ -75,13 +74,18 @@ class EnergyConsumerTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                '${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: energyDecimals(device.consumption))} ${localizations.energy_unit_kwh}',
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                  color: infoFamily.base,
-                ),
+              Builder(
+                builder: (context) {
+                  final scaled = formatEnergyScaled(device.consumption);
+                  return Text(
+                    '${scaled.value} ${scaled.unit}',
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w600,
+                      color: infoFamily.base,
+                    ),
+                  );
+                },
               ),
             ],
           ),

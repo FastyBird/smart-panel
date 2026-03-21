@@ -19,7 +19,7 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -296,20 +296,12 @@ class _EnergyScreenState extends State<EnergyScreen> {
 
     String subtitle;
     if (repo.summary != null) {
-      final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
-        repo.summary!.consumption,
-        decimalPlaces:
-            energyDecimals(repo.summary!.consumption),
-      );
-      subtitle = '$consumption ${localizations.energy_unit_kwh}';
+      final scaled = formatEnergyScaled(repo.summary!.consumption);
+      subtitle = '${scaled.value} ${scaled.unit}';
       if (repo.summary!.hasProduction) {
-        final production = NumberFormatUtils.defaultFormat.formatDecimal(
-          repo.summary!.production!,
-          decimalPlaces:
-              energyDecimals(repo.summary!.production!),
-        );
+        final prodScaled = formatEnergyScaled(repo.summary!.production!);
         subtitle +=
-            ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
+            ' / ${prodScaled.value} ${prodScaled.unit} ${localizations.energy_production.toLowerCase()}';
       }
     } else {
       subtitle = localizations.energy_empty_title;
@@ -479,31 +471,35 @@ class _EnergyScreenState extends State<EnergyScreen> {
             ),
           ),
           if (summary.hasProduction) ...[
-            BaseCard(
-              child: EnergySecondaryValue(
-                icon: MdiIcons.solarPower,
-                label: localizations.energy_production,
-                value: NumberFormatUtils.defaultFormat.formatDecimal(
-                  summary.production!,
-                  decimalPlaces: energyDecimals(summary.production!),
-                ),
-                unit: localizations.energy_unit_kwh,
-                colorFamily: successFamily,
-              ),
+            Builder(
+              builder: (context) {
+                final scaled = formatEnergyScaled(summary.production!);
+                return BaseCard(
+                  child: EnergySecondaryValue(
+                    icon: MdiIcons.solarPower,
+                    label: localizations.energy_production,
+                    value: scaled.value,
+                    unit: scaled.unit,
+                    colorFamily: successFamily,
+                  ),
+                );
+              },
             ),
             if (summary.net != null)
-              BaseCard(
-                child: EnergySecondaryValue(
-                  icon: MdiIcons.swapVertical,
-                  label: localizations.energy_net,
-                  value: NumberFormatUtils.defaultFormat.formatDecimal(
-                    summary.net!,
-                    decimalPlaces: energyDecimals(summary.net!),
-                  ),
-                  unit: localizations.energy_unit_kwh,
-                  colorFamily:
-                      summary.net! > 0 ? warningFamily : successFamily,
-                ),
+              Builder(
+                builder: (context) {
+                  final scaled = formatEnergyScaled(summary.net!);
+                  return BaseCard(
+                    child: EnergySecondaryValue(
+                      icon: MdiIcons.swapVertical,
+                      label: localizations.energy_net,
+                      value: scaled.value,
+                      unit: scaled.unit,
+                      colorFamily:
+                          summary.net! > 0 ? warningFamily : successFamily,
+                    ),
+                  );
+                },
               ),
           ],
         ],

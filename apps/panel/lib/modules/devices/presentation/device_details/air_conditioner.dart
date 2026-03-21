@@ -1364,6 +1364,10 @@ class _AirConditionerDeviceDetailState
 
     return BaseCard(
       width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pLg,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,

@@ -781,6 +781,10 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   }) {
     return BaseCard(
       width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pLg,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Adaptive decimal places for energy values so large numbers stay compact.
@@ -6,6 +7,29 @@ int energyDecimals(double value) {
   if (abs >= 100) return 0;
   if (abs >= 10) return 1;
   return 2;
+}
+
+/// Auto-scaled energy value with appropriate unit.
+///
+/// Converts large kWh values to MWh, GWh, or TWh for readability.
+/// Returns a record with formatted value string and unit string.
+({String value, String unit}) formatEnergyScaled(double kWh) {
+  final abs = kWh.abs();
+
+  if (abs >= 1e9) {
+    final scaled = kWh / 1e9;
+    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'TWh');
+  }
+  if (abs >= 1e6) {
+    final scaled = kWh / 1e6;
+    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'GWh');
+  }
+  if (abs >= 1e3) {
+    final scaled = kWh / 1e3;
+    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'MWh');
+  }
+
+  return (value: NumberFormatUtils.defaultFormat.formatDecimal(kWh, decimalPlaces: energyDecimals(kWh)), unit: 'kWh');
 }
 
 /// Returns localized short day name for weekday (1=Monday, 7=Sunday).

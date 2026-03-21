@@ -3,7 +3,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -125,37 +125,38 @@ class EnergyConsumptionCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  // Giant value
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Text(
-                        NumberFormatUtils.defaultFormat.formatDecimal(
-                          summary.consumption,
-                          decimalPlaces:
-                              energyDecimals(summary.consumption),
-                        ),
-                        style: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.w200,
-                          fontFamily: 'DIN1451',
-                          color: textColor,
-                          height: 0.7,
-                        ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: -unitFontSize * 2.25,
-                        child: Text(
-                          localizations.energy_unit_kwh,
-                          style: TextStyle(
-                            fontSize: unitFontSize,
-                            fontWeight: FontWeight.w200,
-                            color: unitColor,
+                  // Giant value with auto-scaled unit (kWh → MWh → GWh → TWh)
+                  Builder(
+                    builder: (context) {
+                      final scaled = formatEnergyScaled(summary.consumption);
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Text(
+                            scaled.value,
+                            style: TextStyle(
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w200,
+                              fontFamily: 'DIN1451',
+                              color: textColor,
+                              height: 0.7,
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                          Positioned(
+                            top: 0,
+                            right: -unitFontSize * 2.25,
+                            child: Text(
+                              scaled.unit,
+                              style: TextStyle(
+                                fontSize: unitFontSize,
+                                fontWeight: FontWeight.w200,
+                                color: unitColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               );
@@ -186,31 +187,33 @@ class EnergyConsumptionCard extends StatelessWidget {
                 spacing: AppSpacings.pSm,
                 children: [
                   Expanded(
-                    child: EnergySecondaryValue(
-                      icon: MdiIcons.solarPower,
-                      label: localizations.energy_production,
-                      value: NumberFormatUtils.defaultFormat.formatDecimal(
-                        summary.production!,
-                        decimalPlaces:
-                            energyDecimals(summary.production!),
-                      ),
-                      unit: localizations.energy_unit_kwh,
-                      colorFamily: successFamily,
+                    child: Builder(
+                      builder: (context) {
+                        final scaled = formatEnergyScaled(summary.production!);
+                        return EnergySecondaryValue(
+                          icon: MdiIcons.solarPower,
+                          label: localizations.energy_production,
+                          value: scaled.value,
+                          unit: scaled.unit,
+                          colorFamily: successFamily,
+                        );
+                      },
                     ),
                   ),
                   if (summary.net != null)
                     Expanded(
-                      child: EnergySecondaryValue(
-                        icon: MdiIcons.swapVertical,
-                        label: localizations.energy_net,
-                        value: NumberFormatUtils.defaultFormat.formatDecimal(
-                          summary.net!,
-                          decimalPlaces:
-                              energyDecimals(summary.net!),
-                        ),
-                        unit: localizations.energy_unit_kwh,
-                        colorFamily:
-                            summary.net! > 0 ? warningFamily : successFamily,
+                      child: Builder(
+                        builder: (context) {
+                          final scaled = formatEnergyScaled(summary.net!);
+                          return EnergySecondaryValue(
+                            icon: MdiIcons.swapVertical,
+                            label: localizations.energy_net,
+                            value: scaled.value,
+                            unit: scaled.unit,
+                            colorFamily:
+                                summary.net! > 0 ? warningFamily : successFamily,
+                          );
+                        },
                       ),
                     ),
                 ],
