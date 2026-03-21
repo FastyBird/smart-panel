@@ -12,11 +12,17 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: "Setup Flutter"
-        uses: subosito/flutter-action@v2
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "24"
+          pnpm-version: "10.12.0"
+
+      - name: "Setup Flutter Project"
+        uses: "./.github/actions/setup-flutter-project"
         with:
           flutter-version: "3.27.4"
-          channel: "stable"
+          flutter-channel: "stable"
 
       - name: "Setup flutter-elinux"
         run: |
@@ -33,25 +39,12 @@ jobs:
           sudo mv /tmp/flutter-elinux /opt/flutter-elinux
           echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
 
-      - name: "Setup Melos and generate code"
-        run: |
-          dart pub global activate melos
-          melos bootstrap
-
-      - name: "Remove flutterpi_tool (incompatible with elinux SDK)"
+      - name: "Prepare eLinux project"
         run: |
           cd apps/panel
           sed -i '/flutterpi_tool/d' pubspec.yaml
           rm -f pubspec.lock
-
-      - name: "Create eLinux project"
-        run: |
-          cd apps/panel
           flutter-elinux create --platforms elinux .
-
-      - name: "Get dependencies"
-        run: |
-          cd apps/panel
           flutter-elinux pub get
 
       - name: "Build eLinux ARM64 release"
