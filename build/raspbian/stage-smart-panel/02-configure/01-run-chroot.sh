@@ -32,6 +32,17 @@ ssh-keygen -A
 # Enable avahi for mDNS discovery
 systemctl enable avahi-daemon.service
 
+# Install CLI wrapper so users can run commands from anywhere
+cat > /usr/local/bin/smart-panel-cli << 'CLI_WRAPPER'
+#!/bin/bash
+set -a
+source /etc/smart-panel/environment
+set +a
+cd /opt/smart-panel
+exec node dist/cli.js "$@"
+CLI_WRAPPER
+chmod +x /usr/local/bin/smart-panel-cli
+
 # Allow smart-panel user to run specific system commands via sudoers
 cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
 # Smart Panel system commands
