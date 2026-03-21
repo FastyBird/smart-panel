@@ -28,6 +28,12 @@ class SliderWithSteps extends StatelessWidget {
   /// Callback when value changes
   final ValueChanged<double>? onChanged;
 
+  /// Callback when drag starts
+  final ValueChanged<double>? onChangeStart;
+
+  /// Callback when drag ends
+  final ValueChanged<double>? onChangeEnd;
+
   /// Labels to show below the slider (e.g., ['Off', 'Low', 'Med', 'High', 'Max'])
   final List<String> steps;
 
@@ -68,6 +74,8 @@ class SliderWithSteps extends StatelessWidget {
     required this.value,
     this.themeColor = ThemeColors.primary,
     this.onChanged,
+    this.onChangeStart,
+    this.onChangeEnd,
     this.steps = const ['0%', '25%', '50%', '75%', '100%'],
     this.enabled = true,
     this.discrete = false,
@@ -162,6 +170,8 @@ class SliderWithSteps extends StatelessWidget {
           value: clampedValue,
           divisions: divisions,
           onChanged: enabled ? onChanged : null,
+          onChangeStart: enabled ? onChangeStart : null,
+          onChangeEnd: enabled ? onChangeEnd : null,
         ),
       ),
     );

@@ -70,12 +70,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Timer? _positionDebounceTimer;
   Timer? _tiltDebounceTimer;
 
-  // Local position/tilt for immediate slider feedback
-  int? _localPosition;
+  // Local position during drag — ValueNotifier so slider and visualization
+  // can rebuild independently via ValueListenableBuilder without triggering
+  // a full page setState (continuous interaction performance).
+  final ValueNotifier<int?> _localPositionNotifier = ValueNotifier<int?>(null);
+
+  // Local tilt for immediate slider feedback
   int? _localTilt;
 
   // Selected preset index (null = no preset selected)
   int? _selectedPresetIndex;
+
+  // Whether a drag is in progress — suppresses parent rebuilds
+  bool _isDraggingPosition = false;
 
   static const _debounceDuration = Duration(milliseconds: 150);
   static const _visualizationAspectRatio = 180.0 / 160.0;
@@ -187,7 +194,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     _showActionFailed();
 
     // Clear local values on error
-    _localPosition = null;
+    _localPositionNotifier.value = null;
     _localTilt = null;
 
     if (mounted) {
@@ -199,6 +206,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void dispose() {
     _positionDebounceTimer?.cancel();
     _tiltDebounceTimer?.cancel();
+    _localPositionNotifier.dispose();
     _devicesService.removeListener(_onDeviceChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
@@ -206,6 +214,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   void _onDeviceChanged() {
     if (!mounted) return;
+    // Skip full rebuild during drag — slider/visualization update via ValueNotifier
+    if (_isDraggingPosition) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _checkConvergence();
@@ -275,7 +285,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
 
   // Get current position (local value takes precedence for smooth slider)
-  int get _position => _localPosition ?? _controller?.position ?? _selectedChannel.position;
+  int get _position => _localPositionNotifier.value ?? _controller?.position ?? _selectedChannel.position;
 
   // Get current tilt (local value takes precedence for smooth slider)
   int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _selectedChannel.tilt;
@@ -639,8 +649,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  /// Window visualization with custom size for landscape layout
+  /// Window visualization with custom size for landscape layout.
+  /// Wrapped in ValueListenableBuilder so it updates from the local
+  /// position notifier during drag without triggering parent setState.
   Widget _buildWindowVisualizationSized(
+    BuildContext context,
+    double width,
+    double height,
+  ) {
+    return ValueListenableBuilder<int?>(
+      valueListenable: _localPositionNotifier,
+      builder: (context, _, __) => _buildWindowVisualizationContent(context, width, height),
+    );
+  }
+
+  Widget _buildWindowVisualizationContent(
     BuildContext context,
     double width,
     double height,
@@ -1077,7 +1100,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       setState(() {
         _selectedChannelIndex = index;
         // Clear local values when changing channel
-        _localPosition = null;
+        _localPositionNotifier.value = null;
         _localTilt = null;
         _selectedPresetIndex = null;
       });
@@ -1162,33 +1185,44 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildPositionSlider(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final normalizedValue = _position / 100.0;
 
-    return SliderWithSteps(
-      value: normalizedValue,
-      steps: [
-        localizations.window_covering_status_closed,
-        '25%',
-        '50%',
-        '75%',
-        localizations.window_covering_status_open,
-      ],
-      onChanged: (value) {
-        final newPosition = (value * 100).round();
-        _handlePositionChanged(newPosition.toDouble());
+    return ValueListenableBuilder<int?>(
+      valueListenable: _localPositionNotifier,
+      builder: (context, localPos, _) {
+        final pos = localPos ?? _controller?.position ?? _selectedChannel.position;
+        final normalizedValue = pos / 100.0;
+
+        return SliderWithSteps(
+          value: normalizedValue,
+          steps: [
+            localizations.window_covering_status_closed,
+            '25%',
+            '50%',
+            '75%',
+            localizations.window_covering_status_open,
+          ],
+          onChangeStart: (_) => _handlePositionDragStart(),
+          onChanged: (value) {
+            final newPosition = (value * 100).round();
+            _handlePositionChanged(newPosition.toDouble());
+          },
+          onChangeEnd: (_) => _handlePositionDragEnd(),
+        );
       },
     );
+  }
+
+  void _handlePositionDragStart() {
+    _isDraggingPosition = true;
+    _selectedPresetIndex = null;
   }
 
   void _handlePositionChanged(double value) {
     final intValue = value.round();
 
-    // Update local value immediately for smooth slider feedback
-    // Clear selected preset when user manually changes position
-    setState(() {
-      _localPosition = intValue;
-      _selectedPresetIndex = null;
-    });
+    // Update ValueNotifier — slider and visualization rebuild via
+    // ValueListenableBuilder without triggering parent setState.
+    _localPositionNotifier.value = intValue;
 
     // Debounce the actual command
     _positionDebounceTimer?.cancel();
@@ -1197,11 +1231,16 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
         _controller?.setPosition(intValue);
-        // Clear local value so controller's optimistic state takes over
-        _localPosition = null;
-        setState(() {});
       },
     );
+  }
+
+  void _handlePositionDragEnd() {
+    _isDraggingPosition = false;
+    // Clear local value so controller's optimistic state takes over
+    _localPositionNotifier.value = null;
+    // Now allow a full rebuild to sync everything
+    if (mounted) setState(() {});
   }
 
   Widget _buildQuickActions(BuildContext context) {
@@ -1477,7 +1516,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     _tiltDebounceTimer?.cancel();
 
     // Clear local values since we're applying preset values
-    _localPosition = null;
+    _localPositionNotifier.value = null;
     _localTilt = null;
 
     // Store selected preset index and apply preset
