@@ -36,7 +36,28 @@ jobs:
             libinput-dev libudev-dev libsystemd-dev \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             libstdc++-12-dev-arm64-cross \
-            libc6-dev-arm64-cross
+            libc6-dev-arm64-cross \
+            libc6-arm64-cross
+
+          # Fix ARM64 sysroot for cross-compilation.
+          # Ubuntu installs cross libs to /usr/aarch64-linux-gnu/ but the actual
+          # shared objects (libc, libm, etc.) live under a nested lib/ path that
+          # clang's --sysroot can't find. Symlink them to where the linker expects.
+          echo "=== Fixing ARM64 sysroot ==="
+          echo "Looking for libm..."
+          find /usr/aarch64-linux-gnu -name "libm.so*" -o -name "libm-*.so" 2>/dev/null
+          find /usr -path "*/aarch64*" -name "libm.so*" 2>/dev/null
+
+          # Create symlinks from wherever the libs actually are
+          for dir in /usr/aarch64-linux-gnu/lib /usr/lib/aarch64-linux-gnu; do
+            if [ -d "$dir" ]; then
+              for f in "$dir"/*.so* "$dir"/*.a; do
+                [ -e "$f" ] && sudo ln -sf "$f" /usr/aarch64-linux-gnu/lib/ 2>/dev/null || true
+              done
+            fi
+          done
+          echo "=== Sysroot contents ==="
+          ls /usr/aarch64-linux-gnu/lib/libm* 2>/dev/null || echo "libm still missing!"
           git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
           sudo mv /tmp/flutter-elinux /opt/flutter-elinux
           echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
