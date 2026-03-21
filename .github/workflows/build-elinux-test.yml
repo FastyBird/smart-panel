@@ -27,6 +27,11 @@ jobs:
       - name: "Setup flutter-elinux"
         run: |
           sudo apt-get update
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/*.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          sudo apt-get update
           sudo apt-get install -y \
             clang cmake pkg-config \
             libegl1-mesa-dev libgles2-mesa-dev \
@@ -34,7 +39,8 @@ jobs:
             libdrm-dev libgbm-dev \
             libinput-dev libudev-dev libsystemd-dev \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            libstdc++-12-dev-arm64-cross
+            libstdc++-12-dev-arm64-cross \
+            libc6-dev-arm64-cross
           git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
           sudo mv /tmp/flutter-elinux /opt/flutter-elinux
           echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
