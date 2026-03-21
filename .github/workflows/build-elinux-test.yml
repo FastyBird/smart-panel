@@ -33,6 +33,11 @@ jobs:
           sudo mv /tmp/flutter-elinux /opt/flutter-elinux
           echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
 
+      - name: "Setup Melos and generate code"
+        run: |
+          dart pub global activate melos
+          melos bootstrap
+
       - name: "Remove flutterpi_tool (incompatible with elinux SDK)"
         run: |
           cd apps/panel
