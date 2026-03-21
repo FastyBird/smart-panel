@@ -4,7 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger';
 import { IntentEventType, IntentType } from '../../intents/intents.constants';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
-import { ActionObserverService, ActionRecord } from '../services/action-observer.service';
+import { ActionObserverService, ActionRecord, ActionTarget } from '../services/action-observer.service';
 
 @Injectable()
 export class IntentEventListener {
@@ -18,18 +18,27 @@ export class IntentEventListener {
 			const intentId = payload.intent_id as string;
 			const type = payload.type as IntentType;
 			const context = payload.context as Record<string, unknown> | undefined;
-			const targets = payload.targets as Array<Record<string, unknown>> | undefined;
+			const rawTargets = payload.targets as Array<Record<string, unknown>> | undefined;
+			const value = payload.value;
 
 			const spaceId = (context?.space_id as string) ?? null;
 
 			const deviceIds: string[] = [];
+			const targets: ActionTarget[] = [];
 
-			if (targets) {
-				for (const target of targets) {
-					const deviceId = target.device_id as string | null;
+			if (rawTargets) {
+				for (const target of rawTargets) {
+					const deviceId = target.device_id as string | undefined;
+					const channelId = target.channel_id as string | undefined;
+					const propertyId = target.property_id as string | undefined;
 
 					if (deviceId) {
 						deviceIds.push(deviceId);
+						targets.push({
+							deviceId,
+							channelId,
+							propertyId,
+						});
 					}
 				}
 			}
@@ -39,6 +48,8 @@ export class IntentEventListener {
 				type,
 				spaceId,
 				deviceIds,
+				targets,
+				value,
 				timestamp: new Date(),
 			};
 

@@ -4,11 +4,19 @@ import { createExtensionLogger } from '../../../common/logger';
 import { IntentType } from '../../intents/intents.constants';
 import { ACTION_OBSERVER_BUFFER_SIZE, BUDDY_MODULE_NAME } from '../buddy.constants';
 
+export interface ActionTarget {
+	deviceId: string;
+	channelId?: string;
+	propertyId?: string;
+}
+
 export interface ActionRecord {
 	intentId: string;
 	type: IntentType;
 	spaceId: string | null;
 	deviceIds: string[];
+	targets?: ActionTarget[];
+	value?: unknown;
 	timestamp: Date;
 }
 

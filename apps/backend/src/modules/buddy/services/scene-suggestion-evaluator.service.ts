@@ -21,11 +21,20 @@ export interface ActionSequence {
 	hash: string;
 }
 
+export interface SceneActionDetail {
+	deviceId: string;
+	channelId?: string;
+	propertyId?: string;
+	value?: unknown;
+}
+
 export interface DetectedSequencePattern {
 	sequence: ActionSequence;
 	spaceId: string;
 	timeOfDay: { hour: number; minute: number };
 	occurrences: number;
+	/** Action details from the most recent session — used to populate scene actions. */
+	latestActions: SceneActionDetail[];
 }
 
 @Injectable()
@@ -118,11 +127,28 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 
 			for (const cluster of clusters) {
 				if (cluster.sessions.length >= minOccurrences) {
+					// Use the most recent session as template for scene actions
+					const latestSession = cluster.sessions.reduce((a, b) =>
+						a.actions[0].timestamp > b.actions[0].timestamp ? a : b,
+					);
+
+					const latestActions: SceneActionDetail[] = latestSession.actions.flatMap((action) =>
+						(action.targets ?? [])
+							.filter((t) => t.propertyId)
+							.map((t) => ({
+								deviceId: t.deviceId,
+								channelId: t.channelId,
+								propertyId: t.propertyId,
+								value: action.value,
+							})),
+					);
+
 					patterns.push({
 						sequence: group.sequence,
 						spaceId: group.spaceId,
 						timeOfDay: cluster.timeOfDay,
 						occurrences: cluster.sessions.length,
+						latestActions,
 					});
 				}
 			}
@@ -140,14 +166,31 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		try {
 			const sceneName = (metadata.sceneName as string) ?? 'Automated Scene';
 
+			// Build scene actions from the recorded action targets
+			const rawActions = (metadata.actions as SceneActionDetail[] | undefined) ?? [];
+			const sceneActions = rawActions
+				.filter((a) => a.deviceId && a.propertyId)
+				.map((a, i) => ({
+					type: 'scenes-local' as const,
+					device_id: a.deviceId,
+					channel_id: a.channelId ?? undefined,
+					property_id: a.propertyId!,
+					value: a.value ?? true,
+					order: i,
+					enabled: true,
+				}));
+
 			const scene = await this.scenesService.create({
 				name: sceneName,
 				primary_space_id: spaceId,
 				enabled: true,
 				triggerable: true,
+				actions: sceneActions,
 			});
 
-			this.logger.log(`Created scene "${sceneName}" (id=${scene.id}) from suggestion`);
+			this.logger.log(
+				`Created scene "${sceneName}" (id=${scene.id}) with ${sceneActions.length} action(s) from suggestion`,
+			);
 
 			return { sceneId: scene.id };
 		} catch (error) {
@@ -275,6 +318,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 				sceneName,
 				timeOfDay: pattern.timeOfDay,
 				occurrences: pattern.occurrences,
+				actions: pattern.latestActions,
 			},
 		};
 	}

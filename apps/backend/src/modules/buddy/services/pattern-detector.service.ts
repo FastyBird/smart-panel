@@ -12,7 +12,7 @@ import {
 import { clusterByTimeOfDay, formatIntentLabel, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 
-import { ActionObserverService, ActionRecord } from './action-observer.service';
+import { ActionObserverService, ActionRecord, ActionTarget } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
 import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
 
@@ -24,6 +24,10 @@ export interface DetectedPattern {
 	confidence: number;
 	firstSeen: Date;
 	lastSeen: Date;
+	/** Targets from the most recent action — used to populate scene actions. */
+	latestTargets?: ActionTarget[];
+	/** Value from the most recent action. */
+	latestValue?: unknown;
 }
 
 interface ActionGroup {
@@ -62,6 +66,14 @@ export function patternToEvaluatorResult(
 			timeOfDay: pattern.timeOfDay,
 			occurrences: pattern.occurrences,
 			confidence: pattern.confidence,
+			actions: (pattern.latestTargets ?? [])
+				.filter((t) => t.propertyId)
+				.map((t) => ({
+					deviceId: t.deviceId,
+					channelId: t.channelId,
+					propertyId: t.propertyId,
+					value: pattern.latestValue,
+				})),
 		},
 	};
 }
@@ -136,6 +148,9 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 				if (cluster.actions.length >= minOccurrences) {
 					const confidence = Math.min(1, cluster.actions.length / lookbackDays);
 					const timestamps = cluster.actions.map((a) => a.timestamp.getTime());
+					const latestAction = cluster.actions.reduce((a, b) =>
+						a.timestamp > b.timestamp ? a : b,
+					);
 
 					patterns.push({
 						intentType: group.intentType,
@@ -145,6 +160,8 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 						confidence,
 						firstSeen: new Date(Math.min(...timestamps)),
 						lastSeen: new Date(Math.max(...timestamps)),
+						latestTargets: latestAction.targets,
+						latestValue: latestAction.value,
 					});
 				}
 			}
