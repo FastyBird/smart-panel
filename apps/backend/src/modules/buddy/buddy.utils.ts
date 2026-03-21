@@ -22,23 +22,58 @@ export function interpolateTemplate(template: string, vars: Record<string, unkno
  */
 export function formatIntentLabel(intentType: string): string {
 	const labels: Record<string, string> = {
+		// Device operations
 		'light.toggle': 'toggle lights',
 		'light.setBrightness': 'adjust brightness',
 		'light.setColor': 'change light color',
 		'light.setColorTemp': 'change color temperature',
 		'light.setWhite': 'set white light',
 		'device.setProperty': 'adjust a device',
+		// Scene operations
 		'scene.run': 'run a scene',
+		// Space lighting
 		'space.lighting.on': 'turn on lights',
 		'space.lighting.off': 'turn off lights',
 		'space.lighting.setMode': 'change lighting mode',
+		'space.lighting.brightnessDelta': 'adjust brightness',
+		'space.lighting.roleOn': 'turn on lights',
+		'space.lighting.roleOff': 'turn off lights',
+		'space.lighting.roleBrightness': 'adjust brightness',
+		'space.lighting.roleColor': 'change light color',
+		'space.lighting.roleColorTemp': 'change color temperature',
+		'space.lighting.roleWhite': 'set white light',
+		'space.lighting.roleSet': 'adjust lights',
+		// Space climate
 		'space.climate.setMode': 'change climate mode',
 		'space.climate.setpointSet': 'adjust thermostat',
+		'space.climate.setpointDelta': 'adjust thermostat',
+		'space.climate.set': 'adjust climate',
+		// Space covers
 		'space.covers.open': 'open covers',
 		'space.covers.close': 'close covers',
+		'space.covers.stop': 'stop covers',
+		'space.covers.setPosition': 'adjust cover position',
+		'space.covers.positionDelta': 'adjust cover position',
+		'space.covers.rolePosition': 'adjust cover position',
+		'space.covers.setMode': 'change cover mode',
+		// Space media
+		'space.media.activate': 'start media',
+		'space.media.deactivate': 'stop media',
 	};
 
-	return labels[intentType] ?? intentType;
+	// Fallback: convert dot notation to readable label (e.g. "space.covers.stop" → "stop covers")
+	if (!(intentType in labels)) {
+		const parts = intentType.split('.');
+		const action = parts[parts.length - 1]
+			.replace(/([A-Z])/g, ' $1')
+			.trim()
+			.toLowerCase();
+		const domain = parts.length > 1 ? parts[parts.length - 2] : '';
+
+		return domain ? `${action} ${domain}` : action;
+	}
+
+	return labels[intentType];
 }
 
 /**
