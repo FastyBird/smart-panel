@@ -426,6 +426,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// True when a hero intent was in flight; used to detect unlock.
   bool _heroWasSpaceLocked = false;
 
+  /// Throttle timer for [_onControlStateChanged] to limit rebuilds to ~10/sec.
+  Timer? _controlStateThrottle;
+
   /// Notifier bumped after [_toggleLight] so the role-lights sheet rebuilds.
   final ValueNotifier<int> _roleLightsSheetNotifier = ValueNotifier<int>(0);
 
@@ -1174,6 +1177,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
+    _controlStateThrottle?.cancel();
     _heroBrightnessDebounceTimer?.cancel();
     _heroTemperatureDebounceTimer?.cancel();
     _heroHueDebounceTimer?.cancel();
@@ -1496,7 +1500,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   void _onControlStateChanged() {
     if (!mounted) return;
-    setState(() {});
+    if (_controlStateThrottle?.isActive ?? false) return;
+    _controlStateThrottle = Timer(const Duration(milliseconds: 100), () {
+      if (mounted) setState(() {});
+    });
   }
 
   void _onIntentChanged() {

@@ -314,6 +314,7 @@ class _CircularControlDialState extends State<CircularControlDial>
 
   void _handleDragStart(Offset localPosition) {
     if (!widget.enabled) return;
+    _glowController.stop();
     setState(() => _isDragging = true);
     _eventBus.fire(PageSwipeBlockEvent(blocked: true));
     _updateValueFromPosition(localPosition);
@@ -328,6 +329,9 @@ class _CircularControlDialState extends State<CircularControlDial>
     if (_isDragging) {
       // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
+      if (_showActiveGlow) {
+        _glowController.repeat(reverse: true);
+      }
       if (mounted) {
         setState(() => _isDragging = false);
       }
@@ -339,6 +343,9 @@ class _CircularControlDialState extends State<CircularControlDial>
     if (_isDragging) {
       // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
+      if (_showActiveGlow) {
+        _glowController.repeat(reverse: true);
+      }
       if (mounted) {
         setState(() => _isDragging = false);
       }
@@ -424,151 +431,153 @@ class _CircularControlDialState extends State<CircularControlDial>
     final glowColor = accentColor.withValues(alpha: 0.35);
     final thumbPosition = _getThumbPosition();
 
-    return RawGestureDetector(
-      gestures: _gestures,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapUp: (details) => _handleTap(details.localPosition),
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: AnimatedBuilder(
-            animation: _glowController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: _DialPainter(
-                  value: _value,
-                  currentValue: widget.currentValue,
-                  minValue: widget.minValue,
-                  maxValue: widget.maxValue,
-                  step: widget.step,
-                  accentColor: displayColor,
-                  glowColor: glowColor,
-                  trackColor: trackColor,
-                  tickColor: tickColor,
-                  glowIntensity: _showActiveGlow ? _glowController.value : 0,
-                  isActive: widget.isActive && widget.enabled,
-                  showTicks: widget.showTicks,
-                  majorTickCount: widget.majorTickCount,
-                ),
-                child: child,
-              );
-            },
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Center display
-                Center(
-                  child: Container(
-                    width: widget.size * 0.7,
-                    height: widget.size * 0.7,
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: AppSpacings.scale(16),
-                          offset: Offset(0, AppSpacings.scale(4)),
-                        ),
-                        if (_showActiveGlow)
-                          BoxShadow(
-                            color: glowColor,
-                            blurRadius: AppSpacings.scale(24),
-                            spreadRadius: AppSpacings.scale(4),
-                          ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      spacing: AppSpacings.pMd,
-                      children: [
-                        Text(
-                          _formatValue(_value),
-                          style: TextStyle(
-                            color: displayColor,
-                            fontSize: widget.size * 0.16,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        if (widget.modeLabel != null)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacings.scale(10),
-                              vertical: AppSpacings.scale(3),
-                            ),
-                            decoration: BoxDecoration(
-                              color: widget.enabled
-                                  ? displayColor.withValues(alpha: 0.12)
-                                  : (isDark
-                                      ? AppFillColorDark.darker
-                                      : AppFillColorLight.darker),
-                              borderRadius:
-                                  BorderRadius.circular(AppBorderRadius.base),
-                            ),
-                            child: Text(
-                              widget.modeLabel!.toUpperCase(),
-                              style: TextStyle(
-                                color: displayColor,
-                                fontSize: AppFontSize.extraSmall,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                        if (widget.showButtons) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildButton(
-                                  context, MdiIcons.minus, _decrementValue),
-                              SizedBox(width: widget.size * 0.08),
-                              _buildButton(context, MdiIcons.plus, _incrementValue),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
+    return RepaintBoundary(
+      child: RawGestureDetector(
+        gestures: _gestures,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (details) => _handleTap(details.localPosition),
+          child: SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: _DialPainter(
+                    value: _value,
+                    currentValue: widget.currentValue,
+                    minValue: widget.minValue,
+                    maxValue: widget.maxValue,
+                    step: widget.step,
+                    accentColor: displayColor,
+                    glowColor: glowColor,
+                    trackColor: trackColor,
+                    tickColor: tickColor,
+                    glowIntensity: _showActiveGlow ? _glowController.value : 0,
+                    isActive: widget.isActive && widget.enabled,
+                    showTicks: widget.showTicks,
+                    majorTickCount: widget.majorTickCount,
                   ),
-                ),
-
-                // Draggable thumb on the ring
-                if (widget.enabled)
-                  Positioned(
-                    left: thumbPosition.dx - AppSpacings.scale(14),
-                    top: thumbPosition.dy - AppSpacings.scale(14),
-                    child: AnimatedContainer(
-                      duration: _isDragging
-                          ? Duration.zero
-                          : const Duration(milliseconds: 200),
-                      width: AppSpacings.scale(28),
-                      height: AppSpacings.scale(28),
+                  child: child,
+                );
+              },
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Center display
+                  Center(
+                    child: Container(
+                      width: widget.size * 0.7,
+                      height: widget.size * 0.7,
                       decoration: BoxDecoration(
                         color: cardColor,
                         shape: BoxShape.circle,
-                        border:
-                            Border.all(color: displayColor, width: AppSpacings.scale(3)),
                         boxShadow: [
                           BoxShadow(
-                            color: glowColor,
-                            blurRadius: _isDragging ? AppSpacings.scale(12) : AppSpacings.scale(8),
-                            spreadRadius: _isDragging ? AppSpacings.scale(2) : 0,
+                            color: AppShadowColor.light,
+                            blurRadius: AppSpacings.scale(16),
+                            offset: Offset(0, AppSpacings.scale(4)),
                           ),
+                          if (_showActiveGlow)
+                            BoxShadow(
+                              color: glowColor,
+                              blurRadius: AppSpacings.scale(24),
+                              spreadRadius: AppSpacings.scale(4),
+                            ),
                         ],
                       ),
-                      child: Center(
-                        child: Container(
-                          width: AppSpacings.scale(10),
-                          height: AppSpacings.scale(10),
-                          decoration: BoxDecoration(
-                            color: displayColor,
-                            shape: BoxShape.circle,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        spacing: AppSpacings.pMd,
+                        children: [
+                          Text(
+                            _formatValue(_value),
+                            style: TextStyle(
+                              color: displayColor,
+                              fontSize: widget.size * 0.16,
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          if (widget.modeLabel != null)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacings.scale(10),
+                                vertical: AppSpacings.scale(3),
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.enabled
+                                    ? displayColor.withValues(alpha: 0.12)
+                                    : (isDark
+                                        ? AppFillColorDark.darker
+                                        : AppFillColorLight.darker),
+                                borderRadius:
+                                    BorderRadius.circular(AppBorderRadius.base),
+                              ),
+                              child: Text(
+                                widget.modeLabel!.toUpperCase(),
+                                style: TextStyle(
+                                  color: displayColor,
+                                  fontSize: AppFontSize.extraSmall,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          if (widget.showButtons) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildButton(
+                                    context, MdiIcons.minus, _decrementValue),
+                                SizedBox(width: widget.size * 0.08),
+                                _buildButton(context, MdiIcons.plus, _incrementValue),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Draggable thumb on the ring
+                  if (widget.enabled)
+                    Positioned(
+                      left: thumbPosition.dx - AppSpacings.scale(14),
+                      top: thumbPosition.dy - AppSpacings.scale(14),
+                      child: AnimatedContainer(
+                        duration: _isDragging
+                            ? Duration.zero
+                            : const Duration(milliseconds: 200),
+                        width: AppSpacings.scale(28),
+                        height: AppSpacings.scale(28),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          shape: BoxShape.circle,
+                          border:
+                              Border.all(color: displayColor, width: AppSpacings.scale(3)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: glowColor,
+                              blurRadius: _isDragging ? AppSpacings.scale(12) : AppSpacings.scale(8),
+                              spreadRadius: _isDragging ? AppSpacings.scale(2) : 0,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: AppSpacings.scale(10),
+                            height: AppSpacings.scale(10),
+                            decoration: BoxDecoration(
+                              color: displayColor,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

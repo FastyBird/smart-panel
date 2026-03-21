@@ -273,18 +273,24 @@ class _SliderThumbWithBorder extends SliderComponentShape {
 }
 
 /// Custom track shape that paints a gradient across the full track.
+///
+/// The shader is cached and only recreated when the track rect changes,
+/// avoiding a [LinearGradient.createShader] call on every frame.
 class _GradientTrackShape extends SliderTrackShape {
   final List<Color> colors;
   final double trackHeight;
   final Color? borderColor;
   final double borderWidth;
 
-  const _GradientTrackShape({
+  _GradientTrackShape({
     required this.colors,
     required this.trackHeight,
     this.borderColor,
     this.borderWidth = 1.0,
   });
+
+  Rect? _cachedRect;
+  Paint? _cachedPaint;
 
   @override
   Rect getPreferredRect({
@@ -323,10 +329,13 @@ class _GradientTrackShape extends SliderTrackShape {
     final radius = Radius.circular(trackHeight / 2);
     final rrect = RRect.fromRectAndRadius(rect, radius);
 
-    final gradient = LinearGradient(colors: colors);
-    final paint = Paint()..shader = gradient.createShader(rect);
+    if (_cachedRect != rect || _cachedPaint == null) {
+      final gradient = LinearGradient(colors: colors);
+      _cachedPaint = Paint()..shader = gradient.createShader(rect);
+      _cachedRect = rect;
+    }
 
-    context.canvas.drawRRect(rrect, paint);
+    context.canvas.drawRRect(rrect, _cachedPaint!);
 
     if (borderColor != null) {
       final borderPaint = Paint()
