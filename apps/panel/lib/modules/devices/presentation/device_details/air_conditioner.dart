@@ -1364,14 +1364,16 @@ class _AirConditionerDeviceDetailState
 
     return BaseCard(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pLg,
+      padding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        right: AppSpacings.pMd,
+        top: AppSpacings.pLg,
+        bottom: AppSpacings.pMd,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
-        spacing: AppSpacings.pMd,
+        spacing: AppSpacings.pLg,
         children: [
           CircularControlDial(
             value: dial.value,
