@@ -137,7 +137,7 @@ class EnergyConsumptionCard extends StatelessWidget {
                         ),
                         style: TextStyle(
                           fontSize: fontSize,
-                          fontWeight: FontWeight.w200,
+                          fontWeight: FontWeight.w300,
                           fontFamily: 'DIN1451',
                           color: textColor,
                           height: 0.7,
@@ -288,9 +288,8 @@ class EnergySecondaryValue extends StatelessWidget {
           ),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: RichText(
-              maxLines: 1,
-              text: TextSpan(
+            child: Text.rich(
+              TextSpan(
                 children: [
                   TextSpan(
                     text: value,
@@ -310,6 +309,7 @@ class EnergySecondaryValue extends StatelessWidget {
                   ),
                 ],
               ),
+              maxLines: 1,
             ),
           ),
         ],

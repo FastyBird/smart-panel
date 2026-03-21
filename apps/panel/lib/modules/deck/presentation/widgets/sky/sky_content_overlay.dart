@@ -66,7 +66,7 @@ class SkyContentOverlay extends StatelessWidget {
 					time,
 					style: TextStyle(
 						fontSize: clockSize,
-						fontWeight: FontWeight.w200,
+						fontWeight: FontWeight.w300,
 						color: primaryTextColor,
 						height: 1.0,
 						letterSpacing: -2,
@@ -94,7 +94,7 @@ class SkyContentOverlay extends StatelessWidget {
 					time,
 					style: TextStyle(
 						fontSize: AppSpacings.scale(56),
-						fontWeight: FontWeight.w100,
+						fontWeight: FontWeight.w300,
 						color: primaryTextColor,
 						height: 1.0,
 						letterSpacing: -1.5,

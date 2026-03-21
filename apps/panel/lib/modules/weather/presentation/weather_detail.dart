@@ -212,7 +212,7 @@ class WeatherDetailPage extends StatelessWidget {
 							currentTemperature,
 							style: TextStyle(
 								fontSize: AppSpacings.scale(56),
-								fontWeight: FontWeight.w100,
+								fontWeight: FontWeight.w300,
 								color: config.primaryTextColor,
 								height: 1.0,
 								letterSpacing: -1.5,
@@ -224,7 +224,7 @@ class WeatherDetailPage extends StatelessWidget {
 								tempSymbol,
 								style: TextStyle(
 									fontSize: AppFontSize.large,
-									fontWeight: FontWeight.w100,
+									fontWeight: FontWeight.w300,
 									color: config.secondaryTextColor,
 								),
 							),

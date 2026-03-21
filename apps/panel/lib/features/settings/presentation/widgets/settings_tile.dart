@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 /// Styled to match [UniversalTile] inactive state.
 class SettingsTile extends StatelessWidget {
 	final String label;
-	final String sublabel;
 	final IconData icon;
 	final Color iconColor;
 	final Color iconBgColor;
@@ -15,7 +14,6 @@ class SettingsTile extends StatelessWidget {
 	const SettingsTile({
 		super.key,
 		required this.label,
-		required this.sublabel,
 		required this.icon,
 		required this.iconColor,
 		required this.iconBgColor,
@@ -29,7 +27,6 @@ class SettingsTile extends StatelessWidget {
 		final tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
 		final borderColor = isDark ? tileBgColor : AppBorderColorLight.light;
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final secondaryTextColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
 		final radius = BorderRadius.circular(AppBorderRadius.base);
 
@@ -59,32 +56,16 @@ class SettingsTile extends StatelessWidget {
 							),
 							SizedBox(height: AppSpacings.pSm),
 							Flexible(
-								child: Column(
-									mainAxisSize: MainAxisSize.min,
-									children: [
-										Text(
-											label,
-											style: TextStyle(
-												fontSize: AppFontSize.small,
-												fontWeight: FontWeight.w600,
-												color: textColor,
-											),
-											textAlign: TextAlign.center,
-											overflow: TextOverflow.ellipsis,
-											maxLines: 1,
-										),
-										SizedBox(height: AppSpacings.pXs),
-										Text(
-											sublabel,
-											style: TextStyle(
-												fontSize: AppFontSize.extraSmall,
-												color: secondaryTextColor,
-											),
-											textAlign: TextAlign.center,
-											overflow: TextOverflow.ellipsis,
-											maxLines: 1,
-										),
-									],
+								child: Text(
+									label,
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+										fontWeight: FontWeight.w600,
+										color: textColor,
+									),
+									textAlign: TextAlign.center,
+									overflow: TextOverflow.ellipsis,
+									maxLines: 2,
 								),
 							),
 						],

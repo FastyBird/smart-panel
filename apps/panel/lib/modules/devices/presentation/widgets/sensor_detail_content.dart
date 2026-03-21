@@ -254,11 +254,11 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: RichText(
-            text: TextSpan(
+          child: Text.rich(
+            TextSpan(
               style: TextStyle(
                 fontSize: AppSpacings.scale(isCompact ? 56 : 72),
-                fontWeight: FontWeight.w200,
+                fontWeight: FontWeight.w300,
                 color: _isOffline
                     ? (isDark
                         ? AppTextColorDark.placeholder
@@ -267,13 +267,14 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
               children: [
                 TextSpan(text: displayValue),
-                TextSpan(
-                  text: _unit.isNotEmpty ? ' $_unit' : '',
-                  style: TextStyle(
-                    fontSize: AppSpacings.scale(isCompact ? 18 : 24),
-                    fontWeight: FontWeight.w300,
+                if (_unit.isNotEmpty)
+                  TextSpan(
+                    text: ' $_unit',
+                    style: TextStyle(
+                      fontSize: AppSpacings.scale(isCompact ? 18 : 24),
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

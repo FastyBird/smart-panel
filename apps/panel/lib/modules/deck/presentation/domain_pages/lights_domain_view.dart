@@ -4059,7 +4059,7 @@ class _LightsHeroCard extends StatelessWidget {
           value,
           style: TextStyle(
             fontSize: fontSize,
-            fontWeight: FontWeight.w200,
+            fontWeight: FontWeight.w300,
             fontFamily: 'DIN1451',
             color: textColor,
             height: 0.7,

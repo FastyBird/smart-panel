@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -35,7 +36,6 @@ class GeneralSettingsPage extends StatelessWidget {
 		final List<_TileData> tiles = [
 			_TileData(
 				label: localizations.settings_general_settings_button_display_settings,
-				sublabel: localizations.settings_display_settings_title,
 				icon: MdiIcons.monitorDashboard,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
@@ -43,7 +43,6 @@ class GeneralSettingsPage extends StatelessWidget {
 			),
 			_TileData(
 				label: localizations.settings_general_settings_button_language_settings,
-				sublabel: localizations.settings_language_settings_title,
 				icon: MdiIcons.translate,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
@@ -52,7 +51,6 @@ class GeneralSettingsPage extends StatelessWidget {
 			if (hasAudioSupport)
 				_TileData(
 					label: localizations.settings_general_settings_button_audio_settings,
-					sublabel: localizations.settings_audio_settings_title,
 					icon: MdiIcons.volumeHigh,
 					iconColor: warningColor,
 					iconBgColor: warningBg,
@@ -61,7 +59,6 @@ class GeneralSettingsPage extends StatelessWidget {
 			if (hasAudioSupport)
 				_TileData(
 					label: localizations.settings_general_settings_button_voice_activation,
-					sublabel: localizations.settings_voice_activation_settings_title,
 					icon: MdiIcons.accountVoice,
 					iconColor: primaryColor,
 					iconBgColor: primaryBg,
@@ -69,7 +66,6 @@ class GeneralSettingsPage extends StatelessWidget {
 				),
 			_TileData(
 				label: localizations.settings_general_settings_button_weather_settings,
-				sublabel: localizations.settings_weather_settings_title,
 				icon: MdiIcons.cloudOutline,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
@@ -77,7 +73,6 @@ class GeneralSettingsPage extends StatelessWidget {
 			),
 			_TileData(
 				label: localizations.settings_general_settings_button_about,
-				sublabel: localizations.settings_about_title,
 				icon: MdiIcons.informationOutline,
 				iconColor: successColor,
 				iconBgColor: successBg,
@@ -85,7 +80,6 @@ class GeneralSettingsPage extends StatelessWidget {
 			),
 			_TileData(
 				label: localizations.settings_general_settings_button_maintenance,
-				sublabel: localizations.settings_maintenance_title,
 				icon: MdiIcons.wrenchOutline,
 				iconColor: dangerColor,
 				iconBgColor: dangerBg,
@@ -98,6 +92,12 @@ class GeneralSettingsPage extends StatelessWidget {
 			builder: (context, _) {
 				final isLandscape = locator<ScreenService>().isLandscape;
 				final columns = isLandscape ? 3 : 2;
+
+				// Split tiles into rows
+				final List<List<_TileData>> rows = [];
+				for (var i = 0; i < tiles.length; i += columns) {
+					rows.add(tiles.sublist(i, (i + columns).clamp(0, tiles.length)));
+				}
 
 				return Scaffold(
 					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -114,49 +114,46 @@ class GeneralSettingsPage extends StatelessWidget {
 								),
 							),
 							Expanded(
-								child: Padding(
+								child: VerticalScrollWithGradient(
 									padding: EdgeInsets.only(
 										left: AppSpacings.pMd,
 										right: AppSpacings.pMd,
 										bottom: AppSpacings.pMd,
 									),
-									child: LayoutBuilder(
-										builder: (context, constraints) {
-											final spacing = AppSpacings.pMd;
-											final rows = (tiles.length / columns).ceil();
-											final availableWidth = constraints.maxWidth;
-											final availableHeight = constraints.maxHeight;
-											final tileWidth = (availableWidth - spacing * (columns - 1)) / columns;
-											final rawTileHeight = (availableHeight - spacing * (rows - 1)) / rows;
-											final tileHeight = rawTileHeight > 0 ? rawTileHeight : 1.0;
-											final childAspectRatio = tileWidth / tileHeight;
+									separatorHeight: AppSpacings.pMd,
+									itemCount: rows.length,
+									itemBuilder: (context, rowIndex) {
+										final row = rows[rowIndex];
 
-											return GridView.builder(
-												physics: const NeverScrollableScrollPhysics(),
-												gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-													crossAxisCount: columns,
-													crossAxisSpacing: spacing,
-													mainAxisSpacing: spacing,
-													childAspectRatio: childAspectRatio,
-												),
-												itemCount: tiles.length,
-												itemBuilder: (context, index) {
-													final tile = tiles[index];
-
-													return SettingsTile(
-														label: tile.label,
-														sublabel: tile.sublabel,
-														icon: tile.icon,
-														iconColor: tile.iconColor,
-														iconBgColor: tile.iconBgColor,
-														onTap: () {
-															Navigator.of(context).pushNamed(tile.route);
-														},
-													);
-												},
-											);
-										},
-									),
+										return IntrinsicHeight(
+											child: Row(
+												children: [
+													for (var i = 0; i < row.length; i++) ...[
+														if (i > 0) SizedBox(width: AppSpacings.pMd),
+														Expanded(
+															child: AspectRatio(
+																aspectRatio: isLandscape ? 1.8 : 1.3,
+																child: SettingsTile(
+																	label: row[i].label,
+																	icon: row[i].icon,
+																	iconColor: row[i].iconColor,
+																	iconBgColor: row[i].iconBgColor,
+																	onTap: () {
+																		Navigator.of(context).pushNamed(row[i].route);
+																	},
+																),
+															),
+														),
+													],
+													// Fill remaining space in incomplete rows
+													for (var i = row.length; i < columns; i++) ...[
+														SizedBox(width: AppSpacings.pMd),
+														const Expanded(child: SizedBox.shrink()),
+													],
+												],
+											),
+										);
+									},
 								),
 							),
 						],
@@ -169,7 +166,6 @@ class GeneralSettingsPage extends StatelessWidget {
 
 class _TileData {
 	final String label;
-	final String sublabel;
 	final IconData icon;
 	final Color iconColor;
 	final Color iconBgColor;
@@ -177,7 +173,6 @@ class _TileData {
 
 	const _TileData({
 		required this.label,
-		required this.sublabel,
 		required this.icon,
 		required this.iconColor,
 		required this.iconBgColor,

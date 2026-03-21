@@ -29,43 +29,61 @@ class ConfigRepositoryManager {
         _dio = dio;
 
   /// Get or create repository for a module.
+  ///
+  /// Uses `is` type check instead of `as` cast to handle AOT generic type
+  /// erasure. If a repository was previously stored with a different type
+  /// parameter (e.g., base `Model` from an untyped call), it is discarded
+  /// and recreated with the correct concrete type.
   ModuleConfigRepository<T> getModuleRepository<T extends Model>(String moduleName) {
-    if (!_moduleRepositories.containsKey(moduleName)) {
-      final registration = _registrationService.getModuleRegistration(moduleName);
-      if (registration == null) {
-        throw Exception('Module $moduleName is not registered');
-      }
+    final stored = _moduleRepositories[moduleName];
 
-      _moduleRepositories[moduleName] = ModuleConfigRepository<T>(
-        moduleName: moduleName,
-        apiClient: _apiClient,
-        dio: _dio,
-        fromJson: registration.fromJson as T Function(Map<String, dynamic>),
-        updateHandler: registration.updateHandler,
-      );
+    if (stored != null && stored is ModuleConfigRepository<T>) {
+      return stored;
     }
 
-    return _moduleRepositories[moduleName] as ModuleConfigRepository<T>;
+    // Either no repo exists, or stored repo has incompatible type in AOT mode.
+    final registration = _registrationService.getModuleRegistration(moduleName);
+    if (registration == null) {
+      throw Exception('Module $moduleName is not registered');
+    }
+
+    final repo = ModuleConfigRepository<T>(
+      moduleName: moduleName,
+      apiClient: _apiClient,
+      dio: _dio,
+      fromJson: registration.fromJson as T Function(Map<String, dynamic>),
+      updateHandler: registration.updateHandler,
+    );
+    _moduleRepositories[moduleName] = repo;
+
+    return repo;
   }
 
   /// Get or create repository for a plugin.
+  ///
+  /// Same AOT-safe type check as [getModuleRepository].
   ModuleConfigRepository<T> getPluginRepository<T extends Model>(String pluginName) {
-    if (!_pluginRepositories.containsKey(pluginName)) {
-      final registration = _registrationService.getPluginRegistration(pluginName);
-      if (registration == null) {
-        throw Exception('Plugin $pluginName is not registered');
-      }
+    final stored = _pluginRepositories[pluginName];
 
-      _pluginRepositories[pluginName] = ModuleConfigRepository<T>(
-        moduleName: pluginName,
-        apiClient: _apiClient,
-        dio: _dio,
-        fromJson: registration.fromJson as T Function(Map<String, dynamic>),
-        updateHandler: registration.updateHandler,
-      );
+    if (stored != null && stored is ModuleConfigRepository<T>) {
+      return stored;
     }
 
-    return _pluginRepositories[pluginName] as ModuleConfigRepository<T>;
+    final registration = _registrationService.getPluginRegistration(pluginName);
+    if (registration == null) {
+      throw Exception('Plugin $pluginName is not registered');
+    }
+
+    final repo = ModuleConfigRepository<T>(
+      moduleName: pluginName,
+      apiClient: _apiClient,
+      dio: _dio,
+      fromJson: registration.fromJson as T Function(Map<String, dynamic>),
+      updateHandler: registration.updateHandler,
+    );
+    _pluginRepositories[pluginName] = repo;
+
+    return repo;
   }
 
   /// Fetch all registered configurations.
@@ -82,17 +100,18 @@ class ConfigRepositoryManager {
       return;
     }
 
-    // Fetch from already-created module repositories
+    // Fetch from already-created module repositories.
+    // Uses dynamic dispatch to avoid AOT generic type cast failures.
     for (final moduleName in registeredModules) {
       try {
         if (_moduleRepositories.containsKey(moduleName)) {
-          final ModuleConfigRepository<Model> repo =
-              _moduleRepositories[moduleName] as ModuleConfigRepository<Model>;
-          await repo.fetchConfiguration();
+          // Dynamic dispatch — the stored repo has a concrete type parameter
+          // that may differ from <Model>, so we avoid casting entirely.
+          await (_moduleRepositories[moduleName] as dynamic).fetchConfiguration();
         } else {
-          // Create with base Model type — this repo will only be used for
-          // fetching, not for typed access. If a typed repo is needed later,
-          // getModuleRepository<T> will create a new one with the correct type.
+          // Create a temporary repo for fetching only — don't store it.
+          // getModuleRepository<T> will create the properly typed version
+          // on first typed access.
           final registration = _registrationService.getModuleRegistration(moduleName);
           if (registration != null) {
             final repo = ModuleConfigRepository<Model>(
@@ -103,8 +122,6 @@ class ConfigRepositoryManager {
               updateHandler: registration.updateHandler,
             );
             await repo.fetchConfiguration();
-            // Don't store in _moduleRepositories — let getModuleRepository<T>
-            // create the properly typed version on first typed access.
           }
         }
       } catch (e) {
@@ -116,13 +133,11 @@ class ConfigRepositoryManager {
       }
     }
 
-    // Fetch from already-created plugin repositories
+    // Fetch from already-created plugin repositories.
     for (final pluginName in registeredPlugins) {
       try {
         if (_pluginRepositories.containsKey(pluginName)) {
-          final ModuleConfigRepository<Model> repo =
-              _pluginRepositories[pluginName] as ModuleConfigRepository<Model>;
-          await repo.fetchConfiguration();
+          await (_pluginRepositories[pluginName] as dynamic).fetchConfiguration();
         } else {
           final registration = _registrationService.getPluginRegistration(pluginName);
           if (registration != null) {

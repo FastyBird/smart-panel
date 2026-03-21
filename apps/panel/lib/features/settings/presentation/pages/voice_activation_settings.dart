@@ -102,7 +102,7 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 							Expanded(
 								child: VerticalScrollWithGradient(
 									itemCount: 1,
-									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+									padding: EdgeInsets.only(left: AppSpacings.pMd, right: AppSpacings.pMd, bottom: AppSpacings.pMd),
 									itemBuilder: (context, index) => Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
 										children: [

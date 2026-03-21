@@ -101,7 +101,7 @@ class _AboutPageState extends State<AboutPage> {
 	) {
 		return VerticalScrollWithGradient(
 			itemCount: 1,
-			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+			padding: EdgeInsets.only(left: AppSpacings.pMd, right: AppSpacings.pMd, bottom: AppSpacings.pMd),
 			itemBuilder: (context, index) => Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
@@ -127,7 +127,7 @@ class _AboutPageState extends State<AboutPage> {
 	) {
 		return VerticalScrollWithGradient(
 			itemCount: 1,
-			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+			padding: EdgeInsets.only(left: AppSpacings.pMd, right: AppSpacings.pMd, bottom: AppSpacings.pMd),
 			itemBuilder: (context, index) => Row(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
@@ -191,8 +191,6 @@ class _AboutPageState extends State<AboutPage> {
 		Color successColor,
 		Color successBg,
 	) {
-		final subColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
@@ -210,40 +208,16 @@ class _AboutPageState extends State<AboutPage> {
 					iconBgColor: successBg,
 					label: localizations.settings_about_developed_by_heading,
 					description: 'FastyBird Team',
-					trailing: Text(
-						'fastybird.com',
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							color: subColor,
-						),
-					),
 				),
 				SizedBox(height: AppSpacings.pMd),
-				SettingsCard(
-					icon: MdiIcons.fileDocumentOutline,
-					iconColor: successColor,
-					iconBgColor: successBg,
-					label: localizations.settings_about_license_heading,
-					description: 'Apache License 2.0',
-					trailing: Theme(
-						data: ThemeData(
-							outlinedButtonTheme: isDark
-									? AppOutlinedButtonsDarkThemes.base
-									: AppOutlinedButtonsLightThemes.base,
-						),
-						child: OutlinedButton(
-							onPressed: () => _showLicenseDialog(context, localizations, isDark),
-							style: OutlinedButton.styleFrom(
-								textStyle: TextStyle(fontSize: AppFontSize.extraSmall),
-								padding: EdgeInsets.symmetric(
-									vertical: AppSpacings.pSm,
-									horizontal: AppSpacings.pMd,
-								),
-							),
-							child: Text(
-								localizations.settings_about_show_license_button,
-							),
-						),
+				GestureDetector(
+					onTap: () => _showLicenseDialog(context, localizations, isDark),
+					child: SettingsCard(
+						icon: MdiIcons.fileDocumentOutline,
+						iconColor: successColor,
+						iconBgColor: successBg,
+						label: localizations.settings_about_license_heading,
+						description: 'Apache License 2.0',
 					),
 				),
 			],
@@ -337,16 +311,9 @@ class _AboutPageState extends State<AboutPage> {
 				infoBg: infoBg,
 				icon: MdiIcons.lan,
 				title: localizations.settings_about_ip_address_title,
-				builder: (systemService) {
+				valueBuilder: (systemService) {
 					final ip = systemService.getSystemInfo()?.ipAddress;
-					return Text(
-						ip ?? localizations.value_not_available,
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							fontFamily: 'monospace',
-							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-						),
-					);
+					return ip ?? localizations.value_not_available;
 				},
 			),
 			_buildDeviceInfoCard(
@@ -355,16 +322,9 @@ class _AboutPageState extends State<AboutPage> {
 				infoBg: infoBg,
 				icon: MdiIcons.server,
 				title: localizations.settings_about_mac_address_title,
-				builder: (systemService) {
+				valueBuilder: (systemService) {
 					final mac = systemService.getSystemInfo()?.macAddress;
-					return Text(
-						mac ?? localizations.value_not_available,
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							fontFamily: 'monospace',
-							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-						),
-					);
+					return mac ?? localizations.value_not_available;
 				},
 			),
 			_buildDeviceInfoCard(
@@ -373,17 +333,11 @@ class _AboutPageState extends State<AboutPage> {
 				infoBg: infoBg,
 				icon: MdiIcons.gauge,
 				title: localizations.settings_about_cpu_usage_title,
-				builder: (systemService) {
+				valueBuilder: (systemService) {
 					final cpuLoad = systemService.getSystemInfo()?.cpuLoad;
-					return Text(
-						cpuLoad != null
-								? '${NumberUtils.formatNumber(cpuLoad, 2)}%'
-								: NumberUtils.formatUnavailableNumber(2),
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-						),
-					);
+					return cpuLoad != null
+							? '${NumberUtils.formatNumber(cpuLoad, 2)} %'
+							: NumberUtils.formatUnavailableNumber(2);
 				},
 			),
 			_buildDeviceInfoCard(
@@ -392,17 +346,11 @@ class _AboutPageState extends State<AboutPage> {
 				infoBg: infoBg,
 				icon: MdiIcons.memory,
 				title: localizations.settings_about_memory_usage_title,
-				builder: (systemService) {
+				valueBuilder: (systemService) {
 					final memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
-					return Text(
-						memoryUsed != null
-								? '${NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)} MB'
-								: NumberUtils.formatUnavailableNumber(0),
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-						),
-					);
+					return memoryUsed != null
+							? '${NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)} MB'
+							: NumberUtils.formatUnavailableNumber(0);
 				},
 			),
 		];
@@ -426,7 +374,7 @@ class _AboutPageState extends State<AboutPage> {
 		required Color infoBg,
 		required IconData icon,
 		required String title,
-		required Widget Function(SystemService) builder,
+		required String Function(SystemService) valueBuilder,
 	}) {
 		return Consumer<SystemService>(
 			builder: (context, systemService, _) {
@@ -435,7 +383,7 @@ class _AboutPageState extends State<AboutPage> {
 					iconColor: infoColor,
 					iconBgColor: infoBg,
 					label: title,
-					trailing: builder(systemService),
+					description: valueBuilder(systemService),
 				);
 			},
 		);
