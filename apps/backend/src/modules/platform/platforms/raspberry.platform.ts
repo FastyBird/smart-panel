@@ -328,11 +328,9 @@ export class RaspberryPlatform extends Platform {
 
 	private executeCommand(command: string): Promise<void> {
 		return new Promise((resolve, reject) => {
-			exec(command, (error, stdout, stderr) => {
+			exec(command, (error, _stdout, stderr) => {
 				if (error) {
-					this.logger.error(`[EXECUTE] Command failed: ${stderr.trim()}`);
-
-					reject(error);
+					reject(new Error(stderr.trim() || error.message));
 				} else {
 					resolve();
 				}
