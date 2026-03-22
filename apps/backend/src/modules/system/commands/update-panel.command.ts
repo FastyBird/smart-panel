@@ -8,7 +8,7 @@ import { pipeline } from 'stream/promises';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PanelReleaseAsset, UpdateService } from '../services/update.service';
+import { ReleaseAsset, UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { printError, printStep, printSuccess, printWarning } from './command.utils';
@@ -68,7 +68,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		// Check for updates
 		console.log('  Checking for releases...\n');
 
-		let panelInfo: { latest: string | null; assets: PanelReleaseAsset[] };
+		let panelInfo: { latest: string | null; assets: ReleaseAsset[] };
 
 		if (options?.version) {
 			panelInfo = await this.updateService.fetchPanelRelease(options.version);
@@ -254,11 +254,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		return null;
 	}
 
-	private async updateLinuxPanel(
-		asset: PanelReleaseAsset,
-		installDir: string,
-		_platform: PanelPlatform,
-	): Promise<void> {
+	private async updateLinuxPanel(asset: ReleaseAsset, installDir: string, _platform: PanelPlatform): Promise<void> {
 		// Stop the display service
 		printStep('Stopping display service...');
 
@@ -329,7 +325,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		this.startDisplayService();
 	}
 
-	private async updateAndroid(asset: PanelReleaseAsset): Promise<void> {
+	private async updateAndroid(asset: ReleaseAsset): Promise<void> {
 		// Check for ADB
 		try {
 			execFileSync('which', ['adb'], { stdio: 'pipe' });

@@ -182,7 +182,8 @@ export class UpdateServerCommand extends CommandRunner {
 
 	private async updateImage(targetVersion: string, skipRestart: boolean): Promise<void> {
 		const baseDir = this.updateService.getImageBaseDir();
-		const newVersionDir = `${baseDir}/v${targetVersion}`;
+		const cleanVersion = targetVersion.replace(/^v/, '');
+		const newVersionDir = `${baseDir}/v${cleanVersion}`;
 		const currentLink = `${baseDir}/current`;
 
 		// Guard: refuse to overwrite the currently running version

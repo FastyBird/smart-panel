@@ -51,7 +51,9 @@ trap cleanup EXIT
 # Image-based update (Raspbian image installs)
 # ──────────────────────────────────────────────────────────────
 if [ "$INSTALL_TYPE" = "image" ]; then
-	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${VERSION}"
+	# Strip leading 'v' prefix if present to avoid double-prefixed dirs like vv1.0.0
+	CLEAN_VERSION="${VERSION#v}"
+	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
 	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
 	PREVIOUS_TARGET=""
 

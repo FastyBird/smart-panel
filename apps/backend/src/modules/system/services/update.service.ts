@@ -17,13 +17,7 @@ export interface VersionInfo {
 	updateType: 'patch' | 'minor' | 'major' | null;
 }
 
-export interface ServerReleaseAsset {
-	name: string;
-	downloadUrl: string;
-	size: number;
-}
-
-export interface PanelReleaseAsset {
+export interface ReleaseAsset {
 	name: string;
 	downloadUrl: string;
 	size: number;
@@ -31,7 +25,7 @@ export interface PanelReleaseAsset {
 
 export interface PanelVersionInfo {
 	latest: string | null;
-	assets: PanelReleaseAsset[];
+	assets: ReleaseAsset[];
 }
 
 export interface UpdateStatusInfo {
@@ -276,7 +270,7 @@ export class UpdateService {
 	/**
 	 * For image installs, fetch the backend tarball download URL from a GitHub release.
 	 */
-	async fetchServerReleaseAsset(version: string): Promise<ServerReleaseAsset | null> {
+	async fetchServerReleaseAsset(version: string): Promise<ReleaseAsset | null> {
 		const cleanVersion = version.replace(/^v/, '');
 
 		const release = await this.fetchGitHubRelease(cleanVersion);
