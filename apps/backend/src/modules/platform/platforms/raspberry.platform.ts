@@ -305,6 +305,10 @@ export class RaspberryPlatform extends Platform {
 				label: 'direct',
 				command: `/sbin/${action}`,
 			},
+			{
+				label: 'sudo',
+				command: `sudo /sbin/${action}`,
+			},
 		];
 
 		for (const strategy of strategies) {
