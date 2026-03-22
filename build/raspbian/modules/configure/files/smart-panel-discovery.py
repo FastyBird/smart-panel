@@ -7,6 +7,7 @@ under flutter-pi's DRM/KMS environment.
 """
 
 import json
+import re
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -37,6 +38,11 @@ class DiscoveryHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         """Suppress default stderr logging — use journal via stdout."""
         pass
+
+
+def _decode_avahi_escapes(text):
+    """Decode avahi-browse decimal escape sequences (e.g. \\032 -> space)."""
+    return re.sub(r'\\(\d{3})', lambda m: chr(int(m.group(1))), text)
 
 
 def discover_backends():
@@ -78,7 +84,7 @@ def discover_backends():
                         txt[k] = v
 
             backends.append({
-                'name': parts[3],
+                'name': _decode_avahi_escapes(parts[3]),
                 'host': host,
                 'port': int(port),
                 'api': txt.get('api', '/api/v1'),
