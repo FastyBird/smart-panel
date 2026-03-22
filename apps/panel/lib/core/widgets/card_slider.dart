@@ -133,6 +133,12 @@ class _CardSliderState extends State<CardSlider> {
     if (_isDragging) return;
 
     if (oldWidget.enabled != widget.enabled) {
+      // If slider becomes disabled mid-drag, the onChangeEnd callback will
+      // never fire (SliderWithSteps passes null when disabled). Reset the
+      // flag so external updates are accepted again.
+      if (!widget.enabled && _isDragging) {
+        _isDragging = false;
+      }
       _enabledStateChangeTime = DateTime.now();
       _displayValue = widget.value.clamp(0.0, 1.0);
       return;

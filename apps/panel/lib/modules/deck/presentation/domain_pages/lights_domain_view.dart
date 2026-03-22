@@ -3529,6 +3529,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         );
         break;
     }
+
+    // Explicit setState so non-slider UI (value labels, hero card displays)
+    // reflects the optimistic value immediately. _onControlStateChanged is
+    // suppressed while _isAnyDragging is true, so without this call the
+    // pending value would not be visible until the debounce timer fires.
+    setState(() {});
   }
 
   /// Execute hero brightness API call with error handling.
