@@ -247,56 +247,29 @@ export class UpdateService {
 			return cached;
 		}
 
-		const url = `${this.GITHUB_API_URL}/tags/v${cleanVersion}`;
+		const fallback: ReleaseNotes = {
+			version: cleanVersion,
+			body: null,
+			url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
+			publishedAt: null,
+		};
 
-		try {
-			const response = await fetch(url, {
-				headers: {
-					Accept: 'application/vnd.github.v3+json',
-					'User-Agent': 'FastyBird-SmartPanel',
-				},
-			});
+		const release = await this.fetchGitHubRelease(cleanVersion);
 
-			if (!response.ok) {
-				this.logger.warn(`GitHub API returned ${response.status} for release notes v${cleanVersion}`);
-
-				return {
-					version: cleanVersion,
-					body: null,
-					url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
-					publishedAt: null,
-				};
-			}
-
-			const release = (await response.json()) as {
-				tag_name: string;
-				body: string | null;
-				html_url: string;
-				published_at: string | null;
-			};
-
-			const result: ReleaseNotes = {
-				version: cleanVersion,
-				body: release.body,
-				url: release.html_url,
-				publishedAt: release.published_at,
-			};
-
-			this.cachedReleaseNotes.set(cleanVersion, result);
-
-			return result;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to fetch release notes for v${cleanVersion}: ${err.message}`);
-
-			return {
-				version: cleanVersion,
-				body: null,
-				url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
-				publishedAt: null,
-			};
+		if (!release) {
+			return fallback;
 		}
+
+		const result: ReleaseNotes = {
+			version: cleanVersion,
+			body: (release as { body?: string | null }).body ?? null,
+			url: (release as { html_url?: string }).html_url ?? fallback.url,
+			publishedAt: (release as { published_at?: string | null }).published_at ?? null,
+		};
+
+		this.cachedReleaseNotes.set(cleanVersion, result);
+
+		return result;
 	}
 
 	/**
@@ -304,6 +277,41 @@ export class UpdateService {
 	 */
 	async fetchServerReleaseAsset(version: string): Promise<ServerReleaseAsset | null> {
 		const cleanVersion = version.replace(/^v/, '');
+
+		const release = await this.fetchGitHubRelease(cleanVersion);
+
+		if (!release) {
+			return null;
+		}
+
+		const assets = (release as { assets?: Array<{ name: string; browser_download_url: string; size: number }> }).assets;
+
+		if (!assets) {
+			this.logger.warn(`No assets found in release v${cleanVersion}`);
+
+			return null;
+		}
+
+		// Look for the backend tarball (e.g., smart-panel-v1.2.0-backend.tar.gz)
+		const backendAsset = assets.find((a) => a.name.includes('backend') && a.name.endsWith('.tar.gz'));
+
+		if (!backendAsset) {
+			this.logger.warn(`No backend tarball found in release v${cleanVersion}`);
+
+			return null;
+		}
+
+		return {
+			name: backendAsset.name,
+			downloadUrl: backendAsset.browser_download_url,
+			size: backendAsset.size,
+		};
+	}
+
+	/**
+	 * Fetch a GitHub release by tag. Shared by fetchReleaseNotes and fetchServerReleaseAsset.
+	 */
+	private async fetchGitHubRelease(cleanVersion: string): Promise<Record<string, unknown> | null> {
 		const url = `${this.GITHUB_API_URL}/tags/v${cleanVersion}`;
 
 		try {
@@ -320,29 +328,11 @@ export class UpdateService {
 				return null;
 			}
 
-			const release = (await response.json()) as {
-				tag_name: string;
-				assets: Array<{ name: string; browser_download_url: string; size: number }>;
-			};
-
-			// Look for the backend tarball (e.g., smart-panel-v1.2.0-backend.tar.gz)
-			const backendAsset = release.assets.find((a) => a.name.includes('backend') && a.name.endsWith('.tar.gz'));
-
-			if (!backendAsset) {
-				this.logger.warn(`No backend tarball found in release v${cleanVersion}`);
-
-				return null;
-			}
-
-			return {
-				name: backendAsset.name,
-				downloadUrl: backendAsset.browser_download_url,
-				size: backendAsset.size,
-			};
+			return (await response.json()) as Record<string, unknown>;
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to fetch server release asset for v${cleanVersion}: ${err.message}`);
+			this.logger.error(`Failed to fetch GitHub release v${cleanVersion}: ${err.message}`);
 
 			return null;
 		}

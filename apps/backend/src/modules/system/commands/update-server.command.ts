@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { createWriteStream, existsSync, mkdirSync, rmSync, unlinkSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync } from 'fs';
 import inquirer from 'inquirer';
 import { Command, CommandRunner, Option } from 'nest-commander';
 import { Readable } from 'stream';
@@ -374,15 +374,41 @@ export class UpdateServerCommand extends CommandRunner {
 		printStep('Running database migrations...');
 
 		try {
+			// Source environment variables from the env file if it exists
 			const envFile = '/etc/smart-panel/environment';
+			const envVars: Record<string, string> = { ...process.env } as Record<string, string>;
+
+			if (existsSync(envFile)) {
+				try {
+					const envContent = readFileSync(envFile, 'utf-8');
+
+					for (const line of envContent.split('\n')) {
+						const trimmed = line.trim();
+
+						if (trimmed && !trimmed.startsWith('#')) {
+							const eqIndex = trimmed.indexOf('=');
+
+							if (eqIndex > 0) {
+								const key = trimmed.substring(0, eqIndex);
+								const value = trimmed.substring(eqIndex + 1);
+
+								envVars[key] = value;
+							}
+						}
+					}
+				} catch {
+					printWarning('Could not read environment file, continuing without it');
+				}
+			}
 
 			execFileSync(
-				'bash',
-				[
-					'-c',
-					`set -a; [ -f ${envFile} ] && . ${envFile}; set +a && cd ${newVersionDir} && node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js`,
-				],
-				{ stdio: 'inherit' },
+				'node',
+				[`${newVersionDir}/node_modules/typeorm/cli.js`, 'migration:run', '-d', `${newVersionDir}/dist/dataSource.js`],
+				{
+					cwd: newVersionDir,
+					env: envVars,
+					stdio: 'inherit',
+				},
 			);
 
 			printSuccess('Migrations complete');
