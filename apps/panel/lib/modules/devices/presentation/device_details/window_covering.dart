@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/window_covering.dart';
@@ -411,18 +412,27 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 itemCount: channelCount,
                 tileBuilder: (c, i) {
                   final ch = _channelAt(i);
-                  return HorizontalTileStretched(
-                    icon: MdiIcons.blindsHorizontalClosed,
-                    activeIcon: MdiIcons.blindsHorizontal,
-                    name: ch.channel.name,
-                    status: '${ch.position}%',
-                    isActive: ch.position > 0,
-                    isSelected: ch.isSelected,
-                    onTileTap: () {
-                      _handleChannelSelect(i);
-                      if (c.mounted) Navigator.of(c).pop();
-                    },
-                    showSelectionIndicator: true,
+                  final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+                  return SizedBox(
+                    height: tileHeight,
+                    child: UniversalTile(
+                      layout: TileLayout.horizontal,
+                      icon: MdiIcons.blindsHorizontalClosed,
+                      activeIcon: MdiIcons.blindsHorizontal,
+                      name: ch.channel.name,
+                      status: '${ch.position}%',
+                      isActive: ch.position > 0,
+                      isSelected: ch.isSelected,
+                      showGlow: false,
+                      showDoubleBorder: false,
+                      showInactiveBorder: false,
+                      showWarningBadge: false,
+                      showSelectionIndicator: true,
+                      onTileTap: () {
+                        _handleChannelSelect(i);
+                        if (c.mounted) Navigator.of(c).pop();
+                      },
+                    ),
                   );
                 },
                 showCountInHeader: false,

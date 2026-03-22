@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
@@ -28,7 +28,6 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LightingDeviceDetail extends StatefulWidget {
@@ -63,6 +62,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Timer? _colorDebounceTimer;
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
+
+  /// Coalescing timer for secondary UI updates (value display, swatch) during
+  /// continuous slider drag. The Flutter Slider tracks the thumb position
+  /// internally at full frame rate; this timer throttles parent rebuilds to
+  /// ~12 fps so the number display updates without overloading the render tree.
+  Timer? _uiCoalesceTimer;
+  static const _uiCoalesceInterval = Duration(milliseconds: 80);
 
   /// Per-slider dragging flags to suppress full-screen rebuilds from external
   /// state updates while the user is actively dragging any slider.
@@ -152,6 +158,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     _colorDebounceTimer?.cancel();
     _temperatureDebounceTimer?.cancel();
     _whiteDebounceTimer?.cancel();
+    _uiCoalesceTimer?.cancel();
     _channelListVersion.dispose();
     _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
@@ -159,6 +166,16 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
   bool get _isAnyDragging =>
       _isDraggingBrightness || _isDraggingColorTemp || _isDraggingColor || _isDraggingWhite;
+
+  /// Schedule a coalesced setState for secondary UI elements (value display,
+  /// swatch colour). If a timer is already pending the new request is a no-op
+  /// so at most one rebuild is queued per [_uiCoalesceInterval].
+  void _scheduleUIUpdate() {
+    _uiCoalesceTimer ??= Timer(_uiCoalesceInterval, () {
+      _uiCoalesceTimer = null;
+      if (mounted) setState(() {});
+    });
+  }
 
   void _onControlStateChanged() {
     if (mounted && !_isAnyDragging) {
@@ -240,10 +257,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         controller.channel.id,
         prop.id,
         value,
+        silent: true,
       );
     }
 
-    setState(() {});
+    // Coalesce secondary UI updates (value display); the Slider thumb tracks
+    // the finger at full frame rate internally.
+    _scheduleUIUpdate();
 
     _brightnessDebounceTimer?.cancel();
     _brightnessDebounceTimer = Timer(
@@ -252,6 +272,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         if (!mounted) return;
 
         _isDraggingBrightness = false;
+        _uiCoalesceTimer?.cancel();
+        _uiCoalesceTimer = null;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -283,10 +305,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         controller.channel.id,
         prop.id,
         value,
+        silent: true,
       );
     }
 
-    setState(() {});
+    _scheduleUIUpdate();
 
     _temperatureDebounceTimer?.cancel();
     _temperatureDebounceTimer = Timer(
@@ -295,6 +318,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         if (!mounted) return;
 
         _isDraggingColorTemp = false;
+        _uiCoalesceTimer?.cancel();
+        _uiCoalesceTimer = null;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -373,10 +398,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         deviceId,
         LightChannelController.colorGroupId,
         colorProperties,
+        silent: true,
       );
     }
 
-    setState(() {});
+    _scheduleUIUpdate();
 
     _colorDebounceTimer?.cancel();
     _colorDebounceTimer = Timer(
@@ -385,6 +411,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         if (!mounted) return;
 
         _isDraggingColor = false;
+        _uiCoalesceTimer?.cancel();
+        _uiCoalesceTimer = null;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -415,10 +443,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         controller.channel.id,
         prop.id,
         value,
+        silent: true,
       );
     }
 
-    setState(() {});
+    _scheduleUIUpdate();
 
     _whiteDebounceTimer?.cancel();
     _whiteDebounceTimer = Timer(
@@ -427,6 +456,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         if (!mounted) return;
 
         _isDraggingWhite = false;
+        _uiCoalesceTimer?.cancel();
+        _uiCoalesceTimer = null;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -479,32 +510,42 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }).toList();
   }
 
-  /// Builds one channel tile for the channels bottom sheet (horizontal layout).
+  /// Builds one channel tile for the channels sheet (horizontal layout).
+  /// Matches the tile style used in domain views (e.g. shading device list).
   Widget _buildChannelTile(
       BuildContext context, LightingChannelData channel) {
     final localizations = AppLocalizations.of(context)!;
-    return HorizontalTileStretched(
-      icon: MdiIcons.lightbulbOutline,
-      activeIcon: MdiIcons.lightbulb,
-      name: channel.name,
-      status: channel.getStatusText(localizations),
-      isActive: channel.isOn && channel.isOnline,
-      isOffline: !channel.isOnline,
-      isSelected: channel.isSelected,
-      onIconTap: () {
-        final controllers = _controller?.lights ?? [];
-        final index = controllers.indexWhere((c) => c.channel.id == channel.id);
-        if (index != -1) {
-          controllers[index].togglePower();
-          setState(() {});
-          _channelListVersion.value++;
-        }
-      },
-      onTileTap: () {
-        _handleChannelTileTap(channel);
-      },
-      showSelectionIndicator: true,
-      showWarningBadge: true,
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.lightbulbOutline,
+        activeIcon: MdiIcons.lightbulb,
+        name: channel.name,
+        status: channel.getStatusText(localizations),
+        isActive: channel.isOn && channel.isOnline,
+        isOffline: !channel.isOnline,
+        isSelected: channel.isSelected,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        showWarningBadge: true,
+        showSelectionIndicator: true,
+        onIconTap: () {
+          final controllers = _controller?.lights ?? [];
+          final index = controllers.indexWhere((c) => c.channel.id == channel.id);
+          if (index != -1) {
+            controllers[index].togglePower();
+            setState(() {});
+            _channelListVersion.value++;
+          }
+        },
+        onTileTap: () {
+          _handleChannelTileTap(channel);
+        },
+      ),
     );
   }
 
@@ -1132,10 +1173,7 @@ class _LightingHeroCard extends StatelessWidget {
             steps: const ['0%', '25%', '50%', '75%', '100%'],
             enabled: isOn,
             onChanged: isOn
-                ? (v) {
-                    HapticFeedback.selectionClick();
-                    onBrightnessChanged?.call((v * 100).round());
-                  }
+                ? (v) => onBrightnessChanged?.call((v * 100).round())
                 : null,
           ),
         );
@@ -1152,11 +1190,8 @@ class _LightingHeroCard extends StatelessWidget {
             steps: const ['2700K', '4600K', '6500K'],
             enabled: isOn,
             onChanged: isOn
-                ? (v) {
-                    HapticFeedback.selectionClick();
-                    onColorTempChanged
-                        ?.call((2700 + (6500 - 2700) * v).round());
-                  }
+                ? (v) =>
+                    onColorTempChanged?.call((2700 + (6500 - 2700) * v).round())
                 : null,
           ),
         );
@@ -1172,7 +1207,6 @@ class _LightingHeroCard extends StatelessWidget {
             enabled: isOn,
             onChanged: isOn
                 ? (v) {
-                    HapticFeedback.selectionClick();
                     final newHue = v * 360;
                     final newColor =
                         HSVColor.fromAHSV(1, newHue, saturation, 1).toColor();
@@ -1196,7 +1230,6 @@ class _LightingHeroCard extends StatelessWidget {
             enabled: isOn,
             onChanged: isOn
                 ? (v) {
-                    HapticFeedback.selectionClick();
                     final newColor =
                         HSVColor.fromAHSV(1, hsv.hue, v, 1).toColor();
                     onColorChanged?.call(newColor, v);
@@ -1215,10 +1248,7 @@ class _LightingHeroCard extends StatelessWidget {
             steps: [localizations.on_state_off, '25%', '50%', '75%', '100%'],
             enabled: isOn,
             onChanged: isOn
-                ? (v) {
-                    HapticFeedback.selectionClick();
-                    onWhiteChannelChanged?.call((v * 100).round());
-                  }
+                ? (v) => onWhiteChannelChanged?.call((v * 100).round())
                 : null,
           ),
         );

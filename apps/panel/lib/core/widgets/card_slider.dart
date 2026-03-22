@@ -220,8 +220,10 @@ class _CardSliderState extends State<CardSlider> {
       discrete: widget.discrete,
       onChanged: widget.onChanged != null
           ? (v) {
-              _isDragging = true;
-              _displayValue = v.clamp(0.0, 1.0);
+              setState(() {
+                _isDragging = true;
+                _displayValue = v.clamp(0.0, 1.0);
+              });
               widget.onChanged!(v);
             }
           : null,

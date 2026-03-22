@@ -134,12 +134,18 @@ class DeviceControlStateService extends ChangeNotifier {
   ///
   /// Called when user initiates a command. The UI will show [desiredValue]
   /// instead of actual device state until settling completes.
+  ///
+  /// When [silent] is true the state is stored but listeners are NOT notified.
+  /// Use this during continuous slider drag to avoid cascading rebuilds of
+  /// unrelated widgets (dashboard tiles, etc.). The desired value will be
+  /// picked up on the next scheduled rebuild from the caller.
   void setPending(
     String deviceId,
     String? channelId,
     String? propertyId,
-    dynamic desiredValue,
-  ) {
+    dynamic desiredValue, {
+    bool silent = false,
+  }) {
     final key = generateKey(deviceId, channelId, propertyId);
 
     // Cancel any existing timer for this key
@@ -159,11 +165,13 @@ class DeviceControlStateService extends ChangeNotifier {
 
     if (kDebugMode) {
       debugPrint(
-        '[DEVICE_CONTROL_STATE] Set PENDING: $key = $desiredValue',
+        '[DEVICE_CONTROL_STATE] Set PENDING: $key = $desiredValue${silent ? ' (silent)' : ''}',
       );
     }
 
-    _notifyIfNotDisposed();
+    if (!silent) {
+      _notifyIfNotDisposed();
+    }
   }
 
   /// Transition state to SETTLING for a property.
@@ -399,11 +407,15 @@ class DeviceControlStateService extends ChangeNotifier {
   /// Set state to PENDING for a property group.
   ///
   /// Called when user initiates a command affecting multiple properties.
+  ///
+  /// When [silent] is true the state is stored but listeners are NOT notified.
+  /// Use this during continuous slider drag to avoid cascading rebuilds.
   void setGroupPending(
     String deviceId,
     String groupId,
-    List<PropertyConfig> properties,
-  ) {
+    List<PropertyConfig> properties, {
+    bool silent = false,
+  }) {
     final key = generateGroupKey(deviceId, groupId);
 
     // Cancel any existing timer for this key
@@ -417,11 +429,13 @@ class DeviceControlStateService extends ChangeNotifier {
 
     if (kDebugMode) {
       debugPrint(
-        '[DEVICE_CONTROL_STATE] Set GROUP PENDING: $key with ${properties.length} properties',
+        '[DEVICE_CONTROL_STATE] Set GROUP PENDING: $key with ${properties.length} properties${silent ? ' (silent)' : ''}',
       );
     }
 
-    _notifyIfNotDisposed();
+    if (!silent) {
+      _notifyIfNotDisposed();
+    }
   }
 
   /// Start settling window for a property group.

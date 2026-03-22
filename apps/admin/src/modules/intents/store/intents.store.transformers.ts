@@ -62,8 +62,9 @@ export const transformIntentResponse = (response: IIntentRes): IIntent => {
 	// Remove intentId if present (we use id)
 	delete transformed.intentId;
 
-	// Ensure context has all required fields with null defaults
-	// Backend only sends truthy values, so we need to fill in missing fields
+	// Backend only sends truthy values, so fill in missing optional fields
+	transformed.requestId = transformed.requestId ?? null;
+
 	const ctx = transformed.context as Record<string, unknown> | null | undefined;
 	transformed.context = {
 		origin: ctx?.origin ?? null,

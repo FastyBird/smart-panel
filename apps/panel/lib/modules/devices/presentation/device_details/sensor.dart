@@ -7,7 +7,7 @@
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -163,18 +163,26 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   /// Builds one channel tile for the channels bottom sheet (horizontal layout).
   Widget _buildChannelTile(BuildContext context, SensorData data, int index) {
     final isSelected = index == _selectedChannelIndex;
-    return HorizontalTileStretched(
-      icon: data.icon,
-      activeIcon: data.icon,
-      name: data.channel.name.isNotEmpty ? data.channel.name : data.label,
-      status: _getSensorChannelStatus(context, data),
-      isActive: false,
-      isOffline: !widget._device.isOnline,
-      isSelected: isSelected,
-      onIconTap: null,
-      onTileTap: () => _handleChannelSelect(index),
-      showSelectionIndicator: true,
-      showWarningBadge: data.isAlert ?? false,
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: data.icon,
+        activeIcon: data.icon,
+        name: data.channel.name.isNotEmpty ? data.channel.name : data.label,
+        status: _getSensorChannelStatus(context, data),
+        isActive: false,
+        isOffline: !widget._device.isOnline,
+        isSelected: isSelected,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        showWarningBadge: data.isAlert ?? false,
+        showSelectionIndicator: true,
+        onTileTap: () => _handleChannelSelect(index),
+      ),
     );
   }
 
