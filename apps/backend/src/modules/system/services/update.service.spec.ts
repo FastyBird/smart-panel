@@ -123,28 +123,6 @@ describe('UpdateService', () => {
 		});
 	});
 
-	describe('getActiveVersionDir', () => {
-		it('should return the basename of the symlink target', () => {
-			(readlinkSync as jest.Mock).mockReturnValue('/opt/smart-panel/v1.2.0');
-
-			expect(service.getActiveVersionDir()).toBe('v1.2.0');
-		});
-
-		it('should handle relative symlink target', () => {
-			(readlinkSync as jest.Mock).mockReturnValue('v1.2.0');
-
-			expect(service.getActiveVersionDir()).toBe('v1.2.0');
-		});
-
-		it('should return null when symlink does not exist', () => {
-			(readlinkSync as jest.Mock).mockImplementation(() => {
-				throw new Error('ENOENT');
-			});
-
-			expect(service.getActiveVersionDir()).toBeNull();
-		});
-	});
-
 	describe('getCurrentVersion', () => {
 		it('should read version from package.json', () => {
 			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: '1.5.3' }));

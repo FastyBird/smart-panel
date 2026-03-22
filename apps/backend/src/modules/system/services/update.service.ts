@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
-import { basename, join } from 'path';
+import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -141,19 +141,6 @@ export class UpdateService {
 				.sort((a, b) => compareSemver(a, b));
 		} catch {
 			return [];
-		}
-	}
-
-	/**
-	 * Get the currently active version directory name (e.g. "v1.0.0")
-	 */
-	getActiveVersionDir(): string | null {
-		try {
-			const target = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
-
-			return basename(target);
-		} catch {
-			return null;
 		}
 	}
 

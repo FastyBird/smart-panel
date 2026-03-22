@@ -367,7 +367,7 @@ export class UpdateServerCommand extends CommandRunner {
 				'bash',
 				[
 					'-c',
-					`set -a && [ -f ${envFile} ] && . ${envFile} && set +a && cd ${newVersionDir} && node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js`,
+					`set -a; [ -f ${envFile} ] && . ${envFile}; set +a && cd ${newVersionDir} && node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js`,
 				],
 				{ stdio: 'inherit' },
 			);

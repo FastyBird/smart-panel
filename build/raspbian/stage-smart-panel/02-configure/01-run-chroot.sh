@@ -54,7 +54,7 @@ smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
 smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
 # Update operations (symlink switch and service management)
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v* /opt/smart-panel/current
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v[0-9]* /opt/smart-panel/current
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
