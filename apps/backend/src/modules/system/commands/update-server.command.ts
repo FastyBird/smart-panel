@@ -456,7 +456,7 @@ export class UpdateServerCommand extends CommandRunner {
 		}
 
 		// Clean up old versions (keep max 2 previous)
-		this.cleanupOldVersions(baseDir, `v${targetVersion}`);
+		this.cleanupOldVersions(baseDir, `v${cleanVersion}`);
 	}
 
 	private cleanupOldVersions(baseDir: string, currentVersion: string): void {
