@@ -104,6 +104,13 @@ export enum DistanceUnitType {
 	FEET = 'feet',
 }
 
+export enum NumberFormatType {
+	COMMA_DOT = 'comma_dot',
+	DOT_COMMA = 'dot_comma',
+	SPACE_COMMA = 'space_comma',
+	NONE = 'none',
+}
+
 export enum TimeFormatType {
 	HOUR_12 = '12h',
 	HOUR_24 = '24h',

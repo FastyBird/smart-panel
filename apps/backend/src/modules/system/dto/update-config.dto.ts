@@ -9,6 +9,7 @@ import {
 	HouseMode,
 	LanguageType,
 	LogLevelType,
+	NumberFormatType,
 	PrecipitationUnitType,
 	PressureUnitType,
 	TemperatureUnitType,
@@ -63,6 +64,19 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsEnum(TimeFormatType, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
 	time_format?: TimeFormatType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the number format for displaying numeric values.',
+		enum: NumberFormatType,
+		example: NumberFormatType.COMMA_DOT,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(NumberFormatType, {
+		message: '[{"field":"number_format","reason":"Number format must be comma_dot, dot_comma, space_comma or none."}]',
+	})
+	number_format?: NumberFormatType;
 
 	@ApiPropertyOptional({
 		description: 'Sets the temperature display unit.',

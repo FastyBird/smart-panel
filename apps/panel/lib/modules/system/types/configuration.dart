@@ -136,6 +136,26 @@ enum DistanceUnit {
   static bool contains(String value) => utils.contains(value);
 }
 
+enum NumberFormatSetting {
+  commaDot('comma_dot'),
+  dotComma('dot_comma'),
+  spaceComma('space_comma'),
+  none('none');
+
+  final String value;
+
+  const NumberFormatSetting(this.value);
+
+  static final utils = StringEnumUtils(
+    NumberFormatSetting.values,
+    (NumberFormatSetting payload) => payload.value,
+  );
+
+  static NumberFormatSetting? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
 enum HouseMode {
   home('home'),
   away('away'),

@@ -17,6 +17,7 @@ import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import {
 	DistanceUnitType,
+	NumberFormatType,
 	PrecipitationUnitType,
 	PressureUnitType,
 	TemperatureUnitType,
@@ -308,6 +309,21 @@ export class UpdateDisplayDto {
 	microphone_volume?: number;
 
 	// === Unit Overrides (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'number_format',
+		description: 'Number format override (null = use system default)',
+		type: 'string',
+		enum: NumberFormatType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(NumberFormatType, {
+		message: '[{"field":"number_format","reason":"Number format must be comma_dot, dot_comma, space_comma or none."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	number_format?: NumberFormatType | null;
 
 	@ApiPropertyOptional({
 		name: 'temperature_unit',

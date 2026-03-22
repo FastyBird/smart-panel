@@ -6,6 +6,7 @@ export const SystemConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
 	language: z.enum(['en_US', 'cs_CZ', 'de_DE', 'es_ES', 'pl_PL', 'sk_SK']),
 	timezone: z.string().min(1),
 	timeFormat: z.enum(['12h', '24h']),
+	numberFormat: z.enum(['comma_dot', 'dot_comma', 'space_comma', 'none']),
 	temperatureUnit: z.enum(['celsius', 'fahrenheit']),
 	windSpeedUnit: z.enum(['ms', 'kmh', 'mph', 'knots']),
 	pressureUnit: z.enum(['hpa', 'mbar', 'inhg', 'mmhg']),

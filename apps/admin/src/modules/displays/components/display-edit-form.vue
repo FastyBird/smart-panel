@@ -331,6 +331,39 @@
 					/>
 
 					<el-form-item
+						:label="t('displaysModule.fields.displays.numberFormat.title')"
+						:prop="['numberFormat']"
+					>
+						<el-select
+							v-model="model.numberFormat"
+							:placeholder="t('displaysModule.fields.displays.numberFormat.placeholder')"
+							name="numberFormat"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.numberFormat.placeholder')"
+								value=""
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.numberFormat.values.commaDot')"
+								value="comma_dot"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.numberFormat.values.dotComma')"
+								value="dot_comma"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.numberFormat.values.spaceComma')"
+								value="space_comma"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.numberFormat.values.none')"
+								value="none"
+							/>
+						</el-select>
+					</el-form-item>
+
+					<el-form-item
 						:label="t('displaysModule.fields.displays.temperatureUnit.title')"
 						:prop="['temperatureUnit']"
 					>

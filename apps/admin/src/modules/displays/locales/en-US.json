@@ -198,6 +198,16 @@
 					"required": "Room assignment is required for displays with Room role"
 				}
 			},
+			"numberFormat": {
+				"title": "Number Format",
+				"placeholder": "System default",
+				"values": {
+					"commaDot": "1,234.56 (comma / dot)",
+					"dotComma": "1.234,56 (dot / comma)",
+					"spaceComma": "1 234,56 (space / comma)",
+					"none": "1234.56 (no grouping)"
+				}
+			},
 			"temperatureUnit": {
 				"title": "Temperature Unit",
 				"placeholder": "System default",

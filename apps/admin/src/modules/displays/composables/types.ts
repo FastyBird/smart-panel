@@ -3,6 +3,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { z } from 'zod';
 
+import type { NumberFormatSetting } from '../../../common/utils/number.utils';
 import type { FormResultType } from '../displays.constants';
 import type { IDisplay, IDisplayToken } from '../store/displays.store.types';
 
@@ -52,6 +53,7 @@ export type HomeMode = 'auto_space' | 'explicit';
 
 export type DisplayRole = 'room' | 'master' | 'entry';
 
+
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 export type WindSpeedUnit = 'ms' | 'kmh' | 'mph' | 'knots';
 export type PressureUnit = 'hpa' | 'mbar' | 'inhg' | 'mmhg';
@@ -80,6 +82,7 @@ export interface IDisplayEditForm {
 	homeMode: HomeMode;
 	homePageId: string | null;
 	// Unit overrides ('' = use system default; mapped to null on submit)
+	numberFormat: NumberFormatSetting | '';
 	temperatureUnit: TemperatureUnit | '';
 	windSpeedUnit: WindSpeedUnit | '';
 	pressureUnit: PressureUnit | '';

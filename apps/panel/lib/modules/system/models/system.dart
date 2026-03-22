@@ -5,6 +5,7 @@ class SystemConfigModel extends Model {
   final Language _language;
   final String _timezone;
   final TimeFormat _timeFormat;
+  final NumberFormatSetting _numberFormat;
   final TemperatureUnit _temperatureUnit;
   final WindSpeedUnit _windSpeedUnit;
   final PressureUnit _pressureUnit;
@@ -17,6 +18,7 @@ class SystemConfigModel extends Model {
     required Language language,
     required String timezone,
     required TimeFormat timeFormat,
+    required NumberFormatSetting numberFormat,
     required TemperatureUnit temperatureUnit,
     required WindSpeedUnit windSpeedUnit,
     required PressureUnit pressureUnit,
@@ -27,6 +29,7 @@ class SystemConfigModel extends Model {
   })  : _language = language,
         _timezone = timezone,
         _timeFormat = timeFormat,
+        _numberFormat = numberFormat,
         _temperatureUnit = temperatureUnit,
         _windSpeedUnit = windSpeedUnit,
         _pressureUnit = pressureUnit,
@@ -40,6 +43,8 @@ class SystemConfigModel extends Model {
   String get timezone => _timezone;
 
   TimeFormat get timeFormat => _timeFormat;
+
+  NumberFormatSetting get numberFormat => _numberFormat;
 
   TemperatureUnit get temperatureUnit => _temperatureUnit;
 
@@ -59,6 +64,9 @@ class SystemConfigModel extends Model {
     Language? language = Language.fromValue(json['language']);
 
     TimeFormat? timeFormat = TimeFormat.fromValue(json['time_format']);
+
+    NumberFormatSetting? numberFormat =
+        json['number_format'] != null ? NumberFormatSetting.fromValue(json['number_format']) : null;
 
     TemperatureUnit? temperatureUnit =
         json['temperature_unit'] != null ? TemperatureUnit.fromValue(json['temperature_unit']) : null;
@@ -86,6 +94,7 @@ class SystemConfigModel extends Model {
       language: language ?? Language.english,
       timezone: json['timezone'] ?? '',
       timeFormat: timeFormat ?? TimeFormat.twentyFourHour,
+      numberFormat: numberFormat ?? NumberFormatSetting.commaDot,
       temperatureUnit: temperatureUnit ?? TemperatureUnit.celsius,
       windSpeedUnit: windSpeedUnit ?? WindSpeedUnit.metersPerSecond,
       pressureUnit: pressureUnit ?? PressureUnit.hectopascal,
@@ -100,6 +109,7 @@ class SystemConfigModel extends Model {
     Language? language,
     String? timezone,
     TimeFormat? timeFormat,
+    NumberFormatSetting? numberFormat,
     TemperatureUnit? temperatureUnit,
     WindSpeedUnit? windSpeedUnit,
     PressureUnit? pressureUnit,
@@ -112,6 +122,7 @@ class SystemConfigModel extends Model {
       language: language ?? _language,
       timezone: timezone ?? _timezone,
       timeFormat: timeFormat ?? _timeFormat,
+      numberFormat: numberFormat ?? _numberFormat,
       temperatureUnit: temperatureUnit ?? _temperatureUnit,
       windSpeedUnit: windSpeedUnit ?? _windSpeedUnit,
       pressureUnit: pressureUnit ?? _pressureUnit,
@@ -129,6 +140,7 @@ class SystemConfigModel extends Model {
           other._language.value == _language.value &&
           other._timezone == _timezone &&
           other._timeFormat.value == _timeFormat.value &&
+          other._numberFormat.value == _numberFormat.value &&
           other._temperatureUnit.value == _temperatureUnit.value &&
           other._windSpeedUnit.value == _windSpeedUnit.value &&
           other._pressureUnit.value == _pressureUnit.value &&
@@ -142,6 +154,7 @@ class SystemConfigModel extends Model {
         _language.value,
         _timezone,
         _timeFormat.value,
+        _numberFormat.value,
         _temperatureUnit.value,
         _windSpeedUnit.value,
         _pressureUnit.value,

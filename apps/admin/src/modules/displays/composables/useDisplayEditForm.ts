@@ -5,6 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import type { NumberFormatSetting } from '../../../common/utils/number.utils';
 import { FormResult, type FormResultType } from '../displays.constants';
 import { DisplaysApiException, DisplaysValidationException } from '../displays.exceptions';
 import type { IDisplay } from '../store/displays.store.types';
@@ -60,6 +61,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		homeMode: display.homeMode,
 		homePageId: display.homePageId,
 		// Unit overrides (empty string = use system default; mapped to null on submit)
+		numberFormat: display.numberFormat ?? '',
 		temperatureUnit: display.temperatureUnit ?? '',
 		windSpeedUnit: display.windSpeedUnit ?? '',
 		pressureUnit: display.pressureUnit ?? '',
@@ -109,6 +111,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				microphoneVolume?: number;
 				homeMode: 'auto_space' | 'explicit';
 				homePageId: string | null;
+				numberFormat: NumberFormatSetting | null;
 				temperatureUnit: TemperatureUnit | null;
 				windSpeedUnit: WindSpeedUnit | null;
 				pressureUnit: PressureUnit | null;
@@ -131,6 +134,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				// Home page: clear if not explicit mode
 				homePageId: model.homeMode === 'explicit' ? model.homePageId : null,
 				// Unit overrides
+				numberFormat: model.numberFormat || null,
 				temperatureUnit: model.temperatureUnit || null,
 				windSpeedUnit: model.windSpeedUnit || null,
 				pressureUnit: model.pressureUnit || null,
