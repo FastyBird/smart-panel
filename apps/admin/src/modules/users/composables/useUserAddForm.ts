@@ -44,8 +44,6 @@ export const useUserAddForm = ({ id }: IUseUserAddFormProps): IUseUserAddForm =>
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added'> => {
-		formResult.value = FormResult.WORKING;
-
 		const errorMessage = t('usersModule.messages.notCreated', { user: model.username });
 
 		formEl.value!.clearValidate();
@@ -53,6 +51,8 @@ export const useUserAddForm = ({ id }: IUseUserAddFormProps): IUseUserAddForm =>
 		const valid = await formEl.value!.validate();
 
 		if (!valid) throw new UsersValidationException('Form not valid');
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await usersStore.add({

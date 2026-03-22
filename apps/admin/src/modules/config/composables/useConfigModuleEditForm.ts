@@ -55,8 +55,6 @@ export const useConfigModuleEditForm = <TForm extends IConfigModuleEditForm = IC
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const errorMessage = messages && messages.error ? messages.error : t('configModule.messages.configModule.notEdited');
 
 		formEl.value!.clearValidate();
@@ -72,6 +70,8 @@ export const useConfigModuleEditForm = <TForm extends IConfigModuleEditForm = IC
 
 			throw new ConfigValidationException('Failed to validate create module model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await configModulesStore.edit({

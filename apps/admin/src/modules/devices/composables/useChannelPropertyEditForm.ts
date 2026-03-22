@@ -146,8 +146,6 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = property.draft;
 
 		const errorMessage =
@@ -198,6 +196,8 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 
 			throw new DevicesValidationException('Failed to validate edit channel property model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await propertiesStore.edit({

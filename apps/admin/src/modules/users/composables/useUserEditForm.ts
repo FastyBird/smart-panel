@@ -43,8 +43,6 @@ export const useUserEditForm = ({ user, messages }: IUseUserEditFormProps): IUse
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = user.draft;
 
 		const errorMessage =
@@ -59,6 +57,8 @@ export const useUserEditForm = ({ user, messages }: IUseUserEditFormProps): IUse
 		const valid = await formEl.value!.validate();
 
 		if (!valid) throw new UsersValidationException('Form not valid');
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await usersStore.edit({

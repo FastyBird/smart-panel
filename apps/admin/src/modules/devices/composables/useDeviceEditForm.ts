@@ -54,8 +54,6 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = device.draft;
 
 		const errorMessage =
@@ -78,6 +76,8 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 
 			throw new DevicesValidationException('Failed to validate edit device model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await devicesStore.edit({
