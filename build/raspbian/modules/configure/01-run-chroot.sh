@@ -93,8 +93,8 @@ if [ "${HAS_DISPLAY}" = true ]; then
 		# time via --dart-define in build.sh — runtime env vars have no effect
 		# on Dart's String.fromEnvironment which is compile-time only.
 		sed \
-			-e 's|^After=.*|After=network-online.target smart-panel.service|' \
-			-e 's|^Wants=.*|Wants=network-online.target smart-panel.service|' \
+			-e 's|^After=.*|After=network-online.target smart-panel.service smart-panel-discovery.service|' \
+			-e 's|^Wants=.*|Wants=network-online.target smart-panel.service smart-panel-discovery.service|' \
 			/tmp/smart-panel-config/smart-panel-display.service \
 			> /etc/systemd/system/smart-panel-display.service
 	else

@@ -466,7 +466,7 @@ install_discovery_service() {
 	print_step "Installing mDNS discovery proxy service..."
 
 	# Copy discovery script
-	local script_url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/build/raspbian/modules/configure/files/smart-panel-discovery.py"
+	local script_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${tag}/build/raspbian/modules/configure/files/smart-panel-discovery.py"
 	curl -sL "$script_url" -o "${INSTALL_DIR}/discovery-service.py"
 	chmod +x "${INSTALL_DIR}/discovery-service.py"
 
