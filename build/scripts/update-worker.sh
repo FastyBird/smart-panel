@@ -96,7 +96,11 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	rm -f "$TMP_TARBALL"
 
 	# Create the image-install marker in the new version
-	touch "${NEW_VERSION_DIR}/.image-install"
+	touch "${NEW_VERSION_DIR}/.image-install" || {
+		rm -rf "$NEW_VERSION_DIR"
+		update_status "failed" "failed" "Failed to create image-install marker"
+		exit 1
+	}
 
 	# ── Install dependencies ──
 	cd "$NEW_VERSION_DIR"
@@ -117,7 +121,11 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	# Set ownership
-	sudo chown -R smart-panel:smart-panel "$NEW_VERSION_DIR"
+	sudo chown -R smart-panel:smart-panel "$NEW_VERSION_DIR" || {
+		rm -rf "$NEW_VERSION_DIR"
+		update_status "failed" "failed" "Failed to set ownership on ${NEW_VERSION_DIR}"
+		exit 1
+	}
 
 	# ── Stop service ──
 	update_status "stopping" "stopping"
