@@ -847,6 +847,24 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_language_settings_time_format_description => 'Format 12-godzinny lub 24-godzinny.';
 
   @override
+  String get settings_language_settings_number_format_title => 'Number Format';
+
+  @override
+  String get settings_language_settings_number_format_description => 'How numbers are displayed (thousands and decimal separators).';
+
+  @override
+  String get number_format_comma_dot => '1,234.56';
+
+  @override
+  String get number_format_dot_comma => '1.234,56';
+
+  @override
+  String get number_format_space_comma => '1 234,56';
+
+  @override
+  String get number_format_none => '1234.56';
+
+  @override
   String get settings_display_settings_title => 'Ustawienia wyświetlacza';
 
   @override

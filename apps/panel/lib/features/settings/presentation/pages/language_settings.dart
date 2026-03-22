@@ -34,6 +34,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 	String? _timezone;
 	Language _language = Language.english;
 	TimeFormat _timeFormat = TimeFormat.twentyFourHour;
+	NumberFormatSetting _numberFormat = NumberFormatSetting.commaDot;
 
 	@override
 	void initState() {
@@ -67,6 +68,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				_timezone = config.timezone;
 				_language = config.language;
 				_timeFormat = config.timeFormat;
+				_numberFormat = config.numberFormat;
 			});
 		}
 	}
@@ -228,6 +230,46 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 						value: _timeFormat == TimeFormat.twelveHour
 								? localizations.time_format_12h
 								: localizations.time_format_24h,
+					),
+				),
+			),
+			SettingsCard(
+				icon: MdiIcons.numeric,
+				iconColor: infoColor,
+				iconBgColor: infoBg,
+				label: localizations.settings_language_settings_number_format_title,
+				description: localizations.settings_language_settings_number_format_description,
+				trailing: GestureDetector(
+					onTap: () async {
+						final result = await showSettingsSelectionDialog<String>(
+							context: context,
+							title: localizations.settings_language_settings_number_format_title,
+							currentValue: _numberFormat.value,
+							options: [
+								SelectionOption(
+									value: NumberFormatSetting.commaDot.value,
+									label: localizations.number_format_comma_dot,
+								),
+								SelectionOption(
+									value: NumberFormatSetting.dotComma.value,
+									label: localizations.number_format_dot_comma,
+								),
+								SelectionOption(
+									value: NumberFormatSetting.spaceComma.value,
+									label: localizations.number_format_space_comma,
+								),
+								SelectionOption(
+									value: NumberFormatSetting.none.value,
+									label: localizations.number_format_none,
+								),
+							],
+						);
+						if (result != null && context.mounted) {
+							_handleNumberFormatChange(context, result);
+						}
+					},
+					child: SettingsDropdownValue(
+						value: _getNumberFormatLabel(localizations),
 					),
 				),
 			),
@@ -398,6 +440,90 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		);
 	}
 
+	String _getNumberFormatLabel(AppLocalizations localizations) {
+		switch (_numberFormat) {
+			case NumberFormatSetting.commaDot:
+				return localizations.number_format_comma_dot;
+			case NumberFormatSetting.dotComma:
+				return localizations.number_format_dot_comma;
+			case NumberFormatSetting.spaceComma:
+				return localizations.number_format_space_comma;
+			case NumberFormatSetting.none:
+				return localizations.number_format_none;
+		}
+	}
+
+	Future<void> _handleNumberFormatChange(
+		BuildContext context,
+		String? value,
+	) async {
+		if (value == null) return;
+
+		final format = NumberFormatSetting.fromValue(value);
+
+		if (format == null) return;
+
+		HapticFeedback.lightImpact();
+
+		final NumberFormatSetting backup = _numberFormat;
+
+		setState(() {
+			_numberFormat = format;
+		});
+
+		final success = await _updateNumberFormat(_numberFormat);
+
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
+
+				if (!context.mounted) return;
+
+				if (!success) {
+					setState(() {
+						_numberFormat = backup;
+					});
+
+					Toast.showError(
+						context,
+						message: AppLocalizations.of(context)!.settings_save_failed,
+					);
+				}
+			},
+		);
+	}
+
+	Future<bool> _updateNumberFormat(NumberFormatSetting format) async {
+		var current = _repository.data;
+		if (current == null) {
+			try {
+				await _repository.fetchConfiguration();
+				current = _repository.data;
+				if (current == null) {
+					return false;
+				}
+			} catch (e) {
+				return false;
+			}
+		}
+
+		final updateData = <String, dynamic>{
+			'type': 'system-module',
+			'language': current.language.value,
+			'timezone': current.timezone,
+			'time_format': current.timeFormat.value,
+			'number_format': format.value,
+		};
+
+		try {
+			return await _repository.updateConfiguration(updateData);
+		} catch (e) {
+			return false;
+		}
+	}
+
 	Future<bool> _updateLanguage(Language language) async {
 		var current = _repository.data;
 		if (current == null) {
@@ -417,6 +543,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': language.value,
 			'timezone': current.timezone,
 			'time_format': current.timeFormat.value,
+			'number_format': current.numberFormat.value,
 		};
 
 		try {
@@ -447,6 +574,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': current.language.value,
 			'timezone': timezone,
 			'time_format': current.timeFormat.value,
+			'number_format': current.numberFormat.value,
 		};
 
 		return await _repository.updateConfiguration(updateData);
@@ -471,6 +599,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': current.language.value,
 			'timezone': current.timezone,
 			'time_format': format.value,
+			'number_format': current.numberFormat.value,
 		};
 
 		return await _repository.updateConfiguration(updateData);

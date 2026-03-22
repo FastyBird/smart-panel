@@ -1531,6 +1531,18 @@ abstract class AppLocalizations {
   /// **'12-hour or 24-hour clock.'**
   String get settings_language_settings_time_format_description;
 
+  String get settings_language_settings_number_format_title;
+
+  String get settings_language_settings_number_format_description;
+
+  String get number_format_comma_dot;
+
+  String get number_format_dot_comma;
+
+  String get number_format_space_comma;
+
+  String get number_format_none;
+
   /// Title for the Display Settings section.
   ///
   /// In en, this message translates to:
