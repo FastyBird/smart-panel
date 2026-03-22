@@ -114,8 +114,15 @@ describe('UpdateService', () => {
 			expect(service.getInstalledVersions()).toEqual([]);
 		});
 
-		it('should filter out non-version entries', () => {
-			(readdirSync as jest.Mock).mockReturnValue(['current', 'rebuild-native.sh', 'first-boot.sh', 'v1.0.0']);
+		it('should filter out non-version entries including v-prefixed non-semver dirs', () => {
+			(readdirSync as jest.Mock).mockReturnValue([
+				'current',
+				'rebuild-native.sh',
+				'first-boot.sh',
+				'vars',
+				'vendor',
+				'v1.0.0',
+			]);
 
 			const versions = service.getInstalledVersions();
 

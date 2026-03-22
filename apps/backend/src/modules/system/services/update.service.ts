@@ -132,11 +132,12 @@ export class UpdateService {
 
 	/**
 	 * List installed versions in /opt/smart-panel/v*
+	 * Only includes directories matching semver pattern (e.g. v1.0.0, v1.2.3-beta.1)
 	 */
 	getInstalledVersions(): string[] {
 		try {
 			return readdirSync(UpdateService.IMAGE_BASE_DIR)
-				.filter((entry) => entry.startsWith('v'))
+				.filter((entry) => /^v\d+\.\d+\.\d+/.test(entry))
 				.map((entry) => entry.replace(/^v/, ''))
 				.sort((a, b) => compareSemver(a, b));
 		} catch {
