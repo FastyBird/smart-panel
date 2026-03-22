@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Smart Panel
+Description=FastyBird Smart Panel boot splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/smart-panel
+ScriptFile=/usr/share/plymouth/themes/smart-panel/smart-panel.script

@@ -292,6 +292,35 @@ if [ -f /boot/firmware/config.txt ]; then
 	fi
 fi
 
+# ──────────────────────────────────────────────────────────────
+# Plymouth boot splash (hides boot console text)
+# ──────────────────────────────────────────────────────────────
+if [ -d /tmp/smart-panel-config/plymouth ]; then
+	THEME_DIR="/usr/share/plymouth/themes/smart-panel"
+	mkdir -p "${THEME_DIR}"
+	cp /tmp/smart-panel-config/plymouth/* "${THEME_DIR}/"
+
+	# Set as default theme
+	if command -v plymouth-set-default-theme > /dev/null 2>&1; then
+		plymouth-set-default-theme smart-panel
+	else
+		# Manual fallback if plymouth-set-default-theme not available in chroot
+		mkdir -p /etc/plymouth
+		echo "[Daemon]" > /etc/plymouth/plymouthd.conf
+		echo "Theme=smart-panel" >> /etc/plymouth/plymouthd.conf
+	fi
+
+	# Add quiet splash to kernel cmdline
+	CMDLINE="/boot/firmware/cmdline.txt"
+	if [ -f "${CMDLINE}" ]; then
+		if ! grep -q "splash" "${CMDLINE}"; then
+			sed -i 's/$/ quiet splash plymouth.ignore-serial-consoles/' "${CMDLINE}"
+		fi
+	fi
+
+	echo "Plymouth boot splash configured"
+fi
+
 # Clean up temp files
 rm -rf /tmp/smart-panel-config
 

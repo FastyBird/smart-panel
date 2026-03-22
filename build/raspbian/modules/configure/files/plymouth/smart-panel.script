@@ -1,0 +1,37 @@
+// FastyBird Smart Panel Plymouth boot splash
+// Displays a static splash image covering the full screen
+
+splash = Image("splash.png");
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+image_width = splash.GetWidth();
+image_height = splash.GetHeight();
+
+// Scale to cover the screen
+scale_x = screen_width / image_width;
+scale_y = screen_height / image_height;
+scale = Math.Max(scale_x, scale_y);
+
+scaled = splash.Scale(image_width * scale, image_height * scale);
+
+sprite = Sprite(scaled);
+sprite.SetX((screen_width - image_width * scale) / 2);
+sprite.SetY((screen_height - image_height * scale) / 2);
+sprite.SetZ(0);
+
+// Fill background with primary color in case image doesn't cover
+Window.SetBackgroundTopColor(0.85, 0.14, 0.06);
+Window.SetBackgroundBottomColor(0.85, 0.14, 0.06);
+
+// Hide all text messages (boot log, password prompts, etc.)
+fun message_callback(text) {
+}
+Plymouth.SetMessageFunction(message_callback);
+
+fun display_normal_callback() {
+}
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+fun display_password_callback(prompt, bullets) {
+}
+Plymouth.SetDisplayPasswordFunction(display_password_callback);

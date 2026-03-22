@@ -20,6 +20,9 @@ cp "${STAGE_DIR}/files/environment" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-display.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/build-flutter-pi.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
+# Copy Plymouth boot splash theme
+cp -r "${STAGE_DIR}/files/plymouth" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+
 # Write variant marker so the chroot script knows which variant to configure.
 # The variant file is written into the stage's files/ directory by build.sh
 # before pi-gen starts, so it survives the Docker boundary.
