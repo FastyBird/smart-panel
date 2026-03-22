@@ -1,8 +1,8 @@
 [Unit]
 Description=FastyBird Smart Panel Display (flutter-pi)
 Documentation=https://smart-panel.fastybird.com
-After=network-online.target
-Wants=network-online.target
+After=network-online.target smart-panel-discovery.service
+Wants=network-online.target smart-panel-discovery.service
 
 [Service]
 Type=simple

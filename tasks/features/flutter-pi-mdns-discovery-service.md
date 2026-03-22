@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: small
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -53,16 +53,16 @@ Panel app (flutter-pi)
 
 ## 4. Acceptance criteria
 
-- [ ] Discovery service listens on `localhost:3001`
-- [ ] `GET /discover` returns JSON array of backends: `[{"name": "...", "host": "...", "port": 3000, "api": "/api/v1", "version": "..."}]`
-- [ ] `GET /health` returns `{"status": "ok"}` for monitoring
-- [ ] Service uses `avahi-browse -rpt _fastybird-panel._tcp` with 5-second timeout
-- [ ] Service starts before `smart-panel-display.service`
-- [ ] Panel app's `MdnsDiscoveryService` tries bonsoir first, falls back to `http://localhost:3001/discover`
-- [ ] Display-only image includes the service
-- [ ] AIO image includes the service (harmless, consistent)
-- [ ] Works when avahi-daemon is running
-- [ ] Returns empty array gracefully when no backends found or avahi not available
+- [x] Discovery service listens on `localhost:3001`
+- [x] `GET /discover` returns JSON array of backends: `[{"name": "...", "host": "...", "port": 3000, "api": "/api/v1", "version": "..."}]`
+- [x] `GET /health` returns `{"status": "ok"}` for monitoring
+- [x] Service uses `avahi-browse -rpt _fastybird-panel._tcp` with 5-second timeout
+- [x] Service starts before `smart-panel-display.service`
+- [x] Panel app's `MdnsDiscoveryService` tries bonsoir first, falls back to `http://localhost:3001/discover`
+- [x] Display-only image includes the service
+- [x] AIO image includes the service (harmless, consistent)
+- [x] Works when avahi-daemon is running
+- [x] Returns empty array gracefully when no backends found or avahi not available
 
 ## 5. Example scenarios
 

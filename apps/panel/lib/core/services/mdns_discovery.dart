@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bonsoir/bonsoir.dart';
@@ -13,6 +14,9 @@ class MdnsDiscoveryService {
 
   /// Default discovery timeout in milliseconds
   static const int defaultDiscoveryTimeoutMs = 10000;
+
+  /// Local discovery proxy URL (for flutter-pi where bonsoir doesn't work)
+  static const String discoveryProxyUrl = 'http://localhost:3001/discover';
 
   BonsoirDiscovery? _discovery;
   StreamSubscription<BonsoirDiscoveryEvent>? _subscription;
@@ -230,7 +234,12 @@ class MdnsDiscoveryService {
         );
       }
 
-      // If no backends found, try fallback
+      // If no backends found via bonsoir, try local discovery proxy (flutter-pi)
+      if (_discoveredBackends.isEmpty) {
+        await _tryDiscoveryProxy(onBackendFound);
+      }
+
+      // If still no backends found, try env-var fallback
       if (_discoveredBackends.isEmpty) {
         final fallback = _getFallbackBackend();
         if (fallback != null) {
@@ -251,7 +260,13 @@ class MdnsDiscoveryService {
       }
       await stop();
 
-      // If discovery failed, try fallback
+      // Bonsoir failed (expected on flutter-pi) — try discovery proxy first
+      await _tryDiscoveryProxy(onBackendFound);
+      if (_discoveredBackends.isNotEmpty) {
+        return _discoveredBackends;
+      }
+
+      // If discovery proxy also failed, try env-var fallback
       final fallback = _getFallbackBackend();
       if (fallback != null) {
         if (kDebugMode) {
@@ -289,6 +304,71 @@ class MdnsDiscoveryService {
       if (kDebugMode) {
         debugPrint('[MDNS DISCOVERY] Error stopping discovery: $e');
       }
+    }
+  }
+
+  /// Try the local discovery proxy running on localhost:3001.
+  /// This is used on flutter-pi where bonsoir can't work due to missing
+  /// GTK/D-Bus infrastructure. The proxy wraps avahi-browse.
+  Future<void> _tryDiscoveryProxy(
+    void Function(DiscoveredBackend)? onBackendFound,
+  ) async {
+    try {
+      if (kDebugMode) {
+        debugPrint(
+          '[MDNS DISCOVERY] Trying local discovery proxy at $discoveryProxyUrl',
+        );
+      }
+
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 3);
+
+      try {
+        await Future(() async {
+          final request = await client.getUrl(Uri.parse(discoveryProxyUrl));
+          final response = await request.close();
+
+          if (response.statusCode == 200) {
+            final body = await response.transform(utf8.decoder).join();
+            final List<dynamic> data = jsonDecode(body) as List<dynamic>;
+            for (final item in data) {
+              final host = item['host'] as String?;
+              if (host == null || host.isEmpty) continue;
+
+              final backend = DiscoveredBackend(
+                name: item['name'] as String? ?? 'Unknown',
+                host: host,
+                port: item['port'] as int? ?? 3000,
+                apiPath: item['api'] as String? ?? '/api/v1',
+                version: item['version'] as String?,
+                isSecure: false,
+              );
+
+              if (!_discoveredBackends.contains(backend)) {
+                _discoveredBackends.add(backend);
+
+                if (kDebugMode) {
+                  debugPrint(
+                    '[MDNS DISCOVERY] Backend found via discovery proxy: '
+                    '${backend.name} at ${backend.displayAddress}',
+                  );
+                }
+
+                onBackendFound?.call(backend);
+              }
+            }
+          }
+        }).timeout(const Duration(seconds: 6));
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[MDNS DISCOVERY] Discovery proxy not available: $e',
+        );
+      }
+      // Discovery proxy not available — continue to other fallbacks
     }
   }
 

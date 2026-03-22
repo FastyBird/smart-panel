@@ -93,8 +93,8 @@ if [ "${HAS_DISPLAY}" = true ]; then
 		# time via --dart-define in build.sh — runtime env vars have no effect
 		# on Dart's String.fromEnvironment which is compile-time only.
 		sed \
-			-e 's|^After=.*|After=network-online.target smart-panel.service|' \
-			-e 's|^Wants=.*|Wants=network-online.target smart-panel.service|' \
+			-e 's|^After=.*|After=network-online.target smart-panel.service smart-panel-discovery.service|' \
+			-e 's|^Wants=.*|Wants=network-online.target smart-panel.service smart-panel-discovery.service|' \
 			/tmp/smart-panel-config/smart-panel-display.service \
 			> /etc/systemd/system/smart-panel-display.service
 	else
@@ -105,8 +105,13 @@ if [ "${HAS_DISPLAY}" = true ]; then
 	cp /tmp/smart-panel-config/build-flutter-pi.sh "${DISPLAY_DIR}/build-flutter-pi.sh"
 	chmod +x "${DISPLAY_DIR}/build-flutter-pi.sh"
 
-	# Enable display service
+	# Install discovery proxy (wraps avahi-browse for flutter-pi)
+	cp /tmp/smart-panel-config/smart-panel-discovery.py "${DISPLAY_DIR}/discovery-service.py"
+	cp /tmp/smart-panel-config/smart-panel-discovery.service /etc/systemd/system/
+
+	# Enable display and discovery services
 	systemctl enable smart-panel-display.service
+	systemctl enable smart-panel-discovery.service
 
 	echo "Display services configured"
 fi
