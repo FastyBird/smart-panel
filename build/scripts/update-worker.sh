@@ -63,11 +63,12 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	# Guard: refuse to overwrite the currently running version
-	RESOLVED_PREV=$(realpath "$PREVIOUS_TARGET" 2>/dev/null || true)
-	RESOLVED_NEW=$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)
+	# Resolve relative to IMAGE_BASE_DIR since PREVIOUS_TARGET may be relative
+	RESOLVED_PREV=$(cd "$IMAGE_BASE_DIR" && realpath "$PREVIOUS_TARGET" 2>/dev/null || true)
+	RESOLVED_NEW=$(cd "$IMAGE_BASE_DIR" && realpath "$NEW_VERSION_DIR" 2>/dev/null || true)
 
 	if [ -n "$PREVIOUS_TARGET" ] && [ -n "$RESOLVED_PREV" ] && [ -n "$RESOLVED_NEW" ] && [ "$RESOLVED_PREV" = "$RESOLVED_NEW" ]; then
-		update_status "failed" "failed" "Target version v${VERSION} is already the active version"
+		update_status "failed" "failed" "Target version v${CLEAN_VERSION} is already the active version"
 		exit 1
 	fi
 
@@ -79,7 +80,7 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		exit 1
 	fi
 
-	TMP_TARBALL="/tmp/smart-panel-backend-v${VERSION}.tar.gz"
+	TMP_TARBALL="/tmp/smart-panel-backend-v${CLEAN_VERSION}.tar.gz"
 
 	curl -fSL -o "$TMP_TARBALL" "$DOWNLOAD_URL" 2>&1 || {
 		update_status "failed" "failed" "Download failed from ${DOWNLOAD_URL}"

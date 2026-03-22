@@ -192,7 +192,7 @@ export class UpdateServerCommand extends CommandRunner {
 			const resolvedNew = execFileSync('readlink', ['-f', newVersionDir], { encoding: 'utf-8' }).trim();
 
 			if (currentTarget === resolvedNew) {
-				printError(`Target version v${targetVersion} is already the active version`);
+				printError(`Target version v${cleanVersion} is already the active version`);
 				process.exit(1);
 			}
 		} catch {
@@ -350,7 +350,7 @@ export class UpdateServerCommand extends CommandRunner {
 
 		try {
 			execFileSync('ln', ['-sfn', newVersionDir, currentLink], { stdio: 'pipe' });
-			printSuccess(`Symlink updated: current -> v${targetVersion}`);
+			printSuccess(`Symlink updated: current -> v${cleanVersion}`);
 		} catch (error) {
 			const err = error as Error;
 
