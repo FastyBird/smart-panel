@@ -109,6 +109,10 @@ class _CardSliderState extends State<CardSlider> {
   /// Displayed value to prevent jumps during state changes.
   double _displayValue = 0.0;
 
+  /// Whether the user is actively dragging the slider.
+  /// When true, external value updates are ignored to prevent jank.
+  bool _isDragging = false;
+
   /// Grace period after enabled-state changes to ignore value fluctuations.
   DateTime? _enabledStateChangeTime;
   static const _gracePeriod = Duration(milliseconds: 300);
@@ -124,6 +128,9 @@ class _CardSliderState extends State<CardSlider> {
   @override
   void didUpdateWidget(CardSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Never overwrite display value while user is dragging
+    if (_isDragging) return;
 
     if (oldWidget.enabled != widget.enabled) {
       _enabledStateChangeTime = DateTime.now();
@@ -205,7 +212,16 @@ class _CardSliderState extends State<CardSlider> {
       showSteps: widget.showSteps,
       enabled: widget.enabled,
       discrete: widget.discrete,
-      onChanged: widget.onChanged,
+      onChanged: widget.onChanged != null
+          ? (v) {
+              _isDragging = true;
+              _displayValue = v.clamp(0.0, 1.0);
+              widget.onChanged!(v);
+            }
+          : null,
+      onChangeEnd: (_) {
+        _isDragging = false;
+      },
     );
 
     if (widget.leading != null || widget.trailing != null) {

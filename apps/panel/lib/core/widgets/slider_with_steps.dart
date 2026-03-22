@@ -63,11 +63,15 @@ class SliderWithSteps extends StatelessWidget {
   /// instead of a [ThemeColors] enum value.
   final Color? activeColor;
 
+  /// Called when the user is done selecting a new value for the slider.
+  final ValueChanged<double>? onChangeEnd;
+
   const SliderWithSteps({
     super.key,
     required this.value,
     this.themeColor = ThemeColors.primary,
     this.onChanged,
+    this.onChangeEnd,
     this.steps = const ['0%', '25%', '50%', '75%', '100%'],
     this.enabled = true,
     this.discrete = false,
@@ -162,6 +166,7 @@ class SliderWithSteps extends StatelessWidget {
           value: clampedValue,
           divisions: divisions,
           onChanged: enabled ? onChanged : null,
+          onChangeEnd: enabled ? onChangeEnd : null,
         ),
       ),
     );

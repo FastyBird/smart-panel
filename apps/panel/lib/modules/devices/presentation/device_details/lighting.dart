@@ -64,6 +64,10 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
+  /// Whether the user is actively dragging a slider.
+  /// Suppresses full-screen rebuilds from external state updates.
+  bool _isDragging = false;
+
   /// Notifier for channels bottom sheet; notify to refresh list when channel state changes.
   late final ValueNotifier<int> _channelListVersion;
 
@@ -151,7 +155,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted) {
+    if (mounted && !_isDragging) {
       setState(() {});
     }
   }
@@ -221,6 +225,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
+    _isDragging = true;
+
     final prop = controller.channel.brightnessProp;
     if (prop != null) {
       _deviceControlStateService?.setPending(
@@ -238,6 +244,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       const Duration(milliseconds: 150),
       () {
         if (!mounted) return;
+
+        _isDragging = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -260,6 +268,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
+    _isDragging = true;
+
     final prop = controller.channel.temperatureProp;
     if (prop != null) {
       _deviceControlStateService?.setPending(
@@ -277,6 +287,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       const Duration(milliseconds: 150),
       () {
         if (!mounted) return;
+
+        _isDragging = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -348,6 +360,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       }
     }
 
+    _isDragging = true;
+
     if (colorProperties.isNotEmpty) {
       _deviceControlStateService?.setGroupPending(
         deviceId,
@@ -363,6 +377,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       const Duration(milliseconds: 150),
       () {
         if (!mounted) return;
+
+        _isDragging = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -384,6 +400,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
+    _isDragging = true;
+
     final prop = controller.channel.colorWhiteProp;
     if (prop != null) {
       _deviceControlStateService?.setPending(
@@ -401,6 +419,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       const Duration(milliseconds: 150),
       () {
         if (!mounted) return;
+
+        _isDragging = false;
 
         if (!controller.isOn) {
           controller.setPower(true);

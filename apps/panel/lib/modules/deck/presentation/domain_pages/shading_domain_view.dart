@@ -171,6 +171,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Timer? _heroPositionDebounceTimer;
 
+  /// True while the user is dragging a slider; suppresses listener-driven
+  /// [setState] calls so that the optimistic UI value is not overwritten by
+  /// stale backend data arriving mid-drag.
+  bool _isDragging = false;
+
   /// Per-role pending position for landscape tile icon tap optimistic UI.
   final Map<CoversTargetRole, int> _roleTilePendingPositions = {};
   final Map<CoversTargetRole, Timer> _roleTilePendingTimers = {};
@@ -301,7 +306,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   void _onControlStateChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     setState(() {});
   }
 
@@ -637,7 +642,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   void _onDataChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -1335,6 +1340,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   void _onHeroPositionChanged(CoversTargetRole role, int position) {
+    _isDragging = true;
     _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
     _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
     _modeOverriddenByManualChange = true;
@@ -1342,7 +1348,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     _heroPositionDebounceTimer?.cancel();
     _heroPositionDebounceTimer = Timer(
       const Duration(milliseconds: ShadingConstants.sliderDebounceMs),
-      () => _setRolePosition(role, position),
+      () {
+        _isDragging = false;
+        _setRolePosition(role, position);
+      },
     );
     setState(() {});
   }

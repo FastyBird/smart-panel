@@ -104,6 +104,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Timer? _setpointDebounceTimer;
   static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -156,9 +158,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -192,7 +194,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_isDragging) setState(() {});
   }
 
   HeatingUnitDeviceView get _device {
@@ -305,9 +307,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     );
     setState(() {});
 
+    _isDragging = true;
+
     _setpointDebounceTimer?.cancel();
 
     _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
       controller.setTemperature(clampedValue);
     });

@@ -56,6 +56,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -103,7 +105,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (mounted) {
+    if (mounted && !_isDragging) {
       _checkConvergence();
       _initController(); // Reinitialize controller with updated device
       setState(() {});
@@ -201,7 +203,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted) {
+    if (mounted && !_isDragging) {
       setState(() {});
     }
   }
@@ -255,12 +257,15 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     // Use controller for optimistic UI with error handling
     _speedDebounceTimer = Timer(_speedDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
       controller.fan.setSpeed(actualSpeed);
       setState(() {});

@@ -107,6 +107,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -157,9 +159,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -297,7 +299,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_isDragging) setState(() {});
   }
 
   // --------------------------------------------------------------------------
@@ -1587,11 +1589,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _mistLevelDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
       // Controller handles API call, settling, and error handling
       controller.humidifier.setMistLevel(clampedLevel);
@@ -1838,11 +1843,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _speedDebounceTimer = Timer(_speedDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
       // Controller handles API call, settling, and error handling
       controller.fan?.setSpeed(actualSpeed);

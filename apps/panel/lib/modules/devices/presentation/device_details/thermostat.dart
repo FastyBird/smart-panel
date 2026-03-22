@@ -109,6 +109,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Timer? _setpointDebounceTimer;
   static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -160,9 +162,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -229,7 +231,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_isDragging) setState(() {});
   }
 
   ThermostatDeviceView get _device {
@@ -532,11 +534,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
 
       // Use controller method based on current mode

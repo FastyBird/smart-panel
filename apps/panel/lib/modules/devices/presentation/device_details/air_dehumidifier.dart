@@ -103,6 +103,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -152,9 +154,9 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -269,7 +271,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_isDragging) setState(() {});
   }
 
   // --------------------------------------------------------------------------
@@ -1612,11 +1614,14 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _speedDebounceTimer = Timer(_speedDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
 
       controller.fan?.setSpeed(actualSpeed);

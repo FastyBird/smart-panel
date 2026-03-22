@@ -119,6 +119,8 @@ class _AirConditionerDeviceDetailState
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
+  bool _isDragging = false;
+
   // Grace period after mode changes to prevent control state listener from
   // causing flickering in CardSlider enabled state
   DateTime? _modeChangeTime;
@@ -167,9 +169,9 @@ class _AirConditionerDeviceDetailState
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -273,7 +275,7 @@ class _AirConditionerDeviceDetailState
   }
 
   void _onControlStateChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
 
     // Skip rebuilds during grace period after mode changes to prevent
     // CardSlider flickering (enabled state depends on _currentMode which
@@ -571,11 +573,14 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Cancel any pending debounce timer
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
 
       // Use appropriate controller method based on current mode
@@ -648,9 +653,12 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
+    _isDragging = true;
+
     // Debounce the API call
     _speedDebounceTimer?.cancel();
     _speedDebounceTimer = Timer(_speedDebounceDuration, () {
+      _isDragging = false;
       if (!mounted) return;
       // Controller handles API call, settling, and error handling
       controller.fan.setSpeed(actualSpeed);
