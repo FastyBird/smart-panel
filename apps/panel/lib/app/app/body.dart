@@ -52,7 +52,6 @@ class _AppBodyState extends State<AppBody> {
   late bool _hasDarkMode = _localPrefs.darkMode;
   late Language _language = _localPrefs.language;
 
-
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
 
@@ -256,13 +255,12 @@ class _AppBodyState extends State<AppBody> {
     final parts = _language.value.split('_');
     Intl.defaultLocale = Locale(parts[0], parts[1]).toLanguageTag();
 
-    // Rebuild deck when language changes
+    // Rebuild deck titles when the language changes
     if (languageChanged && _deckService.isInitialized) {
       final display = _displayRepository.display;
       if (display != null) {
         _deckService.updateDisplay(display);
       }
-
     }
 
     _inactivityOverlayProvider.updateConfig(

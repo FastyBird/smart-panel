@@ -161,25 +161,6 @@ class ConfigRepositoryManager {
     }
   }
 
-  /// Update a stored module repository's configuration via dynamic dispatch.
-  /// Does NOT create a new repo or use type-checked getModuleRepository —
-  /// updates the existing instance regardless of its generic type parameter.
-  /// This is safe because insertConfiguration is defined on the base class.
-  void updateModuleConfiguration(String moduleName, Map<String, dynamic> data) {
-    final stored = _moduleRepositories[moduleName];
-    if (stored != null) {
-      (stored as dynamic).insertConfiguration(data);
-    }
-  }
-
-  /// Update a stored plugin repository's configuration via dynamic dispatch.
-  void updatePluginConfiguration(String pluginName, Map<String, dynamic> data) {
-    final stored = _pluginRepositories[pluginName];
-    if (stored != null) {
-      (stored as dynamic).insertConfiguration(data);
-    }
-  }
-
   /// Fetch specific module configuration
   Future<void> fetchModuleConfiguration(String moduleName) async {
     final repo = getModuleRepository(moduleName);
