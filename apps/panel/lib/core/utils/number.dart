@@ -27,48 +27,45 @@ class NumberUtils {
     }
   }
 
-  /// Resolves the effective locale for number formatting.
+  /// Resolves the effective locale and grouping behavior in a single pass.
   ///
   /// Priority: explicit [format] → explicit [locale] → resolved display units → app locale.
-  static String _resolveLocale({String? locale, NumberFormatSetting? format}) {
-    if (format != null) return _localeForFormat(format);
-    if (locale != null) return locale;
-
-    try {
-      final units = DisplayUnits.fromLocator();
-      return _localeForFormat(units.numberFormat);
-    } catch (_) {
-      return Intl.getCurrentLocale();
+  static ({String locale, bool noGrouping}) _resolveFormatting(
+      {String? locale, NumberFormatSetting? format}) {
+    if (format != null) {
+      return (
+        locale: _localeForFormat(format),
+        noGrouping: format == NumberFormatSetting.none,
+      );
     }
-  }
 
-  /// Whether the resolved format disables grouping separators.
-  static bool _isNoGrouping({String? locale, NumberFormatSetting? format}) {
-    if (format == NumberFormatSetting.none) return true;
-    if (format != null) return false;
-    if (locale != null) return false;
+    if (locale != null) {
+      return (locale: locale, noGrouping: false);
+    }
 
     try {
       final units = DisplayUnits.fromLocator();
-      return units.numberFormat == NumberFormatSetting.none;
+      return (
+        locale: _localeForFormat(units.numberFormat),
+        noGrouping: units.numberFormat == NumberFormatSetting.none,
+      );
     } catch (_) {
-      return false;
+      return (locale: Intl.getCurrentLocale(), noGrouping: false);
     }
   }
 
   /// Formats a double with the given decimal places and locale.
   static String formatNumber(double value,
       [int decimalPlaces = 2, String? locale, NumberFormatSetting? format]) {
-    final effectiveLocale = _resolveLocale(locale: locale, format: format);
-    final noGrouping = _isNoGrouping(locale: locale, format: format);
+    final fmt = _resolveFormatting(locale: locale, format: format);
 
-    String pattern = noGrouping ? '###0' : '#,##0';
+    String pattern = fmt.noGrouping ? '###0' : '#,##0';
 
     if (decimalPlaces > 0) {
       pattern += '.${'0' * decimalPlaces}';
     }
 
-    return NumberFormat(pattern, effectiveLocale).format(value);
+    return NumberFormat(pattern, fmt.locale).format(value);
   }
 
   /// Formats an integer with thousand separators.
@@ -77,12 +74,11 @@ class NumberUtils {
   /// Example (space_comma): 59955 → "59 955"
   static String formatInteger(int value,
       [String? locale, NumberFormatSetting? format]) {
-    final effectiveLocale = _resolveLocale(locale: locale, format: format);
-    final noGrouping = _isNoGrouping(locale: locale, format: format);
+    final fmt = _resolveFormatting(locale: locale, format: format);
 
-    String pattern = noGrouping ? '###0' : '#,##0';
+    String pattern = fmt.noGrouping ? '###0' : '#,##0';
 
-    return NumberFormat(pattern, effectiveLocale).format(value);
+    return NumberFormat(pattern, fmt.locale).format(value);
   }
 
   /// Formats a double with thousand separators and specified decimal places.
@@ -101,7 +97,7 @@ class NumberUtils {
   /// Example (space_comma): formatUnavailableNumber(2) → "--,-"
   static String formatUnavailableNumber(
       [int decimalPlaces = 2, String? locale, NumberFormatSetting? format]) {
-    final effectiveLocale = _resolveLocale(locale: locale, format: format);
+    final effectiveLocale = _resolveFormatting(locale: locale, format: format).locale;
 
     final separator =
         NumberFormat.decimalPattern(effectiveLocale).symbols.DECIMAL_SEP;
