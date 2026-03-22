@@ -82,7 +82,7 @@ def discover_backends():
                 'host': host,
                 'port': int(port),
                 'api': txt.get('api', '/api/v1'),
-                'version': txt.get('version', ''),
+                'version': txt.get('version') or None,
             })
 
         return backends
