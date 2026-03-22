@@ -315,7 +315,7 @@ export class RaspberryPlatform extends Platform {
 			try {
 				this.logger.log(`[SYSTEM] Trying ${action} via ${strategy.label}...`);
 
-				await this.executeCommand(strategy.command);
+				await this.executeCommand(strategy.command, true);
 
 				return;
 			} catch (error) {
@@ -326,11 +326,17 @@ export class RaspberryPlatform extends Platform {
 		throw new PlatformException(`All ${action} strategies failed`);
 	}
 
-	private executeCommand(command: string): Promise<void> {
+	private executeCommand(command: string, silent = false): Promise<void> {
 		return new Promise((resolve, reject) => {
 			exec(command, (error, _stdout, stderr) => {
 				if (error) {
-					reject(new Error(stderr.trim() || error.message));
+					const message = stderr.trim() || error.message;
+
+					if (!silent) {
+						this.logger.error(`[EXECUTE] Command failed: ${message}`);
+					}
+
+					reject(new Error(message));
 				} else {
 					resolve();
 				}
