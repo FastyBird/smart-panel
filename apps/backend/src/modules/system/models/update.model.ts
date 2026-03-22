@@ -7,6 +7,14 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
  */
 @ApiSchema({ name: 'SystemModuleDataUpdateInfo' })
 export class UpdateInfoModel {
+	@ApiProperty({
+		description: 'How the application was installed',
+		enum: ['image', 'npm'],
+		example: 'npm',
+	})
+	@Expose({ name: 'install_type' })
+	installType: 'image' | 'npm';
+
 	@ApiProperty({ description: 'Current installed version', type: 'string', example: '1.2.0' })
 	@Expose({ name: 'current_version' })
 	currentVersion: string;

@@ -54,6 +54,7 @@ export class UpdateController {
 			const updateStatus = this.updateService.getStatus();
 
 			const data = toInstance(UpdateInfoModel, {
+				installType: this.updateService.getInstallType(),
 				currentVersion: info.current,
 				latestVersion: info.latest,
 				updateAvailable: info.updateAvailable,
@@ -99,6 +100,7 @@ export class UpdateController {
 			const info = await this.updateService.checkServerUpdate();
 
 			const data = toInstance(UpdateInfoModel, {
+				installType: this.updateService.getInstallType(),
 				currentVersion: info.current,
 				latestVersion: info.latest,
 				updateAvailable: info.updateAvailable,

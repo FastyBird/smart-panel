@@ -2,9 +2,23 @@
 #
 # Install the Smart Panel application
 #
+# Uses a versioned directory layout with a "current" symlink:
+#   /opt/smart-panel/
+#     current -> v1.0.0/          # symlink to active version
+#     v1.0.0/                     # app files for this version
+#       .image-install            # marker file
+#       dist/
+#       node_modules/
+#       static/
+#       ...
+#
 
-APP_INSTALL_DIR="/opt/smart-panel"
+APP_BASE_DIR="/opt/smart-panel"
 DATA_DIR="/var/lib/smart-panel"
+
+# Read the version from package.json
+APP_VERSION=$(node -p "require('/tmp/smart-panel-files/app/package.json').version")
+APP_INSTALL_DIR="${APP_BASE_DIR}/v${APP_VERSION}"
 
 # Create system user
 if ! id -u smart-panel >/dev/null 2>&1; then
@@ -12,6 +26,7 @@ if ! id -u smart-panel >/dev/null 2>&1; then
 fi
 
 # Create directories
+mkdir -p "${APP_BASE_DIR}"
 mkdir -p "${APP_INSTALL_DIR}"
 mkdir -p "${DATA_DIR}/data"
 mkdir -p "${DATA_DIR}/config"
@@ -39,6 +54,9 @@ if [ -d /tmp/smart-panel-files/app/var ]; then
 	cp -r /tmp/smart-panel-files/app/var "${APP_INSTALL_DIR}/var"
 fi
 
+# Create image-install marker file
+touch "${APP_INSTALL_DIR}/.image-install"
+
 # Install production dependencies
 cd "${APP_INSTALL_DIR}"
 pnpm install --prod --ignore-scripts
@@ -48,11 +66,12 @@ pnpm install --prod --ignore-scripts
 # exhausts memory. Native ARM64 compilation on the Pi takes ~30 seconds.
 npm install -g node-gyp
 
-# Create a script for first-boot native module rebuild
-cat > "${APP_INSTALL_DIR}/rebuild-native.sh" << 'REBUILD_SCRIPT'
+# Create a script for first-boot native module rebuild.
+# Accepts an optional APP_DIR argument for use during updates.
+cat > "${APP_BASE_DIR}/rebuild-native.sh" << 'REBUILD_SCRIPT'
 #!/bin/bash
 set -e
-APP_DIR="/opt/smart-panel"
+APP_DIR="${1:-/opt/smart-panel/current}"
 cd "${APP_DIR}"
 
 SQLITE_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
@@ -69,15 +88,17 @@ fi
 
 echo "Native modules ready"
 REBUILD_SCRIPT
-chmod +x "${APP_INSTALL_DIR}/rebuild-native.sh"
+chmod +x "${APP_BASE_DIR}/rebuild-native.sh"
 
-cd "${APP_INSTALL_DIR}"
+# Create the "current" symlink pointing to this version
+ln -sfn "${APP_INSTALL_DIR}" "${APP_BASE_DIR}/current"
 
 # Set ownership
-chown -R smart-panel:smart-panel "${APP_INSTALL_DIR}"
+chown -R smart-panel:smart-panel "${APP_BASE_DIR}"
 chown -R smart-panel:smart-panel "${DATA_DIR}"
 
 # Clean up temp files
 rm -rf /tmp/smart-panel-files
 
-echo "Smart Panel installed to ${APP_INSTALL_DIR}"
+echo "Smart Panel v${APP_VERSION} installed to ${APP_INSTALL_DIR}"
+echo "Symlink: ${APP_BASE_DIR}/current -> v${APP_VERSION}/"

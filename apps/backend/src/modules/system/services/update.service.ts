@@ -1,5 +1,5 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
+import { basename, join } from 'path';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -8,11 +8,19 @@ import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
 import { EventType, SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
+export type InstallType = 'image' | 'npm';
+
 export interface VersionInfo {
 	current: string;
 	latest: string | null;
 	updateAvailable: boolean;
 	updateType: 'patch' | 'minor' | 'major' | null;
+}
+
+export interface ServerReleaseAsset {
+	name: string;
+	downloadUrl: string;
+	size: number;
 }
 
 export interface PanelReleaseAsset {
@@ -67,6 +75,10 @@ export class UpdateService {
 
 	private updateLock = false;
 
+	private static readonly IMAGE_BASE_DIR = '/opt/smart-panel';
+	private static readonly IMAGE_CURRENT_LINK = '/opt/smart-panel/current';
+	private static readonly IMAGE_MARKER_FILE = '.image-install';
+
 	constructor(private readonly eventEmitter: EventEmitter2) {}
 
 	getCurrentVersion(): string {
@@ -79,6 +91,67 @@ export class UpdateService {
 		} catch {
 			return '0.0.0';
 		}
+	}
+
+	/**
+	 * Detect whether the app was installed via the Raspbian image or via npm.
+	 * Image installs have a `.image-install` marker file in the active version directory.
+	 */
+	getInstallType(): InstallType {
+		try {
+			const currentDir = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
+			const markerPath = join(UpdateService.IMAGE_BASE_DIR, currentDir, UpdateService.IMAGE_MARKER_FILE);
+
+			if (existsSync(markerPath)) {
+				return 'image';
+			}
+		} catch {
+			// readlinkSync fails if the path is not a symlink or doesn't exist
+		}
+
+		// Also check absolute path (symlink may resolve to absolute)
+		try {
+			const markerPath = join(UpdateService.IMAGE_CURRENT_LINK, UpdateService.IMAGE_MARKER_FILE);
+
+			if (existsSync(markerPath)) {
+				return 'image';
+			}
+		} catch {
+			// Ignore
+		}
+
+		return 'npm';
+	}
+
+	/**
+	 * List installed versions in /opt/smart-panel/v*
+	 */
+	getInstalledVersions(): string[] {
+		try {
+			return readdirSync(UpdateService.IMAGE_BASE_DIR)
+				.filter((entry) => entry.startsWith('v'))
+				.map((entry) => entry.replace(/^v/, ''))
+				.sort((a, b) => compareSemver(a, b));
+		} catch {
+			return [];
+		}
+	}
+
+	/**
+	 * Get the currently active version directory name (e.g. "v1.0.0")
+	 */
+	getActiveVersionDir(): string | null {
+		try {
+			const target = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
+
+			return basename(target);
+		} catch {
+			return null;
+		}
+	}
+
+	getImageBaseDir(): string {
+		return UpdateService.IMAGE_BASE_DIR;
 	}
 
 	getStatus(): UpdateStatusInfo {
@@ -229,6 +302,55 @@ export class UpdateService {
 				url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
 				publishedAt: null,
 			};
+		}
+	}
+
+	/**
+	 * For image installs, fetch the backend tarball download URL from a GitHub release.
+	 */
+	async fetchServerReleaseAsset(version: string): Promise<ServerReleaseAsset | null> {
+		const cleanVersion = version.replace(/^v/, '');
+		const url = `${this.GITHUB_API_URL}/tags/v${cleanVersion}`;
+
+		try {
+			const response = await fetch(url, {
+				headers: {
+					Accept: 'application/vnd.github.v3+json',
+					'User-Agent': 'FastyBird-SmartPanel',
+				},
+			});
+
+			if (!response.ok) {
+				this.logger.warn(`GitHub API returned ${response.status} for release v${cleanVersion}`);
+
+				return null;
+			}
+
+			const release = (await response.json()) as {
+				tag_name: string;
+				assets: Array<{ name: string; browser_download_url: string; size: number }>;
+			};
+
+			// Look for the backend tarball (e.g., smart-panel-v1.2.0-backend.tar.gz)
+			const backendAsset = release.assets.find((a) => a.name.includes('backend') && a.name.endsWith('.tar.gz'));
+
+			if (!backendAsset) {
+				this.logger.warn(`No backend tarball found in release v${cleanVersion}`);
+
+				return null;
+			}
+
+			return {
+				name: backendAsset.name,
+				downloadUrl: backendAsset.browser_download_url,
+				size: backendAsset.size,
+			};
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to fetch server release asset for v${cleanVersion}: ${err.message}`);
+
+			return null;
 		}
 	}
 

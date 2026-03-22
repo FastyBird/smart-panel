@@ -13,9 +13,17 @@ cp /tmp/smart-panel-config/smart-panel-firstboot.service /etc/systemd/system/
 # Install environment file
 cp /tmp/smart-panel-config/environment /etc/smart-panel/environment
 
-# Install first-boot script
+# Install first-boot script (in base dir, shared across versions)
 cp /tmp/smart-panel-config/first-boot.sh "${APP_INSTALL_DIR}/first-boot.sh"
 chmod +x "${APP_INSTALL_DIR}/first-boot.sh"
+
+# Add sudoers entry for update operations (symlink switch, service restart)
+cat >> /etc/sudoers.d/smart-panel << 'SUDOERS_UPDATE'
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v* /opt/smart-panel/current
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
+SUDOERS_UPDATE
 
 # Create first-boot marker
 touch "${DATA_DIR}/.first-boot"
@@ -41,7 +49,7 @@ exec sudo -u smart-panel /bin/bash -c '
 	set -a
 	. /etc/smart-panel/environment
 	set +a
-	cd /opt/smart-panel
+	cd /opt/smart-panel/current
 	exec node dist/cli.js "$@"
 ' -- "$@"
 CLI_WRAPPER

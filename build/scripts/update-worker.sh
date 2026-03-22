@@ -3,6 +3,9 @@ set -e
 
 VERSION="${1:-${UPDATE_VERSION:-latest}}"
 STATUS_FILE="${STATUS_FILE:-/var/lib/smart-panel/update-status.json}"
+INSTALL_TYPE="${INSTALL_TYPE:-npm}"
+IMAGE_BASE_DIR="${IMAGE_BASE_DIR:-/opt/smart-panel}"
+DOWNLOAD_URL="${DOWNLOAD_URL:-}"
 
 update_status() {
 	local status="$1"
@@ -39,6 +42,151 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+# ──────────────────────────────────────────────────────────────
+# Image-based update (Raspbian image installs)
+# ──────────────────────────────────────────────────────────────
+if [ "$INSTALL_TYPE" = "image" ]; then
+	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${VERSION}"
+	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
+	PREVIOUS_TARGET=""
+
+	# Save the current version for rollback
+	if [ -L "$CURRENT_LINK" ]; then
+		PREVIOUS_TARGET=$(readlink "$CURRENT_LINK")
+	fi
+
+	# ── Download ──
+	update_status "downloading" "downloading"
+
+	if [ -z "$DOWNLOAD_URL" ]; then
+		update_status "failed" "failed" "No download URL provided for image update"
+		exit 1
+	fi
+
+	TMP_TARBALL="/tmp/smart-panel-backend-v${VERSION}.tar.gz"
+
+	curl -fSL -o "$TMP_TARBALL" "$DOWNLOAD_URL" 2>&1 || {
+		update_status "failed" "failed" "Download failed from ${DOWNLOAD_URL}"
+		exit 1
+	}
+
+	# ── Extract ──
+	update_status "installing" "installing"
+
+	mkdir -p "$NEW_VERSION_DIR"
+
+	tar -xzf "$TMP_TARBALL" -C "$NEW_VERSION_DIR" 2>&1 || {
+		rm -rf "$NEW_VERSION_DIR"
+		rm -f "$TMP_TARBALL"
+		update_status "failed" "failed" "Failed to extract update archive"
+		exit 1
+	}
+
+	rm -f "$TMP_TARBALL"
+
+	# Create the image-install marker in the new version
+	touch "${NEW_VERSION_DIR}/.image-install"
+
+	# ── Install dependencies ──
+	cd "$NEW_VERSION_DIR"
+
+	pnpm install --prod --ignore-scripts 2>&1 || {
+		rm -rf "$NEW_VERSION_DIR"
+		update_status "failed" "failed" "pnpm install failed"
+		exit 1
+	}
+
+	# ── Rebuild native modules ──
+	if [ -x "${IMAGE_BASE_DIR}/rebuild-native.sh" ]; then
+		"${IMAGE_BASE_DIR}/rebuild-native.sh" "${NEW_VERSION_DIR}" 2>&1 || {
+			rm -rf "$NEW_VERSION_DIR"
+			update_status "failed" "failed" "Native module rebuild failed"
+			exit 1
+		}
+	fi
+
+	# Set ownership
+	chown -R smart-panel:smart-panel "$NEW_VERSION_DIR"
+
+	# ── Stop service ──
+	update_status "stopping" "stopping"
+	systemctl stop smart-panel 2>/dev/null || true
+
+	# ── Switch symlink (atomic on same filesystem) ──
+	ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
+		# Revert on failure
+		if [ -n "$PREVIOUS_TARGET" ]; then
+			ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+		fi
+		systemctl start smart-panel 2>/dev/null || true
+		update_status "failed" "failed" "Failed to switch version symlink"
+		exit 1
+	}
+
+	# ── Run database migrations ──
+	update_status "migrating" "migrating"
+
+	DATA_DIR="${FB_DATA_DIR:-/var/lib/smart-panel}"
+	ENV_FILE="/etc/smart-panel/environment"
+
+	if [ -f "${NEW_VERSION_DIR}/dist/dataSource.js" ]; then
+		(
+			set -a
+			# shellcheck source=/dev/null
+			[ -f "$ENV_FILE" ] && . "$ENV_FILE"
+			set +a
+			cd "$NEW_VERSION_DIR"
+			node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js
+		) 2>&1 || {
+			# Migration failed — revert symlink, remove failed version
+			update_status "stopping" "stopping"
+			systemctl stop smart-panel 2>/dev/null || true
+
+			if [ -n "$PREVIOUS_TARGET" ]; then
+				ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			fi
+
+			systemctl start smart-panel 2>/dev/null || true
+			rm -rf "$NEW_VERSION_DIR"
+			update_status "failed" "failed" "Database migration failed — reverted to previous version"
+			exit 1
+		}
+	fi
+
+	# ── Start service ──
+	update_status "starting" "starting"
+	systemctl start smart-panel 2>&1 || {
+		# Try to revert if start fails
+		if [ -n "$PREVIOUS_TARGET" ]; then
+			ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			systemctl start smart-panel 2>/dev/null || true
+		fi
+		update_status "failed" "failed" "Failed to start service after update"
+		exit 1
+	}
+
+	# ── Cleanup old versions (keep max 2 previous) ──
+	cd "$IMAGE_BASE_DIR"
+	# shellcheck disable=SC2012
+	OLD_VERSIONS=$(ls -d v*/ 2>/dev/null | sort -V | head -n -3 || true)
+
+	for old_dir in $OLD_VERSIONS; do
+		# Never remove the current version
+		if [ "$old_dir" != "$(basename "$(readlink "$CURRENT_LINK")")/" ]; then
+			rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
+		fi
+	done
+
+	# ── Mark complete ──
+	update_status "complete" "complete"
+	trap - EXIT
+	exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────
+# NPM-based update (global npm installs)
+# ──────────────────────────────────────────────────────────────
 
 # Downloading / preparing
 update_status "downloading" "downloading"
