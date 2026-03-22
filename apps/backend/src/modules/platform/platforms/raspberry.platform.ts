@@ -193,13 +193,13 @@ export class RaspberryPlatform extends Platform {
 	async rebootDevice(): Promise<void> {
 		this.logger.log('[SYSTEM] Rebooting device...');
 
-		await this.executeCommand('sudo /sbin/reboot');
+		await this.executePowerAction('reboot');
 	}
 
 	async powerOffDevice(): Promise<void> {
 		this.logger.log('[SYSTEM] Powering off device...');
 
-		await this.executeCommand('sudo /sbin/poweroff');
+		await this.executePowerAction('poweroff');
 	}
 
 	async getProcessUptimeSec(): Promise<number> {
@@ -287,6 +287,39 @@ export class RaspberryPlatform extends Platform {
 		}
 
 		return type.startsWith('cgroup');
+	}
+
+	private async executePowerAction(action: 'reboot' | 'poweroff'): Promise<void> {
+		const dbusMethod = action === 'reboot' ? 'Reboot' : 'PowerOff';
+
+		const strategies = [
+			{
+				label: 'systemctl',
+				command: `systemctl ${action}`,
+			},
+			{
+				label: 'dbus-send',
+				command: `dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager.${dbusMethod} boolean:true`,
+			},
+			{
+				label: 'direct',
+				command: `/sbin/${action}`,
+			},
+		];
+
+		for (const strategy of strategies) {
+			try {
+				this.logger.log(`[SYSTEM] Trying ${action} via ${strategy.label}...`);
+
+				await this.executeCommand(strategy.command);
+
+				return;
+			} catch (error) {
+				this.logger.warn(`[SYSTEM] ${strategy.label} failed: ${(error as Error).message}`);
+			}
+		}
+
+		throw new PlatformException(`All ${action} strategies failed`);
 	}
 
 	private executeCommand(command: string): Promise<void> {
