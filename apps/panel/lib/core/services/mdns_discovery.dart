@@ -330,7 +330,7 @@ class MdnsDiscoveryService {
         final response = await request.close().timeout(const Duration(seconds: 6));
 
         if (response.statusCode == 200) {
-          final body = await response.transform(utf8.decoder).join();
+          final body = await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 6));
           final List<dynamic> data = jsonDecode(body) as List<dynamic>;
           for (final item in data) {
             final host = item['host'] as String?;
