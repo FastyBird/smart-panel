@@ -43,9 +43,10 @@ class NumberUtils {
   }
 
   /// Whether the resolved format disables grouping separators.
-  static bool _isNoGrouping({NumberFormatSetting? format}) {
+  static bool _isNoGrouping({String? locale, NumberFormatSetting? format}) {
     if (format == NumberFormatSetting.none) return true;
     if (format != null) return false;
+    if (locale != null) return false;
 
     try {
       final units = DisplayUnits.fromLocator();
@@ -59,7 +60,7 @@ class NumberUtils {
   static String formatNumber(double value,
       [int decimalPlaces = 2, String? locale, NumberFormatSetting? format]) {
     final effectiveLocale = _resolveLocale(locale: locale, format: format);
-    final noGrouping = _isNoGrouping(format: format);
+    final noGrouping = _isNoGrouping(locale: locale, format: format);
 
     String pattern = noGrouping ? '###0' : '#,##0';
 
@@ -77,7 +78,7 @@ class NumberUtils {
   static String formatInteger(int value,
       [String? locale, NumberFormatSetting? format]) {
     final effectiveLocale = _resolveLocale(locale: locale, format: format);
-    final noGrouping = _isNoGrouping(format: format);
+    final noGrouping = _isNoGrouping(locale: locale, format: format);
 
     String pattern = noGrouping ? '###0' : '#,##0';
 
