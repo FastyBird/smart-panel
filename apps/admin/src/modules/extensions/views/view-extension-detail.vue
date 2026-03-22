@@ -510,7 +510,6 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
 import { useModules } from '../../config/composables/useModules';
 import { usePlugins } from '../../config/composables/usePlugins';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template as <extension-actions>
 import { ExtensionActions, ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
 import { useActionsProvider } from '../composables/useActions';
@@ -548,7 +547,7 @@ watch(
 const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
-const { actions: extensionActions, fetchActions } = useActionsProvider();
+const { actions: registeredActions, fetchActions } = useActionsProvider();
 
 // Re-fetch when navigating between extension detail pages (Vue Router reuses component)
 watch(
@@ -565,7 +564,7 @@ watch(
 	}
 );
 
-const hasActions = computed<boolean>(() => extensionActions.value.length > 0);
+const hasActions = computed<boolean>(() => registeredActions.value.length > 0);
 
 const activeTab = ref<string>('readme');
 const logsLive = ref<boolean>(false);
