@@ -254,10 +254,46 @@ extension ThemeColorFamilyIconContainer on ThemeColorFamily {
       (iconColor: base, backgroundColor: light5);
 }
 
+/// Fade transition builder — lighter on GPU than the default slide transition.
+/// Avoids compositing two full pages with clipping during navigation.
+/// Uses a fast curve to feel snappier than a linear 300ms fade.
+class _FadePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOut,
+      ),
+      child: child,
+    );
+  }
+}
+
 class AppTheme {
   static final ScreenService _screenService = locator<ScreenService>();
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+
+  /// Fade transition for all platforms — lighter on GPU than slide.
+  static const _pageTransitionsTheme = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: _FadePageTransitionsBuilder(),
+      TargetPlatform.iOS: _FadePageTransitionsBuilder(),
+      TargetPlatform.linux: _FadePageTransitionsBuilder(),
+      TargetPlatform.macOS: _FadePageTransitionsBuilder(),
+      TargetPlatform.windows: _FadePageTransitionsBuilder(),
+      TargetPlatform.fuchsia: _FadePageTransitionsBuilder(),
+    },
+  );
 
   static ThemeData get startThemeLight {
     return ThemeData(
@@ -314,6 +350,7 @@ class AppTheme {
         primary: AppColorsLight.primary,
         error: AppColorsLight.error,
       ),
+      pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -371,6 +408,7 @@ class AppTheme {
         primary: AppColorsDark.primary,
         error: AppColorsDark.error,
       ),
+      pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       progressIndicatorTheme: const ProgressIndicatorThemeData(
