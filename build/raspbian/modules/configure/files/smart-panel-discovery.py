@@ -54,10 +54,14 @@ def discover_backends():
             text=True,
             timeout=BROWSE_TIMEOUT,
         )
-        backends = []
-        seen = set()
+    except Exception:
+        return []
 
-        for line in result.stdout.strip().split('\n'):
+    backends = []
+    seen = set()
+
+    for line in result.stdout.strip().split('\n'):
+        try:
             if not line.startswith('='):
                 continue
 
@@ -90,10 +94,10 @@ def discover_backends():
                 'api': txt.get('api', '/api/v1'),
                 'version': txt.get('version') or None,
             })
+        except Exception:
+            continue
 
-        return backends
-    except Exception:
-        return []
+    return backends
 
 
 if __name__ == '__main__':
