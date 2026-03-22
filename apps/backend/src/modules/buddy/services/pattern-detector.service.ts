@@ -148,9 +148,7 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 				if (cluster.actions.length >= minOccurrences) {
 					const confidence = Math.min(1, cluster.actions.length / lookbackDays);
 					const timestamps = cluster.actions.map((a) => a.timestamp.getTime());
-					const latestAction = cluster.actions.reduce((a, b) =>
-						a.timestamp > b.timestamp ? a : b,
-					);
+					const latestAction = cluster.actions.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
 
 					patterns.push({
 						intentType: group.intentType,

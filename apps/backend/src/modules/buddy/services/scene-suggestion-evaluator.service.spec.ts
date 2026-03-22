@@ -463,6 +463,7 @@ describe('SceneSuggestionEvaluator', () => {
 				primary_space_id: 'space-1',
 				enabled: true,
 				triggerable: true,
+				actions: [],
 			});
 		});
 

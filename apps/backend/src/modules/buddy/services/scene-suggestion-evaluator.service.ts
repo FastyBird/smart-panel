@@ -174,7 +174,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 					type: 'scenes-local' as const,
 					device_id: a.deviceId,
 					channel_id: a.channelId ?? undefined,
-					property_id: a.propertyId!,
+					property_id: a.propertyId,
 					value: a.value ?? true,
 					order: i,
 					enabled: true,
