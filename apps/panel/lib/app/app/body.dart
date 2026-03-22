@@ -52,9 +52,11 @@ class _AppBodyState extends State<AppBody> {
   late bool _hasDarkMode = _localPrefs.darkMode;
   late Language _language = _localPrefs.language;
 
-  /// Tracks the effective number format — when it changes, forces route rebuilds
-  /// by changing the Navigator key.
+  /// Tracks the effective number format — when it changes, forces full app rebuild.
   NumberFormatSetting? _lastNumberFormat;
+
+  /// Incremented when display settings change to force MaterialApp rebuild.
+  int _settingsGeneration = 0;
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
@@ -248,6 +250,9 @@ class _AppBodyState extends State<AppBody> {
     setState(() {
       _hasDarkMode = newDarkMode;
       _language = newLanguage;
+      if (numberFormatChanged && _lastNumberFormat != null) {
+        _settingsGeneration++;
+      }
       _lastNumberFormat = newNumberFormat;
     });
 
@@ -271,13 +276,6 @@ class _AppBodyState extends State<AppBody> {
         _deckService.updateDisplay(display);
       }
 
-      // Pop all routes back to root so the deck rebuilds with new settings.
-      // Navigator caches routes, so setState alone doesn't refresh them.
-      if (numberFormatChanged && _lastNumberFormat != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navigator.navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        });
-      }
     }
 
     _inactivityOverlayProvider.updateConfig(
@@ -289,6 +287,7 @@ class _AppBodyState extends State<AppBody> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      key: ValueKey(_settingsGeneration),
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _hasDarkMode ? ThemeMode.dark : ThemeMode.light,
