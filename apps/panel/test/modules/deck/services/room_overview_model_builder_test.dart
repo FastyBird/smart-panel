@@ -314,7 +314,7 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         final climateCard = model.domainCards.firstWhere((c) => c.domain == DomainType.climate);
-        expect(climateCard.primaryValue, '21,5\u00B0C');
+        expect(climateCard.primaryValue, '21.5\u00B0C');
         expect(climateCard.isActive, true);
       });
     });
