@@ -68,10 +68,11 @@ def discover_backends():
             seen.add(key)
 
             # Parse TXT record key=value pairs from remaining fields
+            # avahi-browse outputs TXT as: "key1=val1" "key2=val2"
             txt = {}
             if len(parts) > 9:
-                # TXT records are in the last field, space-separated
-                for token in parts[9].strip('"').split():
+                for token in parts[9].split():
+                    token = token.strip('"')
                     if '=' in token:
                         k, v = token.split('=', 1)
                         txt[k] = v
