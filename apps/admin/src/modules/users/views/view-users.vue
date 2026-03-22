@@ -213,7 +213,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
-		ElMessageBox.confirm(t('usersModule.messages.confirmDiscard'), t('usersModule.headings.discard'), {
+		ElMessageBox.confirm(t('usersModule.texts.misc.confirmDiscard'), t('usersModule.headings.discard'), {
 			confirmButtonText: t('usersModule.buttons.yes.title'),
 			cancelButtonText: t('usersModule.buttons.no.title'),
 			type: 'warning',

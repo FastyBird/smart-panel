@@ -279,7 +279,7 @@ const onCloseDrawer = (done?: () => void): void => {
 		done?.();
 	} else {
 		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('dashboardModule.messages.tests.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+			ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
 				confirmButtonText: t('dashboardModule.buttons.yes.title'),
 				cancelButtonText: t('dashboardModule.buttons.no.title'),
 				type: 'warning',
