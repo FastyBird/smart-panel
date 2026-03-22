@@ -37,6 +37,10 @@ cleanup() {
 	local exit_code=$?
 
 	if [ $exit_code -ne 0 ]; then
+		# Only write a generic failure if a specific error wasn't already recorded
+		if [ -f "$STATUS_FILE" ] && grep -q '"status": "failed"' "$STATUS_FILE" 2>/dev/null; then
+			return
+		fi
 		update_status "failed" "failed" "Update process exited with code $exit_code"
 	fi
 }
