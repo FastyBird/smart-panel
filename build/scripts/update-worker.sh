@@ -61,7 +61,10 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	# Guard: refuse to overwrite the currently running version
-	if [ -n "$PREVIOUS_TARGET" ] && [ "$(realpath "$PREVIOUS_TARGET" 2>/dev/null)" = "$(realpath "$NEW_VERSION_DIR" 2>/dev/null)" ]; then
+	RESOLVED_PREV=$(realpath "$PREVIOUS_TARGET" 2>/dev/null || true)
+	RESOLVED_NEW=$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)
+
+	if [ -n "$PREVIOUS_TARGET" ] && [ -n "$RESOLVED_PREV" ] && [ -n "$RESOLVED_NEW" ] && [ "$RESOLVED_PREV" = "$RESOLVED_NEW" ]; then
 		update_status "failed" "failed" "Target version v${VERSION} is already the active version"
 		exit 1
 	fi
