@@ -52,11 +52,6 @@ class _AppBodyState extends State<AppBody> {
   late bool _hasDarkMode = _localPrefs.darkMode;
   late Language _language = _localPrefs.language;
 
-  /// Tracks the effective number format — when it changes, forces full app rebuild.
-  NumberFormatSetting? _lastNumberFormat;
-
-  /// Incremented when display settings change to force MaterialApp rebuild.
-  int _settingsGeneration = 0;
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
@@ -243,17 +238,9 @@ class _AppBodyState extends State<AppBody> {
     final newLanguage = config?.language ?? _language;
     final languageChanged = newLanguage != _language;
 
-    // Detect number format changes (display override → system config → default)
-    final newNumberFormat = _displayRepository.numberFormat ?? config?.numberFormat;
-    final numberFormatChanged = newNumberFormat != _lastNumberFormat;
-
     setState(() {
       _hasDarkMode = newDarkMode;
       _language = newLanguage;
-      if (numberFormatChanged && _lastNumberFormat != null) {
-        _settingsGeneration++;
-      }
-      _lastNumberFormat = newNumberFormat;
     });
 
     // Persist to local storage so next startup uses correct values immediately.
@@ -269,8 +256,8 @@ class _AppBodyState extends State<AppBody> {
     final parts = _language.value.split('_');
     Intl.defaultLocale = Locale(parts[0], parts[1]).toLanguageTag();
 
-    // Rebuild deck when language or number format changes
-    if ((languageChanged || numberFormatChanged) && _deckService.isInitialized) {
+    // Rebuild deck when language changes
+    if (languageChanged && _deckService.isInitialized) {
       final display = _displayRepository.display;
       if (display != null) {
         _deckService.updateDisplay(display);
@@ -287,7 +274,6 @@ class _AppBodyState extends State<AppBody> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      key: ValueKey(_settingsGeneration),
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _hasDarkMode ? ThemeMode.dark : ThemeMode.light,

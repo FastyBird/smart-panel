@@ -144,10 +144,15 @@ class ConfigModuleService {
 
       if (isRegistered) {
         try {
-          final repo = isModule
-              ? _repositoryManager.getModuleRepository(name)
-              : _repositoryManager.getPluginRepository(name);
-          repo.insertConfiguration(entry.value);
+          // Use dynamic dispatch to update the stored repo directly.
+          // Do NOT use getModuleRepository/getPluginRepository here — those
+          // methods use type checking that fails in AOT mode and would create
+          // a new repo instance, losing the existing typed repo's data.
+          if (isModule) {
+            _repositoryManager.updateModuleConfiguration(name, entry.value);
+          } else {
+            _repositoryManager.updatePluginConfiguration(name, entry.value);
+          }
         } catch (e) {
           if (kDebugMode) {
             debugPrint(
