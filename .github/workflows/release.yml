@@ -543,7 +543,7 @@ jobs:
 
   build-elinux:
     needs: [ "tag", "sync-versions", "changelog" ]
-    name: "Build eLinux App (DRM-GBM)"
+    name: "Build eLinux App (${{ matrix.target-arch }})"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -553,6 +553,7 @@ jobs:
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
         operating-system: [ "ubuntu-latest" ]
+        target-arch: [ "x64", "arm64" ]
 
     steps:
       - name: "Checkout"
@@ -578,26 +579,48 @@ jobs:
       - name: "Setup flutter-elinux"
         uses: "./.github/actions/setup-flutter-elinux"
         with:
-          target-arch: "x64"
+          target-arch: "${{ matrix.target-arch }}"
 
       - name: "Build eLinux x64 App"
+        if: matrix.target-arch == 'x64'
         env:
           FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
           FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
-        run: "melos build-panel-elinux"
+        run: |
+          cd apps/panel
+          flutter-elinux build elinux --release \
+            --target-backend-type=gbm \
+            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
+            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
+
+      - name: "Build eLinux ARM64 App"
+        if: matrix.target-arch == 'arm64'
+        env:
+          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
+        run: |
+          cd apps/panel
+          flutter-elinux build elinux --release \
+            --target-backend-type=gbm \
+            --target-arch=arm64 \
+            --target-compiler-triple=aarch64-linux-gnu \
+            --target-sysroot=/ \
+            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
+            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
 
       - name: "Archive eLinux App"
         run: |
-          tar -czvf smart-panel-display-elinux-x64.tar.gz -C ./apps/panel/build/elinux/x64/release/bundle .
-          shasum -a 256 smart-panel-display-elinux-x64.tar.gz > smart-panel-display-elinux-x64.tar.gz.sha256
+          ARCH="${{ matrix.target-arch }}"
+          tar -czvf "smart-panel-display-elinux-${ARCH}.tar.gz" -C "./apps/panel/build/elinux/${ARCH}/release/bundle" .
+          shasum -a 256 "smart-panel-display-elinux-${ARCH}.tar.gz" > "smart-panel-display-elinux-${ARCH}.tar.gz.sha256"
 
       - name: "Upload eLinux Artifact"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "display-panel-elinux-x64"
+          name: "display-panel-elinux-${{ matrix.target-arch }}"
           path: |
-            smart-panel-display-elinux-x64.tar.gz
-            smart-panel-display-elinux-x64.tar.gz.sha256
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
 
   build-application:
     needs: ["tag", "sync-versions", "build-display", "publish-admin", "publish-backend"]
@@ -774,10 +797,15 @@ jobs:
         with:
           name: "display-panel-linux-x64"
 
-      - name: "Download eLinux Build"
+      - name: "Download eLinux x64 Build"
         uses: "actions/download-artifact@v7"
         with:
           name: "display-panel-elinux-x64"
+
+      - name: "Download eLinux ARM64 Build"
+        uses: "actions/download-artifact@v7"
+        with:
+          name: "display-panel-elinux-arm64"
 
       - name: "Prepare Installation Scripts"
         run: |
@@ -817,6 +845,8 @@ jobs:
             smart-panel-display-linux-x64.tar.gz.sha256
             smart-panel-display-elinux-x64.tar.gz
             smart-panel-display-elinux-x64.tar.gz.sha256
+            smart-panel-display-elinux-arm64.tar.gz
+            smart-panel-display-elinux-arm64.tar.gz.sha256
             install.sh
             install-panel.sh
         env:

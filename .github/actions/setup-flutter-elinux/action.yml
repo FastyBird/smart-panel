@@ -29,14 +29,56 @@ runs:
       run: |
         sudo apt-get install -y \
           gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-          libstdc++-12-dev-arm64-cross
+          libstdc++-12-dev-arm64-cross \
+          libc6-dev-arm64-cross
+
+        # Add ARM64 package sources for cross-libraries
+        sudo dpkg --add-architecture arm64
+
+        # Pin existing sources to amd64 only
+        for f in /etc/apt/sources.list.d/*.list; do
+          [ -f "$f" ] && sudo sed -i '/^\s*deb /{/\[arch=/!s/^\(\s*deb\s\)/\1[arch=amd64] /}' "$f"
+        done
+        for f in /etc/apt/sources.list.d/*.sources; do
+          [ -f "$f" ] && ! grep -q '^Architectures:' "$f" && \
+            sudo sed -i '/^Types:/a Architectures: amd64' "$f"
+        done
+        [ -f /etc/apt/sources.list ] && \
+          sudo sed -i '/^\s*deb /{/\[arch=/!s/^\(\s*deb\s\)/\1[arch=amd64] /}' /etc/apt/sources.list
+
+        # Add ARM64 sources from ports.ubuntu.com
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" | sudo tee /etc/apt/sources.list.d/arm64-ports.list
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
+        sudo apt-get update
+
+        # Install ARM64 cross-libraries for linking
+        sudo apt-get install -y \
+          libfontconfig1-dev:arm64 \
+          libxkbcommon-dev:arm64 \
+          libdrm-dev:arm64 \
+          libgbm-dev:arm64 \
+          libegl-dev:arm64 \
+          libinput-dev:arm64 \
+          libudev-dev:arm64 \
+          libsystemd-dev:arm64
       shell: bash
 
     - name: "Install flutter-elinux"
       run: |
         git clone --depth 1 https://github.com/sony/flutter-elinux.git /tmp/flutter-elinux
         sudo mv /tmp/flutter-elinux /opt/flutter-elinux
-        echo "/opt/flutter-elinux/bin" >> $GITHUB_PATH
+        echo "/opt/flutter-elinux/bin" >> "$GITHUB_PATH"
+      shell: bash
+
+    - name: "Prepare panel for eLinux build"
+      run: |
+        cd apps/panel
+        # Remove flutterpi_tool — incompatible with flutter-elinux SDK version
+        sed -i '/flutterpi_tool/d' pubspec.yaml
+        rm -f pubspec.lock
+        # Create eLinux project structure
+        flutter-elinux create --platforms elinux .
+        flutter-elinux pub get
       shell: bash
 
     - name: "Verify flutter-elinux"
