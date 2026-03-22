@@ -299,6 +299,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final celsiusValue = UnitConverter.displayToCelsius(displayValue, tempUnit);
     final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
 
+    _isDragging = true;
+
     _deviceControlStateService?.setPending(
       _device.id,
       channelId,
@@ -306,8 +308,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       clampedValue,
     );
     setState(() {});
-
-    _isDragging = true;
 
     _setpointDebounceTimer?.cancel();
 

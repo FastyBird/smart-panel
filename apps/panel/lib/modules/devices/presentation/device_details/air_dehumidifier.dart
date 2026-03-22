@@ -1605,6 +1605,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(minSpeed, maxSpeed);
 
+    _isDragging = true;
+
     // Set PENDING state immediately for responsive UI (for slider visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
@@ -1613,8 +1615,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       actualSpeed,
     );
     setState(() {});
-
-    _isDragging = true;
 
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();

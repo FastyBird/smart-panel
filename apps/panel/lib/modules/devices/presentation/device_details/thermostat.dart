@@ -525,6 +525,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     // Clamp to valid range
     final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
 
+    _isDragging = true;
+
     // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
@@ -533,8 +535,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       clampedValue,
     );
     setState(() {});
-
-    _isDragging = true;
 
     // Cancel any pending debounce timer
     _setpointDebounceTimer?.cancel();

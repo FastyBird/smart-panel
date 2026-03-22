@@ -381,6 +381,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
+    _isDragging = true;
+
     // Set PENDING state immediately for responsive UI (for slider visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
@@ -389,8 +391,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       actualSpeed,
     );
     setState(() {});
-
-    _isDragging = true;
 
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();

@@ -74,9 +74,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   int? _localPosition;
   int? _localTilt;
 
-  /// Whether the user is actively dragging a slider.
-  /// Suppresses full-screen rebuilds from external state updates.
-  bool _isDragging = false;
+  /// Per-slider dragging flags to suppress full-screen rebuilds from external
+  /// state updates while the user is actively dragging any slider.
+  bool _isDraggingPosition = false;
+  bool _isDraggingTilt = false;
 
   // Selected preset index (null = no preset selected)
   int? _selectedPresetIndex;
@@ -209,9 +210,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _onDeviceChanged() {
-    if (!mounted || _isDragging) return;
+    if (!mounted || _isDraggingPosition || _isDraggingTilt) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_isDragging) {
+      if (mounted && !_isDraggingPosition && !_isDraggingTilt) {
         _checkConvergence();
         setState(() {});
       }
@@ -263,7 +264,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _onControlStateChanged() {
-    if (mounted && !_isDragging) setState(() {});
+    if (mounted && !_isDraggingPosition && !_isDraggingTilt) setState(() {});
   }
 
   WindowCoveringDeviceView get _device {
@@ -1191,7 +1192,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _handlePositionChanged(double value) {
     final intValue = value.round();
 
-    _isDragging = true;
+    _isDraggingPosition = true;
 
     // Update local value immediately for smooth slider feedback
     // Clear selected preset when user manually changes position
@@ -1207,7 +1208,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingPosition = false;
 
         _controller?.setPosition(intValue);
         // Clear local value so controller's optimistic state takes over
@@ -1387,7 +1388,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _handleTiltChanged(double value) {
     final intValue = value.round();
 
-    _isDragging = true;
+    _isDraggingTilt = true;
 
     // Update local value immediately for smooth slider feedback
     // Clear selected preset when user manually changes tilt
@@ -1403,7 +1404,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingTilt = false;
 
         _controller?.setTilt(intValue);
         // Clear local value so controller's optimistic state takes over

@@ -53,7 +53,8 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 	Timer? _volumeDebounceTimer;
 	Timer? _brightnessDebounceTimer;
 	Timer? _playbackSettleTimer;
-	bool _isDragging = false;
+	bool _isDraggingBrightness = false;
+	bool _isDraggingVolume = false;
 	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
 	static const _debounceDuration = Duration(milliseconds: 300);
 
@@ -86,11 +87,11 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		if (!mounted) return;
 		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
 		_checkConvergence();
-		if (!_isDragging) setState(() {});
+		if (!_isDraggingBrightness && !_isDraggingVolume) setState(() {});
 	}
 
 	void _onControlStateChanged() {
-		if (mounted && !_isDragging) setState(() {});
+		if (mounted && !_isDraggingBrightness && !_isDraggingVolume) setState(() {});
 	}
 
 	void _checkConvergence() {
@@ -177,7 +178,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		final prop = _device.televisionChannel.brightnessProp;
 		if (prop == null) return;
 
-		_isDragging = true;
+		_isDraggingBrightness = true;
 		final channelId = _device.televisionChannel.id;
 		final clamped = brightness.clamp(_device.televisionMinBrightness, _device.televisionMaxBrightness);
 
@@ -193,7 +194,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		_brightnessDebounceTimer = Timer(_debounceDuration, () {
 			if (!mounted) return;
 
-			_isDragging = false;
+			_isDraggingBrightness = false;
 
 			_devicesService.setPropertyValueWithContext(
 				deviceId: _device.id,
@@ -271,7 +272,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		final prop = speakerChannel.volumeProp;
 		if (prop == null) return;
 
-		_isDragging = true;
+		_isDraggingVolume = true;
 		final clamped = volume.clamp(_device.speakerMinVolume, _device.speakerMaxVolume);
 
 		_deviceControlStateService?.setPending(
@@ -286,7 +287,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		_volumeDebounceTimer = Timer(_debounceDuration, () {
 			if (!mounted) return;
 
-			_isDragging = false;
+			_isDraggingVolume = false;
 
 			_devicesService.setPropertyValueWithContext(
 				deviceId: _device.id,

@@ -107,7 +107,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
-  bool _isDragging = false;
+  bool _isDraggingMistLevel = false;
+  bool _isDraggingFanSpeed = false;
 
   @override
   void initState() {
@@ -159,9 +160,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted || _isDragging) return;
+    if (!mounted || _isDraggingMistLevel || _isDraggingFanSpeed) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_isDragging) {
+      if (mounted && !_isDraggingMistLevel && !_isDraggingFanSpeed) {
         _checkConvergence();
         _initController();
         setState(() {});
@@ -299,7 +300,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (mounted && !_isDragging) setState(() {});
+    if (mounted && !_isDraggingMistLevel && !_isDraggingFanSpeed) setState(() {});
   }
 
   // --------------------------------------------------------------------------
@@ -1580,6 +1581,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     // Clamp to valid range
     final clampedLevel = actualLevel.clamp(minLevel, maxLevel);
 
+    _isDraggingMistLevel = true;
+
     // Set PENDING state immediately for responsive UI
     _deviceControlStateService?.setPending(
       _device.id,
@@ -1589,14 +1592,12 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     );
     setState(() {});
 
-    _isDragging = true;
-
     // Cancel any pending debounce timer
     _mistLevelDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () {
-      _isDragging = false;
+      _isDraggingMistLevel = false;
       if (!mounted) return;
       // Controller handles API call, settling, and error handling
       controller.humidifier.setMistLevel(clampedLevel);
@@ -1834,6 +1835,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(minSpeed, maxSpeed);
 
+    _isDraggingFanSpeed = true;
+
     // Set PENDING state immediately for responsive UI
     _deviceControlStateService?.setPending(
       _device.id,
@@ -1843,14 +1846,12 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     );
     setState(() {});
 
-    _isDragging = true;
-
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
     _speedDebounceTimer = Timer(_speedDebounceDuration, () {
-      _isDragging = false;
+      _isDraggingFanSpeed = false;
       if (!mounted) return;
       // Controller handles API call, settling, and error handling
       controller.fan?.setSpeed(actualSpeed);

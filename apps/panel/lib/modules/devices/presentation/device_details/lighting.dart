@@ -64,9 +64,12 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
-  /// Whether the user is actively dragging a slider.
-  /// Suppresses full-screen rebuilds from external state updates.
-  bool _isDragging = false;
+  /// Per-slider dragging flags to suppress full-screen rebuilds from external
+  /// state updates while the user is actively dragging any slider.
+  bool _isDraggingBrightness = false;
+  bool _isDraggingColorTemp = false;
+  bool _isDraggingColor = false;
+  bool _isDraggingWhite = false;
 
   /// Notifier for channels bottom sheet; notify to refresh list when channel state changes.
   late final ValueNotifier<int> _channelListVersion;
@@ -154,8 +157,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     super.dispose();
   }
 
+  bool get _isAnyDragging =>
+      _isDraggingBrightness || _isDraggingColorTemp || _isDraggingColor || _isDraggingWhite;
+
   void _onControlStateChanged() {
-    if (mounted && !_isDragging) {
+    if (mounted && !_isAnyDragging) {
       setState(() {});
     }
   }
@@ -225,7 +231,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
-    _isDragging = true;
+    _isDraggingBrightness = true;
 
     final prop = controller.channel.brightnessProp;
     if (prop != null) {
@@ -245,7 +251,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingBrightness = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -268,7 +274,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
-    _isDragging = true;
+    _isDraggingColorTemp = true;
 
     final prop = controller.channel.temperatureProp;
     if (prop != null) {
@@ -288,7 +294,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingColorTemp = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -360,7 +366,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       }
     }
 
-    _isDragging = true;
+    _isDraggingColor = true;
 
     if (colorProperties.isNotEmpty) {
       _deviceControlStateService?.setGroupPending(
@@ -378,7 +384,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingColor = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
@@ -400,7 +406,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controller = _selectedController ?? _controller?.light;
     if (controller == null) return;
 
-    _isDragging = true;
+    _isDraggingWhite = true;
 
     final prop = controller.channel.colorWhiteProp;
     if (prop != null) {
@@ -420,7 +426,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       () {
         if (!mounted) return;
 
-        _isDragging = false;
+        _isDraggingWhite = false;
 
         if (!controller.isOn) {
           controller.setPower(true);
