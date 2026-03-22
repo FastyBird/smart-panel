@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/material.dart';
@@ -30,17 +31,20 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 	final ConfigModuleService _configModule = locator<ConfigModuleService>();
 	late final ModuleConfigRepository<SystemConfigModel> _repository =
 			_configModule.getModuleRepository<SystemConfigModel>('system-module');
+	final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
 	String? _timezone;
 	Language _language = Language.english;
 	TimeFormat _timeFormat = TimeFormat.twentyFourHour;
-	NumberFormatSetting _numberFormat = NumberFormatSetting.commaDot;
+	/// Display-level number format override. null = use system default.
+	NumberFormatSetting? _numberFormatOverride;
 
 	@override
 	void initState() {
 		super.initState();
 
 		_syncStateWithRepository();
+		_numberFormatOverride = _displayRepository.numberFormat;
 
 		// If repository data is null, fetch it
 		if (_repository.data == null) {
@@ -52,11 +56,13 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		}
 
 		_repository.addListener(_syncStateWithRepository);
+		_displayRepository.addListener(_syncDisplayState);
 	}
 
 	@override
 	void dispose() {
 		_repository.removeListener(_syncStateWithRepository);
+		_displayRepository.removeListener(_syncDisplayState);
 
 		super.dispose();
 	}
@@ -68,9 +74,14 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				_timezone = config.timezone;
 				_language = config.language;
 				_timeFormat = config.timeFormat;
-				_numberFormat = config.numberFormat;
 			});
 		}
+	}
+
+	void _syncDisplayState() {
+		setState(() {
+			_numberFormatOverride = _displayRepository.numberFormat;
+		});
 	}
 
 	@override
@@ -241,11 +252,16 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				description: localizations.settings_language_settings_number_format_description,
 				trailing: GestureDetector(
 					onTap: () async {
+						const defaultValue = '__default__';
 						final result = await showSettingsSelectionDialog<String>(
 							context: context,
 							title: localizations.settings_language_settings_number_format_title,
-							currentValue: _numberFormat.value,
+							currentValue: _numberFormatOverride?.value ?? defaultValue,
 							options: [
+								SelectionOption(
+									value: defaultValue,
+									label: localizations.unit_system_default,
+								),
 								SelectionOption(
 									value: NumberFormatSetting.commaDot.value,
 									label: localizations.number_format_comma_dot,
@@ -265,11 +281,16 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 							],
 						);
 						if (result != null && context.mounted) {
-							_handleNumberFormatChange(context, result);
+							_handleNumberFormatChange(
+								context,
+								result == defaultValue ? null : result,
+							);
 						}
 					},
 					child: SettingsDropdownValue(
-						value: _getNumberFormatLabel(localizations),
+						value: _numberFormatOverride != null
+								? _getNumberFormatLabel(localizations, _numberFormatOverride!)
+								: localizations.unit_system_default,
 					),
 				),
 			),
@@ -440,8 +461,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		);
 	}
 
-	String _getNumberFormatLabel(AppLocalizations localizations) {
-		switch (_numberFormat) {
+	String _getNumberFormatLabel(AppLocalizations localizations, NumberFormatSetting format) {
+		switch (format) {
 			case NumberFormatSetting.commaDot:
 				return localizations.number_format_comma_dot;
 			case NumberFormatSetting.dotComma:
@@ -457,70 +478,29 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 		BuildContext context,
 		String? value,
 	) async {
-		if (value == null) return;
-
-		final format = NumberFormatSetting.fromValue(value);
-
-		if (format == null) return;
+		// value is null when "Default" is selected (clear display override)
+		final NumberFormatSetting? format =
+				value != null ? NumberFormatSetting.fromValue(value) : null;
 
 		HapticFeedback.lightImpact();
 
-		final NumberFormatSetting backup = _numberFormat;
+		final NumberFormatSetting? backup = _numberFormatOverride;
 
 		setState(() {
-			_numberFormat = format;
+			_numberFormatOverride = format;
 		});
 
-		final success = await _updateNumberFormat(_numberFormat);
+		final success = await _displayRepository.setNumberFormat(format);
 
-		Future.microtask(
-			() async {
-				await Future.delayed(
-					const Duration(milliseconds: 500),
-				);
+		if (!success && context.mounted) {
+			setState(() {
+				_numberFormatOverride = backup;
+			});
 
-				if (!context.mounted) return;
-
-				if (!success) {
-					setState(() {
-						_numberFormat = backup;
-					});
-
-					Toast.showError(
-						context,
-						message: AppLocalizations.of(context)!.settings_save_failed,
-					);
-				}
-			},
-		);
-	}
-
-	Future<bool> _updateNumberFormat(NumberFormatSetting format) async {
-		var current = _repository.data;
-		if (current == null) {
-			try {
-				await _repository.fetchConfiguration();
-				current = _repository.data;
-				if (current == null) {
-					return false;
-				}
-			} catch (e) {
-				return false;
-			}
-		}
-
-		final updateData = <String, dynamic>{
-			'type': 'system-module',
-			'language': current.language.value,
-			'timezone': current.timezone,
-			'time_format': current.timeFormat.value,
-			'number_format': format.value,
-		};
-
-		try {
-			return await _repository.updateConfiguration(updateData);
-		} catch (e) {
-			return false;
+			Toast.showError(
+				context,
+				message: AppLocalizations.of(context)!.settings_save_failed,
+			);
 		}
 	}
 
@@ -543,7 +523,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': language.value,
 			'timezone': current.timezone,
 			'time_format': current.timeFormat.value,
-			'number_format': current.numberFormat.value,
 		};
 
 		try {
@@ -574,7 +553,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': current.language.value,
 			'timezone': timezone,
 			'time_format': current.timeFormat.value,
-			'number_format': current.numberFormat.value,
 		};
 
 		return await _repository.updateConfiguration(updateData);
@@ -599,7 +577,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			'language': current.language.value,
 			'timezone': current.timezone,
 			'time_format': format.value,
-			'number_format': current.numberFormat.value,
 		};
 
 		return await _repository.updateConfiguration(updateData);
