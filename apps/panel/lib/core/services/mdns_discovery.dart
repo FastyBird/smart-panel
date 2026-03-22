@@ -18,6 +18,10 @@ class MdnsDiscoveryService {
   StreamSubscription<BonsoirDiscoveryEvent>? _subscription;
   final List<DiscoveredBackend> _discoveredBackends = [];
 
+  /// Services found but not yet resolved — used for fallback resolution.
+  final Map<String, BonsoirService> _pendingServices = {};
+  final Map<String, Timer> _resolutionTimers = {};
+
   /// Check if mDNS discovery is supported on this platform
   bool get isSupported {
     // Bonsoir supports Android, iOS, macOS, Windows, Linux
@@ -151,15 +155,33 @@ class MdnsDiscoveryService {
       // Listen for discovery events
       _subscription = _discovery!.eventStream?.listen((event) {
         if (event.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
+          final service = event.service;
           if (kDebugMode) {
             debugPrint(
-              '[MDNS DISCOVERY] Service found: ${event.service?.name}',
+              '[MDNS DISCOVERY] Service found: ${service?.name}',
+            );
+          }
+
+          // Track the service and start a fallback timer.
+          // If resolution doesn't complete within 3 seconds, try to use
+          // the service with default values. Some Android devices fail TXT
+          // record resolution but the service host/port are still available.
+          if (service != null) {
+            _pendingServices[service.name] = service;
+            _resolutionTimers[service.name]?.cancel();
+            _resolutionTimers[service.name] = Timer(
+              const Duration(seconds: 3),
+              () => _handleUnresolvedService(service, onBackendFound),
             );
           }
         } else if (event.type ==
             BonsoirDiscoveryEventType.discoveryServiceResolved) {
           final service = event.service;
           if (service != null && service is ResolvedBonsoirService) {
+            // Cancel fallback timer — service resolved normally
+            _resolutionTimers.remove(service.name)?.cancel();
+            _pendingServices.remove(service.name);
+
             final backend = _parseService(service);
             if (backend != null && !_discoveredBackends.contains(backend)) {
               _discoveredBackends.add(backend);
@@ -180,7 +202,11 @@ class MdnsDiscoveryService {
               '[MDNS DISCOVERY] Service lost: ${event.service?.name}',
             );
           }
-          // Optionally remove lost services
+          final name = event.service?.name;
+          if (name != null) {
+            _resolutionTimers.remove(name)?.cancel();
+            _pendingServices.remove(name);
+          }
           _discoveredBackends.removeWhere(
             (b) => b.name == event.service?.name,
           );
@@ -249,12 +275,101 @@ class MdnsDiscoveryService {
       await _discovery?.stop();
       _discovery = null;
 
+      // Clean up fallback timers
+      for (final timer in _resolutionTimers.values) {
+        timer.cancel();
+      }
+      _resolutionTimers.clear();
+      _pendingServices.clear();
+
       if (kDebugMode) {
         debugPrint('[MDNS DISCOVERY] Discovery stopped');
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[MDNS DISCOVERY] Error stopping discovery: $e');
+      }
+    }
+  }
+
+  /// Fallback handler for services that were found but not resolved within
+  /// the timeout. Attempts to use the service's IP/port with default TXT
+  /// record values. This handles Android devices where TXT record resolution
+  /// fails but the service host is still available from the initial discovery.
+  Future<void> _handleUnresolvedService(
+    BonsoirService service,
+    void Function(DiscoveredBackend)? onBackendFound,
+  ) async {
+    _pendingServices.remove(service.name);
+    _resolutionTimers.remove(service.name);
+
+    // Check if already resolved normally
+    if (_discoveredBackends.any((b) => b.name == service.name)) {
+      return;
+    }
+
+    // Try multiple strategies to get the host:
+    // 1. From the service attributes (some platforms set this)
+    // 2. From the service object if partially resolved
+    // 3. Extract hostname from service name and do DNS lookup
+    String? host = service.attributes['host'] ??
+        (service is ResolvedBonsoirService ? service.host : null);
+    int port = service.port > 0 ? service.port : 3000;
+
+    // Strategy 3: Extract hostname from service name pattern
+    // "FastyBird Smart Panel (smart-panel-server)" → "smart-panel-server.local"
+    if (host == null || host.isEmpty) {
+      final match = RegExp(r'\(([^)]+)\)').firstMatch(service.name);
+      if (match != null) {
+        final hostname = match.group(1)!;
+        try {
+          final addresses = await InternetAddress.lookup('$hostname.local');
+          if (addresses.isNotEmpty) {
+            host = addresses.first.address;
+
+            if (kDebugMode) {
+              debugPrint(
+                '[MDNS DISCOVERY] Resolved "$hostname.local" to $host via DNS lookup',
+              );
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[MDNS DISCOVERY] DNS lookup for "$hostname.local" failed: $e',
+            );
+          }
+        }
+      }
+    }
+
+    if (host != null && host.isNotEmpty) {
+      final backend = DiscoveredBackend(
+        name: service.name,
+        host: host.endsWith('.') ? host.substring(0, host.length - 1) : host,
+        port: port,
+        apiPath: '/api/v1',
+        version: null,
+        isSecure: false,
+      );
+
+      if (!_discoveredBackends.contains(backend)) {
+        _discoveredBackends.add(backend);
+
+        if (kDebugMode) {
+          debugPrint(
+            '[MDNS DISCOVERY] Backend added via fallback (TXT resolution failed): '
+            '${backend.name} at ${backend.displayAddress}',
+          );
+        }
+
+        onBackendFound?.call(backend);
+      }
+    } else {
+      if (kDebugMode) {
+        debugPrint(
+          '[MDNS DISCOVERY] Service "${service.name}" found but no host available for fallback',
+        );
       }
     }
   }
