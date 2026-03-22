@@ -463,6 +463,8 @@ install_android() {
 }
 
 install_discovery_service() {
+	local tag="$1"
+
 	print_step "Installing mDNS discovery proxy service..."
 
 	# Copy discovery script
@@ -620,7 +622,7 @@ main() {
 			local asset_name="smart-panel-display-${arch}.tar.gz"
 			download_and_extract "$tag" "$asset_name" "$INSTALL_DIR"
 			configure_backend_url
-			install_discovery_service
+			install_discovery_service "$tag"
 			create_systemd_service_flutterpi
 
 			if [[ "$KIOSK" == true ]]; then
