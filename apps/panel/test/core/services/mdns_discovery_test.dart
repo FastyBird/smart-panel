@@ -28,6 +28,13 @@ void main() {
           equals(10000),
         );
       });
+
+      test('should have correct discovery proxy URL', () {
+        expect(
+          MdnsDiscoveryService.discoveryProxyUrl,
+          equals('http://localhost:3001/discover'),
+        );
+      });
     });
 
     group('isEnabled', () {

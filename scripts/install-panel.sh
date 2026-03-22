@@ -317,8 +317,8 @@ create_systemd_service_flutterpi() {
 	cat > "$service_file" << EOF
 [Unit]
 Description=FastyBird Smart Panel Display (flutter-pi)
-After=network.target
-Wants=network.target
+After=network.target smart-panel-discovery.service
+Wants=network.target smart-panel-discovery.service
 
 [Service]
 Type=simple
@@ -462,6 +462,48 @@ install_android() {
 	fi
 }
 
+install_discovery_service() {
+	print_step "Installing mDNS discovery proxy service..."
+
+	# Copy discovery script
+	local script_url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/build/raspbian/modules/configure/files/smart-panel-discovery.py"
+	curl -sL "$script_url" -o "${INSTALL_DIR}/discovery-service.py"
+	chmod +x "${INSTALL_DIR}/discovery-service.py"
+
+	# Create systemd service
+	local service_file="/etc/systemd/system/smart-panel-discovery.service"
+
+	cat > "$service_file" << EOF
+[Unit]
+Description=Smart Panel mDNS Discovery Proxy
+After=avahi-daemon.service network-online.target
+Wants=avahi-daemon.service network-online.target
+Before=smart-panel-display.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 ${INSTALL_DIR}/discovery-service.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-discovery
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+	# Ensure avahi-browse is available
+	if ! command -v avahi-browse &> /dev/null; then
+		apt-get install -y -qq avahi-utils 2>/dev/null || true
+	fi
+
+	systemctl daemon-reload
+	systemctl enable smart-panel-discovery
+
+	print_success "mDNS discovery proxy service installed"
+}
+
 configure_backend_url() {
 	if [[ -z "$BACKEND_URL" ]]; then
 		return
@@ -578,6 +620,7 @@ main() {
 			local asset_name="smart-panel-display-${arch}.tar.gz"
 			download_and_extract "$tag" "$asset_name" "$INSTALL_DIR"
 			configure_backend_url
+			install_discovery_service
 			create_systemd_service_flutterpi
 
 			if [[ "$KIOSK" == true ]]; then

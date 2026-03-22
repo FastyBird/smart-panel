@@ -1,0 +1,18 @@
+[Unit]
+Description=Smart Panel mDNS Discovery Proxy
+Documentation=https://smart-panel.fastybird.com
+After=avahi-daemon.service network-online.target
+Wants=avahi-daemon.service network-online.target
+Before=smart-panel-display.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/smart-panel-display/discovery-service.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-discovery
+
+[Install]
+WantedBy=multi-user.target
