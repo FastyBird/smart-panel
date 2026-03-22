@@ -469,7 +469,7 @@ install_discovery_service() {
 
 	# Copy discovery script
 	local script_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${tag}/build/raspbian/modules/configure/files/smart-panel-discovery.py"
-	curl -sL "$script_url" -o "${INSTALL_DIR}/discovery-service.py"
+	curl -sfL "$script_url" -o "${INSTALL_DIR}/discovery-service.py"
 	chmod +x "${INSTALL_DIR}/discovery-service.py"
 
 	# Create systemd service

@@ -324,41 +324,41 @@ class MdnsDiscoveryService {
       client.connectionTimeout = const Duration(seconds: 3);
 
       try {
-        final request = await client
-            .getUrl(Uri.parse(discoveryProxyUrl))
-            .timeout(const Duration(seconds: 6));
-        final response = await request.close().timeout(const Duration(seconds: 6));
+        await Future(() async {
+          final request = await client.getUrl(Uri.parse(discoveryProxyUrl));
+          final response = await request.close();
 
-        if (response.statusCode == 200) {
-          final body = await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 6));
-          final List<dynamic> data = jsonDecode(body) as List<dynamic>;
-          for (final item in data) {
-            final host = item['host'] as String?;
-            if (host == null || host.isEmpty) continue;
+          if (response.statusCode == 200) {
+            final body = await response.transform(utf8.decoder).join();
+            final List<dynamic> data = jsonDecode(body) as List<dynamic>;
+            for (final item in data) {
+              final host = item['host'] as String?;
+              if (host == null || host.isEmpty) continue;
 
-            final backend = DiscoveredBackend(
-              name: item['name'] as String? ?? 'Unknown',
-              host: host,
-              port: item['port'] as int? ?? 3000,
-              apiPath: item['api'] as String? ?? '/api/v1',
-              version: item['version'] as String?,
-              isSecure: false,
-            );
+              final backend = DiscoveredBackend(
+                name: item['name'] as String? ?? 'Unknown',
+                host: host,
+                port: item['port'] as int? ?? 3000,
+                apiPath: item['api'] as String? ?? '/api/v1',
+                version: item['version'] as String?,
+                isSecure: false,
+              );
 
-            if (!_discoveredBackends.contains(backend)) {
-              _discoveredBackends.add(backend);
+              if (!_discoveredBackends.contains(backend)) {
+                _discoveredBackends.add(backend);
 
-              if (kDebugMode) {
-                debugPrint(
-                  '[MDNS DISCOVERY] Backend found via discovery proxy: '
-                  '${backend.name} at ${backend.displayAddress}',
-                );
+                if (kDebugMode) {
+                  debugPrint(
+                    '[MDNS DISCOVERY] Backend found via discovery proxy: '
+                    '${backend.name} at ${backend.displayAddress}',
+                  );
+                }
+
+                onBackendFound?.call(backend);
               }
-
-              onBackendFound?.call(backend);
             }
           }
-        }
+        }).timeout(const Duration(seconds: 6));
       } finally {
         client.close();
       }
