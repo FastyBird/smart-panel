@@ -270,6 +270,14 @@ class _AppBodyState extends State<AppBody> {
       if (display != null) {
         _deckService.updateDisplay(display);
       }
+
+      // Pop all routes back to root so the deck rebuilds with new settings.
+      // Navigator caches routes, so setState alone doesn't refresh them.
+      if (numberFormatChanged && _lastNumberFormat != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _navigator.navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        });
+      }
     }
 
     _inactivityOverlayProvider.updateConfig(
