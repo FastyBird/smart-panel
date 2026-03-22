@@ -47,6 +47,7 @@ class _SetTopBoxDeviceDetailState extends State<SetTopBoxDeviceDetail> {
 
 	Timer? _volumeDebounceTimer;
 	Timer? _playbackSettleTimer;
+	bool _isDragging = false;
 	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
 	static const _debounceDuration = Duration(milliseconds: 300);
 
@@ -78,11 +79,11 @@ class _SetTopBoxDeviceDetailState extends State<SetTopBoxDeviceDetail> {
 		if (!mounted) return;
 		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
 		_checkConvergence();
-		setState(() {});
+		if (!_isDragging) setState(() {});
 	}
 
 	void _onControlStateChanged() {
-		if (mounted) setState(() {});
+		if (mounted && !_isDragging) setState(() {});
 	}
 
 	void _checkConvergence() {
@@ -163,6 +164,7 @@ class _SetTopBoxDeviceDetailState extends State<SetTopBoxDeviceDetail> {
 		final prop = speakerChannel.volumeProp;
 		if (prop == null) return;
 
+		_isDragging = true;
 		final clamped = volume.clamp(_device.speakerMinVolume, _device.speakerMaxVolume);
 
 		_deviceControlStateService?.setPending(
@@ -176,6 +178,8 @@ class _SetTopBoxDeviceDetailState extends State<SetTopBoxDeviceDetail> {
 		_volumeDebounceTimer?.cancel();
 		_volumeDebounceTimer = Timer(_debounceDuration, () {
 			if (!mounted) return;
+
+			_isDragging = false;
 
 			_devicesService.setPropertyValueWithContext(
 				deviceId: _device.id,

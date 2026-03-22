@@ -53,6 +53,8 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	Timer? _volumeDebounceTimer;
 	Timer? _brightnessDebounceTimer;
 	Timer? _playbackSettleTimer;
+	bool _isDraggingBrightness = false;
+	bool _isDraggingVolume = false;
 	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
 	static const _debounceDuration = Duration(milliseconds: 300);
 
@@ -85,11 +87,11 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		if (!mounted) return;
 		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
 		_checkConvergence();
-		setState(() {});
+		if (!_isDraggingBrightness && !_isDraggingVolume) setState(() {});
 	}
 
 	void _onControlStateChanged() {
-		if (mounted) setState(() {});
+		if (mounted && !_isDraggingBrightness && !_isDraggingVolume) setState(() {});
 	}
 
 	void _checkConvergence() {
@@ -178,6 +180,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final prop = _device.projectorChannel.brightnessProp;
 		if (prop == null) return;
 
+		_isDraggingBrightness = true;
 		final channelId = _device.projectorChannel.id;
 		final clamped = brightness.clamp(_device.projectorMinBrightness, _device.projectorMaxBrightness);
 
@@ -192,6 +195,8 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		_brightnessDebounceTimer?.cancel();
 		_brightnessDebounceTimer = Timer(_debounceDuration, () {
 			if (!mounted) return;
+
+			_isDraggingBrightness = false;
 
 			_devicesService.setPropertyValueWithContext(
 				deviceId: _device.id,
@@ -269,6 +274,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final prop = speakerChannel?.volumeProp;
 		if (speakerChannel == null || prop == null) return;
 
+		_isDraggingVolume = true;
 		final clamped = volume.clamp(_device.speakerMinVolume, _device.speakerMaxVolume);
 
 		_deviceControlStateService?.setPending(
@@ -282,6 +288,8 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		_volumeDebounceTimer?.cancel();
 		_volumeDebounceTimer = Timer(_debounceDuration, () {
 			if (!mounted) return;
+
+			_isDraggingVolume = false;
 
 			_devicesService.setPropertyValueWithContext(
 				deviceId: _device.id,

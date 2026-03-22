@@ -74,6 +74,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   int? _localPosition;
   int? _localTilt;
 
+  /// Per-slider dragging flags to suppress full-screen rebuilds from external
+  /// state updates while the user is actively dragging any slider.
+  bool _isDraggingPosition = false;
+  bool _isDraggingTilt = false;
+
   // Selected preset index (null = no preset selected)
   int? _selectedPresetIndex;
 
@@ -205,9 +210,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDraggingPosition || _isDraggingTilt) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDraggingPosition && !_isDraggingTilt) {
         _checkConvergence();
         setState(() {});
       }
@@ -259,7 +264,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_isDraggingPosition && !_isDraggingTilt) setState(() {});
   }
 
   WindowCoveringDeviceView get _device {
@@ -574,7 +579,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         children: [
           Expanded(
             child: Center(
-              child: _buildWindowVisualizationSized(context, visualizationWidth, visualizationHeight),
+              child: RepaintBoundary(
+                child: _buildWindowVisualizationSized(context, visualizationWidth, visualizationHeight),
+              ),
             ),
           ),
           _buildPositionSlider(context),
@@ -615,10 +622,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 Expanded(
                   flex: 3,
                   child: Center(
-                    child: _buildWindowVisualizationSized(
-                      context,
-                      visualizationWidth.clamp(AppSpacings.scale(120), AppSpacings.scale(280)),
-                      visualizationHeight.clamp(AppSpacings.scale(100), AppSpacings.scale(240)),
+                    child: RepaintBoundary(
+                      child: _buildWindowVisualizationSized(
+                        context,
+                        visualizationWidth.clamp(AppSpacings.scale(120), AppSpacings.scale(280)),
+                        visualizationHeight.clamp(AppSpacings.scale(100), AppSpacings.scale(240)),
+                      ),
                     ),
                   ),
                 ),
@@ -1145,7 +1154,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildWindowVisualization(BuildContext context) {
     final width = AppSpacings.scale(180);
     final height = AppSpacings.scale(160);
-    return _buildWindowVisualizationSized(context, width, height);
+    return RepaintBoundary(
+      child: _buildWindowVisualizationSized(context, width, height),
+    );
   }
 
   Widget _buildCurtainFolds(bool isDark) {
@@ -1181,6 +1192,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _handlePositionChanged(double value) {
     final intValue = value.round();
 
+    _isDraggingPosition = true;
+
     // Update local value immediately for smooth slider feedback
     // Clear selected preset when user manually changes position
     setState(() {
@@ -1194,6 +1207,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       _debounceDuration,
       () {
         if (!mounted) return;
+
+        _isDraggingPosition = false;
+
         _controller?.setPosition(intValue);
         // Clear local value so controller's optimistic state takes over
         _localPosition = null;
@@ -1372,6 +1388,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _handleTiltChanged(double value) {
     final intValue = value.round();
 
+    _isDraggingTilt = true;
+
     // Update local value immediately for smooth slider feedback
     // Clear selected preset when user manually changes tilt
     setState(() {
@@ -1385,6 +1403,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       _debounceDuration,
       () {
         if (!mounted) return;
+
+        _isDraggingTilt = false;
+
         _controller?.setTilt(intValue);
         // Clear local value so controller's optimistic state takes over
         _localTilt = null;

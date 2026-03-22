@@ -402,6 +402,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Currently active hero card capability mode.
   LightHeroCapability? _activeHeroMode;
 
+  /// Per-slider dragging flags; suppress listener-driven [setState] calls so
+  /// that the optimistic UI value is not overwritten by stale backend data
+  /// arriving mid-drag.
+  bool _isDraggingBrightness = false;
+  bool _isDraggingColorTemp = false;
+  bool _isDraggingHue = false;
+  bool _isDraggingWhite = false;
+
+  /// True when any hero slider is being dragged.
+  bool get _isAnyDragging =>
+      _isDraggingBrightness || _isDraggingColorTemp || _isDraggingHue || _isDraggingWhite;
+
   // Debounce timers for hero card slider changes
   Timer? _heroBrightnessDebounceTimer;
   Timer? _heroTemperatureDebounceTimer;
@@ -1362,10 +1374,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // state can settle.
 
   void _onDataChanged() {
-    if (!mounted) return;
+    if (!mounted || _isAnyDragging) return;
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isAnyDragging) {
         // If backend confirms a new mode intent (lastAppliedAt changed),
         // clear the local manual override flag. We compare timestamps to
         // avoid clearing the flag when the backend still reflects the old
@@ -1495,7 +1507,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   void _onControlStateChanged() {
-    if (!mounted) return;
+    if (!mounted || _isAnyDragging) return;
     setState(() {});
   }
 
@@ -3425,6 +3437,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     switch (mode) {
       case LightHeroCapability.brightness:
+        _isDraggingBrightness = true;
         _heroControlStateService.setPending(
           LightingConstants.brightnessChannelId,
           value,
@@ -3433,10 +3446,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _heroBrightnessDebounceTimer?.cancel();
         _heroBrightnessDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => _heroSetBrightness(role, value.round()),
+          () {
+            _isDraggingBrightness = false;
+            _heroSetBrightness(role, value.round());
+          },
         );
         break;
       case LightHeroCapability.colorTemp:
+        _isDraggingColorTemp = true;
         _heroControlStateService.setPending(
           LightingConstants.temperatureChannelId,
           value,
@@ -3445,10 +3462,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _heroTemperatureDebounceTimer?.cancel();
         _heroTemperatureDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => _heroSetColorTemp(role, value.round()),
+          () {
+            _isDraggingColorTemp = false;
+            _heroSetColorTemp(role, value.round());
+          },
         );
         break;
       case LightHeroCapability.hue:
+        _isDraggingHue = true;
         // Backend requires hue + saturation together (hex) to convert to RGB.
         final currentSat = heroState?.saturation ?? 100;
         _heroControlStateService.setPending(
@@ -3463,10 +3484,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _heroHueDebounceTimer?.cancel();
         _heroHueDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => _heroSetColorFromState(role),
+          () {
+            _isDraggingHue = false;
+            _heroSetColorFromState(role);
+          },
         );
         break;
       case LightHeroCapability.saturation:
+        _isDraggingHue = true;
         // Backend requires hue + saturation together (hex) to convert to RGB.
         final currentHue = heroState?.hue ?? 0;
         _heroControlStateService.setPending(
@@ -3481,10 +3506,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _heroHueDebounceTimer?.cancel();
         _heroHueDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => _heroSetColorFromState(role),
+          () {
+            _isDraggingHue = false;
+            _heroSetColorFromState(role);
+          },
         );
         break;
       case LightHeroCapability.whiteChannel:
+        _isDraggingWhite = true;
         _heroControlStateService.setPending(
           LightingConstants.whiteChannelId,
           value,
@@ -3493,10 +3522,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _heroWhiteDebounceTimer?.cancel();
         _heroWhiteDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => _heroSetWhite(role, value.round()),
+          () {
+            _isDraggingWhite = false;
+            _heroSetWhite(role, value.round());
+          },
         );
         break;
     }
+
+    // Explicit setState so non-slider UI (value labels, hero card displays)
+    // reflects the optimistic value immediately. _onControlStateChanged is
+    // suppressed while _isAnyDragging is true, so without this call the
+    // pending value would not be visible until the debounce timer fires.
+    setState(() {});
   }
 
   /// Execute hero brightness API call with error handling.

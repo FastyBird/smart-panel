@@ -380,6 +380,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Debounce timer for slider-driven setpoint changes.
   Timer? _setpointDebounceTimer;
 
+  /// True while the user is dragging a slider; suppresses listener-driven
+  /// [setState] calls so that the optimistic UI value is not overwritten by
+  /// stale backend data arriving mid-drag.
+  bool _isDragging = false;
+
   /// True when we are waiting for a space intent to complete; used in
   /// [_onIntentChanged] to call [DomainControlStateService.onIntentCompleted].
   bool _modeWasLocked = false;
@@ -1404,7 +1409,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _onControlStateChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     setState(() {});
   }
 
@@ -1443,9 +1448,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Called when SpacesService or DevicesService notifies. Rebuilds state then
   /// checks convergence so control state can clear pending when backend catches up.
   void _onDataChanged() {
-    if (!mounted) return;
+    if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         // Build state FIRST with current lock status
         // This ensures UI shows locked (desired) values during pending/settling
         _buildState();
@@ -1579,6 +1584,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Called by the slider during drag: immediate optimistic UI + debounced API call.
   void _onSetpointSliderChanged(double temp) {
+    _isDragging = true;
+
     final climateState = _spacesService?.getClimateState(_roomId);
     final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
     final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
@@ -1595,6 +1602,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     _setpointDebounceTimer = Timer(
       const Duration(milliseconds: _ClimateControlConstants.sliderDebounceMs),
       () {
+        _isDragging = false;
         if (!mounted) return;
         _setpointWasLocked = true;
         _spacesService
