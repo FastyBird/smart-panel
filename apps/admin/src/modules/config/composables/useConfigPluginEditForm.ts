@@ -55,8 +55,6 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const errorMessage = messages && messages.error ? messages.error : t('configModule.messages.configPlugin.notEdited');
 
 		formEl.value!.clearValidate();
@@ -72,6 +70,8 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 			throw new ConfigValidationException('Failed to validate create tile model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await configPluginsStore.edit({

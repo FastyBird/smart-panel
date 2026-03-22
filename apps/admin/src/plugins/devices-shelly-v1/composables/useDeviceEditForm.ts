@@ -91,8 +91,6 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = device.draft;
 
 		const errorMessage =
@@ -115,6 +113,8 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 			throw new DevicesShellyV1ValidationException('Failed to validate edit device model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await devicesStore.edit({

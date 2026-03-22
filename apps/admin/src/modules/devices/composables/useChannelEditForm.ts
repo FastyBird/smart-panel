@@ -101,8 +101,6 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = channel.draft;
 
 		const errorMessage =
@@ -125,6 +123,8 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 
 			throw new DevicesValidationException('Failed to validate edit channel model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await channelsStore.edit({

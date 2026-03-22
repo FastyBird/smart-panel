@@ -256,8 +256,6 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 	};
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = scene.draft;
 
 		const errorMessage =
@@ -267,21 +265,23 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 					? t('scenes.messages.createFailed')
 					: t('scenes.messages.editFailed', { scene: scene.name });
 
+		formEl.value!.clearValidate();
+
+		const valid = await formEl.value!.validate();
+
+		if (!valid) throw new ScenesValidationException('Form not valid');
+
+		const parsedModel = SceneEditFormSchema.safeParse(model);
+
+		if (!parsedModel.success) {
+			logger.error('Schema validation failed with:', parsedModel.error);
+
+			throw new ScenesValidationException('Failed to validate edit scene model.');
+		}
+
+		formResult.value = FormResult.WORKING;
+
 		try {
-			formEl.value!.clearValidate();
-
-			const valid = await formEl.value!.validate();
-
-			if (!valid) throw new ScenesValidationException('Form not valid');
-
-			const parsedModel = SceneEditFormSchema.safeParse(model);
-
-			if (!parsedModel.success) {
-				logger.error('Schema validation failed with:', parsedModel.error);
-
-				throw new ScenesValidationException('Failed to validate edit scene model.');
-			}
-
 			await scenesStore.edit({
 				id: scene.id,
 				data: parsedModel.data,

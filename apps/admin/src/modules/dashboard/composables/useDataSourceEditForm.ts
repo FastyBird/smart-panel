@@ -50,8 +50,6 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = dataSource.draft;
 
 		const errorMessage =
@@ -74,6 +72,8 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 
 			throw new DashboardValidationException('Failed to validate create dataSource model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await dataSourcesStore.edit({

@@ -39,8 +39,6 @@ export const useUserPasswordForm = ({ user, messages }: IUseUserPasswordFormProp
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const errorMessage = messages && messages.error ? messages.error : t('usersModule.messages.notEdited', { user: user.username });
 
 		formEl.value!.clearValidate();
@@ -48,6 +46,8 @@ export const useUserPasswordForm = ({ user, messages }: IUseUserPasswordFormProp
 		const valid = await formEl.value!.validate();
 
 		if (!valid) throw new UsersValidationException('Form not valid');
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await usersStore.edit({

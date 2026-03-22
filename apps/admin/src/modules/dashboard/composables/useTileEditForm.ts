@@ -50,8 +50,6 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = tile.draft;
 
 		const errorMessage =
@@ -74,6 +72,8 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 
 			throw new DashboardValidationException('Failed to validate create tile model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			await tilesStore.edit({

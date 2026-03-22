@@ -46,8 +46,6 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'added' | 'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const isDraft = page.draft;
 
 		const errorMessage =
@@ -70,6 +68,8 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 
 			throw new DashboardValidationException('Failed to validate edit page model.');
 		}
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			let updatedPage: IPage;

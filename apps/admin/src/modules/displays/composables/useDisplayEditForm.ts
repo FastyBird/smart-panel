@@ -78,8 +78,6 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 	const formChanged = ref<boolean>(false);
 
 	const submit = async (): Promise<'saved'> => {
-		formResult.value = FormResult.WORKING;
-
 		const errorMessage =
 			messages && messages.error ? messages.error : t('displaysModule.messages.notEdited', { display: display.name || display.macAddress });
 
@@ -92,6 +90,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		const valid = await formEl.value.validate();
 
 		if (!valid) throw new DisplaysValidationException('Form not valid');
+
+		formResult.value = FormResult.WORKING;
 
 		try {
 			const updateData: {
