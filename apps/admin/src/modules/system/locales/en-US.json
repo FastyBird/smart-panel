@@ -1,10 +1,4 @@
 {
-  "messages": {
-    "config": {
-      "edited": "System configuration has been successfully updated",
-      "notEdited": "Failed to update system configuration"
-    }
-  },
   "meta": {
     "system": {
       "system": {
@@ -64,11 +58,16 @@
     "poweredOff": "The Smart Panel has been successfully powered off",
     "systemLogs": {
       "list": "Preview all application logs",
+      "detail": "Preview log record details",
       "edit": "Preview log record details",
       "adjustFilters": "Adjust logs filters"
     }
   },
   "messages": {
+    "config": {
+      "edited": "System configuration has been successfully updated",
+      "notEdited": "Failed to update system configuration"
+    },
     "manage": {
       "confirmRestart": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
       "confirmPowerOff": "Are you sure you want to power off the device? It will need to be manually turned on again.",
