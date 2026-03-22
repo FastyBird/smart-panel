@@ -37,10 +37,12 @@ jobs:
 
           # ARM64 cross-libraries (needed for linking the elinux runner)
           sudo dpkg --add-architecture arm64
-          # Add ARM64 package sources (ports.ubuntu.com) — filter non-deb822 files only
+          # Pin existing sources to amd64 only (skip non-.list files like .sources)
           for f in /etc/apt/sources.list.d/*.list; do
-            [ -f "$f" ] && sudo sed -i 's/^deb /deb [arch=amd64] /' "$f"
+            [ -f "$f" ] && grep -q '^\s*deb ' "$f" && ! grep -q '\[arch=' "$f" && \
+              sudo sed -i 's/^\(\s*deb\s\)/\1[arch=amd64] /' "$f"
           done
+          # Add ARM64 package sources
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" | sudo tee /etc/apt/sources.list.d/arm64-ports.list
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
           sudo apt-get update
