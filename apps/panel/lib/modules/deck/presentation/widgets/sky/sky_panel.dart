@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_celestial_elements.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_clouds_layer.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_content_overlay.dart';
@@ -115,7 +115,7 @@ class _SkyPanelState extends State<SkyPanel> {
 			final condition = mapWeatherCodeToSkyCondition(weatherCode);
 			final timeOfDay = resolveSkyTimeOfDay(_now, sunrise, sunset);
 
-			final temp = NumberFormatUtils.defaultFormat.formatDecimal(
+			final temp = NumberUtils.formatDecimal(
 				currentDay.temperature,
 				decimalPlaces: 0,
 			);

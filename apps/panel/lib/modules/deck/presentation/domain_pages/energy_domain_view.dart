@@ -32,7 +32,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -390,14 +390,14 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
 
     String subtitle;
     if (_summary != null) {
-      final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
+      final consumption = NumberUtils.formatDecimal(
         _summary!.consumption,
         decimalPlaces:
             energyDecimals(_summary!.consumption),
       );
       subtitle = '$consumption ${localizations.energy_unit_kwh}';
       if (_summary!.hasProduction) {
-        final production = NumberFormatUtils.defaultFormat.formatDecimal(
+        final production = NumberUtils.formatDecimal(
           _summary!.production!,
           decimalPlaces:
               energyDecimals(_summary!.production!),
@@ -507,7 +507,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
               child: EnergySecondaryValue(
                 icon: MdiIcons.solarPower,
                 label: localizations.energy_production,
-                value: NumberFormatUtils.defaultFormat.formatDecimal(
+                value: NumberUtils.formatDecimal(
                   _summary!.production!,
                   decimalPlaces: energyDecimals(_summary!.production!),
                 ),
@@ -520,7 +520,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
                 child: EnergySecondaryValue(
                   icon: MdiIcons.swapVertical,
                   label: localizations.energy_net,
-                  value: NumberFormatUtils.defaultFormat.formatDecimal(
+                  value: NumberUtils.formatDecimal(
                     _summary!.net!,
                     decimalPlaces: energyDecimals(_summary!.net!),
                   ),

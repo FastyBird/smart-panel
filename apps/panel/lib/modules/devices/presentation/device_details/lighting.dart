@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -961,7 +961,7 @@ class _LightingHeroCard extends StatelessWidget {
     final unitFontSize = fontSize * 0.27;
     final swatchSize = fontSize * 0.28;
 
-    final fmt = NumberFormatUtils.defaultFormat;
+    // Locale-aware number formatting
 
     final String value;
     IconData? unitIcon;
@@ -970,10 +970,10 @@ class _LightingHeroCard extends StatelessWidget {
 
     switch (selectedCapability) {
       case LightCapability.brightness:
-        value = fmt.formatInteger(brightness);
+        value = NumberUtils.formatInteger(brightness);
         unitIcon = MdiIcons.weatherSunny;
       case LightCapability.colorTemp:
-        value = fmt.formatInteger(colorTemp);
+        value = NumberUtils.formatInteger(colorTemp);
         unitText = 'K';
         final t = (colorTemp - 2700) / (6500 - 2700);
         swatchColor =
@@ -981,21 +981,21 @@ class _LightingHeroCard extends StatelessWidget {
       case LightCapability.hue:
         final currentColor = color ?? Colors.red;
         final hsv = HSVColor.fromColor(currentColor);
-        value = fmt.formatInteger(hsv.hue.round());
+        value = NumberUtils.formatInteger(hsv.hue.round());
         unitText = '\u00B0';
         swatchColor = HSVColor.fromAHSV(1, hsv.hue, 1, 1).toColor();
       case LightCapability.saturation:
-        value = fmt.formatInteger((saturation * 100).round());
+        value = NumberUtils.formatInteger((saturation * 100).round());
         unitIcon = MdiIcons.opacity;
         final currentColor = color ?? Colors.red;
         swatchColor = HSVColor.fromColor(currentColor)
             .withSaturation(saturation.clamp(0.0, 1.0))
             .toColor();
       case LightCapability.white:
-        value = fmt.formatInteger(whiteChannel ?? 80);
+        value = NumberUtils.formatInteger(whiteChannel ?? 80);
         unitIcon = MdiIcons.squareRounded;
       default:
-        value = fmt.formatInteger(brightness);
+        value = NumberUtils.formatInteger(brightness);
         unitIcon = MdiIcons.weatherSunny;
     }
 

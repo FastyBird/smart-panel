@@ -6,7 +6,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -71,7 +71,7 @@ class EnergyTimeseriesChart extends StatelessWidget {
       yDecimals = 3;
     }
 
-    final widestLabel = NumberFormatUtils.defaultFormat.formatDecimal(
+    final widestLabel = NumberUtils.formatDecimal(
       maxY,
       decimalPlaces: yDecimals,
     );
@@ -109,7 +109,7 @@ class EnergyTimeseriesChart extends StatelessWidget {
                         maxContentWidth: AppSpacings.scale(150),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final value =
-                              NumberFormatUtils.defaultFormat.formatDecimal(
+                              NumberUtils.formatDecimal(
                             rod.toY,
                             decimalPlaces: 2,
                           );
@@ -147,7 +147,7 @@ class EnergyTimeseriesChart extends StatelessWidget {
                                 padding:
                                     EdgeInsets.only(right: AppSpacings.pXs),
                                 child: Text(
-                                  NumberFormatUtils.defaultFormat.formatDecimal(
+                                  NumberUtils.formatDecimal(
                                     value,
                                     decimalPlaces: yDecimals,
                                   ),

@@ -1,0 +1,30 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Flutter + eLinux dependencies
+RUN apt-get update && apt-get install -y \
+    git curl unzip xz-utils \
+    clang cmake pkg-config \
+    libegl1-mesa-dev libgles2-mesa-dev \
+    libxkbcommon-dev \
+    libdrm-dev libgbm-dev \
+    libinput-dev libudev-dev libsystemd-dev \
+    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    libstdc++-12-dev-arm64-cross \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flutter SDK (needed by flutter-elinux)
+RUN git clone --depth 1 -b 3.27.4 https://github.com/flutter/flutter.git /opt/flutter
+ENV PATH="/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:${PATH}"
+RUN flutter precache --no-android --no-ios --no-web --no-macos --no-windows
+
+# Install flutter-elinux
+RUN git clone --depth 1 https://github.com/sony/flutter-elinux.git /opt/flutter-elinux
+ENV PATH="/opt/flutter-elinux/bin:${PATH}"
+
+# Install melos
+RUN dart pub global activate melos
+ENV PATH="/root/.pub-cache/bin:${PATH}"
+
+WORKDIR /app

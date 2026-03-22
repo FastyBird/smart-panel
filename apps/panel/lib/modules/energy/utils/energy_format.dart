@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Adaptive decimal places for energy values so large numbers stay compact.
@@ -18,18 +18,18 @@ int energyDecimals(double value) {
 
   if (abs >= 1e9) {
     final scaled = kWh / 1e9;
-    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'TWh');
+    return (value: NumberUtils.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'TWh');
   }
   if (abs >= 1e6) {
     final scaled = kWh / 1e6;
-    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'GWh');
+    return (value: NumberUtils.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'GWh');
   }
   if (abs >= 1e3) {
     final scaled = kWh / 1e3;
-    return (value: NumberFormatUtils.defaultFormat.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'MWh');
+    return (value: NumberUtils.formatDecimal(scaled, decimalPlaces: energyDecimals(scaled)), unit: 'MWh');
   }
 
-  return (value: NumberFormatUtils.defaultFormat.formatDecimal(kWh, decimalPlaces: energyDecimals(kWh)), unit: 'kWh');
+  return (value: NumberUtils.formatDecimal(kWh, decimalPlaces: energyDecimals(kWh)), unit: 'kWh');
 }
 
 /// Returns localized short day name for weekday (1=Monday, 7=Sunday).

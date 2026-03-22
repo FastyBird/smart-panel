@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -527,10 +527,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	}
 
 	String _formatTemp(double temp) {
-		final fmt = NumberFormatUtils.defaultFormat;
+		// Locale-aware number formatting
 		final displayUnits = DisplayUnits.fromLocator();
 		final tempUnit = displayUnits.temperature;
-		return '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+		return '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
 	}
 
 	(String, IconData) _climateModeInfo(ClimateMode mode) {

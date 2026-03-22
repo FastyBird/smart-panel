@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart'
@@ -19,11 +19,11 @@ import 'package:flutter/material.dart';
 ///
 /// Merges the former [SensorValueBuilder] and [SensorEnumUtils] into one class,
 /// and adds centralized numeric formatting methods so device detail views and
-/// domain views no longer need inline [NumberFormatUtils] calls.
+/// domain views no longer need inline [NumberUtils] calls.
 class SensorUtils {
   SensorUtils._();
 
-  static const _formatter = NumberFormatUtils.defaultFormat;
+  // Uses NumberUtils for locale-aware formatting
 
   // ===========================================================================
   // SECTION 1: Units per category
@@ -125,9 +125,9 @@ class SensorUtils {
         ? _scaleForConvertedCategory(category, displayUnits)
         : scaleForCategory(category);
     if (scale > 0) {
-      return _formatter.formatDecimal(converted, decimalPlaces: scale);
+      return NumberUtils.formatDecimal(converted, decimalPlaces: scale);
     }
-    return _formatter.formatInteger(converted.toInt());
+    return NumberUtils.formatInteger(converted.toInt());
   }
 
   /// Format a numeric [value] with its unit appended (e.g. "23,5°C", "45%").
@@ -189,7 +189,7 @@ class SensorUtils {
   // ===========================================================================
 
   /// Returns a [valueFormatter] closure with the correct decimal places for
-  /// [category]. Uses locale-aware [NumberFormatUtils] for numeric values
+  /// [category]. Uses locale-aware [NumberUtils] for numeric values
   /// and delegates to [ValueUtils] for booleans, strings, and validation.
   static String? Function(ChannelPropertyView) valueFormatterForCategory(
     DevicesModuleChannelCategory category,
@@ -205,8 +205,8 @@ class SensorUtils {
         // Re-format the validated number through locale-aware formatter.
         final num parsed = ValueUtils.roundToScale(value.value.toDouble(), scale);
         return scale > 0
-            ? _formatter.formatDecimal(parsed.toDouble(), decimalPlaces: scale)
-            : _formatter.formatInteger(parsed.toInt());
+            ? NumberUtils.formatDecimal(parsed.toDouble(), decimalPlaces: scale)
+            : NumberUtils.formatInteger(parsed.toInt());
       }
       return ValueUtils.formatValue(prop, scale);
     };
@@ -240,9 +240,9 @@ class SensorUtils {
       }
       // No category — use best-effort formatting
       if (value is double) {
-        return _formatter.formatDecimal(value, decimalPlaces: 1);
+        return NumberUtils.formatDecimal(value, decimalPlaces: 1);
       }
-      return _formatter.formatInteger(value.toInt());
+      return NumberUtils.formatInteger(value.toInt());
     }
 
     return value.toString();

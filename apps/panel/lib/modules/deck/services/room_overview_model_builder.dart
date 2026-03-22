@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_channel_category
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/core/utils/icon.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -562,7 +562,7 @@ DomainCardInfo _buildClimateCard(
 ) {
   final l = input.localizations;
   final cs = input.climateState;
-  final fmt = NumberFormatUtils.defaultFormat;
+  // Locale-aware number formatting
   final tempUnit = input.displayUnits.temperature;
 
   // Primary: target temp when available, fallback to current temp, then count
@@ -571,11 +571,11 @@ DomainCardInfo _buildClimateCard(
     primaryValue = l.thermostat_mode_off;
   } else if (cs?.effectiveTargetTemperature != null) {
     final target = cs!.effectiveTargetTemperature!;
-    primaryValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+    primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
   } else {
     final temp = cs?.currentTemperature ?? input.temperature;
     if (temp != null) {
-      primaryValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+      primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
     } else {
       primaryValue = '$count';
     }

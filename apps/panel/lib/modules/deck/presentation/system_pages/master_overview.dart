@@ -1,7 +1,7 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/icon.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -729,7 +729,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
             if (room.temperature != null)
               Text(
-                '${NumberFormatUtils.defaultFormat.formatDecimal(room.temperature!, decimalPlaces: 1)}°',
+                '${NumberUtils.formatDecimal(room.temperature!, decimalPlaces: 1)}°',
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   fontWeight: FontWeight.w500,

@@ -1,34 +1,48 @@
 import 'package:intl/intl.dart';
 
 /// A utility class for formatting numbers with localization support.
+///
+/// All methods use [Intl.getCurrentLocale] by default, which is synced
+/// with the app's language setting. This ensures consistent formatting
+/// across all screens (e.g., Czech → "1 234,56", English → "1,234.56").
 class NumberUtils {
-  /// Formats a number based on the given decimal places and locale.
-  ///
-  /// - [value]: The number to format. If `null`, a placeholder will be returned.
-  /// - [decimalPlaces]: (Optional) The number of decimal places to display.
-  /// - [locale]: (Optional) The locale for formatting. Defaults to the current locale.
-  ///
-  /// Returns a formatted number string.
+  /// Formats a double with the given decimal places and locale.
   static String formatNumber(double value,
       [int decimalPlaces = 2, String? locale]) {
     final effectiveLocale = locale ?? Intl.getCurrentLocale();
 
-    // Generate a dynamic pattern based on decimal places
     String pattern = '#,##0';
 
     if (decimalPlaces > 0) {
-      pattern += '.${'0' * decimalPlaces}'; // Add the required number of zeros
+      pattern += '.${'0' * decimalPlaces}';
     }
 
     return NumberFormat(pattern, effectiveLocale).format(value);
   }
 
-  /// Returns a placeholder string for unavailable values, using the correct decimal separator.
+  /// Formats an integer with thousand separators.
   ///
-  /// - [decimalPlaces]: (Optional) The number of decimal places to display.
-  /// - [locale]: (Optional) The locale for formatting. Defaults to the current locale.
+  /// Example (en): 59955 → "59,955"
+  /// Example (cs): 59955 → "59 955"
+  static String formatInteger(int value, [String? locale]) {
+    final effectiveLocale = locale ?? Intl.getCurrentLocale();
+    return NumberFormat('#,##0', effectiveLocale).format(value);
+  }
+
+  /// Formats a double with thousand separators and specified decimal places.
   ///
-  /// Returns a string in the format `"--.-"` where `.` is replaced by the localized decimal separator.
+  /// Example (en): 1234.5 with 1 decimal → "1,234.5"
+  /// Example (cs): 1234.5 with 1 decimal → "1 234,5"
+  static String formatDecimal(double value,
+      {int decimalPlaces = 1, String? locale}) {
+    return formatNumber(value, decimalPlaces, locale);
+  }
+
+  /// Returns a placeholder string for unavailable values, using the correct
+  /// decimal separator for the current locale.
+  ///
+  /// Example (en): formatUnavailableNumber(2) → "--.-"
+  /// Example (cs): formatUnavailableNumber(2) → "--,-"
   static String formatUnavailableNumber(
       [int decimalPlaces = 2, String? locale]) {
     final effectiveLocale = locale ?? Intl.getCurrentLocale();
@@ -36,7 +50,6 @@ class NumberUtils {
     final separator =
         NumberFormat.decimalPattern(effectiveLocale).symbols.DECIMAL_SEP;
 
-    // Generate placeholder based on decimal places
     final decimalPart = List.generate(decimalPlaces, (_) => '-').join();
 
     if (decimalPlaces == 0) {
