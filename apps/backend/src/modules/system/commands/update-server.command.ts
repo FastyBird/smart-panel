@@ -389,9 +389,13 @@ export class UpdateServerCommand extends CommandRunner {
 				} catch {
 					printError('Failed to revert symlink!');
 				}
-			}
 
-			rmSync(newVersionDir, { recursive: true, force: true });
+				rmSync(newVersionDir, { recursive: true, force: true });
+			} else {
+				// No previous version to revert to — keep the new version in place
+				// so the system remains bootable, even with a failed migration
+				printWarning('No previous version to revert to — keeping current version');
+			}
 
 			if (!skipRestart) {
 				this.restartService();

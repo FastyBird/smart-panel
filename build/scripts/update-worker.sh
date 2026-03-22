@@ -107,19 +107,19 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	# Set ownership
-	chown -R smart-panel:smart-panel "$NEW_VERSION_DIR"
+	sudo chown -R smart-panel:smart-panel "$NEW_VERSION_DIR"
 
 	# ── Stop service ──
 	update_status "stopping" "stopping"
-	systemctl stop smart-panel 2>/dev/null || true
+	sudo systemctl stop smart-panel 2>/dev/null || true
 
 	# ── Switch symlink (atomic on same filesystem) ──
-	ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
+	sudo ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
 		# Revert on failure
 		if [ -n "$PREVIOUS_TARGET" ]; then
-			ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
 		fi
-		systemctl start smart-panel 2>/dev/null || true
+		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "Failed to switch version symlink"
 		exit 1
 	}
@@ -139,28 +139,31 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 			cd "$NEW_VERSION_DIR"
 			node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js
 		) 2>&1 || {
-			# Migration failed — revert symlink, remove failed version
+			# Migration failed — revert symlink if possible
 			update_status "stopping" "stopping"
-			systemctl stop smart-panel 2>/dev/null || true
+			sudo systemctl stop smart-panel 2>/dev/null || true
 
 			if [ -n "$PREVIOUS_TARGET" ]; then
-				ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+				sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+				rm -rf "$NEW_VERSION_DIR"
+				update_status "failed" "failed" "Database migration failed — reverted to previous version"
+			else
+				# No previous version — keep current in place so system stays bootable
+				update_status "failed" "failed" "Database migration failed — no previous version to revert to"
 			fi
 
-			systemctl start smart-panel 2>/dev/null || true
-			rm -rf "$NEW_VERSION_DIR"
-			update_status "failed" "failed" "Database migration failed — reverted to previous version"
+			sudo systemctl start smart-panel 2>/dev/null || true
 			exit 1
 		}
 	fi
 
 	# ── Start service ──
 	update_status "starting" "starting"
-	systemctl start smart-panel 2>&1 || {
+	sudo systemctl start smart-panel 2>&1 || {
 		# Try to revert if start fails
 		if [ -n "$PREVIOUS_TARGET" ]; then
-			ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
-			systemctl start smart-panel 2>/dev/null || true
+			sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			sudo systemctl start smart-panel 2>/dev/null || true
 		fi
 		update_status "failed" "failed" "Failed to start service after update"
 		exit 1
