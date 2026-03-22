@@ -1531,16 +1531,40 @@ abstract class AppLocalizations {
   /// **'12-hour or 24-hour clock.'**
   String get settings_language_settings_time_format_description;
 
+  /// Title for the number format setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Number Format'**
   String get settings_language_settings_number_format_title;
 
+  /// Description explaining the purpose of the number format setting.
+  ///
+  /// In en, this message translates to:
+  /// **'How numbers are displayed (thousands and decimal separators).'**
   String get settings_language_settings_number_format_description;
 
+  /// Label for comma-dot number format (US/UK style).
+  ///
+  /// In en, this message translates to:
+  /// **'1,234.56'**
   String get number_format_comma_dot;
 
+  /// Label for dot-comma number format (German style).
+  ///
+  /// In en, this message translates to:
+  /// **'1.234,56'**
   String get number_format_dot_comma;
 
+  /// Label for space-comma number format (French/Czech style).
+  ///
+  /// In en, this message translates to:
+  /// **'1 234,56'**
   String get number_format_space_comma;
 
+  /// Label for no-grouping number format.
+  ///
+  /// In en, this message translates to:
+  /// **'1234.56'**
   String get number_format_none;
 
   /// Title for the Display Settings section.
