@@ -1,12 +1,15 @@
 import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, INFLUXDB_MODULE_NAME } from '../influxdb.constants';
 import { InfluxDbConfigModel } from '../models/config.model';
+
+import { InMemoryTimeSeriesStore } from './in-memory-timeseries.store';
+import { InfluxQLParser } from './influxql-parser';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -46,12 +49,29 @@ const isArrayOfContinuousQueries = (v: unknown): boolean => {
 };
 
 @Injectable()
-export class InfluxDbService implements OnApplicationBootstrap {
+export class InfluxDbService implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(INFLUXDB_MODULE_NAME, 'InfluxDbService');
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];
 
-	constructor(private readonly configService: ConfigService) {}
+	/**
+	 * In-memory fallback store used when InfluxDB is unavailable.
+	 * Always initialized — data is written here AND to InfluxDB when connected.
+	 * When InfluxDB is down, reads fall back to this store.
+	 */
+	private readonly memoryStore: InMemoryTimeSeriesStore;
+	private readonly memoryParser: InfluxQLParser;
+
+	/**
+	 * Whether we are operating in fallback mode (InfluxDB unavailable).
+	 * This is separate from connection === null during startup.
+	 */
+	private usingFallback = false;
+
+	constructor(private readonly configService: ConfigService) {
+		this.memoryStore = new InMemoryTimeSeriesStore();
+		this.memoryParser = new InfluxQLParser(this.memoryStore);
+	}
 
 	/**
 	 * Initialize connection after all module mappings are registered.
@@ -66,6 +86,10 @@ export class InfluxDbService implements OnApplicationBootstrap {
 
 			this.logger.error('Database can not be initialized', { message: err.message, stack: err.stack });
 		}
+	}
+
+	onModuleDestroy(): void {
+		this.memoryStore.destroy();
 	}
 
 	/**
@@ -119,13 +143,22 @@ export class InfluxDbService implements OnApplicationBootstrap {
 			}
 
 			await this.ensureRetentionPolicies(config.database);
+
+			// If we were in fallback mode, we've recovered
+			if (this.usingFallback) {
+				this.logger.log('InfluxDB connection recovered — switching from in-memory fallback to InfluxDB');
+				this.usingFallback = false;
+			}
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('Failed to connect to InfluxDB', { message: err.message, stack: err.stack });
 
-			// Mark as disconnected so isConnected() returns false
+			// Mark as disconnected and enable fallback
 			this.connection = null;
+			this.usingFallback = true;
+
+			this.logger.warn('Using in-memory time-series storage as fallback. Data will not persist across restarts.');
 		}
 	}
 
@@ -141,15 +174,42 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		this.logger.log('Connection closed.');
 	}
 
+	/**
+	 * Returns true when the service is ready to accept reads and writes.
+	 * This returns true both when InfluxDB is connected AND when the
+	 * in-memory fallback is active, so consumers don't need to skip operations.
+	 */
 	public isConnected(): boolean {
+		return this.connection !== null || this.usingFallback;
+	}
+
+	/**
+	 * Returns true only when InfluxDB is actually connected (not fallback).
+	 */
+	public isInfluxDbConnected(): boolean {
 		return this.connection !== null;
 	}
 
+	/**
+	 * Returns true when operating in fallback (in-memory) mode.
+	 */
+	public isUsingFallback(): boolean {
+		return this.usingFallback;
+	}
+
 	public async alterRetentionPolicy(...args: Parameters<InfluxDB['alterRetentionPolicy']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return; // No-op in fallback mode
+		}
+
 		return this.getConnection().alterRetentionPolicy(...args);
 	}
 
 	public async createContinuousQuery(...args: Parameters<InfluxDB['createContinuousQuery']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return; // No-op in fallback mode
+		}
+
 		const [name, body, db, resample] = args;
 
 		if (!db) {
@@ -181,118 +241,228 @@ export class InfluxDbService implements OnApplicationBootstrap {
 	}
 
 	public async createDatabase(...args: Parameters<InfluxDB['createDatabase']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().createDatabase(...args);
 	}
 
 	public async createRetentionPolicy(...args: Parameters<InfluxDB['createRetentionPolicy']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().createRetentionPolicy(...args);
 	}
 
 	public async createUser(...args: Parameters<InfluxDB['createUser']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().createUser(...args);
 	}
 
 	public async dropContinuousQuery(...args: Parameters<InfluxDB['dropContinuousQuery']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropContinuousQuery(...args);
 	}
 
 	public async dropDatabase(...args: Parameters<InfluxDB['dropDatabase']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropDatabase(...args);
 	}
 
 	public async dropMeasurement(...args: Parameters<InfluxDB['dropMeasurement']>): Promise<void> {
+		// Always drop from memory store
+		if (typeof args[0] === 'string') {
+			this.memoryStore.dropMeasurement(args[0]);
+		}
+
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropMeasurement(...args);
 	}
 
 	public async dropRetentionPolicy(...args: Parameters<InfluxDB['dropRetentionPolicy']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropRetentionPolicy(...args);
 	}
 
 	public async dropSeries(...args: Parameters<InfluxDB['dropSeries']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropSeries(...args);
 	}
 
 	public async dropUser(...args: Parameters<InfluxDB['dropUser']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().dropUser(...args);
 	}
 
 	public async getDatabaseNames(...args: Parameters<InfluxDB['getDatabaseNames']>): Promise<string[]> {
+		if (this.usingFallback && !this.connection) {
+			return ['in-memory'];
+		}
+
 		return this.getConnection().getDatabaseNames(...args);
 	}
 
 	public async getMeasurements(...args: Parameters<InfluxDB['getMeasurements']>): Promise<string[]> {
+		if (this.usingFallback && !this.connection) {
+			return this.memoryStore.getMeasurements();
+		}
+
 		return this.getConnection().getMeasurements(...args);
 	}
 
 	public async getSeries(...args: Parameters<InfluxDB['getSeries']>): Promise<string[]> {
+		if (this.usingFallback && !this.connection) {
+			return [];
+		}
+
 		return this.getConnection().getSeries(...args);
 	}
 
 	public async getUsers(...args: Parameters<InfluxDB['getUsers']>): Promise<Array<{ user: string; admin: boolean }>> {
+		if (this.usingFallback && !this.connection) {
+			return [];
+		}
+
 		return this.getConnection().getUsers(...args);
 	}
 
 	public async grantAdminPrivilege(...args: Parameters<InfluxDB['grantAdminPrivilege']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().grantAdminPrivilege(...args);
 	}
 
 	public async grantPrivilege(...args: Parameters<InfluxDB['grantPrivilege']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().grantPrivilege(...args);
 	}
 
 	public async ping(...args: Parameters<InfluxDB['ping']>): Promise<IPingStats[]> {
+		if (this.usingFallback && !this.connection) {
+			return [];
+		}
+
 		return this.getConnection().ping(...args);
 	}
 
 	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
-		try {
-			return await this.getConnection().query(query, options);
-		} catch (error) {
-			const err = error as Error;
+		// Always try InfluxDB first if connected
+		if (this.connection) {
+			try {
+				return await this.connection.query(query, options);
+			} catch (error) {
+				const err = error as Error;
 
-			// Handle "database not found" gracefully - return empty results
-			if (err.message?.includes('database not found')) {
-				this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
+				// Handle "database not found" gracefully - return empty results
+				if (err.message?.includes('database not found')) {
+					this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
 
-				// Try to recreate the database
-				void this.setupDatabase();
+					// Try to recreate the database
+					void this.setupDatabase();
+
+					return [] as unknown as IResults<T>;
+				}
+
+				throw error;
+			}
+		}
+
+		// Fallback to in-memory store
+		if (this.usingFallback) {
+			try {
+				const results = this.memoryParser.execute<T>(query);
+
+				return results as unknown as IResults<T>;
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.warn(`In-memory query failed: ${err.message}`);
 
 				return [] as unknown as IResults<T>;
 			}
-
-			throw error;
 		}
+
+		return [] as unknown as IResults<T>;
 	}
 
 	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
-		try {
-			return (await this.getConnection().queryRaw(query, options)) as T;
-		} catch (error) {
-			const err = error as Error;
+		if (this.connection) {
+			try {
+				return (await this.connection.queryRaw(query, options)) as T;
+			} catch (error) {
+				const err = error as Error;
 
-			// Handle "database not found" gracefully
-			if (err.message?.includes('database not found')) {
-				this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
+				// Handle "database not found" gracefully
+				if (err.message?.includes('database not found')) {
+					this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
 
-				// Try to recreate the database
-				void this.setupDatabase();
+					// Try to recreate the database
+					void this.setupDatabase();
 
-				return { results: [] } as T;
+					return { results: [] } as T;
+				}
+
+				throw error;
 			}
-
-			throw error;
 		}
+
+		// Fallback: return empty raw results
+		if (this.usingFallback) {
+			return { results: [] } as T;
+		}
+
+		return { results: [] } as T;
 	}
 
 	public async revokeAdminPrivilege(...args: Parameters<InfluxDB['revokeAdminPrivilege']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().revokeAdminPrivilege(...args);
 	}
 
 	public async revokePrivilege(...args: Parameters<InfluxDB['revokePrivilege']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().revokePrivilege(...args);
 	}
 
 	public async setPassword(...args: Parameters<InfluxDB['setPassword']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return;
+		}
+
 		return this.getConnection().setPassword(...args);
 	}
 
@@ -302,6 +472,10 @@ export class InfluxDbService implements OnApplicationBootstrap {
 			query: string;
 		}>
 	> {
+		if (this.usingFallback && !this.connection) {
+			return [] as unknown as IResults<{ name: string; query: string }>;
+		}
+
 		return this.getConnection().showContinousQueries(...args);
 	}
 
@@ -314,15 +488,45 @@ export class InfluxDbService implements OnApplicationBootstrap {
 			shardGroupDuration: string;
 		}>
 	> {
+		if (this.usingFallback && !this.connection) {
+			return [] as unknown as IResults<{
+				default: boolean;
+				duration: string;
+				name: string;
+				replicaN: number;
+				shardGroupDuration: string;
+			}>;
+		}
+
 		return this.getConnection().showRetentionPolicies(...args);
 	}
 
 	public async writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
+		if (this.usingFallback && !this.connection) {
+			return; // writeMeasurement uses a different interface — skip in fallback
+		}
+
 		return this.getConnection().writeMeasurement(...args);
 	}
 
 	public async writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
-		return this.getConnection().writePoints(...args);
+		const points = args[0];
+
+		// Always write to in-memory store for fallback reads
+		this.memoryStore.writePoints(points);
+
+		// Also write to InfluxDB if connected
+		if (this.connection) {
+			return this.connection.writePoints(...args);
+		}
+
+		// In fallback mode, the in-memory write above is sufficient
+		if (this.usingFallback) {
+			return;
+		}
+
+		// Neither connected nor fallback — this shouldn't happen but handle gracefully
+		throw new Error('InfluxDB connection is not initialized');
 	}
 
 	private async ensureRetentionPolicies(database: string): Promise<void> {
