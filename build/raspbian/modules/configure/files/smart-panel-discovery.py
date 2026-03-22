@@ -11,7 +11,7 @@ import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 SERVICE_TYPE = '_fastybird-panel._tcp'
-BROWSE_TIMEOUT = 10  # seconds
+BROWSE_TIMEOUT = 5  # seconds — must fit within Dart client's 6s timeout
 
 
 class DiscoveryHandler(BaseHTTPRequestHandler):

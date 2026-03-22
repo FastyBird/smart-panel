@@ -105,8 +105,13 @@ if [ "${HAS_DISPLAY}" = true ]; then
 	cp /tmp/smart-panel-config/build-flutter-pi.sh "${DISPLAY_DIR}/build-flutter-pi.sh"
 	chmod +x "${DISPLAY_DIR}/build-flutter-pi.sh"
 
-	# Enable display service
+	# Install discovery proxy (wraps avahi-browse for flutter-pi)
+	cp /tmp/smart-panel-config/smart-panel-discovery.py "${DISPLAY_DIR}/discovery-service.py"
+	cp /tmp/smart-panel-config/smart-panel-discovery.service /etc/systemd/system/
+
+	# Enable display and discovery services
 	systemctl enable smart-panel-display.service
+	systemctl enable smart-panel-discovery.service
 
 	echo "Display services configured"
 fi

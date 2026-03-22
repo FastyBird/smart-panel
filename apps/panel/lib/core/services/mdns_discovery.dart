@@ -333,9 +333,12 @@ class MdnsDiscoveryService {
           final body = await response.transform(utf8.decoder).join();
           final List<dynamic> data = jsonDecode(body) as List<dynamic>;
           for (final item in data) {
+            final host = item['host'] as String?;
+            if (host == null || host.isEmpty) continue;
+
             final backend = DiscoveredBackend(
               name: item['name'] as String? ?? 'Unknown',
-              host: item['host'] as String,
+              host: host,
               port: item['port'] as int? ?? 3000,
               apiPath: item['api'] as String? ?? '/api/v1',
               version: item['version'] as String?,
