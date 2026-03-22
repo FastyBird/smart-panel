@@ -99,8 +99,15 @@ export class UpdateService {
 	 */
 	getInstallType(): InstallType {
 		try {
-			const currentDir = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
-			const markerPath = join(UpdateService.IMAGE_BASE_DIR, currentDir, UpdateService.IMAGE_MARKER_FILE);
+			const currentTarget = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
+
+			// readlinkSync may return a relative path (e.g. "v1.0.0") or an absolute
+			// path (e.g. "/opt/smart-panel/v1.0.0"). Use path.resolve to handle both.
+			const resolvedDir = currentTarget.startsWith('/')
+				? currentTarget
+				: join(UpdateService.IMAGE_BASE_DIR, currentTarget);
+
+			const markerPath = join(resolvedDir, UpdateService.IMAGE_MARKER_FILE);
 
 			if (existsSync(markerPath)) {
 				return 'image';
@@ -109,7 +116,7 @@ export class UpdateService {
 			// readlinkSync fails if the path is not a symlink or doesn't exist
 		}
 
-		// Also check absolute path (symlink may resolve to absolute)
+		// Fallback: check via the symlink directly (Node follows symlinks in existsSync)
 		try {
 			const markerPath = join(UpdateService.IMAGE_CURRENT_LINK, UpdateService.IMAGE_MARKER_FILE);
 

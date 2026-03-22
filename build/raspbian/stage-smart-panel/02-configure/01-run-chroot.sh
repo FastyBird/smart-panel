@@ -17,14 +17,6 @@ cp /tmp/smart-panel-config/environment /etc/smart-panel/environment
 cp /tmp/smart-panel-config/first-boot.sh "${APP_INSTALL_DIR}/first-boot.sh"
 chmod +x "${APP_INSTALL_DIR}/first-boot.sh"
 
-# Add sudoers entry for update operations (symlink switch, service restart)
-cat >> /etc/sudoers.d/smart-panel << 'SUDOERS_UPDATE'
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v* /opt/smart-panel/current
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
-SUDOERS_UPDATE
-
 # Create first-boot marker
 touch "${DATA_DIR}/.first-boot"
 
@@ -61,6 +53,11 @@ cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
 smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
 smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
+# Update operations (symlink switch and service management)
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v* /opt/smart-panel/current
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
 

@@ -39,7 +39,7 @@ describe('UpdateService', () => {
 	});
 
 	describe('getInstallType', () => {
-		it('should return "image" when .image-install marker exists via symlink', () => {
+		it('should return "image" when .image-install marker exists via relative symlink', () => {
 			(readlinkSync as jest.Mock).mockReturnValue('v1.0.0');
 			(existsSync as jest.Mock).mockImplementation((path: string) => {
 				if (path === '/opt/smart-panel/v1.0.0/.image-install') {
@@ -52,7 +52,20 @@ describe('UpdateService', () => {
 			expect(service.getInstallType()).toBe('image');
 		});
 
-		it('should return "image" when .image-install marker exists via absolute path', () => {
+		it('should return "image" when .image-install marker exists via absolute symlink target', () => {
+			(readlinkSync as jest.Mock).mockReturnValue('/opt/smart-panel/v1.0.0');
+			(existsSync as jest.Mock).mockImplementation((path: string) => {
+				if (path === '/opt/smart-panel/v1.0.0/.image-install') {
+					return true;
+				}
+
+				return false;
+			});
+
+			expect(service.getInstallType()).toBe('image');
+		});
+
+		it('should return "image" via fallback when readlinkSync fails', () => {
 			(readlinkSync as jest.Mock).mockImplementation(() => {
 				throw new Error('Not a symlink');
 			});
