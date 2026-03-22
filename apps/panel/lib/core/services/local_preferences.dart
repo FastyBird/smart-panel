@@ -76,6 +76,30 @@ class LocalPreferencesService {
     await _write(key: _darkModeKey, value: darkMode.toString());
   }
 
+  /// Clear all cached preferences (used during factory reset).
+  Future<void> clearAll() async {
+    _language = Language.english;
+    _darkMode = false;
+
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _securedStorage?.delete(key: _languageKey);
+        await _securedStorage?.delete(key: _darkModeKey);
+      } else {
+        await _securedStorageFallback?.delete(key: _languageKey);
+        await _securedStorageFallback?.delete(key: _darkModeKey);
+      }
+
+      if (kDebugMode) {
+        debugPrint('[LOCAL PREFS] All preferences cleared');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[LOCAL PREFS] Failed to clear: $e');
+      }
+    }
+  }
+
   Future<String?> _read({required String key}) async {
     if (Platform.isAndroid || Platform.isIOS) {
       return await _securedStorage?.read(key: key);

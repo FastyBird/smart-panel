@@ -1354,6 +1354,16 @@ class StartupManagerService {
     // Clear backend URL to force rediscovery
     await _clearStoredBackendUrl();
 
+    // Clear cached UI preferences (theme, language, dark mode)
+    try {
+      final localPrefs = locator.get<LocalPreferencesService>();
+      await localPrefs.clearAll();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[STARTUP MANAGER] Could not clear local preferences: $e');
+      }
+    }
+
     // Stop periodic refresh before tearing down
     _periodicRefreshService?.dispose();
     _periodicRefreshService = null;
