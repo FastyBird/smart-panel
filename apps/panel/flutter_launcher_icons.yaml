@@ -1,0 +1,7 @@
+android: true
+ios: true
+image_path: "assets/icon/app_icon.png"
+adaptive_icon_background: "#D9230F"
+adaptive_icon_foreground: "assets/icon/app_icon.png"
+min_sdk_android: 21
+remove_alpha_ios: true
