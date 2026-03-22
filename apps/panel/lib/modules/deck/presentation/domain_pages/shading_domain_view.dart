@@ -644,7 +644,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   void _onDataChanged() {
     if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || _isDragging) return;
 
       // If backend confirms a new mode intent (lastAppliedAt changed),
       // clear the local manual override flag. We compare timestamps to

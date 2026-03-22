@@ -1450,7 +1450,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _onDataChanged() {
     if (!mounted || _isDragging) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDragging) {
         // Build state FIRST with current lock status
         // This ensures UI shows locked (desired) values during pending/settling
         _buildState();
