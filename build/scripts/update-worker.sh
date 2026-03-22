@@ -198,14 +198,15 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	# ── Cleanup old versions (keep max 2 previous) ──
 	cd "$IMAGE_BASE_DIR"
-	# shellcheck disable=SC2012
-	OLD_VERSIONS=$(ls -d v*/ 2>/dev/null | sort -V | head -n -3 || true)
+	CURRENT_BASENAME=$(basename "$(readlink "$CURRENT_LINK")" 2>/dev/null || true)
+
+	# Only match semver-versioned directories (v<digits>.<digits>.<digits>*)
+	# to avoid accidentally deleting unrelated v-prefixed directories
+	# shellcheck disable=SC2010
+	OLD_VERSIONS=$(ls -d v[0-9]*.[0-9]*.[0-9]*/ 2>/dev/null | grep -v "^${CURRENT_BASENAME}/" | sort -V | head -n -2 || true)
 
 	for old_dir in $OLD_VERSIONS; do
-		# Never remove the current version
-		if [ "$old_dir" != "$(basename "$(readlink "$CURRENT_LINK")")/" ]; then
-			rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
-		fi
+		rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
 	done
 
 	# ── Mark complete ──

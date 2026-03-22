@@ -463,21 +463,23 @@ export class UpdateServerCommand extends CommandRunner {
 		try {
 			const versions = this.updateService.getInstalledVersions();
 
-			if (versions.length <= 3) {
+			// Exclude the current version before deciding what to remove,
+			// so downgrades don't leave extra versions behind
+			const removable = versions.filter((v) => `v${v}` !== currentVersion);
+
+			if (removable.length <= 2) {
 				return;
 			}
 
-			// Remove all but the 3 newest (current + 2 previous)
-			const toRemove = versions.slice(0, versions.length - 3);
+			// Remove all but the 2 newest previous versions
+			const toRemove = removable.slice(0, removable.length - 2);
 
 			for (const version of toRemove) {
 				const dir = `${baseDir}/v${version}`;
 
-				if (`v${version}` !== currentVersion) {
-					printStep(`Removing old version v${version}...`);
-					rmSync(dir, { recursive: true, force: true });
-					printSuccess(`Removed v${version}`);
-				}
+				printStep(`Removing old version v${version}...`);
+				rmSync(dir, { recursive: true, force: true });
+				printSuccess(`Removed v${version}`);
 			}
 		} catch (error) {
 			const err = error as Error;
