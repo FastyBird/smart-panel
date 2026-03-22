@@ -136,7 +136,7 @@ enum DistanceUnit {
   static bool contains(String value) => utils.contains(value);
 }
 
-enum NumberFormat {
+enum NumberFormatSetting {
   commaDot('comma_dot'),
   dotComma('dot_comma'),
   spaceComma('space_comma'),
@@ -144,14 +144,14 @@ enum NumberFormat {
 
   final String value;
 
-  const NumberFormat(this.value);
+  const NumberFormatSetting(this.value);
 
   static final utils = StringEnumUtils(
-    NumberFormat.values,
-    (NumberFormat payload) => payload.value,
+    NumberFormatSetting.values,
+    (NumberFormatSetting payload) => payload.value,
   );
 
-  static NumberFormat? fromValue(String value) => utils.fromValue(value);
+  static NumberFormatSetting? fromValue(String value) => utils.fromValue(value);
 
   static bool contains(String value) => utils.contains(value);
 }

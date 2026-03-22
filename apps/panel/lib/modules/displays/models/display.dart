@@ -32,7 +32,7 @@ class DisplayModel {
   final String? homePageId;
   final String? resolvedHomePageId;
   // Unit overrides (null = use system default)
-  final NumberFormat? numberFormat;
+  final NumberFormatSetting? numberFormat;
   final TemperatureUnit? temperatureUnit;
   final WindSpeedUnit? windSpeedUnit;
   final PressureUnit? pressureUnit;
@@ -110,7 +110,7 @@ class DisplayModel {
       homePageId: json['home_page_id'] as String?,
       resolvedHomePageId: json['resolved_home_page_id'] as String?,
       numberFormat: json['number_format'] != null
-          ? NumberFormat.fromValue(json['number_format'] as String)
+          ? NumberFormatSetting.fromValue(json['number_format'] as String)
           : null,
       temperatureUnit: json['temperature_unit'] != null
           ? TemperatureUnit.fromValue(json['temperature_unit'] as String)
@@ -226,7 +226,7 @@ class DisplayModel {
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
       numberFormat: identical(numberFormat, _unset)
           ? this.numberFormat
-          : numberFormat as NumberFormat?,
+          : numberFormat as NumberFormatSetting?,
       temperatureUnit: identical(temperatureUnit, _unset)
           ? this.temperatureUnit
           : temperatureUnit as TemperatureUnit?,

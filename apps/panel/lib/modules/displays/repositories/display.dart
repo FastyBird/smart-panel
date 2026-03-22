@@ -116,7 +116,7 @@ class DisplayRepository extends ChangeNotifier {
   String? get resolvedHomePageId => _display?.resolvedHomePageId;
 
   // Unit override getters (null = use system default)
-  NumberFormat? get numberFormat => _display?.numberFormat;
+  NumberFormatSetting? get numberFormat => _display?.numberFormat;
 
   TemperatureUnit? get temperatureUnit => _display?.temperatureUnit;
 
@@ -428,7 +428,7 @@ class DisplayRepository extends ChangeNotifier {
       homePageId: data.homePageId,
       resolvedHomePageId: data.resolvedHomePageId,
       numberFormat: data.numberFormat?.json != null
-          ? NumberFormat.fromValue(data.numberFormat!.json!)
+          ? NumberFormatSetting.fromValue(data.numberFormat!.json!)
           : null,
       temperatureUnit: data.temperatureUnit?.json != null
           ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
@@ -473,8 +473,8 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
-  /// Convert local NumberFormat to API enum
-  DisplaysModuleUpdateDisplayNumberFormat? _toApiNumberFormat(NumberFormat? format) {
+  /// Convert local NumberFormatSetting to API enum
+  DisplaysModuleUpdateDisplayNumberFormat? _toApiNumberFormat(NumberFormatSetting? format) {
     if (format == null) return null;
     return DisplaysModuleUpdateDisplayNumberFormat.fromJson(format.value);
   }
@@ -563,7 +563,7 @@ class DisplayRepository extends ChangeNotifier {
       numberFormat: _toApiNumberFormat(
         identical(numberFormat, _unset)
             ? _display!.numberFormat
-            : numberFormat as NumberFormat?,
+            : numberFormat as NumberFormatSetting?,
       ),
       temperatureUnit: _toApiTemperatureUnit(
         identical(temperatureUnit, _unset)
@@ -813,7 +813,7 @@ class DisplayRepository extends ChangeNotifier {
   }
 
   /// Update number format override (null = system default)
-  Future<bool> setNumberFormat(NumberFormat? format) async {
+  Future<bool> setNumberFormat(NumberFormatSetting? format) async {
     if (_display == null) return false;
 
     try {

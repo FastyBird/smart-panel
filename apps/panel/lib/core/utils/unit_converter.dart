@@ -5,11 +5,11 @@ import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
 export 'package:fastybird_smart_panel/modules/system/types/configuration.dart'
-    show TemperatureUnit, WindSpeedUnit, PressureUnit, PrecipitationUnit, DistanceUnit, NumberFormat;
+    show TemperatureUnit, WindSpeedUnit, PressureUnit, PrecipitationUnit, DistanceUnit, NumberFormatSetting;
 
 /// Resolved display units combining display-level overrides with system defaults.
 class DisplayUnits {
-	final NumberFormat numberFormat;
+	final NumberFormatSetting numberFormat;
 	final TemperatureUnit temperature;
 	final WindSpeedUnit windSpeed;
 	final PressureUnit pressure;
@@ -27,7 +27,7 @@ class DisplayUnits {
 
 	/// Default metric units (Celsius, m/s, hPa, mm, km) with comma_dot number format.
 	static const metric = DisplayUnits(
-		numberFormat: NumberFormat.commaDot,
+		numberFormat: NumberFormatSetting.commaDot,
 		temperature: TemperatureUnit.celsius,
 		windSpeed: WindSpeedUnit.metersPerSecond,
 		pressure: PressureUnit.hectopascal,
@@ -43,7 +43,7 @@ class DisplayUnits {
 		return DisplayUnits(
 			numberFormat: displayRepository.numberFormat ??
 				systemConfig?.numberFormat ??
-				NumberFormat.commaDot,
+				NumberFormatSetting.commaDot,
 			temperature: displayRepository.temperatureUnit ??
 				systemConfig?.temperatureUnit ??
 				TemperatureUnit.celsius,
