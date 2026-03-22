@@ -5,6 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import type { NumberFormatSetting } from '../../../common/utils/number.utils';
 import { FormResult, type FormResultType } from '../displays.constants';
 import { DisplaysApiException, DisplaysValidationException } from '../displays.exceptions';
 import type { IDisplay } from '../store/displays.store.types';
@@ -14,7 +15,6 @@ import type {
 	DistanceUnit,
 	IDisplayEditForm,
 	IUseDisplayEditForm,
-	NumberFormatType,
 	PrecipitationUnit,
 	PressureUnit,
 	TemperatureUnit,
@@ -111,7 +111,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				microphoneVolume?: number;
 				homeMode: 'auto_space' | 'explicit';
 				homePageId: string | null;
-				numberFormat: NumberFormatType | null;
+				numberFormat: NumberFormatSetting | null;
 				temperatureUnit: TemperatureUnit | null;
 				windSpeedUnit: WindSpeedUnit | null;
 				pressureUnit: PressureUnit | null;
