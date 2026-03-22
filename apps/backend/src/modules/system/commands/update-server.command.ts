@@ -185,6 +185,19 @@ export class UpdateServerCommand extends CommandRunner {
 		const newVersionDir = `${baseDir}/v${targetVersion}`;
 		const currentLink = `${baseDir}/current`;
 
+		// Guard: refuse to overwrite the currently running version
+		try {
+			const currentTarget = execFileSync('readlink', ['-f', currentLink], { encoding: 'utf-8' }).trim();
+			const resolvedNew = execFileSync('readlink', ['-f', newVersionDir], { encoding: 'utf-8' }).trim();
+
+			if (currentTarget === resolvedNew) {
+				printError(`Target version v${targetVersion} is already the active version`);
+				process.exit(1);
+			}
+		} catch {
+			// newVersionDir doesn't exist yet — safe to proceed
+		}
+
 		// Fetch the release asset download URL
 		printStep('Fetching release information...');
 

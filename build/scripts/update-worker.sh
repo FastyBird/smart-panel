@@ -56,6 +56,12 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		PREVIOUS_TARGET=$(readlink "$CURRENT_LINK")
 	fi
 
+	# Guard: refuse to overwrite the currently running version
+	if [ -n "$PREVIOUS_TARGET" ] && [ "$(realpath "$PREVIOUS_TARGET" 2>/dev/null)" = "$(realpath "$NEW_VERSION_DIR" 2>/dev/null)" ]; then
+		update_status "failed" "failed" "Target version v${VERSION} is already the active version"
+		exit 1
+	fi
+
 	# ── Download ──
 	update_status "downloading" "downloading"
 
@@ -127,7 +133,6 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	# ── Run database migrations ──
 	update_status "migrating" "migrating"
 
-	DATA_DIR="${FB_DATA_DIR:-/var/lib/smart-panel}"
 	ENV_FILE="/etc/smart-panel/environment"
 
 	if [ -f "${NEW_VERSION_DIR}/dist/dataSource.js" ]; then
