@@ -36,6 +36,7 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		// Room assignment (only for role=room displays)
 		roomId: response.room_id ?? null,
 		// Unit overrides (null = use system default)
+		numberFormat: response.number_format ?? null,
 		temperatureUnit: response.temperature_unit ?? null,
 		windSpeedUnit: response.wind_speed_unit ?? null,
 		pressureUnit: response.pressure_unit ?? null,
@@ -119,6 +120,9 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	}
 
 	// Unit overrides - explicitly include null to reset to system default
+	if ('numberFormat' in display) {
+		baseData.number_format = display.numberFormat ?? null;
+	}
 	if ('temperatureUnit' in display) {
 		baseData.temperature_unit = display.temperatureUnit ?? null;
 	}

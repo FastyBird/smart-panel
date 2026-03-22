@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_req_update_disp
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_distance_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_home_mode.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_number_format.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_precipitation_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_pressure_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_role.dart';
@@ -115,6 +116,8 @@ class DisplayRepository extends ChangeNotifier {
   String? get resolvedHomePageId => _display?.resolvedHomePageId;
 
   // Unit override getters (null = use system default)
+  NumberFormat? get numberFormat => _display?.numberFormat;
+
   TemperatureUnit? get temperatureUnit => _display?.temperatureUnit;
 
   WindSpeedUnit? get windSpeedUnit => _display?.windSpeedUnit;
@@ -424,6 +427,9 @@ class DisplayRepository extends ChangeNotifier {
       homeMode: _fromApiHomeMode(data.homeMode),
       homePageId: data.homePageId,
       resolvedHomePageId: data.resolvedHomePageId,
+      numberFormat: data.numberFormat?.json != null
+          ? NumberFormat.fromValue(data.numberFormat!.json!)
+          : null,
       temperatureUnit: data.temperatureUnit?.json != null
           ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
           : null,
@@ -465,6 +471,12 @@ class DisplayRepository extends ChangeNotifier {
       case HomeMode.explicit:
         return DisplaysModuleUpdateDisplayHomeMode.explicit;
     }
+  }
+
+  /// Convert local NumberFormat to API enum
+  DisplaysModuleUpdateDisplayNumberFormat? _toApiNumberFormat(NumberFormat? format) {
+    if (format == null) return null;
+    return DisplaysModuleUpdateDisplayNumberFormat.fromJson(format.value);
   }
 
   /// Convert local TemperatureUnit to API enum
@@ -510,6 +522,7 @@ class DisplayRepository extends ChangeNotifier {
     int? speakerVolume,
     bool? microphone,
     int? microphoneVolume,
+    Object? numberFormat = _unset,
     Object? temperatureUnit = _unset,
     Object? windSpeedUnit = _unset,
     Object? pressureUnit = _unset,
@@ -547,6 +560,11 @@ class DisplayRepository extends ChangeNotifier {
       microphone: microphone ?? _display!.microphone,
       microphoneVolume: microphoneVolume ?? _display!.microphoneVolume,
       // Unit overrides
+      numberFormat: _toApiNumberFormat(
+        identical(numberFormat, _unset)
+            ? _display!.numberFormat
+            : numberFormat as NumberFormat?,
+      ),
       temperatureUnit: _toApiTemperatureUnit(
         identical(temperatureUnit, _unset)
             ? _display!.temperatureUnit
@@ -789,6 +807,32 @@ class DisplayRepository extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[DISPLAYS MODULE] Failed to update microphone volume: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update number format override (null = system default)
+  Future<bool> setNumberFormat(NumberFormat? format) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(numberFormat: format),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(numberFormat: format);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update number format: $e');
       }
       return false;
     }

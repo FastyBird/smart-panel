@@ -9,6 +9,7 @@ import {
 	HouseMode,
 	LanguageType,
 	LogLevelType,
+	NumberFormatType,
 	PrecipitationUnitType,
 	PressureUnitType,
 	TemperatureUnitType,
@@ -65,6 +66,16 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@Expose({ name: 'time_format' })
 	@IsEnum(TimeFormatType)
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
+
+	@ApiProperty({
+		name: 'number_format',
+		description: 'Number format for displaying numeric values',
+		enum: NumberFormatType,
+		example: NumberFormatType.COMMA_DOT,
+	})
+	@Expose({ name: 'number_format' })
+	@IsEnum(NumberFormatType)
+	numberFormat: NumberFormatType = NumberFormatType.COMMA_DOT;
 
 	@ApiProperty({
 		name: 'temperature_unit',

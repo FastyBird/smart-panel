@@ -172,6 +172,20 @@
           "required": "Time format is required"
         }
       },
+      "numberFormat": {
+        "title": "Number Format",
+        "description": "Number display format for thousands and decimal separators",
+        "placeholder": "Select number format",
+        "values": {
+          "commaDot": "1,234.56 (comma / dot)",
+          "dotComma": "1.234,56 (dot / comma)",
+          "spaceComma": "1 234,56 (space / comma)",
+          "none": "1234.56 (no grouping)"
+        },
+        "validation": {
+          "required": "Number format is required"
+        }
+      },
       "temperatureUnit": {
         "title": "Temperature Unit",
         "description": "Temperature display unit",

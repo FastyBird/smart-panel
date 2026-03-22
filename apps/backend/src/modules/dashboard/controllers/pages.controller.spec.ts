@@ -89,6 +89,7 @@ describe('PagesController', () => {
 		currentIpAddress: null,
 		online: false,
 		roomId: null,
+		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
 		pressureUnit: null,

@@ -20,6 +20,7 @@ import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import {
 	DistanceUnitType,
+	NumberFormatType,
 	PrecipitationUnitType,
 	PressureUnitType,
 	TemperatureUnitType,
@@ -412,6 +413,24 @@ export class DisplayEntity extends BaseEntity {
 	microphoneVolume: number;
 
 	// === Unit Overrides (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'number_format',
+		description: 'Number format override (null = use system default)',
+		type: 'string',
+		enum: NumberFormatType,
+		nullable: true,
+	})
+	@Expose({ name: 'number_format' })
+	@IsOptional()
+	@IsEnum(NumberFormatType)
+	@Transform(
+		({ obj }: { obj: { number_format?: string; numberFormat?: string } }) =>
+			obj.number_format ?? obj.numberFormat ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	numberFormat: NumberFormatType | null;
 
 	@ApiPropertyOptional({
 		name: 'temperature_unit',

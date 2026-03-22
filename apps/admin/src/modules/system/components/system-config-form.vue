@@ -98,6 +98,34 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('systemModule.fields.config.numberFormat.title')"
+			prop="numberFormat"
+		>
+			<el-select
+				v-model="model.numberFormat"
+				:placeholder="t('systemModule.fields.config.numberFormat.placeholder')"
+				name="numberFormat"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.numberFormat.values.commaDot')"
+					value="comma_dot"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.numberFormat.values.dotComma')"
+					value="dot_comma"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.numberFormat.values.spaceComma')"
+					value="space_comma"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.numberFormat.values.none')"
+					value="none"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('systemModule.fields.config.temperatureUnit.title')"
 			prop="temperatureUnit"
 		>
@@ -375,6 +403,7 @@ const rules = reactive<FormRules<ISystemConfigEditForm>>({
 	language: [{ required: true, message: t('systemModule.fields.config.language.validation.required'), trigger: 'change' }],
 	timezone: [{ required: true, message: t('systemModule.fields.config.timezone.validation.required'), trigger: 'change' }],
 	timeFormat: [{ required: true, message: t('systemModule.fields.config.timeFormat.validation.required'), trigger: 'change' }],
+	numberFormat: [{ required: true, message: t('systemModule.fields.config.numberFormat.validation.required'), trigger: 'change' }],
 	temperatureUnit: [{ required: true, message: t('systemModule.fields.config.temperatureUnit.validation.required'), trigger: 'change' }],
 	windSpeedUnit: [{ required: true, message: t('systemModule.fields.config.windSpeedUnit.validation.required'), trigger: 'change' }],
 	pressureUnit: [{ required: true, message: t('systemModule.fields.config.pressureUnit.validation.required'), trigger: 'change' }],

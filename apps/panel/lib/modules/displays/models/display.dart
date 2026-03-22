@@ -32,6 +32,7 @@ class DisplayModel {
   final String? homePageId;
   final String? resolvedHomePageId;
   // Unit overrides (null = use system default)
+  final NumberFormat? numberFormat;
   final TemperatureUnit? temperatureUnit;
   final WindSpeedUnit? windSpeedUnit;
   final PressureUnit? pressureUnit;
@@ -69,6 +70,7 @@ class DisplayModel {
     this.homeMode = HomeMode.autoSpace,
     this.homePageId,
     this.resolvedHomePageId,
+    this.numberFormat,
     this.temperatureUnit,
     this.windSpeedUnit,
     this.pressureUnit,
@@ -107,6 +109,9 @@ class DisplayModel {
       homeMode: _parseHomeMode(json['home_mode'] as String?),
       homePageId: json['home_page_id'] as String?,
       resolvedHomePageId: json['resolved_home_page_id'] as String?,
+      numberFormat: json['number_format'] != null
+          ? NumberFormat.fromValue(json['number_format'] as String)
+          : null,
       temperatureUnit: json['temperature_unit'] != null
           ? TemperatureUnit.fromValue(json['temperature_unit'] as String)
           : null,
@@ -182,6 +187,7 @@ class DisplayModel {
     HomeMode? homeMode,
     String? homePageId,
     String? resolvedHomePageId,
+    Object? numberFormat = _unset,
     Object? temperatureUnit = _unset,
     Object? windSpeedUnit = _unset,
     Object? pressureUnit = _unset,
@@ -218,6 +224,9 @@ class DisplayModel {
       homeMode: homeMode ?? this.homeMode,
       homePageId: homePageId ?? this.homePageId,
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
+      numberFormat: identical(numberFormat, _unset)
+          ? this.numberFormat
+          : numberFormat as NumberFormat?,
       temperatureUnit: identical(temperatureUnit, _unset)
           ? this.temperatureUnit
           : temperatureUnit as TemperatureUnit?,
@@ -271,6 +280,7 @@ class DisplayModel {
         other.homeMode == homeMode &&
         other.homePageId == homePageId &&
         other.resolvedHomePageId == resolvedHomePageId &&
+        other.numberFormat == numberFormat &&
         other.temperatureUnit == temperatureUnit &&
         other.windSpeedUnit == windSpeedUnit &&
         other.pressureUnit == pressureUnit &&
@@ -308,6 +318,7 @@ class DisplayModel {
       homeMode,
       homePageId,
       resolvedHomePageId,
+      numberFormat,
       temperatureUnit,
       windSpeedUnit,
       pressureUnit,
