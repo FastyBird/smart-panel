@@ -164,9 +164,13 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 			sudo systemctl stop smart-panel 2>/dev/null || true
 
 			if [ -n "$PREVIOUS_TARGET" ]; then
-				sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
-				rm -rf "$NEW_VERSION_DIR"
-				update_status "failed" "failed" "Database migration failed — reverted to previous version"
+				if sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"; then
+					rm -rf "$NEW_VERSION_DIR"
+					update_status "failed" "failed" "Database migration failed — reverted to previous version"
+				else
+					# Symlink revert failed — keep new version so system stays bootable
+					update_status "failed" "failed" "Database migration failed — symlink revert also failed"
+				fi
 			else
 				# No previous version — keep current in place so system stays bootable
 				update_status "failed" "failed" "Database migration failed — no previous version to revert to"

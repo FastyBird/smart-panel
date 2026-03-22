@@ -422,14 +422,20 @@ export class UpdateServerCommand extends CommandRunner {
 			printStep('Reverting to previous version...');
 
 			if (previousTarget) {
+				let reverted = false;
+
 				try {
 					execFileSync('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
 					printWarning('Reverted to previous version due to migration failure');
+					reverted = true;
 				} catch {
-					printError('Failed to revert symlink!');
+					printError('Failed to revert symlink — keeping new version in place');
 				}
 
-				rmSync(newVersionDir, { recursive: true, force: true });
+				// Only delete the new version if the symlink was successfully reverted
+				if (reverted) {
+					rmSync(newVersionDir, { recursive: true, force: true });
+				}
 			} else {
 				// No previous version to revert to — keep the new version in place
 				// so the system remains bootable, even with a failed migration
