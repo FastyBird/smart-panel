@@ -201,7 +201,7 @@ while IFS= read -r line; do
   [ -z "${schema_name}" ] && continue
 
   # Skip DTOs (input-only types have their own naming convention)
-  if [[ "${file}" == *"/dto/"* ]]; then
+  if [[ "${file}" == *"/dto/"* ]] || [[ "${file}" == *".dto.ts" ]]; then
     continue
   fi
 
