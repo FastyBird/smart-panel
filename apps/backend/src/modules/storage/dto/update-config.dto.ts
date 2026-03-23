@@ -24,9 +24,9 @@ export class UpdateStorageConfigDto extends UpdateModuleConfigDto {
 		type: 'string',
 		example: 'influx-v1-plugin',
 	})
-	@Expose()
+	@Expose({ name: 'primary_storage' })
 	@IsOptional()
-	@IsString({ message: '[{"field":"primaryStorage","reason":"Primary storage must be a valid string."}]' })
+	@IsString({ message: '[{"field":"primary_storage","reason":"Primary storage must be a valid string."}]' })
 	primaryStorage?: string;
 
 	@ApiPropertyOptional({
@@ -34,8 +34,8 @@ export class UpdateStorageConfigDto extends UpdateModuleConfigDto {
 		type: 'string',
 		example: 'memory-storage-plugin',
 	})
-	@Expose()
+	@Expose({ name: 'fallback_storage' })
 	@IsOptional()
-	@IsString({ message: '[{"field":"fallbackStorage","reason":"Fallback storage must be a valid string."}]' })
+	@IsString({ message: '[{"field":"fallback_storage","reason":"Fallback storage must be a valid string."}]' })
 	fallbackStorage?: string;
 }

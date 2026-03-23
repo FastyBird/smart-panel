@@ -18,22 +18,35 @@
 			prop="primaryStorage"
 			class="mt-3"
 		>
-			<el-input
+			<el-select
 				v-model="model.primaryStorage"
 				:placeholder="t('storageModule.fields.config.primaryStorage.placeholder')"
-				name="primaryStorage"
-			/>
+			>
+				<el-option
+					v-for="option in storagePluginOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</el-select>
 		</el-form-item>
 
 		<el-form-item
 			:label="t('storageModule.fields.config.fallbackStorage.title')"
 			prop="fallbackStorage"
 		>
-			<el-input
+			<el-select
 				v-model="model.fallbackStorage"
 				:placeholder="t('storageModule.fields.config.fallbackStorage.placeholder')"
-				name="fallbackStorage"
-			/>
+				clearable
+			>
+				<el-option
+					v-for="option in storagePluginOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</el-select>
 		</el-form-item>
 	</el-form>
 </template>
@@ -42,7 +55,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IStorageConfigEditForm } from '../schemas/config.types';
@@ -68,6 +81,11 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const storagePluginOptions = [
+	{ value: 'influx-v1-plugin', label: t('storageModule.fields.config.plugins.influxV1') },
+	{ value: 'memory-storage-plugin', label: t('storageModule.fields.config.plugins.memory') },
+];
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IStorageConfigEditForm>({
 	config: props.config,

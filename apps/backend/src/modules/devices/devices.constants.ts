@@ -1,4 +1,4 @@
-import { FieldType, ISchemaOptions } from 'influx';
+import { StorageFieldType, StorageMeasurementSchema } from '../storage/storage.types';
 
 export const DEVICES_MODULE_PREFIX = 'devices';
 
@@ -265,14 +265,14 @@ export const OnlineDeviceState = [
 	ConnectionState.SLEEPING,
 ];
 
-export const PropertyInfluxDbSchema: ISchemaOptions = {
+export const PropertyStorageSchema: StorageMeasurementSchema = {
 	measurement: 'property_value',
-	fields: { stringValue: FieldType.STRING, numberValue: FieldType.FLOAT },
+	fields: { stringValue: StorageFieldType.STRING, numberValue: StorageFieldType.FLOAT },
 	tags: ['propertyId'],
 };
 
-export const DeviceStatusInfluxDbSchema: ISchemaOptions = {
+export const DeviceStatusStorageSchema: StorageMeasurementSchema = {
 	measurement: 'device_status',
-	fields: { online: FieldType.BOOLEAN, onlineI: FieldType.INTEGER, status: FieldType.STRING },
+	fields: { online: StorageFieldType.BOOLEAN, onlineI: StorageFieldType.FLOAT, status: StorageFieldType.STRING },
 	tags: ['deviceId', 'propertyId'],
 };

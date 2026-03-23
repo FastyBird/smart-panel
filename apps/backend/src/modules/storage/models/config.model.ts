@@ -31,7 +31,7 @@ export class StorageConfigModel extends ModuleConfigModel {
 		type: 'string',
 		example: 'influx-v1-plugin',
 	})
-	@Expose()
+	@Expose({ name: 'primary_storage' })
 	@IsString()
 	primaryStorage: string = STORAGE_PLUGIN_INFLUX_V1;
 
@@ -40,7 +40,7 @@ export class StorageConfigModel extends ModuleConfigModel {
 		type: 'string',
 		example: 'memory-storage-plugin',
 	})
-	@Expose()
+	@Expose({ name: 'fallback_storage' })
 	@IsString()
 	fallbackStorage: string = STORAGE_PLUGIN_MEMORY;
 }

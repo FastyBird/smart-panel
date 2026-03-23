@@ -1,7 +1,6 @@
-import { IPoint } from 'influx';
-
 import { createExtensionLogger } from '../../../../common/logger';
 import { STORAGE_PLUGIN_MEMORY } from '../../storage.constants';
+import { StoragePoint } from '../../storage.types';
 
 /**
  * Stored time-series point with normalized fields.
@@ -66,7 +65,7 @@ export class InMemoryTimeSeriesStore {
 		this.data.clear();
 	}
 
-	writePoints(points: IPoint[]): void {
+	writePoints(points: StoragePoint[]): void {
 		for (const point of points) {
 			const measurement = point.measurement;
 
@@ -76,9 +75,9 @@ export class InMemoryTimeSeriesStore {
 
 			const stored: StoredPoint = {
 				measurement,
-				tags: (point.tags as Record<string, string>) ?? {},
+				tags: point.tags ?? {},
 				fields: this.normalizeFields(point.fields ?? {}),
-				timestamp: point.timestamp instanceof Date ? point.timestamp : new Date(),
+				timestamp: point.timestamp ?? new Date(),
 			};
 
 			let arr = this.data.get(measurement);

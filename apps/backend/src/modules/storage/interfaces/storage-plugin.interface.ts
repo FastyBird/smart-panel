@@ -1,4 +1,4 @@
-import { IPoint, IQueryOptions, IResults, ISchemaOptions } from 'influx';
+import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
 /**
  * Contract that all storage plugins must implement.
@@ -32,24 +32,24 @@ export interface StoragePlugin {
 	/**
 	 * Write one or more data points.
 	 */
-	writePoints(points: IPoint[]): Promise<void>;
+	writePoints(points: StoragePoint[]): Promise<void>;
 
 	/**
-	 * Execute an InfluxQL query and return typed results.
+	 * Execute a query and return typed results.
 	 */
-	query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>>;
+	query<T>(query: string, options?: StorageQueryOptions): Promise<T[]>;
 
 	/**
-	 * Execute an InfluxQL query and return raw (un-parsed) results.
+	 * Execute a query and return raw (un-parsed) results.
 	 */
-	queryRaw<T>(query: string, options?: IQueryOptions): Promise<T>;
+	queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T>;
 
 	// ─── Schema ───────────────────────────────────────────────────────
 
 	/**
 	 * Register a measurement schema before the plugin initializes.
 	 */
-	registerSchema(schema: ISchemaOptions): void;
+	registerSchema(schema: StorageMeasurementSchema): void;
 
 	// ─── Measurement Management ───────────────────────────────────────
 
@@ -72,14 +72,15 @@ export interface StoragePlugin {
 
 	createRetentionPolicy?(...args: unknown[]): Promise<void>;
 	alterRetentionPolicy?(...args: unknown[]): Promise<void>;
-	showRetentionPolicies?(...args: unknown[]): Promise<IResults<unknown>>;
+	showRetentionPolicies?(...args: unknown[]): Promise<unknown[]>;
 	dropRetentionPolicy?(...args: unknown[]): Promise<void>;
 
 	createContinuousQuery?(name: string, body: string, db?: string, resample?: string): Promise<void>;
-	showContinuousQueries?(...args: unknown[]): Promise<IResults<unknown>>;
+	showContinuousQueries?(...args: unknown[]): Promise<unknown[]>;
 	dropContinuousQuery?(...args: unknown[]): Promise<void>;
 
 	dropSeries?(...args: unknown[]): Promise<void>;
+	getSeries?(): Promise<string[]>;
 	ping?(): Promise<unknown[]>;
 
 	createUser?(...args: unknown[]): Promise<void>;

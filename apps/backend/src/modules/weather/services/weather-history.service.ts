@@ -1,9 +1,8 @@
-import { FieldType, IPoint } from 'influx';
-
 import { Injectable, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { StorageService } from '../../storage/services/storage.service';
+import { StorageFieldType, StoragePoint } from '../../storage/storage.types';
 import { CurrentDayModel } from '../models/weather.model';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
@@ -47,19 +46,19 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 		this.storageService.registerSchema({
 			measurement: MEASUREMENT_NAME,
 			fields: {
-				temperature: FieldType.FLOAT,
-				temperature_min: FieldType.FLOAT,
-				temperature_max: FieldType.FLOAT,
-				feels_like: FieldType.FLOAT,
-				pressure: FieldType.INTEGER,
-				humidity: FieldType.INTEGER,
-				clouds: FieldType.INTEGER,
-				wind_speed: FieldType.FLOAT,
-				wind_deg: FieldType.INTEGER,
-				wind_gust: FieldType.FLOAT,
-				rain: FieldType.FLOAT,
-				snow: FieldType.FLOAT,
-				weather_code: FieldType.INTEGER,
+				temperature: StorageFieldType.FLOAT,
+				temperature_min: StorageFieldType.FLOAT,
+				temperature_max: StorageFieldType.FLOAT,
+				feels_like: StorageFieldType.FLOAT,
+				pressure: StorageFieldType.FLOAT,
+				humidity: StorageFieldType.FLOAT,
+				clouds: StorageFieldType.FLOAT,
+				wind_speed: StorageFieldType.FLOAT,
+				wind_deg: StorageFieldType.FLOAT,
+				wind_gust: StorageFieldType.FLOAT,
+				rain: StorageFieldType.FLOAT,
+				snow: StorageFieldType.FLOAT,
+				weather_code: StorageFieldType.FLOAT,
 			},
 			tags: ['location_id', 'location_name', 'weather_main'],
 		});
@@ -88,7 +87,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 		}
 
 		try {
-			const point: IPoint = {
+			const point: StoragePoint = {
 				measurement: MEASUREMENT_NAME,
 				tags: {
 					location_id: locationId,

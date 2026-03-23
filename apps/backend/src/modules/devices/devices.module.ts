@@ -33,8 +33,8 @@ import {
 	DEVICES_MODULE_API_TAG_DESCRIPTION,
 	DEVICES_MODULE_API_TAG_NAME,
 	DEVICES_MODULE_NAME,
-	DeviceStatusInfluxDbSchema,
-	PropertyInfluxDbSchema,
+	DeviceStatusStorageSchema,
+	PropertyStorageSchema,
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
@@ -189,8 +189,8 @@ export class DevicesModule implements OnModuleInit {
 		// Register device control tool provider
 		this.toolProviderRegistry.register(this.deviceControlTool);
 
-		this.storageService.registerSchema(PropertyInfluxDbSchema);
-		this.storageService.registerSchema(DeviceStatusInfluxDbSchema);
+		this.storageService.registerSchema(PropertyStorageSchema);
+		this.storageService.registerSchema(DeviceStatusStorageSchema);
 
 		this.seedRegistry.register(
 			DEVICES_MODULE_NAME,

@@ -104,7 +104,6 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([{ numberValue: 100 }]);
 
 			const result = await service.readLatest(property);
@@ -119,7 +118,6 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.STRING,
 			} as ChannelPropertyEntity;
 
-			// @ts-expect-error an Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.readLatest(property);

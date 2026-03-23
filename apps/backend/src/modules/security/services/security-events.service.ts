@@ -1,9 +1,8 @@
-import { FieldType, IPoint } from 'influx';
-
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { StorageService } from '../../storage/services/storage.service';
+import { StorageFieldType, StoragePoint } from '../../storage/storage.types';
 import { SecurityAlertModel } from '../models/security-status.model';
 import {
 	AlarmState,
@@ -51,15 +50,15 @@ export class SecurityEventsService implements OnModuleInit {
 		this.storageService.registerSchema({
 			measurement: MEASUREMENT_NAME,
 			fields: {
-				alertId: FieldType.STRING,
-				alertType: FieldType.STRING,
-				sourceDeviceId: FieldType.STRING,
-				payload: FieldType.STRING,
+				alertId: StorageFieldType.STRING,
+				alertType: StorageFieldType.STRING,
+				sourceDeviceId: StorageFieldType.STRING,
+				payload: StorageFieldType.STRING,
 			},
 			tags: ['eventType', 'severity'],
 		});
 
-		this.logger.debug('Security events InfluxDB schema registered');
+		this.logger.debug('Security events storage schema registered');
 	}
 
 	async findRecent(query: EventsQuery = {}): Promise<SecurityEventRecord[]> {
@@ -150,7 +149,7 @@ export class SecurityEventsService implements OnModuleInit {
 			return;
 		}
 
-		const points: IPoint[] = [];
+		const points: StoragePoint[] = [];
 
 		// Detect raised alerts
 		const currentIds = new Set(activeAlerts.map((a) => a.id));
@@ -235,7 +234,7 @@ export class SecurityEventsService implements OnModuleInit {
 			sourceDeviceId?: string;
 			payload?: string;
 		},
-	): IPoint {
+	): StoragePoint {
 		const tags: Record<string, string> = { eventType };
 
 		if (data.severity != null) {
@@ -267,7 +266,7 @@ export class SecurityEventsService implements OnModuleInit {
 		};
 	}
 
-	private async writePoints(points: IPoint[]): Promise<void> {
+	private async writePoints(points: StoragePoint[]): Promise<void> {
 		if (!this.storageService.isConnected()) {
 			return;
 		}

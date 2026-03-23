@@ -19,7 +19,7 @@ import {
 	DISPLAYS_MODULE_API_TAG_DESCRIPTION,
 	DISPLAYS_MODULE_API_TAG_NAME,
 	DISPLAYS_MODULE_NAME,
-	DisplayStatusInfluxDbSchema,
+	DisplayStatusStorageSchema,
 } from './displays.constants';
 import { DISPLAYS_SWAGGER_EXTRA_MODELS } from './displays.openapi';
 import { UpdateDisplaysConfigDto } from './dto/update-config.dto';
@@ -80,7 +80,7 @@ export class DisplaysModule implements OnModuleInit {
 	) {}
 
 	onModuleInit() {
-		this.storageService.registerSchema(DisplayStatusInfluxDbSchema);
+		this.storageService.registerSchema(DisplayStatusStorageSchema);
 
 		this.modulesMapperService.registerMapping<DisplaysConfigModel, UpdateDisplaysConfigDto>({
 			type: DISPLAYS_MODULE_NAME,

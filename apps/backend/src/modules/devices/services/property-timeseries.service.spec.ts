@@ -53,7 +53,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
@@ -88,7 +87,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -101,7 +99,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // 12 hour range
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -119,7 +116,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
@@ -150,7 +146,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
@@ -173,7 +168,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
@@ -203,7 +197,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T10:30:00Z'); // 30 minutes
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			await service.queryTimeseries(mockProperty, from, to);
@@ -218,7 +211,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T14:00:00Z'); // 4 hours
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -234,7 +226,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // 12 hours
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -246,7 +237,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T00:00:00Z');
 			const to = new Date('2025-01-03T00:00:00Z'); // 2 days
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -258,7 +248,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T00:00:00Z');
 			const to = new Date('2025-01-15T00:00:00Z'); // 14 days
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
@@ -270,7 +259,6 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // would default to 5m
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to, '15m');

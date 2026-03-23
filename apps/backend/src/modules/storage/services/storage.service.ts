@@ -1,5 +1,3 @@
-import { IPingStats, IPoint, IQueryOptions, IResults, ISchemaOptions } from 'influx';
-
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -10,6 +8,7 @@ import { InfluxV1ConfigModel } from '../plugins/influx-v1/influx-v1.config.model
 import { InfluxV1Plugin } from '../plugins/influx-v1/influx-v1.plugin';
 import { MemoryStoragePlugin } from '../plugins/memory/memory.plugin';
 import { STORAGE_MODULE_NAME, STORAGE_PLUGIN_INFLUX_V1, STORAGE_PLUGIN_MEMORY } from '../storage.constants';
+import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
 @Injectable()
 export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -17,6 +16,13 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
+
+	/**
+	 * Schemas buffered before plugins are created.
+	 * Flushed to plugins during onApplicationBootstrap().
+	 */
+	private readonly pendingSchemas: StorageMeasurementSchema[] = [];
+	private pluginsCreated = false;
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -26,6 +32,15 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		// Create plugins
 		this.primary = this.createPlugin(config.primaryStorage);
 		this.fallback = this.createPlugin(config.fallbackStorage);
+		this.pluginsCreated = true;
+
+		// Flush buffered schemas to plugins
+		for (const schema of this.pendingSchemas) {
+			this.primary?.registerSchema(schema);
+			this.fallback?.registerSchema(schema);
+		}
+
+		this.pendingSchemas.length = 0;
 
 		// Initialize fallback first (always available)
 		if (this.fallback) {
@@ -97,14 +112,20 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 
 	// ─── Schema Registration ──────────────────────────────────────────
 
-	registerSchema(schema: ISchemaOptions): void {
-		this.primary?.registerSchema(schema);
-		this.fallback?.registerSchema(schema);
+	registerSchema(schema: StorageMeasurementSchema): void {
+		if (this.pluginsCreated) {
+			// Plugins already exist — register directly
+			this.primary?.registerSchema(schema);
+			this.fallback?.registerSchema(schema);
+		} else {
+			// Buffer until plugins are created
+			this.pendingSchemas.push(schema);
+		}
 	}
 
 	// ─── Core Read/Write ──────────────────────────────────────────────
 
-	async writePoints(points: IPoint[]): Promise<void> {
+	async writePoints(points: StoragePoint[]): Promise<void> {
 		// Always write to fallback (for fallback reads)
 		if (this.fallback?.isAvailable()) {
 			try {
@@ -122,7 +143,7 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		}
 	}
 
-	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
+	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
 		// Try primary first
 		if (this.primary?.isAvailable()) {
 			return this.primary.query<T>(query, options);
@@ -133,10 +154,10 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 			return this.fallback.query<T>(query, options);
 		}
 
-		return [] as unknown as IResults<T>;
+		return [];
 	}
 
-	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
+	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		if (this.primary?.isAvailable()) {
 			return this.primary.queryRaw<T>(query, options);
 		}
@@ -186,12 +207,12 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		}
 	}
 
-	async showContinuousQueries(...args: unknown[]): Promise<IResults<{ name: string; query: string }>> {
+	async showContinuousQueries(...args: unknown[]): Promise<Array<{ name: string; query: string }>> {
 		if (this.primary?.isAvailable() && this.primary.showContinuousQueries) {
-			return this.primary.showContinuousQueries(...args) as Promise<IResults<{ name: string; query: string }>>;
+			return this.primary.showContinuousQueries(...args) as Promise<Array<{ name: string; query: string }>>;
 		}
 
-		return [] as unknown as IResults<{ name: string; query: string }>;
+		return [];
 	}
 
 	async dropContinuousQuery(...args: unknown[]): Promise<void> {
@@ -233,7 +254,7 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	}
 
 	async showRetentionPolicies(...args: unknown[]): Promise<
-		IResults<{
+		Array<{
 			default: boolean;
 			duration: string;
 			name: string;
@@ -243,7 +264,7 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	> {
 		if (this.primary?.isAvailable() && this.primary.showRetentionPolicies) {
 			return this.primary.showRetentionPolicies(...args) as Promise<
-				IResults<{
+				Array<{
 					default: boolean;
 					duration: string;
 					name: string;
@@ -253,13 +274,7 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 			>;
 		}
 
-		return [] as unknown as IResults<{
-			default: boolean;
-			duration: string;
-			name: string;
-			replicaN: number;
-			shardGroupDuration: string;
-		}>;
+		return [];
 	}
 
 	async dropRetentionPolicy(...args: unknown[]): Promise<void> {
@@ -274,9 +289,9 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		}
 	}
 
-	async ping(): Promise<IPingStats[]> {
+	async ping(): Promise<unknown[]> {
 		if (this.primary?.isAvailable() && this.primary.ping) {
-			return this.primary.ping() as Promise<IPingStats[]>;
+			return this.primary.ping();
 		}
 
 		return [];
@@ -339,10 +354,8 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	}
 
 	async getSeries(): Promise<string[]> {
-		if (this.primary?.isAvailable() && this.primary.dropSeries) {
-			const plugin = this.primary as InfluxV1Plugin;
-
-			return plugin.getSeries();
+		if (this.primary?.isAvailable() && this.primary.getSeries) {
+			return this.primary.getSeries();
 		}
 
 		return [];

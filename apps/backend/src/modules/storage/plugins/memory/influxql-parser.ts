@@ -377,6 +377,7 @@ export class InfluxQLParser {
 		const measurement = this.resolveMeasurement(parsed.measurement);
 
 		const tagFilters = this.buildTagFilters(parsed.where);
+		const excludeFilters = this.buildExcludeFilters(parsed.where);
 
 		const { timeFrom, timeTo } = this.buildTimeRange(parsed.where);
 
@@ -390,7 +391,7 @@ export class InfluxQLParser {
 				timeTo,
 			);
 
-			return this.postProcessAggregations(rows, parsed.aggregations) as T[];
+			return this.applyExcludeFilters(this.postProcessAggregations(rows, parsed.aggregations), excludeFilters) as T[];
 		}
 
 		if (parsed.groupByTime && parsed.aggregations.length > 0) {
@@ -404,7 +405,7 @@ export class InfluxQLParser {
 				parsed.fillNone,
 			);
 
-			return this.postProcessAggregations(rows, parsed.aggregations) as T[];
+			return this.applyExcludeFilters(this.postProcessAggregations(rows, parsed.aggregations), excludeFilters) as T[];
 		}
 
 		if (parsed.aggregations.length > 0 && !parsed.groupByTag && !parsed.groupByTime) {
@@ -422,7 +423,7 @@ export class InfluxQLParser {
 
 			const processed = this.postProcessAggregations([result], parsed.aggregations);
 
-			return processed as T[];
+			return this.applyExcludeFilters(processed, excludeFilters) as T[];
 		}
 
 		const points = this.store.query(
@@ -435,8 +436,9 @@ export class InfluxQLParser {
 		);
 
 		const selectFields = parsed.fields.includes('*') ? undefined : parsed.fields;
+		const rows = points.map((p) => this.store.pointToRow(p, selectFields));
 
-		return points.map((p) => this.store.pointToRow(p, selectFields) as T);
+		return this.applyExcludeFilters(rows, excludeFilters) as T[];
 	}
 
 	private postProcessAggregations(
@@ -493,6 +495,50 @@ export class InfluxQLParser {
 		}
 
 		return filters;
+	}
+
+	private buildExcludeFilters(where: WhereCondition[]): Array<{ field: string; value: string }> {
+		const filters: Array<{ field: string; value: string }> = [];
+
+		for (const cond of where) {
+			if (cond.field === 'time') {
+				continue;
+			}
+
+			if (cond.operator === '!=') {
+				filters.push({
+					field: cond.field,
+					value: cond.value.replace(/^'|'$/g, ''),
+				});
+			}
+		}
+
+		return filters;
+	}
+
+	private applyExcludeFilters(
+		rows: Array<Record<string, unknown>>,
+		excludes: Array<{ field: string; value: string }>,
+	): Array<Record<string, unknown>> {
+		if (excludes.length === 0) {
+			return rows;
+		}
+
+		return rows.filter((row) => {
+			return excludes.every(({ field, value }) => {
+				const rowValue = row[field];
+
+				if (rowValue === undefined || rowValue === null) {
+					return true;
+				}
+
+				if (typeof rowValue === 'string' || typeof rowValue === 'number' || typeof rowValue === 'boolean') {
+					return String(rowValue) !== value;
+				}
+
+				return true;
+			});
+		});
 	}
 
 	private buildTimeRange(where: WhereCondition[]): {

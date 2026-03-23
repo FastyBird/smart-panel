@@ -15,14 +15,18 @@
 		"config": {
 			"primaryStorage": {
 				"title": "Primary Storage",
-				"placeholder": "influx-v1-plugin",
+				"placeholder": "Select primary storage plugin",
 				"validation": {
 					"required": "Primary storage is required"
 				}
 			},
 			"fallbackStorage": {
 				"title": "Fallback Storage",
-				"placeholder": "Leave empty if not required"
+				"placeholder": "Select fallback storage plugin (optional)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "In-Memory Storage"
 			}
 		}
 	}

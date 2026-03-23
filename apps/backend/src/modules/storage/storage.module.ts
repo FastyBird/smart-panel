@@ -13,8 +13,10 @@ import { StorageConfigModel } from './models/config.model';
 import { InfluxV1ConfigModel } from './plugins/influx-v1/influx-v1.config.model';
 import { INFLUX_V1_PLUGIN_NAME } from './plugins/influx-v1/influx-v1.constants';
 import { UpdateInfluxV1ConfigDto } from './plugins/influx-v1/influx-v1.update-config.dto';
+import { MemoryConfigModel } from './plugins/memory/memory.config.model';
+import { UpdateMemoryConfigDto } from './plugins/memory/memory.update-config.dto';
 import { StorageService } from './services/storage.service';
-import { STORAGE_MODULE_NAME } from './storage.constants';
+import { STORAGE_MODULE_NAME, STORAGE_PLUGIN_MEMORY } from './storage.constants';
 import { STORAGE_MODULE_SWAGGER_EXTRA_MODELS } from './storage.openapi';
 
 @ApiTag({
@@ -48,6 +50,12 @@ export class StorageModule implements OnModuleInit {
 			configDto: UpdateInfluxV1ConfigDto,
 		});
 
+		this.pluginsMapperService.registerMapping<MemoryConfigModel, UpdateMemoryConfigDto>({
+			type: STORAGE_PLUGIN_MEMORY,
+			class: MemoryConfigModel,
+			configDto: UpdateMemoryConfigDto,
+		});
+
 		for (const model of STORAGE_MODULE_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
@@ -66,6 +74,28 @@ Connects to an InfluxDB 1.x server and provides full time-series storage with re
 - **host** — InfluxDB server address (default: 127.0.0.1)
 - **database** — InfluxDB database name (default: fastybird)
 - **username/password** — Optional authentication credentials`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: STORAGE_PLUGIN_MEMORY,
+			name: 'In-Memory Storage',
+			description:
+				'In-memory ring-buffer storage. Data is lost on restart. Used as default fallback when no external database is available.',
+			author: 'FastyBird',
+			readme: `# In-Memory Storage Plugin
+
+Stores time-series data in process memory with automatic eviction. Always available — used as the default fallback when the primary storage is unreachable.
+
+## Limitations
+
+- Data does NOT persist across process restarts
+- Limited to 10,000 points per measurement
+- Points older than 24 hours are automatically evicted
+- No continuous query support`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

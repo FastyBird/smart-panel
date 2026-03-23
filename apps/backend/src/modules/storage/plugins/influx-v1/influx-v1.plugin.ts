@@ -1,9 +1,10 @@
-import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
+import { FieldType, IPingStats, IPoint, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
 import { createExtensionLogger } from '../../../../common/logger';
 import { safeNumber, safeToString } from '../../../../common/utils/transform.utils';
 import { StoragePlugin } from '../../interfaces/storage-plugin.interface';
 import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, STORAGE_PLUGIN_INFLUX_V1 } from '../../storage.constants';
+import { StorageFieldType, StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../storage.types';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -48,6 +49,64 @@ const isArrayOfContinuousQueries = (v: unknown): boolean => {
 		Array.isArray(v) && v.length > 0 && isObject(v[0]) && typeof (v[0] as Record<string, unknown>).name === 'string'
 	);
 };
+
+/**
+ * Map storage-agnostic field types to InfluxDB field types.
+ */
+function toInfluxFieldType(type: StorageFieldType): FieldType {
+	switch (type) {
+		case StorageFieldType.FLOAT:
+			return FieldType.FLOAT;
+		case StorageFieldType.INTEGER:
+			return FieldType.INTEGER;
+		case StorageFieldType.STRING:
+			return FieldType.STRING;
+		case StorageFieldType.BOOLEAN:
+			return FieldType.BOOLEAN;
+	}
+}
+
+/**
+ * Map a StorageMeasurementSchema to an InfluxDB ISchemaOptions.
+ */
+function toInfluxSchema(schema: StorageMeasurementSchema): ISchemaOptions {
+	const fields: Record<string, FieldType> = {};
+
+	for (const [key, type] of Object.entries(schema.fields)) {
+		fields[key] = toInfluxFieldType(type);
+	}
+
+	return {
+		measurement: schema.measurement,
+		fields,
+		tags: schema.tags,
+	};
+}
+
+/**
+ * Map a StoragePoint to an InfluxDB IPoint.
+ */
+function toInfluxPoint(point: StoragePoint): IPoint {
+	return {
+		measurement: point.measurement,
+		tags: point.tags,
+		fields: point.fields,
+		timestamp: point.timestamp,
+	};
+}
+
+/**
+ * Map StorageQueryOptions to InfluxDB IQueryOptions.
+ */
+function toInfluxQueryOptions(options?: StorageQueryOptions): IQueryOptions | undefined {
+	if (!options) return undefined;
+
+	return {
+		database: options.database,
+		retentionPolicy: options.retentionPolicy,
+		precision: options.precision,
+	};
+}
 
 /**
  * InfluxDB v1.x storage plugin.
@@ -106,13 +165,15 @@ export class InfluxV1Plugin implements StoragePlugin {
 
 	// ─── Core Read/Write ──────────────────────────────────────────────
 
-	async writePoints(points: import('influx').IPoint[]): Promise<void> {
-		return this.getConnection().writePoints(points);
+	async writePoints(points: StoragePoint[]): Promise<void> {
+		return this.getConnection().writePoints(points.map(toInfluxPoint));
 	}
 
-	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
+	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
 		try {
-			return await this.getConnection().query(query, options);
+			const results: IResults<T> = await this.getConnection().query(query, toInfluxQueryOptions(options));
+
+			return results as unknown as T[];
 		} catch (error) {
 			const err = error as Error;
 
@@ -120,16 +181,16 @@ export class InfluxV1Plugin implements StoragePlugin {
 				this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
 				void this.setupDatabase();
 
-				return [] as unknown as IResults<T>;
+				return [];
 			}
 
 			throw error;
 		}
 	}
 
-	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
+	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		try {
-			return (await this.getConnection().queryRaw(query, options)) as T;
+			return (await this.getConnection().queryRaw(query, toInfluxQueryOptions(options))) as T;
 		} catch (error) {
 			const err = error as Error;
 
@@ -144,8 +205,8 @@ export class InfluxV1Plugin implements StoragePlugin {
 		}
 	}
 
-	registerSchema(schema: ISchemaOptions): void {
-		this.schemas.push(schema);
+	registerSchema(schema: StorageMeasurementSchema): void {
+		this.schemas.push(toInfluxSchema(schema));
 	}
 
 	async dropMeasurement(measurement: string): Promise<void> {

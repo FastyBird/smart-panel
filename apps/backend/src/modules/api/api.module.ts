@@ -8,7 +8,7 @@ import { StorageService } from '../storage/services/storage.service';
 import { StorageModule } from '../storage/storage.module';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
-import { API_MODULE_NAME, ApiStatsInfluxDbSchema } from './api.constants';
+import { API_MODULE_NAME, ApiStatsStorageSchema } from './api.constants';
 import { API_SWAGGER_EXTRA_MODELS } from './api.openapi';
 import { ApiMetricsInterceptor } from './interceptors/api-metrics.interceptor';
 import { LocationReplaceInterceptor } from './interceptors/location-replace.interceptor';
@@ -37,7 +37,7 @@ export class ApiModule {
 	) {}
 
 	onModuleInit() {
-		this.storageService.registerSchema(ApiStatsInfluxDbSchema);
+		this.storageService.registerSchema(ApiStatsStorageSchema);
 
 		this.statsRegistryService.register(API_MODULE_NAME, this.apiStatsProvider);
 

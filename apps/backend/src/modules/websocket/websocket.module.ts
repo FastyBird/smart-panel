@@ -17,7 +17,7 @@ import { WsStatsProvider } from './providers/ws-stats.provider';
 import { CommandEventRegistryService } from './services/command-event-registry.service';
 import { WsAuthService } from './services/ws-auth.service';
 import { WsMetricsService } from './services/ws-metrics.service';
-import { WEBSOCKET_MODULE_NAME, WsConnInfluxDbSchema, WsStatsInfluxDbSchema } from './websocket.constants';
+import { WEBSOCKET_MODULE_NAME, WsConnStorageSchema, WsStatsStorageSchema } from './websocket.constants';
 import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 
 @Module({
@@ -49,8 +49,8 @@ export class WebsocketModule {
 	) {}
 
 	onModuleInit() {
-		this.storageService.registerSchema(WsStatsInfluxDbSchema);
-		this.storageService.registerSchema(WsConnInfluxDbSchema);
+		this.storageService.registerSchema(WsStatsStorageSchema);
+		this.storageService.registerSchema(WsConnStorageSchema);
 
 		this.statsRegistryService.register(WEBSOCKET_MODULE_NAME, this.wsStatsProvider);
 
