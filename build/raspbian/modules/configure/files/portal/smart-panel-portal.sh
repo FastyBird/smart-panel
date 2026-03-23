@@ -125,6 +125,24 @@ log "Password: ${AP_PASSWORD}"
 # We add a redirect rule so all DNS queries resolve to our IP.
 # This triggers captive portal detection on all platforms.
 DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
+
+# Cleanup function — registered BEFORE creating resources so that
+# an early failure (e.g. nmcli connection up) still cleans up.
+cleanup() {
+	log "Cleaning up captive portal..."
+
+	# Remove DNS redirect config
+	rm -f "${DNSMASQ_CONF}"
+
+	# Deactivate and remove hotspot if still active
+	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+	log "Captive portal stopped"
+}
+
+trap cleanup EXIT
+
 mkdir -p "$(dirname "${DNSMASQ_CONF}")"
 cat > "${DNSMASQ_CONF}" << 'EOF'
 # Smart Panel captive portal — redirect all DNS to AP IP
@@ -142,25 +160,13 @@ log "DNS redirect configured — all domains resolve to 192.168.4.1"
 # Start the portal HTTP server
 # ──────────────────────────────────────────────────────────────
 
-# Cleanup function
-cleanup() {
-	log "Cleaning up captive portal..."
+# Forward signals to the node process so it can shut down gracefully.
+# After forwarding, re-wait for node to finish before exiting, so
+# cleanup doesn't race with node's own shutdown.
+NODE_PID=""
 
-	# Remove DNS redirect config
-	rm -f "${DNSMASQ_CONF}"
-
-	# Deactivate and remove hotspot if still active
-	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
-	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
-
-	log "Captive portal stopped"
-}
-
-trap cleanup EXIT
-
-# Forward signals to the node process so it can shut down gracefully
 forward_signal() {
-	if [ -n "${NODE_PID:-}" ]; then
+	if [ -n "${NODE_PID}" ]; then
 		kill -"$1" "${NODE_PID}" 2>/dev/null || true
 	fi
 }
@@ -173,9 +179,18 @@ log "Starting portal web server on port 80..."
 # Run node in the background and wait for it, so this bash process stays alive
 # and the EXIT trap can run cleanup when the process ends or is signaled.
 # Using 'exec' here would replace bash entirely, making the trap unreachable.
-# Propagate node's exit code so systemd's Restart=on-failure can detect crashes.
 /usr/local/bin/node "${PORTAL_DIR}/server.js" &
 NODE_PID=$!
+
+# Disable set -e for the wait loop: when a signal interrupts wait, it returns
+# non-zero (128+signal). We need to re-wait for node to actually exit before
+# running cleanup, rather than letting set -e exit immediately.
+set +e
+wait "${NODE_PID}" 2>/dev/null
+# If wait was interrupted by a signal, the trap handler already forwarded it
+# to node. Re-wait so cleanup doesn't race with node's shutdown.
 wait "${NODE_PID}" 2>/dev/null
 NODE_EXIT=$?
+set -e
+
 exit "${NODE_EXIT}"
