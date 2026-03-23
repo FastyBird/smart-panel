@@ -308,13 +308,19 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 function parseBody(req) {
 	return new Promise((resolve, reject) => {
 		let body = '';
+		let rejected = false;
 		req.on('data', (chunk) => {
+			if (rejected) return;
 			body += chunk;
 			if (body.length > 4096) {
+				rejected = true;
+				body = '';
+				req.destroy();
 				reject(new Error('Body too large'));
 			}
 		});
 		req.on('end', () => {
+			if (rejected) return;
 			try {
 				resolve(JSON.parse(body));
 			} catch (err) {
