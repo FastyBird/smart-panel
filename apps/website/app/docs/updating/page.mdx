@@ -25,13 +25,13 @@ Your Smart Panel stores two important files:
 
 The location depends on your installation method:
 
-| Installation Method | Data Location |
-|---|---|
-| One-liner script or npm global | `/var/lib/smart-panel/` |
-| Manual tarball | `/var/smart-panel/` |
-| Docker | Inside the `smart-panel-data` Docker volume |
+| Installation Method | App Location | Data Location | Config |
+|---|---|---|---|
+| Pre-built Raspbian image | `/opt/smart-panel/current/` | `/var/lib/smart-panel/` | `/etc/smart-panel/environment` |
+| One-liner script or npm global | `/usr/lib/node_modules/@fastybird/smart-panel/` | `/var/lib/smart-panel/` | `/var/lib/smart-panel/config/` |
+| Docker | Inside container | `smart-panel-data` Docker volume | Inside volume |
 
-### Systemd Installations (npm, tarball, one-liner)
+### Systemd Installations (image, npm, one-liner)
 
 <Steps>
 	### Stop the services
@@ -45,6 +45,11 @@ The location depends on your installation method:
 	```bash copy
 	sudo tar czf ~/smart-panel-backup-$(date +%Y%m%d).tar.gz -C /var/lib/smart-panel .
 	```
+
+	<Callout type="info">
+		For pre-built image installations, you may also want to back up `/etc/smart-panel/environment` which contains
+		your environment configuration.
+	</Callout>
 
 	### Restart the services
 
@@ -88,6 +93,85 @@ docker compose up -d
 ---
 
 ## Updating
+
+### Pre-built Raspbian Image
+
+When Smart Panel is installed from a pre-built Raspbian image, updates use a versioned directory layout:
+
+```
+/opt/smart-panel/
+  current -> v1.1.0/     # symlink to active version
+  v1.0.0/                # previous version (kept for rollback)
+  v1.1.0/                # current version
+```
+
+There are two ways to update: through the Admin UI or via the CLI.
+
+#### Update via Admin UI
+
+<Steps>
+	### Open System Settings
+
+	Go to **Settings → System** in the Admin UI.
+
+	### Check for updates
+
+	Click **"Check for Updates"**. The system will query GitHub Releases for a newer version.
+
+	### Install the update
+
+	If an update is available, click **"Install Update"**. The system will:
+	- Download `smart-panel-server-vX.Y.Z-arm64.tar.gz` from GitHub Releases
+	- Extract it to `/opt/smart-panel/vX.Y.Z/`
+	- Install production dependencies and rebuild native modules
+	- Stop the service, switch the `current` symlink, run database migrations, and restart
+</Steps>
+
+#### Update via CLI
+
+```bash copy
+sudo smart-panel-service update
+```
+
+This performs the same steps as the Admin UI update.
+
+#### How It Works
+
+The image-based updater follows a safe, atomic process:
+
+1. Downloads the release archive from GitHub
+2. Extracts it to a new versioned directory (`/opt/smart-panel/vX.Y.Z/`)
+3. Installs production dependencies and rebuilds native modules
+4. Stops the service
+5. Switches the `current` symlink to the new version
+6. Runs database migrations
+7. Starts the service
+
+If any step fails, the symlink is reverted to the previous version automatically.
+
+<Callout type="info">
+	The updater keeps a maximum of 2 previous versions on disk for rollback. Older versions are removed automatically.
+</Callout>
+
+#### Manual Rollback (Image Install)
+
+If you need to manually revert to a previous version:
+
+```bash copy
+# List available versions
+ls -la /opt/smart-panel/
+```
+
+```bash copy
+# Switch to a previous version
+sudo ln -sfn /opt/smart-panel/v1.0.0 /opt/smart-panel/current
+sudo systemctl restart smart-panel
+```
+
+<Callout type="warning">
+	Rolling back after a database migration may cause issues if the schema has changed. Always test updates on a
+	non-critical setup first if possible.
+</Callout>
 
 ### Docker
 
@@ -173,6 +257,11 @@ If an update causes problems:
 2. Restore your backup (see above)
 3. Install the previous version using the pinning method above
 4. Start the services
+
+<Callout type="info">
+	For pre-built image installations, rollback is simpler — just switch the symlink to a previous version as described
+	in the [Manual Rollback](#manual-rollback-image-install) section above.
+</Callout>
 
 <Callout type="warning">
 	Rolling back after a database migration may cause issues if the schema has changed. Always test updates on a
