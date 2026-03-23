@@ -2205,3 +2205,118 @@ sensor:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+
+# =============================================================================
+# HOST DEVICES
+# =============================================================================
+
+terminal:
+  category: terminal
+  name:
+    en: Terminal
+  description:
+    en: >-
+      Represents the physical host device (terminal) that runs the Smart Panel application.
+      Exposes hardware peripherals such as buttons, status LEDs, buzzer, and onboard sensors
+      as channels. Supports different terminal hardware variants like the SeeedStudio reTerminal
+      CM4 and reTerminal DM.
+  docGroup: other
+  useCases:
+    en:
+      - title: System status feedback
+        description: >-
+          Use indicator LEDs to show system status — green for healthy operation,
+          red for errors or alerts, blinking for pending updates.
+      - title: Physical button automation
+        description: >-
+          Map hardware buttons to scene triggers — press F1 to activate a "good night"
+          scene, long-press F2 to toggle all lights, or double-press to arm the alarm.
+      - title: Audible alerts
+        description: >-
+          Use the onboard buzzer to produce audible alerts for events like doorbell
+          rings, alarm triggers, or timer completions.
+      - title: Environmental awareness
+        description: >-
+          Use onboard sensors like light sensor for automatic display brightness
+          adjustment or accelerometer for orientation detection.
+  developerNotes:
+    en:
+      - >-
+        The terminal device represents the host hardware itself, not a remote device.
+        Only one terminal device should be active at a time.
+      - >-
+        Channel availability depends on the hardware variant. The plugin should
+        auto-detect the hardware and create only the relevant channels.
+      - >-
+        Button events are emitted as event-type properties, not polled state.
+        The plugin should use evdev or similar input subsystem for button detection.
+      - >-
+        For the reTerminal DM variant, digital inputs and outputs use the contact
+        and switcher channels respectively, which are already defined in the spec.
+  channels:
+    device_information:
+      category: device_information
+      required: true
+      multiple: false
+      description:
+        en: >-
+          Provides metadata about the terminal device, including hardware model,
+          firmware version, and operational status.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: >-
+          Hardware button input. Multiple instances represent individual buttons
+          (e.g., button_f1, button_f2, button_f3, button_o).
+    indicator:
+      category: indicator
+      required: false
+      multiple: true
+      description:
+        en: >-
+          Status indicator LED output. Multiple instances represent individual LEDs
+          (e.g., usr_led, sta_led).
+    buzzer:
+      category: buzzer
+      required: false
+      multiple: false
+      description:
+        en: >-
+          Onboard buzzer for audible alerts and notifications.
+    illuminance:
+      category: illuminance
+      required: false
+      multiple: false
+      description:
+        en: >-
+          Onboard light sensor for measuring ambient light levels.
+    accelerometer:
+      category: accelerometer
+      required: false
+      multiple: false
+      description:
+        en: >-
+          Onboard accelerometer for orientation and motion detection.
+    contact:
+      category: contact
+      required: false
+      multiple: true
+      description:
+        en: >-
+          Digital input channels for industrial terminal variants with DI ports.
+    switcher:
+      category: switcher
+      required: false
+      multiple: true
+      description:
+        en: >-
+          Digital output channels for industrial terminal variants with DO ports.
+    temperature:
+      category: temperature
+      required: false
+      multiple: false
+      description:
+        en: >-
+          Onboard or SoC temperature sensor for monitoring device thermal state.

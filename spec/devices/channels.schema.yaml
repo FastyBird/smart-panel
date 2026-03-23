@@ -122,6 +122,9 @@ definitions:
     type: string
     enum:
       - generic
+      - acceleration_x
+      - acceleration_y
+      - acceleration_z
       - active
       - alarm_state
       - album
@@ -177,6 +180,7 @@ definitions:
       - natural_breeze
       - obstruction
       - "on"
+      - orientation
       - over_current
       - over_voltage
       - over_power
@@ -300,10 +304,13 @@ patternProperties:
         type: string
         enum:
           - generic
+          - accelerometer
           - air_particulate
           - air_quality
           - alarm
           - battery
+          - button
+          - buzzer
           - camera
           - carbon_dioxide
           - carbon_monoxide
@@ -324,6 +331,7 @@ patternProperties:
           - humidifier
           - humidity
           - illuminance
+          - indicator
           - leak
           - light
           - lock

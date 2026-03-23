@@ -257,6 +257,17 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.media_input,
 		DevicesModuleChannelCategory.device_information,
 	],
+	[DevicesModuleDeviceCategory.terminal]: [
+		DevicesModuleChannelCategory.button,
+		DevicesModuleChannelCategory.indicator,
+		DevicesModuleChannelCategory.buzzer,
+		DevicesModuleChannelCategory.illuminance,
+		DevicesModuleChannelCategory.accelerometer,
+		DevicesModuleChannelCategory.temperature,
+		DevicesModuleChannelCategory.contact,
+		DevicesModuleChannelCategory.switcher,
+		DevicesModuleChannelCategory.device_information,
+	],
 	[DevicesModuleDeviceCategory.thermostat]: [
 		DevicesModuleChannelCategory.thermostat,
 		DevicesModuleChannelCategory.cooler,
