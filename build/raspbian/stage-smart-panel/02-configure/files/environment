@@ -3,7 +3,7 @@
 
 NODE_ENV=production
 FB_BACKEND_PORT=3000
-FB_ADMIN_UI_PATH=/opt/smart-panel/static
+FB_ADMIN_UI_PATH=/opt/smart-panel/current/static
 FB_DB_PATH=/var/lib/smart-panel/data
 FB_CONFIG_PATH=/var/lib/smart-panel/config
 FB_DB_SYNC=false

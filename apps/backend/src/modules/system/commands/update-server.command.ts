@@ -1,6 +1,9 @@
 import { execFileSync } from 'child_process';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync } from 'fs';
 import inquirer from 'inquirer';
 import { Command, CommandRunner, Option } from 'nest-commander';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 import { Injectable } from '@nestjs/common';
 
@@ -37,8 +40,11 @@ export class UpdateServerCommand extends CommandRunner {
 		const skipRestart = options?.skipRestart ?? false;
 		let majorConfirmed = false;
 
+		const installType = this.updateService.getInstallType();
+
 		console.log('\n\x1b[36m  FastyBird Smart Panel - Server Update\x1b[0m');
 		console.log('\x1b[90m  ──────────────────────────────────────\x1b[0m\n');
+		console.log(`  Install type:     \x1b[37m${installType}\x1b[0m`);
 
 		// Check for updates
 		let targetVersion = options?.version;
@@ -118,6 +124,18 @@ export class UpdateServerCommand extends CommandRunner {
 
 		console.log();
 
+		if (installType === 'image') {
+			await this.updateImage(targetVersion, skipRestart);
+		} else {
+			this.updateNpm(targetVersion, skipRestart);
+		}
+
+		console.log(`\n  \x1b[32m✓\x1b[0m Server updated to version \x1b[1m${targetVersion}\x1b[0m\n`);
+
+		this.logger.log(`Server updated to version ${targetVersion} (${installType})`);
+	}
+
+	private updateNpm(targetVersion: string, skipRestart: boolean): void {
 		// Stop the service
 		if (!skipRestart) {
 			printStep('Stopping service...');
@@ -154,6 +172,323 @@ export class UpdateServerCommand extends CommandRunner {
 		}
 
 		// Run database migrations
+		this.runNpmMigrations();
+
+		// Restart the service
+		if (!skipRestart) {
+			this.restartService();
+		}
+	}
+
+	private async updateImage(targetVersion: string, skipRestart: boolean): Promise<void> {
+		const baseDir = this.updateService.getImageBaseDir();
+		const cleanVersion = targetVersion.replace(/^v/, '');
+		const newVersionDir = `${baseDir}/v${cleanVersion}`;
+		const currentLink = `${baseDir}/current`;
+
+		// Guard: refuse to overwrite the currently running version
+		try {
+			const currentTarget = execFileSync('readlink', ['-f', currentLink], { encoding: 'utf-8' }).trim();
+			const resolvedNew = execFileSync('readlink', ['-f', newVersionDir], { encoding: 'utf-8' }).trim();
+
+			if (currentTarget === resolvedNew) {
+				printError(`Target version v${cleanVersion} is already the active version`);
+				process.exit(1);
+			}
+		} catch {
+			// newVersionDir doesn't exist yet — safe to proceed
+		}
+
+		// Fetch the release asset download URL
+		printStep('Fetching release information...');
+
+		const asset = await this.updateService.fetchServerReleaseAsset(targetVersion);
+
+		if (!asset) {
+			printError(`No backend release artifact found for version ${targetVersion}`);
+			process.exit(1);
+		}
+
+		const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
+
+		printSuccess(`Found ${asset.name} (${sizeMB} MB)`);
+
+		// Download the tarball
+		printStep(`Downloading ${asset.name}...`);
+
+		const tmpFile = `/tmp/${asset.name}`;
+
+		try {
+			const response = await fetch(asset.downloadUrl, {
+				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+				redirect: 'follow',
+			});
+
+			if (!response.ok || !response.body) {
+				throw new Error(`Download failed: HTTP ${response.status}`);
+			}
+
+			const fileStream = createWriteStream(tmpFile);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			const nodeStream = Readable.fromWeb(response.body as any);
+
+			await pipeline(nodeStream, fileStream);
+
+			printSuccess('Download complete');
+		} catch (error) {
+			const err = error as Error;
+
+			printError(`Download failed: ${err.message}`);
+
+			try {
+				unlinkSync(tmpFile);
+			} catch {
+				// Ignore
+			}
+
+			process.exit(1);
+		}
+
+		// Extract the archive
+		printStep('Extracting update...');
+
+		try {
+			mkdirSync(newVersionDir, { recursive: true });
+			execFileSync('tar', ['-xzf', tmpFile, '-C', newVersionDir], { stdio: 'pipe' });
+
+			// Create image-install marker
+			execFileSync('touch', [`${newVersionDir}/.image-install`], { stdio: 'pipe' });
+
+			printSuccess('Extraction complete');
+		} catch (error) {
+			const err = error as Error;
+
+			printError(`Extraction failed: ${err.message}`);
+			rmSync(newVersionDir, { recursive: true, force: true });
+
+			try {
+				unlinkSync(tmpFile);
+			} catch {
+				// Ignore
+			}
+
+			process.exit(1);
+		}
+
+		try {
+			unlinkSync(tmpFile);
+		} catch {
+			// Ignore
+		}
+
+		// Install production dependencies
+		printStep('Installing dependencies...');
+
+		try {
+			execFileSync('pnpm', ['install', '--prod', '--ignore-scripts'], {
+				cwd: newVersionDir,
+				stdio: 'inherit',
+			});
+
+			printSuccess('Dependencies installed');
+		} catch (error) {
+			const err = error as Error;
+
+			printError(`Dependency install failed: ${err.message}`);
+			rmSync(newVersionDir, { recursive: true, force: true });
+			process.exit(1);
+		}
+
+		// Rebuild native modules
+		printStep('Rebuilding native modules...');
+
+		try {
+			if (existsSync(`${baseDir}/rebuild-native.sh`)) {
+				execFileSync('bash', [`${baseDir}/rebuild-native.sh`, newVersionDir], { stdio: 'inherit' });
+				printSuccess('Native modules rebuilt');
+			} else {
+				printWarning('rebuild-native.sh not found, skipping native module rebuild');
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			printError(`Native module rebuild failed: ${err.message}`);
+			rmSync(newVersionDir, { recursive: true, force: true });
+			process.exit(1);
+		}
+
+		// Set ownership
+		try {
+			execFileSync('chown', ['-R', 'smart-panel:smart-panel', newVersionDir], { stdio: 'pipe' });
+		} catch {
+			printWarning('Could not set ownership (may need root)');
+		}
+
+		// Stop service
+		if (!skipRestart) {
+			printStep('Stopping service...');
+
+			try {
+				execFileSync('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
+				printSuccess('Service stopped');
+			} catch {
+				printWarning('Could not stop service (may not be running)');
+			}
+		}
+
+		// Switch symlink
+		printStep('Switching to new version...');
+
+		// Save previous target for rollback
+		let previousTarget: string | null = null;
+
+		try {
+			previousTarget = execFileSync('readlink', [currentLink], { encoding: 'utf-8' }).trim();
+		} catch {
+			// No previous symlink
+		}
+
+		try {
+			execFileSync('ln', ['-sfn', newVersionDir, currentLink], { stdio: 'pipe' });
+			printSuccess(`Symlink updated: current -> v${cleanVersion}`);
+		} catch (error) {
+			const err = error as Error;
+
+			printError(`Failed to switch symlink: ${err.message}`);
+
+			if (previousTarget) {
+				try {
+					execFileSync('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
+				} catch {
+					// Ignore
+				}
+			}
+
+			if (!skipRestart) {
+				this.restartService();
+			}
+
+			process.exit(1);
+		}
+
+		// Run database migrations
+		printStep('Running database migrations...');
+
+		try {
+			// Source environment variables from the env file if it exists
+			const envFile = '/etc/smart-panel/environment';
+			const envVars: Record<string, string> = { ...process.env } as Record<string, string>;
+
+			if (existsSync(envFile)) {
+				try {
+					const envContent = readFileSync(envFile, 'utf-8');
+
+					for (const line of envContent.split('\n')) {
+						const trimmed = line.trim();
+
+						if (trimmed && !trimmed.startsWith('#')) {
+							const eqIndex = trimmed.indexOf('=');
+
+							if (eqIndex > 0) {
+								const key = trimmed.substring(0, eqIndex);
+								const value = trimmed.substring(eqIndex + 1);
+
+								envVars[key] = value;
+							}
+						}
+					}
+				} catch {
+					printWarning('Could not read environment file, continuing without it');
+				}
+			}
+
+			execFileSync(
+				'node',
+				[`${newVersionDir}/node_modules/typeorm/cli.js`, 'migration:run', '-d', `${newVersionDir}/dist/dataSource.js`],
+				{
+					cwd: newVersionDir,
+					env: envVars,
+					stdio: 'inherit',
+				},
+			);
+
+			printSuccess('Migrations complete');
+		} catch (error) {
+			const err = error as Error;
+
+			printWarning(`Migration warning: ${err.message}`);
+			this.logger.warn(`Migration had issues during image update: ${err.message}`);
+
+			// Revert on migration failure
+			printStep('Reverting to previous version...');
+
+			if (previousTarget) {
+				let reverted = false;
+
+				try {
+					execFileSync('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
+					printWarning('Reverted to previous version due to migration failure');
+					reverted = true;
+				} catch {
+					printError('Failed to revert symlink — keeping new version in place');
+				}
+
+				// Only delete the new version if the symlink was successfully reverted
+				if (reverted) {
+					rmSync(newVersionDir, { recursive: true, force: true });
+				}
+			} else {
+				// No previous version to revert to — keep the new version in place
+				// so the system remains bootable, even with a failed migration
+				printWarning('No previous version to revert to — keeping current version');
+			}
+
+			if (!skipRestart) {
+				this.restartService();
+			}
+
+			process.exit(1);
+		}
+
+		// Restart the service
+		if (!skipRestart) {
+			this.restartService();
+		}
+
+		// Clean up old versions (keep max 2 previous)
+		this.cleanupOldVersions(baseDir, `v${cleanVersion}`);
+	}
+
+	private cleanupOldVersions(baseDir: string, currentVersion: string): void {
+		try {
+			const versions = this.updateService.getInstalledVersions();
+
+			// Exclude the current version before deciding what to remove,
+			// so downgrades don't leave extra versions behind
+			const removable = versions.filter((v) => `v${v}` !== currentVersion);
+
+			if (removable.length <= 2) {
+				return;
+			}
+
+			// Remove all but the 2 newest previous versions
+			const toRemove = removable.slice(0, removable.length - 2);
+
+			for (const version of toRemove) {
+				const dir = `${baseDir}/v${version}`;
+
+				printStep(`Removing old version v${version}...`);
+				rmSync(dir, { recursive: true, force: true });
+				printSuccess(`Removed v${version}`);
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			printWarning(`Could not clean up old versions: ${err.message}`);
+		}
+	}
+
+	private runNpmMigrations(): void {
 		printStep('Running database migrations...');
 
 		try {
@@ -179,15 +514,6 @@ export class UpdateServerCommand extends CommandRunner {
 			printWarning(`Migration warning: ${err.message}`);
 			this.logger.warn(`Migration had issues: ${err.message}`);
 		}
-
-		// Restart the service
-		if (!skipRestart) {
-			this.restartService();
-		}
-
-		console.log(`\n  \x1b[32m✓\x1b[0m Server updated to version \x1b[1m${targetVersion}\x1b[0m\n`);
-
-		this.logger.log(`Server updated to version ${targetVersion}`);
 	}
 
 	@Option({

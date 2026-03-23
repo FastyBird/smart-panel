@@ -14,7 +14,8 @@ set -euo pipefail
 LOG_TAG="smart-panel-firstboot"
 ENV_FILE="/etc/smart-panel/environment"
 DATA_DIR="/var/lib/smart-panel"
-APP_DIR="/opt/smart-panel"
+APP_BASE_DIR="/opt/smart-panel"
+APP_DIR="${APP_BASE_DIR}/current"
 MARKER="${DATA_DIR}/.first-boot"
 BOOT_LOG="/boot/firmware/smart-panel-firstboot.log"
 
@@ -49,8 +50,8 @@ log_info() {
 # ──────────────────────────────────────────────────────────────
 # 0a. Apply boot partition config (WiFi, hostname, timezone, etc.)
 # ──────────────────────────────────────────────────────────────
-if [ -x "${APP_DIR}/apply-boot-config.sh" ]; then
-	if "${APP_DIR}/apply-boot-config.sh" >> "${BOOT_LOG}" 2>&1; then
+if [ -x "${APP_BASE_DIR}/apply-boot-config.sh" ]; then
+	if "${APP_BASE_DIR}/apply-boot-config.sh" >> "${BOOT_LOG}" 2>&1; then
 		log_ok "Boot configuration applied"
 	else
 		log_warn "Boot configuration failed or partially applied"
@@ -90,8 +91,8 @@ fi
 # 2. Build native modules (sqlite3, bcrypt) — must run before migrations
 # ──────────────────────────────────────────────────────────────
 log_info "Building native modules (this may take a minute)..."
-if [ -x "${APP_DIR}/rebuild-native.sh" ]; then
-	if "${APP_DIR}/rebuild-native.sh" >> "${BOOT_LOG}" 2>&1; then
+if [ -x "${APP_BASE_DIR}/rebuild-native.sh" ]; then
+	if "${APP_BASE_DIR}/rebuild-native.sh" "${APP_DIR}" >> "${BOOT_LOG}" 2>&1; then
 		log_ok "Native modules compiled"
 	else
 		log_error "Native module compilation failed"

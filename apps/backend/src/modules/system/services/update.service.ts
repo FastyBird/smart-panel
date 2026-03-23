@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
@@ -8,6 +8,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
 import { EventType, SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
+export type InstallType = 'image' | 'npm';
+
 export interface VersionInfo {
 	current: string;
 	latest: string | null;
@@ -15,7 +17,7 @@ export interface VersionInfo {
 	updateType: 'patch' | 'minor' | 'major' | null;
 }
 
-export interface PanelReleaseAsset {
+export interface ReleaseAsset {
 	name: string;
 	downloadUrl: string;
 	size: number;
@@ -23,7 +25,7 @@ export interface PanelReleaseAsset {
 
 export interface PanelVersionInfo {
 	latest: string | null;
-	assets: PanelReleaseAsset[];
+	assets: ReleaseAsset[];
 }
 
 export interface UpdateStatusInfo {
@@ -67,6 +69,10 @@ export class UpdateService {
 
 	private updateLock = false;
 
+	private static readonly IMAGE_BASE_DIR = '/opt/smart-panel';
+	private static readonly IMAGE_CURRENT_LINK = '/opt/smart-panel/current';
+	private static readonly IMAGE_MARKER_FILE = '.image-install';
+
 	constructor(private readonly eventEmitter: EventEmitter2) {}
 
 	getCurrentVersion(): string {
@@ -79,6 +85,62 @@ export class UpdateService {
 		} catch {
 			return '0.0.0';
 		}
+	}
+
+	/**
+	 * Detect whether the app was installed via the Raspbian image or via npm.
+	 * Image installs have a `.image-install` marker file in the active version directory.
+	 */
+	getInstallType(): InstallType {
+		try {
+			const currentTarget = readlinkSync(UpdateService.IMAGE_CURRENT_LINK);
+
+			// readlinkSync may return a relative path (e.g. "v1.0.0") or an absolute
+			// path (e.g. "/opt/smart-panel/v1.0.0"). Use path.resolve to handle both.
+			const resolvedDir = currentTarget.startsWith('/')
+				? currentTarget
+				: join(UpdateService.IMAGE_BASE_DIR, currentTarget);
+
+			const markerPath = join(resolvedDir, UpdateService.IMAGE_MARKER_FILE);
+
+			if (existsSync(markerPath)) {
+				return 'image';
+			}
+		} catch {
+			// readlinkSync fails if the path is not a symlink or doesn't exist
+		}
+
+		// Fallback: check via the symlink directly (Node follows symlinks in existsSync)
+		try {
+			const markerPath = join(UpdateService.IMAGE_CURRENT_LINK, UpdateService.IMAGE_MARKER_FILE);
+
+			if (existsSync(markerPath)) {
+				return 'image';
+			}
+		} catch {
+			// Ignore
+		}
+
+		return 'npm';
+	}
+
+	/**
+	 * List installed versions in /opt/smart-panel/v*
+	 * Only includes directories matching semver pattern (e.g. v1.0.0, v1.2.3-beta.1)
+	 */
+	getInstalledVersions(): string[] {
+		try {
+			return readdirSync(UpdateService.IMAGE_BASE_DIR)
+				.filter((entry) => /^v\d+\.\d+\.\d+/.test(entry))
+				.map((entry) => entry.replace(/^v/, ''))
+				.sort((a, b) => compareSemver(a, b));
+		} catch {
+			return [];
+		}
+	}
+
+	getImageBaseDir(): string {
+		return UpdateService.IMAGE_BASE_DIR;
 	}
 
 	getStatus(): UpdateStatusInfo {
@@ -180,6 +242,71 @@ export class UpdateService {
 			return cached;
 		}
 
+		const fallback: ReleaseNotes = {
+			version: cleanVersion,
+			body: null,
+			url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
+			publishedAt: null,
+		};
+
+		const release = await this.fetchGitHubRelease(cleanVersion);
+
+		if (!release) {
+			return fallback;
+		}
+
+		const result: ReleaseNotes = {
+			version: cleanVersion,
+			body: (release as { body?: string | null }).body ?? null,
+			url: (release as { html_url?: string }).html_url ?? fallback.url,
+			publishedAt: (release as { published_at?: string | null }).published_at ?? null,
+		};
+
+		this.cachedReleaseNotes.set(cleanVersion, result);
+
+		return result;
+	}
+
+	/**
+	 * For image installs, fetch the backend tarball download URL from a GitHub release.
+	 */
+	async fetchServerReleaseAsset(version: string): Promise<ReleaseAsset | null> {
+		const cleanVersion = version.replace(/^v/, '');
+
+		const release = await this.fetchGitHubRelease(cleanVersion);
+
+		if (!release) {
+			return null;
+		}
+
+		const assets = (release as { assets?: Array<{ name: string; browser_download_url: string; size: number }> }).assets;
+
+		if (!assets) {
+			this.logger.warn(`No assets found in release v${cleanVersion}`);
+
+			return null;
+		}
+
+		// Look for the backend tarball (e.g., smart-panel-v1.2.0-backend.tar.gz)
+		const backendAsset = assets.find((a) => a.name.includes('backend') && a.name.endsWith('.tar.gz'));
+
+		if (!backendAsset) {
+			this.logger.warn(`No backend tarball found in release v${cleanVersion}`);
+
+			return null;
+		}
+
+		return {
+			name: backendAsset.name,
+			downloadUrl: backendAsset.browser_download_url,
+			size: backendAsset.size,
+		};
+	}
+
+	/**
+	 * Fetch a GitHub release by tag. Shared by fetchReleaseNotes and fetchServerReleaseAsset.
+	 */
+	private async fetchGitHubRelease(cleanVersion: string): Promise<Record<string, unknown> | null> {
 		const url = `${this.GITHUB_API_URL}/tags/v${cleanVersion}`;
 
 		try {
@@ -191,44 +318,18 @@ export class UpdateService {
 			});
 
 			if (!response.ok) {
-				this.logger.warn(`GitHub API returned ${response.status} for release notes v${cleanVersion}`);
+				this.logger.warn(`GitHub API returned ${response.status} for release v${cleanVersion}`);
 
-				return {
-					version: cleanVersion,
-					body: null,
-					url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
-					publishedAt: null,
-				};
+				return null;
 			}
 
-			const release = (await response.json()) as {
-				tag_name: string;
-				body: string | null;
-				html_url: string;
-				published_at: string | null;
-			};
-
-			const result: ReleaseNotes = {
-				version: cleanVersion,
-				body: release.body,
-				url: release.html_url,
-				publishedAt: release.published_at,
-			};
-
-			this.cachedReleaseNotes.set(cleanVersion, result);
-
-			return result;
+			return (await response.json()) as Record<string, unknown>;
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to fetch release notes for v${cleanVersion}: ${err.message}`);
+			this.logger.error(`Failed to fetch GitHub release v${cleanVersion}: ${err.message}`);
 
-			return {
-				version: cleanVersion,
-				body: null,
-				url: `https://github.com/FastyBird/smart-panel/releases/tag/v${cleanVersion}`,
-				publishedAt: null,
-			};
+			return null;
 		}
 	}
 

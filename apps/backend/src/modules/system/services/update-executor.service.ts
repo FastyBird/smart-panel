@@ -111,7 +111,32 @@ export class UpdateExecutorService implements OnModuleInit {
 			throw new Error('An update is already in progress');
 		}
 
-		this.logger.log(`Starting update to version ${targetVersion}`);
+		const installType = this.updateService.getInstallType();
+
+		this.logger.log(`Starting ${installType} update to version ${targetVersion}`);
+
+		// For image installs, resolve the download URL before spawning the worker
+		let downloadUrl: string | undefined;
+
+		if (installType === 'image') {
+			const asset = await this.updateService.fetchServerReleaseAsset(targetVersion);
+
+			if (!asset) {
+				this.updateService.releaseUpdateLock();
+
+				this.updateService.setStatus({
+					status: UpdateStatusType.FAILED,
+					phase: UpdatePhase.FAILED,
+					progressPercent: null,
+					message: null,
+					error: `No backend release artifact found for version ${targetVersion}`,
+				});
+
+				throw new Error(`No backend release artifact found for version ${targetVersion}`);
+			}
+
+			downloadUrl = asset.downloadUrl;
+		}
 
 		// Write initial status file
 		this.writeStatusFile({
@@ -143,12 +168,15 @@ export class UpdateExecutorService implements OnModuleInit {
 					...process.env,
 					UPDATE_VERSION: targetVersion,
 					STATUS_FILE,
+					INSTALL_TYPE: installType,
+					IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
+					DOWNLOAD_URL: downloadUrl ?? '',
 				},
 			});
 
 			child.unref();
 
-			this.logger.log(`Update worker spawned for version ${targetVersion} (PID: ${child.pid})`);
+			this.logger.log(`Update worker spawned for version ${targetVersion} (PID: ${child.pid}, type: ${installType})`);
 		} catch (error) {
 			const err = error as Error;
 
