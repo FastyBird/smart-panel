@@ -114,7 +114,7 @@ This epic adds the missing visual face layer on top.
 
 ## 4b. Buddy Module Hardening (Epic)
 
-> [EPIC-BUDDY-HARDENING](epics/EPIC-BUDDY-HARDENING.md) — Status: :clipboard: Planned
+> [EPIC-BUDDY-HARDENING](epics/EPIC-BUDDY-HARDENING.md) — Status: :construction: In Progress
 
 Reliability and correctness fixes identified during code review audit.
 
@@ -124,14 +124,14 @@ Reliability and correctness fixes identified during code review audit.
 |---|------|-------|--------|
 | 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :clipboard: Planned |
 | 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :clipboard: Planned |
-| 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :clipboard: Planned |
+| 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :white_check_mark: Done |
 
 ### Priority 2 — Medium fixes
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
-| 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :clipboard: Planned |
-| 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :clipboard: Planned |
+| 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :white_check_mark: Done |
+| 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :white_check_mark: Done |
 | 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :clipboard: Planned |
 
 ### Priority 3 — Polish
@@ -141,7 +141,8 @@ Reliability and correctness fixes identified during code review audit.
 | 7 | [TECH-BUDDY-PANEL-ROBUSTNESS](technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | panel | :clipboard: Planned |
 | 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :clipboard: Planned |
 
-**Next up:** Suggestion persistence (P1), then timezone safety and timeout enforcement.
+**Done:** Timeout enforcement, memory leak cleanup, conversation hardening.
+**Next up:** Suggestion persistence (P1), then timezone safety.
 
 ---
 
@@ -334,7 +335,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Domains Epic | 2 | 0 | 7 | 9 |
 | Buddy Epic | 9 | 0 | 0 | 9 |
 | AI Buddy Face | 0 | 0 | 2 | 2 |
-| Buddy Hardening | 0 | 0 | 8 | 8 |
+| Buddy Hardening | 3 | 0 | 5 | 8 |
 | Onboarding Epic | 3 | 0 | 0 | 3 |
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
@@ -346,4 +347,4 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **51** | **0** | **37** | **88** |
+| **Total** | **54** | **0** | **34** | **88** |

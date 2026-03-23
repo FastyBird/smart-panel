@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-HARDENING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
