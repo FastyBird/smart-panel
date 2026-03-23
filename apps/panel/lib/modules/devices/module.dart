@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-reterminal/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/simulator/plugin.dart';
@@ -49,6 +50,7 @@ class DevicesModuleService {
     DevicesShellyV1Plugin.register();
     SimulatorPlugin.register();
     DevicesWledPlugin.register();
+    DevicesReTerminalPlugin.register();
     DevicesZigbee2mqttPlugin.register();
 
     // Initialize repositories in dependency order:
