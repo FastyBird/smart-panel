@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { StatsProvider } from '../../stats/stats.interfaces';
 import { ModuleStatsModel } from '../models/api.model';
 
 @Injectable()
 export class ApiStatsProvider implements StatsProvider {
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	async getStats(): Promise<ModuleStatsModel> {
 		const q = `
@@ -16,7 +16,7 @@ export class ApiStatsProvider implements StatsProvider {
       WHERE time > now() - 5m
     `;
 
-		const rows = await this.influxDbService.query<{ c: number; e: number; p95: number; time: Date }>(q);
+		const rows = await this.storageService.query<{ c: number; e: number; p95: number; time: Date }>(q);
 
 		const r = rows?.[0] ?? { c: 0, e: 0, p95: 0, time: new Date() };
 

@@ -15,7 +15,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
-import { InfluxDbService } from '../src/modules/influxdb/services/influxdb.service';
+import { StorageService } from '../src/modules/storage/services/storage.service';
 import {
 	DEVICES_THIRD_PARTY_PLUGIN_PREFIX,
 	DEVICES_THIRD_PARTY_TYPE,
@@ -27,13 +27,13 @@ describe('Property Timeseries (e2e)', () => {
 	let accessToken: string;
 	let channelId: string;
 	let propertyId: string;
-	let influxDbMock: Record<string, jest.Mock>;
+	let storageMock: Record<string, jest.Mock>;
 
 	beforeAll(async () => {
 		// Create a proxy-based mock that auto-stubs any method accessed on InfluxDbService
 		const mockFns = new Map<string, jest.Mock>();
 
-		influxDbMock = new Proxy({} as Record<string, jest.Mock>, {
+		storageMock = new Proxy({} as Record<string, jest.Mock>, {
 			get(_target, prop: string | symbol) {
 				// Return undefined for symbols and special Promise-detection props
 				if (typeof prop === 'symbol' || prop === 'then') {
@@ -52,9 +52,9 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		// Set specific return values for methods used in tests
-		influxDbMock.query.mockResolvedValue([]);
-		influxDbMock.queryRaw.mockResolvedValue({ results: [] });
-		influxDbMock.isConnected.mockReturnValue(false);
+		storageMock.query.mockResolvedValue([]);
+		storageMock.queryRaw.mockResolvedValue({ results: [] });
+		storageMock.isConnected.mockReturnValue(false);
 
 		const dynamicAppModule = AppModule.register({
 			moduleExtensions: [],
@@ -69,8 +69,8 @@ describe('Property Timeseries (e2e)', () => {
 		const moduleFixture = await Test.createTestingModule({
 			imports: [dynamicAppModule],
 		})
-			.overrideProvider(InfluxDbService)
-			.useValue(influxDbMock)
+			.overrideProvider(StorageService)
+			.useValue(storageMock)
 			.compile();
 
 		app = moduleFixture.createNestApplication();
@@ -169,8 +169,8 @@ describe('Property Timeseries (e2e)', () => {
 	});
 
 	beforeEach(() => {
-		influxDbMock.query.mockReset();
-		influxDbMock.query.mockResolvedValue([]);
+		storageMock.query.mockReset();
+		storageMock.query.mockResolvedValue([]);
 	});
 
 	// Helper to make authenticated GET requests
@@ -186,7 +186,7 @@ describe('Property Timeseries (e2e)', () => {
 
 	describe('GET /modules/devices/channels/:channelId/properties/:id/timeseries', () => {
 		it('should return correct response format with empty data', async () => {
-			influxDbMock.query.mockResolvedValue([]);
+			storageMock.query.mockResolvedValue([]);
 
 			const response = await authGet(timeseriesUrl()).expect(200);
 
@@ -201,7 +201,7 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		it('should return timeseries data with points', async () => {
-			influxDbMock.query.mockResolvedValue([
+			storageMock.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
 					numberValue: 21.4,
@@ -231,7 +231,7 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		it('should support time range filtering with from/to parameters', async () => {
-			influxDbMock.query.mockResolvedValue([]);
+			storageMock.query.mockResolvedValue([]);
 
 			const from = '2025-06-01T00:00:00Z';
 			const to = '2025-06-01T12:00:00Z';
@@ -240,18 +240,18 @@ describe('Property Timeseries (e2e)', () => {
 
 			await authGet(timeseriesUrl()).query({ from, to }).expect(200);
 
-			expect(influxDbMock.query).toHaveBeenCalled();
+			expect(storageMock.query).toHaveBeenCalled();
 
 			// Find the timeseries query by matching both time boundaries
 			// (entity subscriber queries won't contain these timestamps)
-			const calls = influxDbMock.query.mock.calls;
+			const calls = storageMock.query.mock.calls;
 			const query = calls.map((c) => c[0] as string).find((q) => q.includes(fromMs) && q.includes(toMs));
 
 			expect(query).toBeDefined();
 		});
 
 		it('should support bucket size downsampling', async () => {
-			influxDbMock.query.mockResolvedValue([]);
+			storageMock.query.mockResolvedValue([]);
 
 			const response = await authGet(timeseriesUrl())
 				.query({
@@ -263,13 +263,13 @@ describe('Property Timeseries (e2e)', () => {
 
 			expect(response.body.data.bucket).toBe('15m');
 
-			const query = influxDbMock.query.mock.calls[0][0] as string;
+			const query = storageMock.query.mock.calls[0][0] as string;
 
 			expect(query).toContain('GROUP BY time(15m)');
 		});
 
 		it('should use default time range when from/to are not provided', async () => {
-			influxDbMock.query.mockResolvedValue([]);
+			storageMock.query.mockResolvedValue([]);
 
 			const response = await authGet(timeseriesUrl()).expect(200);
 
@@ -280,7 +280,7 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		it('should handle empty data gracefully when InfluxDB returns no results', async () => {
-			influxDbMock.query.mockResolvedValue([]);
+			storageMock.query.mockResolvedValue([]);
 
 			const response = await authGet(timeseriesUrl())
 				.query({
@@ -294,7 +294,7 @@ describe('Property Timeseries (e2e)', () => {
 		});
 
 		it('should handle InfluxDB errors gracefully and return empty points', async () => {
-			influxDbMock.query.mockRejectedValue(new Error('InfluxDB connection failed'));
+			storageMock.query.mockRejectedValue(new Error('InfluxDB connection failed'));
 
 			const response = await authGet(timeseriesUrl())
 				.query({

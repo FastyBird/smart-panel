@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { WebsocketGateway } from '../gateway/websocket.gateway';
 import { WEBSOCKET_MODULE_NAME } from '../websocket.constants';
 
@@ -14,7 +14,7 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 	private gauge: NodeJS.Timeout | null = null;
 
 	constructor(
-		private readonly influx: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly gateway: WebsocketGateway,
 	) {}
 
@@ -25,11 +25,11 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 	onModuleInit() {
 		// heartbeat every 10s
 		this.beat = setInterval(() => {
-			if (!this.influx.isConnected()) {
+			if (!this.storageService.isConnected()) {
 				return;
 			}
 
-			this.influx
+			this.storageService
 				.writePoints([
 					{
 						measurement: 'ws_heartbeat',
@@ -42,11 +42,11 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 
 		// clients gauge every 60s
 		this.gauge = setInterval(() => {
-			if (!this.influx.isConnected()) {
+			if (!this.storageService.isConnected()) {
 				return;
 			}
 
-			this.influx
+			this.storageService
 				.writePoints([
 					{
 						measurement: 'ws_conn',

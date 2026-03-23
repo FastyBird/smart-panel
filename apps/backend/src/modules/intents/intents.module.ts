@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 
 import { IntentsController } from './controllers/intents.controller';
@@ -22,7 +22,7 @@ import { IntentsService } from './services/intents.service';
 	description: INTENTS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [InfluxDbModule],
+	imports: [StorageModule],
 	controllers: [IntentsController],
 	providers: [IntentsService, IntentTimeseriesService],
 	exports: [IntentsService, IntentTimeseriesService],

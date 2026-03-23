@@ -5,7 +5,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity } from '../devices/entities/devices.entity';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -44,7 +44,7 @@ import { DetectionRulesLoaderService } from './spec/detection-rules-loader.servi
 	imports: [
 		SwaggerModule,
 		DevicesModule,
-		InfluxDbModule,
+		StorageModule,
 		TypeOrmModule.forFeature([SecurityAlertAckEntity, ChannelEntity]),
 	],
 	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],

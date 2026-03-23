@@ -3,7 +3,7 @@ import { FieldType, IPoint } from 'influx';
 import { Injectable, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { CurrentDayModel } from '../models/weather.model';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
@@ -40,11 +40,11 @@ export interface IWeatherHistoryQuery {
 export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherHistoryService');
 
-	constructor(private readonly influxDb: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	onModuleInit(): void {
 		// Register schema for weather measurements (no connection needed, just adds to array)
-		this.influxDb.registerSchema({
+		this.storageService.registerSchema({
 			measurement: MEASUREMENT_NAME,
 			fields: {
 				temperature: FieldType.FLOAT,
@@ -83,7 +83,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	 * Store current weather data to InfluxDB
 	 */
 	async storeWeatherData(locationId: string, locationName: string, current: CurrentDayModel): Promise<void> {
-		if (!this.influxDb.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
@@ -113,7 +113,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 				timestamp: current.dayTime,
 			};
 
-			await this.influxDb.writePoints([point]);
+			await this.storageService.writePoints([point]);
 
 			this.logger.debug(`Stored weather data for location=${locationId}`);
 		} catch (error) {
@@ -128,7 +128,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	 * Query historical weather data from InfluxDB
 	 */
 	async getHistory(query: IWeatherHistoryQuery): Promise<IWeatherHistoryPoint[]> {
-		if (!this.influxDb.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return [];
 		}
 
@@ -151,7 +151,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 				LIMIT ${limit}
 			`;
 
-			const results = await this.influxDb.query<{
+			const results = await this.storageService.query<{
 				time: Date;
 				temperature: number;
 				temperature_min: number;
@@ -214,7 +214,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 		totalRain: number | null;
 		totalSnow: number | null;
 	} | null> {
-		if (!this.influxDb.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return null;
 		}
 
@@ -237,7 +237,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 				AND time <= '${end}'
 			`;
 
-			const results = await this.influxDb.query<{
+			const results = await this.storageService.query<{
 				avg_temp: number;
 				min_temp: number;
 				max_temp: number;
@@ -274,7 +274,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	private async setupContinuousQueries(): Promise<void> {
 		try {
 			// Create continuous query for hourly aggregates stored in min_14d retention policy
-			await this.influxDb.createContinuousQuery(
+			await this.storageService.createContinuousQuery(
 				'cq_weather_hourly',
 				`SELECT
 					MEAN(temperature) as temperature,

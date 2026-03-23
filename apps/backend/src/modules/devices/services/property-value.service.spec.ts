@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -18,10 +18,10 @@ import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
 	let service: PropertyValueService;
-	let influxDbService: jest.Mocked<InfluxDbService>;
+	let influxDbService: jest.Mocked<StorageService>;
 
 	beforeEach(async () => {
-		const mockInfluxDbService = {
+		const mockStorageService = {
 			writePoints: jest.fn(),
 			query: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
@@ -31,14 +31,14 @@ describe('PropertyValueService', () => {
 			providers: [
 				PropertyValueService,
 				{
-					provide: InfluxDbService,
-					useValue: mockInfluxDbService,
+					provide: StorageService,
+					useValue: mockStorageService,
 				},
 			],
 		}).compile();
 
 		service = module.get<PropertyValueService>(PropertyValueService);
-		influxDbService = module.get<InfluxDbService>(InfluxDbService) as jest.Mocked<InfluxDbService>;
+		influxDbService = module.get<StorageService>(StorageService) as jest.Mocked<StorageService>;
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});

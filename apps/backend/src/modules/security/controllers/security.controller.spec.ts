@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DevicesService } from '../../devices/services/devices.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { DefaultSecurityProvider } from '../providers/default-security.provider';
 import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
@@ -41,7 +41,7 @@ describe('SecurityController', () => {
 				},
 				SecurityAlertAckService,
 				{
-					provide: InfluxDbService,
+					provide: StorageService,
 					useValue: {
 						isConnected: jest.fn().mockReturnValue(false),
 						registerSchema: jest.fn(),
