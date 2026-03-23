@@ -3,7 +3,7 @@ import { Callout, Cards } from 'nextra/components'
 # Installation
 
 Now that your device is set up, it's time to install the Smart Panel software. Depending on your setup,
-you can choose one of three deployment scenarios.
+you can choose one of several deployment scenarios.
 
 All installation methods use **pre-built distribution packages** published automatically by our CI pipeline
 to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
@@ -13,6 +13,9 @@ to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 ## Deployment Scenarios
 
 <Cards>
+	<Cards.Card title="Pre-Built Raspberry Pi Image" href="/docs/get-started/preparation#option-1-pre-built-smart-panel-image-recommended">
+		Flash a ready-to-go SD card image with everything pre-installed. WiFi setup via captive portal — no SSH needed.
+	</Cards.Card>
 	<Cards.Card title="Server Only" href="/docs/get-started/installation/server-only">
 		Install just the backend and admin interface on a server or headless device. Display panels connect remotely.
 	</Cards.Card>
@@ -33,16 +36,18 @@ to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 
 | Scenario | Best For | Example Hardware |
 |----------|----------|-----------------|
+| **Pre-Built Image** | Zero-config Raspberry Pi setup | Raspberry Pi 3B+/4/5, Zero 2W (64-bit) |
 | **Server Only** | Centralized setup with multiple displays | Raspberry Pi 4, mini PC, NAS, any Linux server |
 | **Display Only** | Adding a screen to an existing server | Raspberry Pi Zero 2W + touchscreen, Android tablet |
 | **All-in-One** | Single standalone smart panel | Raspberry Pi 3B+/4 with DSI touchscreen |
 | **Docker** | Containerized server deployment | Any Linux host with Docker installed |
 
 <Callout type="info">
-	Not sure which to pick? If you have **one Raspberry Pi with a display**, go with
-	[All-in-One](/docs/get-started/installation/all-in-one). If you plan to have **multiple displays
-	around your home**, start with [Server Only](/docs/get-started/installation/server-only) on a central
-	device, then add displays using [Display Only](/docs/get-started/installation/display-only).
+	If you have a **Raspberry Pi**, the [Pre-Built Image](/docs/get-started/preparation#option-1-pre-built-smart-panel-image-recommended)
+	is the fastest path — flash, boot, and configure WiFi from your phone. For other Linux devices or Docker,
+	choose from the options below. If you plan to have **multiple displays around your home**, start with
+	[Server Only](/docs/get-started/installation/server-only) on a central device, then add displays using
+	[Display Only](/docs/get-started/installation/display-only).
 </Callout>
 
 ---
