@@ -2,14 +2,81 @@ import { Callout, Steps } from 'nextra/components'
 
 # Preparation
 
-Let’s get your **Raspberry Pi** up and running with the operating system and the Smart Panel software. This part will
+Let's get your **Raspberry Pi** up and running with the operating system and the Smart Panel software. This part will
 walk you through flashing the SD card and doing the first boot.
-
-The easiest and most reliable way is to use the **Raspberry Pi Imager**.
 
 ---
 
-## Recommended: Using Raspberry Pi Imager
+## Option 1: Pre-Built Smart Panel Image (Recommended)
+
+The fastest way to get started is to flash one of the **pre-built Raspberry Pi OS images**. Everything is already
+installed — the backend, admin interface, and display app — so there is no manual setup required.
+
+### Image Variants
+
+| Variant | What's Included | Best For |
+| --- | --- | --- |
+| **Server** | Backend + Admin UI | Headless server without a display |
+| **All-in-One (AIO)** | Backend + Admin UI + Display App | Single device with a touchscreen |
+| **Display** | Display App only | Dedicated display that connects to a remote server |
+
+<Callout type="info">
+	All images are **ARM64 only** and support Raspberry Pi 3B+, Pi 4, Pi 5, and Pi Zero 2W (64-bit).
+</Callout>
+
+<Steps>
+	### Download the Image
+
+	Go to the [GitHub Releases](https://github.com/FastyBird/smart-panel/releases) page and download the image for your
+	variant:
+
+	- `smart-panel-server-{version}-arm64.img.xz`
+	- `smart-panel-aio-{version}-arm64.img.xz`
+	- `smart-panel-display-{version}-arm64.img.xz`
+
+	### Flash with Raspberry Pi Imager
+
+	1. Open [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+	2. Click **Choose OS**, scroll to the bottom and select **Use custom**
+	3. Select the downloaded `.img.xz` file
+	4. Choose your SD card and click **Next**, then **Yes** to flash
+
+	### (Optional) Pre-configure WiFi and Hostname
+
+	Before inserting the SD card, mount the boot partition and create a file named `smart-panel.conf` with any of the
+	following settings:
+
+	```ini
+	WIFI_SSID=MyNetwork
+	WIFI_PASSWORD=mypassword
+	WIFI_COUNTRY=US
+	HOSTNAME=smart-panel
+	TIMEZONE=America/New_York
+	```
+
+	All fields are optional. If you skip WiFi configuration, a captive portal will handle it on first boot.
+
+	### Insert the SD Card and Power On
+
+	Insert the microSD card into your Raspberry Pi and power it on. On first boot the image will:
+
+	1. Auto-expand the root partition to fill the SD card
+	2. Apply WiFi/hostname/timezone from `smart-panel.conf` (if present)
+	3. Compile native modules and run database migrations
+	4. Start all services automatically
+</Steps>
+
+<Callout>
+	No WiFi config file? No problem — a WiFi setup hotspot appears automatically (AP name `SmartPanel-XXXX`,
+	password `smartpanel`). See [Captive Portal](/docs/get-started/installation/captive-portal) for details.
+</Callout>
+
+---
+
+## Option 2: Vanilla Raspberry Pi OS
+
+If you prefer to start from a stock OS and install everything yourself, use the **Raspberry Pi Imager** to flash a
+vanilla Raspberry Pi OS image.
 
 <Steps>
 	### Download Raspberry Pi Imager
@@ -22,7 +89,7 @@ The easiest and most reliable way is to use the **Raspberry Pi Imager**.
 
 	### Insert the SD Card
 
-	Insert a microSD card (at least 8GB recommended) into your computer’s card reader.
+	Insert a microSD card (at least 8GB recommended) into your computer's card reader.
 
 	### Choose Operating System
 
@@ -85,14 +152,14 @@ If you're a more advanced user or prefer full control, you can flash the image m
 <Steps>
 	### Download the OS
 
-	We recommend using [Raspberry Pi OS Lite](https://www.raspberrypi.com/software/operating-systems/), since it’s
+	We recommend using [Raspberry Pi OS Lite](https://www.raspberrypi.com/software/operating-systems/), since it's
 	lightweight and ideal for embedded use.
 
 	### Flash the SD Card
 
 	1. Insert the microSD card into your computer.
 	2. Use Etcher to write the OS image.
-	3. Once flashing is done, don’t remove the card just yet!
+	3. Once flashing is done, don't remove the card just yet!
 
 	### Enable Wi-Fi
 
@@ -139,8 +206,8 @@ ssh pi@smart-panel.local
 
 ---
 
-## What’s Next?
+## What's Next?
 
-Once the Pi is online and accessible, you’re ready to install the Smart Panel backend and panel app.
+Once the Pi is online and accessible, you're ready to install the Smart Panel backend and panel app.
 
-👉 Head over to the **[Installation](/docs/get-started/installation)** section.
+Head over to the **[Installation](/docs/get-started/installation)** section.
