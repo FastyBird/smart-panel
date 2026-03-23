@@ -135,7 +135,7 @@ function validateInputs(country, hostname, timezone) {
 		errors.push('Hostname must contain only letters, numbers, and hyphens (max 63 chars)');
 	}
 
-	if (timezone && !/^[A-Za-z_]+\/[A-Za-z_]+$/.test(timezone)) {
+	if (timezone && !/^[A-Za-z0-9_+-]+(?:\/[A-Za-z0-9_+-]+){1,2}$/.test(timezone)) {
 		errors.push('Invalid timezone format (expected e.g., America/New_York)');
 	}
 
