@@ -111,6 +111,8 @@ export const ENERGY_BATTERY_LOW_THRESHOLD_PERCENT = 20; // % battery level to tr
 
 export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy before suggesting lights off
 
+export const DEFAULT_MAX_TOOL_ITERATIONS = 5;
+
 export const BUDDY_CORE_TOOLS_PROVIDER = 'buddy-core-tools';
 
 export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';

@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -13,6 +13,7 @@ import {
 	BUDDY_DEFAULT_PERSONALITY_PATH,
 	BUDDY_MODULE_NAME,
 	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
+	DEFAULT_MAX_TOOL_ITERATIONS,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
@@ -110,6 +111,19 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsInt()
 	@Min(60_000)
 	heartbeatIntervalMs: number = HEARTBEAT_DEFAULT_INTERVAL_MS;
+
+	@ApiPropertyOptional({
+		name: 'max_tool_iterations',
+		description: 'Maximum number of tool execution iterations per message (minimum 3, maximum 20)',
+		type: 'integer',
+		example: DEFAULT_MAX_TOOL_ITERATIONS,
+	})
+	@Expose({ name: 'max_tool_iterations' })
+	@IsOptional()
+	@IsInt()
+	@Min(3)
+	@Max(20)
+	maxToolIterations: number = DEFAULT_MAX_TOOL_ITERATIONS;
 
 	@ApiPropertyOptional({
 		name: 'anomaly_temperature_drift_threshold',
