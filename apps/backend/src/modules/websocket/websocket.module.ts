@@ -5,8 +5,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { AuthModule } from '../auth/auth.module';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
-import { InfluxDbService } from '../influxdb/services/influxdb.service';
+import { StorageModule } from '../storage/storage.module';
+import { StorageService } from '../storage/services/storage.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -34,7 +34,7 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 		}),
 		AuthModule,
 		UsersModule,
-		InfluxDbModule,
+		StorageModule,
 		StatsModule,
 	],
 	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],
@@ -44,13 +44,13 @@ export class WebsocketModule {
 	constructor(
 		private readonly wsStatsProvider: WsStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {}
 
 	onModuleInit() {
-		this.influxDbService.registerSchema(WsStatsInfluxDbSchema);
-		this.influxDbService.registerSchema(WsConnInfluxDbSchema);
+		this.storageService.registerSchema(WsStatsInfluxDbSchema);
+		this.storageService.registerSchema(WsConnInfluxDbSchema);
 
 		this.statsRegistryService.register(WEBSOCKET_MODULE_NAME, this.wsStatsProvider);
 

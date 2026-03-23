@@ -8,7 +8,7 @@ import { DevicesModule } from '../devices/devices.module';
 import { DisplaysModule } from '../displays/displays.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { StorageModule } from '../storage/storage.module';
 import { PlatformModule } from '../platform/platform.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -58,7 +58,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		PlatformModule,
 		WebsocketModule,
 		AuthModule,
-		InfluxDbModule,
+		StorageModule,
 		StatsModule,
 		SpacesModule,
 		UsersModule,

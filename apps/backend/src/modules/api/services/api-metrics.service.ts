@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 
 @Injectable()
 export class ApiMetricsService implements OnModuleInit, OnModuleDestroy {
@@ -12,7 +12,7 @@ export class ApiMetricsService implements OnModuleInit, OnModuleDestroy {
 
 	private timer: NodeJS.Timeout | null = null;
 
-	constructor(private readonly influx: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	record(durationMs: number, isError: boolean) {
 		this.count++;
@@ -52,12 +52,12 @@ export class ApiMetricsService implements OnModuleInit, OnModuleDestroy {
 		this.errors = 0;
 		this.durations = [];
 
-		if (!this.influx.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
-			await this.influx.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'api_minute',
 					tags: { route: '_all' },

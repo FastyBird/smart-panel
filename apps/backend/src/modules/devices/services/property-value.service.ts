@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
@@ -23,7 +23,7 @@ export class PropertyValueService {
 	 */
 	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
 
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	/**
 	 * Write property value to storage
@@ -108,12 +108,12 @@ export class PropertyValueService {
 		// Update local cache regardless of InfluxDB availability
 		this.valuesMap.set(property.id, state);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return true; // Value changed in cache
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'property_value',
 					tags: { propertyId: property.id },
@@ -145,7 +145,7 @@ export class PropertyValueService {
 		}
 
 		// Return null if InfluxDB not connected
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return null;
 		}
 
@@ -159,7 +159,7 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: Date | string;
 				stringValue?: string;
 				numberValue?: number;
@@ -246,14 +246,14 @@ export class PropertyValueService {
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
 			const query = `DELETE FROM property_value WHERE propertyId = '${property.id}'`;
 
-			await this.influxDbService.query(query);
+			await this.storageService.query(query);
 
 			this.logger.log(`Deleted all stored values for id=${property.id}`);
 		} catch (error) {

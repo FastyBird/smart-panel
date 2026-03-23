@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { SecurityAlertModel } from '../models/security-status.model';
 import { AlarmState, ArmedState, SecurityAlertType, SecurityEventType, Severity } from '../security.constants';
 
@@ -10,7 +10,7 @@ import { SecurityEventsService } from './security-events.service';
 
 describe('SecurityEventsService', () => {
 	let service: SecurityEventsService;
-	let influxDb: jest.Mocked<InfluxDbService>;
+	let influxDb: jest.Mocked<StorageService>;
 
 	const makeAlert = (overrides: Partial<SecurityAlertModel> = {}): SecurityAlertModel => {
 		const alert = new SecurityAlertModel();
@@ -29,7 +29,7 @@ describe('SecurityEventsService', () => {
 			providers: [
 				SecurityEventsService,
 				{
-					provide: InfluxDbService,
+					provide: StorageService,
 					useValue: {
 						isConnected: jest.fn().mockReturnValue(true),
 						registerSchema: jest.fn(),
@@ -41,7 +41,7 @@ describe('SecurityEventsService', () => {
 		}).compile();
 
 		service = module.get<SecurityEventsService>(SecurityEventsService);
-		influxDb = module.get(InfluxDbService);
+		influxDb = module.get(StorageService);
 	});
 
 	it('should be defined', () => {
