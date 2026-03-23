@@ -1,6 +1,20 @@
 name: Build Raspbian Image
 
 on:
+  workflow_call:
+    inputs:
+      variant:
+        description: 'Image variant to build'
+        type: string
+        default: 'all'
+      version:
+        description: 'Version string for image naming'
+        type: string
+        required: true
+      tag_name:
+        description: 'Release tag to upload artifacts to'
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       variant:
@@ -30,7 +44,7 @@ jobs:
       - name: "Determine variants to build"
         id: "set-matrix"
         run: |
-          VARIANT="${{ github.event.inputs.variant || 'all' }}"
+          VARIANT="${{ inputs.variant || 'all' }}"
           if [ "${VARIANT}" = "all" ]; then
             echo 'variants=["server","aio","display"]' >> "$GITHUB_OUTPUT"
           else
@@ -97,8 +111,12 @@ jobs:
       - name: "Rename output"
         run: |
           cd build/raspbian/output
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          VERSION="${VERSION//\//-}"
+          if [ -n "$VERSION_OVERRIDE" ]; then
+            VERSION="$VERSION_OVERRIDE"
+          else
+            VERSION="${GITHUB_REF_NAME:-dev}"
+            VERSION="${VERSION//\//-}"
+          fi
           if [ -n "$IMAGE_SUFFIX" ]; then
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
@@ -111,7 +129,8 @@ jobs:
           done
           ls -lh
         env:
-          IMAGE_SUFFIX: "${{ github.event.inputs.image_name }}"
+          IMAGE_SUFFIX: "${{ github.event.inputs.image_name || '' }}"
+          VERSION_OVERRIDE: "${{ inputs.version || '' }}"
 
       - name: "Upload image artifact"
         uses: "actions/upload-artifact@v7"
@@ -121,7 +140,8 @@ jobs:
           retention-days: 30
 
       - name: "Upload to release"
-        if: "github.event_name == 'release'"
+        if: "github.event_name == 'release' || inputs.tag_name != ''"
         uses: "softprops/action-gh-release@v2"
         with:
+          tag_name: "${{ inputs.tag_name || github.ref_name }}"
           files: "build/raspbian/output/*"
