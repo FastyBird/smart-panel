@@ -57,7 +57,7 @@ export class ModuleResetService {
 			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
 
 			await this.storageService.dropMeasurement('property_value');
-			await this.storageService.dropMeasurement('device_state');
+			await this.storageService.dropMeasurement('device_status');
 
 			this.logger.log('Module data were successfully reset');
 

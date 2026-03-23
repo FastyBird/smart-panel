@@ -74,10 +74,10 @@ const props = withDefaults(defineProps<IStorageConfigFormProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:remoteFormSubmit', remoteFormSubmit: boolean): void;
-	(e: 'update:remoteFormResult', remoteFormResult: FormResultType): void;
-	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
-	(e: 'update:remoteFormChanged', formChanged: boolean): void;
+	(e: 'update:remote-form-submit', remoteFormSubmit: boolean): void;
+	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
+	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -102,7 +102,7 @@ const rules = reactive<FormRules<IStorageConfigEditForm>>({
 watch(
 	(): FormResultType => formResult.value,
 	async (val: FormResultType): Promise<void> => {
-		emit('update:remoteFormResult', val);
+		emit('update:remote-form-result', val);
 	}
 );
 
@@ -110,7 +110,7 @@ watch(
 	(): boolean => props.remoteFormSubmit,
 	async (val: boolean): Promise<void> => {
 		if (val) {
-			emit('update:remoteFormSubmit', false);
+			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
 				// The form is not valid
@@ -122,7 +122,7 @@ watch(
 watch(
 	(): boolean => props.remoteFormReset,
 	(val: boolean): void => {
-		emit('update:remoteFormReset', false);
+		emit('update:remote-form-reset', false);
 
 		if (val) {
 			if (!formEl.value) return;
@@ -135,7 +135,7 @@ watch(
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
-		emit('update:remoteFormChanged', val);
+		emit('update:remote-form-changed', val);
 	}
 );
 </script>
