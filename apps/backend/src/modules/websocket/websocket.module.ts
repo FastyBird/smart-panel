@@ -5,10 +5,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { AuthModule } from '../auth/auth.module';
-import { StorageModule } from '../storage/storage.module';
-import { StorageService } from '../storage/services/storage.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { StorageService } from '../storage/services/storage.service';
+import { StorageModule } from '../storage/storage.module';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { UsersModule } from '../users/users.module';
 
