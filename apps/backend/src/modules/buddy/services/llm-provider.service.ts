@@ -8,14 +8,13 @@ import {
 	BuddyProviderNotConfiguredException,
 	BuddyProviderTimeoutException,
 } from '../buddy.exceptions';
+import { withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
 export { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
-
-const DEFAULT_TIMEOUT = 30_000;
 
 @Injectable()
 export class LlmProviderService {
@@ -44,12 +43,23 @@ export class LlmProviderService {
 			throw new BuddyProviderNotConfiguredException();
 		}
 
-		const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
+		const timeoutMs = config.llmTimeoutMs;
+		const timeout = options?.timeout ?? timeoutMs;
 		const model = options?.model ?? provider.getDefaultModel();
 
 		try {
-			return await provider.sendMessage(systemPrompt, messages, model, { ...options, timeout });
+			return await withServiceTimeout(
+				provider.sendMessage(systemPrompt, messages, model, { ...options, timeout }),
+				timeoutMs,
+				new BuddyProviderTimeoutException(),
+			);
 		} catch (error) {
+			if (error instanceof BuddyProviderTimeoutException) {
+				this.logger.error(`${provider.getName()} LLM provider timeout after ${timeoutMs}ms`);
+
+				throw error;
+			}
+
 			return this.handleProviderError(provider.getName(), error, timeout);
 		}
 	}

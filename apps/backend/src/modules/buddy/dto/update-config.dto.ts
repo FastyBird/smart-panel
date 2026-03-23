@@ -1,10 +1,15 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE } from '../buddy.constants';
+import {
+	BUDDY_MODULE_NAME,
+	LLM_PROVIDER_NONE,
+	PROVIDER_TIMEOUT_MAX_MS,
+	PROVIDER_TIMEOUT_MIN_MS,
+} from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateBuddy' })
 export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
@@ -264,4 +269,55 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 			'[{"field":"conflict_lights_unoccupied_minutes","reason":"Lights unoccupied minutes must be at least 1."}]',
 	})
 	conflict_lights_unoccupied_minutes?: number;
+
+	@ApiPropertyOptional({
+		name: 'stt_timeout_ms',
+		description: 'Speech-to-text provider timeout in milliseconds (5000–120000)',
+		type: 'integer',
+		example: 30000,
+	})
+	@Expose({ name: 'stt_timeout_ms' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"stt_timeout_ms","reason":"STT timeout must be an integer."}]' })
+	@Min(PROVIDER_TIMEOUT_MIN_MS, {
+		message: '[{"field":"stt_timeout_ms","reason":"STT timeout must be at least 5000ms."}]',
+	})
+	@Max(PROVIDER_TIMEOUT_MAX_MS, {
+		message: '[{"field":"stt_timeout_ms","reason":"STT timeout must be at most 120000ms."}]',
+	})
+	stt_timeout_ms?: number;
+
+	@ApiPropertyOptional({
+		name: 'tts_timeout_ms',
+		description: 'Text-to-speech provider timeout in milliseconds (5000–120000)',
+		type: 'integer',
+		example: 15000,
+	})
+	@Expose({ name: 'tts_timeout_ms' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"tts_timeout_ms","reason":"TTS timeout must be an integer."}]' })
+	@Min(PROVIDER_TIMEOUT_MIN_MS, {
+		message: '[{"field":"tts_timeout_ms","reason":"TTS timeout must be at least 5000ms."}]',
+	})
+	@Max(PROVIDER_TIMEOUT_MAX_MS, {
+		message: '[{"field":"tts_timeout_ms","reason":"TTS timeout must be at most 120000ms."}]',
+	})
+	tts_timeout_ms?: number;
+
+	@ApiPropertyOptional({
+		name: 'llm_timeout_ms',
+		description: 'LLM provider timeout in milliseconds (5000–120000)',
+		type: 'integer',
+		example: 60000,
+	})
+	@Expose({ name: 'llm_timeout_ms' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"llm_timeout_ms","reason":"LLM timeout must be an integer."}]' })
+	@Min(PROVIDER_TIMEOUT_MIN_MS, {
+		message: '[{"field":"llm_timeout_ms","reason":"LLM timeout must be at least 5000ms."}]',
+	})
+	@Max(PROVIDER_TIMEOUT_MAX_MS, {
+		message: '[{"field":"llm_timeout_ms","reason":"LLM timeout must be at most 120000ms."}]',
+	})
+	llm_timeout_ms?: number;
 }

@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-HARDENING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -47,14 +47,14 @@ I want all AI provider calls (LLM, STT, TTS) to have enforced timeouts at the se
 
 ## 4. Acceptance criteria
 
-- [ ] `SttProviderService.transcribe()` enforces a configurable timeout (default: 30s)
-- [ ] `TtsProviderService.synthesize()` enforces a configurable timeout (default: 15s)
-- [ ] `LlmProviderService.sendMessage()` enforces a configurable timeout (default: 60s)
-- [ ] Timeout values are configurable via `BuddyConfigModel` (fields: `sttTimeoutMs`, `ttsTimeoutMs`, `llmTimeoutMs`)
-- [ ] When timeout fires, the service throws `BuddyProviderTimeoutException` consistently
-- [ ] Timeout detection no longer relies on string matching — the service wrapper guarantees the exception type
-- [ ] Unit tests verify: timeout fires correctly, normal calls complete within timeout, exception type is correct
-- [ ] Existing error handling for non-timeout provider errors is preserved
+- [x] `SttProviderService.transcribe()` enforces a configurable timeout (default: 30s)
+- [x] `TtsProviderService.synthesize()` enforces a configurable timeout (default: 15s)
+- [x] `LlmProviderService.sendMessage()` enforces a configurable timeout (default: 60s)
+- [x] Timeout values are configurable via `BuddyConfigModel` (fields: `sttTimeoutMs`, `ttsTimeoutMs`, `llmTimeoutMs`)
+- [x] When timeout fires, the service throws `BuddyProviderTimeoutException` consistently
+- [x] Timeout detection no longer relies on string matching — the service wrapper guarantees the exception type
+- [x] Unit tests verify: timeout fires correctly, normal calls complete within timeout, exception type is correct
+- [x] Existing error handling for non-timeout provider errors is preserved
 
 ## 5. Example scenarios
 
