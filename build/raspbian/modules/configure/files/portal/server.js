@@ -297,6 +297,9 @@ function connectToWifiAsync(ssid, password, hostname) {
 		const finalHostname = hostname || 'smart-panel';
 		console.log(`WiFi connected — IP: ${ip}, URL: http://${finalHostname}.local:3000`);
 
+		// WiFi connected — reset flag before stopping services
+		connectInProgress = false;
+
 		// Start backend + watchdog, then stop portal
 		try {
 			execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
@@ -304,9 +307,12 @@ function connectToWifiAsync(ssid, password, hostname) {
 		try {
 			execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
 		} catch (_) {}
-		// Stop ourselves last — uses exec (async) intentionally as this is a
-		// hardcoded command with no user input, and we don't need to wait for it
+		// Stop ourselves via systemd, with process.exit fallback if it doesn't work
 		exec('systemctl stop smart-panel-portal.service');
+		setTimeout(() => {
+			console.log('systemctl stop did not terminate us — exiting directly');
+			process.exit(0);
+		}, 5000).unref();
 	} catch (err) {
 		console.error(`Unexpected error during WiFi connection: ${err.message}`);
 		connectInProgress = false;
