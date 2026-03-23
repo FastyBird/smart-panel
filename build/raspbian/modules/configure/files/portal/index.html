@@ -401,8 +401,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 			showError('WiFi network name is too long (max 32 bytes).');
 			return;
 		}
-		if (password && password.length < 8) {
-			showError('WiFi password must be at least 8 characters (or leave empty for open networks).');
+		if (password && (password.length < 8 || password.length > 63)) {
+			showError('WiFi password must be 8–63 characters (or leave empty for open networks).');
 			return;
 		}
 		if (hostname && !/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(hostname)) {

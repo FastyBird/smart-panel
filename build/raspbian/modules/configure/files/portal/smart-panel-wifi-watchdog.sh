@@ -35,6 +35,16 @@ while true; do
 	# Check if there's an active WiFi connection (not a hotspot)
 	ACTIVE_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
 
+	# If ethernet is connected, the device is reachable — skip WiFi check
+	ACTIVE_ETH=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^ethernet:connected' | head -1 || true)
+	if [ -n "${ACTIVE_ETH}" ]; then
+		if [ "${fail_seconds}" -gt 0 ]; then
+			log "Ethernet connected — resetting WiFi failure counter"
+			fail_seconds=0
+		fi
+		continue
+	fi
+
 	if [ -n "${ACTIVE_WIFI}" ]; then
 		# WiFi is connected — reset counter
 		if [ "${fail_seconds}" -gt 0 ]; then
@@ -42,7 +52,7 @@ while true; do
 			fail_seconds=0
 		fi
 	else
-		# WiFi is down — increment counter
+		# WiFi is down and no ethernet — increment counter
 		fail_seconds=$((fail_seconds + CHECK_INTERVAL))
 		log "WiFi disconnected for ${fail_seconds}s / ${FAIL_THRESHOLD}s"
 

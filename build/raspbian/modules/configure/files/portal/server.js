@@ -144,8 +144,8 @@ function validateInputs(country, hostname, timezone, password, ssid) {
 		errors.push('SSID must be at most 32 bytes');
 	}
 
-	if (password && password.length < 8) {
-		errors.push('WiFi password must be at least 8 characters');
+	if (password && (password.length < 8 || password.length > 63)) {
+		errors.push('WiFi password must be 8–63 characters');
 	}
 
 	// Password: reject null bytes for the same reason as SSID

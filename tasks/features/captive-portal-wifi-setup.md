@@ -147,14 +147,14 @@ And user can reconfigure WiFi through the portal
 Given the user created `smart-panel.conf` on the boot partition with WiFi settings
 When the Pi boots
 Then WiFi is configured from the file (existing flow)
-And AP mode is never activated
-And `.wifi-configured` marker is created
+And `apply-boot-config.sh` archives it to `.boot-config.applied`
+And AP mode is never activated (portal checks `.boot-config.applied`)
 
 ### Scenario: Factory reset
 
 Given the user triggers a factory reset from the admin UI
 When the Pi reboots
-Then `.wifi-configured` is deleted
+Then `.wifi-configured` and `.boot-config.applied` are deleted
 And AP mode activates on next boot
 And the user can reconfigure everything
 
