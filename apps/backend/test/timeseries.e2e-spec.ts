@@ -279,7 +279,7 @@ describe('Property Timeseries (e2e)', () => {
 			expect(response.body.data).toHaveProperty('to');
 		});
 
-		it('should handle empty data gracefully when InfluxDB returns no results', async () => {
+		it('should handle empty data gracefully when storage returns no results', async () => {
 			storageMock.query.mockResolvedValue([]);
 
 			const response = await authGet(timeseriesUrl())
@@ -293,8 +293,8 @@ describe('Property Timeseries (e2e)', () => {
 			expect(response.body.data.property).toBe(propertyId);
 		});
 
-		it('should handle InfluxDB errors gracefully and return empty points', async () => {
-			storageMock.query.mockRejectedValue(new Error('InfluxDB connection failed'));
+		it('should handle storage errors gracefully and return empty points', async () => {
+			storageMock.query.mockRejectedValue(new Error('Storage connection failed'));
 
 			const response = await authGet(timeseriesUrl())
 				.query({
