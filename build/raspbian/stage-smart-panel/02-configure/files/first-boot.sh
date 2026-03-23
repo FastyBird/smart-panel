@@ -125,7 +125,6 @@ if [ "${INFLUXDB_READY}" = true ]; then
 	log_ok "InfluxDB configured (database: fastybird, policies: raw_24h, min_14d)"
 else
 	log_error "InfluxDB not ready after 30s — metrics features will be unavailable"
-	touch "${DATA_DIR}/.influxdb-pending"
 fi
 
 # ──────────────────────────────────────────────────────────────

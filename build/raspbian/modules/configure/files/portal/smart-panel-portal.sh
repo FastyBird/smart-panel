@@ -33,7 +33,23 @@ if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
 	exit 0
 fi
 
-# 2. Skip if there is any active network connection (ethernet or WiFi)
+# 2. If boot config was applied, give NetworkManager time to connect.
+#    Boot config may have set WiFi credentials; NM needs a few seconds
+#    to activate the connection after firstboot applied it.
+if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
+	log "Boot config was applied — waiting for network to come up..."
+	for i in $(seq 1 30); do
+		if nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep -q ':802-11-wireless$' \
+			|| nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'; then
+			log "Network came up after ${i}s — skipping captive portal"
+			exit 0
+		fi
+		sleep 1
+	done
+	log "Boot config applied but no network after 30s — starting captive portal anyway"
+fi
+
+# 3. Skip if there is any active network connection (ethernet or WiFi)
 #    This covers wired-only setups and pre-existing WiFi connections.
 HAS_NETWORK=false
 

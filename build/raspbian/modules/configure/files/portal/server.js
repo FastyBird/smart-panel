@@ -228,84 +228,90 @@ function applySystemSettings(country, hostname, timezone) {
  * On failure, re-activates the hotspot so the user can retry.
  */
 function connectToWifiAsync(ssid, password, hostname) {
-	// Deactivate the hotspot connection — client connection dies here
 	try {
-		execSync('nmcli connection down SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
-	} catch (_) {}
-
-	// Small delay to let the interface settle
-	execSync('sleep 2');
-
-	// Unblock WiFi
-	try {
-		execSync('rfkill unblock wifi 2>/dev/null', { timeout: 5000 });
-	} catch (_) {}
-
-	// Connect to the user's WiFi
-	// Use execFileSync with argument arrays to avoid shell interpretation
-	// of user-supplied ssid/password (prevents command injection)
-	const connectArgs = password
-		? ['device', 'wifi', 'connect', ssid, 'password', password, 'ifname', 'wlan0']
-		: ['device', 'wifi', 'connect', ssid, 'ifname', 'wlan0'];
-
-	try {
-		execFileSync('nmcli', connectArgs, { timeout: 30000 });
-	} catch (err) {
-		// The failed attempt may have left a connection profile behind.
+		// Deactivate the hotspot connection — client connection dies here
 		try {
-			execFileSync('nmcli', ['connection', 'delete', ssid], { timeout: 10000 });
+			execSync('nmcli connection down SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
 		} catch (_) {}
 
-		// Try adding as a new connection profile
-		const addArgs = ['connection', 'add', 'type', 'wifi', 'con-name', ssid, 'ssid', ssid, 'autoconnect', 'yes'];
-		if (password) {
-			addArgs.push('wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password);
-		}
+		// Small delay to let the interface settle
+		execSync('sleep 2');
+
+		// Unblock WiFi
+		try {
+			execSync('rfkill unblock wifi 2>/dev/null', { timeout: 5000 });
+		} catch (_) {}
+
+		// Connect to the user's WiFi
+		// Use execFileSync with argument arrays to avoid shell interpretation
+		// of user-supplied ssid/password (prevents command injection)
+		const connectArgs = password
+			? ['device', 'wifi', 'connect', ssid, 'password', password, 'ifname', 'wlan0']
+			: ['device', 'wifi', 'connect', ssid, 'ifname', 'wlan0'];
 
 		try {
-			execFileSync('nmcli', addArgs, { timeout: 15000 });
-			execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
-		} catch (err2) {
-			console.error(`WiFi connection failed: ${err2.message}`);
-			connectInProgress = false;
-			reactivateHotspot();
-			return;
+			execFileSync('nmcli', connectArgs, { timeout: 30000 });
+		} catch (err) {
+			// The failed attempt may have left a connection profile behind.
+			try {
+				execFileSync('nmcli', ['connection', 'delete', ssid], { timeout: 10000 });
+			} catch (_) {}
+
+			// Try adding as a new connection profile
+			const addArgs = ['connection', 'add', 'type', 'wifi', 'con-name', ssid, 'ssid', ssid, 'autoconnect', 'yes'];
+			if (password) {
+				addArgs.push('wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password);
+			}
+
+			try {
+				execFileSync('nmcli', addArgs, { timeout: 15000 });
+				execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
+			} catch (err2) {
+				console.error(`WiFi connection failed: ${err2.message}`);
+				connectInProgress = false;
+				reactivateHotspot();
+				return;
+			}
 		}
+
+		// Wait a moment for IP assignment
+		execSync('sleep 3');
+
+		// Create WiFi configured marker
+		try {
+			fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
+			fs.writeFileSync(WIFI_CONFIGURED_MARKER, `configured=${new Date().toISOString()}\nssid=${ssid}\n`);
+		} catch (_) {}
+
+		// Delete the hotspot connection profile
+		try {
+			execSync('nmcli connection delete SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+		} catch (_) {}
+
+		// Get IP for logging
+		let ip = '';
+		try {
+			ip = execSync("hostname -I | awk '{print $1}'", { timeout: 5000, encoding: 'utf8' }).trim();
+		} catch (_) {}
+
+		const finalHostname = hostname || 'smart-panel';
+		console.log(`WiFi connected — IP: ${ip}, URL: http://${finalHostname}.local:3000`);
+
+		// Start backend + watchdog, then stop portal
+		try {
+			execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
+		} catch (_) {}
+		try {
+			execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
+		} catch (_) {}
+		// Stop ourselves last — uses exec (async) intentionally as this is a
+		// hardcoded command with no user input, and we don't need to wait for it
+		exec('systemctl stop smart-panel-portal.service');
+	} catch (err) {
+		console.error(`Unexpected error during WiFi connection: ${err.message}`);
+		connectInProgress = false;
+		reactivateHotspot();
 	}
-
-	// Wait a moment for IP assignment
-	execSync('sleep 3');
-
-	// Create WiFi configured marker
-	try {
-		fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
-		fs.writeFileSync(WIFI_CONFIGURED_MARKER, `configured=${new Date().toISOString()}\nssid=${ssid}\n`);
-	} catch (_) {}
-
-	// Delete the hotspot connection profile
-	try {
-		execSync('nmcli connection delete SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
-	} catch (_) {}
-
-	// Get IP for logging
-	let ip = '';
-	try {
-		ip = execSync("hostname -I | awk '{print $1}'", { timeout: 5000, encoding: 'utf8' }).trim();
-	} catch (_) {}
-
-	const finalHostname = hostname || 'smart-panel';
-	console.log(`WiFi connected — IP: ${ip}, URL: http://${finalHostname}.local:3000`);
-
-	// Start backend + watchdog, then stop portal
-	try {
-		execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
-	} catch (_) {}
-	try {
-		execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
-	} catch (_) {}
-	// Stop ourselves last — uses exec (async) intentionally as this is a
-	// hardcoded command with no user input, and we don't need to wait for it
-	exec('systemctl stop smart-panel-portal.service');
 }
 
 /**
