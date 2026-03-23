@@ -1,6 +1,7 @@
 import { createExtensionLogger } from '../../../../common/logger';
-import { STORAGE_PLUGIN_MEMORY } from '../../storage.constants';
 import { StoragePoint } from '../../storage.types';
+
+import { MEMORY_PLUGIN_NAME } from './memory.constants';
 
 /**
  * Stored time-series point with normalized fields.
@@ -28,7 +29,7 @@ export interface StoredPoint {
  * - Data is lost on process restart
  */
 export class InMemoryTimeSeriesStore {
-	private readonly logger = createExtensionLogger(STORAGE_PLUGIN_MEMORY, 'InMemoryTimeSeriesStore');
+	private readonly logger = createExtensionLogger(MEMORY_PLUGIN_NAME, 'InMemoryTimeSeriesStore');
 
 	private readonly data = new Map<string, StoredPoint[]>();
 

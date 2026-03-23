@@ -4,18 +4,19 @@ import { IsBoolean, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../config/models/config.model';
-import { STORAGE_PLUGIN_MEMORY } from '../../storage.constants';
+
+import { MEMORY_PLUGIN_NAME } from './memory.constants';
 
 @ApiSchema({ name: 'StorageMemoryPluginDataConfig' })
 export class MemoryConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',
-		example: STORAGE_PLUGIN_MEMORY,
+		example: MEMORY_PLUGIN_NAME,
 	})
 	@Expose()
 	@IsString()
-	type: string = STORAGE_PLUGIN_MEMORY;
+	type: string = MEMORY_PLUGIN_NAME;
 
 	@ApiProperty({
 		description: 'Whether the plugin is enabled',

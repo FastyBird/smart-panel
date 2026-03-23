@@ -3,8 +3,10 @@ import { FieldType, IPingStats, IPoint, IQueryOptions, IResults, ISchemaOptions,
 import { createExtensionLogger } from '../../../../common/logger';
 import { safeNumber, safeToString } from '../../../../common/utils/transform.utils';
 import { StoragePlugin } from '../../interfaces/storage-plugin.interface';
-import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, STORAGE_PLUGIN_INFLUX_V1 } from '../../storage.constants';
+import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST } from '../../storage.constants';
 import { StorageFieldType, StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../storage.types';
+
+import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -116,9 +118,9 @@ function toInfluxQueryOptions(options?: StorageQueryOptions): IQueryOptions | un
  * native InfluxDB features.
  */
 export class InfluxV1Plugin implements StoragePlugin {
-	readonly name = STORAGE_PLUGIN_INFLUX_V1;
+	readonly name = INFLUX_V1_PLUGIN_NAME;
 
-	private readonly logger = createExtensionLogger(STORAGE_PLUGIN_INFLUX_V1, 'InfluxV1Plugin');
+	private readonly logger = createExtensionLogger(INFLUX_V1_PLUGIN_NAME, 'InfluxV1Plugin');
 
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];

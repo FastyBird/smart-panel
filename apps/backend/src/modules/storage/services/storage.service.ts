@@ -4,11 +4,13 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
-import { InfluxV1ConfigModel } from '../plugins/influx-v1/influx-v1.config.model';
-import { InfluxV1Plugin } from '../plugins/influx-v1/influx-v1.plugin';
-import { MemoryStoragePlugin } from '../plugins/memory/memory.plugin';
-import { STORAGE_MODULE_NAME, STORAGE_PLUGIN_INFLUX_V1, STORAGE_PLUGIN_MEMORY } from '../storage.constants';
+import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
+
+/**
+ * Factory function that creates a storage plugin instance.
+ */
+export type StoragePluginFactory = () => StoragePlugin;
 
 @Injectable()
 export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -24,7 +26,20 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly pendingSchemas: StorageMeasurementSchema[] = [];
 	private pluginsCreated = false;
 
+	/**
+	 * Plugin factory registry. Populated by StorageModule during onModuleInit().
+	 */
+	private readonly pluginFactories = new Map<string, StoragePluginFactory>();
+
 	constructor(private readonly configService: ConfigService) {}
+
+	/**
+	 * Register a factory that can create plugin instances by name.
+	 * Called by StorageModule during onModuleInit() — before onApplicationBootstrap().
+	 */
+	registerPluginFactory(name: string, factory: StoragePluginFactory): void {
+		this.pluginFactories.set(name, factory);
+	}
 
 	async onApplicationBootstrap(): Promise<void> {
 		const config = this.getConfig();
@@ -380,38 +395,14 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	}
 
 	private createPlugin(pluginName: string): StoragePlugin | null {
-		switch (pluginName) {
-			case STORAGE_PLUGIN_INFLUX_V1: {
-				const pluginConfig = this.getInfluxConfig();
+		const factory = this.pluginFactories.get(pluginName);
 
-				return new InfluxV1Plugin({
-					host: pluginConfig.host,
-					database: pluginConfig.database,
-					username: pluginConfig.username,
-					password: pluginConfig.password,
-				});
-			}
+		if (!factory) {
+			this.logger.warn(`Unknown storage plugin: ${pluginName}`);
 
-			case STORAGE_PLUGIN_MEMORY:
-				return new MemoryStoragePlugin();
-
-			default:
-				this.logger.warn(`Unknown storage plugin: ${pluginName}`);
-
-				return null;
+			return null;
 		}
-	}
 
-	private getInfluxConfig(): InfluxV1ConfigModel {
-		try {
-			return this.configService.getPluginConfig<InfluxV1ConfigModel>(STORAGE_PLUGIN_INFLUX_V1);
-		} catch (error) {
-			this.logger.warn(
-				'Failed to load InfluxDB plugin configuration, using defaults',
-				error instanceof Error ? error : String(error),
-			);
-
-			return new InfluxV1ConfigModel();
-		}
+		return factory();
 	}
 }
