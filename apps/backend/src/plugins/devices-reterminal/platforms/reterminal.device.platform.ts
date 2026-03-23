@@ -23,6 +23,8 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 	}
 
 	async processBatch(updates: Array<IDevicePropertyData>): Promise<boolean> {
+		let allSucceeded = true;
+
 		for (const { channel, property, value } of updates) {
 			try {
 				const channelIdentifier = channel.identifier;
@@ -37,17 +39,15 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 					await this.handleBuzzerWrite(propertyIdentifier, value);
 				} else {
 					this.logger.warn(`Unsupported write to channel: ${channelIdentifier}`);
-
-					return false;
+					allSucceeded = false;
 				}
 			} catch (error) {
 				this.logger.error(`Failed to process property update: ${error}`);
-
-				return false;
+				allSucceeded = false;
 			}
 		}
 
-		return true;
+		return allSucceeded;
 	}
 
 	private async handleIndicatorWrite(
@@ -67,11 +67,26 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 			}
 		} else if (channelIdentifier === RETERMINAL_CHANNEL_IDENTIFIERS.STA_LED) {
 			if (propertyIdentifier === 'on') {
-				const brightness = this.coerceBoolean(value) ? 255 : 0;
+				if (this.coerceBoolean(value)) {
+					// Read current state to restore the previously active color
+					const currentGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+					const currentRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
 
-				// Write to both channels to ensure the LED is fully on or off
-				await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, String(brightness));
-				await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, String(brightness));
+					if (currentRed !== null && currentRed > 0 && (currentGreen === null || currentGreen === 0)) {
+						// Red was the active color - restore only red
+						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, '255');
+					} else if (currentGreen !== null && currentGreen > 0 && (currentRed === null || currentRed === 0)) {
+						// Green was the active color - restore only green
+						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '255');
+					} else {
+						// Both off or unknown state - default to green
+						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '255');
+					}
+				} else {
+					// Turn off both channels
+					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '0');
+					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, '0');
+				}
 			} else if (propertyIdentifier === 'brightness') {
 				const brightness = this.coerceNumber(value, 0, 255);
 

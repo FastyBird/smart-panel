@@ -98,9 +98,9 @@ export class ReTerminalService implements IManagedPluginService {
 		const interval = config?.polling?.interval ?? DEFAULT_SENSOR_POLLING_INTERVAL_MS;
 
 		this.pollingInterval = setInterval(() => {
-			if (!this.device) return;
+			if (!this.device || !this.detectedVariant) return;
 
-			this.deviceMapper.updateSensorValues(this.device.id).catch((error) => {
+			this.deviceMapper.updateSensorValues(this.device.id, this.detectedVariant).catch((error) => {
 				this.logger.debug(`Sensor polling error: ${error}`);
 			});
 		}, interval);

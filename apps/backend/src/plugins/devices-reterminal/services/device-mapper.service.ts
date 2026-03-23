@@ -126,89 +126,95 @@ export class ReTerminalDeviceMapperService {
 	/**
 	 * Update sensor values on the device properties.
 	 */
-	async updateSensorValues(deviceId: string): Promise<void> {
-		// Read CPU temperature
+	async updateSensorValues(deviceId: string, variant: ReTerminalVariant): Promise<void> {
+		// Read CPU temperature (available on all variants)
 		const temperature = await this.sysfsService.readCpuTemperature();
 
 		if (temperature !== null) {
 			await this.setPropertyValue(deviceId, 'temperature', 'temperature', temperature);
 		}
 
-		// Read light sensor (if available) - cache the IIO device path since it never changes at runtime
-		if (this.cachedLightDevicePath === undefined) {
-			this.cachedLightDevicePath = await this.sysfsService.findIioDevice('ltr303');
-		}
+		// Light sensor and accelerometer are only available on reTerminal CM4
+		if (variant === ReTerminalVariant.RETERMINAL) {
+			// Read light sensor (if available) - cache the IIO device path since it never changes at runtime
+			if (this.cachedLightDevicePath === undefined) {
+				this.cachedLightDevicePath = await this.sysfsService.findIioDevice('ltr303');
+			}
 
-		if (this.cachedLightDevicePath) {
-			const luxRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_raw');
+			if (this.cachedLightDevicePath) {
+				const luxRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_raw');
 
-			if (luxRaw) {
-				const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_scale');
+				if (luxRaw) {
+					const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_scale');
+					const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
+
+					await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw) * scale);
+				}
+			}
+
+			// Read accelerometer (if available) - cache the IIO device path since it never changes at runtime
+			if (this.cachedAccelDevicePath === undefined) {
+				this.cachedAccelDevicePath = await this.sysfsService.findIioDevice('lis3dh');
+			}
+
+			if (this.cachedAccelDevicePath) {
+				const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_scale');
 				const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
 
-				await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw) * scale);
-			}
-		}
+				// IIO accel raw * scale yields m/s²; convert to g-force (1 g = 9.80665 m/s²)
+				const STANDARD_GRAVITY = 9.80665;
 
-		// Read accelerometer (if available) - cache the IIO device path since it never changes at runtime
-		if (this.cachedAccelDevicePath === undefined) {
-			this.cachedAccelDevicePath = await this.sysfsService.findIioDevice('lis3dh');
-		}
+				const xRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_x_raw');
+				const yRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_y_raw');
+				const zRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_z_raw');
 
-		if (this.cachedAccelDevicePath) {
-			const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_scale');
-			const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
+				if (xRaw)
+					await this.setPropertyValue(
+						deviceId,
+						'accelerometer',
+						'acceleration_x',
+						(parseFloat(xRaw) * scale) / STANDARD_GRAVITY,
+					);
+				if (yRaw)
+					await this.setPropertyValue(
+						deviceId,
+						'accelerometer',
+						'acceleration_y',
+						(parseFloat(yRaw) * scale) / STANDARD_GRAVITY,
+					);
+				if (zRaw)
+					await this.setPropertyValue(
+						deviceId,
+						'accelerometer',
+						'acceleration_z',
+						(parseFloat(zRaw) * scale) / STANDARD_GRAVITY,
+					);
 
-			// IIO accel raw * scale yields m/s²; convert to g-force (1 g = 9.80665 m/s²)
-			const STANDARD_GRAVITY = 9.80665;
+				// Compute orientation from acceleration values (in g)
+				if (xRaw && yRaw && zRaw) {
+					const x = (parseFloat(xRaw) * scale) / STANDARD_GRAVITY;
+					const y = (parseFloat(yRaw) * scale) / STANDARD_GRAVITY;
+					const z = (parseFloat(zRaw) * scale) / STANDARD_GRAVITY;
+					const orientation = this.computeOrientation(x, y, z);
 
-			const xRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_x_raw');
-			const yRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_y_raw');
-			const zRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_z_raw');
-
-			if (xRaw)
-				await this.setPropertyValue(
-					deviceId,
-					'accelerometer',
-					'acceleration_x',
-					(parseFloat(xRaw) * scale) / STANDARD_GRAVITY,
-				);
-			if (yRaw)
-				await this.setPropertyValue(
-					deviceId,
-					'accelerometer',
-					'acceleration_y',
-					(parseFloat(yRaw) * scale) / STANDARD_GRAVITY,
-				);
-			if (zRaw)
-				await this.setPropertyValue(
-					deviceId,
-					'accelerometer',
-					'acceleration_z',
-					(parseFloat(zRaw) * scale) / STANDARD_GRAVITY,
-				);
-
-			// Compute orientation from acceleration values (in g)
-			if (xRaw && yRaw && zRaw) {
-				const x = (parseFloat(xRaw) * scale) / STANDARD_GRAVITY;
-				const y = (parseFloat(yRaw) * scale) / STANDARD_GRAVITY;
-				const z = (parseFloat(zRaw) * scale) / STANDARD_GRAVITY;
-				const orientation = this.computeOrientation(x, y, z);
-
-				await this.setPropertyValue(deviceId, 'accelerometer', 'orientation', orientation);
+					await this.setPropertyValue(deviceId, 'accelerometer', 'orientation', orientation);
+				}
 			}
 		}
 
 		// Read LED states
-		await this.updateLedStates(deviceId);
+		await this.updateLedStates(deviceId, variant);
 	}
 
-	private async updateLedStates(deviceId: string): Promise<void> {
-		const usrBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.USR_LED);
+	private async updateLedStates(deviceId: string, variant: ReTerminalVariant): Promise<void> {
+		// USR LED is only available on reTerminal CM4
+		if (variant === ReTerminalVariant.RETERMINAL) {
+			const usrBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.USR_LED);
 
-		if (usrBrightness !== null) {
-			await this.setPropertyValue(deviceId, 'usr_led', 'on', usrBrightness > 0);
-			await this.setPropertyValue(deviceId, 'usr_led', 'brightness', usrBrightness);
+			if (usrBrightness !== null) {
+				await this.setPropertyValue(deviceId, 'usr_led', 'on', usrBrightness > 0);
+				await this.setPropertyValue(deviceId, 'usr_led', 'brightness', usrBrightness);
+			}
 		}
 
 		const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
