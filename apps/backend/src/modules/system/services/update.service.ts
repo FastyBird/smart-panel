@@ -2,8 +2,8 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Cron } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
@@ -51,7 +51,8 @@ export class UpdateService {
 
 	private readonly NPM_REGISTRY_URL = 'https://registry.npmjs.org/@fastybird/smart-panel';
 	private readonly GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
-	private readonly GITHUB_VERSION_JSON_URL = 'https://github.com/FastyBird/smart-panel/releases/latest/download/version.json';
+	private readonly GITHUB_VERSION_JSON_URL =
+		'https://github.com/FastyBird/smart-panel/releases/latest/download/version.json';
 	private readonly GITHUB_PRERELEASE_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
 
 	private cachedServerInfo: Map<string, VersionInfo> = new Map();

@@ -25,7 +25,7 @@
     "@mdi/react": "^1.6.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
-    "next": "^15.3.6",
+    "next": "^15.5.14",
     "nextra": "^4.6.1",
     "nextra-theme-docs": "^4.6.1",
     "react": "^19.2.4",
@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
-    "yaml": "^2.8.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "eslint": "^10.0.3",
@@ -43,7 +42,8 @@
     "tailwindcss": "^4.2.1",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.8.2"
   },
   "engines": {
     "node": ">=20"
