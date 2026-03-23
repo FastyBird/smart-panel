@@ -1,5 +1,6 @@
 import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../../common/logger';
 import { ConfigService } from '../../../config/services/config.service';
 import { PluginsTypeMapperService } from '../../../config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../../extensions/services/extensions.service';
@@ -68,10 +69,17 @@ Connects to an InfluxDB 1.x server and provides full time-series storage with re
 		});
 	}
 
+	private readonly logger = createExtensionLogger(INFLUX_V1_PLUGIN_NAME, 'InfluxV1PluginModule');
+
 	private getPluginConfig(): InfluxV1ConfigModel {
 		try {
 			return this.configService.getPluginConfig<InfluxV1ConfigModel>(INFLUX_V1_PLUGIN_NAME);
-		} catch {
+		} catch (error) {
+			this.logger.warn(
+				'Failed to load InfluxDB plugin configuration, using defaults',
+				error instanceof Error ? error.message : String(error),
+			);
+
 			return new InfluxV1ConfigModel();
 		}
 	}
