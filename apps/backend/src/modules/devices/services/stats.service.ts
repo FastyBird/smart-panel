@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 
 @Injectable()
 export class StatsService {
-	constructor(private readonly influx: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	async getUpdatesPerMin(): Promise<{ value: number; lastUpdated: Date }> {
 		const q = `
@@ -14,7 +14,7 @@ export class StatsService {
     LIMIT 1
   `;
 
-		const rows = await this.influx.query<{ cn: number; cs: number; time: Date }>(q);
+		const rows = await this.storageService.query<{ cn: number; cs: number; time: Date }>(q);
 
 		const r = rows?.[0];
 
@@ -36,7 +36,7 @@ export class StatsService {
     WHERE time >= '${midnightIso}' AND time < now()
   `;
 
-		const rows = await this.influx.query<{ total: number }>(q);
+		const rows = await this.storageService.query<{ total: number }>(q);
 
 		const total = Number(rows?.[0]?.total ?? 0);
 

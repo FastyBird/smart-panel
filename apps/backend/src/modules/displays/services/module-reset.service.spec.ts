@@ -14,7 +14,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -128,7 +128,7 @@ describe('DisplaysModuleResetService', () => {
 					},
 				},
 				{
-					provide: InfluxDbService,
+					provide: StorageService,
 					useValue: {
 						dropMeasurement: jest.fn().mockResolvedValue(undefined),
 					},

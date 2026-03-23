@@ -1,0 +1,123 @@
+<template>
+	<el-form
+		ref="formEl"
+		:model="model"
+		:rules="rules"
+		label-position="top"
+		status-icon
+	>
+		<el-alert
+			type="info"
+			:title="t('storageModule.headings.aboutStorage')"
+			:description="t('storageModule.texts.aboutStorage')"
+			:closable="false"
+		/>
+
+		<el-form-item
+			:label="t('storageModule.fields.config.primaryStorage.title')"
+			prop="primaryStorage"
+			class="mt-3"
+		>
+			<el-input
+				v-model="model.primaryStorage"
+				:placeholder="t('storageModule.fields.config.primaryStorage.placeholder')"
+				name="primaryStorage"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('storageModule.fields.config.fallbackStorage.title')"
+			prop="fallbackStorage"
+		>
+			<el-input
+				v-model="model.fallbackStorage"
+				:placeholder="t('storageModule.fields.config.fallbackStorage.placeholder')"
+				name="fallbackStorage"
+			/>
+		</el-form-item>
+	</el-form>
+</template>
+
+<script setup lang="ts">
+import { reactive, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+
+import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import type { IStorageConfigEditForm } from '../schemas/config.types';
+
+import type { IStorageConfigFormProps } from './storage-config-form.types';
+
+defineOptions({
+	name: 'StorageConfigForm',
+});
+
+const props = withDefaults(defineProps<IStorageConfigFormProps>(), {
+	remoteFormResult: FormResult.NONE,
+	remoteFormReset: false,
+	remoteFormChanged: false,
+	layout: Layout.DEFAULT,
+});
+
+const emit = defineEmits<{
+	(e: 'update:remoteFormSubmit', remoteFormSubmit: boolean): void;
+	(e: 'update:remoteFormResult', remoteFormResult: FormResultType): void;
+	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
+	(e: 'update:remoteFormChanged', formChanged: boolean): void;
+}>();
+
+const { t } = useI18n();
+
+const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IStorageConfigEditForm>({
+	config: props.config,
+	messages: {
+		success: t('storageModule.messages.config.edited'),
+		error: t('storageModule.messages.config.notEdited'),
+	},
+});
+
+const rules = reactive<FormRules<IStorageConfigEditForm>>({
+	primaryStorage: [{ required: true, message: t('storageModule.fields.config.primaryStorage.validation.required'), trigger: 'change' }],
+});
+
+watch(
+	(): FormResultType => formResult.value,
+	async (val: FormResultType): Promise<void> => {
+		emit('update:remoteFormResult', val);
+	}
+);
+
+watch(
+	(): boolean => props.remoteFormSubmit,
+	async (val: boolean): Promise<void> => {
+		if (val) {
+			emit('update:remoteFormSubmit', false);
+
+			submit().catch(() => {
+				// The form is not valid
+			});
+		}
+	}
+);
+
+watch(
+	(): boolean => props.remoteFormReset,
+	(val: boolean): void => {
+		emit('update:remoteFormReset', false);
+
+		if (val) {
+			if (!formEl.value) return;
+
+			formEl.value.resetFields();
+		}
+	}
+);
+
+watch(
+	(): boolean => formChanged.value,
+	(val: boolean): void => {
+		emit('update:remoteFormChanged', val);
+	}
+);
+</script>

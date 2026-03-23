@@ -1,0 +1,29 @@
+{
+	"headings": {
+		"aboutStorage": "Storage Configuration"
+	},
+	"messages": {
+		"config": {
+			"edited": "Storage configuration has been successfully updated",
+			"notEdited": "Failed to update storage configuration"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Configure the data storage backend for storing time-series data such as device property history and analytics."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Primary Storage",
+				"placeholder": "influx-v1-plugin",
+				"validation": {
+					"required": "Primary storage is required"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Fallback Storage",
+				"placeholder": "Leave empty if not required"
+			}
+		}
+	}
+}

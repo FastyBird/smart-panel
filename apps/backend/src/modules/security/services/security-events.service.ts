@@ -3,7 +3,7 @@ import { FieldType, IPoint } from 'influx';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { SecurityAlertModel } from '../models/security-status.model';
 import {
 	AlarmState,
@@ -45,10 +45,10 @@ export class SecurityEventsService implements OnModuleInit {
 	private initialized = false;
 	private transitionLock: Promise<void> = Promise.resolve();
 
-	constructor(private readonly influxDb: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	onModuleInit(): void {
-		this.influxDb.registerSchema({
+		this.storageService.registerSchema({
 			measurement: MEASUREMENT_NAME,
 			fields: {
 				alertId: FieldType.STRING,
@@ -63,7 +63,7 @@ export class SecurityEventsService implements OnModuleInit {
 	}
 
 	async findRecent(query: EventsQuery = {}): Promise<SecurityEventRecord[]> {
-		if (!this.influxDb.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return [];
 		}
 
@@ -94,7 +94,7 @@ export class SecurityEventsService implements OnModuleInit {
 		`;
 
 		try {
-			const results = await this.influxDb.query<{
+			const results = await this.storageService.query<{
 				time: Date;
 				eventType: string;
 				severity: string | null;
@@ -268,12 +268,12 @@ export class SecurityEventsService implements OnModuleInit {
 	}
 
 	private async writePoints(points: IPoint[]): Promise<void> {
-		if (!this.influxDb.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
-			await this.influxDb.writePoints(points);
+			await this.storageService.writePoints(points);
 		} catch (error) {
 			this.logger.warn(`Failed to write security events to InfluxDB: ${error}`);
 		}

@@ -5,14 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
-import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpaceEntity } from '../spaces/entities/space.entity';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { StorageService } from '../storage/services/storage.service';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -96,7 +96,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 			ChannelPropertyEntity,
 			SpaceEntity,
 		]),
-		InfluxDbModule,
+		StorageModule,
 		IntentsModule,
 		SeedModule,
 		StatsModule,
@@ -174,7 +174,7 @@ export class DevicesModule implements OnModuleInit {
 		private readonly moduleSeeder: DevicesSeederService,
 		private readonly moduleReset: ModuleResetService,
 		private readonly devicesStatsProvider: DevicesStatsProvider,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
@@ -189,8 +189,8 @@ export class DevicesModule implements OnModuleInit {
 		// Register device control tool provider
 		this.toolProviderRegistry.register(this.deviceControlTool);
 
-		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
-		this.influxDbService.registerSchema(DeviceStatusInfluxDbSchema);
+		this.storageService.registerSchema(PropertyInfluxDbSchema);
+		this.storageService.registerSchema(DeviceStatusInfluxDbSchema);
 
 		this.seedRegistry.register(
 			DEVICES_MODULE_NAME,
@@ -280,7 +280,7 @@ The module uses a flexible type mapping system that allows plugins to register t
 		];
 
 		const results = await Promise.allSettled(
-			queries.map((q) => this.influxDbService.createContinuousQuery(q.name, q.body, undefined, q.resample)),
+			queries.map((q) => this.storageService.createContinuousQuery(q.name, q.body, undefined, q.resample)),
 		);
 
 		// Log any failures

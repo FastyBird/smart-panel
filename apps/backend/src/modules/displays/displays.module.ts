@@ -5,10 +5,10 @@ import { AuthModule } from '../auth/auth.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { PageEntity } from '../dashboard/entities/dashboard.entity';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
-import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SpaceEntity } from '../spaces/entities/space.entity';
 import { SpacesModule } from '../spaces/spaces.module';
+import { StorageService } from '../storage/services/storage.service';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -45,7 +45,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 	imports: [
 		TypeOrmModule.forFeature([DisplayEntity, PageEntity, SpaceEntity]),
 		AuthModule,
-		InfluxDbModule,
+		StorageModule,
 		SpacesModule,
 	],
 	controllers: [DisplaysController, RegistrationController],
@@ -75,12 +75,12 @@ export class DisplaysModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
-		this.influxDbService.registerSchema(DisplayStatusInfluxDbSchema);
+		this.storageService.registerSchema(DisplayStatusInfluxDbSchema);
 
 		this.modulesMapperService.registerMapping<DisplaysConfigModel, UpdateDisplaysConfigDto>({
 			type: DISPLAYS_MODULE_NAME,

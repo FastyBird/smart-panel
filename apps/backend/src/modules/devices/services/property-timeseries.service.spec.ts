@@ -7,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
@@ -15,7 +15,7 @@ import { PropertyTimeseriesService } from './property-timeseries.service';
 
 describe('PropertyTimeseriesService', () => {
 	let service: PropertyTimeseriesService;
-	let influxDbService: jest.Mocked<InfluxDbService>;
+	let influxDbService: jest.Mocked<StorageService>;
 
 	const mockProperty: ChannelPropertyEntity = {
 		id: 'prop-123',
@@ -25,7 +25,7 @@ describe('PropertyTimeseriesService', () => {
 	beforeEach(async () => {
 		jest.useFakeTimers().setSystemTime(new Date('2025-01-02T00:00:00Z'));
 
-		const mockInfluxDb = {
+		const mockStorageService = {
 			query: jest.fn(),
 		};
 
@@ -33,14 +33,14 @@ describe('PropertyTimeseriesService', () => {
 			providers: [
 				PropertyTimeseriesService,
 				{
-					provide: InfluxDbService,
-					useValue: mockInfluxDb,
+					provide: StorageService,
+					useValue: mockStorageService,
 				},
 			],
 		}).compile();
 
 		service = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
-		influxDbService = module.get(InfluxDbService);
+		influxDbService = module.get(StorageService);
 	});
 
 	afterEach(() => {
