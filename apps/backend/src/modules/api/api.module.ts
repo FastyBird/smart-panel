@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 
-import { StorageModule } from '../storage/storage.module';
-import { StorageService } from '../storage/services/storage.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { StorageService } from '../storage/services/storage.service';
+import { StorageModule } from '../storage/storage.module';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
 import { API_MODULE_NAME, ApiStatsInfluxDbSchema } from './api.constants';

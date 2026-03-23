@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { StorageService } from '../../storage/services/storage.service';
 import { StatsProvider } from '../../stats/stats.interfaces';
+import { StorageService } from '../../storage/services/storage.service';
 import { ModuleStatsModel } from '../models/api.model';
 
 @Injectable()
