@@ -94,40 +94,98 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 			</div>
 
 			<div class="field">
-				<label>Password</label>
+				<label>Password <span class="optional-tag">Leave empty for open networks</span></label>
 				<input type="password" id="password" placeholder="Enter WiFi password" autocomplete="off">
 			</div>
 
 			<div class="field">
 				<label>Country code</label>
 				<select id="country">
-					<option value="US">United States (US)</option>
-					<option value="GB">United Kingdom (GB)</option>
-					<option value="DE">Germany (DE)</option>
-					<option value="FR">France (FR)</option>
-					<option value="CZ">Czech Republic (CZ)</option>
-					<option value="SK">Slovakia (SK)</option>
-					<option value="PL">Poland (PL)</option>
-					<option value="AT">Austria (AT)</option>
-					<option value="CH">Switzerland (CH)</option>
-					<option value="NL">Netherlands (NL)</option>
-					<option value="BE">Belgium (BE)</option>
-					<option value="IT">Italy (IT)</option>
-					<option value="ES">Spain (ES)</option>
-					<option value="PT">Portugal (PT)</option>
-					<option value="SE">Sweden (SE)</option>
-					<option value="NO">Norway (NO)</option>
-					<option value="DK">Denmark (DK)</option>
-					<option value="FI">Finland (FI)</option>
-					<option value="IE">Ireland (IE)</option>
-					<option value="AU">Australia (AU)</option>
-					<option value="NZ">New Zealand (NZ)</option>
-					<option value="CA">Canada (CA)</option>
-					<option value="JP">Japan (JP)</option>
-					<option value="KR">South Korea (KR)</option>
-					<option value="IN">India (IN)</option>
-					<option value="BR">Brazil (BR)</option>
-					<option value="CN">China (CN)</option>
+					<optgroup label="Americas">
+						<option value="US">United States (US)</option>
+						<option value="CA">Canada (CA)</option>
+						<option value="MX">Mexico (MX)</option>
+						<option value="BR">Brazil (BR)</option>
+						<option value="AR">Argentina (AR)</option>
+						<option value="CL">Chile (CL)</option>
+						<option value="CO">Colombia (CO)</option>
+						<option value="PE">Peru (PE)</option>
+						<option value="CR">Costa Rica (CR)</option>
+						<option value="DO">Dominican Republic (DO)</option>
+						<option value="EC">Ecuador (EC)</option>
+						<option value="GT">Guatemala (GT)</option>
+						<option value="PA">Panama (PA)</option>
+						<option value="UY">Uruguay (UY)</option>
+						<option value="VE">Venezuela (VE)</option>
+					</optgroup>
+					<optgroup label="Europe">
+						<option value="GB">United Kingdom (GB)</option>
+						<option value="DE">Germany (DE)</option>
+						<option value="FR">France (FR)</option>
+						<option value="IT">Italy (IT)</option>
+						<option value="ES">Spain (ES)</option>
+						<option value="PT">Portugal (PT)</option>
+						<option value="NL">Netherlands (NL)</option>
+						<option value="BE">Belgium (BE)</option>
+						<option value="AT">Austria (AT)</option>
+						<option value="CH">Switzerland (CH)</option>
+						<option value="CZ">Czech Republic (CZ)</option>
+						<option value="SK">Slovakia (SK)</option>
+						<option value="PL">Poland (PL)</option>
+						<option value="SE">Sweden (SE)</option>
+						<option value="NO">Norway (NO)</option>
+						<option value="DK">Denmark (DK)</option>
+						<option value="FI">Finland (FI)</option>
+						<option value="IE">Ireland (IE)</option>
+						<option value="HU">Hungary (HU)</option>
+						<option value="RO">Romania (RO)</option>
+						<option value="BG">Bulgaria (BG)</option>
+						<option value="HR">Croatia (HR)</option>
+						<option value="SI">Slovenia (SI)</option>
+						<option value="RS">Serbia (RS)</option>
+						<option value="BA">Bosnia and Herzegovina (BA)</option>
+						<option value="GR">Greece (GR)</option>
+						<option value="CY">Cyprus (CY)</option>
+						<option value="EE">Estonia (EE)</option>
+						<option value="LV">Latvia (LV)</option>
+						<option value="LT">Lithuania (LT)</option>
+						<option value="LU">Luxembourg (LU)</option>
+						<option value="IS">Iceland (IS)</option>
+						<option value="UA">Ukraine (UA)</option>
+						<option value="RU">Russia (RU)</option>
+						<option value="TR">Turkey (TR)</option>
+					</optgroup>
+					<optgroup label="Asia & Pacific">
+						<option value="AU">Australia (AU)</option>
+						<option value="NZ">New Zealand (NZ)</option>
+						<option value="JP">Japan (JP)</option>
+						<option value="KR">South Korea (KR)</option>
+						<option value="CN">China (CN)</option>
+						<option value="TW">Taiwan (TW)</option>
+						<option value="HK">Hong Kong (HK)</option>
+						<option value="SG">Singapore (SG)</option>
+						<option value="IN">India (IN)</option>
+						<option value="TH">Thailand (TH)</option>
+						<option value="MY">Malaysia (MY)</option>
+						<option value="PH">Philippines (PH)</option>
+						<option value="ID">Indonesia (ID)</option>
+						<option value="VN">Vietnam (VN)</option>
+						<option value="PK">Pakistan (PK)</option>
+						<option value="BD">Bangladesh (BD)</option>
+						<option value="LK">Sri Lanka (LK)</option>
+					</optgroup>
+					<optgroup label="Middle East & Africa">
+						<option value="IL">Israel (IL)</option>
+						<option value="AE">United Arab Emirates (AE)</option>
+						<option value="SA">Saudi Arabia (SA)</option>
+						<option value="QA">Qatar (QA)</option>
+						<option value="KW">Kuwait (KW)</option>
+						<option value="EG">Egypt (EG)</option>
+						<option value="ZA">South Africa (ZA)</option>
+						<option value="MA">Morocco (MA)</option>
+						<option value="NG">Nigeria (NG)</option>
+						<option value="KE">Kenya (KE)</option>
+					</optgroup>
 				</select>
 			</div>
 		</div>
@@ -339,12 +397,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 			showError('Please select or enter a WiFi network name.');
 			return;
 		}
-		if (!password) {
-			showError('Please enter the WiFi password.');
+		if (new Blob([ssid]).size > 32) {
+			showError('WiFi network name is too long (max 32 bytes).');
 			return;
 		}
-		if (password.length < 8) {
-			showError('WiFi password must be at least 8 characters.');
+		if (password && password.length < 8) {
+			showError('WiFi password must be at least 8 characters (or leave empty for open networks).');
 			return;
 		}
 		if (hostname && !/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(hostname)) {

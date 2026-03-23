@@ -21,11 +21,14 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync, execFileSync, exec } = require('child_process');
+const { execSync, execFileSync, execFile, exec } = require('child_process');
+const { promisify } = require('util');
+
+const execFileAsync = promisify(execFile);
 
 const PORT = 80;
 const PORTAL_IP = '192.168.4.1';
-const PORTAL_DIR = path.dirname(__filename);
+const PORTAL_DIR = __dirname;
 const WIFI_CONFIGURED_MARKER = '/var/lib/smart-panel/.wifi-configured';
 
 // Captive portal detection paths — redirect to setup page
@@ -54,19 +57,25 @@ try {
  * Scan available WiFi networks using nmcli.
  * Temporarily switches wlan0 to station mode for scanning if needed.
  */
-function scanWifiNetworks() {
+async function scanWifiNetworks() {
 	try {
 		// Trigger a fresh scan (may fail in AP mode — that's OK, we use cached results)
 		try {
-			execSync('nmcli device wifi rescan ifname wlan0 2>/dev/null', { timeout: 10000 });
+			await execFileAsync('nmcli', ['device', 'wifi', 'rescan', 'ifname', 'wlan0'], { timeout: 10000 });
 		} catch (_) {
 			// rescan may fail in AP mode
 		}
 
-		const output = execSync(
-			'nmcli -t -f SSID,SIGNAL,SECURITY device wifi list ifname wlan0 2>/dev/null || true',
-			{ timeout: 10000, encoding: 'utf8' }
-		);
+		let output;
+		try {
+			const result = await execFileAsync(
+				'nmcli', ['-t', '-f', 'SSID,SIGNAL,SECURITY', 'device', 'wifi', 'list', 'ifname', 'wlan0'],
+				{ timeout: 10000 }
+			);
+			output = result.stdout;
+		} catch (_) {
+			return [];
+		}
 
 		const seen = new Set();
 		const networks = [];
@@ -85,7 +94,7 @@ function scanWifiNetworks() {
 			networks.push({
 				ssid,
 				signal: parseInt(parts[1], 10) || 0,
-				security: parts.slice(2).join(' ').trim().replace(/\\:/g, ':'),
+				security: parts.slice(2).join(':').trim().replace(/\\:/g, ':'),
 			});
 		}
 
@@ -127,9 +136,12 @@ function getStatus() {
 function validateInputs(country, hostname, timezone, password, ssid) {
 	const errors = [];
 
-	// SSID: reject null bytes which would cause nmcli to see a truncated name
+	// SSID: reject null bytes and enforce max 32-byte length
 	if (ssid && /\x00/.test(ssid)) {
 		errors.push('SSID contains invalid characters');
+	}
+	if (ssid && Buffer.byteLength(ssid) > 32) {
+		errors.push('SSID must be at most 32 bytes');
 	}
 
 	if (password && password.length < 8) {
@@ -170,159 +182,142 @@ function reactivateHotspot() {
 
 /**
  * Connect to a WiFi network.
- * Returns a promise that resolves with { success, message, ip }.
+ * Returns { success, message, ip }.
+ * Caller is responsible for input validation before calling this function.
  */
 function connectToWifi(ssid, password, country, hostname, timezone) {
-	return new Promise((resolve) => {
-		try {
-			// Validate inputs before using them in shell commands
-			const validationErrors = validateInputs(country, hostname, timezone, password, ssid);
-			if (validationErrors.length > 0) {
-				resolve({
-					success: false,
-					message: `Validation failed: ${validationErrors.join('; ')}`,
-				});
-				return;
-			}
-
-			// Set WiFi country (validated: exactly 2 uppercase letters)
-			if (country) {
-				try {
-					execSync(`iw reg set ${country} 2>/dev/null`, { timeout: 5000 });
-					execSync(`raspi-config nonint do_wifi_country ${country} 2>/dev/null`, { timeout: 5000 });
-				} catch (_) {
-					// non-fatal
-				}
-			}
-
-			// Set hostname (validated: alphanumeric + hyphens only)
-			if (hostname) {
-				try {
-					execSync(`hostnamectl set-hostname ${hostname}`, { timeout: 5000 });
-					execSync(`sed -i 's/127.0.1.1.*/127.0.1.1\\t${hostname}/' /etc/hosts`, { timeout: 5000 });
-				} catch (_) {
-					// non-fatal
-				}
-			}
-
-			// Set timezone (validated: Region/City format only)
-			if (timezone) {
-				try {
-					execSync(`timedatectl set-timezone ${timezone}`, { timeout: 5000 });
-				} catch (_) {
-					// non-fatal
-				}
-			}
-
-			// Deactivate the hotspot connection
+	try {
+		// Set WiFi country — uses execFileSync (no shell) for defense-in-depth
+		if (country) {
 			try {
-				execSync('nmcli connection down SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+				execFileSync('iw', ['reg', 'set', country], { timeout: 5000, stdio: 'ignore' });
+				execFileSync('raspi-config', ['nonint', 'do_wifi_country', country], { timeout: 5000, stdio: 'ignore' });
 			} catch (_) {
-				// may not exist
+				// non-fatal
 			}
-
-			// Small delay to let the interface settle
-			execSync('sleep 2');
-
-			// Unblock WiFi
-			try {
-				execSync('rfkill unblock wifi 2>/dev/null', { timeout: 5000 });
-			} catch (_) {}
-
-			// Connect to the user's WiFi
-			// Use execFileSync with argument arrays to avoid shell interpretation
-			// of user-supplied ssid/password (prevents command injection via $(), backticks, etc.)
-			try {
-				execFileSync('nmcli', [
-					'device', 'wifi', 'connect', ssid,
-					'password', password,
-					'ifname', 'wlan0',
-				], { timeout: 30000 });
-			} catch (err) {
-				// The failed attempt may have left a connection profile behind.
-				// Delete it before adding a new one to prevent duplicate profiles
-				// from accumulating across retries.
-				try {
-					execFileSync('nmcli', ['connection', 'delete', ssid], { timeout: 10000 });
-				} catch (_) {
-					// may not exist — that's fine
-				}
-
-				// Try adding as a new connection profile
-				try {
-					execFileSync('nmcli', [
-						'connection', 'add',
-						'type', 'wifi',
-						'con-name', ssid,
-						'ssid', ssid,
-						'wifi-sec.key-mgmt', 'wpa-psk',
-						'wifi-sec.psk', password,
-						'autoconnect', 'yes',
-					], { timeout: 15000 });
-					execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
-				} catch (err2) {
-					// WiFi connection failed — re-activate the hotspot so the user can retry
-					reactivateHotspot();
-					resolve({
-						success: false,
-						message: `Failed to connect: ${err2.message}`,
-					});
-					return;
-				}
-			}
-
-			// Wait a moment for IP assignment
-			execSync('sleep 3');
-
-			// Get IP address
-			let ip = '';
-			try {
-				ip = execSync("hostname -I | awk '{print $1}'", { timeout: 5000, encoding: 'utf8' }).trim();
-			} catch (_) {}
-
-			// Create WiFi configured marker
-			// Ensure parent directory exists (may not exist on display-only variants)
-			try {
-				fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
-				fs.writeFileSync(WIFI_CONFIGURED_MARKER, `configured=${new Date().toISOString()}\nssid=${ssid}\n`);
-			} catch (_) {}
-
-			// Delete the hotspot connection profile
-			try {
-				execSync('nmcli connection delete SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
-			} catch (_) {}
-
-			const finalHostname = hostname || 'smart-panel';
-
-			resolve({
-				success: true,
-				message: 'Connected successfully!',
-				ip,
-				hostname: finalHostname,
-				url: `http://${finalHostname}.local:3000`,
-			});
-
-			// Schedule service stop + backend start after response is sent
-			setTimeout(() => {
-				console.log('WiFi configured — stopping portal service...');
-				try {
-					execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
-				} catch (_) {}
-				try {
-					execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
-				} catch (_) {}
-				// Stop ourselves last
-				exec('systemctl stop smart-panel-portal.service 2>/dev/null');
-			}, 2000);
-		} catch (err) {
-			// Unexpected error — try to restore hotspot so user isn't stranded
-			reactivateHotspot();
-			resolve({
-				success: false,
-				message: `Unexpected error: ${err.message}`,
-			});
 		}
-	});
+
+		// Set hostname — uses execFileSync + fs (no shell interpolation)
+		if (hostname) {
+			try {
+				execFileSync('hostnamectl', ['set-hostname', hostname], { timeout: 5000 });
+				const hostsPath = '/etc/hosts';
+				let hosts = fs.readFileSync(hostsPath, 'utf8');
+				hosts = hosts.replace(/^127\.0\.1\.1\s+.*$/m, `127.0.1.1\t${hostname}`);
+				fs.writeFileSync(hostsPath, hosts);
+			} catch (_) {
+				// non-fatal
+			}
+		}
+
+		// Set timezone — uses execFileSync (no shell)
+		if (timezone) {
+			try {
+				execFileSync('timedatectl', ['set-timezone', timezone], { timeout: 5000 });
+			} catch (_) {
+				// non-fatal
+			}
+		}
+
+		// Deactivate the hotspot connection
+		try {
+			execSync('nmcli connection down SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+		} catch (_) {
+			// may not exist
+		}
+
+		// Small delay to let the interface settle
+		execSync('sleep 2');
+
+		// Unblock WiFi
+		try {
+			execSync('rfkill unblock wifi 2>/dev/null', { timeout: 5000 });
+		} catch (_) {}
+
+		// Connect to the user's WiFi
+		// Use execFileSync with argument arrays to avoid shell interpretation
+		// of user-supplied ssid/password (prevents command injection)
+		const connectArgs = password
+			? ['device', 'wifi', 'connect', ssid, 'password', password, 'ifname', 'wlan0']
+			: ['device', 'wifi', 'connect', ssid, 'ifname', 'wlan0'];
+
+		try {
+			execFileSync('nmcli', connectArgs, { timeout: 30000 });
+		} catch (err) {
+			// The failed attempt may have left a connection profile behind.
+			// Delete it before adding a new one to prevent duplicate profiles
+			// from accumulating across retries.
+			try {
+				execFileSync('nmcli', ['connection', 'delete', ssid], { timeout: 10000 });
+			} catch (_) {
+				// may not exist — that's fine
+			}
+
+			// Try adding as a new connection profile
+			const addArgs = ['connection', 'add', 'type', 'wifi', 'con-name', ssid, 'ssid', ssid, 'autoconnect', 'yes'];
+			if (password) {
+				addArgs.push('wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password);
+			}
+
+			try {
+				execFileSync('nmcli', addArgs, { timeout: 15000 });
+				execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
+			} catch (err2) {
+				// WiFi connection failed — re-activate the hotspot so the user can retry
+				reactivateHotspot();
+				return { success: false, message: `Failed to connect: ${err2.message}` };
+			}
+		}
+
+		// Wait a moment for IP assignment
+		execSync('sleep 3');
+
+		// Get IP address
+		let ip = '';
+		try {
+			ip = execSync("hostname -I | awk '{print $1}'", { timeout: 5000, encoding: 'utf8' }).trim();
+		} catch (_) {}
+
+		// Create WiFi configured marker
+		// Ensure parent directory exists (may not exist on display-only variants)
+		try {
+			fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
+			fs.writeFileSync(WIFI_CONFIGURED_MARKER, `configured=${new Date().toISOString()}\nssid=${ssid}\n`);
+		} catch (_) {}
+
+		// Delete the hotspot connection profile
+		try {
+			execSync('nmcli connection delete SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+		} catch (_) {}
+
+		const finalHostname = hostname || 'smart-panel';
+
+		// Schedule service stop + backend start after response is sent
+		setTimeout(() => {
+			console.log('WiFi configured — stopping portal service...');
+			try {
+				execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
+			} catch (_) {}
+			try {
+				execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
+			} catch (_) {}
+			// Stop ourselves last — uses exec (async) intentionally as this is a
+			// hardcoded command with no user input, and we don't need to wait for it
+			exec('systemctl stop smart-panel-portal.service');
+		}, 2000);
+
+		return {
+			success: true,
+			message: 'Connected successfully!',
+			ip,
+			hostname: finalHostname,
+			url: `http://${finalHostname}.local:3000`,
+		};
+	} catch (err) {
+		// Unexpected error — try to restore hotspot so user isn't stranded
+		reactivateHotspot();
+		return { success: false, message: `Unexpected error: ${err.message}` };
+	}
 }
 
 /**
@@ -411,23 +406,24 @@ const server = http.createServer(async (req, res) => {
 			const body = await parseBody(req);
 			const { ssid, password, country, hostname, timezone } = body;
 
-			if (!ssid || typeof ssid !== 'string' || !password || typeof password !== 'string') {
-				sendJson(res, 400, { success: false, message: 'SSID and password are required' });
+			if (!ssid || typeof ssid !== 'string') {
+				sendJson(res, 400, { success: false, message: 'SSID is required' });
 				return;
 			}
 
-			// Validate optional fields before passing to shell commands
+			// Validate and sanitize optional fields
+			const sanitizedPassword = typeof password === 'string' && password.length > 0 ? password : '';
 			const sanitizedCountry = typeof country === 'string' ? country : '';
 			const sanitizedHostname = typeof hostname === 'string' ? hostname : '';
 			const sanitizedTimezone = typeof timezone === 'string' ? timezone : '';
 
-			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone, password, ssid);
+			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone, sanitizedPassword, ssid);
 			if (validationErrors.length > 0) {
 				sendJson(res, 400, { success: false, message: validationErrors.join('; ') });
 				return;
 			}
 
-			const result = await connectToWifi(ssid, password, sanitizedCountry, sanitizedHostname, sanitizedTimezone);
+			const result = connectToWifi(ssid, sanitizedPassword, sanitizedCountry, sanitizedHostname, sanitizedTimezone);
 			sendJson(res, result.success ? 200 : 500, result);
 		} catch (err) {
 			sendJson(res, 400, { success: false, message: 'Invalid request body' });

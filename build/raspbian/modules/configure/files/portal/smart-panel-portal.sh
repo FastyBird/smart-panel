@@ -91,6 +91,29 @@ log "Starting captive portal with SSID: ${AP_SSID}"
 rfkill unblock wifi 2>/dev/null || true
 
 # ──────────────────────────────────────────────────────────────
+# Cleanup and DNS config path
+# ──────────────────────────────────────────────────────────────
+
+DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
+
+# Cleanup function — registered BEFORE creating any resources so that
+# an early failure (e.g. nmcli connection up) still cleans up.
+cleanup() {
+	log "Cleaning up captive portal..."
+
+	# Remove DNS redirect config
+	rm -f "${DNSMASQ_CONF}"
+
+	# Deactivate and remove hotspot if still active
+	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+	log "Captive portal stopped"
+}
+
+trap cleanup EXIT
+
+# ──────────────────────────────────────────────────────────────
 # Start AP mode via NetworkManager
 # ──────────────────────────────────────────────────────────────
 
@@ -124,25 +147,6 @@ log "Password: ${AP_PASSWORD}"
 # NetworkManager's shared mode starts dnsmasq automatically.
 # We add a redirect rule so all DNS queries resolve to our IP.
 # This triggers captive portal detection on all platforms.
-DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
-
-# Cleanup function — registered BEFORE creating resources so that
-# an early failure (e.g. nmcli connection up) still cleans up.
-cleanup() {
-	log "Cleaning up captive portal..."
-
-	# Remove DNS redirect config
-	rm -f "${DNSMASQ_CONF}"
-
-	# Deactivate and remove hotspot if still active
-	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
-	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
-
-	log "Captive portal stopped"
-}
-
-trap cleanup EXIT
-
 mkdir -p "$(dirname "${DNSMASQ_CONF}")"
 cat > "${DNSMASQ_CONF}" << 'EOF'
 # Smart Panel captive portal — redirect all DNS to AP IP
