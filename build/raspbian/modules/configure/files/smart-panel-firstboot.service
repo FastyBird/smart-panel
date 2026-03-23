@@ -1,7 +1,7 @@
 [Unit]
 Description=Smart Panel First Boot Setup
-After=network-online.target
-Wants=network-online.target
+After=network.target
+Wants=network.target
 ConditionPathExists=|/var/lib/smart-panel/.first-boot
 ConditionPathExists=|/opt/smart-panel-display/.first-boot
 Before=smart-panel.service smart-panel-display.service

@@ -127,8 +127,8 @@ cp /tmp/smart-panel-config/smart-panel-firstboot.service /etc/systemd/system/
 # (display-only doesn't have InfluxDB, so we add it conditionally)
 if [ "${HAS_BACKEND}" = true ]; then
 	sed -i \
-		-e 's|^After=network-online.target|After=network-online.target influxdb.service|' \
-		-e 's|^Wants=network-online.target|Wants=network-online.target influxdb.service|' \
+		-e 's|^After=network.target|After=network.target influxdb.service|' \
+		-e 's|^Wants=network.target|Wants=network.target influxdb.service|' \
 		/etc/systemd/system/smart-panel-firstboot.service
 fi
 
