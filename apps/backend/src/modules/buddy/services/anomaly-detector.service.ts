@@ -55,6 +55,8 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 		results.push(...this.detectStuckSensors(context, thresholds));
 		results.push(...this.detectUnusualActivity(context, thresholds));
 
+		this.sweepStuckSensorTracker();
+
 		return Promise.resolve(results);
 	}
 
@@ -265,6 +267,14 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			}
 		}
 
+		return results;
+	}
+
+	/**
+	 * Sweep stale entries and enforce hard size limit on the stuck sensor tracker.
+	 * Called from evaluate() so it always runs, even when the stuck_sensor rule is disabled.
+	 */
+	private sweepStuckSensorTracker(): void {
 		// Sweep stale entries not seen for TRACKER_MAX_STALE_CYCLES
 		for (const [key, entry] of this.stuckSensorTracker) {
 			if (this.evaluationCycle - entry.lastSeenCycle > TRACKER_MAX_STALE_CYCLES) {
@@ -288,8 +298,6 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 				this.stuckSensorTracker.delete(key);
 			}
 		}
-
-		return results;
 	}
 
 	/**

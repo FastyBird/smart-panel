@@ -1433,5 +1433,36 @@ describe('AnomalyDetectorEvaluator', () => {
 			expect(tracker.size).toBeLessThanOrEqual(TRACKER_MAX_SIZE);
 			expect(tracker.has('new-sensor::temperature.temperature')).toBe(true);
 		});
+
+		it('should sweep stale entries even when stuck_sensor rule is disabled', async () => {
+			// Create a service with the stuck_sensor rule disabled
+			service = new AnomalyDetectorEvaluator(
+				configService as unknown as ConfigService,
+				actionObserver,
+				makeRulesLoader({
+					stuck_sensor: { ...defaultAnomalyRules.stuck_sensor, enabled: false },
+				}),
+			);
+
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
+
+			// Seed a stale entry
+			tracker.set('old-device::temperature.temperature', {
+				value: 22,
+				since: Date.now(),
+				lastSeenCycle: 0,
+			});
+
+			const emptyContext = makeContext();
+
+			for (let i = 0; i <= TRACKER_MAX_STALE_CYCLES; i++) {
+				await service.evaluate(emptyContext);
+			}
+
+			expect(tracker.has('old-device::temperature.temperature')).toBe(false);
+		});
 	});
 });
