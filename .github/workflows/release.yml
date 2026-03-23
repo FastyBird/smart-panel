@@ -390,16 +390,16 @@ jobs:
 
       - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
-          tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-armv7.tar.gz > smart-panel-display-armv7.tar.gz.sha256
+          tar -czvf smart-panel-display-flutterpi-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display-flutterpi-armv7.tar.gz > smart-panel-display-flutterpi-armv7.tar.gz.sha256
 
       - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "display-panel-armv7"
+          name: "display-panel-flutterpi-armv7"
           path: |
-            smart-panel-display-armv7.tar.gz
-            smart-panel-display-armv7.tar.gz.sha256
+            smart-panel-display-flutterpi-armv7.tar.gz
+            smart-panel-display-flutterpi-armv7.tar.gz.sha256
 
       - name: "Build ARM64 Flutter Bundle (64-bit)"
         env:
@@ -409,16 +409,16 @@ jobs:
 
       - name: "Archive ARM64 Flutter Assets (64-bit)"
         run: |
-          tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-arm64.tar.gz > smart-panel-display-arm64.tar.gz.sha256
+          tar -czvf smart-panel-display-flutterpi-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display-flutterpi-arm64.tar.gz > smart-panel-display-flutterpi-arm64.tar.gz.sha256
 
       - name: "Upload ARM64 Artifact (64-bit)"
         uses: "actions/upload-artifact@v7"
         with:
-          name: "display-panel-arm64"
+          name: "display-panel-flutterpi-arm64"
           path: |
-            smart-panel-display-arm64.tar.gz
-            smart-panel-display-arm64.tar.gz.sha256
+            smart-panel-display-flutterpi-arm64.tar.gz
+            smart-panel-display-flutterpi-arm64.tar.gz.sha256
 
   build-android:
     needs: [ "tag", "sync-versions", "changelog" ]
@@ -649,12 +649,12 @@ jobs:
       - name: "Download Display Assets (32-bit)"
         uses: "actions/download-artifact@v7"
         with:
-          name: display-panel-armv7
+          name: display-panel-flutterpi-armv7
 
       - name: "Extract Flutter Assets to /build-armv7/display"
         run: |
           mkdir -p ./build-armv7/display
-          tar -xzf ./smart-panel-display-armv7.tar.gz -C ./build-armv7/display
+          tar -xzf ./smart-panel-display-flutterpi-armv7.tar.gz -C ./build-armv7/display
 
       - name: "Prepare Build Folder (32-bit)"
         run: |
@@ -697,12 +697,12 @@ jobs:
       - name: "Download Display Assets (64-bit)"
         uses: "actions/download-artifact@v7"
         with:
-          name: "display-panel-arm64"
+          name: "display-panel-flutterpi-arm64"
 
       - name: "Extract Flutter Assets to /build-arm64/display"
         run: |
           mkdir -p ./build-arm64/display
-          tar -xzf ./smart-panel-display-arm64.tar.gz -C ./build-arm64/display
+          tar -xzf ./smart-panel-display-flutterpi-arm64.tar.gz -C ./build-arm64/display
 
       - name: "Prepare Build Folder (64-bit)"
         run: |
@@ -780,12 +780,12 @@ jobs:
       - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
         uses: "actions/download-artifact@v7"
         with:
-          name: "display-panel-armv7"
+          name: "display-panel-flutterpi-armv7"
 
       - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
         uses: "actions/download-artifact@v7"
         with:
-          name: "display-panel-arm64"
+          name: "display-panel-flutterpi-arm64"
 
       - name: "Download Android APK"
         uses: "actions/download-artifact@v7"
@@ -835,10 +835,10 @@ jobs:
             smart-panel-server-armv7.tar.gz.sha256
             smart-panel-server-arm64.tar.gz
             smart-panel-server-arm64.tar.gz.sha256
-            smart-panel-display-armv7.tar.gz
-            smart-panel-display-armv7.tar.gz.sha256
-            smart-panel-display-arm64.tar.gz
-            smart-panel-display-arm64.tar.gz.sha256
+            smart-panel-display-flutterpi-armv7.tar.gz
+            smart-panel-display-flutterpi-armv7.tar.gz.sha256
+            smart-panel-display-flutterpi-arm64.tar.gz
+            smart-panel-display-flutterpi-arm64.tar.gz.sha256
             smart-panel-display-android.apk
             smart-panel-display-android.apk.sha256
             smart-panel-display-linux-x64.tar.gz
