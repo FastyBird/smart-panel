@@ -45,6 +45,7 @@ const CAPTIVE_PATHS = new Set([
 	'/favicon.ico',
 ]);
 
+let connectInProgress = false;
 let indexHtml = '';
 try {
 	indexHtml = fs.readFileSync(path.join(PORTAL_DIR, 'index.html'), 'utf8');
@@ -388,6 +389,11 @@ const server = http.createServer(async (req, res) => {
 
 	// Connect
 	if (url === '/api/connect' && req.method === 'POST') {
+		if (connectInProgress) {
+			sendJson(res, 409, { success: false, message: 'Connection already in progress' });
+			return;
+		}
+
 		try {
 			const body = await parseBody(req);
 			const { ssid, password, country, hostname, timezone } = body;
@@ -430,6 +436,7 @@ const server = http.createServer(async (req, res) => {
 
 			// Run the actual WiFi connection asynchronously after the response is flushed.
 			// This blocks the event loop but that's fine — no more client requests are expected.
+			connectInProgress = true;
 			setTimeout(() => {
 				connectToWifiAsync(ssid, sanitizedPassword, sanitizedHostname);
 			}, 500);

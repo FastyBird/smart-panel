@@ -57,6 +57,14 @@ while true; do
 		log "WiFi disconnected for ${fail_seconds}s / ${FAIL_THRESHOLD}s"
 
 		if [ "${fail_seconds}" -ge "${FAIL_THRESHOLD}" ]; then
+			# Check once more — NM may have auto-reconnected during the last interval
+			RECHECK_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
+			if [ -n "${RECHECK_WIFI}" ]; then
+				log "WiFi reconnected just before portal trigger — resetting counter"
+				fail_seconds=0
+				continue
+			fi
+
 			log "WiFi unavailable for ${FAIL_THRESHOLD}s — re-activating captive portal"
 
 			# Remove the configured marker so portal will start

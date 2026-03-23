@@ -61,6 +61,18 @@ fi
 
 if [ "${HAS_NETWORK}" = true ]; then
 	log "Network available — skipping captive portal"
+
+	# If the watchdog triggered us but WiFi auto-reconnected before we got here,
+	# restore the marker and restart the watchdog so monitoring continues.
+	if [ ! -f "${WIFI_CONFIGURED_MARKER}" ]; then
+		log "Restoring WiFi configured marker and restarting watchdog"
+		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
+		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
+		echo "restored=true" >> "${WIFI_CONFIGURED_MARKER}"
+		systemctl start smart-panel.service 2>/dev/null || true
+		systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
+	fi
+
 	exit 0
 fi
 
