@@ -16,7 +16,6 @@ set -euo pipefail
 PORTAL_DIR="/opt/smart-panel/portal"
 WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
 BOOT_CONFIG_APPLIED="/var/lib/smart-panel/.boot-config.applied"
-DATA_DIR="/var/lib/smart-panel"
 LOG_TAG="smart-panel-portal"
 
 log() {

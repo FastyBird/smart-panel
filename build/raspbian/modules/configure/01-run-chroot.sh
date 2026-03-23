@@ -182,6 +182,12 @@ chage -d 0 "${FIRST_USER_NAME}"
 # ──────────────────────────────────────────────────────────────
 # Captive portal (all variants — WiFi provisioning on first boot)
 # ──────────────────────────────────────────────────────────────
+
+# Ensure data directory exists for all variants — the portal writes
+# marker files here (.wifi-configured) and apply-boot-config.sh
+# moves the config file here (.boot-config.applied).
+mkdir -p "${DATA_DIR}"
+
 PORTAL_DIR="/opt/smart-panel/portal"
 mkdir -p "${PORTAL_DIR}"
 

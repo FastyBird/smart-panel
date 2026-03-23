@@ -258,7 +258,9 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 			} catch (_) {}
 
 			// Create WiFi configured marker
+			// Ensure parent directory exists (may not exist on display-only variants)
 			try {
+				fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
 				fs.writeFileSync(WIFI_CONFIGURED_MARKER, `configured=${new Date().toISOString()}\nssid=${ssid}\n`);
 			} catch (_) {}
 
