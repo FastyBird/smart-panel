@@ -3317,6 +3317,209 @@ filter:
       format: [0,255]
 
 # =============================================================================
+# HOST DEVICE CHANNELS
+# =============================================================================
+
+button:
+  category: button
+  name:
+    en: Button
+  description:
+    en: >-
+      Represents a physical hardware button input. Reports press events such as
+      single press, long press, and double press. Commonly used for host device
+      hardware buttons or external button peripherals.
+  docGroup: control
+  properties:
+    event:
+      category: event
+      required: true
+      description:
+        en: Button press event type (emitted on each press interaction)
+      permissions:
+        - ev
+      data_type: enum
+      unit: null
+      format: ["press","long_press","double_press"]
+    detected:
+      category: detected
+      required: false
+      description:
+        en: Whether the button is currently held down
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the button channel is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+indicator:
+  category: indicator
+  name:
+    en: Indicator
+  description:
+    en: >-
+      Represents a status indicator LED output. Controls on/off state, brightness,
+      and color of hardware indicator LEDs. Used for system status feedback on
+      host devices or external indicator peripherals.
+  docGroup: control
+  properties:
+    on:
+      category: "on"
+      required: true
+      description:
+        en: Turns the indicator LED on or off
+      permissions:
+        - rw
+      data_type: bool
+      unit: null
+      format: null
+    brightness:
+      category: brightness
+      required: false
+      description:
+        en: Indicator LED brightness level
+      permissions:
+        - rw
+      data_type: uchar
+      unit: null
+      format: [0,255]
+    color:
+      category: color_red
+      required: false
+      description:
+        en: Indicator LED color selection for multi-color LEDs
+      permissions:
+        - rw
+      data_type: enum
+      unit: null
+      format: ["red","green","blue","yellow","white","off"]
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the indicator channel is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+buzzer:
+  category: buzzer
+  name:
+    en: Buzzer
+  description:
+    en: >-
+      Represents a hardware buzzer or audible alert output. Controls on/off state
+      and frequency of the buzzer for audible notifications and alerts.
+  docGroup: control
+  properties:
+    on:
+      category: "on"
+      required: true
+      description:
+        en: Activates or deactivates the buzzer
+      permissions:
+        - rw
+      data_type: bool
+      unit: null
+      format: null
+    frequency:
+      category: frequency
+      required: false
+      description:
+        en: Buzzer output frequency in hertz
+      permissions:
+        - rw
+      data_type: uint
+      unit: Hz
+      format: [100,10000]
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the buzzer channel is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+accelerometer:
+  category: accelerometer
+  name:
+    en: Accelerometer
+  description:
+    en: >-
+      Reports acceleration data along three axes from a hardware accelerometer sensor.
+      Can be used for orientation detection, tilt sensing, or motion-triggered events.
+  docGroup: environmental
+  properties:
+    acceleration_x:
+      category: acceleration_x
+      required: true
+      description:
+        en: Acceleration along the X axis in g-force units
+      permissions:
+        - ro
+      data_type: float
+      unit: g
+      format: [-16.0,16.0]
+      step: 0.001
+    acceleration_y:
+      category: acceleration_y
+      required: true
+      description:
+        en: Acceleration along the Y axis in g-force units
+      permissions:
+        - ro
+      data_type: float
+      unit: g
+      format: [-16.0,16.0]
+      step: 0.001
+    acceleration_z:
+      category: acceleration_z
+      required: true
+      description:
+        en: Acceleration along the Z axis in g-force units
+      permissions:
+        - ro
+      data_type: float
+      unit: g
+      format: [-16.0,16.0]
+      step: 0.001
+    orientation:
+      category: orientation
+      required: false
+      description:
+        en: Computed device orientation based on acceleration data
+      permissions:
+        - ro
+      data_type: enum
+      unit: null
+      format: ["landscape","portrait","landscape_inverted","portrait_inverted","face_up","face_down"]
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the accelerometer is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+# =============================================================================
 # OTHER CHANNELS
 # =============================================================================
 

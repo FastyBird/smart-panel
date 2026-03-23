@@ -151,6 +151,20 @@ export type DevicesShellyNgPluginCreateChannelPropertySchema = components['schem
 export type DevicesShellyNgPluginUpdateChannelPropertySchema = components['schemas']['DevicesShellyNgPluginUpdateChannelProperty'];
 export type DevicesShellyNgPluginChannelPropertySchema = components['schemas']['DevicesShellyNgPluginDataChannelProperty'];
 
+// Devices reTerminal Plugin Schemas
+export type DevicesReTerminalPluginUpdateConfigSchema = components['schemas']['DevicesReTerminalPluginUpdateConfig'];
+export type DevicesReTerminalPluginConfigSchema = components['schemas']['DevicesReTerminalPluginDataConfig'];
+export type DevicesReTerminalPluginCreateDeviceSchema = components['schemas']['DevicesReTerminalPluginCreateDevice'];
+export type DevicesReTerminalPluginUpdateDeviceSchema = components['schemas']['DevicesReTerminalPluginUpdateDevice'];
+export type DevicesReTerminalPluginDeviceSchema = components['schemas']['DevicesReTerminalPluginDataDevice'];
+export type DevicesReTerminalPluginCreateChannelSchema = components['schemas']['DevicesReTerminalPluginCreateChannel'];
+export type DevicesReTerminalPluginUpdateChannelSchema = components['schemas']['DevicesReTerminalPluginUpdateChannel'];
+export type DevicesReTerminalPluginChannelSchema = components['schemas']['DevicesReTerminalPluginDataChannel'];
+export type DevicesReTerminalPluginCreateChannelPropertySchema = components['schemas']['DevicesReTerminalPluginCreateChannelProperty'];
+export type DevicesReTerminalPluginUpdateChannelPropertySchema = components['schemas']['DevicesReTerminalPluginUpdateChannelProperty'];
+export type DevicesReTerminalPluginChannelPropertySchema = components['schemas']['DevicesReTerminalPluginDataChannelProperty'];
+export { DevicesReTerminalPluginCreateDeviceVariant as DevicesReTerminalPluginVariant } from './openapi';
+
 // Devices WLED Plugin Schemas
 export type DevicesWledPluginUpdateConfigSchema = components['schemas']['DevicesWledPluginUpdateConfig'];
 export type DevicesWledPluginConfigSchema = components['schemas']['DevicesWledPluginDataConfig'];

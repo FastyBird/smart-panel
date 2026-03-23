@@ -71,6 +71,7 @@ import { InfluxV1Plugin } from './plugins/influx-v1';
 import { MemoryStoragePlugin } from './plugins/memory-storage';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
+import { DevicesReTerminalPlugin } from './plugins/devices-reterminal';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
@@ -179,6 +180,7 @@ const pluginOptions: IModuleOptions = {
 
 app.use(DevicesThirdPartyPlugin, pluginOptions);
 app.use(DevicesHomeAssistantPlugin, pluginOptions);
+app.use(DevicesReTerminalPlugin, pluginOptions);
 app.use(DevicesShellyNgPlugin, pluginOptions);
 app.use(DevicesShellyV1Plugin, pluginOptions);
 app.use(SimulatorPlugin, pluginOptions);

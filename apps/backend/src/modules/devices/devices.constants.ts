@@ -66,6 +66,7 @@ export enum DeviceCategory {
 	STREAMING_SERVICE = 'streaming_service',
 	SWITCHER = 'switcher',
 	TELEVISION = 'television',
+	TERMINAL = 'terminal',
 	THERMOSTAT = 'thermostat',
 	VALVE = 'valve',
 	WATER_HEATER = 'water_heater',
@@ -74,10 +75,13 @@ export enum DeviceCategory {
 
 export enum ChannelCategory {
 	GENERIC = 'generic',
+	ACCELEROMETER = 'accelerometer',
 	AIR_PARTICULATE = 'air_particulate',
 	AIR_QUALITY = 'air_quality',
 	ALARM = 'alarm',
 	BATTERY = 'battery',
+	BUTTON = 'button',
+	BUZZER = 'buzzer',
 	CAMERA = 'camera',
 	CARBON_DIOXIDE = 'carbon_dioxide',
 	CARBON_MONOXIDE = 'carbon_monoxide',
@@ -98,6 +102,7 @@ export enum ChannelCategory {
 	HUMIDIFIER = 'humidifier',
 	HUMIDITY = 'humidity',
 	ILLUMINANCE = 'illuminance',
+	INDICATOR = 'indicator',
 	LEAK = 'leak',
 	LIGHT = 'light',
 	LOCK = 'lock',
@@ -126,6 +131,9 @@ export enum ChannelCategory {
 
 export enum PropertyCategory {
 	GENERIC = 'generic',
+	ACCELERATION_X = 'acceleration_x',
+	ACCELERATION_Y = 'acceleration_y',
+	ACCELERATION_Z = 'acceleration_z',
 	ACTIVE = 'active',
 	ALARM_STATE = 'alarm_state',
 	ALBUM = 'album',
@@ -181,6 +189,7 @@ export enum PropertyCategory {
 	NATURAL_BREEZE = 'natural_breeze',
 	OBSTRUCTION = 'obstruction',
 	ON = 'on',
+	ORIENTATION = 'orientation',
 	OVER_CURRENT = 'over_current',
 	OVER_VOLTAGE = 'over_voltage',
 	OVER_POWER = 'over_power',

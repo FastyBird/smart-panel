@@ -79,6 +79,8 @@ import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-ch
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
+import { DEVICES_RETERMINAL_PLUGIN_PREFIX } from './plugins/devices-reterminal/devices-reterminal.constants';
+import { DevicesReTerminalPlugin } from './plugins/devices-reterminal/devices-reterminal.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/devices-shelly-v1.constants';
@@ -261,6 +263,10 @@ export class AppModule {
 								module: DevicesShellyNgPlugin,
 							},
 							{
+								path: DEVICES_RETERMINAL_PLUGIN_PREFIX,
+								module: DevicesReTerminalPlugin,
+							},
+							{
 								path: DEVICES_SHELLY_V1_PLUGIN_PREFIX,
 								module: DevicesShellyV1Plugin,
 							},
@@ -365,6 +371,7 @@ export class AppModule {
 				SwaggerModule,
 				IntentsModule,
 				MdnsModule,
+				DevicesReTerminalPlugin,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
 				DevicesShellyNgPlugin,

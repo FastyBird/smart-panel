@@ -45,6 +45,7 @@ patternProperties:
           - streaming_service
           - switcher
           - television
+          - terminal
           - thermostat
           - valve
           - water_heater
@@ -161,10 +162,13 @@ patternProperties:
                 type: string
                 enum:
                   - generic
+                  - accelerometer
                   - air_particulate
                   - air_quality
                   - alarm
                   - battery
+                  - button
+                  - buzzer
                   - camera
                   - carbon_dioxide
                   - carbon_monoxide
@@ -184,6 +188,7 @@ patternProperties:
                   - humidifier
                   - humidity
                   - illuminance
+                  - indicator
                   - leak
                   - light
                   - lock

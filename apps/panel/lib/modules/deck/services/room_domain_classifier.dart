@@ -100,6 +100,7 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.robotVacuum:
     case DevicesModuleDeviceCategory.sprinkler:
     case DevicesModuleDeviceCategory.switcher:
+    case DevicesModuleDeviceCategory.terminal:
     case DevicesModuleDeviceCategory.valve:
     case DevicesModuleDeviceCategory.waterHeater:
     case DevicesModuleDeviceCategory.$unknown:
