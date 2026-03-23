@@ -443,11 +443,16 @@ export class BuddyConversationService {
 		spaces: BuddyContext['spaces'],
 		conversationSpaceId?: string,
 	): void {
-		// Try full detail first
-		const fullDeviceLines = this.buildDeviceLines(devices, hasTools);
-		const candidateTokens = estimateTokens([...lines, '', '## Devices', ...fullDeviceLines].join('\n'));
+		// Quick estimate: can ALL devices fit with full detail?
+		// Use a lightweight character count that avoids building formatted strings
+		// or registering short IDs (which would pollute the mapping on discard).
+		const fullDetailEstimate = this.estimateDeviceTokens(devices, hasTools);
+		const baseTokens = estimateTokens(lines.join('\n'));
 
-		if (candidateTokens < tokenBudget) {
+		if (baseTokens + fullDetailEstimate < tokenBudget) {
+			// Everything fits — build the actual formatted lines (registers short IDs)
+			const fullDeviceLines = this.buildDeviceLines(devices, hasTools);
+
 			lines.push('', '## Devices', ...fullDeviceLines);
 
 			return;
@@ -535,7 +540,7 @@ export class BuddyConversationService {
 			}
 		}
 
-		if (truncated || currentSpaceDevices.length < devices.length) {
+		if (truncated) {
 			lines.push('', '_Some devices omitted for brevity. Ask about specific rooms for details._');
 		}
 	}
@@ -580,6 +585,41 @@ export class BuddyConversationService {
 		}
 
 		return lines;
+	}
+
+	/**
+	 * Lightweight token estimate for a list of devices WITHOUT building
+	 * formatted strings or registering short IDs. Uses fixed per-element
+	 * character estimates derived from the format in `buildDeviceLines`.
+	 */
+	private estimateDeviceTokens(devices: BuddyContext['devices'], hasTools: boolean): number {
+		// "- DeviceName (category): key=val, key=val\n" ≈ 60 chars base + 20 per state entry
+		const DEVICE_BASE_CHARS = 60;
+		const STATE_ENTRY_CHARS = 20;
+		// "  - channelName:\n" ≈ 25 chars
+		const CHANNEL_CHARS = 25;
+		// "    - category [p=XXXX] value=...\n" ≈ 45 chars
+		const PROPERTY_CHARS = 45;
+		// "## Devices\n\n"
+		const HEADER_CHARS = 15;
+
+		let chars = HEADER_CHARS;
+
+		for (const device of devices) {
+			const stateCount = Object.keys(device.state).length;
+
+			chars += DEVICE_BASE_CHARS + stateCount * STATE_ENTRY_CHARS;
+
+			if (hasTools) {
+				for (const channel of device.channels) {
+					if (channel.properties.length > 0) {
+						chars += CHANNEL_CHARS + channel.properties.length * PROPERTY_CHARS;
+					}
+				}
+			}
+		}
+
+		return Math.ceil(chars / 4);
 	}
 
 	/**
