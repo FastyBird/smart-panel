@@ -12,6 +12,7 @@ import {
 	RETERMINAL_DEVICE_DESCRIPTOR,
 	RETERMINAL_DM_DEVICE_DESCRIPTOR,
 	RETERMINAL_MANUFACTURER,
+	RETERMINAL_SYSFS,
 	type ReTerminalDeviceDescriptor,
 	type ReTerminalPropertyBinding,
 	ReTerminalVariant,
@@ -31,6 +32,9 @@ import { ReTerminalSysfsService } from './reterminal-sysfs.service';
 @Injectable()
 export class ReTerminalDeviceMapperService {
 	private readonly logger = new Logger(ReTerminalDeviceMapperService.name);
+
+	private cachedLightDevicePath: string | null | undefined = undefined;
+	private cachedAccelDevicePath: string | null | undefined = undefined;
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -130,33 +134,37 @@ export class ReTerminalDeviceMapperService {
 			await this.setPropertyValue(deviceId, 'temperature', 'temperature', temperature);
 		}
 
-		// Read light sensor (if available)
-		const lightDevice = await this.sysfsService.findIioDevice('ltr303');
+		// Read light sensor (if available) - cache the IIO device path since it never changes at runtime
+		if (this.cachedLightDevicePath === undefined) {
+			this.cachedLightDevicePath = await this.sysfsService.findIioDevice('ltr303');
+		}
 
-		if (lightDevice) {
-			const luxRaw = await this.sysfsService.readIioAttribute(lightDevice, 'in_illuminance_raw');
+		if (this.cachedLightDevicePath) {
+			const luxRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_raw');
 
 			if (luxRaw) {
-				const scaleRaw = await this.sysfsService.readIioAttribute(lightDevice, 'in_illuminance_scale');
+				const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_scale');
 				const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
 
 				await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw) * scale);
 			}
 		}
 
-		// Read accelerometer (if available)
-		const accelDevice = await this.sysfsService.findIioDevice('lis3dh');
+		// Read accelerometer (if available) - cache the IIO device path since it never changes at runtime
+		if (this.cachedAccelDevicePath === undefined) {
+			this.cachedAccelDevicePath = await this.sysfsService.findIioDevice('lis3dh');
+		}
 
-		if (accelDevice) {
-			const scaleRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_scale');
+		if (this.cachedAccelDevicePath) {
+			const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_scale');
 			const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
 
 			// IIO accel raw * scale yields m/s²; convert to g-force (1 g = 9.80665 m/s²)
 			const STANDARD_GRAVITY = 9.80665;
 
-			const xRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_x_raw');
-			const yRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_y_raw');
-			const zRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_z_raw');
+			const xRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_x_raw');
+			const yRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_y_raw');
+			const zRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_z_raw');
 
 			if (xRaw)
 				await this.setPropertyValue(
@@ -196,15 +204,15 @@ export class ReTerminalDeviceMapperService {
 	}
 
 	private async updateLedStates(deviceId: string): Promise<void> {
-		const usrBrightness = await this.sysfsService.readLedBrightness('/sys/class/leds/usr_led/brightness');
+		const usrBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.USR_LED);
 
 		if (usrBrightness !== null) {
 			await this.setPropertyValue(deviceId, 'usr_led', 'on', usrBrightness > 0);
 			await this.setPropertyValue(deviceId, 'usr_led', 'brightness', usrBrightness);
 		}
 
-		const staGreen = await this.sysfsService.readLedBrightness('/sys/class/leds/sta_led_g/brightness');
-		const staRed = await this.sysfsService.readLedBrightness('/sys/class/leds/sta_led_r/brightness');
+		const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+		const staRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
 
 		if (staGreen !== null && staRed !== null) {
 			const isOn = staGreen > 0 || staRed > 0;

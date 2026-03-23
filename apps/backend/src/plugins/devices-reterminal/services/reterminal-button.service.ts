@@ -32,6 +32,7 @@ interface ButtonState {
 	pressedAt: number | null;
 	lastReleaseAt: number | null;
 	longPressTimer: ReturnType<typeof setTimeout> | null;
+	longPressFired: boolean;
 	doublePressTimer: ReturnType<typeof setTimeout> | null;
 }
 
@@ -154,6 +155,7 @@ export class ReTerminalButtonService {
 	private handleButtonPress(channelIdentifier: string): void {
 		const state = this.getButtonState(channelIdentifier);
 		state.pressedAt = Date.now();
+		state.longPressFired = false;
 
 		// Set detected = true
 		void this.emitPropertyValue(channelIdentifier, 'detected', true);
@@ -167,6 +169,7 @@ export class ReTerminalButtonService {
 		state.longPressTimer = setTimeout(() => {
 			void this.emitPropertyValue(channelIdentifier, 'event', 'long_press');
 			state.longPressTimer = null;
+			state.longPressFired = true;
 		}, DEFAULT_BUTTON_LONG_PRESS_MS);
 	}
 
@@ -179,13 +182,20 @@ export class ReTerminalButtonService {
 		void this.emitPropertyValue(channelIdentifier, 'detected', false);
 
 		// Cancel long press timer if still pending
+		const timerWasPending = state.longPressTimer !== null;
+
 		if (state.longPressTimer) {
 			clearTimeout(state.longPressTimer);
 			state.longPressTimer = null;
 		}
 
-		// If it was a long press (timer already fired), don't emit press
+		// If it was a long press (timer already fired, or duration met but timer
+		// hadn't fired yet due to event loop scheduling), emit long_press and return
 		if (pressDuration >= DEFAULT_BUTTON_LONG_PRESS_MS) {
+			if (timerWasPending && !state.longPressFired) {
+				void this.emitPropertyValue(channelIdentifier, 'event', 'long_press');
+			}
+
 			state.pressedAt = null;
 
 			return;
@@ -221,6 +231,7 @@ export class ReTerminalButtonService {
 				pressedAt: null,
 				lastReleaseAt: null,
 				longPressTimer: null,
+				longPressFired: false,
 				doublePressTimer: null,
 			};
 
