@@ -136,6 +136,12 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 	private coerceNumber(value: string | number | boolean, min: number, max: number): number {
 		const num = typeof value === 'number' ? value : Number(value);
 
+		if (Number.isNaN(num)) {
+			this.logger.warn(`coerceNumber received non-numeric value: ${String(value)}, defaulting to ${min}`);
+
+			return min;
+		}
+
 		return Math.max(min, Math.min(max, Math.round(num)));
 	}
 }

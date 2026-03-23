@@ -217,21 +217,31 @@ export class ReTerminalDeviceMapperService {
 			}
 		}
 
-		const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
-		const staRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
+		if (variant === ReTerminalVariant.RETERMINAL) {
+			// CM4 variant has separate green/red LED channels with brightness and color
+			const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+			const staRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
 
-		if (staGreen !== null && staRed !== null) {
-			const isOn = staGreen > 0 || staRed > 0;
+			if (staGreen !== null && staRed !== null) {
+				const isOn = staGreen > 0 || staRed > 0;
 
-			await this.setPropertyValue(deviceId, 'sta_led', 'on', isOn);
-			await this.setPropertyValue(deviceId, 'sta_led', 'brightness', Math.max(staGreen, staRed));
+				await this.setPropertyValue(deviceId, 'sta_led', 'on', isOn);
+				await this.setPropertyValue(deviceId, 'sta_led', 'brightness', Math.max(staGreen, staRed));
 
-			if (staRed > 0 && staGreen === 0) {
-				await this.setPropertyValue(deviceId, 'sta_led', 'color', 'red');
-			} else if (staGreen > 0 && staRed === 0) {
-				await this.setPropertyValue(deviceId, 'sta_led', 'color', 'green');
-			} else if (!isOn) {
-				await this.setPropertyValue(deviceId, 'sta_led', 'color', 'off');
+				if (staRed > 0 && staGreen === 0) {
+					await this.setPropertyValue(deviceId, 'sta_led', 'color', 'red');
+				} else if (staGreen > 0 && staRed === 0) {
+					await this.setPropertyValue(deviceId, 'sta_led', 'color', 'green');
+				} else if (!isOn) {
+					await this.setPropertyValue(deviceId, 'sta_led', 'color', 'off');
+				}
+			}
+		} else {
+			// DM variant only has an 'on' property for the STA LED
+			const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+
+			if (staGreen !== null) {
+				await this.setPropertyValue(deviceId, 'sta_led', 'on', staGreen > 0);
 			}
 		}
 	}

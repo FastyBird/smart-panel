@@ -54,19 +54,6 @@ export class ReTerminalSysfsService {
 	}
 
 	/**
-	 * Check if a sysfs path exists and is accessible.
-	 */
-	async pathExists(filePath: string): Promise<boolean> {
-		try {
-			await fs.access(filePath);
-
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
-	/**
 	 * Read CPU temperature from thermal zone (returns value in °C).
 	 */
 	async readCpuTemperature(): Promise<number | null> {
