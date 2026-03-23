@@ -3,19 +3,19 @@
 # Smart Panel Captive Portal Manager
 #
 # Manages the WiFi AP hotspot and captive portal web server.
-# Called by smart-panel-portal.service on boot when no WiFi is configured.
+# Called by smart-panel-portal.service on boot.
 #
-# Flow:
-#   1. Check if WiFi is already configured (marker file or active connection)
-#   2. If not, start AP mode via NetworkManager
-#   3. Start the captive portal HTTP server
-#   4. When the server exits (WiFi configured), clean up AP
+# Decision logic:
+#   1. If smart-panel.conf was applied (user configured manually) → skip entirely
+#   2. If WiFi was previously configured via the portal → skip
+#   3. If there is any network connection (ethernet or WiFi) → skip
+#   4. Otherwise → start AP mode + captive portal
 #
 set -euo pipefail
 
 PORTAL_DIR="/opt/smart-panel/portal"
 WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
-BOOT_CONFIG="/boot/firmware/smart-panel.conf"
+BOOT_CONFIG_APPLIED="/var/lib/smart-panel/.boot-config.applied"
 DATA_DIR="/var/lib/smart-panel"
 LOG_TAG="smart-panel-portal"
 
@@ -25,29 +25,43 @@ log() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# Check if WiFi is already configured
+# Check if portal should be skipped
 # ──────────────────────────────────────────────────────────────
 
-# Skip if boot config file exists (user prepared WiFi config on SD card)
-if [ -f "${BOOT_CONFIG}" ]; then
-	log "Boot config file exists — skipping captive portal"
+# 1. Skip if user provided a boot config file (manual configuration).
+#    The file is moved to .boot-config.applied by apply-boot-config.sh
+#    during first-boot — regardless of whether it contained WiFi settings.
+if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
+	log "Boot config was applied — user configured manually, skipping captive portal"
 	exit 0
 fi
 
-# Skip if WiFi was previously configured
+# 2. Skip if WiFi was previously configured via the captive portal
 if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
-	log "WiFi already configured — skipping captive portal"
+	log "WiFi previously configured via portal — skipping captive portal"
 	exit 0
 fi
 
-# Skip if there's already an active WiFi connection (not a hotspot)
+# 3. Skip if there is any active network connection (ethernet or WiFi)
+#    This covers wired-only setups and pre-existing WiFi connections.
+HAS_NETWORK=false
+
+# Check for active ethernet connection
+ACTIVE_ETH=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^ethernet:connected' | head -1 || true)
+if [ -n "${ACTIVE_ETH}" ]; then
+	HAS_NETWORK=true
+	log "Ethernet connection detected"
+fi
+
+# Check for active WiFi connection (not a hotspot)
 ACTIVE_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
 if [ -n "${ACTIVE_WIFI}" ]; then
-	log "Active WiFi connection found — skipping captive portal"
-	# Create marker since WiFi is working
-	mkdir -p "${DATA_DIR}"
-	echo "configured=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${WIFI_CONFIGURED_MARKER}"
-	echo "source=existing-connection" >> "${WIFI_CONFIGURED_MARKER}"
+	HAS_NETWORK=true
+	log "WiFi connection detected: ${ACTIVE_WIFI%%:*}"
+fi
+
+if [ "${HAS_NETWORK}" = true ]; then
+	log "Network available — skipping captive portal"
 	exit 0
 fi
 

@@ -53,15 +53,6 @@ log_info() {
 if [ -x "${APP_BASE_DIR}/apply-boot-config.sh" ]; then
 	if "${APP_BASE_DIR}/apply-boot-config.sh" >> "${BOOT_LOG}" 2>&1; then
 		log_ok "Boot configuration applied"
-		# If WiFi was configured via boot file, create marker to skip captive portal
-		if [ -f "${DATA_DIR}/.boot-config.applied" ] 2>/dev/null; then
-			BOOT_WIFI=$(grep -i "^WIFI_SSID=" "${DATA_DIR}/.boot-config.applied" 2>/dev/null | head -1 || true)
-			if [ -n "${BOOT_WIFI}" ]; then
-				echo "configured=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${DATA_DIR}/.wifi-configured"
-				echo "source=boot-config" >> "${DATA_DIR}/.wifi-configured"
-				log_ok "WiFi configured marker created (boot config)"
-			fi
-		fi
 	else
 		log_warn "Boot configuration failed or partially applied"
 	fi
