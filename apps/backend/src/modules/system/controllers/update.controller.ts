@@ -1,12 +1,13 @@
 import {
 	Body,
+	ConflictException,
 	Controller,
-	ForbiddenException,
 	Get,
 	HttpCode,
 	HttpStatus,
 	InternalServerErrorException,
 	Post,
+	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -139,17 +140,17 @@ export class UpdateController {
 		this.logger.debug('Install update requested');
 
 		if (this.updateService.isUpdateInProgress()) {
-			throw new ForbiddenException('An update is already in progress');
+			throw new ConflictException('An update is already in progress');
 		}
 
 		const info = await this.updateService.checkServerUpdate();
 
 		if (!info.updateAvailable && !body.version) {
-			throw new ForbiddenException('No update available');
+			throw new UnprocessableEntityException('No update available');
 		}
 
 		if (info.updateType === 'major' && !body.allowMajor) {
-			throw new ForbiddenException(
+			throw new UnprocessableEntityException(
 				'Major version update requires explicit confirmation. Set allow_major to true to proceed.',
 			);
 		}
@@ -157,7 +158,7 @@ export class UpdateController {
 		const targetVersion = body.version ?? info.latest;
 
 		if (!targetVersion) {
-			throw new ForbiddenException('No target version available');
+			throw new UnprocessableEntityException('No target version available');
 		}
 
 		try {

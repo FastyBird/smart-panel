@@ -14,21 +14,27 @@ update_status() {
 	local completed_at=""
 
 	if [ "$status" = "complete" ] || [ "$status" = "failed" ]; then
-		completed_at="\"completedAt\": \"$(date -Iseconds)\","
+		completed_at=$(date -Iseconds)
 	fi
 
 	local tmp_file="${STATUS_FILE}.tmp"
 
-	cat > "$tmp_file" << EOF
-{
-	"status": "$status",
-	"phase": "$phase",
-	"targetVersion": "$VERSION",
-	"startedAt": "$(date -Iseconds)",
-	${completed_at}
-	"error": "$error"
-}
-EOF
+	# Use printf with %s to prevent injection in JSON values.
+	# Escape double-quotes and backslashes in the error message.
+	local safe_error=""
+	if [ -n "$error" ]; then
+		safe_error=$(printf '%s' "$error" | sed 's/\\/\\\\/g; s/"/\\"/g')
+	fi
+
+	printf '{\n\t"status": "%s",\n\t"phase": "%s",\n\t"targetVersion": "%s",\n\t"startedAt": "%s"' \
+		"$status" "$phase" "$VERSION" "$(date -Iseconds)" > "$tmp_file"
+
+	if [ -n "$completed_at" ]; then
+		printf ',\n\t"completedAt": "%s"' "$completed_at" >> "$tmp_file"
+	fi
+
+	printf ',\n\t"error": "%s"' "$safe_error" >> "$tmp_file"
+	printf '\n}\n' >> "$tmp_file"
 
 	mv "$tmp_file" "$STATUS_FILE"
 }
@@ -51,6 +57,11 @@ trap cleanup EXIT
 # Image-based update (Raspbian image installs)
 # ──────────────────────────────────────────────────────────────
 if [ "$INSTALL_TYPE" = "image" ]; then
+	# Verify passwordless sudo is available (required for systemctl, chown, ln)
+	if ! sudo -n true 2>/dev/null; then
+		update_status "failed" "failed" "Passwordless sudo is not available for this user"
+		exit 1
+	fi
 	# Strip leading 'v' prefix if present to avoid double-prefixed dirs like vv1.0.0
 	CLEAN_VERSION="${VERSION#v}"
 	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
@@ -229,7 +240,7 @@ update_status "downloading" "downloading"
 
 # Stop the service
 update_status "stopping" "stopping"
-systemctl stop smart-panel 2>/dev/null || true
+sudo systemctl stop smart-panel 2>/dev/null || true
 
 # Install the update
 update_status "installing" "installing"
@@ -263,7 +274,7 @@ fi
 
 # Start the service
 update_status "starting" "starting"
-systemctl start smart-panel 2>&1 || {
+sudo systemctl start smart-panel 2>&1 || {
 	update_status "failed" "failed" "Failed to start service after update"
 	exit 1
 }

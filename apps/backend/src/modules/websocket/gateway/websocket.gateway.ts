@@ -257,6 +257,11 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'SystemModule.Display.', // Display-specific maintenance events
 	];
 
+	// Events that should only be sent to admin/exchange clients, not panel displays
+	private static readonly EXCHANGE_ONLY_EVENT_PREFIXES = [
+		'SystemModule.System.Update.', // Update progress is admin-only
+	];
+
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
 		if (!this.enabled) {
 			return;
@@ -293,6 +298,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 			// Send to the specific display and to the exchange room (admin)
 			this.server.to(displayRoom).emit('event', message);
+			this.server.to(EXCHANGE_ROOM).emit('event', message);
+
+			return;
+		}
+
+		// Exchange-only events (admin only, not for display panels)
+		if (WebsocketGateway.EXCHANGE_ONLY_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix))) {
+			this.logger.debug(`Emitting exchange-only event: ${JSON.stringify(message)}`);
+
 			this.server.to(EXCHANGE_ROOM).emit('event', message);
 
 			return;

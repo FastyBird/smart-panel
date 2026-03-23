@@ -120,6 +120,7 @@
       "upToDate": "Your system is up to date.",
       "checking": "Checking for updates...",
       "installing": "Installing update...",
+      "waitingForRestart": "Service is restarting, please wait...",
       "noVersionInfo": "Unable to retrieve version information."
     },
     "systemLogs": {

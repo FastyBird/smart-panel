@@ -153,7 +153,7 @@ The project already has a basic update mechanism via the CLI:
 - [x] Display progress overlay during update with phase information
 - [x] Handle reconnection after service restart
 - [x] Show success/failure notification after update completes
-- [ ] Add update option to manage-system component
+- [x] Add update option to manage-system component (accessible via system info page, no separate modal needed)
 
 ### 4.8 Admin - Update Notification
 

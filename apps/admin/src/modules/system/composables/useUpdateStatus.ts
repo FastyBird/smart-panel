@@ -11,6 +11,11 @@ const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/up
 const UPDATE_CHECK_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/check`;
 const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/install`;
 
+// Deduplication for concurrent fetchStatus calls
+let fetchPromise: Promise<void> | null = null;
+let lastFetchTimestamp = 0;
+const FETCH_DEBOUNCE_MS = 5_000;
+
 // Shared singleton refs — all callers share the same reactive state
 const currentVersion = ref<string | null>(null);
 const latestVersion = ref<string | null>(null);
@@ -26,6 +31,12 @@ const error = ref<string | null>(null);
 
 const loading = ref<boolean>(false);
 const installing = ref<boolean>(false);
+const waitingForRestart = ref<boolean>(false);
+
+// Polling handle for reconnection detection after service restart
+let reconnectPollTimer: ReturnType<typeof setInterval> | null = null;
+const RECONNECT_POLL_INTERVAL_MS = 4_000;
+const RECONNECT_POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
 
 const isUpdating = computed<boolean>((): boolean => {
 	return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
@@ -53,7 +64,9 @@ const applyInfoResponse = (data: Record<string, unknown>): void => {
 	}
 
 	if (data.error !== undefined) {
-		error.value = data.error as string | null;
+		const rawError = data.error as string | null;
+
+		error.value = rawError === null ? null : 'systemModule.messages.update.updateFailed';
 	}
 
 	// Update installing state
@@ -90,7 +103,9 @@ const applyStatusEvent = (payload: Record<string, unknown>): void => {
 	}
 
 	if (payload.error !== undefined) {
-		error.value = payload.error as string | null;
+		const rawError = payload.error as string | null;
+
+		error.value = rawError === null ? null : 'systemModule.messages.update.updateFailed';
 	}
 
 	// Update installing state
@@ -111,21 +126,39 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	const backend = useBackend();
 
 	const fetchStatus = async (): Promise<void> => {
-		loading.value = true;
+		const now = Date.now();
 
-		try {
-			const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
-
-			const responseData = response.data as { data?: Record<string, unknown> } | undefined;
-
-			if (responseData?.data) {
-				applyInfoResponse(responseData.data);
-			}
-		} catch {
-			// Silently fail - endpoint may not exist yet
-		} finally {
-			loading.value = false;
+		// Suppress duplicate fetches within the debounce window
+		if (now - lastFetchTimestamp < FETCH_DEBOUNCE_MS) {
+			return;
 		}
+
+		// Reuse in-flight request if one is pending
+		if (fetchPromise) {
+			return fetchPromise;
+		}
+
+		loading.value = true;
+		lastFetchTimestamp = now;
+
+		fetchPromise = (async () => {
+			try {
+				const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
+
+				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
+
+				if (responseData?.data) {
+					applyInfoResponse(responseData.data);
+				}
+			} catch {
+				// Silently fail - endpoint may not exist yet
+			} finally {
+				loading.value = false;
+				fetchPromise = null;
+			}
+		})();
+
+		return fetchPromise;
 	};
 
 	const checkForUpdates = async (): Promise<void> => {
@@ -148,6 +181,47 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		}
 	};
 
+	const stopReconnectPoll = (): void => {
+		if (reconnectPollTimer !== null) {
+			clearInterval(reconnectPollTimer);
+			reconnectPollTimer = null;
+		}
+	};
+
+	const startReconnectPoll = (): void => {
+		stopReconnectPoll();
+
+		const startedAt = Date.now();
+
+		reconnectPollTimer = setInterval(async () => {
+			// Timeout — give up after 5 minutes
+			if (Date.now() - startedAt > RECONNECT_POLL_TIMEOUT_MS) {
+				stopReconnectPoll();
+				waitingForRestart.value = false;
+				installing.value = false;
+				status.value = 'failed';
+				error.value = 'systemModule.messages.update.updateFailed';
+
+				return;
+			}
+
+			try {
+				const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
+
+				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
+
+				if (responseData?.data) {
+					applyInfoResponse(responseData.data);
+					waitingForRestart.value = false;
+					stopReconnectPoll();
+				}
+			} catch {
+				// Backend still down — keep polling
+				waitingForRestart.value = true;
+			}
+		}, RECONNECT_POLL_INTERVAL_MS);
+	};
+
 	const installUpdate = async (allowMajor: boolean = false): Promise<void> => {
 		installing.value = true;
 		status.value = 'downloading';
@@ -167,6 +241,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 				throw new Error('Failed to start update');
 			}
+
+			// Update started successfully — begin polling for reconnection
+			// after the service restarts
+			startReconnectPoll();
 		} catch (err) {
 			installing.value = false;
 			status.value = 'failed';
@@ -189,6 +267,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		error,
 		loading,
 		installing,
+		waitingForRestart,
 		isUpdating,
 		fetchStatus,
 		checkForUpdates,

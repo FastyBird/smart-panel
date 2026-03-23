@@ -78,9 +78,9 @@
 	<el-dialog
 		v-model="showUpdateDialog"
 		:title="t('systemModule.headings.update.title')"
-		:close-on-click-modal="!isUpdating"
-		:close-on-press-escape="!isUpdating"
-		:show-close="!isUpdating"
+		:close-on-click-modal="!isUpdating && !waitingForRestart"
+		:close-on-press-escape="!isUpdating && !waitingForRestart"
+		:show-close="!isUpdating && !waitingForRestart"
 	>
 		<div class="mb-4">
 			{{ t('systemModule.messages.update.confirmInstall', { version: latestVersion }) }}
@@ -96,12 +96,19 @@
 
 		<template v-if="isUpdating || status === 'failed'">
 			<el-progress
-				:percentage="progressPercent || 0"
+				:percentage="waitingForRestart ? 90 : (progressPercent || 0)"
 				:status="status === 'failed' ? 'exception' : undefined"
+				:indeterminate="waitingForRestart"
 				class="mb-2"
 			/>
 			<el-text
-				v-if="phase"
+				v-if="waitingForRestart"
+				class="block mb-4"
+			>
+				{{ t('systemModule.texts.update.waitingForRestart') }}
+			</el-text>
+			<el-text
+				v-else-if="phase"
 				class="block mb-4"
 			>
 				{{ phase }}
@@ -194,6 +201,7 @@ const {
 	progressPercent,
 	error,
 	loading,
+	waitingForRestart,
 	isUpdating,
 	fetchStatus,
 	checkForUpdates,

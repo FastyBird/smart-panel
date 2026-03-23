@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -50,13 +51,15 @@ export class UpdateService {
 
 	private readonly NPM_REGISTRY_URL = 'https://registry.npmjs.org/@fastybird/smart-panel';
 	private readonly GITHUB_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
+	private readonly GITHUB_VERSION_JSON_URL = 'https://github.com/FastyBird/smart-panel/releases/latest/download/version.json';
+	private readonly GITHUB_PRERELEASE_API_URL = 'https://api.github.com/repos/FastyBird/smart-panel/releases';
 
 	private cachedServerInfo: Map<string, VersionInfo> = new Map();
 	private cachedPanelInfo: Map<string, PanelVersionInfo> = new Map();
 	private serverCacheTimestamp: Map<string, number> = new Map();
 	private panelCacheTimestamp: Map<string, number> = new Map();
 	private cachedReleaseNotes: Map<string, ReleaseNotes> = new Map();
-	private readonly CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+	private readonly CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 	private updateStatus: UpdateStatusInfo = {
 		status: UpdateStatusType.IDLE,
@@ -67,7 +70,9 @@ export class UpdateService {
 		startedAt: null,
 	};
 
-	private updateLock = false;
+	private updateLockAcquiredAt: number | null = null;
+	private readonly UPDATE_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+	private static readonly FETCH_TIMEOUT_MS = 15_000; // 15 seconds
 
 	private static readonly IMAGE_BASE_DIR = '/opt/smart-panel';
 	private static readonly IMAGE_CURRENT_LINK = '/opt/smart-panel/current';
@@ -148,21 +153,32 @@ export class UpdateService {
 	}
 
 	isUpdateInProgress(): boolean {
-		return this.updateLock;
-	}
-
-	acquireUpdateLock(): boolean {
-		if (this.updateLock) {
+		if (this.updateLockAcquiredAt === null) {
 			return false;
 		}
 
-		this.updateLock = true;
+		if (Date.now() - this.updateLockAcquiredAt > this.UPDATE_LOCK_TIMEOUT_MS) {
+			this.logger.warn('Update lock expired after timeout, releasing');
+			this.releaseUpdateLock();
+
+			return false;
+		}
+
+		return true;
+	}
+
+	acquireUpdateLock(): boolean {
+		if (this.isUpdateInProgress()) {
+			return false;
+		}
+
+		this.updateLockAcquiredAt = Date.now();
 
 		return true;
 	}
 
 	releaseUpdateLock(): void {
-		this.updateLock = false;
+		this.updateLockAcquiredAt = null;
 	}
 
 	setStatus(partial: Partial<UpdateStatusInfo>): void {
@@ -186,16 +202,18 @@ export class UpdateService {
 		}
 
 		const currentVersion = this.getCurrentVersion();
+		const installType = this.getInstallType();
 
 		try {
-			const response = await fetch(this.NPM_REGISTRY_URL);
+			let latestVersion: string | null = null;
 
-			if (!response.ok) {
-				throw new Error(`npm registry returned ${response.status}`);
+			if (installType === 'image') {
+				// Image installs: check GitHub version.json or releases API
+				latestVersion = await this.fetchLatestVersionFromGitHub(channel);
+			} else {
+				// npm installs: check npm registry dist-tags
+				latestVersion = await this.fetchLatestVersionFromNpm(channel);
 			}
-
-			const data = (await response.json()) as { 'dist-tags'?: Record<string, string> };
-			const latestVersion = data['dist-tags']?.[channel] ?? null;
 
 			let updateAvailable = false;
 			let updateType: 'patch' | 'minor' | 'major' | null = null;
@@ -232,6 +250,93 @@ export class UpdateService {
 				updateType: null,
 			};
 		}
+	}
+
+	/**
+	 * Fetch latest version from GitHub version.json (for image installs).
+	 * For the 'latest' channel, uses the direct download URL which avoids API rate limits.
+	 * For pre-release channels (alpha/beta), queries the releases API to find matching releases.
+	 */
+	private async fetchLatestVersionFromGitHub(channel: 'latest' | 'beta' | 'alpha'): Promise<string | null> {
+		if (channel === 'latest') {
+			// Direct download — no API rate limit, follows redirect to the asset
+			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
+				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+			});
+
+			if (!response.ok) {
+				throw new Error(`GitHub version.json returned ${response.status}`);
+			}
+
+			const data = (await response.json()) as { version?: string; channel?: string };
+
+			return data.version?.replace(/^v/, '') ?? null;
+		}
+
+		// Pre-release channels: query the releases API and find the version.json asset
+		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
+			headers: {
+				Accept: 'application/vnd.github.v3+json',
+				'User-Agent': 'FastyBird-SmartPanel',
+			},
+			signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+		});
+
+		if (!response.ok) {
+			throw new Error(`GitHub API returned ${response.status}`);
+		}
+
+		const releases = (await response.json()) as Array<{
+			prerelease: boolean;
+			tag_name: string;
+			assets: Array<{ name: string; browser_download_url: string }>;
+		}>;
+
+		// Find the first pre-release with a version.json that matches the channel
+		for (const release of releases) {
+			if (!release.prerelease) continue;
+
+			const versionAsset = release.assets.find((a) => a.name === 'version.json');
+
+			if (!versionAsset) continue;
+
+			try {
+				const assetResponse = await fetch(versionAsset.browser_download_url, {
+					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+					signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+				});
+
+				if (!assetResponse.ok) continue;
+
+				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
+
+				if (versionData.channel === channel) {
+					return versionData.version?.replace(/^v/, '') ?? null;
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Fetch latest version from npm registry (for npm installs).
+	 */
+	private async fetchLatestVersionFromNpm(channel: 'latest' | 'beta' | 'alpha'): Promise<string | null> {
+		const response = await fetch(this.NPM_REGISTRY_URL, {
+			signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+		});
+
+		if (!response.ok) {
+			throw new Error(`npm registry returned ${response.status}`);
+		}
+
+		const data = (await response.json()) as { 'dist-tags'?: Record<string, string> };
+
+		return data['dist-tags']?.[channel] ?? null;
 	}
 
 	async fetchReleaseNotes(version: string): Promise<ReleaseNotes> {
@@ -315,6 +420,7 @@ export class UpdateService {
 					Accept: 'application/vnd.github.v3+json',
 					'User-Agent': 'FastyBird-SmartPanel',
 				},
+				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
 			});
 
 			if (!response.ok) {
@@ -330,6 +436,25 @@ export class UpdateService {
 			this.logger.error(`Failed to fetch GitHub release v${cleanVersion}: ${err.message}`);
 
 			return null;
+		}
+	}
+
+	@Cron('0 */12 * * *')
+	async scheduledUpdateCheck(): Promise<void> {
+		this.logger.debug('Running scheduled update check');
+
+		try {
+			this.invalidateServerCache();
+
+			const info = await this.checkServerUpdate();
+
+			if (info.updateAvailable) {
+				this.logger.log(`Update available: ${info.current} -> ${info.latest} (${info.updateType})`);
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Scheduled update check failed: ${err.message}`);
 		}
 	}
 
@@ -354,6 +479,7 @@ export class UpdateService {
 					Accept: 'application/vnd.github.v3+json',
 					'User-Agent': 'FastyBird-SmartPanel',
 				},
+				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
 			});
 
 			if (!response.ok) {
@@ -399,6 +525,7 @@ export class UpdateService {
 					Accept: 'application/vnd.github.v3+json',
 					'User-Agent': 'FastyBird-SmartPanel',
 				},
+				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
 			});
 
 			if (!response.ok) {

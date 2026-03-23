@@ -124,10 +124,20 @@ export class UpdateServerCommand extends CommandRunner {
 
 		console.log();
 
-		if (installType === 'image') {
-			await this.updateImage(targetVersion, skipRestart);
-		} else {
-			this.updateNpm(targetVersion, skipRestart);
+		// Acquire update lock to prevent concurrent API-initiated updates
+		if (!this.updateService.acquireUpdateLock()) {
+			printError('An update is already in progress (initiated via API or another CLI command). Please wait.');
+			process.exit(1);
+		}
+
+		try {
+			if (installType === 'image') {
+				await this.updateImage(targetVersion, skipRestart);
+			} else {
+				this.updateNpm(targetVersion, skipRestart);
+			}
+		} finally {
+			this.updateService.releaseUpdateLock();
 		}
 
 		console.log(`\n  \x1b[32m✓\x1b[0m Server updated to version \x1b[1m${targetVersion}\x1b[0m\n`);

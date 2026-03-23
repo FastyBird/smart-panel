@@ -60,6 +60,7 @@ export interface IUseUpdateStatus {
 	error: Ref<string | null>;
 	loading: Ref<boolean>;
 	installing: Ref<boolean>;
+	waitingForRestart: Ref<boolean>;
 	isUpdating: ComputedRef<boolean>;
 	fetchStatus: () => Promise<void>;
 	checkForUpdates: () => Promise<void>;
