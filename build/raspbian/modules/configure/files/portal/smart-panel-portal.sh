@@ -172,6 +172,9 @@ log "Starting portal web server on port 80..."
 # Run node in the background and wait for it, so this bash process stays alive
 # and the EXIT trap can run cleanup when the process ends or is signaled.
 # Using 'exec' here would replace bash entirely, making the trap unreachable.
+# Propagate node's exit code so systemd's Restart=on-failure can detect crashes.
 /usr/local/bin/node "${PORTAL_DIR}/server.js" &
 NODE_PID=$!
-wait "${NODE_PID}" 2>/dev/null || true
+wait "${NODE_PID}" 2>/dev/null
+NODE_EXIT=$?
+exit "${NODE_EXIT}"
