@@ -6,6 +6,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
+import { InfluxV1ConfigModel } from '../plugins/influx-v1/influx-v1.config.model';
 import { InfluxV1Plugin } from '../plugins/influx-v1/influx-v1.plugin';
 import { MemoryStoragePlugin } from '../plugins/memory/memory.plugin';
 import { STORAGE_MODULE_NAME, STORAGE_PLUGIN_INFLUX_V1, STORAGE_PLUGIN_MEMORY } from '../storage.constants';
@@ -23,8 +24,8 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		const config = this.getConfig();
 
 		// Create plugins
-		this.primary = this.createPlugin(config.primaryStorage, config);
-		this.fallback = this.createPlugin(config.fallbackStorage, config);
+		this.primary = this.createPlugin(config.primaryStorage);
+		this.fallback = this.createPlugin(config.fallbackStorage);
 
 		// Initialize fallback first (always available)
 		if (this.fallback) {
@@ -365,15 +366,18 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		}
 	}
 
-	private createPlugin(pluginName: string, config: StorageConfigModel): StoragePlugin | null {
+	private createPlugin(pluginName: string): StoragePlugin | null {
 		switch (pluginName) {
-			case STORAGE_PLUGIN_INFLUX_V1:
+			case STORAGE_PLUGIN_INFLUX_V1: {
+				const pluginConfig = this.getInfluxConfig();
+
 				return new InfluxV1Plugin({
-					host: config.influx.host,
-					database: config.influx.database,
-					username: config.influx.username,
-					password: config.influx.password,
+					host: pluginConfig.host,
+					database: pluginConfig.database,
+					username: pluginConfig.username,
+					password: pluginConfig.password,
 				});
+			}
 
 			case STORAGE_PLUGIN_MEMORY:
 				return new MemoryStoragePlugin();
@@ -382,6 +386,19 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 				this.logger.warn(`Unknown storage plugin: ${pluginName}`);
 
 				return null;
+		}
+	}
+
+	private getInfluxConfig(): InfluxV1ConfigModel {
+		try {
+			return this.configService.getPluginConfig<InfluxV1ConfigModel>(STORAGE_PLUGIN_INFLUX_V1);
+		} catch (error) {
+			this.logger.warn(
+				'Failed to load InfluxDB plugin configuration, using defaults',
+				error instanceof Error ? error : String(error),
+			);
+
+			return new InfluxV1ConfigModel();
 		}
 	}
 }
