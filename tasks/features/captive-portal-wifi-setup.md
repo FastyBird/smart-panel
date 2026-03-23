@@ -23,13 +23,13 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 ### How it works (user perspective)
 
 1. User flashes SD card and powers on the Pi
-2. After ~30 seconds, a WiFi network `SmartPanel-Setup` appears (open or with a simple password)
-3. User connects their phone/laptop to `SmartPanel-Setup`
+2. After ~30 seconds, a WiFi network `SmartPanel-XXXX` appears (last 4 of MAC, WPA2 password: `smartpanel`)
+3. User connects their phone/laptop to `SmartPanel-XXXX`
 4. A setup page opens automatically (captive portal detection)
 5. User fills in: WiFi network, password, country code
-6. Optionally: hostname, timezone, admin password
+6. Optionally: hostname, timezone
 7. User clicks "Save & Connect"
-8. Pi disables AP, connects to user's WiFi, reboots
+8. Pi disables AP, connects to user's WiFi
 9. Smart Panel is accessible at `http://smart-panel.local:3000`
 
 ### Existing tools on Raspberry Pi OS
