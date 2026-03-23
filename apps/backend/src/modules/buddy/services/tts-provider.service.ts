@@ -136,8 +136,6 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
-		const ttsConfig = this.getConfig();
-
 		let result: { buffer: Buffer; contentType: string };
 
 		try {
@@ -145,12 +143,12 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 				provider.synthesize(text, {
 					language: this.getSystemLanguage(),
 				}),
-				ttsConfig.ttsTimeoutMs,
+				config.ttsTimeoutMs,
 				new BuddyTtsProviderTimeoutException(),
 			);
 		} catch (error) {
 			if (error instanceof BuddyTtsProviderTimeoutException) {
-				this.logger.error(`${provider.getName()} TTS provider timeout after ${ttsConfig.ttsTimeoutMs}ms`);
+				this.logger.error(`${provider.getName()} TTS provider timeout after ${config.ttsTimeoutMs}ms`);
 
 				throw error;
 			}
