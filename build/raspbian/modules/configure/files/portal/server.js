@@ -267,6 +267,7 @@ function connectToWifiAsync(ssid, password, hostname) {
 			execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
 		} catch (err2) {
 			console.error(`WiFi connection failed: ${err2.message}`);
+			connectInProgress = false;
 			reactivateHotspot();
 			return;
 		}
