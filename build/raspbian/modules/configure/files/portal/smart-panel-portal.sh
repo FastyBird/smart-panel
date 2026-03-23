@@ -76,9 +76,10 @@ for i in $(seq 1 15); do
 	sleep 1
 done
 
-# Get MAC address for unique SSID suffix
+# Get MAC address for unique SSID suffix (last 4 hex characters)
 MAC_ADDR=$(cat /sys/class/net/wlan0/address 2>/dev/null || echo "00:00:00:00:00:00")
-MAC_SUFFIX=$(echo "${MAC_ADDR}" | tr -d ':' | tail -c 5 | tr '[:lower:]' '[:upper:]')
+MAC_NO_COLONS=$(echo "${MAC_ADDR}" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+MAC_SUFFIX="${MAC_NO_COLONS: -4}"
 AP_SSID="SmartPanel-${MAC_SUFFIX}"
 AP_PASSWORD="smartpanel"
 

@@ -124,8 +124,12 @@ function getStatus() {
  * Validate and sanitize inputs to prevent command injection.
  * Each field is validated against a strict allowlist pattern.
  */
-function validateInputs(country, hostname, timezone) {
+function validateInputs(country, hostname, timezone, password) {
 	const errors = [];
+
+	if (password && password.length < 8) {
+		errors.push('WiFi password must be at least 8 characters');
+	}
 
 	if (country && !/^[A-Z]{2}$/.test(country)) {
 		errors.push('Country code must be exactly 2 uppercase letters (e.g., US, DE)');
@@ -162,7 +166,7 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 	return new Promise((resolve) => {
 		try {
 			// Validate inputs before using them in shell commands
-			const validationErrors = validateInputs(country, hostname, timezone);
+			const validationErrors = validateInputs(country, hostname, timezone, password);
 			if (validationErrors.length > 0) {
 				resolve({
 					success: false,
@@ -398,7 +402,7 @@ const server = http.createServer(async (req, res) => {
 			const sanitizedHostname = typeof hostname === 'string' ? hostname : '';
 			const sanitizedTimezone = typeof timezone === 'string' ? timezone : '';
 
-			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone);
+			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone, password);
 			if (validationErrors.length > 0) {
 				sendJson(res, 400, { success: false, message: validationErrors.join('; ') });
 				return;
