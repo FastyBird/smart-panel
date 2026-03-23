@@ -99,8 +99,15 @@ export class ReTerminalService implements IManagedPluginService {
 	}
 
 	private startPolling(): void {
-		const config = this.configService.getPluginConfig<ReTerminalConfigModel>(DEVICES_RETERMINAL_PLUGIN_NAME);
-		const interval = config?.polling?.interval ?? DEFAULT_SENSOR_POLLING_INTERVAL_MS;
+		let interval = DEFAULT_SENSOR_POLLING_INTERVAL_MS;
+
+		try {
+			const config = this.configService.getPluginConfig<ReTerminalConfigModel>(DEVICES_RETERMINAL_PLUGIN_NAME);
+
+			interval = config?.polling?.interval ?? DEFAULT_SENSOR_POLLING_INTERVAL_MS;
+		} catch {
+			this.logger.debug('No plugin config found, using default polling interval');
+		}
 
 		this.pollingInterval = setInterval(() => {
 			if (!this.device || !this.detectedVariant) return;
