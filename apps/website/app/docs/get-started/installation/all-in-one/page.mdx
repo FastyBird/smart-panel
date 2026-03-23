@@ -179,6 +179,12 @@ If you prefer full control, follow these detailed steps.
 		Make sure you install InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
 	</Callout>
 
+	<Callout type="info">
+		InfluxDB is fully optional. Without it, Smart Panel uses in-memory storage — device values and real-time
+		updates work normally, but historical data (charts, timeseries) is not persisted across restarts.
+		You can install InfluxDB later without reinstalling Smart Panel.
+	</Callout>
+
 	## Allow Reboot & Power Off
 
 	To let the backend control system power:
