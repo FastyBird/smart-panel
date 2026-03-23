@@ -47,9 +47,6 @@ export const RETERMINAL_DM_CHANNEL_IDENTIFIERS = {
 	DEVICE_INFORMATION: 'device_information',
 	STA_LED: 'sta_led',
 	TEMPERATURE: 'temperature',
-	// Digital I/O (DI1-DI4, DO1-DO4)
-	DI_PREFIX: 'di',
-	DO_PREFIX: 'do',
 } as const;
 
 // ============================================================================
@@ -92,7 +89,6 @@ export interface ReTerminalPropertyBinding {
 	dataType: DataTypeType;
 	permissions: PermissionType[];
 	name: string;
-	unit?: string;
 	format?: string | string[];
 	min?: number;
 	max?: number;
@@ -255,7 +251,6 @@ export const LIGHT_SENSOR_BINDINGS: ReTerminalPropertyBinding[] = [
 		dataType: DataTypeType.FLOAT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'Illuminance',
-		unit: 'lx',
 		min: 0,
 		max: 65535,
 	},
@@ -273,7 +268,6 @@ export const ACCELEROMETER_BINDINGS: ReTerminalPropertyBinding[] = [
 		dataType: DataTypeType.FLOAT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'Acceleration X',
-		unit: 'g',
 		min: -16,
 		max: 16,
 		step: 0.001,
@@ -285,7 +279,6 @@ export const ACCELEROMETER_BINDINGS: ReTerminalPropertyBinding[] = [
 		dataType: DataTypeType.FLOAT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'Acceleration Y',
-		unit: 'g',
 		min: -16,
 		max: 16,
 		step: 0.001,
@@ -297,7 +290,6 @@ export const ACCELEROMETER_BINDINGS: ReTerminalPropertyBinding[] = [
 		dataType: DataTypeType.FLOAT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'Acceleration Z',
-		unit: 'g',
 		min: -16,
 		max: 16,
 		step: 0.001,
@@ -326,7 +318,6 @@ export const TEMPERATURE_BINDINGS: ReTerminalPropertyBinding[] = [
 		dataType: DataTypeType.FLOAT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'CPU Temperature',
-		unit: '°C',
 		min: -40,
 		max: 125,
 		step: 0.1,
