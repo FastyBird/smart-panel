@@ -108,3 +108,27 @@ plugins:
 Additional plugin configurations may be added here as needed.
 
 You must restart the backend after modifying the configuration file for changes to take effect.
+
+---
+
+## Storage
+
+Controls time-series data storage for device history, energy metrics, and system stats.
+
+Smart Panel supports two storage backends. Configure them in the admin interface under
+**Settings → Storage Module**.
+
+| Setting | Description | Default |
+|---------|------------|---------|
+| Primary Storage | Main storage backend for time-series data | `influxdb-v1-storage-plugin` |
+| Fallback Storage | Used when primary is unavailable | `memory-storage-plugin` |
+
+### Available Plugins
+
+- **InfluxDB v1** (`influxdb-v1-storage-plugin`) — Persistent time-series database. Requires InfluxDB 1.8 installed separately.
+- **In-Memory** (`memory-storage-plugin`) — Stores data in RAM. Fast but not persisted across restarts. Used automatically as fallback when InfluxDB is unavailable.
+
+<Callout type="info">
+	If InfluxDB is not installed, Smart Panel silently falls back to in-memory storage. Device control
+	and real-time updates work normally — only historical charts and timeseries data are affected.
+</Callout>

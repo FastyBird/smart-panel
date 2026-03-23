@@ -182,7 +182,7 @@ For environments where npm is not available or you prefer a self-contained insta
 	Create the service file:
 
 	```bash copy
-	sudo nano /etc/systemd/system/smart-panel-backend.service
+	sudo nano /etc/systemd/system/smart-panel.service
 	```
 
 	Paste this configuration:
@@ -206,8 +206,8 @@ For environments where npm is not available or you prefer a self-contained insta
 	Enable and start the service:
 
 	```bash copy
-	sudo systemctl enable smart-panel-backend
-	sudo systemctl start smart-panel-backend
+	sudo systemctl enable smart-panel
+	sudo systemctl start smart-panel
 	```
 </Steps>
 
@@ -228,6 +228,12 @@ sudo systemctl start influxdb
 
 <Callout type="warning">
 	Make sure you install InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
+</Callout>
+
+<Callout type="info">
+	InfluxDB is fully optional. Without it, Smart Panel uses in-memory storage — device values and real-time
+	updates work normally, but historical data (charts, timeseries) is not persisted across restarts.
+	You can install InfluxDB later without reinstalling Smart Panel.
 </Callout>
 
 Then configure the connection in your Smart Panel environment:

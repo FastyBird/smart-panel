@@ -179,6 +179,12 @@ If you prefer full control, follow these detailed steps.
 		Make sure you install InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
 	</Callout>
 
+	<Callout type="info">
+		InfluxDB is fully optional. Without it, Smart Panel uses in-memory storage — device values and real-time
+		updates work normally, but historical data (charts, timeseries) is not persisted across restarts.
+		You can install InfluxDB later without reinstalling Smart Panel.
+	</Callout>
+
 	## Allow Reboot & Power Off
 
 	To let the backend control system power:
@@ -257,7 +263,7 @@ If you prefer full control, follow these detailed steps.
 	## Set Up Backend Service
 
 	```bash copy
-	sudo nano /etc/systemd/system/smart-panel-backend.service
+	sudo nano /etc/systemd/system/smart-panel.service
 	```
 
 	```ini copy
@@ -277,8 +283,8 @@ If you prefer full control, follow these detailed steps.
 	```
 
 	```bash copy
-	sudo systemctl enable smart-panel-backend
-	sudo systemctl start smart-panel-backend
+	sudo systemctl enable smart-panel
+	sudo systemctl start smart-panel
 	```
 
 	<Callout type="info">
@@ -295,7 +301,7 @@ If you prefer full control, follow these detailed steps.
 	[Unit]
 	Description=Smart Panel Display App
 	After=network.target
-	Requires=smart-panel-backend.service
+	Requires=smart-panel.service
 
 	[Service]
 	User=pi
@@ -330,7 +336,7 @@ If you prefer full control, follow these detailed steps.
 ### Verify Both Services
 
 ```bash copy
-sudo systemctl status smart-panel-backend
+sudo systemctl status smart-panel
 sudo systemctl status smart-panel-display
 ```
 
@@ -348,7 +354,7 @@ http://smart-panel.local:3000
 
 ```bash copy
 # Backend logs
-sudo journalctl -u smart-panel-backend -f
+sudo journalctl -u smart-panel -f
 
 # Display logs
 sudo journalctl -u smart-panel-display -f
@@ -358,14 +364,14 @@ sudo journalctl -u smart-panel-display -f
 
 ```bash copy
 # Restart everything
-sudo systemctl restart smart-panel-backend
+sudo systemctl restart smart-panel
 sudo systemctl restart smart-panel-display
 
 # Stop the display only
 sudo systemctl stop smart-panel-display
 
 # Check status
-sudo systemctl status smart-panel-backend smart-panel-display
+sudo systemctl status smart-panel smart-panel-display
 ```
 
 ---
@@ -382,7 +388,7 @@ sudo systemctl status smart-panel-backend smart-panel-display
 
 1. Check Node.js version: `node --version` (must be 24+)
 2. Verify the database exists: `ls /var/smart-panel/`
-3. Check backend logs: `sudo journalctl -u smart-panel-backend -n 50`
+3. Check backend logs: `sudo journalctl -u smart-panel -n 50`
 
 ### Display can't connect to backend
 
