@@ -165,6 +165,13 @@ export class ReTerminalButtonService {
 			clearTimeout(state.longPressTimer);
 		}
 
+		// Cancel pending single-press timer from a previous release so it doesn't
+		// fire a spurious 'press' event during a double-press gesture
+		if (state.doublePressTimer) {
+			clearTimeout(state.doublePressTimer);
+			state.doublePressTimer = null;
+		}
+
 		// Start long press detection timer
 		state.longPressTimer = setTimeout(() => {
 			void this.emitPropertyValue(channelIdentifier, 'event', 'long_press');
