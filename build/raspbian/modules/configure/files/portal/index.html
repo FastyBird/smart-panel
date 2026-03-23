@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Smart Panel Setup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--primary:#3b82f6;--primary-hover:#2563eb;--text:#f1f5f9;--text-dim:#94a3b8;--success:#22c55e;--error:#ef4444;--radius:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.container{width:100%;max-width:420px}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:24px;font-weight:700;letter-spacing:-0.5px}
+.logo p{color:var(--text-dim);font-size:14px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.card h2{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--text-dim);margin-bottom:6px}
+.field select,.field input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
+.field select:focus,.field input:focus{border-color:var(--primary)}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%2394a3b8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.row{display:flex;gap:12px}
+.row .field{flex:1}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:8px 12px;font-size:13px;width:auto}
+.btn-secondary:hover{border-color:var(--text-dim)}
+.scan-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.scan-header h2{flex:1}
+.scan-btn{margin-bottom:16px}
+.network-list{max-height:200px;overflow-y:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:8px}
+.network-item{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border)}
+.network-item:last-child{border-bottom:none}
+.network-item:hover{background:rgba(59,130,246,.1)}
+.network-item.selected{background:rgba(59,130,246,.15);border-left:3px solid var(--primary)}
+.network-item .ssid{font-size:14px;font-weight:500}
+.network-item .meta{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+.signal-bars{display:inline-flex;gap:1px;align-items:flex-end;height:12px}
+.signal-bars span{width:3px;background:var(--border);border-radius:1px}
+.signal-bars span.active{background:var(--primary)}
+.signal-bars span:nth-child(1){height:3px}
+.signal-bars span:nth-child(2){height:6px}
+.signal-bars span:nth-child(3){height:9px}
+.signal-bars span:nth-child(4){height:12px}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.result{text-align:center;padding:32px 16px}
+.result-icon{font-size:48px;margin-bottom:16px}
+.result h2{font-size:20px;margin-bottom:8px}
+.result p{color:var(--text-dim);font-size:14px;line-height:1.5;margin-bottom:8px}
+.result a{color:var(--primary);text-decoration:none;font-weight:500;word-break:break-all}
+.result a:hover{text-decoration:underline}
+.result .ip-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin:16px 0;font-family:monospace;font-size:15px}
+.error-msg{color:var(--error);font-size:13px;margin-top:8px}
+.optional-tag{font-size:11px;color:var(--text-dim);font-weight:400;margin-left:4px}
+.empty-state{text-align:center;padding:24px;color:var(--text-dim);font-size:14px}
+</style>
+</head>
+<body>
+<div class="container">
+	<!-- Setup Form -->
+	<div id="setup-view">
+		<div class="logo">
+			<h1>Smart Panel</h1>
+			<p>WiFi Setup</p>
+		</div>
+
+		<!-- WiFi Network Selection -->
+		<div class="card">
+			<div class="scan-header">
+				<h2>WiFi Network</h2>
+				<button class="btn btn-secondary scan-btn" id="scan-btn" onclick="scanNetworks()">
+					Scan
+				</button>
+			</div>
+
+			<div id="network-list" class="network-list hidden"></div>
+			<div id="networks-empty" class="empty-state">
+				Click "Scan" to find available networks
+			</div>
+			<div id="networks-loading" class="empty-state hidden">
+				<div class="spinner" style="margin:0 auto 8px"></div>
+				Scanning...
+			</div>
+
+			<div class="field" id="manual-ssid-field" style="margin-top:12px">
+				<label>Network name (SSID)</label>
+				<input type="text" id="ssid" placeholder="Enter network name" autocomplete="off" autocapitalize="off">
+			</div>
+
+			<div class="field">
+				<label>Password <span class="optional-tag">Leave empty for open networks</span></label>
+				<input type="password" id="password" placeholder="Enter WiFi password" autocomplete="off">
+			</div>
+
+			<div class="field">
+				<label>Country code</label>
+				<select id="country">
+					<optgroup label="Americas">
+						<option value="US">United States (US)</option>
+						<option value="CA">Canada (CA)</option>
+						<option value="MX">Mexico (MX)</option>
+						<option value="BR">Brazil (BR)</option>
+						<option value="AR">Argentina (AR)</option>
+						<option value="CL">Chile (CL)</option>
+						<option value="CO">Colombia (CO)</option>
+						<option value="PE">Peru (PE)</option>
+						<option value="CR">Costa Rica (CR)</option>
+						<option value="DO">Dominican Republic (DO)</option>
+						<option value="EC">Ecuador (EC)</option>
+						<option value="GT">Guatemala (GT)</option>
+						<option value="PA">Panama (PA)</option>
+						<option value="UY">Uruguay (UY)</option>
+						<option value="VE">Venezuela (VE)</option>
+					</optgroup>
+					<optgroup label="Europe">
+						<option value="GB">United Kingdom (GB)</option>
+						<option value="DE">Germany (DE)</option>
+						<option value="FR">France (FR)</option>
+						<option value="IT">Italy (IT)</option>
+						<option value="ES">Spain (ES)</option>
+						<option value="PT">Portugal (PT)</option>
+						<option value="NL">Netherlands (NL)</option>
+						<option value="BE">Belgium (BE)</option>
+						<option value="AT">Austria (AT)</option>
+						<option value="CH">Switzerland (CH)</option>
+						<option value="CZ">Czech Republic (CZ)</option>
+						<option value="SK">Slovakia (SK)</option>
+						<option value="PL">Poland (PL)</option>
+						<option value="SE">Sweden (SE)</option>
+						<option value="NO">Norway (NO)</option>
+						<option value="DK">Denmark (DK)</option>
+						<option value="FI">Finland (FI)</option>
+						<option value="IE">Ireland (IE)</option>
+						<option value="HU">Hungary (HU)</option>
+						<option value="RO">Romania (RO)</option>
+						<option value="BG">Bulgaria (BG)</option>
+						<option value="HR">Croatia (HR)</option>
+						<option value="SI">Slovenia (SI)</option>
+						<option value="RS">Serbia (RS)</option>
+						<option value="BA">Bosnia and Herzegovina (BA)</option>
+						<option value="GR">Greece (GR)</option>
+						<option value="CY">Cyprus (CY)</option>
+						<option value="EE">Estonia (EE)</option>
+						<option value="LV">Latvia (LV)</option>
+						<option value="LT">Lithuania (LT)</option>
+						<option value="LU">Luxembourg (LU)</option>
+						<option value="IS">Iceland (IS)</option>
+						<option value="UA">Ukraine (UA)</option>
+						<option value="RU">Russia (RU)</option>
+						<option value="TR">Turkey (TR)</option>
+					</optgroup>
+					<optgroup label="Asia & Pacific">
+						<option value="AU">Australia (AU)</option>
+						<option value="NZ">New Zealand (NZ)</option>
+						<option value="JP">Japan (JP)</option>
+						<option value="KR">South Korea (KR)</option>
+						<option value="CN">China (CN)</option>
+						<option value="TW">Taiwan (TW)</option>
+						<option value="HK">Hong Kong (HK)</option>
+						<option value="SG">Singapore (SG)</option>
+						<option value="IN">India (IN)</option>
+						<option value="TH">Thailand (TH)</option>
+						<option value="MY">Malaysia (MY)</option>
+						<option value="PH">Philippines (PH)</option>
+						<option value="ID">Indonesia (ID)</option>
+						<option value="VN">Vietnam (VN)</option>
+						<option value="PK">Pakistan (PK)</option>
+						<option value="BD">Bangladesh (BD)</option>
+						<option value="LK">Sri Lanka (LK)</option>
+					</optgroup>
+					<optgroup label="Middle East & Africa">
+						<option value="IL">Israel (IL)</option>
+						<option value="AE">United Arab Emirates (AE)</option>
+						<option value="SA">Saudi Arabia (SA)</option>
+						<option value="QA">Qatar (QA)</option>
+						<option value="KW">Kuwait (KW)</option>
+						<option value="EG">Egypt (EG)</option>
+						<option value="ZA">South Africa (ZA)</option>
+						<option value="MA">Morocco (MA)</option>
+						<option value="NG">Nigeria (NG)</option>
+						<option value="KE">Kenya (KE)</option>
+					</optgroup>
+				</select>
+			</div>
+		</div>
+
+		<!-- Optional Settings -->
+		<div class="card">
+			<h2>Device Settings <span class="optional-tag">Optional</span></h2>
+
+			<div class="field">
+				<label>Hostname</label>
+				<input type="text" id="hostname" placeholder="smart-panel" autocomplete="off" autocapitalize="off" pattern="[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?">
+			</div>
+
+			<div class="field">
+				<label>Timezone</label>
+				<select id="timezone">
+					<option value="">Use default</option>
+					<option value="America/New_York">Eastern (New York)</option>
+					<option value="America/Chicago">Central (Chicago)</option>
+					<option value="America/Denver">Mountain (Denver)</option>
+					<option value="America/Los_Angeles">Pacific (Los Angeles)</option>
+					<option value="Europe/London">London</option>
+					<option value="Europe/Berlin">Berlin</option>
+					<option value="Europe/Paris">Paris</option>
+					<option value="Europe/Prague">Prague</option>
+					<option value="Europe/Warsaw">Warsaw</option>
+					<option value="Europe/Rome">Rome</option>
+					<option value="Europe/Madrid">Madrid</option>
+					<option value="Europe/Amsterdam">Amsterdam</option>
+					<option value="Europe/Stockholm">Stockholm</option>
+					<option value="Europe/Helsinki">Helsinki</option>
+					<option value="Asia/Tokyo">Tokyo</option>
+					<option value="Asia/Seoul">Seoul</option>
+					<option value="Asia/Shanghai">Shanghai</option>
+					<option value="Asia/Kolkata">Kolkata</option>
+					<option value="Australia/Sydney">Sydney</option>
+					<option value="Pacific/Auckland">Auckland</option>
+				</select>
+			</div>
+		</div>
+
+		<div id="error-msg" class="error-msg hidden"></div>
+
+		<button class="btn btn-primary" id="connect-btn" onclick="connectWifi()">
+			Save &amp; Connect
+		</button>
+	</div>
+
+	<!-- Connecting State -->
+	<div id="connecting-view" class="hidden">
+		<div class="result">
+			<div class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto 24px"></div>
+			<h2>Connecting...</h2>
+			<p>Connecting to <strong id="connecting-ssid"></strong>.<br>This may take up to 30 seconds.</p>
+			<p style="margin-top:16px;font-size:12px;color:var(--text-dim)">
+				Your device will disconnect from the Smart Panel hotspot.<br>
+				Please reconnect to your home WiFi network.
+			</p>
+		</div>
+	</div>
+
+	<!-- Success State -->
+	<div id="success-view" class="hidden">
+		<div class="result">
+			<div class="result-icon">&#10003;</div>
+			<h2 style="color:var(--success)">Connecting...</h2>
+			<p>Smart Panel is now connecting to your WiFi network. This may take up to 30 seconds.</p>
+			<div class="ip-box" id="success-url"></div>
+			<p>
+				Connect to your home WiFi and open:<br>
+				<a id="success-link" href="#" target="_blank"></a>
+			</p>
+			<p style="margin-top:12px;font-size:12px;color:var(--text-dim)">
+				If the device doesn't appear, the hotspot will restart automatically after 5 minutes.
+			</p>
+		</div>
+	</div>
+
+	<!-- Connection Pending State (fetch dropped — AP went down, outcome unknown) -->
+	<div id="pending-view" class="hidden">
+		<div class="result">
+			<div class="result-icon">&#8230;</div>
+			<h2>Connection In Progress</h2>
+			<p>The setup hotspot has been deactivated while Smart Panel attempts to connect to your WiFi network.</p>
+			<p style="margin-top:8px">If it succeeds, you can reach it at:</p>
+			<div class="ip-box" id="pending-url"></div>
+			<p style="margin-top:8px">
+				Connect to your home WiFi and open:<br>
+				<a id="pending-link" href="#" target="_blank"></a>
+			</p>
+			<p style="margin-top:16px;font-size:12px;color:var(--text-dim)">
+				If the device doesn't appear, power-cycle it to restart the setup process.
+			</p>
+		</div>
+	</div>
+
+	<!-- Error State -->
+	<div id="error-view" class="hidden">
+		<div class="result">
+			<div class="result-icon">&#10007;</div>
+			<h2 style="color:var(--error)">Connection Failed</h2>
+			<p id="error-detail"></p>
+			<button class="btn btn-primary" onclick="showSetup()" style="margin-top:24px">
+				Try Again
+			</button>
+		</div>
+	</div>
+</div>
+
+<script>
+(function() {
+	'use strict';
+
+	var selectedSsid = '';
+
+	function $(id) { return document.getElementById(id); }
+
+	function showView(name) {
+		['setup-view', 'connecting-view', 'success-view', 'pending-view', 'error-view'].forEach(function(v) {
+			$(v).classList.toggle('hidden', v !== name + '-view');
+		});
+	}
+
+	window.showSetup = function() {
+		showView('setup');
+	};
+
+	window.scanNetworks = function() {
+		var btn = $('scan-btn');
+		var list = $('network-list');
+		var empty = $('networks-empty');
+		var loading = $('networks-loading');
+
+		btn.disabled = true;
+		btn.textContent = 'Scanning...';
+		list.classList.add('hidden');
+		empty.classList.add('hidden');
+		loading.classList.remove('hidden');
+
+		fetch('/api/scan')
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				loading.classList.add('hidden');
+				btn.disabled = false;
+				btn.textContent = 'Scan';
+
+				if (!data.networks || data.networks.length === 0) {
+					empty.textContent = 'No networks found. Try again.';
+					empty.classList.remove('hidden');
+					return;
+				}
+
+				list.innerHTML = '';
+				data.networks.forEach(function(net) {
+					var item = document.createElement('div');
+					item.className = 'network-item';
+					if (net.ssid === selectedSsid) item.className += ' selected';
+
+					var bars = signalBars(net.signal);
+					item.innerHTML =
+						'<span class="ssid">' + escHtml(net.ssid) + '</span>' +
+						'<span class="meta">' + bars +
+						(net.security ? ' &#128274;' : '') + '</span>';
+
+					item.onclick = function() {
+						selectedSsid = net.ssid;
+						$('ssid').value = net.ssid;
+						list.querySelectorAll('.network-item').forEach(function(el) {
+							el.classList.remove('selected');
+						});
+						item.classList.add('selected');
+					};
+
+					list.appendChild(item);
+				});
+
+				list.classList.remove('hidden');
+			})
+			.catch(function() {
+				loading.classList.add('hidden');
+				btn.disabled = false;
+				btn.textContent = 'Scan';
+				empty.textContent = 'Scan failed. Try again.';
+				empty.classList.remove('hidden');
+			});
+	};
+
+	function signalBars(signal) {
+		var level = signal > 75 ? 4 : signal > 50 ? 3 : signal > 25 ? 2 : 1;
+		var html = '<span class="signal-bars">';
+		for (var i = 1; i <= 4; i++) {
+			html += '<span' + (i <= level ? ' class="active"' : '') + '></span>';
+		}
+		return html + '</span>';
+	}
+
+	function escHtml(str) {
+		var div = document.createElement('div');
+		div.textContent = str;
+		return div.innerHTML;
+	}
+
+	window.connectWifi = function() {
+		var ssid = $('ssid').value.trim();
+		var password = $('password').value;
+		var country = $('country').value;
+		var hostname = $('hostname').value.trim();
+		var timezone = $('timezone').value;
+
+		// Validation
+		if (!ssid) {
+			showError('Please select or enter a WiFi network name.');
+			return;
+		}
+		if (new Blob([ssid]).size > 32) {
+			showError('WiFi network name is too long (max 32 bytes).');
+			return;
+		}
+		if (password && (password.length < 8 || password.length > 63)) {
+			showError('WiFi password must be 8–63 characters (or leave empty for open networks).');
+			return;
+		}
+		if (hostname && !/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(hostname)) {
+			showError('Hostname must start and end with a letter or number, and can contain hyphens (max 63 chars).');
+			return;
+		}
+
+		hideError();
+		$('connecting-ssid').textContent = ssid;
+		showView('connecting');
+
+		var body = JSON.stringify({
+			ssid: ssid,
+			password: password,
+			country: country,
+			hostname: hostname || undefined,
+			timezone: timezone || undefined
+		});
+
+		fetch('/api/connect', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: body
+		})
+		.then(function(r) { return r.json(); })
+		.then(function(data) {
+			if (data.success) {
+				// Response arrives before AP goes down. The actual WiFi connection
+				// happens asynchronously on the server after this response.
+				var urlText = data.url || ('http://' + (data.hostname || 'smart-panel') + '.local:3000');
+				$('success-url').textContent = urlText;
+				$('success-link').textContent = urlText;
+				$('success-link').href = urlText;
+				showView('success');
+			} else {
+				$('error-detail').textContent = data.message || 'Could not connect to the WiFi network.';
+				showView('error');
+			}
+		})
+		.catch(function() {
+			// Safety net: if the response raced with the AP going down,
+			// show a pending view with the expected URL.
+			var hn = hostname || 'smart-panel';
+			var urlText = 'http://' + hn + '.local:3000';
+			$('pending-url').textContent = urlText;
+			$('pending-link').textContent = urlText;
+			$('pending-link').href = urlText;
+			showView('pending');
+		});
+	};
+
+	function showError(msg) {
+		var el = $('error-msg');
+		el.textContent = msg;
+		el.classList.remove('hidden');
+	}
+
+	function hideError() {
+		$('error-msg').classList.add('hidden');
+	}
+
+	// Auto-scan on page load
+	setTimeout(function() { window.scanNetworks(); }, 500);
+})();
+</script>
+</body>
+</html>

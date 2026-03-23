@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -23,13 +23,13 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 ### How it works (user perspective)
 
 1. User flashes SD card and powers on the Pi
-2. After ~30 seconds, a WiFi network `SmartPanel-Setup` appears (open or with a simple password)
-3. User connects their phone/laptop to `SmartPanel-Setup`
+2. After ~30 seconds, a WiFi network `SmartPanel-XXXX` appears (last 4 of MAC, WPA2 password: `smartpanel`)
+3. User connects their phone/laptop to `SmartPanel-XXXX`
 4. A setup page opens automatically (captive portal detection)
 5. User fills in: WiFi network, password, country code
-6. Optionally: hostname, timezone, admin password
+6. Optionally: hostname, timezone
 7. User clicks "Save & Connect"
-8. Pi disables AP, connects to user's WiFi, reboots
+8. Pi disables AP, connects to user's WiFi
 9. Smart Panel is accessible at `http://smart-panel.local:3000`
 
 ### Existing tools on Raspberry Pi OS
@@ -72,45 +72,45 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 
 ### AP Mode
 
-- [ ] On first boot with no WiFi configured and no `smart-panel.conf`, the Pi starts a WiFi AP named `SmartPanel-XXXX` (last 4 of MAC) after first-boot completes
-- [ ] AP uses WPA2 with a default password printed on the boot log: `smartpanel`
-- [ ] AP assigns IPs via DHCP (192.168.4.x range)
-- [ ] All DNS queries redirect to the Pi's IP (captive portal detection)
-- [ ] AP mode is indicated in system status API and admin UI
+- [x] On first boot with no WiFi configured and no `smart-panel.conf`, the Pi starts a WiFi AP named `SmartPanel-XXXX` (last 4 of MAC) after first-boot completes
+- [x] AP uses WPA2 with a default password printed on the boot log: `smartpanel`
+- [x] AP assigns IPs via DHCP (192.168.4.x range)
+- [x] All DNS queries redirect to the Pi's IP (captive portal detection)
+- [ ] AP mode is indicated in system status API and admin UI (deferred — backend integration)
 
 ### Captive Portal Web Page
 
-- [ ] A lightweight HTTP server runs on port 80 during AP mode
-- [ ] The page is mobile-friendly (responsive, works on phone screens)
-- [ ] Captive portal auto-detection works on iOS, Android, Windows, macOS
-- [ ] Page shows: WiFi network dropdown (scan results), password field, country selector
-- [ ] Optional fields: hostname, timezone
-- [ ] "Scan" button refreshes available WiFi networks
-- [ ] "Save & Connect" validates inputs, saves config, and initiates connection
-- [ ] Loading/progress indicator while connecting
-- [ ] Success page with the new IP address and `http://<hostname>.local:3000` link
-- [ ] Error page if connection fails, with option to retry
+- [x] A lightweight HTTP server runs on port 80 during AP mode
+- [x] The page is mobile-friendly (responsive, works on phone screens)
+- [x] Captive portal auto-detection works on iOS, Android, Windows, macOS
+- [x] Page shows: WiFi network dropdown (scan results), password field, country selector
+- [x] Optional fields: hostname, timezone
+- [x] "Scan" button refreshes available WiFi networks
+- [x] "Save & Connect" validates inputs, saves config, and initiates connection
+- [x] Loading/progress indicator while connecting
+- [x] Success page with the new IP address and `http://<hostname>.local:3000` link
+- [x] Error page if connection fails, with option to retry
 
 ### Mode Switching
 
-- [ ] After successful WiFi connection, AP is disabled
-- [ ] Smart Panel backend starts normally on the WiFi network
-- [ ] A marker file `/var/lib/smart-panel/.wifi-configured` prevents AP from starting on subsequent boots
-- [ ] Factory reset removes the marker and re-enables AP mode on next boot
+- [x] After successful WiFi connection, AP is disabled
+- [x] Smart Panel backend starts normally on the WiFi network
+- [x] A marker file `/var/lib/smart-panel/.wifi-configured` prevents AP from starting on subsequent boots
+- [x] Factory reset removes the marker and re-enables AP mode on next boot
 
 ### Fallback
 
-- [ ] If the configured WiFi network is unavailable for 5 minutes after boot, AP mode re-activates
-- [ ] User can reconfigure WiFi through the portal
-- [ ] If `smart-panel.conf` exists on the boot partition, skip AP mode entirely (existing flow)
+- [x] If the configured WiFi network is unavailable for 5 minutes after boot, AP mode re-activates
+- [x] User can reconfigure WiFi through the portal
+- [x] If `smart-panel.conf` exists on the boot partition, skip AP mode entirely (existing flow)
 
 ### Integration
 
-- [ ] The captive portal service is a systemd service: `smart-panel-portal.service`
-- [ ] It runs before `smart-panel.service` (the backend)
-- [ ] Once WiFi is connected, it stops itself and the backend starts
-- [ ] System status API exposes current mode: `setup` (AP) / `online` (connected) / `offline`
-- [ ] Admin UI shows a banner when in AP/setup mode
+- [x] The captive portal service is a systemd service: `smart-panel-portal.service`
+- [x] It runs before `smart-panel.service` (the backend)
+- [x] Once WiFi is connected, it stops itself and the backend starts
+- [ ] System status API exposes current mode: `setup` (AP) / `online` (connected) / `offline` (deferred — backend integration)
+- [ ] Admin UI shows a banner when in AP/setup mode (deferred — backend integration)
 
 ## 5. Example scenarios
 
@@ -147,14 +147,14 @@ And user can reconfigure WiFi through the portal
 Given the user created `smart-panel.conf` on the boot partition with WiFi settings
 When the Pi boots
 Then WiFi is configured from the file (existing flow)
-And AP mode is never activated
-And `.wifi-configured` marker is created
+And `apply-boot-config.sh` archives it to `.boot-config.applied`
+And AP mode is never activated (portal checks `.boot-config.applied`)
 
 ### Scenario: Factory reset
 
 Given the user triggers a factory reset from the admin UI
 When the Pi reboots
-Then `.wifi-configured` is deleted
+Then `.wifi-configured` and `.boot-config.applied` are deleted
 And AP mode activates on next boot
 And the user can reconfigure everything
 

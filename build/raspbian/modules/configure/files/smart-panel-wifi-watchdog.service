@@ -1,0 +1,18 @@
+[Unit]
+Description=Smart Panel WiFi Watchdog
+Documentation=https://smart-panel.fastybird.com
+After=network-online.target smart-panel.service
+Wants=network-online.target
+ConditionPathExists=/var/lib/smart-panel/.wifi-configured
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/smart-panel/portal/smart-panel-wifi-watchdog.sh
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-wifi-watchdog
+
+[Install]
+WantedBy=multi-user.target

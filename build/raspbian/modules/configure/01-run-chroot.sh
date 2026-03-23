@@ -127,8 +127,8 @@ cp /tmp/smart-panel-config/smart-panel-firstboot.service /etc/systemd/system/
 # (display-only doesn't have InfluxDB, so we add it conditionally)
 if [ "${HAS_BACKEND}" = true ]; then
 	sed -i \
-		-e 's|^After=network-online.target|After=network-online.target influxdb.service|' \
-		-e 's|^Wants=network-online.target|Wants=network-online.target influxdb.service|' \
+		-e 's|^After=network.target|After=network.target influxdb.service|' \
+		-e 's|^Wants=network.target|Wants=network.target influxdb.service|' \
 		/etc/systemd/system/smart-panel-firstboot.service
 fi
 
@@ -178,6 +178,35 @@ chmod 0440 /etc/sudoers.d/010_smartpanel-nopasswd
 
 # Force password change on first SSH login
 chage -d 0 "${FIRST_USER_NAME}"
+
+# ──────────────────────────────────────────────────────────────
+# Captive portal (all variants — WiFi provisioning on first boot)
+# ──────────────────────────────────────────────────────────────
+
+# Ensure data directory exists for all variants — the portal writes
+# marker files here (.wifi-configured) and apply-boot-config.sh
+# moves the config file here (.boot-config.applied).
+mkdir -p "${DATA_DIR}"
+
+PORTAL_DIR="/opt/smart-panel/portal"
+mkdir -p "${PORTAL_DIR}"
+
+cp /tmp/smart-panel-config/portal/server.js "${PORTAL_DIR}/server.js"
+cp /tmp/smart-panel-config/portal/index.html "${PORTAL_DIR}/index.html"
+cp /tmp/smart-panel-config/portal/smart-panel-portal.sh "${PORTAL_DIR}/smart-panel-portal.sh"
+cp /tmp/smart-panel-config/portal/smart-panel-wifi-watchdog.sh "${PORTAL_DIR}/smart-panel-wifi-watchdog.sh"
+chmod +x "${PORTAL_DIR}/smart-panel-portal.sh"
+chmod +x "${PORTAL_DIR}/smart-panel-wifi-watchdog.sh"
+
+# Install portal systemd services
+cp /tmp/smart-panel-config/smart-panel-portal.service /etc/systemd/system/
+cp /tmp/smart-panel-config/smart-panel-wifi-watchdog.service /etc/systemd/system/
+
+# Enable portal service (it self-exits if WiFi is already configured)
+systemctl enable smart-panel-portal.service
+systemctl enable smart-panel-wifi-watchdog.service
+
+echo "Captive portal configured"
 
 # Install boot config parser — reads /boot/firmware/smart-panel.conf on first boot.
 # Supports: WIFI_SSID, WIFI_PASSWORD, WIFI_COUNTRY, HOSTNAME, TIMEZONE, LOCALE, SSH_ENABLED

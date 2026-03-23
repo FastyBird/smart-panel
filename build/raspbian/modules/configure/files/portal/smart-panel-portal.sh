@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+#
+# Smart Panel Captive Portal Manager
+#
+# Manages the WiFi AP hotspot and captive portal web server.
+# Called by smart-panel-portal.service on boot.
+#
+# Decision logic:
+#   1. If smart-panel.conf was applied (user configured manually) → skip entirely
+#   2. If WiFi was previously configured via the portal → skip
+#   3. If there is any network connection (ethernet or WiFi) → skip
+#   4. Otherwise → start AP mode + captive portal
+#
+set -euo pipefail
+
+PORTAL_DIR="/opt/smart-panel/portal"
+WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
+BOOT_CONFIG_APPLIED="/var/lib/smart-panel/.boot-config.applied"
+LOG_TAG="smart-panel-portal"
+
+log() {
+	echo "$1"
+	logger -t "${LOG_TAG}" "$1"
+}
+
+# ──────────────────────────────────────────────────────────────
+# Check if portal should be skipped
+# ──────────────────────────────────────────────────────────────
+
+# 1. Skip if WiFi was previously configured via the captive portal
+if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
+	log "WiFi previously configured via portal — skipping captive portal"
+	exit 0
+fi
+
+# Helper: ensure .wifi-configured marker exists and watchdog is running.
+# Called whenever we skip the portal with an active network connection.
+ensure_marker_and_watchdog() {
+	if [ ! -f "${WIFI_CONFIGURED_MARKER}" ]; then
+		log "Creating WiFi configured marker and starting watchdog"
+		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
+		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
+		echo "source=${1:-unknown}" >> "${WIFI_CONFIGURED_MARKER}"
+		systemctl start smart-panel.service 2>/dev/null || true
+		systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
+	fi
+}
+
+# 2. If boot config was applied, give NetworkManager time to connect.
+#    Boot config may have set WiFi credentials; NM needs a few seconds
+#    to activate the connection after firstboot applied it.
+if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
+	log "Boot config was applied — waiting for network to come up..."
+	for i in $(seq 1 30); do
+		if nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep -q ':802-11-wireless$' \
+			|| nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'; then
+			log "Network came up after ${i}s — skipping captive portal"
+			ensure_marker_and_watchdog "boot-config"
+			exit 0
+		fi
+		sleep 1
+	done
+	log "Boot config applied but no network after 30s — starting captive portal anyway"
+fi
+
+# 3. Skip if there is any active network connection (ethernet or WiFi)
+#    This covers wired-only setups and pre-existing WiFi connections.
+HAS_NETWORK=false
+
+# Check for active ethernet connection
+ACTIVE_ETH=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^ethernet:connected' | head -1 || true)
+if [ -n "${ACTIVE_ETH}" ]; then
+	HAS_NETWORK=true
+	log "Ethernet connection detected"
+fi
+
+# Check for active WiFi connection (not a hotspot)
+ACTIVE_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
+if [ -n "${ACTIVE_WIFI}" ]; then
+	HAS_NETWORK=true
+	log "WiFi connection detected: ${ACTIVE_WIFI%%:*}"
+fi
+
+if [ "${HAS_NETWORK}" = true ]; then
+	log "Network available — skipping captive portal"
+	ensure_marker_and_watchdog "network-detected"
+	exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────
+# Determine AP SSID (SmartPanel-XXXX based on MAC)
+# ──────────────────────────────────────────────────────────────
+
+# Wait for WiFi adapter
+for i in $(seq 1 15); do
+	if nmcli -t -f TYPE device | grep -q wifi; then
+		break
+	fi
+	sleep 1
+done
+
+# Get MAC address for unique SSID suffix (last 4 hex characters)
+MAC_ADDR=$(cat /sys/class/net/wlan0/address 2>/dev/null || echo "00:00:00:00:00:00")
+MAC_NO_COLONS=$(echo "${MAC_ADDR}" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+MAC_SUFFIX="${MAC_NO_COLONS: -4}"
+AP_SSID="SmartPanel-${MAC_SUFFIX}"
+AP_PASSWORD="smartpanel"
+
+log "Starting captive portal with SSID: ${AP_SSID}"
+
+# ──────────────────────────────────────────────────────────────
+# Ensure WiFi radio is unblocked
+# ──────────────────────────────────────────────────────────────
+rfkill unblock wifi 2>/dev/null || true
+
+# ──────────────────────────────────────────────────────────────
+# Cleanup and DNS config path
+# ──────────────────────────────────────────────────────────────
+
+DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
+
+# Cleanup function — registered BEFORE creating any resources so that
+# an early failure (e.g. nmcli connection up) still cleans up.
+cleanup() {
+	log "Cleaning up captive portal..."
+
+	# Remove DNS redirect config
+	rm -f "${DNSMASQ_CONF}"
+
+	# Deactivate and remove hotspot if still active
+	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+	log "Captive portal stopped"
+}
+
+trap cleanup EXIT
+
+# ──────────────────────────────────────────────────────────────
+# Start AP mode via NetworkManager
+# ──────────────────────────────────────────────────────────────
+
+# Remove any leftover hotspot connection
+nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+# Create the hotspot
+# NetworkManager handles DHCP (dnsmasq) and DNS automatically for shared connections
+if ! nmcli connection add \
+	type wifi \
+	con-name SmartPanel-Hotspot \
+	autoconnect no \
+	ssid "${AP_SSID}" \
+	wifi.mode ap \
+	wifi.band bg \
+	wifi-sec.key-mgmt wpa-psk \
+	wifi-sec.psk "${AP_PASSWORD}" \
+	ipv4.method shared \
+	ipv4.addresses 192.168.4.1/24; then
+	log "ERROR: Failed to create hotspot connection — is wlan0 available?"
+	exit 1
+fi
+
+if ! nmcli connection up SmartPanel-Hotspot; then
+	log "ERROR: Failed to activate hotspot — check NetworkManager logs"
+	exit 1
+fi
+
+log "AP mode active: SSID=${AP_SSID}, IP=192.168.4.1"
+log "Password: ${AP_PASSWORD}"
+
+# ──────────────────────────────────────────────────────────────
+# Configure DNS redirect for captive portal detection
+# ──────────────────────────────────────────────────────────────
+
+# NetworkManager's shared mode starts dnsmasq automatically.
+# We add a redirect rule so all DNS queries resolve to our IP.
+# This triggers captive portal detection on all platforms.
+mkdir -p "$(dirname "${DNSMASQ_CONF}")"
+cat > "${DNSMASQ_CONF}" << 'EOF'
+# Smart Panel captive portal — redirect all DNS to AP IP
+address=/#/192.168.4.1
+EOF
+
+# Restart NetworkManager's dnsmasq to pick up the config
+nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+sleep 1
+nmcli connection up SmartPanel-Hotspot 2>/dev/null
+
+log "DNS redirect configured — all domains resolve to 192.168.4.1"
+
+# ──────────────────────────────────────────────────────────────
+# Start the portal HTTP server
+# ──────────────────────────────────────────────────────────────
+
+# Forward signals to the node process so it can shut down gracefully.
+# After forwarding, re-wait for node to finish before exiting, so
+# cleanup doesn't race with node's own shutdown.
+NODE_PID=""
+
+forward_signal() {
+	if [ -n "${NODE_PID}" ]; then
+		kill -"$1" "${NODE_PID}" 2>/dev/null || true
+	fi
+}
+
+trap 'forward_signal TERM' TERM
+trap 'forward_signal INT' INT
+
+log "Starting portal web server on port 80..."
+
+# Run node in the background and wait for it, so this bash process stays alive
+# and the EXIT trap can run cleanup when the process ends or is signaled.
+# Using 'exec' here would replace bash entirely, making the trap unreachable.
+/usr/local/bin/node "${PORTAL_DIR}/server.js" &
+NODE_PID=$!
+
+# Disable set -e for the wait loop: when a signal interrupts wait, it returns
+# non-zero (128+signal). We need to re-wait for node to actually exit before
+# running cleanup, rather than letting set -e exit immediately.
+set +e
+wait "${NODE_PID}" 2>/dev/null
+# If wait was interrupted by a signal, the trap handler already forwarded it
+# to node. Re-wait so cleanup doesn't race with node's shutdown.
+wait "${NODE_PID}" 2>/dev/null
+NODE_EXIT=$?
+set -e
+
+exit "${NODE_EXIT}"
