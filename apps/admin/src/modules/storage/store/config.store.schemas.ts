@@ -17,10 +17,6 @@ export const StorageConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(STORAGE_MODULE_NAME),
 	primaryStorage: z.string(),
 	fallbackStorage: z.string().optional(),
-	host: z.string(),
-	database: z.string(),
-	username: z.string().optional(),
-	password: z.string().optional(),
 });
 
 // BACKEND API
@@ -31,10 +27,6 @@ export const StorageConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Conf
 		type: z.literal(STORAGE_MODULE_NAME),
 		primaryStorage: z.string().optional(),
 		fallbackStorage: z.string().optional(),
-		host: z.string().optional(),
-		database: z.string().optional(),
-		username: z.string().optional(),
-		password: z.string().optional(),
 	})
 );
 
@@ -43,9 +35,5 @@ export const StorageConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResS
 		type: z.literal(STORAGE_MODULE_NAME),
 		primaryStorage: z.string(),
 		fallbackStorage: z.string().optional(),
-		host: z.string(),
-		database: z.string(),
-		username: z.string().optional(),
-		password: z.string().optional(),
 	})
 );
