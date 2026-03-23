@@ -4,6 +4,7 @@ interface WhereCondition {
 	field: string;
 	operator: string;
 	value: string;
+	orValues?: string[];
 }
 
 interface AggregationField {
@@ -250,6 +251,35 @@ export class InfluxQLParser {
 			const trimmed = part.trim();
 
 			if (/\bOR\b/i.test(trimmed)) {
+				// Handle OR groups like: (field = 'a' OR field = 'b')
+				const stripped = trimmed.replace(/^\(|\)$/g, '').trim();
+				const orParts = stripped.split(/\s+OR\s+/i);
+				const orConditions: Array<{ field: string; operator: string; value: string }> = [];
+
+				for (const orPart of orParts) {
+					const orMatch = orPart.trim().match(/^"?(\w+)"?\s*(=|!=|>=|<=|>|<)\s*(.+)$/);
+
+					if (orMatch) {
+						orConditions.push({
+							field: orMatch[1],
+							operator: orMatch[2],
+							value: orMatch[3].trim(),
+						});
+					}
+				}
+
+				if (
+					orConditions.length > 0 &&
+					orConditions.every((c) => c.field === orConditions[0].field && c.operator === '=')
+				) {
+					conditions.push({
+						field: orConditions[0].field,
+						operator: '=',
+						value: orConditions[0].value,
+						orValues: orConditions.map((c) => c.value.replace(/^'|'$/g, '')),
+					});
+				}
+
 				continue;
 			}
 
@@ -351,22 +381,16 @@ export class InfluxQLParser {
 		const { timeFrom, timeTo } = this.buildTimeRange(parsed.where);
 
 		if (parsed.groupByTag && parsed.aggregations.length > 0) {
-			const fields = parsed.aggregations.map((a) => a.field);
+			const rows = this.store.queryGroupByTag(
+				measurement,
+				parsed.groupByTag,
+				parsed.aggregations.filter((a) => a.func !== '__SUM_COUNTS'),
+				Object.keys(tagFilters).length > 0 ? tagFilters : undefined,
+				timeFrom,
+				timeTo,
+			);
 
-			const rows = this.store.queryLastGroupBy(measurement, parsed.groupByTag, fields);
-
-			return rows.map((row) => {
-				const result: Record<string, unknown> = { ...row };
-
-				for (const agg of parsed.aggregations) {
-					if (agg.field !== agg.alias && agg.field in result) {
-						result[agg.alias] = result[agg.field];
-						delete result[agg.field];
-					}
-				}
-
-				return result as T;
-			});
+			return this.postProcessAggregations(rows, parsed.aggregations) as T[];
 		}
 
 		if (parsed.groupByTime && parsed.aggregations.length > 0) {
@@ -451,15 +475,17 @@ export class InfluxQLParser {
 		return cqMappings[measurement] ?? measurement;
 	}
 
-	private buildTagFilters(where: WhereCondition[]): Record<string, string> {
-		const filters: Record<string, string> = {};
+	private buildTagFilters(where: WhereCondition[]): Record<string, string | string[]> {
+		const filters: Record<string, string | string[]> = {};
 
 		for (const cond of where) {
 			if (cond.field === 'time') {
 				continue;
 			}
 
-			if (cond.operator === '=') {
+			if (cond.operator === '=' && cond.orValues) {
+				filters[cond.field] = cond.orValues;
+			} else if (cond.operator === '=') {
 				const value = cond.value.replace(/^'|'$/g, '');
 
 				filters[cond.field] = value;

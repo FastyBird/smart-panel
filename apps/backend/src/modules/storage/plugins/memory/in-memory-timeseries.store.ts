@@ -98,7 +98,7 @@ export class InMemoryTimeSeriesStore {
 
 	query(
 		measurement: string,
-		where?: Record<string, string>,
+		where?: Record<string, string | string[]>,
 		timeFrom?: Date,
 		timeTo?: Date,
 		orderDesc = true,
@@ -124,15 +124,17 @@ export class InMemoryTimeSeriesStore {
 		if (where && Object.keys(where).length > 0) {
 			filtered = filtered.filter((p) => {
 				return Object.entries(where).every(([key, value]) => {
-					if (key in p.tags) {
-						return p.tags[key] === value;
+					const pointValue = key in p.tags ? p.tags[key] : key in p.fields ? String(p.fields[key]) : undefined;
+
+					if (pointValue === undefined) {
+						return false;
 					}
 
-					if (key in p.fields) {
-						return String(p.fields[key]) === value;
+					if (Array.isArray(value)) {
+						return value.includes(pointValue);
 					}
 
-					return false;
+					return pointValue === value;
 				});
 			});
 		}
@@ -148,40 +150,72 @@ export class InMemoryTimeSeriesStore {
 		return sorted;
 	}
 
-	queryLastGroupBy(measurement: string, groupByTag: string, fields: string[]): Array<Record<string, unknown>> {
-		const arr = this.data.get(measurement);
+	queryGroupByTag(
+		measurement: string,
+		groupByTag: string,
+		aggregations: Array<{ func: string; field: string; alias: string }>,
+		where?: Record<string, string | string[]>,
+		timeFrom?: Date,
+		timeTo?: Date,
+	): Array<Record<string, unknown>> {
+		const points = this.query(measurement, where, timeFrom, timeTo, false);
 
-		if (!arr || arr.length === 0) {
+		if (points.length === 0) {
 			return [];
 		}
 
-		const groups = new Map<string, StoredPoint>();
+		const groups = new Map<string, StoredPoint[]>();
 
-		for (const point of arr) {
+		for (const point of points) {
 			const tagValue = point.tags[groupByTag];
 
 			if (!tagValue) {
 				continue;
 			}
 
-			const existing = groups.get(tagValue);
+			let group = groups.get(tagValue);
 
-			if (!existing || point.timestamp > existing.timestamp) {
-				groups.set(tagValue, point);
+			if (!group) {
+				group = [];
+				groups.set(tagValue, group);
 			}
+
+			group.push(point);
 		}
 
 		const results: Array<Record<string, unknown>> = [];
 
-		for (const [tagValue, point] of groups) {
+		for (const [tagValue, groupPoints] of groups) {
 			const row: Record<string, unknown> = {
-				time: this.createNanoDate(point.timestamp),
+				time: this.createNanoDate(groupPoints[groupPoints.length - 1].timestamp),
 				[groupByTag]: tagValue,
 			};
 
-			for (const field of fields) {
-				if (field in point.fields) {
-					row[field] = point.fields[field];
+			for (const agg of aggregations) {
+				const values = groupPoints.map((p) => p.fields[agg.field]).filter((v): v is number => typeof v === 'number');
+				const allValues = groupPoints.map((p) => p.fields[agg.field]).filter((v) => v !== undefined);
+
+				switch (agg.func.toUpperCase()) {
+					case 'LAST':
+						row[agg.alias] = allValues.length > 0 ? allValues[allValues.length - 1] : null;
+						break;
+					case 'MEAN':
+						row[agg.alias] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+						break;
+					case 'SUM':
+						row[agg.alias] = values.length > 0 ? values.reduce((a, b) => a + b, 0) : null;
+						break;
+					case 'COUNT':
+						row[agg.alias] = allValues.length;
+						break;
+					case 'MIN':
+						row[agg.alias] = values.length > 0 ? Math.min(...values) : null;
+						break;
+					case 'MAX':
+						row[agg.alias] = values.length > 0 ? Math.max(...values) : null;
+						break;
+					default:
+						row[agg.alias] = null;
 				}
 			}
 
@@ -194,7 +228,7 @@ export class InMemoryTimeSeriesStore {
 	aggregate(
 		measurement: string,
 		aggregations: Array<{ func: string; field: string; alias: string }>,
-		where?: Record<string, string>,
+		where?: Record<string, string | string[]>,
 		timeFrom?: Date,
 		timeTo?: Date,
 	): Record<string, unknown> | null {
@@ -244,7 +278,7 @@ export class InMemoryTimeSeriesStore {
 		measurement: string,
 		aggregations: Array<{ func: string; field: string; alias: string }>,
 		bucketMs: number,
-		where?: Record<string, string>,
+		where?: Record<string, string | string[]>,
 		timeFrom?: Date,
 		timeTo?: Date,
 		fillNone = false,
@@ -329,7 +363,7 @@ export class InMemoryTimeSeriesStore {
 		return results;
 	}
 
-	delete(measurement: string, where?: Record<string, string>): void {
+	delete(measurement: string, where?: Record<string, string | string[]>): void {
 		if (!where || Object.keys(where).length === 0) {
 			this.data.delete(measurement);
 			return;
@@ -343,10 +377,17 @@ export class InMemoryTimeSeriesStore {
 
 		const remaining = arr.filter((p) => {
 			return !Object.entries(where).every(([key, value]) => {
-				if (key in p.tags) return p.tags[key] === value;
-				if (key in p.fields) return String(p.fields[key]) === value;
+				const pointValue = key in p.tags ? p.tags[key] : key in p.fields ? String(p.fields[key]) : undefined;
 
-				return false;
+				if (pointValue === undefined) {
+					return false;
+				}
+
+				if (Array.isArray(value)) {
+					return value.includes(pointValue);
+				}
+
+				return pointValue === value;
 			});
 		});
 
