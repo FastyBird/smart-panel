@@ -1,0 +1,77 @@
+import { Callout } from 'nextra/components'
+
+# reTerminal Hardware Plugin
+
+The **reTerminal plugin** provides native hardware integration for SeeedStudio reTerminal devices when Smart Panel runs directly on the hardware.
+
+## What It Does
+
+This plugin gives the Devices module direct access to the onboard sensors, LEDs, buttons, and other peripherals built into SeeedStudio reTerminal hardware. Once active, you can:
+
+- Monitor onboard sensor data (light level, accelerometer orientation, CPU temperature)
+- Control LEDs and the buzzer
+- React to physical button presses (including long-press and double-press)
+- Display hardware status on the dashboard
+
+## Supported Hardware
+
+### reTerminal CM4
+
+The original **reTerminal** with a 5" capacitive touchscreen and Raspberry Pi Compute Module 4:
+
+- **4 programmable buttons** (F1, F2, F3, O) with press, long-press, and double-press detection
+- **USR LED** (green, controllable)
+- **STA LED** (red/green, dual-color)
+- **Buzzer** output
+- **Light sensor** (LTR-303ALS)
+- **Accelerometer** (LIS3DHTR) with orientation detection
+- **CPU temperature** monitoring
+
+### reTerminal DM
+
+The **reTerminal DM** with a 10.1" industrial display:
+
+- **Status LED**
+- **CPU temperature** monitoring
+
+<Callout type="info">
+	The reTerminal DM does not include buttons, a buzzer, or additional sensors.
+</Callout>
+
+---
+
+## How It Works
+
+- The plugin **auto-detects** the reTerminal variant by reading `/proc/device-tree/model` at startup.
+- It automatically creates a device with the appropriate channels and properties for the detected variant.
+- No manual device creation is needed — the plugin handles everything based on the detected hardware.
+- On non-reTerminal hardware, the plugin enters **standby mode** — no errors, just inactive.
+
+## Communication Interfaces
+
+The plugin communicates with the hardware through standard Linux interfaces:
+
+| Interface | Used For |
+|-----------|---------|
+| `/sys/class/leds/` | LED and buzzer control |
+| `/dev/input/` | Button event monitoring (evdev) |
+| `/sys/bus/iio/devices/` | Light sensor and accelerometer |
+| `/sys/class/thermal/` | CPU temperature |
+
+---
+
+## Configuration
+
+You can enable or disable the reTerminal plugin in the Admin App:
+
+- Navigate to **Extensions → reTerminal Devices** in the admin interface.
+- Toggle the plugin on or off.
+- The sensor polling interval is configurable.
+
+<Callout type="info">
+	You must restart the backend for configuration changes to take effect.
+</Callout>
+
+---
+
+The reTerminal plugin provides **seamless hardware integration** for SeeedStudio reTerminal devices — turning the Smart Panel into a fully-aware embedded controller with direct access to onboard peripherals.
