@@ -1,6 +1,10 @@
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, MessageRole } from '../buddy.constants';
-import { BuddyProviderNotConfiguredException } from '../buddy.exceptions';
+import {
+	BuddyProviderErrorException,
+	BuddyProviderNotConfiguredException,
+	BuddyProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, ILlmProvider, LlmResponse } from '../platforms/llm-provider.platform';
 
@@ -103,6 +107,42 @@ describe('LlmProviderService', () => {
 		});
 	});
 
+	describe('timeout enforcement', () => {
+		it('should throw BuddyProviderTimeoutException when provider exceeds timeout', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const config = makeConfig();
+				config.llmTimeoutMs = 5_000;
+				configService.getModuleConfig.mockReturnValue(config);
+
+				claudeSendMessage.mockImplementation(
+					() => new Promise((resolve) => setTimeout(() => resolve(mockLlmResponse('late')), 30_000)),
+				);
+
+				const promise = service.sendMessage(systemPrompt, messages);
+
+				jest.advanceTimersByTime(5_000);
+
+				await expect(promise).rejects.toThrow(BuddyProviderTimeoutException);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('should return normally when provider responds within timeout', async () => {
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result.content).toBe('Hello from mock');
+		});
+
+		it('should throw BuddyProviderErrorException for non-timeout provider errors', async () => {
+			claudeSendMessage.mockRejectedValue(new Error('Connection refused'));
+
+			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderErrorException);
+		});
+	});
+
 	describe('registered provider delegation', () => {
 		it('should delegate to registered Claude provider', async () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-claude-plugin' }));
@@ -131,7 +171,7 @@ describe('LlmProviderService', () => {
 				systemPrompt,
 				messages,
 				'mock-model',
-				expect.objectContaining({ timeout: 30_000 }),
+				expect.objectContaining({ timeout: 60_000 }),
 			);
 		});
 	});

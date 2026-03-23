@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -17,8 +17,13 @@ import {
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
+	LLM_DEFAULT_TIMEOUT_MS,
 	LLM_PROVIDER_NONE,
+	PROVIDER_TIMEOUT_MAX_MS,
+	PROVIDER_TIMEOUT_MIN_MS,
+	STT_DEFAULT_TIMEOUT_MS,
 	STT_PLUGIN_NONE,
+	TTS_DEFAULT_TIMEOUT_MS,
 	TTS_PLUGIN_NONE,
 } from '../buddy.constants';
 
@@ -206,4 +211,43 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsInt()
 	@Min(1)
 	conflictLightsUnoccupiedMinutes: number = CONFLICT_LIGHTS_UNOCCUPIED_MINUTES;
+
+	@ApiPropertyOptional({
+		name: 'stt_timeout_ms',
+		description: 'Speech-to-text provider timeout in milliseconds',
+		type: 'integer',
+		example: 30000,
+	})
+	@Expose({ name: 'stt_timeout_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(PROVIDER_TIMEOUT_MIN_MS)
+	@Max(PROVIDER_TIMEOUT_MAX_MS)
+	sttTimeoutMs: number = STT_DEFAULT_TIMEOUT_MS;
+
+	@ApiPropertyOptional({
+		name: 'tts_timeout_ms',
+		description: 'Text-to-speech provider timeout in milliseconds',
+		type: 'integer',
+		example: 15000,
+	})
+	@Expose({ name: 'tts_timeout_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(PROVIDER_TIMEOUT_MIN_MS)
+	@Max(PROVIDER_TIMEOUT_MAX_MS)
+	ttsTimeoutMs: number = TTS_DEFAULT_TIMEOUT_MS;
+
+	@ApiPropertyOptional({
+		name: 'llm_timeout_ms',
+		description: 'LLM provider timeout in milliseconds',
+		type: 'integer',
+		example: 60000,
+	})
+	@Expose({ name: 'llm_timeout_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(PROVIDER_TIMEOUT_MIN_MS)
+	@Max(PROVIDER_TIMEOUT_MAX_MS)
+	llmTimeoutMs: number = LLM_DEFAULT_TIMEOUT_MS;
 }

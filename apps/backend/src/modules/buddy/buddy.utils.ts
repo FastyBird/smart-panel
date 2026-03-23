@@ -1,3 +1,31 @@
+import {
+	BuddyProviderTimeoutException,
+	BuddySttProviderTimeoutException,
+	BuddyTtsProviderTimeoutException,
+} from './buddy.exceptions';
+
+/**
+ * Race a promise against a timeout. If the timeout fires first, throw the
+ * supplied exception. The timer is always cleaned up (no leaked handles).
+ */
+export async function withServiceTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	exception: BuddyProviderTimeoutException | BuddySttProviderTimeoutException | BuddyTtsProviderTimeoutException,
+): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(exception), timeoutMs);
+	});
+
+	try {
+		return await Promise.race([promise, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 /**
  * Interpolate a template string with variable values.
  * Replaces `${key}` placeholders with corresponding values from the vars map.

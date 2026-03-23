@@ -2,7 +2,11 @@ import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
-import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
+import {
+	BuddyTtsNotConfiguredException,
+	BuddyTtsProviderErrorException,
+	BuddyTtsProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { TtsProviderRegistryService } from './tts-provider-registry.service';
@@ -12,7 +16,7 @@ describe('TtsProviderService', () => {
 	let service: TtsProviderService;
 	let configService: { getModuleConfig: jest.Mock; getPluginConfig: jest.Mock };
 	let ttsProviderRegistry: { get: jest.Mock; register: jest.Mock; list: jest.Mock };
-	let mockProvider: { synthesize: jest.Mock; isConfigured: jest.Mock; getType: jest.Mock };
+	let mockProvider: { synthesize: jest.Mock; isConfigured: jest.Mock; getType: jest.Mock; getName: jest.Mock };
 
 	const fakeAudio = { buffer: Buffer.from('fake-audio-data'), contentType: 'audio/wav' };
 
@@ -30,6 +34,7 @@ describe('TtsProviderService', () => {
 			synthesize: jest.fn().mockResolvedValue({ ...fakeAudio }),
 			isConfigured: jest.fn().mockReturnValue(true),
 			getType: jest.fn().mockReturnValue('buddy-openai-plugin'),
+			getName: jest.fn().mockReturnValue('OpenAI TTS'),
 		};
 
 		configService = {
@@ -130,6 +135,42 @@ describe('TtsProviderService', () => {
 			await service.synthesize('Hello', 'msg-1');
 
 			expect(configService.getModuleConfig).toHaveBeenCalledWith(BUDDY_MODULE_NAME);
+		});
+	});
+
+	describe('timeout enforcement', () => {
+		it('should throw BuddyTtsProviderTimeoutException when provider exceeds timeout', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const config = makeConfig();
+				config.ttsTimeoutMs = 5_000;
+				configService.getModuleConfig.mockReturnValue(config);
+
+				mockProvider.synthesize.mockImplementation(
+					() => new Promise((resolve) => setTimeout(() => resolve({ ...fakeAudio }), 30_000)),
+				);
+
+				const promise = service.synthesize('Hello', 'msg-timeout');
+
+				jest.advanceTimersByTime(5_000);
+
+				await expect(promise).rejects.toThrow(BuddyTtsProviderTimeoutException);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('should return normally when provider responds within timeout', async () => {
+			const result = await service.synthesize('Hello', 'msg-ok');
+
+			expect(result.buffer).toEqual(fakeAudio.buffer);
+		});
+
+		it('should throw BuddyTtsProviderErrorException for non-timeout provider errors', async () => {
+			mockProvider.synthesize.mockRejectedValue(new Error('Connection refused'));
+
+			await expect(service.synthesize('Hello', 'msg-err')).rejects.toThrow(BuddyTtsProviderErrorException);
 		});
 	});
 

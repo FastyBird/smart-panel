@@ -10,6 +10,7 @@ import {
 	BuddyTtsProviderErrorException,
 	BuddyTtsProviderTimeoutException,
 } from '../buddy.exceptions';
+import { withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { TtsProviderRegistryService } from './tts-provider-registry.service';
@@ -135,13 +136,25 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
+		const ttsConfig = this.getConfig();
+
 		let result: { buffer: Buffer; contentType: string };
 
 		try {
-			result = await provider.synthesize(text, {
-				language: this.getSystemLanguage(),
-			});
+			result = await withServiceTimeout(
+				provider.synthesize(text, {
+					language: this.getSystemLanguage(),
+				}),
+				ttsConfig.ttsTimeoutMs,
+				new BuddyTtsProviderTimeoutException(),
+			);
 		} catch (error) {
+			if (error instanceof BuddyTtsProviderTimeoutException) {
+				this.logger.error(`${provider.getName()} TTS provider timeout after ${ttsConfig.ttsTimeoutMs}ms`);
+
+				throw error;
+			}
+
 			this.handleProviderError(provider.getName(), error);
 
 			// handleProviderError always throws — this is unreachable but

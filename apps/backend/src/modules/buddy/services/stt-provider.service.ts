@@ -10,6 +10,7 @@ import {
 	BuddySttProviderErrorException,
 	BuddySttProviderTimeoutException,
 } from '../buddy.exceptions';
+import { withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { SttProviderRegistryService } from './stt-provider-registry.service';
@@ -60,10 +61,20 @@ export class SttProviderService {
 		let text: string;
 
 		try {
-			text = await provider.transcribe(audioBuffer, mimeType, {
-				language: this.getSystemLanguage(),
-			});
+			text = await withServiceTimeout(
+				provider.transcribe(audioBuffer, mimeType, {
+					language: this.getSystemLanguage(),
+				}),
+				config.sttTimeoutMs,
+				new BuddySttProviderTimeoutException(),
+			);
 		} catch (error) {
+			if (error instanceof BuddySttProviderTimeoutException) {
+				this.logger.error(`${provider.getName()} STT provider timeout after ${config.sttTimeoutMs}ms`);
+
+				throw error;
+			}
+
 			this.handleProviderError(provider.getName(), error);
 
 			// handleProviderError always throws — this is unreachable but

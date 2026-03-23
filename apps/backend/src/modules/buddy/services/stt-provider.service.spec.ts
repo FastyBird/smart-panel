@@ -1,7 +1,11 @@
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
-import { BuddySttNotConfiguredException } from '../buddy.exceptions';
+import {
+	BuddySttNotConfiguredException,
+	BuddySttProviderErrorException,
+	BuddySttProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 import type { ISttProvider } from '../platforms/stt-provider.platform';
 
@@ -135,6 +139,47 @@ describe('SttProviderService', () => {
 			configService.getPluginConfig.mockReturnValue({ apiKey: null });
 
 			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
+		});
+	});
+
+	describe('timeout enforcement', () => {
+		it('should throw BuddySttProviderTimeoutException when provider exceeds timeout', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const config = makeConfig();
+				config.sttTimeoutMs = 5_000;
+				configService.getModuleConfig.mockImplementation((moduleName: string) => {
+					if (moduleName === SYSTEM_MODULE_NAME) return makeSystemConfig();
+					return config;
+				});
+
+				(mockSttProvider.transcribe as jest.Mock).mockImplementation(
+					() => new Promise((resolve) => setTimeout(() => resolve('late'), 30_000)),
+				);
+
+				const promise = service.transcribe(audioBuffer, mimeType);
+
+				jest.advanceTimersByTime(5_000);
+
+				await expect(promise).rejects.toThrow(BuddySttProviderTimeoutException);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('should return normally when provider responds within timeout', async () => {
+			(mockSttProvider.transcribe as jest.Mock).mockResolvedValue('Hello world');
+
+			const result = await service.transcribe(audioBuffer, mimeType);
+
+			expect(result).toBe('Hello world');
+		});
+
+		it('should throw BuddySttProviderErrorException for non-timeout provider errors', async () => {
+			(mockSttProvider.transcribe as jest.Mock).mockRejectedValue(new Error('Connection refused'));
+
+			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttProviderErrorException);
 		});
 	});
 

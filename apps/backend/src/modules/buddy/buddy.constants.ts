@@ -114,3 +114,12 @@ export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy
 export const BUDDY_CORE_TOOLS_PROVIDER = 'buddy-core-tools';
 
 export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';
+
+// Service-level timeout defaults (ms)
+export const STT_DEFAULT_TIMEOUT_MS = 30_000;
+export const TTS_DEFAULT_TIMEOUT_MS = 15_000;
+export const LLM_DEFAULT_TIMEOUT_MS = 60_000;
+
+// Timeout bounds (ms)
+export const PROVIDER_TIMEOUT_MIN_MS = 5_000;
+export const PROVIDER_TIMEOUT_MAX_MS = 120_000;
