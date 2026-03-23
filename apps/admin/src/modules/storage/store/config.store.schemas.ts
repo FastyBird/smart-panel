@@ -25,15 +25,15 @@ export const StorageConfigSchema = ConfigModuleSchema.extend({
 export const StorageConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(STORAGE_MODULE_NAME),
-		primaryStorage: z.string().optional(),
-		fallbackStorage: z.string().optional(),
+		primary_storage: z.string().optional(),
+		fallback_storage: z.string().optional(),
 	})
 );
 
 export const StorageConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(STORAGE_MODULE_NAME),
-		primaryStorage: z.string(),
-		fallbackStorage: z.string().optional(),
+		primary_storage: z.string(),
+		fallback_storage: z.string().optional(),
 	})
 );
