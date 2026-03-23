@@ -8,13 +8,7 @@ import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
 import { InfluxV1Plugin } from '../plugins/influx-v1/influx-v1.plugin';
 import { MemoryStoragePlugin } from '../plugins/memory/memory.plugin';
-import {
-	INFLUXDB_DEFAULT_DATABASE,
-	INFLUXDB_DEFAULT_HOST,
-	STORAGE_MODULE_NAME,
-	STORAGE_PLUGIN_INFLUX_V1,
-	STORAGE_PLUGIN_MEMORY,
-} from '../storage.constants';
+import { STORAGE_MODULE_NAME, STORAGE_PLUGIN_INFLUX_V1, STORAGE_PLUGIN_MEMORY } from '../storage.constants';
 
 @Injectable()
 export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -366,8 +360,6 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 
 			const defaultConfig = new StorageConfigModel();
 			defaultConfig.type = STORAGE_MODULE_NAME;
-			defaultConfig.host = INFLUXDB_DEFAULT_HOST;
-			defaultConfig.database = INFLUXDB_DEFAULT_DATABASE;
 
 			return defaultConfig;
 		}
@@ -377,10 +369,10 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 		switch (pluginName) {
 			case STORAGE_PLUGIN_INFLUX_V1:
 				return new InfluxV1Plugin({
-					host: config.host,
-					database: config.database,
-					username: config.username,
-					password: config.password,
+					host: config.influx.host,
+					database: config.influx.database,
+					username: config.influx.username,
+					password: config.influx.password,
 				});
 
 			case STORAGE_PLUGIN_MEMORY:
