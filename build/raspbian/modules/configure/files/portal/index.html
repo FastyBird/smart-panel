@@ -251,12 +251,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 	<div id="success-view" class="hidden">
 		<div class="result">
 			<div class="result-icon">&#10003;</div>
-			<h2 style="color:var(--success)">Connected!</h2>
-			<p>Smart Panel is now connected to your WiFi network.</p>
+			<h2 style="color:var(--success)">Connecting...</h2>
+			<p>Smart Panel is now connecting to your WiFi network. This may take up to 30 seconds.</p>
 			<div class="ip-box" id="success-url"></div>
 			<p>
 				Connect to your home WiFi and open:<br>
 				<a id="success-link" href="#" target="_blank"></a>
+			</p>
+			<p style="margin-top:12px;font-size:12px;color:var(--text-dim)">
+				If the device doesn't appear, the hotspot will restart automatically after 5 minutes.
 			</p>
 		</div>
 	</div>
@@ -430,8 +433,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 		.then(function(r) { return r.json(); })
 		.then(function(data) {
 			if (data.success) {
+				// Response arrives before AP goes down. The actual WiFi connection
+				// happens asynchronously on the server after this response.
 				var urlText = data.url || ('http://' + (data.hostname || 'smart-panel') + '.local:3000');
-				$('success-url').textContent = data.ip ? data.ip + ':3000' : urlText;
+				$('success-url').textContent = urlText;
 				$('success-link').textContent = urlText;
 				$('success-link').href = urlText;
 				showView('success');
@@ -441,8 +446,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 			}
 		})
 		.catch(function() {
-			// Connection dropped — the AP went down, but we don't know if WiFi connected.
-			// Show a "pending" state instead of falsely claiming success.
+			// Safety net: if the response raced with the AP going down,
+			// show a pending view with the expected URL.
 			var hn = hostname || 'smart-panel';
 			var urlText = 'http://' + hn + '.local:3000';
 			$('pending-url').textContent = urlText;
