@@ -9,7 +9,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { BUDDY_MODULE_NAME, EventType, MessageRole } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, DEFAULT_MAX_TOOL_ITERATIONS, EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
@@ -21,7 +21,26 @@ import { BuddyPersonalityService } from './buddy-personality.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
-const MAX_TOOL_ITERATIONS = 5;
+
+/**
+ * Default token budget as a fraction of the model's context window.
+ * When the system prompt exceeds this ratio, devices/properties are truncated.
+ */
+const PROMPT_TOKEN_BUDGET_RATIO = 0.8;
+
+/**
+ * Default context window size for models that don't report their own.
+ * Conservative default suitable for smaller Ollama models.
+ */
+const DEFAULT_CONTEXT_WINDOW_TOKENS = 8_000;
+
+/**
+ * Estimate the number of tokens in a text string.
+ * Uses the ~4 characters per token heuristic for English text.
+ */
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
+}
 
 @Injectable()
 export class BuddyConversationService {
@@ -98,7 +117,7 @@ export class BuddyConversationService {
 		// to the same short ID, so concurrent requests from different bot adapters
 		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = await this.buildSystemPrompt(context);
+		const systemPrompt = await this.buildSystemPrompt(context, conversation.spaceId ?? undefined);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -120,7 +139,8 @@ export class BuddyConversationService {
 
 		// 3. Call LLM provider with tool support if available
 		const tools = this.llmProvider.supportsTools() ? this.toolProviderRegistry.getAllToolDefinitions() : undefined;
-		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools);
+		const maxIterations = this.getMaxToolIterations();
+		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools, maxIterations);
 
 		// 4. Persist both user message and assistant response in a single transaction
 		const { savedUser, savedAssistant } = await this.dataSource.transaction(async (manager) => {
@@ -143,15 +163,21 @@ export class BuddyConversationService {
 
 			const persistedAssistant = await manager.save(assistantMsg);
 
-			// Update conversation title from first message if no title set
 			// Always touch updatedAt so conversations sort by last activity
-			const updatePayload: Partial<BuddyConversationEntity> = { updatedAt: new Date() };
+			await manager.update(BuddyConversationEntity, conversation.id, { updatedAt: new Date() });
 
+			// Set title from first message atomically — the WHERE clause prevents
+			// concurrent requests from overwriting each other's title.
 			if (!conversation.title) {
-				updatePayload.title = content.length > 50 ? content.substring(0, 47) + '...' : content;
-			}
+				const proposedTitle = content.length > 50 ? content.substring(0, 47) + '...' : content;
 
-			await manager.update(BuddyConversationEntity, conversation.id, updatePayload);
+				await manager
+					.createQueryBuilder()
+					.update(BuddyConversationEntity)
+					.set({ title: proposedTitle })
+					.where('id = :id AND title IS NULL', { id: conversation.id })
+					.execute();
+			}
 
 			return { savedUser: persistedUser, savedAssistant: persistedAssistant };
 		});
@@ -195,6 +221,7 @@ export class BuddyConversationService {
 		systemPrompt: string,
 		messages: ChatMessage[],
 		tools?: ToolDefinition[],
+		maxIterations: number = DEFAULT_MAX_TOOL_ITERATIONS,
 	): Promise<LlmResponse> {
 		// Work on a shallow copy so we never mutate the caller's array
 		const workingMessages = [...messages];
@@ -210,7 +237,7 @@ export class BuddyConversationService {
 		const accumulatedMeta = { ...response.meta };
 
 		// Tool execution loop
-		for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+		for (let iteration = 0; iteration < maxIterations; iteration++) {
 			if (!response.toolCalls || response.toolCalls.length === 0) {
 				break;
 			}
@@ -302,11 +329,13 @@ export class BuddyConversationService {
 		return (a ?? 0) + (b ?? 0);
 	}
 
-	private async buildSystemPrompt(context: BuddyContext): Promise<string> {
+	private async buildSystemPrompt(context: BuddyContext, conversationSpaceId?: string): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
 		const buddyName = this.getBuddyName();
+		const tokenBudget = Math.floor(DEFAULT_CONTEXT_WINDOW_TOKENS * PROMPT_TOKEN_BUDGET_RATIO);
 
+		// Stage 1: Base instructions (always included)
 		const lines: string[] = [`Your name is ${buddyName}.`, '', personality];
 
 		if (hasTools) {
@@ -319,6 +348,7 @@ export class BuddyConversationService {
 
 		lines.push('', `Current time: ${context.timestamp}`);
 
+		// Stage 2: Spaces (lightweight — always included in full)
 		if (context.spaces.length > 0) {
 			lines.push('', '## Spaces');
 
@@ -329,138 +359,334 @@ export class BuddyConversationService {
 			}
 		}
 
+		// Stage 3: Devices — check budget before adding full detail
 		if (context.devices.length > 0) {
-			lines.push('', '## Devices');
+			const currentTokens = estimateTokens(lines.join('\n'));
 
-			for (const device of context.devices) {
-				const stateEntries = Object.entries(device.state);
-				const stateStr =
-					stateEntries.length > 0
-						? stateEntries
-								.map(([k, v]) => {
-									const val = v != null ? JSON.stringify(v) : 'null';
-
-									return `${k}=${val}`;
-								})
-								.join(', ')
-						: 'no state data';
-
-				lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
-
-				// When tools are available, include property IDs grouped by channel so the LLM can use control_device
-				if (hasTools && device.channels.length > 0) {
-					for (const channel of device.channels) {
-						if (channel.properties.length === 0) {
-							continue;
-						}
-
-						lines.push(`  - ${channel.name}:`);
-
-						for (const prop of channel.properties) {
-							const pid = this.shortIdMapping.shorten(prop.id);
-							const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
-
-							lines.push(`    - ${prop.category} [p=${pid}] value=${val}`);
-						}
-					}
-				}
+			if (currentTokens < tokenBudget) {
+				this.appendDevices(lines, context.devices, hasTools, tokenBudget, context.spaces, conversationSpaceId);
 			}
 		}
 
+		// Stage 4: Scenes
 		if (context.scenes.length > 0) {
-			lines.push('', '## Scenes');
+			const currentTokens = estimateTokens(lines.join('\n'));
 
-			for (const scene of context.scenes) {
-				const sid = this.shortIdMapping.shorten(scene.id);
+			if (currentTokens < tokenBudget) {
+				lines.push('', '## Scenes');
 
-				lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
+				for (const scene of context.scenes) {
+					const sid = this.shortIdMapping.shorten(scene.id);
+
+					lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
+				}
 			}
 		}
 
+		// Stage 5: Weather
 		if (context.weather) {
-			const w = context.weather.current;
+			const currentTokens = estimateTokens(lines.join('\n'));
 
-			lines.push('', '## Current Weather');
-			lines.push(`- Temperature: ${w.temperature}°C (feels like ${w.feelsLike}°C)`);
-			lines.push(`- Conditions: ${w.conditions}, Clouds: ${w.clouds}%`);
-			lines.push(`- Humidity: ${w.humidity}%, Pressure: ${w.pressure} hPa`);
-
-			const gustStr = w.wind.gust != null ? ` (gusts ${w.wind.gust} m/s)` : '';
-
-			lines.push(`- Wind: ${w.wind.speed} m/s${gustStr}`);
-
-			if (w.rain != null && w.rain > 0) {
-				lines.push(`- Rain: ${w.rain} mm`);
-			}
-
-			if (w.snow != null && w.snow > 0) {
-				lines.push(`- Snow: ${w.snow} mm`);
-			}
-
-			const tz = context.timezone;
-
-			const formatTime = (iso: string): string => {
-				const d = new Date(iso);
-
-				return d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
-			};
-
-			lines.push(`- Sunrise: ${formatTime(w.sunrise)}, Sunset: ${formatTime(w.sunset)}`);
-
-			if (context.weather.forecast.length > 0) {
-				lines.push('', '## Weather Forecast');
-
-				for (const f of context.weather.forecast) {
-					const date = new Date(f.date);
-					const dateStr = date.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' });
-					let line = `- ${dateStr}: ${f.conditions}, ${f.tempMin}–${f.tempMax}°C, wind ${f.wind} m/s, humidity ${f.humidity}%`;
-
-					if (f.rain != null && f.rain > 0) {
-						line += `, rain ${f.rain} mm`;
-					}
-
-					if (f.snow != null && f.snow > 0) {
-						line += `, snow ${f.snow} mm`;
-					}
-
-					lines.push(line);
-				}
-			}
-
-			if (context.weather.alerts.length > 0) {
-				lines.push('', '## Weather Alerts');
-
-				for (const a of context.weather.alerts) {
-					const startDate = new Date(a.start);
-					const endDate = new Date(a.end);
-					const fmt = (d: Date) =>
-						`${d.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })}`;
-
-					lines.push(`- ${a.event} (${fmt(startDate)} – ${fmt(endDate)}): ${a.description}`);
-				}
+			if (currentTokens < tokenBudget) {
+				this.appendWeather(lines, context.weather, context.timezone);
 			}
 		}
 
+		// Stage 6: Energy
 		if (context.energy) {
-			lines.push('', '## Energy');
-			lines.push(`- Solar production: ${context.energy.solarProduction} kW`);
-			lines.push(`- Grid consumption: ${context.energy.gridConsumption} kW`);
-			lines.push(`- Grid export: ${context.energy.gridExport} kW`);
+			const currentTokens = estimateTokens(lines.join('\n'));
 
-			if (context.energy.batteryLevel != null) {
-				lines.push(`- Battery level: ${context.energy.batteryLevel}%`);
+			if (currentTokens < tokenBudget) {
+				lines.push('', '## Energy');
+				lines.push(`- Solar production: ${context.energy.solarProduction} kW`);
+				lines.push(`- Grid consumption: ${context.energy.gridConsumption} kW`);
+				lines.push(`- Grid export: ${context.energy.gridExport} kW`);
+
+				if (context.energy.batteryLevel != null) {
+					lines.push(`- Battery level: ${context.energy.batteryLevel}%`);
+				}
 			}
 		}
 
+		// Stage 7: Recent actions
 		if (context.recentIntents.length > 0) {
-			lines.push('', '## Recent Actions');
+			const currentTokens = estimateTokens(lines.join('\n'));
 
-			for (const intent of context.recentIntents.slice(0, 10)) {
-				lines.push(`- ${intent.type} (space: ${intent.space ?? 'unknown'}) at ${intent.timestamp}`);
+			if (currentTokens < tokenBudget) {
+				lines.push('', '## Recent Actions');
+
+				for (const intent of context.recentIntents.slice(0, 10)) {
+					lines.push(`- ${intent.type} (space: ${intent.space ?? 'unknown'}) at ${intent.timestamp}`);
+				}
 			}
 		}
 
 		return lines.join('\n');
+	}
+
+	/**
+	 * Append device information to the system prompt lines.
+	 * When the full device list would exceed the token budget, devices from the
+	 * conversation's current space are prioritized with full detail, while other
+	 * spaces are summarized (name + device count only).
+	 *
+	 * @param conversationSpaceId The conversation's scoped space (if any).
+	 *   Only devices in this space are classified as "current". For global
+	 *   conversations (undefined), no space is prioritized and all devices
+	 *   are grouped by their space equally.
+	 */
+	private appendDevices(
+		lines: string[],
+		devices: BuddyContext['devices'],
+		hasTools: boolean,
+		tokenBudget: number,
+		spaces: BuddyContext['spaces'],
+		conversationSpaceId?: string,
+	): void {
+		// Quick estimate: can ALL devices fit with full detail?
+		// Use a lightweight character count that avoids building formatted strings
+		// or registering short IDs (which would pollute the mapping on discard).
+		const fullDetailEstimate = this.estimateDeviceTokens(devices, hasTools);
+		const baseTokens = estimateTokens(lines.join('\n'));
+
+		if (baseTokens + fullDetailEstimate < tokenBudget) {
+			// Everything fits — build the actual formatted lines (registers short IDs)
+			const fullDeviceLines = this.buildDeviceLines(devices, hasTools);
+
+			lines.push('', '## Devices', ...fullDeviceLines);
+
+			return;
+		}
+
+		// Token budget exceeded — group devices by space, prioritize current space.
+		// Only the conversation's explicit spaceId counts as "current" — for global
+		// conversations (no spaceId), no space is prioritized and all groups are
+		// treated equally.
+		const currentSpaceDevices: BuddyContext['devices'] = [];
+		const otherSpaceDevices = new Map<string | null, BuddyContext['devices']>();
+
+		for (const device of devices) {
+			if (conversationSpaceId && device.space === conversationSpaceId) {
+				currentSpaceDevices.push(device);
+			} else {
+				const key = device.space;
+
+				if (!otherSpaceDevices.has(key)) {
+					otherSpaceDevices.set(key, []);
+				}
+
+				otherSpaceDevices.get(key)?.push(device);
+			}
+		}
+
+		lines.push('', '## Devices');
+
+		let truncated = false;
+
+		// Add current space devices with full detail (or summarize if still too large)
+		if (currentSpaceDevices.length > 0) {
+			const currentLines = this.buildDeviceLines(currentSpaceDevices, hasTools);
+			const withCurrentSpace = estimateTokens([...lines, ...currentLines].join('\n'));
+
+			if (withCurrentSpace < tokenBudget) {
+				lines.push(...currentLines);
+			} else {
+				// Even current space exceeds budget — add without tool details
+				for (const device of currentSpaceDevices) {
+					const currentTokens = estimateTokens(lines.join('\n'));
+
+					if (currentTokens >= tokenBudget) {
+						break;
+					}
+
+					const stateEntries = Object.entries(device.state);
+					const stateStr =
+						stateEntries.length > 0
+							? stateEntries
+									.slice(0, 3)
+									.map(([k, v]) => `${k}=${v != null ? JSON.stringify(v) : 'null'}`)
+									.join(', ') + (stateEntries.length > 3 ? ', ...' : '')
+							: 'no state data';
+
+					lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
+				}
+
+				truncated = true;
+			}
+		}
+
+		// Add other space devices as summaries if budget allows
+		for (const [spaceId, spaceDevices] of otherSpaceDevices) {
+			const currentTokens = estimateTokens(lines.join('\n'));
+
+			if (currentTokens >= tokenBudget) {
+				truncated = true;
+
+				break;
+			}
+
+			// Try full detail for this space's devices
+			const spaceDeviceLines = this.buildDeviceLines(spaceDevices, hasTools);
+			const withFullDetail = estimateTokens([...lines, ...spaceDeviceLines].join('\n'));
+
+			if (withFullDetail < tokenBudget) {
+				lines.push(...spaceDeviceLines);
+			} else {
+				// Summarize: just device count for this space
+				const spaceName = spaces.find((s) => s.id === spaceId)?.name ?? spaceId ?? 'unassigned';
+
+				lines.push(`- [${spaceName}: ${spaceDevices.length} device(s) — ask for details]`);
+				truncated = true;
+			}
+		}
+
+		if (truncated) {
+			lines.push('', '_Some devices omitted for brevity. Ask about specific rooms for details._');
+		}
+	}
+
+	/**
+	 * Build device detail lines (shared between full and truncated rendering).
+	 */
+	private buildDeviceLines(devices: BuddyContext['devices'], hasTools: boolean): string[] {
+		const lines: string[] = [];
+
+		for (const device of devices) {
+			const stateEntries = Object.entries(device.state);
+			const stateStr =
+				stateEntries.length > 0
+					? stateEntries
+							.map(([k, v]) => {
+								const val = v != null ? JSON.stringify(v) : 'null';
+
+								return `${k}=${val}`;
+							})
+							.join(', ')
+					: 'no state data';
+
+			lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
+
+			if (hasTools && device.channels.length > 0) {
+				for (const channel of device.channels) {
+					if (channel.properties.length === 0) {
+						continue;
+					}
+
+					lines.push(`  - ${channel.name}:`);
+
+					for (const prop of channel.properties) {
+						const pid = this.shortIdMapping.shorten(prop.id);
+						const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
+
+						lines.push(`    - ${prop.category} [p=${pid}] value=${val}`);
+					}
+				}
+			}
+		}
+
+		return lines;
+	}
+
+	/**
+	 * Lightweight token estimate for a list of devices WITHOUT building
+	 * formatted strings or registering short IDs. Uses fixed per-element
+	 * character estimates derived from the format in `buildDeviceLines`.
+	 */
+	private estimateDeviceTokens(devices: BuddyContext['devices'], hasTools: boolean): number {
+		// "- DeviceName (category): key=val, key=val\n" ≈ 60 chars base + 20 per state entry
+		const DEVICE_BASE_CHARS = 60;
+		const STATE_ENTRY_CHARS = 20;
+		// "  - channelName:\n" ≈ 25 chars
+		const CHANNEL_CHARS = 25;
+		// "    - category [p=XXXX] value=...\n" ≈ 45 chars
+		const PROPERTY_CHARS = 45;
+		// "## Devices\n\n"
+		const HEADER_CHARS = 15;
+
+		let chars = HEADER_CHARS;
+
+		for (const device of devices) {
+			const stateCount = Object.keys(device.state).length;
+
+			chars += DEVICE_BASE_CHARS + stateCount * STATE_ENTRY_CHARS;
+
+			if (hasTools) {
+				for (const channel of device.channels) {
+					if (channel.properties.length > 0) {
+						chars += CHANNEL_CHARS + channel.properties.length * PROPERTY_CHARS;
+					}
+				}
+			}
+		}
+
+		return Math.ceil(chars / 4);
+	}
+
+	/**
+	 * Append weather information to the system prompt lines.
+	 */
+	private appendWeather(lines: string[], weather: NonNullable<BuddyContext['weather']>, timezone: string): void {
+		const w = weather.current;
+
+		lines.push('', '## Current Weather');
+		lines.push(`- Temperature: ${w.temperature}°C (feels like ${w.feelsLike}°C)`);
+		lines.push(`- Conditions: ${w.conditions}, Clouds: ${w.clouds}%`);
+		lines.push(`- Humidity: ${w.humidity}%, Pressure: ${w.pressure} hPa`);
+
+		const gustStr = w.wind.gust != null ? ` (gusts ${w.wind.gust} m/s)` : '';
+
+		lines.push(`- Wind: ${w.wind.speed} m/s${gustStr}`);
+
+		if (w.rain != null && w.rain > 0) {
+			lines.push(`- Rain: ${w.rain} mm`);
+		}
+
+		if (w.snow != null && w.snow > 0) {
+			lines.push(`- Snow: ${w.snow} mm`);
+		}
+
+		const tz = timezone;
+
+		const formatTime = (iso: string): string => {
+			const d = new Date(iso);
+
+			return d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+		};
+
+		lines.push(`- Sunrise: ${formatTime(w.sunrise)}, Sunset: ${formatTime(w.sunset)}`);
+
+		if (weather.forecast.length > 0) {
+			lines.push('', '## Weather Forecast');
+
+			for (const f of weather.forecast) {
+				const date = new Date(f.date);
+				const dateStr = date.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' });
+				let line = `- ${dateStr}: ${f.conditions}, ${f.tempMin}–${f.tempMax}°C, wind ${f.wind} m/s, humidity ${f.humidity}%`;
+
+				if (f.rain != null && f.rain > 0) {
+					line += `, rain ${f.rain} mm`;
+				}
+
+				if (f.snow != null && f.snow > 0) {
+					line += `, snow ${f.snow} mm`;
+				}
+
+				lines.push(line);
+			}
+		}
+
+		if (weather.alerts.length > 0) {
+			lines.push('', '## Weather Alerts');
+
+			for (const a of weather.alerts) {
+				const startDate = new Date(a.start);
+				const endDate = new Date(a.end);
+				const fmt = (d: Date) =>
+					`${d.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+				lines.push(`- ${a.event} (${fmt(startDate)} – ${fmt(endDate)}): ${a.description}`);
+			}
+		}
 	}
 
 	private getBuddyName(): string {
@@ -470,6 +696,16 @@ export class BuddyConversationService {
 			return config.name || 'Buddy';
 		} catch {
 			return 'Buddy';
+		}
+	}
+
+	private getMaxToolIterations(): number {
+		try {
+			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+
+			return config.maxToolIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
+		} catch {
+			return DEFAULT_MAX_TOOL_ITERATIONS;
 		}
 	}
 }

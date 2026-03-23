@@ -120,6 +120,25 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	heartbeat_interval_ms?: number;
 
 	@ApiPropertyOptional({
+		name: 'max_tool_iterations',
+		description: 'Maximum number of tool execution iterations per message (minimum 3, maximum 20)',
+		type: 'integer',
+		example: 5,
+	})
+	@Expose({ name: 'max_tool_iterations' })
+	@IsOptional()
+	@IsInt({
+		message: '[{"field":"max_tool_iterations","reason":"Max tool iterations must be an integer."}]',
+	})
+	@Min(3, {
+		message: '[{"field":"max_tool_iterations","reason":"Max tool iterations must be at least 3."}]',
+	})
+	@Max(20, {
+		message: '[{"field":"max_tool_iterations","reason":"Max tool iterations must be at most 20."}]',
+	})
+	max_tool_iterations?: number;
+
+	@ApiPropertyOptional({
 		name: 'anomaly_temperature_drift_threshold',
 		description: 'Temperature deviation (°C) from setpoint to trigger a drift anomaly',
 		type: 'number',
