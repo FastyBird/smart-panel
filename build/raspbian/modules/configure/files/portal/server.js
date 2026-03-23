@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
 
 	// WiFi scan
 	if (url === '/api/scan' && req.method === 'GET') {
-		const networks = scanWifiNetworks();
+		const networks = await scanWifiNetworks();
 		sendJson(res, 200, { networks });
 		return;
 	}
