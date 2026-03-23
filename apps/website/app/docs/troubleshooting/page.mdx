@@ -160,6 +160,89 @@ docker compose up -d
 
 ---
 
+## Captive Portal Not Appearing
+
+The captive portal provides first-time WiFi configuration on Raspbian image installs. If it doesn't appear:
+
+### Check service status
+
+```bash copy
+sudo systemctl status smart-panel-portal
+```
+
+### View portal logs
+
+```bash copy
+sudo journalctl -u smart-panel-portal -n 50
+```
+
+### Common causes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| No WiFi device listed | WiFi adapter not detected | Run `nmcli device` — you should see a `wifi` device. Check `rfkill list` for blocks |
+| Portal never starts | WiFi already configured | Check if `/var/lib/smart-panel/.wifi-configured` exists — remove it and restart the portal service |
+| Portal starts after long delay | Boot config was applied | If `/var/lib/smart-panel/.boot-config.applied` exists, the portal waits 30s for a network connection before starting |
+| Portal not available at all | Wrong installation method | The captive portal is only available on Raspbian image installs, not script-based installs |
+
+<Callout type="info">
+	If you need to force the captive portal to reappear, delete the WiFi marker file and restart the service:
+	`sudo rm /var/lib/smart-panel/.wifi-configured && sudo systemctl restart smart-panel-portal`
+</Callout>
+
+---
+
+## WiFi Keeps Disconnecting / Portal Restarts
+
+The WiFi watchdog service monitors connectivity and re-activates the captive portal after 5 minutes of WiFi failure.
+
+### Check watchdog logs
+
+```bash copy
+sudo journalctl -u smart-panel-wifi-watchdog -n 50
+```
+
+### Check WiFi signal strength
+
+```bash copy
+nmcli device wifi list
+```
+
+### Common causes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| Portal keeps reappearing | Weak WiFi signal | Move the panel closer to the access point or use a WiFi extender |
+| Repeated disconnections | Wrong WiFi password | Wait for the watchdog to restart the portal, or power cycle the device and re-enter credentials |
+| Watchdog not triggering | Ethernet is connected | The watchdog won't trigger when the device is reachable via ethernet |
+
+---
+
+## InfluxDB Not Available Warning
+
+If you see a warning about InfluxDB not being available, this is expected behavior when InfluxDB is not installed.
+
+### What still works without InfluxDB
+
+- Device control and real-time updates work normally
+- Smart Panel falls back to in-memory storage automatically
+- Only historical charts and time-series data are affected
+
+### Installing InfluxDB later
+
+If you want to enable historical data storage, see the [Installation Guide](/docs/get-started/installation) for InfluxDB setup instructions.
+
+### Configuring storage
+
+Once InfluxDB is installed, configure the connection in the Admin UI under **Settings → Storage Module**.
+
+<Callout type="info">
+	InfluxDB is optional. Smart Panel is fully functional without it — you only need it if you want historical charts and
+	time-series data.
+</Callout>
+
+---
+
 ## Factory Reset
 
 If nothing else works, you can perform a full factory reset. This erases all data and returns the panel
