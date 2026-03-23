@@ -21,7 +21,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync, exec } = require('child_process');
+const { execSync, execFileSync, exec } = require('child_process');
 
 const PORT = 80;
 const PORTAL_IP = '192.168.4.1';
@@ -216,20 +216,27 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 			} catch (_) {}
 
 			// Connect to the user's WiFi
+			// Use execFileSync with argument arrays to avoid shell interpretation
+			// of user-supplied ssid/password (prevents command injection via $(), backticks, etc.)
 			try {
-				execSync(
-					`nmcli device wifi connect ${JSON.stringify(ssid)} password ${JSON.stringify(password)} ifname wlan0`,
-					{ timeout: 30000 }
-				);
+				execFileSync('nmcli', [
+					'device', 'wifi', 'connect', ssid,
+					'password', password,
+					'ifname', 'wlan0',
+				], { timeout: 30000 });
 			} catch (err) {
 				// Try adding as a new connection profile
 				try {
-					execSync(
-						`nmcli connection add type wifi con-name ${JSON.stringify(ssid)} ssid ${JSON.stringify(ssid)} ` +
-						`wifi-sec.key-mgmt wpa-psk wifi-sec.psk ${JSON.stringify(password)} autoconnect yes`,
-						{ timeout: 15000 }
-					);
-					execSync(`nmcli connection up ${JSON.stringify(ssid)}`, { timeout: 30000 });
+					execFileSync('nmcli', [
+						'connection', 'add',
+						'type', 'wifi',
+						'con-name', ssid,
+						'ssid', ssid,
+						'wifi-sec.key-mgmt', 'wpa-psk',
+						'wifi-sec.psk', password,
+						'autoconnect', 'yes',
+					], { timeout: 15000 });
+					execFileSync('nmcli', ['connection', 'up', ssid], { timeout: 30000 });
 				} catch (err2) {
 					// WiFi connection failed — re-activate the hotspot so the user can retry
 					reactivateHotspot();
