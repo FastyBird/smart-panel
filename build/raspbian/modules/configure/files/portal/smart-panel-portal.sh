@@ -158,5 +158,21 @@ cleanup() {
 
 trap cleanup EXIT
 
+# Forward signals to the node process so it can shut down gracefully
+forward_signal() {
+	if [ -n "${NODE_PID:-}" ]; then
+		kill -"$1" "${NODE_PID}" 2>/dev/null || true
+	fi
+}
+
+trap 'forward_signal TERM' TERM
+trap 'forward_signal INT' INT
+
 log "Starting portal web server on port 80..."
-exec /usr/local/bin/node "${PORTAL_DIR}/server.js"
+
+# Run node in the background and wait for it, so this bash process stays alive
+# and the EXIT trap can run cleanup when the process ends or is signaled.
+# Using 'exec' here would replace bash entirely, making the trap unreachable.
+/usr/local/bin/node "${PORTAL_DIR}/server.js" &
+NODE_PID=$!
+wait "${NODE_PID}" 2>/dev/null || true

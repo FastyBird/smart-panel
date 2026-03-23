@@ -120,13 +120,57 @@ function getStatus() {
 }
 
 /**
+ * Validate and sanitize inputs to prevent command injection.
+ * Each field is validated against a strict allowlist pattern.
+ */
+function validateInputs(country, hostname, timezone) {
+	const errors = [];
+
+	if (country && !/^[A-Z]{2}$/.test(country)) {
+		errors.push('Country code must be exactly 2 uppercase letters (e.g., US, DE)');
+	}
+
+	if (hostname && !/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(hostname)) {
+		errors.push('Hostname must contain only letters, numbers, and hyphens (max 63 chars)');
+	}
+
+	if (timezone && !/^[A-Za-z_]+\/[A-Za-z_]+$/.test(timezone)) {
+		errors.push('Invalid timezone format (expected e.g., America/New_York)');
+	}
+
+	return errors;
+}
+
+/**
+ * Re-activate the hotspot AP after a failed WiFi connection attempt.
+ */
+function reactivateHotspot() {
+	try {
+		execSync('nmcli connection up SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+		console.log('Hotspot re-activated after connection failure');
+	} catch (_) {
+		console.error('Failed to re-activate hotspot — device may be unreachable');
+	}
+}
+
+/**
  * Connect to a WiFi network.
  * Returns a promise that resolves with { success, message, ip }.
  */
 function connectToWifi(ssid, password, country, hostname, timezone) {
 	return new Promise((resolve) => {
 		try {
-			// Set WiFi country
+			// Validate inputs before using them in shell commands
+			const validationErrors = validateInputs(country, hostname, timezone);
+			if (validationErrors.length > 0) {
+				resolve({
+					success: false,
+					message: `Validation failed: ${validationErrors.join('; ')}`,
+				});
+				return;
+			}
+
+			// Set WiFi country (validated: exactly 2 uppercase letters)
 			if (country) {
 				try {
 					execSync(`iw reg set ${country} 2>/dev/null`, { timeout: 5000 });
@@ -136,7 +180,7 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 				}
 			}
 
-			// Set hostname
+			// Set hostname (validated: alphanumeric + hyphens only)
 			if (hostname) {
 				try {
 					execSync(`hostnamectl set-hostname ${hostname}`, { timeout: 5000 });
@@ -146,7 +190,7 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 				}
 			}
 
-			// Set timezone
+			// Set timezone (validated: Region/City format only)
 			if (timezone) {
 				try {
 					execSync(`timedatectl set-timezone ${timezone}`, { timeout: 5000 });
@@ -186,6 +230,8 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 					);
 					execSync(`nmcli connection up ${JSON.stringify(ssid)}`, { timeout: 30000 });
 				} catch (err2) {
+					// WiFi connection failed — re-activate the hotspot so the user can retry
+					reactivateHotspot();
 					resolve({
 						success: false,
 						message: `Failed to connect: ${err2.message}`,
@@ -236,6 +282,8 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 				exec('systemctl stop smart-panel-portal.service 2>/dev/null');
 			}, 2000);
 		} catch (err) {
+			// Unexpected error — try to restore hotspot so user isn't stranded
+			reactivateHotspot();
 			resolve({
 				success: false,
 				message: `Unexpected error: ${err.message}`,
@@ -324,12 +372,23 @@ const server = http.createServer(async (req, res) => {
 			const body = await parseBody(req);
 			const { ssid, password, country, hostname, timezone } = body;
 
-			if (!ssid || !password) {
+			if (!ssid || typeof ssid !== 'string' || !password || typeof password !== 'string') {
 				sendJson(res, 400, { success: false, message: 'SSID and password are required' });
 				return;
 			}
 
-			const result = await connectToWifi(ssid, password, country, hostname, timezone);
+			// Validate optional fields before passing to shell commands
+			const sanitizedCountry = typeof country === 'string' ? country : '';
+			const sanitizedHostname = typeof hostname === 'string' ? hostname : '';
+			const sanitizedTimezone = typeof timezone === 'string' ? timezone : '';
+
+			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone);
+			if (validationErrors.length > 0) {
+				sendJson(res, 400, { success: false, message: validationErrors.join('; ') });
+				return;
+			}
+
+			const result = await connectToWifi(ssid, password, sanitizedCountry, sanitizedHostname, sanitizedTimezone);
 			sendJson(res, result.success ? 200 : 500, result);
 		} catch (err) {
 			sendJson(res, 400, { success: false, message: 'Invalid request body' });
@@ -346,13 +405,32 @@ server.listen(PORT, '0.0.0.0', () => {
 	console.log(`Smart Panel Captive Portal running on http://${PORTAL_IP}:${PORT}`);
 });
 
+/**
+ * Clean up portal resources (DNS redirect, hotspot).
+ * Defense-in-depth: the bash wrapper also has a cleanup trap,
+ * but this handles cases where node receives signals directly.
+ */
+function portalCleanup() {
+	try {
+		execSync('rm -f /etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf', { timeout: 5000 });
+	} catch (_) {}
+	try {
+		execSync('nmcli connection down SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+	} catch (_) {}
+	try {
+		execSync('nmcli connection delete SmartPanel-Hotspot 2>/dev/null', { timeout: 10000 });
+	} catch (_) {}
+}
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
 	console.log('Received SIGTERM — shutting down portal server');
+	portalCleanup();
 	server.close(() => process.exit(0));
 });
 
 process.on('SIGINT', () => {
 	console.log('Received SIGINT — shutting down portal server');
+	portalCleanup();
 	server.close(() => process.exit(0));
 });
