@@ -165,12 +165,17 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	}
 
 	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
-		// Try primary first
+		// Try primary first, fall back on transient failure
 		if (this.primary?.isAvailable()) {
-			return this.primary.query<T>(query, options);
+			try {
+				return await this.primary.query<T>(query, options);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Primary query failed, trying fallback: ${err.message}`);
+			}
 		}
 
-		// Fall back
 		if (this.fallback?.isAvailable()) {
 			return this.fallback.query<T>(query, options);
 		}
@@ -180,7 +185,13 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		if (this.primary?.isAvailable()) {
-			return this.primary.queryRaw<T>(query, options);
+			try {
+				return await this.primary.queryRaw<T>(query, options);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Primary raw query failed, trying fallback: ${err.message}`);
+			}
 		}
 
 		if (this.fallback?.isAvailable()) {
