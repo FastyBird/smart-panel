@@ -5,15 +5,3 @@ export class DevicesReTerminalException extends HttpException {
 		super(message, status);
 	}
 }
-
-export class ReTerminalHardwareNotFoundException extends DevicesReTerminalException {
-	constructor() {
-		super('reTerminal hardware not detected on this system', HttpStatus.NOT_FOUND);
-	}
-}
-
-export class ReTerminalSysfsAccessException extends DevicesReTerminalException {
-	constructor(path: string) {
-		super(`Failed to access sysfs path: ${path}`, HttpStatus.SERVICE_UNAVAILABLE);
-	}
-}
