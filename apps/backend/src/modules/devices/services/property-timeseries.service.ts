@@ -59,7 +59,7 @@ export class PropertyTimeseriesService {
 	}
 
 	/**
-	 * Fetch data points from InfluxDB with optional downsampling
+	 * Fetch data points from storage with optional downsampling
 	 */
 	private async fetchPoints(
 		property: ChannelPropertyEntity,
@@ -125,7 +125,7 @@ export class PropertyTimeseriesService {
 	}
 
 	/**
-	 * Parse value from InfluxDB result based on data type
+	 * Parse value from storage result based on data type
 	 */
 	private parseValue(
 		row: { stringValue?: string; numberValue?: number },

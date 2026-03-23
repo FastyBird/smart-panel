@@ -15,13 +15,13 @@ export class DisplayConnectionStateService {
 
 	async write(display: DisplayEntity, status: ConnectionState): Promise<void> {
 		if (this.statusMap.has(display.id) && this.statusMap.get(display.id)?.status === status) {
-			// no change → skip Influx write
+			// no change → skip storage write
 			return;
 		}
 
 		const isOnline = OnlineDisplayState.includes(status);
 
-		// Update local cache regardless of InfluxDB availability
+		// Update local cache regardless of storage availability
 		this.statusMap.set(display.id, { online: isOnline, status });
 
 		if (!this.storageService.isConnected()) {
@@ -46,7 +46,7 @@ export class DisplayConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to write status to InfluxDB id=${display.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to write status to storage id=${display.id} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -60,7 +60,7 @@ export class DisplayConnectionStateService {
 			return this.statusMap.get(display.id);
 		}
 
-		// Return default if InfluxDB not connected
+		// Return default if storage not connected
 		if (!this.storageService.isConnected()) {
 			return {
 				online: false,
@@ -104,7 +104,7 @@ export class DisplayConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to read latest status from InfluxDB id=${display.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to read latest status from storage id=${display.id} error=${err.message}`, err.stack);
 
 			return {
 				online: false,
@@ -131,7 +131,7 @@ export class DisplayConnectionStateService {
 			const err = error as Error;
 
 			this.logger.error(
-				`Failed to delete display status from InfluxDB id=${display.id} error=${err.message}`,
+				`Failed to delete display status from storage id=${display.id} error=${err.message}`,
 				err.stack,
 			);
 		}

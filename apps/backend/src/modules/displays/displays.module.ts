@@ -116,7 +116,7 @@ The Displays module manages physical display panels connected to the Smart Panel
 - **Display Registration** - Secure pairing of display panels with the backend
 - **Connection Tracking** - Monitor display online/offline status
 - **Multi-Display Support** - Manage multiple display panels from one backend
-- **Status History** - Track connection status over time via InfluxDB
+- **Status History** - Track connection status over time via storage
 
 ## Registration Flow
 

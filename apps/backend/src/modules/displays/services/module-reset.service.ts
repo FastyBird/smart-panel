@@ -32,12 +32,12 @@ export class DisplaysModuleResetService {
 		// Clear the displays table
 		await this.displayRepository.clear();
 
-		// Clear display status data from InfluxDB
+		// Clear display status data from storage
 		try {
 			await this.storageService.dropMeasurement('display_status');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(`Failed to clear display status data from InfluxDB: ${err.message}`, err.stack);
+			this.logger.warn(`Failed to clear display status data from storage: ${err.message}`, err.stack);
 		}
 	}
 }

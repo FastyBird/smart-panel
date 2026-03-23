@@ -237,7 +237,7 @@ The Devices module is the central component for managing all IoT devices connect
 - **Channel Support** - Each device can have multiple channels (e.g., temperature sensor, relay switch)
 - **Property Tracking** - Monitor and control device properties in real-time
 - **Status Monitoring** - Track device connectivity and online status
-- **Time-series Data** - Store historical property values in InfluxDB
+- **Time-series Data** - Store historical property values via storage module
 
 ## Supported Device Types
 
@@ -288,7 +288,7 @@ The module uses a flexible type mapping system that allows plugins to register t
 			if (result.status === 'rejected') {
 				const err = result.reason as Error;
 
-				this.logger.warn(`[INFLUXDB] Failed to create continuous query ${queries[index].name}`, {
+				this.logger.warn(`Failed to create continuous query ${queries[index].name}`, {
 					message: err?.message ?? 'Unknown error',
 				});
 			}

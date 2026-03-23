@@ -44,7 +44,7 @@ export class PropertyValueService {
 
 		const cached = this.valuesMap.get(property.id);
 		if (cached && cached.value === value) {
-			// no change → skip Influx write, but refresh lastUpdated so freshness stays accurate
+			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
 			return false;
 		}
@@ -105,7 +105,7 @@ export class PropertyValueService {
 		const trend = this.computeTrend(property);
 		const state = new PropertyValueState(value, now, trend);
 
-		// Update local cache regardless of InfluxDB availability
+		// Update local cache regardless of storage availability
 		this.valuesMap.set(property.id, state);
 
 		if (!this.storageService.isConnected()) {
@@ -127,7 +127,7 @@ export class PropertyValueService {
 			const err = error as Error;
 
 			this.logger.error(
-				`Failed to write value to InfluxDB id=${property.id} dataType=${property.dataType} error=${err.message}`,
+				`Failed to write value to storage id=${property.id} dataType=${property.dataType} error=${err.message}`,
 				err.stack,
 			);
 		}
@@ -144,7 +144,7 @@ export class PropertyValueService {
 			return cached;
 		}
 
-		// Return null if InfluxDB not connected
+		// Return null if storage not connected
 		if (!this.storageService.isConnected()) {
 			return null;
 		}
@@ -204,7 +204,7 @@ export class PropertyValueService {
 					parsedValue = null;
 			}
 
-			// Extract timestamp from InfluxDB result
+			// Extract timestamp from storage result
 			const lastUpdated = latest.time
 				? latest.time instanceof Date
 					? latest.time.toISOString()
@@ -235,7 +235,7 @@ export class PropertyValueService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to read latest value from InfluxDB id=${property.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to read latest value from storage id=${property.id} error=${err.message}`, err.stack);
 
 			return null;
 		}
@@ -260,7 +260,7 @@ export class PropertyValueService {
 			const err = error as Error;
 
 			this.logger.error(
-				`Failed to delete property data from InfluxDB propertyId=${property.id} error=${err.message}`,
+				`Failed to delete property data from storage propertyId=${property.id} error=${err.message}`,
 				err.stack,
 			);
 		}

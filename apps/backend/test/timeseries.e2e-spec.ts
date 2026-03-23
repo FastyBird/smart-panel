@@ -30,7 +30,7 @@ describe('Property Timeseries (e2e)', () => {
 	let storageMock: Record<string, jest.Mock>;
 
 	beforeAll(async () => {
-		// Create a proxy-based mock that auto-stubs any method accessed on InfluxDbService
+		// Create a proxy-based mock that auto-stubs any method accessed on StorageService
 		const mockFns = new Map<string, jest.Mock>();
 
 		storageMock = new Proxy({} as Record<string, jest.Mock>, {

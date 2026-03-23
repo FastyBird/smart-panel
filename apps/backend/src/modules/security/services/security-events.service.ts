@@ -274,7 +274,7 @@ export class SecurityEventsService implements OnModuleInit {
 		try {
 			await this.storageService.writePoints(points);
 		} catch (error) {
-			this.logger.warn(`Failed to write security events to InfluxDB: ${error}`);
+			this.logger.warn(`Failed to write security events to storage: ${error}`);
 		}
 	}
 

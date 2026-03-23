@@ -15,7 +15,7 @@ import { PropertyTimeseriesService } from './property-timeseries.service';
 
 describe('PropertyTimeseriesService', () => {
 	let service: PropertyTimeseriesService;
-	let influxDbService: jest.Mocked<StorageService>;
+	let storageService: jest.Mocked<StorageService>;
 
 	const mockProperty: ChannelPropertyEntity = {
 		id: 'prop-123',
@@ -40,7 +40,7 @@ describe('PropertyTimeseriesService', () => {
 		}).compile();
 
 		service = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
-		influxDbService = module.get(StorageService);
+		storageService = module.get(StorageService);
 	});
 
 	afterEach(() => {
@@ -53,7 +53,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');
 
-			influxDbService.query.mockResolvedValue([
+			storageService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
 					numberValue: 21.4,
@@ -79,15 +79,15 @@ describe('PropertyTimeseriesService', () => {
 				],
 			});
 
-			expect(influxDbService.query).toHaveBeenCalledWith(expect.stringContaining('property_value'));
-			expect(influxDbService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'prop-123'"));
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('property_value'));
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'prop-123'"));
 		});
 
 		it('should return empty points array when no data exists', async () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -99,7 +99,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // 12 hour range
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -116,7 +116,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			influxDbService.query.mockResolvedValue([
+			storageService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
 					stringValue: 'true',
@@ -146,7 +146,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			influxDbService.query.mockResolvedValue([
+			storageService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
 					stringValue: 'active',
@@ -168,7 +168,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T11:00:00Z');
 
-			influxDbService.query.mockResolvedValue([
+			storageService.query.mockResolvedValue([
 				{
 					time: { _nanoISO: '2025-01-01T10:00:00Z' },
 					numberValue: 42.7,
@@ -185,7 +185,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z');
 
-			influxDbService.query.mockRejectedValue(new Error('InfluxDB connection failed'));
+			storageService.query.mockRejectedValue(new Error('InfluxDB connection failed'));
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -197,11 +197,11 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T10:30:00Z'); // 30 minutes
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			await service.queryTimeseries(mockProperty, from, to);
 
-			const query = influxDbService.query.mock.calls[0][0];
+			const query = storageService.query.mock.calls[0][0];
 
 			expect(query).toContain('SELECT stringValue, numberValue');
 			expect(query).not.toContain('GROUP BY');
@@ -211,13 +211,13 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T14:00:00Z'); // 4 hours
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
 			expect(result.bucket).toBe('1m');
 
-			const query = influxDbService.query.mock.calls[0][0];
+			const query = storageService.query.mock.calls[0][0];
 
 			expect(query).toContain('GROUP BY time(1m)');
 		});
@@ -226,7 +226,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // 12 hours
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -237,7 +237,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T00:00:00Z');
 			const to = new Date('2025-01-03T00:00:00Z'); // 2 days
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -248,7 +248,7 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T00:00:00Z');
 			const to = new Date('2025-01-15T00:00:00Z'); // 14 days
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to);
 
@@ -259,13 +259,13 @@ describe('PropertyTimeseriesService', () => {
 			const from = new Date('2025-01-01T10:00:00Z');
 			const to = new Date('2025-01-01T22:00:00Z'); // would default to 5m
 
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.queryTimeseries(mockProperty, from, to, '15m');
 
 			expect(result.bucket).toBe('15m');
 
-			const query = influxDbService.query.mock.calls[0][0];
+			const query = storageService.query.mock.calls[0][0];
 
 			expect(query).toContain('GROUP BY time(15m)');
 		});

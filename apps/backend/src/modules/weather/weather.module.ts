@@ -111,7 +111,7 @@ The Weather module provides weather forecast data and location management for th
 - **Weather Forecasts** - Current conditions and multi-day forecasts
 - **Location Management** - Configure weather locations by coordinates or city name
 - **Provider System** - Pluggable weather data providers
-- **Historical Data** - Store and retrieve past weather data via InfluxDB
+- **Historical Data** - Store and retrieve past weather data via storage
 - **Multiple Locations** - Support for multiple weather locations
 
 ## Weather Providers

@@ -67,7 +67,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	}
 
 	async onApplicationBootstrap(): Promise<void> {
-		// Create continuous query after InfluxDB connection is initialized
+		// Create continuous query after storage connection is initialized
 		try {
 			await this.setupContinuousQueries();
 		} catch (error) {
@@ -79,7 +79,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	}
 
 	/**
-	 * Store current weather data to InfluxDB
+	 * Store current weather data to storage
 	 */
 	async storeWeatherData(locationId: string, locationName: string, current: CurrentDayModel): Promise<void> {
 		if (!this.storageService.isConnected()) {
@@ -124,7 +124,7 @@ export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstr
 	}
 
 	/**
-	 * Query historical weather data from InfluxDB
+	 * Query historical weather data from storage
 	 */
 	async getHistory(query: IWeatherHistoryQuery): Promise<IWeatherHistoryPoint[]> {
 		if (!this.storageService.isConnected()) {
