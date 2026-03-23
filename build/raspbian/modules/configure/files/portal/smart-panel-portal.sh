@@ -27,21 +27,13 @@ log() {
 # Check if portal should be skipped
 # ──────────────────────────────────────────────────────────────
 
-# 1. Skip if user provided a boot config file (manual configuration).
-#    The file is moved to .boot-config.applied by apply-boot-config.sh
-#    during first-boot — regardless of whether it contained WiFi settings.
-if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
-	log "Boot config was applied — user configured manually, skipping captive portal"
-	exit 0
-fi
-
-# 2. Skip if WiFi was previously configured via the captive portal
+# 1. Skip if WiFi was previously configured via the captive portal
 if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
 	log "WiFi previously configured via portal — skipping captive portal"
 	exit 0
 fi
 
-# 3. Skip if there is any active network connection (ethernet or WiFi)
+# 2. Skip if there is any active network connection (ethernet or WiFi)
 #    This covers wired-only setups and pre-existing WiFi connections.
 HAS_NETWORK=false
 
