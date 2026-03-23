@@ -1,9 +1,10 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 
 import { PluginsTypeMapperService } from '../../../config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../../extensions/services/extensions.service';
 import { SwaggerModelsRegistryService } from '../../../swagger/services/swagger-models-registry.service';
 import { StorageService } from '../../services/storage.service';
+import { StorageModule } from '../../storage.module';
 
 import { MemoryConfigModel } from './memory.config.model';
 import { MEMORY_PLUGIN_NAME } from './memory.constants';
@@ -11,7 +12,9 @@ import { MEMORY_SWAGGER_EXTRA_MODELS } from './memory.openapi';
 import { MemoryStoragePlugin } from './memory.plugin';
 import { UpdateMemoryConfigDto } from './memory.update-config.dto';
 
-@Module({})
+@Module({
+	imports: [forwardRef(() => StorageModule)],
+})
 export class MemoryPluginModule implements OnModuleInit {
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,

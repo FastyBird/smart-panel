@@ -1,10 +1,11 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 
 import { ConfigService } from '../../../config/services/config.service';
 import { PluginsTypeMapperService } from '../../../config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../../extensions/services/extensions.service';
 import { SwaggerModelsRegistryService } from '../../../swagger/services/swagger-models-registry.service';
 import { StorageService } from '../../services/storage.service';
+import { StorageModule } from '../../storage.module';
 
 import { InfluxV1ConfigModel } from './influx-v1.config.model';
 import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
@@ -12,7 +13,9 @@ import { INFLUX_V1_SWAGGER_EXTRA_MODELS } from './influx-v1.openapi';
 import { InfluxV1Plugin } from './influx-v1.plugin';
 import { UpdateInfluxV1ConfigDto } from './influx-v1.update-config.dto';
 
-@Module({})
+@Module({
+	imports: [forwardRef(() => StorageModule)],
+})
 export class InfluxV1PluginModule implements OnModuleInit {
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,
