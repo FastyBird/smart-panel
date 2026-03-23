@@ -3,7 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel, TimeseriesPointModel } from '../models/devices.model';
@@ -14,7 +14,7 @@ export type BucketDuration = '1m' | '5m' | '15m' | '1h';
 export class PropertyTimeseriesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyTimeseriesService');
 
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	/**
 	 * Query timeseries data for a property within a time range
@@ -59,7 +59,7 @@ export class PropertyTimeseriesService {
 	}
 
 	/**
-	 * Fetch data points from InfluxDB with optional downsampling
+	 * Fetch data points from storage with optional downsampling
 	 */
 	private async fetchPoints(
 		property: ChannelPropertyEntity,
@@ -70,7 +70,7 @@ export class PropertyTimeseriesService {
 		const effectiveBucket = bucket ?? this.getDefaultBucket(from, to);
 		const query = this.buildQuery(property.id, from, to, effectiveBucket);
 
-		const result = await this.influxDbService.query<{
+		const result = await this.storageService.query<{
 			time: { _nanoISO: string };
 			stringValue?: string;
 			numberValue?: number;
@@ -125,7 +125,7 @@ export class PropertyTimeseriesService {
 	}
 
 	/**
-	 * Parse value from InfluxDB result based on data type
+	 * Parse value from storage result based on data type
 	 */
 	private parseValue(
 		row: { stringValue?: string; numberValue?: number },

@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -18,10 +18,10 @@ import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
 	let service: PropertyValueService;
-	let influxDbService: jest.Mocked<InfluxDbService>;
+	let storageService: jest.Mocked<StorageService>;
 
 	beforeEach(async () => {
-		const mockInfluxDbService = {
+		const mockStorageService = {
 			writePoints: jest.fn(),
 			query: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
@@ -31,14 +31,14 @@ describe('PropertyValueService', () => {
 			providers: [
 				PropertyValueService,
 				{
-					provide: InfluxDbService,
-					useValue: mockInfluxDbService,
+					provide: StorageService,
+					useValue: mockStorageService,
 				},
 			],
 		}).compile();
 
 		service = module.get<PropertyValueService>(PropertyValueService);
-		influxDbService = module.get<InfluxDbService>(InfluxDbService) as jest.Mocked<InfluxDbService>;
+		storageService = module.get<StorageService>(StorageService) as jest.Mocked<StorageService>;
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
@@ -48,7 +48,7 @@ describe('PropertyValueService', () => {
 	});
 
 	describe('write', () => {
-		it('should write a string value to InfluxDB and cache', async () => {
+		it('should write a string value to storage and cache', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
 				dataType: DataTypeType.STRING,
@@ -56,7 +56,7 @@ describe('PropertyValueService', () => {
 
 			await service.write(property, 'test-value');
 
-			expect(influxDbService.writePoints).toHaveBeenCalledWith([
+			expect(storageService.writePoints).toHaveBeenCalledWith([
 				{
 					measurement: 'property_value',
 					tags: { propertyId: property.id },
@@ -95,49 +95,47 @@ describe('PropertyValueService', () => {
 			const result = await service.readLatest(property);
 
 			expect(result?.value).toBe(42);
-			expect(influxDbService.query).not.toHaveBeenCalled();
+			expect(storageService.query).not.toHaveBeenCalled();
 		});
 
-		it('should query InfluxDB if cached value is missing', async () => {
+		it('should query storage if cached value is missing', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
-			// @ts-expect-error Expected query to return a resolved value, mocking for test
-			influxDbService.query.mockResolvedValue([{ numberValue: 100 }]);
+			storageService.query.mockResolvedValue([{ numberValue: 100 }]);
 
 			const result = await service.readLatest(property);
 
 			expect(result?.value).toBe(100);
-			expect(influxDbService.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM property_value'));
+			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM property_value'));
 		});
 
-		it('should return null if no value is found in InfluxDB', async () => {
+		it('should return null if no value is found in storage', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
 				dataType: DataTypeType.STRING,
 			} as ChannelPropertyEntity;
 
-			// @ts-expect-error an Expected query to return a resolved value, mocking for test
-			influxDbService.query.mockResolvedValue([]);
+			storageService.query.mockResolvedValue([]);
 
 			const result = await service.readLatest(property);
 
 			expect(result).toBeNull();
-			expect(influxDbService.query).toHaveBeenCalled();
+			expect(storageService.query).toHaveBeenCalled();
 		});
 	});
 
 	describe('delete', () => {
-		it('should delete property data from InfluxDB and cache', async () => {
+		it('should delete property data from storage and cache', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
 			} as ChannelPropertyEntity;
 
 			await service.delete(property);
 
-			expect(influxDbService.query).toHaveBeenCalledWith(
+			expect(storageService.query).toHaveBeenCalledWith(
 				"DELETE FROM property_value WHERE propertyId = 'test-property-id'",
 			);
 		});
@@ -154,7 +152,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, 'invalid');
 
 			expect(result).toBe(false);
-			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+			expect(storageService.writePoints).not.toHaveBeenCalled();
 		});
 
 		it('should accept enum value in allowed list', async () => {
@@ -167,7 +165,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, 'on');
 
 			expect(result).toBe(true);
-			expect(influxDbService.writePoints).toHaveBeenCalled();
+			expect(storageService.writePoints).toHaveBeenCalled();
 		});
 
 		it('should reject numeric value below minimum', async () => {
@@ -180,7 +178,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, -5);
 
 			expect(result).toBe(false);
-			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+			expect(storageService.writePoints).not.toHaveBeenCalled();
 		});
 
 		it('should reject numeric value above maximum', async () => {
@@ -193,7 +191,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, 150);
 
 			expect(result).toBe(false);
-			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+			expect(storageService.writePoints).not.toHaveBeenCalled();
 		});
 
 		it('should accept numeric value within range', async () => {
@@ -206,7 +204,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, 50);
 
 			expect(result).toBe(true);
-			expect(influxDbService.writePoints).toHaveBeenCalled();
+			expect(storageService.writePoints).toHaveBeenCalled();
 		});
 
 		it('should accept any value when format is null', async () => {
@@ -219,7 +217,7 @@ describe('PropertyValueService', () => {
 			const result = await service.write(property, 'any-value');
 
 			expect(result).toBe(true);
-			expect(influxDbService.writePoints).toHaveBeenCalled();
+			expect(storageService.writePoints).toHaveBeenCalled();
 		});
 
 		it('should accept boundary values for numeric range', async () => {

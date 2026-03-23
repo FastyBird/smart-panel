@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { ConnectionState, DEVICES_MODULE_NAME, OnlineDeviceState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
@@ -13,7 +13,7 @@ export class DeviceConnectionStateService {
 		new Map();
 	private statusPropertyMap: Map<DeviceEntity['id'], ChannelPropertyEntity['id']> = new Map();
 
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	/**
 	 * Returns the number of currently-registered devices that are online.
@@ -21,11 +21,11 @@ export class DeviceConnectionStateService {
 	 * Merges two data sources so the count is accurate at every stage:
 	 * 1. In-memory cache — authoritative for devices that have already
 	 *    reported since this process started.
-	 * 2. InfluxDB `device_status_1m` (14-day RP) — fills gaps for devices
+	 * 2. Storage `device_status_1m` (14-day RP) — fills gaps for devices
 	 *    that haven't reported yet (cold-start / slow-syncing plugins).
 	 *
 	 * Only device IDs present in [currentDeviceIds] are counted, which
-	 * filters out ghost entries for deleted/re-created devices in InfluxDB.
+	 * filters out ghost entries for deleted/re-created devices in storage.
 	 */
 	async getOnlineCountForDevices(currentDeviceIds: Set<DeviceEntity['id']>): Promise<number> {
 		let count = 0;
@@ -42,13 +42,13 @@ export class DeviceConnectionStateService {
 			}
 		}
 
-		// All current devices are cached — no need for InfluxDB
+		// All current devices are cached — no need for storage
 		if (accountedFor.size === currentDeviceIds.size) {
 			return count;
 		}
 
-		// Phase 2 — fill gaps from InfluxDB for devices not yet in cache
-		if (!this.influxDbService.isConnected()) {
+		// Phase 2 — fill gaps from storage for devices not yet in cache
+		if (!this.storageService.isConnected()) {
 			return count;
 		}
 
@@ -59,7 +59,7 @@ export class DeviceConnectionStateService {
 				GROUP BY "deviceId"
 			`;
 
-			const rows = await this.influxDbService.query<{ onlineI: number; deviceId?: string }>(query);
+			const rows = await this.storageService.query<{ onlineI: number; deviceId?: string }>(query);
 
 			for (const r of rows ?? []) {
 				if (!r.deviceId) continue;
@@ -74,7 +74,7 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to query online count from InfluxDB: ${err.message}`, {
+			this.logger.error(`Failed to query online count from storage: ${err.message}`, {
 				stack: err.stack,
 			});
 		}
@@ -92,23 +92,23 @@ export class DeviceConnectionStateService {
 		}
 
 		if (this.statusMap.has(device.id) && this.statusMap.get(device.id).status === status) {
-			// no change → skip Influx write
+			// no change → skip storage write
 			return;
 		}
 
 		const isOnline = OnlineDeviceState.includes(status);
 		const lastChanged = new Date();
 
-		// Update local cache regardless of InfluxDB availability
+		// Update local cache regardless of storage availability
 		this.statusMap.set(device.id, { online: isOnline, status, lastChanged });
 		this.statusPropertyMap.set(device.id, property.id);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'device_status',
 					tags: { deviceId: device.id, propertyId: property.id },
@@ -123,7 +123,7 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to write status to InfluxDB id=${device.id} error=${err.message}`, {
+			this.logger.error(`Failed to write status to storage id=${device.id} error=${err.message}`, {
 				resource: device.id,
 				stack: err.stack,
 			});
@@ -143,8 +143,8 @@ export class DeviceConnectionStateService {
 			return this.statusMap.get(device.id);
 		}
 
-		// Return default if InfluxDB not connected
-		if (!this.influxDbService.isConnected()) {
+		// Return default if storage not connected
+		if (!this.storageService.isConnected()) {
 			return {
 				online: false,
 				status: ConnectionState.UNKNOWN,
@@ -162,7 +162,7 @@ export class DeviceConnectionStateService {
 
 			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
 
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: string;
 				online: boolean;
 				onlineI: number;
@@ -193,7 +193,7 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to read latest status from InfluxDB id=${device.id} error=${err.message}`, {
+			this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
 				resource: device.id,
 				stack: err.stack,
 			});
@@ -211,20 +211,20 @@ export class DeviceConnectionStateService {
 		this.statusMap.delete(device.id);
 		this.statusPropertyMap.delete(device.id);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
 			const query = `DELETE FROM device_status WHERE deviceId = '${device.id}'`;
 
-			await this.influxDbService.query(query);
+			await this.storageService.query(query);
 
 			this.logger.log(`Deleted device status for id=${device.id}`, { resource: device.id });
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to delete device status from InfluxDB id=${device.id} error=${err.message}`, {
+			this.logger.error(`Failed to delete device status from storage id=${device.id} error=${err.message}`, {
 				resource: device.id,
 				stack: err.stack,
 			});
@@ -240,14 +240,14 @@ export class DeviceConnectionStateService {
 			this.statusPropertyMap.delete(deviceId);
 		}
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
 			const query = `DELETE FROM device_status WHERE propertyId = '${property.id}'`;
 
-			await this.influxDbService.query(query);
+			await this.storageService.query(query);
 
 			this.logger.log(
 				`Deleted device status for propertyId=${property.id}${deviceId ? ` deviceId=${deviceId}` : ''}`,
@@ -256,7 +256,7 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`, {
+			this.logger.error(`Failed to delete device status from storage propertyId=${property.id} error=${err.message}`, {
 				...(deviceId ? { resource: deviceId } : {}),
 				stack: err.stack,
 			});

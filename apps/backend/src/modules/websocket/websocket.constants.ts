@@ -1,4 +1,4 @@
-import { FieldType, ISchemaOptions } from 'influx';
+import { StorageFieldType, StorageMeasurementSchema } from '../storage/storage.types';
 
 export const WEBSOCKET_MODULE_PREFIX = 'websocket';
 
@@ -8,15 +8,15 @@ export const CLIENT_DEFAULT_ROOM = 'default-room';
 export const DISPLAY_INTERNAL_ROOM = 'display-room';
 export const EXCHANGE_ROOM = 'exchange-room';
 
-export const WsStatsInfluxDbSchema: ISchemaOptions = {
+export const WsStatsStorageSchema: StorageMeasurementSchema = {
 	measurement: 'ws_heartbeat',
-	fields: { n: FieldType.INTEGER },
+	fields: { n: StorageFieldType.FLOAT },
 	tags: [],
 };
 
-export const WsConnInfluxDbSchema: ISchemaOptions = {
+export const WsConnStorageSchema: StorageMeasurementSchema = {
 	measurement: 'ws_conn',
-	fields: { clients: FieldType.INTEGER },
+	fields: { clients: StorageFieldType.FLOAT },
 	tags: [],
 };
 

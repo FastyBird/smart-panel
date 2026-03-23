@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -18,7 +18,7 @@ export class DisplaysModuleResetService {
 		@InjectRepository(DisplayEntity)
 		private readonly displayRepository: Repository<DisplayEntity>,
 		private readonly tokensService: TokensService,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 	) {}
 
 	async reset(): Promise<void> {
@@ -32,12 +32,12 @@ export class DisplaysModuleResetService {
 		// Clear the displays table
 		await this.displayRepository.clear();
 
-		// Clear display status data from InfluxDB
+		// Clear display status data from storage
 		try {
-			await this.influxDbService.dropMeasurement('display_status');
+			await this.storageService.dropMeasurement('display_status');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(`Failed to clear display status data from InfluxDB: ${err.message}`, err.stack);
+			this.logger.warn(`Failed to clear display status data from storage: ${err.message}`, err.stack);
 		}
 	}
 }

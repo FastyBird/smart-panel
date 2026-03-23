@@ -1,0 +1,8 @@
+{
+	"messages": {
+		"config": {
+			"edited": "In-memory storage configuration has been successfully updated",
+			"notEdited": "Failed to update in-memory storage configuration"
+		}
+	}
+}

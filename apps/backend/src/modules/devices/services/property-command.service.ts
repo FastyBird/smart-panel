@@ -193,7 +193,7 @@ export class PropertyCommandService {
 		}
 
 		// Check device online status before processing commands
-		// Allow commands through if status is UNKNOWN (e.g., InfluxDB unavailable or no data)
+		// Allow commands through if status is UNKNOWN (e.g., storage unavailable or no data)
 		// Only reject when device is definitively offline
 		if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
 			this.logger.warn(`Device is offline id=${deviceId} status=${device.status.status}`);

@@ -1,11 +1,16 @@
-import { FieldType, ISchemaOptions } from 'influx';
+import { StorageFieldType, StorageMeasurementSchema } from '../storage/storage.types';
 
 export const API_MODULE_PREFIX = 'api';
 
 export const API_MODULE_NAME = 'api-module';
 
-export const ApiStatsInfluxDbSchema: ISchemaOptions = {
+export const ApiStatsStorageSchema: StorageMeasurementSchema = {
 	measurement: 'api_minute',
-	fields: { count: FieldType.INTEGER, errors: FieldType.INTEGER, p95_ms: FieldType.INTEGER, avg_ms: FieldType.INTEGER },
+	fields: {
+		count: StorageFieldType.FLOAT,
+		errors: StorageFieldType.FLOAT,
+		p95_ms: StorageFieldType.FLOAT,
+		avg_ms: StorageFieldType.FLOAT,
+	},
 	tags: ['route', '_all'],
 };

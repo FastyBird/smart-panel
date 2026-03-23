@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { INTENTS_MODULE_NAME, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 import { IntentRecord } from '../models/intent.model';
 
 /**
- * Space intent record stored in InfluxDB for historical tracking.
+ * Space intent record stored in storage for historical tracking.
  * Used to track lighting/climate mode changes per space.
  */
 export interface SpaceIntentRecord {
@@ -83,17 +83,17 @@ function isValidUuid(value: string): boolean {
 }
 
 /**
- * Service for persisting intent events to InfluxDB.
+ * Service for persisting intent events to storage.
  * Enables historical tracking and recovery of last applied modes.
  */
 @Injectable()
 export class IntentTimeseriesService {
 	private readonly logger = createExtensionLogger(INTENTS_MODULE_NAME, 'IntentTimeseriesService');
 
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	/**
-	 * Store an intent completion event to InfluxDB.
+	 * Store an intent completion event to storage.
 	 * Only stores intents that have a spaceId context and relevant mode information.
 	 */
 	async storeIntentCompletion(intent: IntentRecord): Promise<void> {
@@ -124,13 +124,13 @@ export class IntentTimeseriesService {
 		const successCount = intent.results?.filter((r) => r.status === IntentTargetStatus.SUCCESS).length ?? 0;
 		const failedCount = intent.results?.filter((r) => r.status === IntentTargetStatus.FAILED).length ?? 0;
 
-		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - intent not persisted intentId=${intent.id}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.warn(`Storage not connected - intent not persisted intentId=${intent.id}`);
 			return;
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'space_intent',
 					tags: {
@@ -154,7 +154,7 @@ export class IntentTimeseriesService {
 			);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store intent to InfluxDB intentId=${intent.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store intent to storage intentId=${intent.id} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -176,8 +176,8 @@ export class IntentTimeseriesService {
 	 * Query the last applied climate state (mode + setpoints) for a space.
 	 */
 	async getLastClimateState(spaceId: string): Promise<LastAppliedClimateState | null> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected - cannot query last climate state for spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.debug(`Storage not connected - cannot query last climate state for spaceId=${spaceId}`);
 			return null;
 		}
 
@@ -203,7 +203,7 @@ export class IntentTimeseriesService {
 			.replace(/\s+/g, ' ');
 
 		try {
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: { _nanoISO: string };
 				intentId: string;
 				mode: string;
@@ -230,7 +230,7 @@ export class IntentTimeseriesService {
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error(
-				`Failed to query last climate state from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				`Failed to query last climate state from storage spaceId=${spaceId} error=${err.message}`,
 				err.stack,
 			);
 			return null;
@@ -245,11 +245,11 @@ export class IntentTimeseriesService {
 	}
 
 	/**
-	 * Query last applied mode from InfluxDB for a specific intent type string.
+	 * Query last applied mode from storage for a specific intent type string.
 	 */
 	private async getLastAppliedModeByType(spaceId: string, intentType: string): Promise<LastAppliedMode | null> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected - cannot query last mode for spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.debug(`Storage not connected - cannot query last mode for spaceId=${spaceId}`);
 			return null;
 		}
 
@@ -277,7 +277,7 @@ export class IntentTimeseriesService {
 			.replace(/\s+/g, ' ');
 
 		try {
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: { _nanoISO: string };
 				intentId: string;
 				mode: string;
@@ -300,7 +300,7 @@ export class IntentTimeseriesService {
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error(
-				`Failed to query last ${intentType} mode from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				`Failed to query last ${intentType} mode from storage spaceId=${spaceId} error=${err.message}`,
 				err.stack,
 			);
 			return null;
@@ -316,8 +316,8 @@ export class IntentTimeseriesService {
 		to: Date,
 		intentTypes?: IntentType[],
 	): Promise<SpaceIntentRecord[]> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected - cannot query history for spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.debug(`Storage not connected - cannot query history for spaceId=${spaceId}`);
 			return [];
 		}
 
@@ -348,7 +348,7 @@ export class IntentTimeseriesService {
 			.replace(/\s+/g, ' ');
 
 		try {
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: { _nanoISO: string };
 				intentId: string;
 				mode: string;
@@ -373,7 +373,7 @@ export class IntentTimeseriesService {
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error(
-				`Failed to query intent history from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				`Failed to query intent history from storage spaceId=${spaceId} error=${err.message}`,
 				err.stack,
 			);
 			return [];
@@ -391,8 +391,8 @@ export class IntentTimeseriesService {
 		successCount: number,
 		failedCount: number,
 	): Promise<void> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - lighting mode not persisted spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.warn(`Storage not connected - lighting mode not persisted spaceId=${spaceId}`);
 			return;
 		}
 
@@ -405,7 +405,7 @@ export class IntentTimeseriesService {
 		const status = failedCount === 0 ? IntentStatus.COMPLETED_SUCCESS : IntentStatus.COMPLETED_PARTIAL;
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'space_intent',
 					tags: {
@@ -427,7 +427,7 @@ export class IntentTimeseriesService {
 			this.logger.debug(`Lighting mode stored spaceId=${spaceId} mode=${mode} success=${successCount}/${targetsCount}`);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store lighting mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store lighting mode to storage spaceId=${spaceId} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -444,8 +444,8 @@ export class IntentTimeseriesService {
 		successCount: number,
 		failedCount: number,
 	): Promise<void> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - climate state not persisted spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.warn(`Storage not connected - climate state not persisted spaceId=${spaceId}`);
 			return;
 		}
 
@@ -476,7 +476,7 @@ export class IntentTimeseriesService {
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'space_intent',
 					tags: {
@@ -496,7 +496,7 @@ export class IntentTimeseriesService {
 			);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store climate state to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store climate state to storage spaceId=${spaceId} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -511,8 +511,8 @@ export class IntentTimeseriesService {
 		successCount: number,
 		failedCount: number,
 	): Promise<void> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - covers mode not persisted spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.warn(`Storage not connected - covers mode not persisted spaceId=${spaceId}`);
 			return;
 		}
 
@@ -525,7 +525,7 @@ export class IntentTimeseriesService {
 		const status = failedCount === 0 ? IntentStatus.COMPLETED_SUCCESS : IntentStatus.COMPLETED_PARTIAL;
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'space_intent',
 					tags: {
@@ -547,7 +547,7 @@ export class IntentTimeseriesService {
 			this.logger.debug(`Covers mode stored spaceId=${spaceId} mode=${mode} success=${successCount}/${targetsCount}`);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store covers mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store covers mode to storage spaceId=${spaceId} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -555,7 +555,7 @@ export class IntentTimeseriesService {
 	 * Delete all intent history for a space.
 	 */
 	async deleteSpaceHistory(spaceId: string): Promise<void> {
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
@@ -570,7 +570,7 @@ export class IntentTimeseriesService {
 
 		try {
 			const query = `DELETE FROM space_intent WHERE spaceId = '${safeSpaceId}'`;
-			await this.influxDbService.query(query);
+			await this.storageService.query(query);
 			this.logger.log(`Deleted intent history for spaceId=${spaceId}`);
 		} catch (error) {
 			const err = error as Error;
@@ -587,8 +587,8 @@ export class IntentTimeseriesService {
 	 * @param modeValid - Whether the mode is still valid from intent (false = manually changed)
 	 */
 	async storeModeValidity(spaceId: string, domain: 'lighting' | 'covers', modeValid: boolean): Promise<void> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected - mode validity not stored spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.debug(`Storage not connected - mode validity not stored spaceId=${spaceId}`);
 			return;
 		}
 
@@ -598,7 +598,7 @@ export class IntentTimeseriesService {
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'space_mode_validity',
 					tags: {
@@ -627,8 +627,8 @@ export class IntentTimeseriesService {
 	 * Returns true if the mode was set by intent and hasn't been manually changed.
 	 */
 	async getModeValidity(spaceId: string, domain: 'lighting' | 'covers'): Promise<ModeValidityStatus | null> {
-		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected - cannot query mode validity spaceId=${spaceId}`);
+		if (!this.storageService.isConnected()) {
+			this.logger.debug(`Storage not connected - cannot query mode validity spaceId=${spaceId}`);
 			return null;
 		}
 
@@ -652,7 +652,7 @@ export class IntentTimeseriesService {
 			.replace(/\s+/g, ' ');
 
 		try {
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: { _nanoISO: string };
 				modeValid: boolean;
 			}>(query);
@@ -680,7 +680,7 @@ export class IntentTimeseriesService {
 	/**
 	 * Check if an intent type is a space-level intent.
 	 * These intents operate on spaces (rooms) rather than individual devices,
-	 * and their completions are stored in InfluxDB for historical tracking.
+	 * and their completions are stored in storage for historical tracking.
 	 */
 	private isSpaceLevelIntent(type: IntentType): boolean {
 		return [

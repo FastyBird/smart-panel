@@ -3,9 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -37,7 +37,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), SwaggerModule, InfluxDbModule, SeedModule],
+	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), SwaggerModule, StorageModule, SeedModule],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,
@@ -111,7 +111,7 @@ The Weather module provides weather forecast data and location management for th
 - **Weather Forecasts** - Current conditions and multi-day forecasts
 - **Location Management** - Configure weather locations by coordinates or city name
 - **Provider System** - Pluggable weather data providers
-- **Historical Data** - Store and retrieve past weather data via InfluxDB
+- **Historical Data** - Store and retrieve past weather data via storage
 - **Multiple Locations** - Support for multiple weather locations
 
 ## Weather Providers

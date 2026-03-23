@@ -1,4 +1,4 @@
-import { FieldType, ISchemaOptions } from 'influx';
+import { StorageFieldType, StorageMeasurementSchema } from '../storage/storage.types';
 
 export const DISPLAYS_MODULE_NAME = 'displays-module';
 export const DISPLAYS_MODULE_PREFIX = 'displays';
@@ -47,8 +47,8 @@ export enum DisplayRole {
 
 export const OnlineDisplayState = [ConnectionState.CONNECTED];
 
-export const DisplayStatusInfluxDbSchema: ISchemaOptions = {
+export const DisplayStatusStorageSchema: StorageMeasurementSchema = {
 	measurement: 'display_status',
-	fields: { online: FieldType.BOOLEAN, onlineI: FieldType.INTEGER, status: FieldType.STRING },
+	fields: { online: StorageFieldType.BOOLEAN, onlineI: StorageFieldType.FLOAT, status: StorageFieldType.STRING },
 	tags: ['displayId'],
 };

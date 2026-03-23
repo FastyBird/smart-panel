@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
@@ -23,7 +23,7 @@ export class PropertyValueService {
 	 */
 	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
 
-	constructor(private readonly influxDbService: InfluxDbService) {}
+	constructor(private readonly storageService: StorageService) {}
 
 	/**
 	 * Write property value to storage
@@ -44,7 +44,7 @@ export class PropertyValueService {
 
 		const cached = this.valuesMap.get(property.id);
 		if (cached && cached.value === value) {
-			// no change → skip Influx write, but refresh lastUpdated so freshness stays accurate
+			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
 			return false;
 		}
@@ -105,15 +105,15 @@ export class PropertyValueService {
 		const trend = this.computeTrend(property);
 		const state = new PropertyValueState(value, now, trend);
 
-		// Update local cache regardless of InfluxDB availability
+		// Update local cache regardless of storage availability
 		this.valuesMap.set(property.id, state);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return true; // Value changed in cache
 		}
 
 		try {
-			await this.influxDbService.writePoints([
+			await this.storageService.writePoints([
 				{
 					measurement: 'property_value',
 					tags: { propertyId: property.id },
@@ -127,7 +127,7 @@ export class PropertyValueService {
 			const err = error as Error;
 
 			this.logger.error(
-				`Failed to write value to InfluxDB id=${property.id} dataType=${property.dataType} error=${err.message}`,
+				`Failed to write value to storage id=${property.id} dataType=${property.dataType} error=${err.message}`,
 				err.stack,
 			);
 		}
@@ -144,8 +144,8 @@ export class PropertyValueService {
 			return cached;
 		}
 
-		// Return null if InfluxDB not connected
-		if (!this.influxDbService.isConnected()) {
+		// Return null if storage not connected
+		if (!this.storageService.isConnected()) {
 			return null;
 		}
 
@@ -159,7 +159,7 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await this.influxDbService.query<{
+			const result = await this.storageService.query<{
 				time: Date | string;
 				stringValue?: string;
 				numberValue?: number;
@@ -204,7 +204,7 @@ export class PropertyValueService {
 					parsedValue = null;
 			}
 
-			// Extract timestamp from InfluxDB result
+			// Extract timestamp from storage result
 			const lastUpdated = latest.time
 				? latest.time instanceof Date
 					? latest.time.toISOString()
@@ -235,7 +235,7 @@ export class PropertyValueService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to read latest value from InfluxDB id=${property.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to read latest value from storage id=${property.id} error=${err.message}`, err.stack);
 
 			return null;
 		}
@@ -246,21 +246,21 @@ export class PropertyValueService {
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
 
-		if (!this.influxDbService.isConnected()) {
+		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
 			const query = `DELETE FROM property_value WHERE propertyId = '${property.id}'`;
 
-			await this.influxDbService.query(query);
+			await this.storageService.query(query);
 
 			this.logger.log(`Deleted all stored values for id=${property.id}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`Failed to delete property data from InfluxDB propertyId=${property.id} error=${err.message}`,
+				`Failed to delete property data from storage propertyId=${property.id} error=${err.message}`,
 				err.stack,
 			);
 		}

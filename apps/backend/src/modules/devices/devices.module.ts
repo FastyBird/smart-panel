@@ -5,14 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
-import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpaceEntity } from '../spaces/entities/space.entity';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { StorageService } from '../storage/services/storage.service';
+import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -33,8 +33,8 @@ import {
 	DEVICES_MODULE_API_TAG_DESCRIPTION,
 	DEVICES_MODULE_API_TAG_NAME,
 	DEVICES_MODULE_NAME,
-	DeviceStatusInfluxDbSchema,
-	PropertyInfluxDbSchema,
+	DeviceStatusStorageSchema,
+	PropertyStorageSchema,
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
@@ -96,7 +96,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 			ChannelPropertyEntity,
 			SpaceEntity,
 		]),
-		InfluxDbModule,
+		StorageModule,
 		IntentsModule,
 		SeedModule,
 		StatsModule,
@@ -174,7 +174,7 @@ export class DevicesModule implements OnModuleInit {
 		private readonly moduleSeeder: DevicesSeederService,
 		private readonly moduleReset: ModuleResetService,
 		private readonly devicesStatsProvider: DevicesStatsProvider,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
@@ -189,8 +189,8 @@ export class DevicesModule implements OnModuleInit {
 		// Register device control tool provider
 		this.toolProviderRegistry.register(this.deviceControlTool);
 
-		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
-		this.influxDbService.registerSchema(DeviceStatusInfluxDbSchema);
+		this.storageService.registerSchema(PropertyStorageSchema);
+		this.storageService.registerSchema(DeviceStatusStorageSchema);
 
 		this.seedRegistry.register(
 			DEVICES_MODULE_NAME,
@@ -237,7 +237,7 @@ The Devices module is the central component for managing all IoT devices connect
 - **Channel Support** - Each device can have multiple channels (e.g., temperature sensor, relay switch)
 - **Property Tracking** - Monitor and control device properties in real-time
 - **Status Monitoring** - Track device connectivity and online status
-- **Time-series Data** - Store historical property values in InfluxDB
+- **Time-series Data** - Store historical property values via storage module
 
 ## Supported Device Types
 
@@ -280,7 +280,7 @@ The module uses a flexible type mapping system that allows plugins to register t
 		];
 
 		const results = await Promise.allSettled(
-			queries.map((q) => this.influxDbService.createContinuousQuery(q.name, q.body, undefined, q.resample)),
+			queries.map((q) => this.storageService.createContinuousQuery(q.name, q.body, undefined, q.resample)),
 		);
 
 		// Log any failures
@@ -288,7 +288,7 @@ The module uses a flexible type mapping system that allows plugins to register t
 			if (result.status === 'rejected') {
 				const err = result.reason as Error;
 
-				this.logger.warn(`[INFLUXDB] Failed to create continuous query ${queries[index].name}`, {
+				this.logger.warn(`Failed to create continuous query ${queries[index].name}`, {
 					message: err?.message ?? 'Unknown error',
 				});
 			}

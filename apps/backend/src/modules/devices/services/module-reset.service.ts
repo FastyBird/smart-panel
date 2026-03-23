@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import {
 	ChannelControlEntity,
@@ -30,7 +30,7 @@ export class ModuleResetService {
 		private readonly channelsPropertiesRepository: Repository<ChannelPropertyEntity>,
 		@InjectRepository(ChannelControlEntity)
 		private readonly channelsControlsRepository: Repository<ChannelControlEntity>,
-		private readonly influxDbService: InfluxDbService,
+		private readonly storageService: StorageService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -56,8 +56,8 @@ export class ModuleResetService {
 
 			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
 
-			await this.influxDbService.dropMeasurement('property_value');
-			await this.influxDbService.dropMeasurement('device_state');
+			await this.storageService.dropMeasurement('property_value');
+			await this.storageService.dropMeasurement('device_status');
 
 			this.logger.log('Module data were successfully reset');
 

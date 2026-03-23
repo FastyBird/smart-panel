@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutStorage": "Storage Configuration"
+	},
+	"messages": {
+		"config": {
+			"edited": "Storage configuration has been successfully updated",
+			"notEdited": "Failed to update storage configuration"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Configure the data storage backend for storing time-series data such as device property history and analytics."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Primary Storage",
+				"placeholder": "Select primary storage plugin",
+				"validation": {
+					"required": "Primary storage is required"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Fallback Storage",
+				"placeholder": "Select fallback storage plugin (optional)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "In-Memory Storage"
+			}
+		}
+	}
+}
