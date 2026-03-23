@@ -237,11 +237,11 @@ export class ReTerminalDeviceMapperService {
 				}
 			}
 		} else {
-			// DM variant only has an 'on' property for the STA LED
-			const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+			// DM variant has a single status LED at a different sysfs path
+			const staBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_DM);
 
-			if (staGreen !== null) {
-				await this.setPropertyValue(deviceId, 'sta_led', 'on', staGreen > 0);
+			if (staBrightness !== null) {
+				await this.setPropertyValue(deviceId, 'sta_led', 'on', staBrightness > 0);
 			}
 		}
 	}

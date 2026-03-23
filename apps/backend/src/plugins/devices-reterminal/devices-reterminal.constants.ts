@@ -58,6 +58,7 @@ export const RETERMINAL_SYSFS = {
 	USR_LED: '/sys/class/leds/usr_led/brightness',
 	STA_LED_GREEN: '/sys/class/leds/sta_led_g/brightness',
 	STA_LED_RED: '/sys/class/leds/sta_led_r/brightness',
+	STA_LED_DM: '/sys/class/leds/usr-led/brightness',
 	BUZZER: '/sys/class/leds/usr_buzzer/brightness',
 	// Input device for buttons
 	INPUT_EVENT_PATH: '/dev/input',
@@ -215,7 +216,7 @@ export const STA_LED_BINDINGS: ReTerminalPropertyBinding[] = [
 	{
 		channelIdentifier: RETERMINAL_CHANNEL_IDENTIFIERS.STA_LED,
 		propertyIdentifier: 'color',
-		category: PropertyCategory.COLOR_RED,
+		category: PropertyCategory.MODE,
 		dataType: DataTypeType.ENUM,
 		permissions: [PermissionType.READ_WRITE],
 		name: 'STA LED Color',
