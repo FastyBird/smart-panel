@@ -121,16 +121,18 @@ export class BuddyContextService {
 				}
 			}
 
-			// If still over limit, evict oldest entries
+			// If still over limit, evict oldest entries using Map insertion order (FIFO)
 			if (this.contextCache.size > CONTEXT_CACHE_MAX_SIZE) {
-				const entries = [...this.contextCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+				const excess = this.contextCache.size - CONTEXT_CACHE_MAX_SIZE;
+				let removed = 0;
 
-				while (this.contextCache.size > CONTEXT_CACHE_MAX_SIZE && entries.length > 0) {
-					const oldest = entries.shift();
-
-					if (oldest) {
-						this.contextCache.delete(oldest[0]);
+				for (const key of this.contextCache.keys()) {
+					if (removed >= excess) {
+						break;
 					}
+
+					this.contextCache.delete(key);
+					removed++;
 				}
 			}
 		}

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
 import { IntentType } from '../../intents/intents.constants';
@@ -8,6 +8,8 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	SuggestionType,
+	TRACKER_MAX_SIZE,
+	TRACKER_MAX_STALE_CYCLES,
 } from '../buddy.constants';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 import { ResolvedAnomalyRule } from '../spec/evaluator-rules.types';
@@ -573,12 +575,16 @@ describe('AnomalyDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Simulate time passage beyond the threshold by manipulating the tracker
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 			const key = 'sensor-1::temperature.temperature';
 
 			tracker.set(key, {
 				value: 21.5,
 				since: Date.now() - (ANOMALY_STUCK_SENSOR_HOURS + 0.5) * 60 * 60 * 1000,
+				lastSeenCycle: (service as any).evaluationCycle,
 			});
 
 			// Second evaluation — same value, should detect as stuck
@@ -609,12 +615,16 @@ describe('AnomalyDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Set time to just before threshold
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 			const key = 'sensor-1::temperature.temperature';
 
 			tracker.set(key, {
 				value: 21.5,
 				since: Date.now() - (ANOMALY_STUCK_SENSOR_HOURS - 0.5) * 60 * 60 * 1000,
+				lastSeenCycle: (service as any).evaluationCycle,
 			});
 
 			const results = await service.evaluate(context);
@@ -664,10 +674,17 @@ describe('AnomalyDetectorEvaluator', () => {
 			await service.evaluate(context1);
 
 			// Make it look stuck
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 			const key = 'sensor-1::temperature.temperature';
 
-			tracker.set(key, { value: 21.5, since: Date.now() - 10 * 60 * 60 * 1000 });
+			tracker.set(key, {
+				value: 21.5,
+				since: Date.now() - 10 * 60 * 60 * 1000,
+				lastSeenCycle: (service as any).evaluationCycle,
+			});
 
 			// Now value changes
 			const context2 = makeContext({
@@ -752,7 +769,10 @@ describe('AnomalyDetectorEvaluator', () => {
 
 			await service.evaluate(contextSpaceA);
 
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 
 			expect(tracker.size).toBe(1);
 
@@ -760,6 +780,7 @@ describe('AnomalyDetectorEvaluator', () => {
 			tracker.set('sensor-1::temperature.temperature', {
 				value: 21.5,
 				since: Date.now() - (ANOMALY_STUCK_SENSOR_HOURS + 1) * 60 * 60 * 1000,
+				lastSeenCycle: (service as any).evaluationCycle,
 			});
 
 			// Now evaluate space-2 context (different space, no sensor-1)
@@ -858,10 +879,17 @@ describe('AnomalyDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Set to 3 hours ago — should NOT trigger at 6h threshold
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 			const key = 'sensor-1::temperature.temperature';
 
-			tracker.set(key, { value: 21.5, since: Date.now() - 3 * 60 * 60 * 1000 });
+			tracker.set(key, {
+				value: 21.5,
+				since: Date.now() - 3 * 60 * 60 * 1000,
+				lastSeenCycle: (service as any).evaluationCycle,
+			});
 
 			const results = await service.evaluate(context);
 
@@ -1283,11 +1311,15 @@ describe('AnomalyDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Backdate the stuck sensor entry
-			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
 
 			tracker.set('humidity-1::humidity.humidity', {
 				value: 45,
 				since: Date.now() - 5 * 60 * 60 * 1000, // 5 hours ago
+				lastSeenCycle: (service as any).evaluationCycle,
 			});
 
 			// Add unusual activity
@@ -1308,6 +1340,98 @@ describe('AnomalyDetectorEvaluator', () => {
 			expect(types).toContain(SuggestionType.ANOMALY_SENSOR_DRIFT);
 			expect(types).toContain(SuggestionType.ANOMALY_STUCK_SENSOR);
 			expect(types).toContain(SuggestionType.ANOMALY_UNUSUAL_ACTIVITY);
+		});
+	});
+
+	// ──────────────────────────────────────────
+	// Tracker cleanup: stale sweep and hard limit
+	// ──────────────────────────────────────────
+
+	describe('stuckSensorTracker cleanup', () => {
+		it('should remove entries not seen for more than TRACKER_MAX_STALE_CYCLES', async () => {
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
+
+			// Seed a stale entry that simulates a removed device
+			tracker.set('removed-device::temperature.temperature', {
+				value: 22,
+				since: Date.now(),
+				lastSeenCycle: 0,
+			});
+
+			// Run TRACKER_MAX_STALE_CYCLES + 1 evaluation cycles with an empty context
+			const emptyContext = makeContext();
+
+			for (let i = 0; i <= TRACKER_MAX_STALE_CYCLES; i++) {
+				await service.evaluate(emptyContext);
+			}
+
+			expect(tracker.has('removed-device::temperature.temperature')).toBe(false);
+		});
+
+		it('should keep entries that are still seen within TRACKER_MAX_STALE_CYCLES', async () => {
+			const context = makeContext({
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Temp Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 21.5 },
+						channels: [],
+					},
+				],
+			});
+
+			// Seed the tracker by evaluating once
+			await service.evaluate(context);
+
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
+
+			// Run several more cycles with the same sensor present
+			for (let i = 0; i < TRACKER_MAX_STALE_CYCLES; i++) {
+				await service.evaluate(context);
+			}
+
+			expect(tracker.has('sensor-1::temperature.temperature')).toBe(true);
+		});
+
+		it('should enforce hard size limit with LRU eviction', async () => {
+			const tracker = (service as any).stuckSensorTracker as Map<
+				string,
+				{ value: unknown; since: number; lastSeenCycle: number }
+			>;
+
+			// Fill tracker to TRACKER_MAX_SIZE
+			for (let i = 0; i < TRACKER_MAX_SIZE; i++) {
+				tracker.set(`device-${i}::prop`, { value: i, since: Date.now(), lastSeenCycle: 1 });
+			}
+
+			expect(tracker.size).toBe(TRACKER_MAX_SIZE);
+
+			// Run an evaluation with one new sensor that will add an entry
+			const context = makeContext({
+				devices: [
+					{
+						id: 'new-sensor',
+						name: 'New Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 42 },
+						channels: [],
+					},
+				],
+			});
+
+			await service.evaluate(context);
+
+			expect(tracker.size).toBeLessThanOrEqual(TRACKER_MAX_SIZE);
+			expect(tracker.has('new-sensor::temperature.temperature')).toBe(true);
 		});
 	});
 });

@@ -9,6 +9,8 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	BUDDY_MODULE_NAME,
 	SuggestionType,
+	TRACKER_MAX_SIZE,
+	TRACKER_MAX_STALE_CYCLES,
 } from '../buddy.constants';
 import { interpolateTemplate } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
@@ -21,6 +23,7 @@ import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
 interface StuckSensorEntry {
 	value: unknown;
 	since: number;
+	lastSeenCycle: number;
 }
 
 interface AnomalyThresholds {
@@ -34,6 +37,7 @@ interface AnomalyThresholds {
 export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	readonly name = 'AnomalyDetector';
 	private readonly stuckSensorTracker = new Map<string, StuckSensorEntry>();
+	private evaluationCycle = 0;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -42,6 +46,8 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	) {}
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		this.evaluationCycle++;
+
 		const results: EvaluatorResult[] = [];
 		const thresholds = this.getThresholds();
 
@@ -197,12 +203,14 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 				const existing = this.stuckSensorTracker.get(propertyKey);
 
 				if (!existing) {
-					this.stuckSensorTracker.set(propertyKey, { value, since: now });
+					this.stuckSensorTracker.set(propertyKey, { value, since: now, lastSeenCycle: this.evaluationCycle });
 
 					continue;
 				}
 
 				if (existing.value === value) {
+					existing.lastSeenCycle = this.evaluationCycle;
+
 					const stuckDuration = now - existing.since;
 
 					if (stuckDuration >= thresholdMs) {
@@ -234,7 +242,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 					}
 				} else {
 					// Value changed — reset tracker
-					this.stuckSensorTracker.set(propertyKey, { value, since: now });
+					this.stuckSensorTracker.set(propertyKey, { value, since: now, lastSeenCycle: this.evaluationCycle });
 				}
 			}
 		}
@@ -254,6 +262,30 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			// Only delete if the device belongs to a space we evaluated
 			if (trackedDevice && trackedDevice.space && contextSpaceIds.has(trackedDevice.space)) {
 				this.stuckSensorTracker.delete(trackerKey);
+			}
+		}
+
+		// Sweep stale entries not seen for TRACKER_MAX_STALE_CYCLES
+		for (const [key, entry] of this.stuckSensorTracker) {
+			if (this.evaluationCycle - entry.lastSeenCycle > TRACKER_MAX_STALE_CYCLES) {
+				this.stuckSensorTracker.delete(key);
+			}
+		}
+
+		// Enforce hard size limit using insertion-order (LRU) eviction
+		if (this.stuckSensorTracker.size > TRACKER_MAX_SIZE) {
+			const keysToDelete: string[] = [];
+
+			for (const key of this.stuckSensorTracker.keys()) {
+				if (this.stuckSensorTracker.size - keysToDelete.length <= TRACKER_MAX_SIZE) {
+					break;
+				}
+
+				keysToDelete.push(key);
+			}
+
+			for (const key of keysToDelete) {
+				this.stuckSensorTracker.delete(key);
 			}
 		}
 

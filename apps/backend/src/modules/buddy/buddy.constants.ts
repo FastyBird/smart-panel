@@ -123,3 +123,7 @@ export const LLM_DEFAULT_TIMEOUT_MS = 60_000;
 // Timeout bounds (ms)
 export const PROVIDER_TIMEOUT_MIN_MS = 5_000;
 export const PROVIDER_TIMEOUT_MAX_MS = 120_000;
+
+export const TRACKER_MAX_STALE_CYCLES = 10; // Remove entries not seen for this many evaluation cycles
+
+export const TRACKER_MAX_SIZE = 1000; // Hard maximum entries in tracker maps

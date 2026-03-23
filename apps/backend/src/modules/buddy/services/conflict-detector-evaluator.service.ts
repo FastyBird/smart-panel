@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
-import { BUDDY_MODULE_NAME, CONFLICT_LIGHTS_UNOCCUPIED_MINUTES, SuggestionType } from '../buddy.constants';
+import {
+	BUDDY_MODULE_NAME,
+	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
+	SuggestionType,
+	TRACKER_MAX_SIZE,
+	TRACKER_MAX_STALE_CYCLES,
+} from '../buddy.constants';
 import { interpolateTemplate } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
@@ -18,7 +24,8 @@ interface ConflictThresholds {
 @Injectable()
 export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 	readonly name = 'ConflictDetector';
-	private readonly occupancyTracker = new Map<string, number>();
+	private readonly occupancyTracker = new Map<string, { firstSeen: number; lastSeenCycle: number }>();
+	private evaluationCycle = 0;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -26,6 +33,8 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 	) {}
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		this.evaluationCycle++;
+
 		const results: EvaluatorResult[] = [];
 		const thresholds = this.getThresholds();
 		const contextSpaceIds = new Set(context.spaces.map((s) => s.id));
@@ -44,6 +53,30 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 
 			if (!contextSpaceIds.has(spaceId)) {
 				this.occupancyTracker.delete(trackerKey);
+			}
+		}
+
+		// Sweep stale entries not seen for TRACKER_MAX_STALE_CYCLES
+		for (const [key, entry] of this.occupancyTracker) {
+			if (this.evaluationCycle - entry.lastSeenCycle > TRACKER_MAX_STALE_CYCLES) {
+				this.occupancyTracker.delete(key);
+			}
+		}
+
+		// Enforce hard size limit using insertion-order (LRU) eviction
+		if (this.occupancyTracker.size > TRACKER_MAX_SIZE) {
+			const keysToDelete: string[] = [];
+
+			for (const key of this.occupancyTracker.keys()) {
+				if (this.occupancyTracker.size - keysToDelete.length <= TRACKER_MAX_SIZE) {
+					break;
+				}
+
+				keysToDelete.push(key);
+			}
+
+			for (const key of keysToDelete) {
+				this.occupancyTracker.delete(key);
 			}
 		}
 
@@ -147,15 +180,17 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 		}
 
 		const now = Date.now();
-		const firstSeen = this.occupancyTracker.get(trackerKey);
+		const existing = this.occupancyTracker.get(trackerKey);
 
-		if (!firstSeen) {
-			this.occupancyTracker.set(trackerKey, now);
+		if (!existing) {
+			this.occupancyTracker.set(trackerKey, { firstSeen: now, lastSeenCycle: this.evaluationCycle });
 
 			return [];
 		}
 
-		const elapsedMinutes = (now - firstSeen) / (60 * 1000);
+		existing.lastSeenCycle = this.evaluationCycle;
+
+		const elapsedMinutes = (now - existing.firstSeen) / (60 * 1000);
 
 		if (elapsedMinutes < thresholds.lightsUnoccupiedMinutes) {
 			return [];
