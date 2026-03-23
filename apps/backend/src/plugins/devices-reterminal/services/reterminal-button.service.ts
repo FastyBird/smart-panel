@@ -127,26 +127,27 @@ export class ReTerminalButtonService {
 	}
 
 	private handleInputEvent(data: Buffer): void {
-		if (data.length < INPUT_EVENT_SIZE) return;
+		// Process all input events in the buffer (a single chunk may contain multiple events)
+		for (let offset = 0; offset + INPUT_EVENT_SIZE <= data.length; offset += INPUT_EVENT_SIZE) {
+			// Parse input_event struct
+			const type = data.readUInt16LE(offset + 16);
+			const code = data.readUInt16LE(offset + 18);
+			const value = data.readInt32LE(offset + 20);
 
-		// Parse input_event struct
-		const type = data.readUInt16LE(16);
-		const code = data.readUInt16LE(18);
-		const value = data.readInt32LE(20);
+			// Only handle key events
+			if (type !== EV_KEY) continue;
 
-		// Only handle key events
-		if (type !== EV_KEY) return;
+			const channelIdentifier = KEY_MAP[code];
 
-		const channelIdentifier = KEY_MAP[code];
+			if (!channelIdentifier) continue;
 
-		if (!channelIdentifier) return;
-
-		if (value === 1) {
-			// Key pressed
-			this.handleButtonPress(channelIdentifier);
-		} else if (value === 0) {
-			// Key released
-			this.handleButtonRelease(channelIdentifier);
+			if (value === 1) {
+				// Key pressed
+				this.handleButtonPress(channelIdentifier);
+			} else if (value === 0) {
+				// Key released
+				this.handleButtonRelease(channelIdentifier);
+			}
 		}
 	}
 
@@ -156,6 +157,11 @@ export class ReTerminalButtonService {
 
 		// Set detected = true
 		void this.emitPropertyValue(channelIdentifier, 'detected', true);
+
+		// Clear any existing long press timer before starting a new one
+		if (state.longPressTimer) {
+			clearTimeout(state.longPressTimer);
+		}
 
 		// Start long press detection timer
 		state.longPressTimer = setTimeout(() => {

@@ -452,7 +452,7 @@ export const RETERMINAL_DM_DEVICE_DESCRIPTOR: ReTerminalDeviceDescriptor = {
 			],
 		},
 		{
-			identifier: RETERMINAL_CHANNEL_IDENTIFIERS.TEMPERATURE,
+			identifier: RETERMINAL_DM_CHANNEL_IDENTIFIERS.TEMPERATURE,
 			name: 'CPU Temperature',
 			category: ChannelCategory.TEMPERATURE,
 			bindings: TEMPERATURE_BINDINGS,
