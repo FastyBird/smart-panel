@@ -1,0 +1,23 @@
+[Unit]
+Description=Smart Panel WiFi Captive Portal
+Documentation=https://smart-panel.fastybird.com
+After=network.target smart-panel-firstboot.service
+Wants=network.target
+Before=smart-panel.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/smart-panel/portal/smart-panel-portal.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-portal
+
+# The portal needs root to:
+# - bind to port 80
+# - manage NetworkManager connections
+# - set hostname/timezone
+
+[Install]
+WantedBy=multi-user.target

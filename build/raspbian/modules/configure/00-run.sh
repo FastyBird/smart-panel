@@ -27,6 +27,11 @@ cp -r "${STAGE_DIR}/files/plymouth" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-discovery.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-discovery.py" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
+# Copy captive portal files (WiFi provisioning on first boot)
+cp "${STAGE_DIR}/files/smart-panel-portal.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+cp "${STAGE_DIR}/files/smart-panel-wifi-watchdog.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+cp -r "${STAGE_DIR}/files/portal" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+
 # Write variant marker so the chroot script knows which variant to configure.
 # The variant file is written into the stage's files/ directory by build.sh
 # before pi-gen starts, so it survives the Docker boundary.

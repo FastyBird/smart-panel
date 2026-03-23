@@ -179,6 +179,29 @@ chmod 0440 /etc/sudoers.d/010_smartpanel-nopasswd
 # Force password change on first SSH login
 chage -d 0 "${FIRST_USER_NAME}"
 
+# ──────────────────────────────────────────────────────────────
+# Captive portal (all variants — WiFi provisioning on first boot)
+# ──────────────────────────────────────────────────────────────
+PORTAL_DIR="/opt/smart-panel/portal"
+mkdir -p "${PORTAL_DIR}"
+
+cp /tmp/smart-panel-config/portal/server.js "${PORTAL_DIR}/server.js"
+cp /tmp/smart-panel-config/portal/index.html "${PORTAL_DIR}/index.html"
+cp /tmp/smart-panel-config/portal/smart-panel-portal.sh "${PORTAL_DIR}/smart-panel-portal.sh"
+cp /tmp/smart-panel-config/portal/smart-panel-wifi-watchdog.sh "${PORTAL_DIR}/smart-panel-wifi-watchdog.sh"
+chmod +x "${PORTAL_DIR}/smart-panel-portal.sh"
+chmod +x "${PORTAL_DIR}/smart-panel-wifi-watchdog.sh"
+
+# Install portal systemd services
+cp /tmp/smart-panel-config/smart-panel-portal.service /etc/systemd/system/
+cp /tmp/smart-panel-config/smart-panel-wifi-watchdog.service /etc/systemd/system/
+
+# Enable portal service (it self-exits if WiFi is already configured)
+systemctl enable smart-panel-portal.service
+systemctl enable smart-panel-wifi-watchdog.service
+
+echo "Captive portal configured"
+
 # Install boot config parser — reads /boot/firmware/smart-panel.conf on first boot.
 # Supports: WIFI_SSID, WIFI_PASSWORD, WIFI_COUNTRY, HOSTNAME, TIMEZONE, LOCALE, SSH_ENABLED
 BOOT_CONFIG_DIR="${FIRSTBOOT_DIR}"

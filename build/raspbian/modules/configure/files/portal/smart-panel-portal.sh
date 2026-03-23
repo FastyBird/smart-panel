@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+#
+# Smart Panel Captive Portal Manager
+#
+# Manages the WiFi AP hotspot and captive portal web server.
+# Called by smart-panel-portal.service on boot when no WiFi is configured.
+#
+# Flow:
+#   1. Check if WiFi is already configured (marker file or active connection)
+#   2. If not, start AP mode via NetworkManager
+#   3. Start the captive portal HTTP server
+#   4. When the server exits (WiFi configured), clean up AP
+#
+set -euo pipefail
+
+PORTAL_DIR="/opt/smart-panel/portal"
+WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
+BOOT_CONFIG="/boot/firmware/smart-panel.conf"
+DATA_DIR="/var/lib/smart-panel"
+LOG_TAG="smart-panel-portal"
+
+log() {
+	echo "$1"
+	logger -t "${LOG_TAG}" "$1"
+}
+
+# ──────────────────────────────────────────────────────────────
+# Check if WiFi is already configured
+# ──────────────────────────────────────────────────────────────
+
+# Skip if boot config file exists (user prepared WiFi config on SD card)
+if [ -f "${BOOT_CONFIG}" ]; then
+	log "Boot config file exists — skipping captive portal"
+	exit 0
+fi
+
+# Skip if WiFi was previously configured
+if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
+	log "WiFi already configured — skipping captive portal"
+	exit 0
+fi
+
+# Skip if there's already an active WiFi connection (not a hotspot)
+ACTIVE_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
+if [ -n "${ACTIVE_WIFI}" ]; then
+	log "Active WiFi connection found — skipping captive portal"
+	# Create marker since WiFi is working
+	mkdir -p "${DATA_DIR}"
+	echo "configured=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${WIFI_CONFIGURED_MARKER}"
+	echo "source=existing-connection" >> "${WIFI_CONFIGURED_MARKER}"
+	exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────
+# Determine AP SSID (SmartPanel-XXXX based on MAC)
+# ──────────────────────────────────────────────────────────────
+
+# Wait for WiFi adapter
+for i in $(seq 1 15); do
+	if nmcli -t -f TYPE device | grep -q wifi; then
+		break
+	fi
+	sleep 1
+done
+
+# Get MAC address for unique SSID suffix
+MAC_ADDR=$(cat /sys/class/net/wlan0/address 2>/dev/null || echo "00:00:00:00:00:00")
+MAC_SUFFIX=$(echo "${MAC_ADDR}" | tr -d ':' | tail -c 5 | tr '[:lower:]' '[:upper:]')
+AP_SSID="SmartPanel-${MAC_SUFFIX}"
+AP_PASSWORD="smartpanel"
+
+log "Starting captive portal with SSID: ${AP_SSID}"
+
+# ──────────────────────────────────────────────────────────────
+# Ensure WiFi radio is unblocked
+# ──────────────────────────────────────────────────────────────
+rfkill unblock wifi 2>/dev/null || true
+
+# ──────────────────────────────────────────────────────────────
+# Start AP mode via NetworkManager
+# ──────────────────────────────────────────────────────────────
+
+# Remove any leftover hotspot connection
+nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+# Create the hotspot
+# NetworkManager handles DHCP (dnsmasq) and DNS automatically for shared connections
+nmcli connection add \
+	type wifi \
+	con-name SmartPanel-Hotspot \
+	autoconnect no \
+	ssid "${AP_SSID}" \
+	wifi.mode ap \
+	wifi.band bg \
+	wifi-sec.key-mgmt wpa-psk \
+	wifi-sec.psk "${AP_PASSWORD}" \
+	ipv4.method shared \
+	ipv4.addresses 192.168.4.1/24 \
+	2>/dev/null
+
+nmcli connection up SmartPanel-Hotspot 2>/dev/null
+
+log "AP mode active: SSID=${AP_SSID}, IP=192.168.4.1"
+log "Password: ${AP_PASSWORD}"
+
+# ──────────────────────────────────────────────────────────────
+# Configure DNS redirect for captive portal detection
+# ──────────────────────────────────────────────────────────────
+
+# NetworkManager's shared mode starts dnsmasq automatically.
+# We add a redirect rule so all DNS queries resolve to our IP.
+# This triggers captive portal detection on all platforms.
+DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
+mkdir -p "$(dirname "${DNSMASQ_CONF}")"
+cat > "${DNSMASQ_CONF}" << 'EOF'
+# Smart Panel captive portal — redirect all DNS to AP IP
+address=/#/192.168.4.1
+EOF
+
+# Restart NetworkManager's dnsmasq to pick up the config
+nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+sleep 1
+nmcli connection up SmartPanel-Hotspot 2>/dev/null
+
+log "DNS redirect configured — all domains resolve to 192.168.4.1"
+
+# ──────────────────────────────────────────────────────────────
+# Start the portal HTTP server
+# ──────────────────────────────────────────────────────────────
+
+# Cleanup function
+cleanup() {
+	log "Cleaning up captive portal..."
+
+	# Remove DNS redirect config
+	rm -f "${DNSMASQ_CONF}"
+
+	# Deactivate and remove hotspot if still active
+	nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+	nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+
+	log "Captive portal stopped"
+}
+
+trap cleanup EXIT
+
+log "Starting portal web server on port 80..."
+exec /usr/local/bin/node "${PORTAL_DIR}/server.js"
