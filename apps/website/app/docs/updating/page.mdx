@@ -37,7 +37,7 @@ The location depends on your installation method:
 	### Stop the services
 
 	```bash copy
-	sudo systemctl stop smart-panel-backend smart-panel-display
+	sudo systemctl stop smart-panel smart-panel-display
 	```
 
 	### Create a backup
@@ -49,7 +49,7 @@ The location depends on your installation method:
 	### Restart the services
 
 	```bash copy
-	sudo systemctl start smart-panel-backend smart-panel-display
+	sudo systemctl start smart-panel smart-panel-display
 	```
 </Steps>
 
@@ -71,9 +71,9 @@ docker run --rm -v smart-panel-data:/data -v $(pwd):/backup alpine \
 ### Systemd Installations
 
 ```bash copy
-sudo systemctl stop smart-panel-backend smart-panel-display
+sudo systemctl stop smart-panel smart-panel-display
 sudo tar xzf ~/smart-panel-backup-YYYYMMDD.tar.gz -C /var/lib/smart-panel
-sudo systemctl start smart-panel-backend smart-panel-display
+sudo systemctl start smart-panel smart-panel-display
 ```
 
 ### Docker Installation
@@ -112,7 +112,7 @@ This downloads the latest version, runs migrations, and restarts the services.
 	### Stop services
 
 	```bash copy
-	sudo systemctl stop smart-panel-backend smart-panel-display
+	sudo systemctl stop smart-panel smart-panel-display
 	```
 
 	### Download the latest release
@@ -137,7 +137,7 @@ This downloads the latest version, runs migrations, and restarts the services.
 	### Start services
 
 	```bash copy
-	sudo systemctl start smart-panel-backend smart-panel-display
+	sudo systemctl start smart-panel smart-panel-display
 	```
 </Steps>
 

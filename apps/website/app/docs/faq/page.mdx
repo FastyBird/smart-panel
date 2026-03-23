@@ -76,7 +76,7 @@ To fully reset your panel:
 1. Stop the services:
 
 ```bash copy
-sudo systemctl stop smart-panel-backend
+sudo systemctl stop smart-panel
 sudo systemctl stop smart-panel-display
 ```
 
@@ -95,7 +95,7 @@ sudo rm /var/lib/smart-panel/data/database.sqlite
 3. Restart the services and the onboarding will start fresh:
 
 ```bash copy
-sudo systemctl start smart-panel-backend
+sudo systemctl start smart-panel
 sudo systemctl start smart-panel-display
 ```
 

@@ -12,13 +12,13 @@ frequently asked questions, see the [FAQ](/docs/faq) page.
 ### Check the service status
 
 ```bash copy
-sudo systemctl status smart-panel-backend
+sudo systemctl status smart-panel
 ```
 
 ### View recent logs
 
 ```bash copy
-sudo journalctl -u smart-panel-backend -b --no-pager -n 50
+sudo journalctl -u smart-panel -b --no-pager -n 50
 ```
 
 ### Common causes
@@ -68,7 +68,7 @@ sudo journalctl -u smart-panel-display -b --no-pager -n 50
 
 If you can't reach `http://smart-panel.local:3000` in your browser:
 
-1. **Check the backend is running**: `sudo systemctl status smart-panel-backend`
+1. **Check the backend is running**: `sudo systemctl status smart-panel`
 2. **Try the IP address directly**: Find it with `hostname -I` on the Pi, then visit `http://<ip>:3000`
 3. **Check firewall rules**: Ensure port 3000 is open — `sudo ufw status` (if UFW is active)
 4. **Verify mDNS**: `.local` domains require mDNS support. See the [Network Requirements](/docs/get-started/network-requirements) page
@@ -91,7 +91,7 @@ If you can't reach `http://smart-panel.local:3000` in your browser:
 ### Check plugin logs
 
 ```bash copy
-sudo journalctl -u smart-panel-backend -b | grep -i "plugin\|device\|discovery"
+sudo journalctl -u smart-panel -b | grep -i "plugin\|device\|discovery"
 ```
 
 ---
@@ -106,7 +106,7 @@ connection indicator:
 3. **Restart both services**:
 
 ```bash copy
-sudo systemctl restart smart-panel-backend
+sudo systemctl restart smart-panel
 sudo systemctl restart smart-panel-display
 ```
 
@@ -156,7 +156,7 @@ docker compose up -d
 ### High memory usage
 
 - SQLite can consume memory with large datasets. Consider enabling InfluxDB for time-series data
-- Restart the backend to free memory: `sudo systemctl restart smart-panel-backend`
+- Restart the backend to free memory: `sudo systemctl restart smart-panel`
 
 ---
 
@@ -179,14 +179,14 @@ The data location depends on your installation method:
 
 ```bash copy
 # Stop services
-sudo systemctl stop smart-panel-backend smart-panel-display
+sudo systemctl stop smart-panel smart-panel-display
 
 # Delete data (adjust path for your install method)
 sudo rm /var/lib/smart-panel/config/config.yaml
 sudo rm /var/lib/smart-panel/data/database.sqlite
 
 # Restart — onboarding will begin fresh
-sudo systemctl start smart-panel-backend smart-panel-display
+sudo systemctl start smart-panel smart-panel-display
 ```
 
 For Docker:
