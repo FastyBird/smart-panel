@@ -12,6 +12,9 @@ import { ReTerminalSysfsService } from '../services/reterminal-sysfs.service';
 export class ReTerminalDevicePlatform implements IDevicePlatform {
 	private readonly logger = new Logger(ReTerminalDevicePlatform.name);
 
+	// Track the last active STA LED color so it can be restored after off→on
+	private lastStaColor: 'green' | 'red' = 'green';
+
 	constructor(private readonly sysfsService: ReTerminalSysfsService) {}
 
 	getType(): string {
@@ -68,18 +71,10 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 		} else if (channelIdentifier === RETERMINAL_CHANNEL_IDENTIFIERS.STA_LED) {
 			if (propertyIdentifier === 'on') {
 				if (this.coerceBoolean(value)) {
-					// Read current state to restore the previously active color
-					const currentGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
-					const currentRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
-
-					if (currentRed !== null && currentRed > 0 && (currentGreen === null || currentGreen === 0)) {
-						// Red was the active color - restore only red
+					// Restore the last known color (tracked in memory — sysfs reads 0 after off)
+					if (this.lastStaColor === 'red') {
 						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, '255');
-					} else if (currentGreen !== null && currentGreen > 0 && (currentRed === null || currentRed === 0)) {
-						// Green was the active color - restore only green
-						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '255');
 					} else {
-						// Both off or unknown state - default to green
 						await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '255');
 					}
 				} else {
@@ -90,24 +85,21 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 			} else if (propertyIdentifier === 'brightness') {
 				const brightness = this.coerceNumber(value, 0, 255);
 
-				// Read current state to determine which channel is active
-				const currentGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
-				const currentRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
-
-				if (currentRed !== null && currentRed > 0 && (currentGreen === null || currentGreen === 0)) {
-					// Red is the active color
+				// Apply brightness to the last known active color channel
+				if (this.lastStaColor === 'red') {
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, String(brightness));
 				} else {
-					// Green is active or default
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, String(brightness));
 				}
 			} else if (propertyIdentifier === 'color') {
 				const color = String(value);
 
 				if (color === 'red') {
+					this.lastStaColor = 'red';
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, '255');
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '0');
 				} else if (color === 'green') {
+					this.lastStaColor = 'green';
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, '0');
 					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, '255');
 				} else if (color === 'off') {

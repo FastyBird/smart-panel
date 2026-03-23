@@ -16,7 +16,11 @@ import { ReTerminalChannelEntity, ReTerminalChannelPropertyEntity } from '../ent
 
 // Linux input event structures (from <linux/input.h>)
 // struct input_event { struct timeval time; __u16 type; __u16 code; __s32 value; }
-const INPUT_EVENT_SIZE = 24; // 8 (timeval) + 2 (type) + 2 (code) + 4 (value) + padding
+// On 64-bit: timeval = 16 bytes → event = 24 bytes, fields at offsets 16/18/20
+// On 32-bit: timeval =  8 bytes → event = 16 bytes, fields at offsets  8/10/12
+const IS_64BIT = ['arm64', 'x64', 'ppc64', 's390x'].includes(process.arch);
+const INPUT_EVENT_SIZE = IS_64BIT ? 24 : 16;
+const INPUT_EVENT_TYPE_OFFSET = IS_64BIT ? 16 : 8;
 const EV_KEY = 1;
 
 // reTerminal button key codes (default mapping)
@@ -130,10 +134,10 @@ export class ReTerminalButtonService {
 	private handleInputEvent(data: Buffer): void {
 		// Process all input events in the buffer (a single chunk may contain multiple events)
 		for (let offset = 0; offset + INPUT_EVENT_SIZE <= data.length; offset += INPUT_EVENT_SIZE) {
-			// Parse input_event struct
-			const type = data.readUInt16LE(offset + 16);
-			const code = data.readUInt16LE(offset + 18);
-			const value = data.readInt32LE(offset + 20);
+			// Parse input_event struct (field offsets depend on architecture)
+			const type = data.readUInt16LE(offset + INPUT_EVENT_TYPE_OFFSET);
+			const code = data.readUInt16LE(offset + INPUT_EVENT_TYPE_OFFSET + 2);
+			const value = data.readInt32LE(offset + INPUT_EVENT_TYPE_OFFSET + 4);
 
 			// Only handle key events
 			if (type !== EV_KEY) continue;
