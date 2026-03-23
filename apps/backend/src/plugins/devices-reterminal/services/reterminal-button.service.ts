@@ -60,6 +60,9 @@ export class ReTerminalButtonService {
 	 * Start listening for button events on the given input device.
 	 */
 	start(deviceId: string, inputDevicePath: string): void {
+		// Clean up any previous stream and timers to prevent fd leaks and duplicate events
+		this.stop();
+
 		this.deviceId = deviceId;
 
 		try {

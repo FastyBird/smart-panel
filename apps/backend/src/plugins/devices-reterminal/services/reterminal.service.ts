@@ -41,6 +41,11 @@ export class ReTerminalService implements IManagedPluginService {
 
 	async start(): Promise<void> {
 		this.logger.log('Starting reTerminal plugin service...');
+
+		// Clean up any previous state to ensure idempotent restarts
+		this.stopPolling();
+		this.buttonService.stop();
+
 		this.state = 'starting';
 
 		// Detect hardware variant
