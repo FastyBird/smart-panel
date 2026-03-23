@@ -117,7 +117,7 @@ export class BuddyConversationService {
 		// to the same short ID, so concurrent requests from different bot adapters
 		// won't interfere with each other.
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
-		const systemPrompt = await this.buildSystemPrompt(context);
+		const systemPrompt = await this.buildSystemPrompt(context, conversation.spaceId ?? undefined);
 
 		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
@@ -329,7 +329,7 @@ export class BuddyConversationService {
 		return (a ?? 0) + (b ?? 0);
 	}
 
-	private async buildSystemPrompt(context: BuddyContext): Promise<string> {
+	private async buildSystemPrompt(context: BuddyContext, conversationSpaceId?: string): Promise<string> {
 		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
 		const buddyName = this.getBuddyName();
@@ -364,7 +364,7 @@ export class BuddyConversationService {
 			const currentTokens = estimateTokens(lines.join('\n'));
 
 			if (currentTokens < tokenBudget) {
-				this.appendDevices(lines, context.devices, hasTools, tokenBudget, context.spaces);
+				this.appendDevices(lines, context.devices, hasTools, tokenBudget, context.spaces, conversationSpaceId);
 			}
 		}
 
@@ -429,6 +429,11 @@ export class BuddyConversationService {
 	 * When the full device list would exceed the token budget, devices from the
 	 * conversation's current space are prioritized with full detail, while other
 	 * spaces are summarized (name + device count only).
+	 *
+	 * @param conversationSpaceId The conversation's scoped space (if any).
+	 *   Only devices in this space are classified as "current". For global
+	 *   conversations (undefined), no space is prioritized and all devices
+	 *   are grouped by their space equally.
 	 */
 	private appendDevices(
 		lines: string[],
@@ -436,6 +441,7 @@ export class BuddyConversationService {
 		hasTools: boolean,
 		tokenBudget: number,
 		spaces: BuddyContext['spaces'],
+		conversationSpaceId?: string,
 	): void {
 		// Try full detail first
 		const fullDeviceLines = this.buildDeviceLines(devices, hasTools);
@@ -447,13 +453,15 @@ export class BuddyConversationService {
 			return;
 		}
 
-		// Token budget exceeded — group devices by space, prioritize current space
-		const spaceIdSet = new Set(spaces.map((s) => s.id));
+		// Token budget exceeded — group devices by space, prioritize current space.
+		// Only the conversation's explicit spaceId counts as "current" — for global
+		// conversations (no spaceId), no space is prioritized and all groups are
+		// treated equally.
 		const currentSpaceDevices: BuddyContext['devices'] = [];
 		const otherSpaceDevices = new Map<string | null, BuddyContext['devices']>();
 
 		for (const device of devices) {
-			if (device.space && spaceIdSet.has(device.space)) {
+			if (conversationSpaceId && device.space === conversationSpaceId) {
 				currentSpaceDevices.push(device);
 			} else {
 				const key = device.space;

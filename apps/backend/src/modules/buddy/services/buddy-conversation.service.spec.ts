@@ -568,11 +568,12 @@ describe('BuddyConversationService', () => {
 			expect(systemPrompt).not.toContain('omitted for brevity');
 		});
 
-		it('should truncate devices for a large home exceeding token budget', async () => {
-			// Generate 100 devices across two spaces — enough to exceed the 8k * 0.8 = 6.4k token budget
-			const currentSpaceDevices = generateDevices(10, 'space-1');
-			const otherSpaceDevices = generateDevices(90, 'space-2');
-			const allDevices = [...currentSpaceDevices, ...otherSpaceDevices];
+		it('should truncate devices for a large global conversation', async () => {
+			// Global conversation (spaceId=null) with 100 devices across two spaces
+			// exceeds the 8k * 0.8 = 6.4k token budget
+			const space1Devices = generateDevices(10, 'space-1');
+			const space2Devices = generateDevices(90, 'space-2');
+			const allDevices = [...space1Devices, ...space2Devices];
 
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
@@ -603,8 +604,61 @@ describe('BuddyConversationService', () => {
 			expect(estimatedTokens).toBeLessThan(8_000);
 		});
 
+		it('should prioritize current space devices for a scoped conversation', async () => {
+			// Scoped conversation with spaceId='space-1' — current space devices
+			// should get full detail, while other spaces are summarized
+			const scopedConversation: BuddyConversationEntity = {
+				id: 'conv-scoped',
+				title: 'Living Room Chat',
+				spaceId: 'space-1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			conversationRepo.findOne.mockResolvedValue(scopedConversation);
+
+			const currentDevices = generateDevices(5, 'space-1');
+			const otherDevices = generateDevices(80, 'space-2');
+			const allDevices = [...currentDevices, ...otherDevices];
+
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
+				spaces: [
+					{ id: 'space-1', name: 'Living Room', category: 'room', deviceCount: 5 },
+					{ id: 'space-2', name: 'Garage', category: 'room', deviceCount: 80 },
+				],
+				devices: allDevices,
+				scenes: [],
+				weather: null,
+				energy: null,
+				recentIntents: [],
+			});
+
+			llmProvider.supportsTools.mockReturnValue(true);
+
+			await service.sendMessage('conv-scoped', 'What is the temperature?');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			// Current space (Living Room) devices should have full detail with property IDs
+			for (const device of currentDevices) {
+				expect(systemPrompt).toContain(device.name);
+			}
+
+			// Other space should be summarized, not listed device-by-device
+			expect(systemPrompt).toContain('Garage');
+			expect(systemPrompt).toContain('ask for details');
+			expect(systemPrompt).toContain('omitted for brevity');
+
+			// Prompt should stay within budget
+			const estimatedTokens = Math.ceil(systemPrompt.length / 4);
+
+			expect(estimatedTokens).toBeLessThan(8_000);
+		});
+
 		it('should aggressively truncate for a very large home', async () => {
-			// Generate 200 devices — far beyond budget
+			// Generate 200 devices — far beyond budget, global conversation
 			const allDevices = generateDevices(200, 'space-other');
 			const spaces = [
 				{ id: 'space-1', name: 'Master Bedroom', category: 'room', deviceCount: 5 },
