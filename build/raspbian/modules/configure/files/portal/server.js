@@ -124,11 +124,21 @@ function getStatus() {
  * Validate and sanitize inputs to prevent command injection.
  * Each field is validated against a strict allowlist pattern.
  */
-function validateInputs(country, hostname, timezone, password) {
+function validateInputs(country, hostname, timezone, password, ssid) {
 	const errors = [];
+
+	// SSID: reject null bytes which would cause nmcli to see a truncated name
+	if (ssid && /\x00/.test(ssid)) {
+		errors.push('SSID contains invalid characters');
+	}
 
 	if (password && password.length < 8) {
 		errors.push('WiFi password must be at least 8 characters');
+	}
+
+	// Password: reject null bytes for the same reason as SSID
+	if (password && /\x00/.test(password)) {
+		errors.push('Password contains invalid characters');
 	}
 
 	if (country && !/^[A-Z]{2}$/.test(country)) {
@@ -166,7 +176,7 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 	return new Promise((resolve) => {
 		try {
 			// Validate inputs before using them in shell commands
-			const validationErrors = validateInputs(country, hostname, timezone, password);
+			const validationErrors = validateInputs(country, hostname, timezone, password, ssid);
 			if (validationErrors.length > 0) {
 				resolve({
 					success: false,
@@ -229,6 +239,15 @@ function connectToWifi(ssid, password, country, hostname, timezone) {
 					'ifname', 'wlan0',
 				], { timeout: 30000 });
 			} catch (err) {
+				// The failed attempt may have left a connection profile behind.
+				// Delete it before adding a new one to prevent duplicate profiles
+				// from accumulating across retries.
+				try {
+					execFileSync('nmcli', ['connection', 'delete', ssid], { timeout: 10000 });
+				} catch (_) {
+					// may not exist — that's fine
+				}
+
 				// Try adding as a new connection profile
 				try {
 					execFileSync('nmcli', [
@@ -402,7 +421,7 @@ const server = http.createServer(async (req, res) => {
 			const sanitizedHostname = typeof hostname === 'string' ? hostname : '';
 			const sanitizedTimezone = typeof timezone === 'string' ? timezone : '';
 
-			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone, password);
+			const validationErrors = validateInputs(sanitizedCountry, sanitizedHostname, sanitizedTimezone, password, ssid);
 			if (validationErrors.length > 0) {
 				sendJson(res, 400, { success: false, message: validationErrors.join('; ') });
 				return;
