@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-03-23. Reflects actual codebase state.
+> Last updated: 2026-03-24. Reflects actual codebase state.
 
 ---
 
@@ -285,11 +285,11 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | 1 | [FEATURE-INFLUXDB-FALLBACK](features/influxdb-memory-fallback.md) | backend, admin | :white_check_mark: Done |
 | 2 | [FEATURE-IMAGE-UPDATE](features/image-update-mechanism.md) | backend | :white_check_mark: Done |
 | 3 | [FEATURE-FLUTTERPI-MDNS](features/flutter-pi-mdns-discovery-service.md) | backend, panel | :white_check_mark: Done |
-| 4 | [FEATURE-CAPTIVE-PORTAL](features/captive-portal-wifi-setup.md) | backend | :clipboard: Planned |
+| 4 | [FEATURE-CAPTIVE-PORTAL](features/captive-portal-wifi-setup.md) | backend | :white_check_mark: Done |
 | 5 | [FEATURE-PANEL-APP-UPDATES](features/FEATURE-PANEL-APP-UPDATES.md) | backend, admin, panel | :clipboard: Planned |
 
-**Done:** Storage module refactored with plugin architecture and in-memory fallback, image-based update mechanism for Raspbian, mDNS discovery proxy for flutter-pi.
-**Remaining:** Captive portal WiFi provisioning, panel display app OTA updates.
+**Done:** Storage module refactored with plugin architecture and in-memory fallback, image-based update mechanism for Raspbian, mDNS discovery proxy for flutter-pi, captive portal WiFi provisioning.
+**Remaining:** Panel display app OTA updates.
 
 ---
 
@@ -342,8 +342,8 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Companion Display | 0 | 0 | 9 | 9 |
 | Plugins | 1 | 0 | 1 | 2 |
 | Extension Actions | 1 | 0 | 7 | 8 |
-| Device & Infrastructure | 3 | 0 | 2 | 5 |
+| Device & Infrastructure | 4 | 0 | 1 | 5 |
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **50** | **0** | **38** | **88** |
+| **Total** | **51** | **0** | **37** | **88** |
