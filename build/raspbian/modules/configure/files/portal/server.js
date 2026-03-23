@@ -73,8 +73,9 @@ function scanWifiNetworks() {
 
 		for (const line of output.trim().split('\n')) {
 			if (!line) continue;
-			// nmcli -t uses : as separator; SSID may contain escaped colons
-			const parts = line.split(':');
+			// nmcli -t uses : as separator and escapes literal colons in values as \:
+			// Split on unescaped colons only (: not preceded by \), then unescape.
+			const parts = line.split(/(?<!\\):/);
 			if (parts.length < 3) continue;
 
 			const ssid = parts[0].replace(/\\:/g, ':');
@@ -84,7 +85,7 @@ function scanWifiNetworks() {
 			networks.push({
 				ssid,
 				signal: parseInt(parts[1], 10) || 0,
-				security: parts.slice(2).join(' ').trim(),
+				security: parts.slice(2).join(' ').trim().replace(/\\:/g, ':'),
 			});
 		}
 
