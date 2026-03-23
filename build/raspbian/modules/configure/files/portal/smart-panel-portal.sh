@@ -142,7 +142,7 @@ nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
 
 # Create the hotspot
 # NetworkManager handles DHCP (dnsmasq) and DNS automatically for shared connections
-nmcli connection add \
+if ! nmcli connection add \
 	type wifi \
 	con-name SmartPanel-Hotspot \
 	autoconnect no \
@@ -152,10 +152,15 @@ nmcli connection add \
 	wifi-sec.key-mgmt wpa-psk \
 	wifi-sec.psk "${AP_PASSWORD}" \
 	ipv4.method shared \
-	ipv4.addresses 192.168.4.1/24 \
-	2>/dev/null
+	ipv4.addresses 192.168.4.1/24; then
+	log "ERROR: Failed to create hotspot connection — is wlan0 available?"
+	exit 1
+fi
 
-nmcli connection up SmartPanel-Hotspot 2>/dev/null
+if ! nmcli connection up SmartPanel-Hotspot; then
+	log "ERROR: Failed to activate hotspot — check NetworkManager logs"
+	exit 1
+fi
 
 log "AP mode active: SSID=${AP_SSID}, IP=192.168.4.1"
 log "Password: ${AP_PASSWORD}"
