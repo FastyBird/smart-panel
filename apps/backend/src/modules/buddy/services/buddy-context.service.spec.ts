@@ -472,6 +472,26 @@ describe('BuddyContextService', () => {
 		});
 	});
 
+	describe('cache eviction performance', () => {
+		it('should evict oldest entries using FIFO when cache exceeds max size', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const cache = (service as any).contextCache as Map<string, { context: unknown; expiresAt: number }>;
+
+			// Fill cache beyond limit with non-expired entries (expiresAt in the future)
+			for (let i = 0; i < 55; i++) {
+				cache.set(`space-fill-${i}`, { context: {}, expiresAt: Date.now() + 120_000 });
+			}
+
+			// Trigger eviction by calling buildContext
+			spacesService.findDevicesBySpace.mockResolvedValue([]);
+			await service.buildContext('eviction-trigger');
+
+			expect(cache.size).toBeLessThanOrEqual(50);
+			// The newest entries should survive (FIFO evicts earliest inserted)
+			expect(cache.has('eviction-trigger')).toBe(true);
+		});
+	});
+
 	describe('graceful error handling', () => {
 		it('should return empty spaces when spaces service throws', async () => {
 			spacesService.findAll.mockRejectedValue(new Error('DB error'));

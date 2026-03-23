@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
-import { CONFLICT_LIGHTS_UNOCCUPIED_MINUTES, SuggestionType } from '../buddy.constants';
+import {
+	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
+	SuggestionType,
+	TRACKER_MAX_SIZE,
+	TRACKER_MAX_STALE_CYCLES,
+} from '../buddy.constants';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 import { ResolvedConflictRule } from '../spec/evaluator-rules.types';
 
@@ -518,9 +523,10 @@ describe('ConflictDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Simulate time passage by manipulating the tracker
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+			const entry = tracker.get('space-1::lights_unoccupied');
 
-			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000);
+			entry.firstSeen = Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000;
 
 			const results = await service.evaluate(context);
 			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
@@ -558,9 +564,10 @@ describe('ConflictDetectorEvaluator', () => {
 			await service.evaluate(context);
 
 			// Set to 5 minutes ago (below 15 min threshold)
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+			const entry = tracker.get('space-1::lights_unoccupied');
 
-			tracker.set('space-1::lights_unoccupied', Date.now() - 5 * 60 * 1000);
+			entry.firstSeen = Date.now() - 5 * 60 * 1000;
 
 			const results = await service.evaluate(context);
 			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
@@ -640,16 +647,17 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(unoccupiedContext);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
 			await service.evaluate(occupiedContext);
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
 
 			await service.evaluate(unoccupiedContext);
-			const newFirstSeen = tracker.get('space-1::lights_unoccupied') ?? 0;
-			expect(newFirstSeen).toBeGreaterThan(0);
-			expect(Date.now() - newFirstSeen).toBeLessThan(1000);
+			const newEntry = tracker.get('space-1::lights_unoccupied');
+			expect(newEntry).toBeDefined();
+			expect(newEntry.firstSeen).toBeGreaterThan(0);
+			expect(Date.now() - newEntry.firstSeen).toBeLessThan(1000);
 		});
 
 		it('should reset tracker when lights turn off', async () => {
@@ -696,7 +704,7 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(lightsOnContext);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
 			await service.evaluate(lightsOffContext);
@@ -772,8 +780,10 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
-			tracker.set('space-1::lights_unoccupied', Date.now() - 20 * 60 * 1000);
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+			const entry = tracker.get('space-1::lights_unoccupied');
+
+			entry.firstSeen = Date.now() - 20 * 60 * 1000;
 
 			const results = await service.evaluate(context);
 			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(0);
@@ -802,7 +812,7 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
 			service.resetOccupancyTracker('space-1');
@@ -842,8 +852,10 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
-			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000);
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+			const entry = tracker.get('space-1::lights_unoccupied');
+
+			entry.firstSeen = Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000;
 
 			const results = await service.evaluate(context);
 			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(1);
@@ -894,8 +906,10 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-			const tracker = (service as any).occupancyTracker as Map<string, number>;
-			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 5) * 60 * 1000);
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+			const entry = tracker.get('space-1::lights_unoccupied');
+
+			entry.firstSeen = Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 5) * 60 * 1000;
 
 			const results = await service.evaluate(context);
 			const types = results.map((r) => r.type);
@@ -953,6 +967,104 @@ describe('ConflictDetectorEvaluator', () => {
 			expect(results[0].spaceId).toBe('space-1');
 			expect(results[1].type).toBe(SuggestionType.CONFLICT_AC_WINDOW);
 			expect(results[1].spaceId).toBe('space-2');
+		});
+	});
+
+	// ──────────────────────────────────────────
+	// Tracker cleanup: stale sweep and hard limit
+	// ──────────────────────────────────────────
+
+	describe('occupancyTracker cleanup', () => {
+		it('should remove entries not seen for more than TRACKER_MAX_STALE_CYCLES', async () => {
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+
+			// Seed a stale entry for a removed space
+			tracker.set('removed-space::lights_unoccupied', { firstSeen: Date.now(), lastSeenCycle: 0 });
+
+			// Run TRACKER_MAX_STALE_CYCLES + 1 evaluation cycles with an empty context
+			const emptyContext = makeContext({ spaces: [{ id: 'space-1', name: 'Room', category: 'room', deviceCount: 0 }] });
+
+			for (let i = 0; i <= TRACKER_MAX_STALE_CYCLES; i++) {
+				await service.evaluate(emptyContext);
+			}
+
+			expect(tracker.has('removed-space::lights_unoccupied')).toBe(false);
+		});
+
+		it('should keep entries that are still seen within TRACKER_MAX_STALE_CYCLES', async () => {
+			const context = makeContext({
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+						channels: [],
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+						channels: [],
+					},
+				],
+			});
+
+			// Seed tracker
+			await service.evaluate(context);
+
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
+
+			// Run several more cycles with the same condition
+			for (let i = 0; i < TRACKER_MAX_STALE_CYCLES; i++) {
+				await service.evaluate(context);
+			}
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
+		});
+
+		it('should enforce hard size limit with LRU eviction', async () => {
+			const tracker = (service as any).occupancyTracker as Map<string, { firstSeen: number; lastSeenCycle: number }>;
+
+			// Fill tracker to TRACKER_MAX_SIZE
+			for (let i = 0; i < TRACKER_MAX_SIZE; i++) {
+				tracker.set(`space-${i}::lights_unoccupied`, { firstSeen: Date.now(), lastSeenCycle: 1 });
+			}
+
+			expect(tracker.size).toBe(TRACKER_MAX_SIZE);
+
+			// Evaluate — this adds a new entry via detectLightsUnoccupied then enforces limit
+			const context = makeContext({
+				spaces: [{ id: 'new-space', name: 'New Room', category: 'room', deviceCount: 2 }],
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'new-space',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+						channels: [],
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'new-space',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+						channels: [],
+					},
+				],
+			});
+
+			await service.evaluate(context);
+
+			expect(tracker.size).toBeLessThanOrEqual(TRACKER_MAX_SIZE);
+			expect(tracker.has('new-space::lights_unoccupied')).toBe(true);
 		});
 	});
 });
