@@ -33,6 +33,19 @@ if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
 	exit 0
 fi
 
+# Helper: ensure .wifi-configured marker exists and watchdog is running.
+# Called whenever we skip the portal with an active network connection.
+ensure_marker_and_watchdog() {
+	if [ ! -f "${WIFI_CONFIGURED_MARKER}" ]; then
+		log "Creating WiFi configured marker and starting watchdog"
+		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
+		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
+		echo "source=${1:-unknown}" >> "${WIFI_CONFIGURED_MARKER}"
+		systemctl start smart-panel.service 2>/dev/null || true
+		systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
+	fi
+}
+
 # 2. If boot config was applied, give NetworkManager time to connect.
 #    Boot config may have set WiFi credentials; NM needs a few seconds
 #    to activate the connection after firstboot applied it.
@@ -42,6 +55,7 @@ if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
 		if nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep -q ':802-11-wireless$' \
 			|| nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'; then
 			log "Network came up after ${i}s — skipping captive portal"
+			ensure_marker_and_watchdog "boot-config"
 			exit 0
 		fi
 		sleep 1
@@ -69,18 +83,7 @@ fi
 
 if [ "${HAS_NETWORK}" = true ]; then
 	log "Network available — skipping captive portal"
-
-	# If the watchdog triggered us but WiFi auto-reconnected before we got here,
-	# restore the marker and restart the watchdog so monitoring continues.
-	if [ ! -f "${WIFI_CONFIGURED_MARKER}" ]; then
-		log "Restoring WiFi configured marker and restarting watchdog"
-		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
-		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
-		echo "restored=true" >> "${WIFI_CONFIGURED_MARKER}"
-		systemctl start smart-panel.service 2>/dev/null || true
-		systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
-	fi
-
+	ensure_marker_and_watchdog "network-detected"
 	exit 0
 fi
 
