@@ -216,7 +216,7 @@ export const STA_LED_BINDINGS: ReTerminalPropertyBinding[] = [
 	{
 		channelIdentifier: RETERMINAL_CHANNEL_IDENTIFIERS.STA_LED,
 		propertyIdentifier: 'color',
-		category: PropertyCategory.MODE,
+		category: PropertyCategory.COLOR_RED,
 		dataType: DataTypeType.ENUM,
 		permissions: [PermissionType.READ_WRITE],
 		name: 'STA LED Color',

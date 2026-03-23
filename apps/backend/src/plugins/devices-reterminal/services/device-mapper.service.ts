@@ -207,18 +207,16 @@ export class ReTerminalDeviceMapperService {
 	}
 
 	private async updateLedStates(deviceId: string, variant: ReTerminalVariant): Promise<void> {
-		// USR LED is only available on reTerminal CM4
 		if (variant === ReTerminalVariant.RETERMINAL) {
+			// CM4: USR LED
 			const usrBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.USR_LED);
 
 			if (usrBrightness !== null) {
 				await this.setPropertyValue(deviceId, 'usr_led', 'on', usrBrightness > 0);
 				await this.setPropertyValue(deviceId, 'usr_led', 'brightness', usrBrightness);
 			}
-		}
 
-		if (variant === ReTerminalVariant.RETERMINAL) {
-			// CM4 variant has separate green/red LED channels with brightness and color
+			// CM4: STA LED has separate green/red channels with brightness and color
 			const staGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
 			const staRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
 
@@ -237,7 +235,7 @@ export class ReTerminalDeviceMapperService {
 				}
 			}
 		} else {
-			// DM variant has a single status LED at a different sysfs path
+			// DM: single status LED at a different sysfs path, only 'on' property
 			const staBrightness = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_DM);
 
 			if (staBrightness !== null) {
