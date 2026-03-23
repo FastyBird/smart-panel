@@ -78,7 +78,7 @@ export class ReTerminalService implements IManagedPluginService {
 		}
 	}
 
-	stop(): void {
+	async stop(): Promise<void> {
 		this.logger.log('Stopping reTerminal plugin service...');
 
 		this.stopPolling();
