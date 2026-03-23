@@ -198,16 +198,21 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	# ── Cleanup old versions (keep max 2 previous) ──
 	cd "$IMAGE_BASE_DIR"
-	CURRENT_BASENAME=$(basename "$(readlink "$CURRENT_LINK")" 2>/dev/null || true)
 
-	# Only match semver-versioned directories (v<digits>.<digits>.<digits>*)
-	# to avoid accidentally deleting unrelated v-prefixed directories
-	# shellcheck disable=SC2010
-	OLD_VERSIONS=$(ls -d v[0-9]*.[0-9]*.[0-9]*/ 2>/dev/null | grep -v "^${CURRENT_BASENAME}/" | sort -V | head -n -2 || true)
+	# Use the known current version rather than re-reading the symlink,
+	# so cleanup is safe even if readlink fails unexpectedly
+	CURRENT_BASENAME="v${CLEAN_VERSION}"
 
-	for old_dir in $OLD_VERSIONS; do
-		rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
-	done
+	if [ -n "$CURRENT_BASENAME" ]; then
+		# Only match semver-versioned directories (v<digits>.<digits>.<digits>*)
+		# to avoid accidentally deleting unrelated v-prefixed directories
+		# shellcheck disable=SC2010
+		OLD_VERSIONS=$(ls -d v[0-9]*.[0-9]*.[0-9]*/ 2>/dev/null | grep -v "^${CURRENT_BASENAME}/" | sort -V | head -n -2 || true)
+
+		for old_dir in $OLD_VERSIONS; do
+			rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
+		done
+	fi
 
 	# ── Mark complete ──
 	update_status "complete" "complete"
