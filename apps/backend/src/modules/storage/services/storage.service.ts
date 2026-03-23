@@ -141,7 +141,8 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	// ─── Core Read/Write ──────────────────────────────────────────────
 
 	async writePoints(points: StoragePoint[]): Promise<void> {
-		// Always write to fallback (for fallback reads)
+		// Write to both storages — best effort for each.
+		// Data lands in at least one if either is reachable.
 		if (this.fallback?.isAvailable()) {
 			try {
 				await this.fallback.writePoints(points);
@@ -152,9 +153,14 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 			}
 		}
 
-		// Also write to primary if available
 		if (this.primary?.isAvailable()) {
-			await this.primary.writePoints(points);
+			try {
+				await this.primary.writePoints(points);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Primary write failed: ${err.message}`);
+			}
 		}
 	}
 
