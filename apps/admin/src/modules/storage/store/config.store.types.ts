@@ -8,8 +8,4 @@ export type IStorageConfig = z.infer<typeof StorageConfigSchema>;
 export interface IStorageConfigModule extends IConfigModule {
 	primaryStorage: string;
 	fallbackStorage?: string;
-	host: string;
-	database: string;
-	username?: string;
-	password?: string;
 }

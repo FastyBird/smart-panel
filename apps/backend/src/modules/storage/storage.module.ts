@@ -52,6 +52,26 @@ export class StorageModule implements OnModuleInit {
 			this.swaggerRegistry.register(model);
 		}
 
+		this.extensionsService.registerPluginMetadata({
+			type: INFLUX_V1_PLUGIN_NAME,
+			name: 'InfluxDB v1',
+			description: 'InfluxDB 1.x time-series storage backend with retention policies and continuous queries.',
+			author: 'FastyBird',
+			readme: `# InfluxDB v1 Plugin
+
+Connects to an InfluxDB 1.x server and provides full time-series storage with retention policies, continuous queries, and all native InfluxDB features.
+
+## Configuration
+
+- **host** — InfluxDB server address (default: 127.0.0.1)
+- **database** — InfluxDB database name (default: fastybird)
+- **username/password** — Optional authentication credentials`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
+
 		this.extensionsService.registerModuleMetadata({
 			type: STORAGE_MODULE_NAME,
 			name: 'Storage',
@@ -68,14 +88,8 @@ The Storage module provides time-series data storage for the Smart Panel via a p
 
 ## Configuration
 
-### Storage module (storage-module)
 - **primaryStorage** — Plugin to use as primary storage (default: influx-v1-plugin)
-- **fallbackStorage** — Plugin to use when primary is unavailable (default: memory-storage-plugin)
-
-### InfluxDB plugin (influx-v1-plugin)
-- **host** — InfluxDB server address (default: 127.0.0.1)
-- **database** — InfluxDB database name (default: fastybird)
-- **username/password** — Optional InfluxDB authentication`,
+- **fallbackStorage** — Plugin to use when primary is unavailable (default: memory-storage-plugin)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

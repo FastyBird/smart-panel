@@ -35,56 +35,6 @@
 				name="fallbackStorage"
 			/>
 		</el-form-item>
-
-		<el-divider content-position="left" class="mt-6!">{{ t('storageModule.headings.influxDb') }}</el-divider>
-
-		<el-form-item
-			:label="t('storageModule.fields.config.host.title')"
-			prop="host"
-		>
-			<el-input
-				v-model="model.host"
-				:placeholder="t('storageModule.fields.config.host.placeholder')"
-				name="host"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('storageModule.fields.config.database.title')"
-			prop="database"
-		>
-			<el-input
-				v-model="model.database"
-				:placeholder="t('storageModule.fields.config.database.placeholder')"
-				name="database"
-			/>
-		</el-form-item>
-
-		<el-divider content-position="left" class="mt-6!">{{ t('storageModule.headings.authentication') }}</el-divider>
-
-		<el-form-item
-			:label="t('storageModule.fields.config.username.title')"
-			prop="username"
-		>
-			<el-input
-				v-model="model.username"
-				:placeholder="t('storageModule.fields.config.username.placeholder')"
-				name="username"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('storageModule.fields.config.password.title')"
-			prop="password"
-		>
-			<el-input
-				v-model="model.password"
-				:placeholder="t('storageModule.fields.config.password.placeholder')"
-				name="password"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 
@@ -92,7 +42,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IStorageConfigEditForm } from '../schemas/config.types';
@@ -129,8 +79,6 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 
 const rules = reactive<FormRules<IStorageConfigEditForm>>({
 	primaryStorage: [{ required: true, message: t('storageModule.fields.config.primaryStorage.validation.required'), trigger: 'change' }],
-	host: [{ required: true, message: t('storageModule.fields.config.host.validation.required'), trigger: 'change' }],
-	database: [{ required: true, message: t('storageModule.fields.config.database.validation.required'), trigger: 'change' }],
 });
 
 watch(
