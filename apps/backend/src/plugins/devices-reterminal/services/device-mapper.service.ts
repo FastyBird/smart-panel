@@ -137,7 +137,10 @@ export class ReTerminalDeviceMapperService {
 			const luxRaw = await this.sysfsService.readIioAttribute(lightDevice, 'in_illuminance_raw');
 
 			if (luxRaw) {
-				await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw));
+				const scaleRaw = await this.sysfsService.readIioAttribute(lightDevice, 'in_illuminance_scale');
+				const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
+
+				await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw) * scale);
 			}
 		}
 
@@ -148,19 +151,40 @@ export class ReTerminalDeviceMapperService {
 			const scaleRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_scale');
 			const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
 
+			// IIO accel raw * scale yields m/s²; convert to g-force (1 g = 9.80665 m/s²)
+			const STANDARD_GRAVITY = 9.80665;
+
 			const xRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_x_raw');
 			const yRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_y_raw');
 			const zRaw = await this.sysfsService.readIioAttribute(accelDevice, 'in_accel_z_raw');
 
-			if (xRaw) await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_x', parseFloat(xRaw) * scale);
-			if (yRaw) await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_y', parseFloat(yRaw) * scale);
-			if (zRaw) await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_z', parseFloat(zRaw) * scale);
+			if (xRaw)
+				await this.setPropertyValue(
+					deviceId,
+					'accelerometer',
+					'acceleration_x',
+					(parseFloat(xRaw) * scale) / STANDARD_GRAVITY,
+				);
+			if (yRaw)
+				await this.setPropertyValue(
+					deviceId,
+					'accelerometer',
+					'acceleration_y',
+					(parseFloat(yRaw) * scale) / STANDARD_GRAVITY,
+				);
+			if (zRaw)
+				await this.setPropertyValue(
+					deviceId,
+					'accelerometer',
+					'acceleration_z',
+					(parseFloat(zRaw) * scale) / STANDARD_GRAVITY,
+				);
 
-			// Compute orientation from acceleration values
+			// Compute orientation from acceleration values (in g)
 			if (xRaw && yRaw && zRaw) {
-				const x = parseFloat(xRaw) * scale;
-				const y = parseFloat(yRaw) * scale;
-				const z = parseFloat(zRaw) * scale;
+				const x = (parseFloat(xRaw) * scale) / STANDARD_GRAVITY;
+				const y = (parseFloat(yRaw) * scale) / STANDARD_GRAVITY;
+				const z = (parseFloat(zRaw) * scale) / STANDARD_GRAVITY;
 				const orientation = this.computeOrientation(x, y, z);
 
 				await this.setPropertyValue(deviceId, 'accelerometer', 'orientation', orientation);

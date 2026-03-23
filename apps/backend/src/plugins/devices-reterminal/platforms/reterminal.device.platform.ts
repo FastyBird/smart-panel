@@ -69,12 +69,23 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 			if (propertyIdentifier === 'on') {
 				const brightness = this.coerceBoolean(value) ? 255 : 0;
 
+				// Write to both channels to ensure the LED is fully on or off
 				await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, String(brightness));
+				await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, String(brightness));
 			} else if (propertyIdentifier === 'brightness') {
 				const brightness = this.coerceNumber(value, 0, 255);
 
-				// Apply brightness to currently active color
-				await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, String(brightness));
+				// Read current state to determine which channel is active
+				const currentGreen = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_GREEN);
+				const currentRed = await this.sysfsService.readLedBrightness(RETERMINAL_SYSFS.STA_LED_RED);
+
+				if (currentRed !== null && currentRed > 0 && (currentGreen === null || currentGreen === 0)) {
+					// Red is the active color
+					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_RED, String(brightness));
+				} else {
+					// Green is active or default
+					await this.sysfsService.writeFile(RETERMINAL_SYSFS.STA_LED_GREEN, String(brightness));
+				}
 			} else if (propertyIdentifier === 'color') {
 				const color = String(value);
 

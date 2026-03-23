@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	IManagedPluginService,
 	ServiceState,
@@ -10,6 +11,7 @@ import {
 	ReTerminalVariant,
 } from '../devices-reterminal.constants';
 import { ReTerminalDeviceEntity } from '../entities/devices-reterminal.entity';
+import { ReTerminalConfigModel } from '../models/config.model';
 
 import { ReTerminalDeviceMapperService } from './device-mapper.service';
 import { ReTerminalButtonService } from './reterminal-button.service';
@@ -30,6 +32,7 @@ export class ReTerminalService implements IManagedPluginService {
 		private readonly sysfsService: ReTerminalSysfsService,
 		private readonly deviceMapper: ReTerminalDeviceMapperService,
 		private readonly buttonService: ReTerminalButtonService,
+		private readonly configService: ConfigService,
 	) {}
 
 	getState(): ServiceState {
@@ -78,7 +81,7 @@ export class ReTerminalService implements IManagedPluginService {
 		}
 	}
 
-	async stop(): Promise<void> {
+	stop(): Promise<void> {
 		this.logger.log('Stopping reTerminal plugin service...');
 
 		this.stopPolling();
@@ -86,16 +89,21 @@ export class ReTerminalService implements IManagedPluginService {
 
 		this.device = null;
 		this.state = 'stopped';
+
+		return Promise.resolve();
 	}
 
 	private startPolling(): void {
+		const config = this.configService.getPluginConfig<ReTerminalConfigModel>(DEVICES_RETERMINAL_PLUGIN_NAME);
+		const interval = config?.polling?.interval ?? DEFAULT_SENSOR_POLLING_INTERVAL_MS;
+
 		this.pollingInterval = setInterval(() => {
 			if (!this.device) return;
 
 			this.deviceMapper.updateSensorValues(this.device.id).catch((error) => {
 				this.logger.debug(`Sensor polling error: ${error}`);
 			});
-		}, DEFAULT_SENSOR_POLLING_INTERVAL_MS);
+		}, interval);
 	}
 
 	private stopPolling(): void {
