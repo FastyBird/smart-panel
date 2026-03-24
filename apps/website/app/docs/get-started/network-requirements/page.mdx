@@ -24,10 +24,11 @@ what your network needs to support for everything to work properly.
 
 ## mDNS (Multicast DNS)
 
-Smart Panel uses mDNS for two purposes:
+Smart Panel uses mDNS for three purposes:
 
 1. **Hostname resolution** — so you can access `http://smart-panel.local:3000` from your browser
 2. **Device discovery** — plugins like Shelly use mDNS to automatically find devices on the network
+3. **Display → server discovery** — in multi-display setups, panel displays use mDNS to automatically find Smart Panel servers on the network (no manual URL entry needed)
 
 ### Requirements for mDNS
 
@@ -64,13 +65,8 @@ sudo ufw allow 5353/udp comment "mDNS"
 
 ## Device Communication
 
-Different plugins communicate with devices in different ways:
-
-| Plugin | Protocol | Notes |
-|--------|----------|-------|
-| **Shelly (NG)** | WebSocket + mDNS | Requires same subnet for discovery |
-| **Home Assistant** | HTTP REST API | Only needs network route to HA instance |
-| **Third-Party** | Manual | Devices are created manually, no network discovery |
+Each integration plugin has its own network requirements (mDNS, WebSocket, HTTP, MQTT, etc.).
+See the [Plugins](/docs/plugins) section for details on specific integrations.
 
 ---
 
@@ -96,5 +92,5 @@ location / {
 
 ## What's Next?
 
-- Continue to [Preparation](/docs/get-started/preparation) to set up your Raspberry Pi
+- Continue to [Installation](/docs/get-started/installation) to set up Smart Panel
 - See the [Troubleshooting](/docs/troubleshooting) guide if you're having connectivity issues

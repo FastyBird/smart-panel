@@ -1,8 +1,7 @@
 export default {
 	"raspberry-pi-image": "Raspberry Pi Image",
-	"server-only": "Server Only",
+	"install-script": "Install Script",
 	docker: "Docker",
-	"display-only": "Display Only",
-	"all-in-one": "All-in-One",
+	"display-platforms": "Display Platforms",
 	"captive-portal": "WiFi Setup (Captive Portal)",
 };

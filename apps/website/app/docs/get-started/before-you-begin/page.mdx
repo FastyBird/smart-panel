@@ -11,13 +11,27 @@ smart home dashboard. Either way, a little preparation goes a long way.
 
 ## What You’ll Need
 
-Here’s the minimal hardware checklist to follow along:
+Smart Panel runs on **any Linux device with systemd** — from a Raspberry Pi to a mini PC, NAS, or VM.
+The most common setup is a Raspberry Pi with a touchscreen, but server-only and Docker deployments
+work on any Linux host.
 
-- **Raspberry Pi** (Zero 2 W, 3B+, 4, or CM4)
+### Raspberry Pi (recommended for display setups)
+
+- **Raspberry Pi** (Zero 2 W, 3B+, 4, 5, or CM4 / reTerminal)
 - **MicroSD card** (8GB+ recommended)
 - **Power supply**
 - **Display** (HDMI or DSI, touchscreen optional)
-- **Keyboard & mouse** (optional but helpful during setup)
+
+### Other Linux devices (server-only or Docker)
+
+- Any Linux machine with systemd (Debian, Ubuntu, Fedora, Arch, etc.)
+- x64 or ARM64 architecture
+- 512 MB RAM minimum, 1 GB recommended
+- Network connectivity
+
+<Callout>
+	No display? No problem — run the **server only** and connect display panels (Raspberry Pi, Android tablet, or Linux desktop) over the network.
+</Callout>
 
 <Callout>
 	Planning to embed the display into a wall or enclosure? Make sure you test everything before mounting!
@@ -37,6 +51,4 @@ You may also want:
 
 ## What’s Next?
 
-Now that you know what you need.
-
-👉 Head over to the **[Preparation](/docs/get-started/preparation)** section to start flashing your SD card and setting up the system.
+Now that you know what you need, check the **[Network Requirements](/docs/get-started/network-requirements)** to make sure your network is ready for Smart Panel.

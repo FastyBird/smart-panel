@@ -2,52 +2,49 @@ import { Callout, Cards } from 'nextra/components'
 
 # Installation
 
-Now that your device is set up, it's time to install the Smart Panel software. Depending on your setup,
-you can choose one of several deployment scenarios.
-
-All installation methods use **pre-built distribution packages** published automatically by our CI pipeline
-to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
+Choose your installation method based on your hardware and preferences. All methods use **pre-built
+packages** from [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 
 ---
 
-## Deployment Scenarios
+## Choose Your Method
 
 <Cards>
-	<Cards.Card title="Pre-Built Raspberry Pi Image" href="/docs/get-started/preparation#option-1-pre-built-smart-panel-image-recommended">
-		Flash a ready-to-go SD card image with everything pre-installed. WiFi setup via captive portal — no SSH needed.
+	<Cards.Card title="Raspberry Pi Image" href="/docs/get-started/installation/raspberry-pi-image">
+		Flash a ready-to-go SD card image — everything pre-installed. Configure WiFi from your phone via captive portal.
 	</Cards.Card>
-	<Cards.Card title="Server Only" href="/docs/get-started/installation/server-only">
-		Install just the backend and admin interface on a server or headless device. Display panels connect remotely.
-	</Cards.Card>
-	<Cards.Card title="Display Only" href="/docs/get-started/installation/display-only">
-		Install the panel app on a display device that connects to an existing Smart Panel server on your network.
-	</Cards.Card>
-	<Cards.Card title="All-in-One" href="/docs/get-started/installation/all-in-one">
-		Run the server and display on the same device — ideal for a standalone Raspberry Pi smart panel.
+	<Cards.Card title="Install Script" href="/docs/get-started/installation/install-script">
+		One-liner scripts for any Linux device. Install the server, display app, or both.
 	</Cards.Card>
 	<Cards.Card title="Docker" href="/docs/get-started/installation/docker">
-		Deploy the server as a Docker container — quick setup with no system-level dependencies.
+		Deploy the server as a Docker container — no system-level dependencies.
+	</Cards.Card>
+	<Cards.Card title="Display Platforms" href="/docs/get-started/installation/display-platforms">
+		Platform-specific reference for flutter-pi, eLinux, Linux desktop, and Android display setups.
 	</Cards.Card>
 </Cards>
 
 ---
 
-## Which Scenario Is Right for You?
+## Which Method Is Right for You?
 
-| Scenario | Best For | Example Hardware |
-|----------|----------|-----------------|
-| **Pre-Built Image** | Zero-config Raspberry Pi setup | Raspberry Pi 3B+/4/5, Zero 2W (64-bit) |
-| **Server Only** | Centralized setup with multiple displays | Raspberry Pi 4, mini PC, NAS, any Linux server |
-| **Display Only** | Adding a screen to an existing server | Raspberry Pi Zero 2W + touchscreen, Android tablet |
-| **All-in-One** | Single standalone smart panel | Raspberry Pi 3B+/4 with DSI touchscreen |
-| **Docker** | Containerized server deployment | Any Linux host with Docker installed |
+| Method | Best For | Platforms |
+|--------|----------|-----------|
+| **Raspberry Pi Image** | Zero-config Raspberry Pi setup | Pi 3B+, 4, 5, Zero 2W (64-bit) |
+| **Install Script** | Any Linux — server, display, or both | Any Linux with systemd (Debian, Ubuntu, Fedora, etc.) |
+| **Docker** | Containerized server deployment | Any Linux host with Docker |
+| **Display Platforms** | Adding displays to an existing server | Raspberry Pi, Linux x64, Android |
 
 <Callout type="info">
-	If you have a **Raspberry Pi**, the [Pre-Built Image](/docs/get-started/preparation#option-1-pre-built-smart-panel-image-recommended)
-	is the fastest path — flash, boot, and configure WiFi from your phone. For other Linux devices or Docker,
-	choose from the options below. If you plan to have **multiple displays around your home**, start with
-	[Server Only](/docs/get-started/installation/server-only) on a central device, then add displays using
-	[Display Only](/docs/get-started/installation/display-only).
+	**Raspberry Pi?** The [pre-built image](/docs/get-started/installation/raspberry-pi-image) is the
+	fastest path — flash, boot, configure WiFi from your phone.
+
+	**Other Linux?** Use the [install script](/docs/get-started/installation/install-script) — one command
+	for the server, one for the display.
+
+	**Multiple displays?** Install the server first (image, script, or Docker), then add displays using
+	the [install script](/docs/get-started/installation/install-script) or
+	[display platforms](/docs/get-started/installation/display-platforms) guide on each display device.
 </Callout>
 
 ---
@@ -57,7 +54,7 @@ to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 ### Server (Backend + Admin)
 
 - **OS**: Linux with systemd (Raspberry Pi OS, Debian, Ubuntu, Fedora, etc.)
-- **Node.js**: Version 24 or higher
+- **Node.js**: Version 24 or higher (install scripts handle this automatically)
 - **Architecture**: ARM (32-bit), ARM64 (64-bit), or x64
 - **RAM**: 512 MB minimum, 1 GB recommended
 - **Storage**: 300 MB free space minimum
@@ -72,6 +69,6 @@ to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases).
 
 ## What's Next?
 
-Choose your deployment scenario above and follow the step-by-step guide. After installation, proceed
-to [**Onboarding**](/docs/get-started/onboarding) to create your admin account and start configuring
+Choose your installation method above and follow the guide. After installation, proceed to
+[**Onboarding**](/docs/get-started/onboarding) to create your admin account and start configuring
 your smart panel.
