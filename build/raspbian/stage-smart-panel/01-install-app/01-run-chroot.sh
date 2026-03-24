@@ -74,16 +74,20 @@ set -e
 APP_DIR="${1:-/opt/smart-panel/current}"
 cd "${APP_DIR}"
 
+# Use node-gyp rebuild directly instead of npm install --build-from-source.
+# npm install inside a pnpm-managed package corrupts the pnpm virtual store
+# by creating its own node_modules hierarchy.
+
 SQLITE_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
 if [ -n "${SQLITE_DIR}" ] && [ ! -f "${SQLITE_DIR}/build/Release/node_sqlite3.node" ]; then
 	echo "Building sqlite3 native module..."
-	cd "${SQLITE_DIR}" && npm install --build-from-source
+	cd "${SQLITE_DIR}" && node-gyp rebuild --release
 fi
 
 BCRYPT_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/bcrypt/package.json" -exec dirname {} \; | grep "bcrypt@" | head -1)
 if [ -n "${BCRYPT_DIR}" ] && [ ! -f "${BCRYPT_DIR}/build/Release/bcrypt_lib.node" ]; then
 	echo "Building bcrypt native module..."
-	cd "${BCRYPT_DIR}" && npm install --build-from-source
+	cd "${BCRYPT_DIR}" && node-gyp rebuild --release
 fi
 
 echo "Native modules ready"

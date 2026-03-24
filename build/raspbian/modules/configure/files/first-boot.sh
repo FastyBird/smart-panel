@@ -123,8 +123,9 @@ if [ "${HAS_BACKEND}" = true ]; then
 
 	# 2. Build native modules (sqlite3, bcrypt)
 	log_info "Building native modules (this may take a minute)..."
-	if [ -x "${APP_DIR}/rebuild-native.sh" ]; then
-		if "${APP_DIR}/rebuild-native.sh" >> "${BOOT_LOG}" 2>&1; then
+	REBUILD_SCRIPT="$(dirname "${APP_DIR}")/rebuild-native.sh"
+	if [ -x "${REBUILD_SCRIPT}" ]; then
+		if "${REBUILD_SCRIPT}" "${APP_DIR}" >> "${BOOT_LOG}" 2>&1; then
 			log_ok "Native modules compiled"
 		else
 			log_error "Native module compilation failed"
