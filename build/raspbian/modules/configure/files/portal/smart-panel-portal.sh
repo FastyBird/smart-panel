@@ -111,7 +111,21 @@ log "Starting captive portal with SSID: ${AP_SSID}"
 # ──────────────────────────────────────────────────────────────
 # Ensure WiFi radio is unblocked
 # ──────────────────────────────────────────────────────────────
+# On Raspberry Pi, WiFi stays soft-blocked until a regulatory country is set.
+# Set a permissive default (US) so the radio can be enabled for AP mode.
+# The user picks their actual country in the portal setup page.
+iw reg set US 2>/dev/null || true
 rfkill unblock wifi 2>/dev/null || true
+nmcli radio wifi on 2>/dev/null || true
+
+# Wait for WiFi to become available after unblocking
+for i in $(seq 1 10); do
+	WIFI_STATE=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^wifi:' | cut -d: -f2 || true)
+	if [ "${WIFI_STATE}" != "unavailable" ]; then
+		break
+	fi
+	sleep 1
+done
 
 # ──────────────────────────────────────────────────────────────
 # Cleanup and DNS config path

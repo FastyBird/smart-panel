@@ -37,7 +37,8 @@ case "${VARIANT}" in
 esac
 
 # Set paths based on variant
-APP_DIR="/opt/smart-panel"
+# Use /current symlink for image installs (points to versioned dir)
+APP_DIR="/opt/smart-panel/current"
 DATA_DIR="/var/lib/smart-panel"
 DISPLAY_DIR="/opt/smart-panel-display"
 ENV_FILE="/etc/smart-panel/environment"
