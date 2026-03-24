@@ -5,18 +5,26 @@ import {
 } from './buddy.exceptions';
 
 /**
- * Race a promise against a timeout. If the timeout fires first, throw the
- * supplied exception. The timer is always cleaned up (no leaked handles).
+ * Race a promise against a timeout. If the timeout fires first, abort the
+ * controller (if provided) and throw the supplied exception.
+ * The timer is always cleaned up (no leaked handles).
+ *
+ * @param controller Optional AbortController — aborted on timeout so the
+ *   underlying provider can cancel in-flight HTTP requests / processing.
  */
 export async function withServiceTimeout<T>(
 	promise: Promise<T>,
 	timeoutMs: number,
 	exception: BuddyProviderTimeoutException | BuddySttProviderTimeoutException | BuddyTtsProviderTimeoutException,
+	controller?: AbortController,
 ): Promise<T> {
 	let timer: NodeJS.Timeout | undefined;
 
 	const timeout = new Promise<never>((_, reject) => {
-		timer = setTimeout(() => reject(exception), timeoutMs);
+		timer = setTimeout(() => {
+			controller?.abort();
+			reject(exception);
+		}, timeoutMs);
 	});
 
 	try {

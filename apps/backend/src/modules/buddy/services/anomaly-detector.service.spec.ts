@@ -121,6 +121,8 @@ describe('AnomalyDetectorEvaluator', () => {
 				anomalyStuckSensorHours: ANOMALY_STUCK_SENSOR_HOURS,
 				anomalyUnusualActivityThreshold: ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 				anomalyUnusualActivityWindowMinutes: ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
+				trackerMaxStaleCycles: TRACKER_MAX_STALE_CYCLES,
+				trackerMaxSize: TRACKER_MAX_SIZE,
 			}),
 		};
 

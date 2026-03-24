@@ -56,19 +56,30 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 			}
 		}
 
-		// Sweep stale entries not seen for TRACKER_MAX_STALE_CYCLES
+		// Sweep stale entries and enforce size limit using configurable values
+		let maxStaleCycles = TRACKER_MAX_STALE_CYCLES;
+		let maxSize = TRACKER_MAX_SIZE;
+
+		try {
+			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+			maxStaleCycles = config.trackerMaxStaleCycles;
+			maxSize = config.trackerMaxSize;
+		} catch (_) {
+			// Use defaults if config is unavailable
+		}
+
 		for (const [key, entry] of this.occupancyTracker) {
-			if (this.evaluationCycle - entry.lastSeenCycle > TRACKER_MAX_STALE_CYCLES) {
+			if (this.evaluationCycle - entry.lastSeenCycle > maxStaleCycles) {
 				this.occupancyTracker.delete(key);
 			}
 		}
 
-		// Enforce hard size limit using insertion-order (LRU) eviction
-		if (this.occupancyTracker.size > TRACKER_MAX_SIZE) {
+		// Enforce hard size limit using insertion-order (FIFO) eviction
+		if (this.occupancyTracker.size > maxSize) {
 			const keysToDelete: string[] = [];
 
 			for (const key of this.occupancyTracker.keys()) {
-				if (this.occupancyTracker.size - keysToDelete.length <= TRACKER_MAX_SIZE) {
+				if (this.occupancyTracker.size - keysToDelete.length <= maxSize) {
 					break;
 				}
 

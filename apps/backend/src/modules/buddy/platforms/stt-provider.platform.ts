@@ -3,6 +3,7 @@
  */
 export interface SttTranscriptionOptions {
 	language?: string;
+	signal?: AbortSignal;
 }
 
 /**

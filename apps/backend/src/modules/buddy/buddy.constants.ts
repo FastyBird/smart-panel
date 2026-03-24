@@ -127,3 +127,5 @@ export const PROVIDER_TIMEOUT_MAX_MS = 120_000;
 export const TRACKER_MAX_STALE_CYCLES = 10; // Remove entries not seen for this many evaluation cycles
 
 export const TRACKER_MAX_SIZE = 1000; // Hard maximum entries in tracker maps
+
+export const DEFAULT_CONTEXT_WINDOW_TOKENS = 8_000; // Default LLM context window size in tokens

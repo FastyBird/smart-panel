@@ -206,7 +206,9 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 
 				if (!existing) {
 					// Pre-insertion size check: evict oldest entry before inserting
-					if (this.stuckSensorTracker.size >= TRACKER_MAX_SIZE) {
+					let maxSize = TRACKER_MAX_SIZE;
+					try { maxSize = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME).trackerMaxSize; } catch (_) {}
+					if (this.stuckSensorTracker.size >= maxSize) {
 						const firstKey = this.stuckSensorTracker.keys().next().value;
 						if (firstKey) this.stuckSensorTracker.delete(firstKey);
 					}
@@ -282,19 +284,30 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	 * Called from evaluate() so it always runs, even when the stuck_sensor rule is disabled.
 	 */
 	private sweepStuckSensorTracker(): void {
-		// Sweep stale entries not seen for TRACKER_MAX_STALE_CYCLES
+		let maxStaleCycles = TRACKER_MAX_STALE_CYCLES;
+		let maxSize = TRACKER_MAX_SIZE;
+
+		try {
+			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
+			maxStaleCycles = config.trackerMaxStaleCycles;
+			maxSize = config.trackerMaxSize;
+		} catch (_) {
+			// Use defaults if config is unavailable
+		}
+
+		// Sweep stale entries not seen for configured number of cycles
 		for (const [key, entry] of this.stuckSensorTracker) {
-			if (this.evaluationCycle - entry.lastSeenCycle > TRACKER_MAX_STALE_CYCLES) {
+			if (this.evaluationCycle - entry.lastSeenCycle > maxStaleCycles) {
 				this.stuckSensorTracker.delete(key);
 			}
 		}
 
-		// Enforce hard size limit using insertion-order (LRU) eviction
-		if (this.stuckSensorTracker.size > TRACKER_MAX_SIZE) {
+		// Enforce hard size limit using insertion-order (FIFO) eviction
+		if (this.stuckSensorTracker.size > maxSize) {
 			const keysToDelete: string[] = [];
 
 			for (const key of this.stuckSensorTracker.keys()) {
-				if (this.stuckSensorTracker.size - keysToDelete.length <= TRACKER_MAX_SIZE) {
+				if (this.stuckSensorTracker.size - keysToDelete.length <= maxSize) {
 					break;
 				}
 

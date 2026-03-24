@@ -162,7 +162,7 @@ describe('BuddyConversationService', () => {
 		} as any;
 
 		const configService = {
-			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy', maxToolIterations: 5 }),
+			getModuleConfig: jest.fn().mockReturnValue({ name: 'Buddy', maxToolIterations: 5, contextWindowTokens: 8_000 }),
 		};
 
 		service = new BuddyConversationService(

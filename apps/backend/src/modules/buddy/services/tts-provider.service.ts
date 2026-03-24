@@ -137,14 +137,17 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		let result: { buffer: Buffer; contentType: string };
+		const controller = new AbortController();
 
 		try {
 			result = await withServiceTimeout(
 				provider.synthesize(text, {
 					language: this.getSystemLanguage(),
+					signal: controller.signal,
 				}),
 				config.ttsTimeoutMs,
 				new BuddyTtsProviderTimeoutException(),
+				controller,
 			);
 		} catch (error) {
 			if (error instanceof BuddyTtsProviderTimeoutException) {

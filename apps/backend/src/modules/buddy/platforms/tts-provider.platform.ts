@@ -5,6 +5,7 @@ export interface TtsSynthesisOptions {
 	voice?: string;
 	speed?: number;
 	language?: string;
+	signal?: AbortSignal;
 }
 
 /**

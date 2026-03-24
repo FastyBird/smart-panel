@@ -13,6 +13,7 @@ export interface LlmOptions {
 	model?: string;
 	maxTokens?: number;
 	tools?: ToolDefinition[];
+	signal?: AbortSignal;
 }
 
 /**

@@ -59,14 +59,17 @@ export class SttProviderService {
 		}
 
 		let text: string;
+		const controller = new AbortController();
 
 		try {
 			text = await withServiceTimeout(
 				provider.transcribe(audioBuffer, mimeType, {
 					language: this.getSystemLanguage(),
+					signal: controller.signal,
 				}),
 				config.sttTimeoutMs,
 				new BuddySttProviderTimeoutException(),
+				controller,
 			);
 		} catch (error) {
 			if (error instanceof BuddySttProviderTimeoutException) {

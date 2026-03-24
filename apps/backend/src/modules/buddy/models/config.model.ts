@@ -13,6 +13,7 @@ import {
 	BUDDY_DEFAULT_PERSONALITY_PATH,
 	BUDDY_MODULE_NAME,
 	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
+	DEFAULT_CONTEXT_WINDOW_TOKENS,
 	DEFAULT_MAX_TOOL_ITERATIONS,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
@@ -24,6 +25,8 @@ import {
 	PROVIDER_TIMEOUT_MIN_MS,
 	STT_DEFAULT_TIMEOUT_MS,
 	STT_PLUGIN_NONE,
+	TRACKER_MAX_SIZE,
+	TRACKER_MAX_STALE_CYCLES,
 	TTS_DEFAULT_TIMEOUT_MS,
 	TTS_PLUGIN_NONE,
 } from '../buddy.constants';
@@ -264,4 +267,43 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@Min(PROVIDER_TIMEOUT_MIN_MS)
 	@Max(PROVIDER_TIMEOUT_MAX_MS)
 	llmTimeoutMs: number = LLM_DEFAULT_TIMEOUT_MS;
+
+	@ApiPropertyOptional({
+		name: 'context_window_tokens',
+		description: 'LLM context window size in tokens — prompt is truncated to 80% of this value',
+		type: 'integer',
+		example: 8000,
+	})
+	@Expose({ name: 'context_window_tokens' })
+	@IsOptional()
+	@IsInt()
+	@Min(2_000)
+	@Max(200_000)
+	contextWindowTokens: number = DEFAULT_CONTEXT_WINDOW_TOKENS;
+
+	@ApiPropertyOptional({
+		name: 'tracker_max_stale_cycles',
+		description: 'Evaluation cycles after which unvisited tracker entries are evicted',
+		type: 'integer',
+		example: 10,
+	})
+	@Expose({ name: 'tracker_max_stale_cycles' })
+	@IsOptional()
+	@IsInt()
+	@Min(3)
+	@Max(100)
+	trackerMaxStaleCycles: number = TRACKER_MAX_STALE_CYCLES;
+
+	@ApiPropertyOptional({
+		name: 'tracker_max_size',
+		description: 'Maximum number of entries in evaluator tracker maps',
+		type: 'integer',
+		example: 1000,
+	})
+	@Expose({ name: 'tracker_max_size' })
+	@IsOptional()
+	@IsInt()
+	@Min(100)
+	@Max(50_000)
+	trackerMaxSize: number = TRACKER_MAX_SIZE;
 }

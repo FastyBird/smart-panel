@@ -9,7 +9,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { BUDDY_MODULE_NAME, DEFAULT_MAX_TOOL_ITERATIONS, EventType, MessageRole } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, DEFAULT_CONTEXT_WINDOW_TOKENS, DEFAULT_MAX_TOOL_ITERATIONS, EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
@@ -27,12 +27,6 @@ const MAX_HISTORY_MESSAGES = 20;
  * When the system prompt exceeds this ratio, devices/properties are truncated.
  */
 const PROMPT_TOKEN_BUDGET_RATIO = 0.8;
-
-/**
- * Default context window size for models that don't report their own.
- * Conservative default suitable for smaller Ollama models.
- */
-const DEFAULT_CONTEXT_WINDOW_TOKENS = 8_000;
 
 /**
  * Estimate the number of tokens in a text string.
@@ -333,7 +327,13 @@ export class BuddyConversationService {
 		const hasTools = this.llmProvider.supportsTools();
 		const personality = await this.personalityService.getPersonality();
 		const buddyName = this.getBuddyName();
-		const tokenBudget = Math.floor(DEFAULT_CONTEXT_WINDOW_TOKENS * PROMPT_TOKEN_BUDGET_RATIO);
+		let contextWindowTokens = DEFAULT_CONTEXT_WINDOW_TOKENS;
+		try {
+			contextWindowTokens = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME).contextWindowTokens;
+		} catch (_) {
+			// Use default if config is unavailable
+		}
+		const tokenBudget = Math.floor(contextWindowTokens * PROMPT_TOKEN_BUDGET_RATIO);
 
 		// Stage 1: Base instructions (always included)
 		const lines: string[] = [`Your name is ${buddyName}.`, '', personality];

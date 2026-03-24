@@ -46,12 +46,14 @@ export class LlmProviderService {
 		const timeoutMs = config.llmTimeoutMs;
 		const timeout = Math.min(options?.timeout ?? timeoutMs, timeoutMs);
 		const model = options?.model ?? provider.getDefaultModel();
+		const controller = new AbortController();
 
 		try {
 			return await withServiceTimeout(
-				provider.sendMessage(systemPrompt, messages, model, { ...options, timeout }),
+				provider.sendMessage(systemPrompt, messages, model, { ...options, timeout, signal: controller.signal }),
 				timeoutMs,
 				new BuddyProviderTimeoutException(),
+				controller,
 			);
 		} catch (error) {
 			if (error instanceof BuddyProviderTimeoutException) {
