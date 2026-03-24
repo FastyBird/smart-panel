@@ -51,7 +51,7 @@ dependencies:
   json_annotation: ^4.9.0
   dio: ^5.8.0+1
   freezed_annotation: ^3.1.0
-  retrofit: ^4.4.2
+  retrofit: ^4.9.0
   flutter_secure_storage: ^10.0.0-beta.4
   weather_icons: ^3.0.0
   material_design_icons_flutter: ^7.0.7296
@@ -79,13 +79,13 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  swagger_parser: ^1.21.3
-  build_runner: ^2.4.13
-  carapacik_lints: ^1.10.0
-  dart_mappable_builder: ^4.3.0
+  swagger_parser: ^1.43.0
+  build_runner: ^2.13.0
+  carapacik_lints: ^3.11.0
+  dart_mappable_builder: ^4.7.0
   freezed: ^3.2.0
   json_serializable: ^6.9.0
-  retrofit_generator: ^9.1.7
+  retrofit_generator: ^10.2.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
