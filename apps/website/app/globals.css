@@ -235,6 +235,16 @@ html:has(.landing-page) div[class*="bg-gray-100"][class*="bg-neutral-900"] butto
     display: none !important;
 }
 
+/* Installation cards — 2-column grid with justified text */
+.nextra-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+.nextra-cards .nextra-card {
+    text-align: justify;
+    padding: 1.25rem !important;
+}
+
 /* Hero floating chips */
 .hero-float {
     animation: hero-chip-float 4s ease-in-out infinite;
