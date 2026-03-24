@@ -1,8 +1,8 @@
 [Unit]
 Description=Smart Panel WiFi Captive Portal
 Documentation=https://smart-panel.fastybird.com
-After=network.target smart-panel-firstboot.service
-Wants=network.target
+After=NetworkManager.service
+Wants=NetworkManager.service
 Before=smart-panel.service
 
 [Service]
