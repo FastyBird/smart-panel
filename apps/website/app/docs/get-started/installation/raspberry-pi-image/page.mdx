@@ -1,0 +1,143 @@
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+# Raspberry Pi Image
+
+The fastest way to get Smart Panel running on a Raspberry Pi. Pre-built images include everything —
+just flash, boot, and configure WiFi.
+
+---
+
+## Choose Your Image Variant
+
+<Tabs items={['All-in-One', 'Server Only', 'Display Only']}>
+	<Tabs.Tab>
+		### All-in-One (AIO)
+
+		Backend + admin + display app on one device. Best for standalone smart panels with a touchscreen.
+
+		This is the most common setup — a single Raspberry Pi serves as both the server and the display.
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Server Only
+
+		Backend + admin interface, no display. Best for headless servers that serve multiple remote displays.
+
+		Use this when you want one central server and separate display devices around your home.
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Display Only
+
+		Panel display app only. Connects to an existing Smart Panel server on the network.
+
+		Use this when you already have a server running and want to add display panels.
+	</Tabs.Tab>
+</Tabs>
+
+---
+
+## Flash the Image
+
+<Steps>
+	## Download the image
+
+	Go to [GitHub Releases](https://github.com/FastyBird/smart-panel/releases) and download the image
+	for your variant. Files are named:
+
+	```
+	smart-panel-{variant}-{version}-arm64.img.xz
+	```
+
+	Where `{variant}` is `aio`, `server`, or `display`.
+
+	## Flash using Raspberry Pi Imager
+
+	Open [Raspberry Pi Imager](https://www.raspberrypi.com/software/), select **Use custom**, and
+	choose the downloaded `.img.xz` file. Select your SD card and click **Write**.
+
+	## Boot the Pi
+
+	Insert the SD card into your Raspberry Pi and power it on.
+</Steps>
+
+<Callout type="info">
+	Images are ARM64 only — compatible with Pi 3B+, Pi 4, Pi 5, and Pi Zero 2W (64-bit).
+</Callout>
+
+---
+
+## Configure WiFi
+
+### Option A: Captive Portal (no computer needed)
+
+On first boot, if no WiFi is configured, a WiFi hotspot named **`SmartPanel-XXXX`** appears
+(password: `smartpanel`).
+
+1. Connect from your phone — a setup page opens automatically
+2. Enter your WiFi credentials, country code, and optional hostname/timezone
+3. Click **Save & Connect** — the device joins your network
+
+See [Captive Portal](/docs/get-started/installation/captive-portal) for full details.
+
+### Option B: Boot partition config file
+
+Before first boot, create a file called `smart-panel.conf` on the SD card's boot partition:
+
+```ini copy
+WIFI_SSID=MyNetwork
+WIFI_PASSWORD=mypassword
+WIFI_COUNTRY=US
+HOSTNAME=smart-panel
+TIMEZONE=America/New_York
+```
+
+All fields are optional. If WiFi fields are present, the captive portal is skipped.
+
+---
+
+## First Boot
+
+What happens on first boot:
+
+- Root partition auto-expands to fill the SD card
+- WiFi connects (via captive portal or boot config)
+- Native modules are compiled (may take a few minutes on first boot)
+- Database is migrated
+- Services start automatically
+
+<Callout type="info">
+	First boot takes 2–5 minutes depending on your Pi model. A log is written to
+	`/boot/firmware/smart-panel-firstboot.log` for diagnostics.
+</Callout>
+
+---
+
+## Post-Installation
+
+### Access the Admin Interface
+
+From another device on the same network, open a browser:
+
+```
+http://smart-panel.local:3000
+```
+
+Or use the hostname you configured in place of `smart-panel`.
+
+### View Logs
+
+```bash copy
+# Backend
+sudo journalctl -u smart-panel -f
+
+# Display (AIO/Display variants)
+sudo journalctl -u smart-panel-display -f
+```
+
+---
+
+## What's Next?
+
+Your Smart Panel is running. Head over to [**Onboarding**](/docs/get-started/onboarding) to create
+your admin account and start configuring your dashboard.

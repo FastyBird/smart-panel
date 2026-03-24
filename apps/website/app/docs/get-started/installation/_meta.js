@@ -1,4 +1,5 @@
 export default {
+	"raspberry-pi-image": "Raspberry Pi Image",
 	"server-only": "Server Only",
 	docker: "Docker",
 	"display-only": "Display Only",
