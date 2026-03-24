@@ -1,69 +1,95 @@
-import { Callout } from 'nextra/components'
+import { Callout, Steps, Tabs } from 'nextra/components'
 
 # Onboarding
 
-Before you can start managing devices or customizing your dashboard, your Smart Panel needs to be **linked to a user account**.
-This process ensures secure access and allows your panel to communicate with backend services.
-
-If you installed via the **one-liner script** or **npm**, the install process may have already prompted you to create
-an owner account. If not, or if you used the **manual tarball method**, follow the steps below.
-
-In a future update, a web-based onboarding interface will make this even easier — stay tuned!
+After installation, Smart Panel needs an **admin account** before you can start managing devices. The
+onboarding process creates your first user and walks you through initial setup.
 
 ---
 
-## Registering the Owner
+## Admin Interface Onboarding (Recommended)
 
-The command to register an owner depends on how you installed Smart Panel:
+The easiest way to onboard — open the admin UI in your browser and follow the guided wizard.
 
-**If you installed via npm (globally):**
+<Steps>
+	### Open the Admin Interface
 
-```bash copy
-sudo smart-panel auth:onboarding yourusername secretpassword
-```
+	Navigate to your Smart Panel in a browser:
 
-**If you installed via tarball (manual):**
+	```
+	http://smart-panel.local:3000
+	```
 
-```bash copy
-cd /opt/smart-panel
-npm run cli auth:onboarding yourusername secretpassword
-```
+	Or use the device's IP address: `http://<device-ip>:3000`
 
-<Callout type="info">
-	Use a secure username and password combination — these will be used to log in to the admin interface.
-</Callout>
+	### Create Your Admin Account
+
+	On first visit, the onboarding wizard appears automatically. Enter:
+
+	- **Username** — your admin login name
+	- **Password** — a secure password (minimum 8 characters)
+	- **Email** — for account recovery (optional)
+
+	### Configure Your Home
+
+	The wizard guides you through basic setup:
+
+	- **Integrations** — connect your smart home platforms (Home Assistant, Shelly, Zigbee2MQTT, etc.)
+	- **Device discovery** — automatically find devices on your network
+	- **Spaces** — organize devices into rooms and areas
+
+	<Callout type="info">
+		You can skip any step and configure it later from the admin interface.
+	</Callout>
+
+	### Done
+
+	After onboarding, you're taken to the admin dashboard where you can manage devices, create
+	scenes, customize displays, and more.
+</Steps>
+
+---
+
+## CLI Onboarding (Alternative)
+
+If you prefer the command line, or need to create the admin account before accessing the web interface:
+
+<Tabs items={['Install Script / npm', 'Tarball / Image']}>
+	<Tabs.Tab>
+		```bash copy
+		sudo smart-panel-service onboarding yourusername yourpassword
+		```
+	</Tabs.Tab>
+	<Tabs.Tab>
+		```bash copy
+		cd /opt/smart-panel/current   # or /opt/smart-panel for tarball installs
+		node dist/main.js auth:onboarding yourusername yourpassword
+		```
+	</Tabs.Tab>
+</Tabs>
 
 <Callout type="warning">
-	Replace `yourusername` and `secretpassword` with your actual credentials. Do not use default or weak passwords.
+	Replace `yourusername` and `yourpassword` with your actual credentials. Use a strong password.
 </Callout>
 
-If everything goes well, you'll see:
-
-```bash
-✅ Successfully created owner account: yourusername
-```
+After creating the account, open the admin interface to continue setup.
 
 ---
 
-## Display Onboarding
+## Display Pairing
 
-Once the display service is started (as shown in the previous [installation](/docs/get-started/installation) step), the **Display UI**
-will automatically boot into its default onboarding state.
+The panel display app connects to the backend automatically:
 
-There is **no manual onboarding required** for the display at this stage. It will:
+- **Pre-built images (AIO)** — the display is already paired with the local backend
+- **Separate display devices** — on first launch, the display discovers the server via mDNS or prompts
+  you to enter the server URL manually
 
-- Connect to the backend
-- Fetch configuration
-- Show a default splash screen or pairing status
-
-<Callout type="info">
-	Future versions will include a guided UI onboarding wizard.
-</Callout>
+No manual pairing steps are required — the display fetches its configuration from the backend
+and starts showing the dashboard.
 
 ---
 
-## What’s Next?
+## What's Next?
 
-Now that your owner account is set up, it’s time to start managing your Smart Panel.
-
-👉 Head over to the [**Admin & Management**](/docs/admin-management/devices-overview) section to add devices and build your dashboard.
+Your Smart Panel is ready. Head over to [**Admin & Management**](/docs/admin-management) to start
+adding devices, creating scenes, and customizing your dashboard.
