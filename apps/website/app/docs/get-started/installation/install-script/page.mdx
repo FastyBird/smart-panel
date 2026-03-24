@@ -1,0 +1,315 @@
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+# Install Script
+
+Install Smart Panel on any Linux device with systemd using one-liner scripts. Works on Raspberry Pi, Debian,
+Ubuntu, Fedora, and other Linux distributions.
+
+The install scripts handle everything automatically — installing dependencies, downloading packages, configuring
+systemd services, and running database migrations.
+
+---
+
+## Prerequisites
+
+- A Linux device with **systemd** (Raspberry Pi, Debian, Ubuntu, Fedora, etc.)
+- Network connectivity (Wi-Fi or Ethernet)
+- SSH access or a local terminal
+
+---
+
+## Install the Server (Backend + Admin)
+
+Run a single command to install the Smart Panel backend and admin interface:
+
+```bash copy
+curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
+```
+
+This script will:
+- Install Node.js if it is not already present
+- Download the latest Smart Panel backend and admin package
+- Configure a systemd service that starts automatically on boot
+- Run database migrations
+
+<Callout type="info">
+	You can customize the installation with flags:
+
+	```bash copy
+	curl -fsSL https://get.smart-panel.fastybird.com | sudo bash -s -- --port 8080
+	```
+
+	Available flags: `--port <port>`, `--version <ver>`, `--beta`, `--alpha`
+</Callout>
+
+---
+
+## Install the Display App
+
+To add a display panel — on the same device or a different one — run:
+
+```bash copy
+curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash \
+	-s -- --backend http://YOUR_SERVER_IP:3000
+```
+
+Replace `YOUR_SERVER_IP` with the IP address of your Smart Panel server.
+
+The script auto-detects the platform (Raspberry Pi flutter-pi, Linux x64 eLinux, etc.) and installs
+the correct variant automatically.
+
+<Callout type="info">
+	Available flags:
+
+	- `--backend <url>` — server URL (**required**)
+	- `--kiosk` — auto-start the display on boot
+	- `--platform <type>` — force a specific platform: `flutterpi`, `elinux`, `linux`
+</Callout>
+
+---
+
+## All-in-One (Server + Display)
+
+To run both the server and the display app on a single device, execute both scripts in sequence:
+
+<Steps>
+	## Install the server
+
+	```bash copy
+	curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
+	```
+
+	## Install the display app
+
+	```bash copy
+	curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash \
+		-s -- --backend http://localhost:3000 --kiosk
+	```
+</Steps>
+
+Both services will start automatically on boot. The `--kiosk` flag ensures the display launches
+as soon as the device powers on.
+
+---
+
+## Optional: Install InfluxDB
+
+InfluxDB is optional. Without it, Smart Panel uses in-memory storage — device values and real-time
+updates work normally, but historical data (charts, timeseries) is not persisted across restarts.
+
+To enable time-series data storage for temperature history, energy monitoring, and other charts,
+install InfluxDB v1.8:
+
+```bash copy
+wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo tee /etc/apt/trusted.gpg.d/influxdata.asc
+echo "deb https://repos.influxdata.com/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/influxdata.list
+sudo apt update
+sudo apt install influxdb=1.8.10-1 -y
+sudo systemctl enable influxdb
+sudo systemctl start influxdb
+```
+
+<Callout type="warning">
+	Smart Panel requires InfluxDB **v1.8**. InfluxDB 2.x is **not compatible**.
+</Callout>
+
+Then configure the connection in your Smart Panel environment:
+
+```bash copy
+sudo nano /etc/smart-panel/environment
+```
+
+Add:
+
+```bash
+FB_INFLUXDB_URL=http://localhost:8086
+FB_INFLUXDB_DATABASE=smart_panel
+```
+
+Restart the service to apply:
+
+```bash copy
+sudo smart-panel-service restart
+```
+
+---
+
+## Post-Installation
+
+### Verify the Service
+
+```bash copy
+sudo smart-panel-service status
+```
+
+You should see the service running with its PID, uptime, and memory usage.
+
+### Access the Admin Interface
+
+Open a browser and navigate to:
+
+```
+http://<device-ip>:3000
+```
+
+<Callout type="info">
+	If you enabled mDNS (default), you can also use `http://smart-panel.local:3000`.
+</Callout>
+
+### View Logs
+
+```bash copy
+sudo smart-panel-service logs -f
+```
+
+### Service Management
+
+```bash copy
+# Check status
+sudo smart-panel-service status
+
+# View logs
+sudo smart-panel-service logs -f
+
+# Restart
+sudo smart-panel-service restart
+
+# Update to latest version
+sudo smart-panel-service update
+```
+
+### Configuration
+
+Environment variables are stored in `/etc/smart-panel/environment`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_BACKEND_PORT` | `3000` | HTTP server port |
+| `FB_TOKEN_SECRET` | Auto-generated | JWT authentication secret |
+| `FB_MDNS_ENABLED` | `true` | Enable mDNS discovery |
+
+---
+
+## Manual Installation (npm / tarball)
+
+For advanced users who want full control over the installation process.
+
+<Tabs items={['npm', 'Tarball']}>
+	<Tabs.Tab>
+		### Install via npm
+
+		<Steps>
+			## Install Node.js
+
+			The backend requires **Node.js 24** or higher:
+
+			```bash copy
+			curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+			sudo apt install -y nodejs
+			```
+
+			## Install Smart Panel
+
+			```bash copy
+			sudo npm install -g @fastybird/smart-panel
+			```
+
+			## Configure and Start the Service
+
+			```bash copy
+			sudo smart-panel-service install
+			```
+
+			This creates a dedicated system user, sets up data directories, creates configuration
+			at `/etc/smart-panel/`, and registers a systemd service.
+		</Steps>
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Install from Tarball
+
+		<Steps>
+			## Install Node.js
+
+			```bash copy
+			curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+			sudo apt install -y nodejs
+			```
+
+			## Download the Release
+
+			Download the tarball from [GitHub Releases](https://github.com/FastyBird/smart-panel/releases)
+			that matches your architecture:
+
+			```bash copy
+			sudo mkdir -p /opt/smart-panel
+			sudo chown -R ${USER}:${USER} /opt/smart-panel
+			cd /opt/smart-panel
+			```
+
+			```bash copy
+			# For ARM64 (aarch64):
+			curl --http1.1 -L -C - -o smart-panel.tar.gz \
+				https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-arm64.tar.gz
+
+			# For ARMv7 (armv7l):
+			# curl --http1.1 -L -C - -o smart-panel.tar.gz \
+			#     https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+			```
+
+			Extract and clean up:
+
+			```bash copy
+			tar -xzf smart-panel.tar.gz -C .
+			rm smart-panel.tar.gz
+			```
+
+			## Create Data Directory and Run Migrations
+
+			```bash copy
+			sudo mkdir -p /var/smart-panel
+			sudo chown -R ${USER}:${USER} /var/smart-panel
+			cd /opt/smart-panel
+			npm run migration:run
+			```
+
+			## Create a Systemd Service
+
+			```bash copy
+			sudo nano /etc/systemd/system/smart-panel.service
+			```
+
+			```ini copy
+			[Unit]
+			Description=Smart Panel Backend & Admin Service
+			After=network.target
+
+			[Service]
+			User=pi
+			WorkingDirectory=/opt/smart-panel
+			ExecStart=npm start
+			Restart=always
+			Environment=NODE_ENV=production
+
+			[Install]
+			WantedBy=multi-user.target
+			```
+
+			Enable and start:
+
+			```bash copy
+			sudo systemctl enable smart-panel
+			sudo systemctl start smart-panel
+			```
+		</Steps>
+	</Tabs.Tab>
+</Tabs>
+
+---
+
+## What's Next?
+
+Your Smart Panel is installed and running.
+
+- **Add display panels** by following the [Display Only](/docs/get-started/installation/display-only) guide on your display devices
+- **Create your admin account** by following the [Onboarding](/docs/get-started/onboarding) guide
