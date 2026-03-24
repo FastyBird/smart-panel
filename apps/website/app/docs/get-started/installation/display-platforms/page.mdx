@@ -1,0 +1,326 @@
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+# Display Platforms
+
+The Smart Panel display app runs on multiple platforms. This page covers platform-specific setup details
+for manual installations. If you used the install script or a pre-built image, this is already handled for you.
+
+---
+
+## Platform Setup
+
+<Tabs items={['Raspberry Pi (flutter-pi)', 'Linux x64 (eLinux)', 'Linux Desktop', 'Android']}>
+	<Tabs.Tab>
+		### Raspberry Pi (flutter-pi)
+
+		The display app uses [flutter-pi](https://github.com/ardera/flutter-pi) to render directly to the
+		display via DRM/KMS. No desktop environment (X11 or Wayland) is needed.
+
+		**Supported boards:** Raspberry Pi 3B+, 4, 5, Zero 2W
+
+		#### Prerequisites
+
+		KMS must be enabled in the boot configuration. Open `/boot/firmware/config.txt` and ensure this line
+		is present:
+
+		```ini
+		dtoverlay=vc4-kms-v3d
+		```
+
+		<Callout type="warning">
+			If you see `dtoverlay=vc4-fkms-v3d` (fake KMS), remove or comment it out. Full KMS is required.
+		</Callout>
+
+		Your user must have access to the render group:
+
+		```bash copy
+		sudo usermod -a -G render ${USER}
+		```
+
+		Reboot after making changes:
+
+		```bash copy
+		sudo reboot
+		```
+
+		#### Manual Install
+
+		<Steps>
+			## Install Dependencies
+
+			```bash copy
+			sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
+				libdrm-dev libgbm-dev libsystemd-dev libinput-dev libudev-dev \
+				libxkbcommon-dev git -y
+			```
+
+			## Build and Install flutter-pi
+
+			```bash copy
+			sudo mkdir -p /opt/flutter-pi
+			sudo chown -R ${USER}: /opt/flutter-pi
+			git clone --depth 1 https://github.com/ardera/flutter-pi.git /opt/flutter-pi
+			cd /opt/flutter-pi
+			mkdir build && cd build
+			cmake ..
+			make -j$(nproc)
+			sudo make install
+			```
+
+			## Download the Display App
+
+			Download the correct release asset for your architecture:
+
+			- **ARMv7 (32-bit):** `smart-panel-display-flutterpi-armv7.tar.gz`
+			- **ARM64 (64-bit):** `smart-panel-display-flutterpi-arm64.tar.gz`
+
+			```bash copy
+			ARCH=$(uname -m)
+			case $ARCH in
+				armv7l|armv6l) ASSET="smart-panel-display-flutterpi-armv7.tar.gz" ;;
+				aarch64|arm64) ASSET="smart-panel-display-flutterpi-arm64.tar.gz" ;;
+			esac
+
+			sudo mkdir -p /opt/smart-panel-display
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/${ASSET}" \
+				| sudo tar -xzf - -C /opt/smart-panel-display
+			```
+
+			## Create a Systemd Service
+
+			```bash copy
+			sudo tee /etc/systemd/system/smart-panel-display.service > /dev/null <<'EOF'
+			[Unit]
+			Description=Smart Panel Display App
+			After=network.target
+
+			[Service]
+			User=root
+			WorkingDirectory=/opt/smart-panel-display
+			ExecStart=/usr/local/bin/flutter-pi --release /opt/smart-panel-display
+			Restart=on-failure
+			RestartSec=5
+			SupplementaryGroups=video render input
+
+			[Install]
+			WantedBy=multi-user.target
+			EOF
+			```
+
+			## Enable and Start
+
+			```bash copy
+			sudo systemctl enable smart-panel-display
+			sudo systemctl start smart-panel-display
+			```
+		</Steps>
+
+		#### Display Rotation
+
+		To rotate the display output, add the `-r` flag to the `ExecStart` line in the systemd service:
+
+		```ini
+		ExecStart=/usr/local/bin/flutter-pi -r 90 --release /opt/smart-panel-display
+		```
+
+		Valid values: `0`, `90`, `180`, `270`
+
+		#### mDNS Discovery on flutter-pi
+
+		<Callout type="info">
+			flutter-pi environments may have limited mDNS support. On pre-built Raspbian images, a local
+			mDNS proxy is installed automatically on port 3001 to bridge discovery. If you installed manually
+			and auto-discovery does not work, you can enter the server URL by hand during onboarding, or
+			set up the mDNS proxy service yourself.
+		</Callout>
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Linux x64 (eLinux DRM-GBM)
+
+		This mode renders directly to the display via DRM without a desktop environment — ideal for
+		headless kiosk deployments on x64 hardware.
+
+		#### Prerequisites
+
+		Install the required EGL, GLES, and DRM libraries:
+
+		```bash copy
+		sudo apt install -y libegl1-mesa libgles2-mesa libxkbcommon0 \
+			libdrm2 libgbm1 libinput10 libudev1 libsystemd0
+		```
+
+		#### Release Assets
+
+		- **x64:** `smart-panel-display-elinux-x64.tar.gz`
+		- **ARM64:** `smart-panel-display-elinux-arm64.tar.gz` (for ARM64 boards running without a desktop)
+
+		#### Manual Install
+
+		<Steps>
+			## Download the Display App
+
+			```bash copy
+			sudo mkdir -p /opt/smart-panel-display
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-elinux-x64.tar.gz" \
+				| sudo tar -xzf - -C /opt/smart-panel-display
+			sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
+			```
+
+			## Create a Systemd Service
+
+			```bash copy
+			sudo tee /etc/systemd/system/smart-panel-display.service > /dev/null <<'EOF'
+			[Unit]
+			Description=Smart Panel Display (eLinux DRM-GBM)
+			After=multi-user.target
+
+			[Service]
+			User=root
+			WorkingDirectory=/opt/smart-panel-display
+			Environment=FLUTTER_DRM_DEVICE=/dev/dri/card0
+			ExecStart=/opt/smart-panel-display/fastybird_smart_panel --bundle=/opt/smart-panel-display --fullscreen --no-cursor
+			Restart=on-failure
+			RestartSec=5
+			SupplementaryGroups=video render input
+
+			[Install]
+			WantedBy=multi-user.target
+			EOF
+			```
+
+			<Callout type="default">
+				If your display is on a different DRM device, change `FLUTTER_DRM_DEVICE` to the correct
+				path (e.g., `/dev/dri/card1`). Check available devices with `ls /dev/dri/`.
+			</Callout>
+
+			## Enable and Start
+
+			```bash copy
+			sudo systemctl enable smart-panel-display
+			sudo systemctl start smart-panel-display
+			```
+		</Steps>
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Linux Desktop
+
+		Runs as a standard GTK window application on any Linux desktop environment. Useful for development,
+		testing, or touchscreen desktops.
+
+		#### Prerequisites
+
+		```bash copy
+		sudo apt install -y libgtk-3-0 libblkid1 liblzma5
+		```
+
+		#### Release Asset
+
+		`smart-panel-display-linux-x64.tar.gz`
+
+		#### Manual Install
+
+		<Steps>
+			## Download the Display App
+
+			```bash copy
+			sudo mkdir -p /opt/smart-panel-display
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-linux-x64.tar.gz" \
+				| sudo tar -xzf - -C /opt/smart-panel-display
+			sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
+			```
+
+			## Run the App
+
+			Launch it directly:
+
+			```bash copy
+			/opt/smart-panel-display/fastybird_smart_panel
+			```
+		</Steps>
+
+		#### Optional: Kiosk Mode with Cage
+
+		For a fullscreen kiosk experience on a desktop, use [cage](https://github.com/cage-kiosk/cage):
+
+		```bash copy
+		sudo apt install -y cage
+		```
+
+		Then wrap the app in a cage session:
+
+		```bash copy
+		cage /opt/smart-panel-display/fastybird_smart_panel
+		```
+
+		You can create a systemd service using cage for auto-start on boot.
+	</Tabs.Tab>
+
+	<Tabs.Tab>
+		### Android
+
+		The display app can be sideloaded onto Android devices such as wall-mounted tablets.
+
+		#### Release Asset
+
+		`smart-panel-display-android.apk`
+
+		#### Install via ADB
+
+		<Steps>
+			## Enable USB Debugging on the Android Device
+
+			1. Go to **Settings > About phone** and tap **Build number** 7 times to enable Developer options
+			2. Go to **Settings > Developer options** and enable **USB debugging**
+			3. Connect the device to your computer via USB
+
+			## Install ADB on Your Computer
+
+			```bash copy
+			sudo apt install -y android-tools-adb
+			```
+
+			## Download and Install the APK
+
+			```bash copy
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-android.apk" \
+				-o /tmp/smart-panel-display.apk
+			adb install -r /tmp/smart-panel-display.apk
+			```
+
+			## Configure the Backend
+
+			Launch the app on the Android device. On first run, you will be prompted to enter the
+			backend server URL (e.g., `http://192.168.1.100:3000`).
+		</Steps>
+
+		<Callout type="info">
+			To use the app as a dedicated kiosk, set it as the default launcher on the Android device
+			via **Settings > Home app** and select **Smart Panel**.
+		</Callout>
+	</Tabs.Tab>
+</Tabs>
+
+---
+
+## Server Discovery
+
+All platforms auto-discover Smart Panel servers on the local network via mDNS. If discovery does not
+find your server:
+
+- **Enter the server URL manually** in the app when prompted during onboarding
+- **Check that both devices are on the same subnet** — mDNS does not cross subnet boundaries
+- **Verify that port 3000 is accessible** from the display device (or whichever port your server uses)
+
+<Callout type="info">
+	The server must have mDNS enabled (`FB_MDNS_ENABLED=true` in the server configuration) for
+	auto-discovery to work.
+</Callout>
+
+---
+
+## What's Next?
+
+Once your display is running and connected to the server, proceed to
+[**Onboarding**](/docs/get-started/onboarding) to create your admin account and configure your dashboard.
