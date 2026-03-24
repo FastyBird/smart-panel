@@ -145,7 +145,10 @@ describe('TtsProviderService', () => {
 			try {
 				const config = makeConfig();
 				config.ttsTimeoutMs = 5_000;
-				configService.getModuleConfig.mockReturnValue(config);
+				configService.getModuleConfig.mockImplementation((moduleName: string) => {
+					if (moduleName === SYSTEM_MODULE_NAME) return new SystemConfigModel();
+					return config;
+				});
 
 				mockProvider.synthesize.mockImplementation(
 					() => new Promise((resolve) => setTimeout(() => resolve({ ...fakeAudio }), 30_000)),

@@ -44,7 +44,7 @@ export class LlmProviderService {
 		}
 
 		const timeoutMs = config.llmTimeoutMs;
-		const timeout = options?.timeout ?? timeoutMs;
+		const timeout = Math.min(options?.timeout ?? timeoutMs, timeoutMs);
 		const model = options?.model ?? provider.getDefaultModel();
 
 		try {
