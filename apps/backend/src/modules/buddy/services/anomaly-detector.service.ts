@@ -205,6 +205,11 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 				const existing = this.stuckSensorTracker.get(propertyKey);
 
 				if (!existing) {
+					// Pre-insertion size check: evict oldest entry before inserting
+					if (this.stuckSensorTracker.size >= TRACKER_MAX_SIZE) {
+						const firstKey = this.stuckSensorTracker.keys().next().value;
+						if (firstKey) this.stuckSensorTracker.delete(firstKey);
+					}
 					this.stuckSensorTracker.set(propertyKey, { value, since: now, lastSeenCycle: this.evaluationCycle });
 
 					continue;
@@ -243,7 +248,9 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 						});
 					}
 				} else {
-					// Value changed — reset tracker
+					// Value changed — delete+reinsert to refresh Map insertion order
+					// (Map.set on existing key does NOT move it, breaking FIFO eviction)
+					this.stuckSensorTracker.delete(propertyKey);
 					this.stuckSensorTracker.set(propertyKey, { value, since: now, lastSeenCycle: this.evaluationCycle });
 				}
 			}

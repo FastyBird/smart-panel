@@ -369,6 +369,8 @@ export class BuddyConversationService {
 		}
 
 		// Stage 4: Scenes
+		const omittedSections: string[] = [];
+
 		if (context.scenes.length > 0) {
 			const currentTokens = estimateTokens(lines.join('\n'));
 
@@ -380,6 +382,8 @@ export class BuddyConversationService {
 
 					lines.push(`- ${scene.name} [id=${sid}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
 				}
+			} else {
+				omittedSections.push('scenes');
 			}
 		}
 
@@ -389,6 +393,8 @@ export class BuddyConversationService {
 
 			if (currentTokens < tokenBudget) {
 				this.appendWeather(lines, context.weather, context.timezone);
+			} else {
+				omittedSections.push('weather');
 			}
 		}
 
@@ -405,6 +411,8 @@ export class BuddyConversationService {
 				if (context.energy.batteryLevel != null) {
 					lines.push(`- Battery level: ${context.energy.batteryLevel}%`);
 				}
+			} else {
+				omittedSections.push('energy data');
 			}
 		}
 
@@ -418,7 +426,13 @@ export class BuddyConversationService {
 				for (const intent of context.recentIntents.slice(0, 10)) {
 					lines.push(`- ${intent.type} (space: ${intent.space ?? 'unknown'}) at ${intent.timestamp}`);
 				}
+			} else {
+				omittedSections.push('recent actions');
 			}
+		}
+
+		if (omittedSections.length > 0) {
+			lines.push('', `_Note: ${omittedSections.join(', ')} omitted due to context size limits. Ask the user for specifics if needed._`);
 		}
 
 		return lines.join('\n');
