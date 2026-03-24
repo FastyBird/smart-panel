@@ -79,7 +79,7 @@ jobs:
         if: "matrix.variant == 'aio' || matrix.variant == 'display'"
         uses: "subosito/flutter-action@v2"
         with:
-          channel: "stable"
+          flutter-version: "3.27.4"
 
       - name: "Install Melos"
         if: "matrix.variant == 'aio' || matrix.variant == 'display'"
