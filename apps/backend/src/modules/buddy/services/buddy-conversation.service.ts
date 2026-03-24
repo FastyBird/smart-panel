@@ -9,7 +9,13 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
 import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
-import { BUDDY_MODULE_NAME, DEFAULT_CONTEXT_WINDOW_TOKENS, DEFAULT_MAX_TOOL_ITERATIONS, EventType, MessageRole } from '../buddy.constants';
+import {
+	BUDDY_MODULE_NAME,
+	DEFAULT_CONTEXT_WINDOW_TOKENS,
+	DEFAULT_MAX_TOOL_ITERATIONS,
+	EventType,
+	MessageRole,
+} from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
@@ -330,7 +336,7 @@ export class BuddyConversationService {
 		let contextWindowTokens = DEFAULT_CONTEXT_WINDOW_TOKENS;
 		try {
 			contextWindowTokens = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME).contextWindowTokens;
-		} catch (_) {
+		} catch {
 			// Use default if config is unavailable
 		}
 		const tokenBudget = Math.floor(contextWindowTokens * PROMPT_TOKEN_BUDGET_RATIO);
@@ -432,7 +438,10 @@ export class BuddyConversationService {
 		}
 
 		if (omittedSections.length > 0) {
-			lines.push('', `_Note: ${omittedSections.join(', ')} omitted due to context size limits. Ask the user for specifics if needed._`);
+			lines.push(
+				'',
+				`_Note: ${omittedSections.join(', ')} omitted due to context size limits. Ask the user for specifics if needed._`,
+			);
 		}
 
 		return lines.join('\n');

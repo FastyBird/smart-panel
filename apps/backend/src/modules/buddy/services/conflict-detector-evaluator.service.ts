@@ -64,7 +64,7 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
 			maxStaleCycles = config.trackerMaxStaleCycles;
 			maxSize = config.trackerMaxSize;
-		} catch (_) {
+		} catch {
 			// Use defaults if config is unavailable
 		}
 

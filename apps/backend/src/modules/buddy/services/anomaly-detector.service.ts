@@ -207,9 +207,13 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 				if (!existing) {
 					// Pre-insertion size check: evict oldest entry before inserting
 					let maxSize = TRACKER_MAX_SIZE;
-					try { maxSize = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME).trackerMaxSize; } catch (_) {}
+					try {
+						maxSize = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME).trackerMaxSize;
+					} catch {
+						// Use default
+					}
 					if (this.stuckSensorTracker.size >= maxSize) {
-						const firstKey = this.stuckSensorTracker.keys().next().value;
+						const firstKey = this.stuckSensorTracker.keys().next().value as string | undefined;
 						if (firstKey) this.stuckSensorTracker.delete(firstKey);
 					}
 					this.stuckSensorTracker.set(propertyKey, { value, since: now, lastSeenCycle: this.evaluationCycle });
@@ -291,7 +295,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
 			maxStaleCycles = config.trackerMaxStaleCycles;
 			maxSize = config.trackerMaxSize;
-		} catch (_) {
+		} catch {
 			// Use defaults if config is unavailable
 		}
 

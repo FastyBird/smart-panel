@@ -5,7 +5,11 @@ import { SendMessageDto } from './send-message.dto';
 
 describe('SendMessageDto', () => {
 	function toDto(content: unknown): SendMessageDto {
-		return plainToInstance(SendMessageDto, { content }, { enableImplicitConversion: false, excludeExtraneousValues: true });
+		return plainToInstance(
+			SendMessageDto,
+			{ content },
+			{ enableImplicitConversion: false, excludeExtraneousValues: true },
+		);
 	}
 
 	it('should accept a normal message', async () => {
