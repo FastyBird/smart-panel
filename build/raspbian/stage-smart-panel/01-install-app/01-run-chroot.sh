@@ -25,6 +25,10 @@ if ! id -u smart-panel >/dev/null 2>&1; then
 	useradd --system --home-dir "${DATA_DIR}" --shell /usr/sbin/nologin --create-home smart-panel
 fi
 
+# Add smart-panel to input and video groups for hardware access
+# (input: button events via /dev/input, video: vcgencmd)
+usermod -aG input,video smart-panel
+
 # Create directories
 mkdir -p "${APP_BASE_DIR}"
 mkdir -p "${APP_INSTALL_DIR}"
