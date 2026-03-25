@@ -1,0 +1,24 @@
+# Smart Panel Display Configuration
+#
+# Override the physical display dimensions (width_mm,height_mm) to control
+# the UI scaling. Smaller values = larger UI elements.
+#
+# Examples:
+#   reTerminal 5" (default auto-detect ~108x65mm, override for larger UI):
+#     FB_DISPLAY_DIMENSIONS=90,54
+#   7" RPi touchscreen:
+#     FB_DISPLAY_DIMENSIONS=155,86
+#   Leave empty for auto-detection:
+#     FB_DISPLAY_DIMENSIONS=
+FB_DISPLAY_DIMENSIONS=
+
+# Rotate the display output. Valid values: 0, 90, 180, 270
+#
+# Examples:
+#   Upside-down mount:
+#     FB_DISPLAY_ROTATION=180
+#   Portrait (rotated left):
+#     FB_DISPLAY_ROTATION=90
+#   Leave empty for default (no rotation):
+#     FB_DISPLAY_ROTATION=
+FB_DISPLAY_ROTATION=

@@ -18,6 +18,7 @@ cp "${STAGE_DIR}/files/environment" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
 # Copy display config files (used by display and aio variants)
 cp "${STAGE_DIR}/files/smart-panel-display.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+cp "${STAGE_DIR}/files/display" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/build-flutter-pi.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
 # Copy Plymouth boot splash theme
