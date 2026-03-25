@@ -1,5 +1,5 @@
 <template>
-	<div class="fixed inset-0 flex items-center justify-center bg-gray-100 p-4">
+	<div class="fixed inset-0 flex items-center justify-center bg-[var(--el-bg-color-page)] p-4">
 		<el-card
 			shadow="always"
 			class="w-full max-w-2xl max-h-full flex flex-col overflow-hidden"
