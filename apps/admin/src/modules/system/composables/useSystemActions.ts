@@ -89,14 +89,12 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				// Send command first while still authenticated
-				try {
-					await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
-				} catch {
-					// Server going down before ack is expected during factory reset
-				}
+				// Fire command (don't await — server will restart before ack)
+				sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000).catch(() => {
+					// Expected — server goes down during reset
+				});
 
-				// Then sign out and navigate to the waiting page
+				// Sign out and navigate to waiting page immediately
 				invalidateOnboarding();
 
 				await systemActions.handleFactoryResetRedirect();
