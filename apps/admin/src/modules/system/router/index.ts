@@ -9,10 +9,6 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 		name: RouteNames.MAINTENANCE,
 		component: () => import('../layouts/layout-maintenance.vue'),
 		meta: {
-			guards: {
-				authenticated: true,
-				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner, UsersModuleUserRole.user],
-			},
 			title: 'Maintenance',
 			icon: 'mdi:hammer',
 		},
@@ -22,14 +18,27 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 				path: 'power-off',
 				name: RouteNames.POWER_OFF,
 				component: () => import('../views/view-power-off.vue'),
-				props: true,
 				meta: {
-					guards: {
-						authenticated: true,
-						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner, UsersModuleUserRole.user],
-					},
 					title: 'System power off',
 					icon: 'mdi:power',
+				},
+			},
+			{
+				path: 'factory-reset',
+				name: RouteNames.FACTORY_RESET,
+				component: () => import('../views/view-factory-reset.vue'),
+				meta: {
+					title: 'Factory reset',
+					icon: 'mdi:backup-restore',
+				},
+			},
+			{
+				path: 'rebooting',
+				name: RouteNames.REBOOTING,
+				component: () => import('../views/view-rebooting.vue'),
+				meta: {
+					title: 'System reboot',
+					icon: 'mdi:restart',
 				},
 			},
 		],

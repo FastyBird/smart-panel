@@ -8,7 +8,7 @@
 				<div class="block w-[8rem] my-0 mx-a">
 					<el-icon :size="130">
 						<icon
-							icon="mdi:power"
+							:icon="pageIcon"
 							class="color-brand-primary"
 						/>
 					</el-icon>
@@ -16,9 +16,9 @@
 
 				<h1
 					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
-					data-test-id="power-off-heading"
+					data-test-id="maintenance-heading"
 				>
-					{{ t('systemModule.headings.manage.poweredOff') }}
+					{{ pageHeading }}
 				</h1>
 
 				<router-view />
@@ -31,14 +31,14 @@
 				<div class="block w-[8rem] my-0 mx-a">
 					<el-icon :size="130">
 						<icon
-							icon="mdi:power"
+							:icon="pageIcon"
 							class="color-brand-primary"
 						/>
 					</el-icon>
 				</div>
 
 				<h1 class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]">
-					{{ t('systemModule.headings.manage.poweredOff') }}
+					{{ pageHeading }}
 				</h1>
 
 				<router-view />
@@ -125,19 +125,45 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 
 import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { useBreakpoints } from '../../../common';
+import { RouteNames } from '../system.constants';
 
 defineOptions({
 	name: 'LayoutMaintenance',
 });
 
 const { t } = useI18n();
+const route = useRoute();
 
 const { isMDDevice } = useBreakpoints();
+
+const pageIcon = computed(() => {
+	switch (route.name) {
+		case RouteNames.FACTORY_RESET:
+			return 'mdi:backup-restore';
+		case RouteNames.REBOOTING:
+			return 'mdi:restart';
+		default:
+			return 'mdi:power';
+	}
+});
+
+const pageHeading = computed(() => {
+	switch (route.name) {
+		case RouteNames.FACTORY_RESET:
+			return t('systemModule.headings.manage.factoryReset');
+		case RouteNames.REBOOTING:
+			return t('systemModule.headings.manage.rebooting');
+		default:
+			return t('systemModule.headings.manage.poweredOff');
+	}
+});
 </script>

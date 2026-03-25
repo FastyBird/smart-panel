@@ -47,6 +47,8 @@ export const RouteNames = {
 	SYSTEM_LOG_DETAIL: 'system_module-system_log_detail',
 	THROTTLE_STATUS: 'system_module-throttle_status',
 	POWER_OFF: 'system_module-power_off',
+	FACTORY_RESET: 'system_module-factory_reset',
+	REBOOTING: 'system_module-rebooting',
 };
 
 export enum Layout {

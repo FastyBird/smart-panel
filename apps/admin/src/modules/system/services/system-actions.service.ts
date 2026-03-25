@@ -4,21 +4,16 @@ import type { Router } from 'vue-router';
 
 import { ElLoading, ElNotification } from 'element-plus';
 import type { LoadingInstance } from 'element-plus/es/components/loading/src/loading';
-import type { Client } from 'openapi-fetch';
 
-import { injectAccountManager, injectBackendClient } from '../../../common';
-import type { OpenApiPaths } from '../../../openapi.constants';
-import { MODULES_PREFIX } from '../../../app.constants';
+import { injectAccountManager } from '../../../common';
 import { invalidateOnboardingStatus } from '../../onboarding/composables/useOnboardingStatus';
-import { RouteNames as OnboardingRouteNames } from '../../onboarding/onboarding.constants';
-import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { RouteNames } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
 
 export class SystemActionsService {
 	private readonly app: App;
 
-	private readonly backend: Client<OpenApiPaths>;
 	private readonly router: Router;
 	private readonly t: Composer['t'];
 
@@ -30,12 +25,9 @@ export class SystemActionsService {
 	private powerOffTriggeredBy: 'action' | 'event' | null = null;
 	private factoryResetTriggeredBy: 'action' | 'event' | null = null;
 
-	private rebootWaiting: LoadingInstance | null = null;
-
 	constructor(app: App, router: Router, i18n: Composer) {
 		this.app = app;
 
-		this.backend = injectBackendClient(app);
 		this.router = router;
 		this.t = i18n.t;
 	}
@@ -50,38 +42,11 @@ export class SystemActionsService {
 			});
 		} else if (this.rebootTriggeredBy === trigger && this.rebootLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
-				if (this.rebootWaiting !== null) {
-					return;
-				}
-
 				this.rebootLoading?.close();
-
 				this.rebootLoading = null;
 
 				if (state === 'ok') {
-					const startTime = Date.now();
-
-					this.rebootWaiting = ElLoading.service({
-						lock: true,
-						text: this.t('systemModule.messages.manage.waitingToBoot'),
-					});
-
-					void (async () => {
-						await this.checkHealth({
-							startTime,
-							timeoutMs: 2 * 60 * 1000,
-							onDone: () => {
-								this.rebootWaiting?.close();
-
-								this.rebootWaiting = null;
-							},
-							onFail: () => {
-								this.rebootWaiting?.close();
-
-								this.rebootWaiting = null;
-							},
-						});
-					})();
+					void this.router.push({ name: RouteNames.REBOOTING });
 				}
 			}, 1000);
 		}
@@ -98,13 +63,10 @@ export class SystemActionsService {
 		} else if (this.powerOffTriggeredBy === trigger && this.powerOffLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
 				this.powerOffLoading?.close();
-
 				this.powerOffLoading = null;
 
 				if (state === 'ok') {
-					void (async () => {
-						await this.router.push({ name: RouteNames.POWER_OFF });
-					})();
+					void this.router.push({ name: RouteNames.POWER_OFF });
 				}
 			}, 1000);
 		}
@@ -148,44 +110,9 @@ export class SystemActionsService {
 
 		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 
-		// Full page reload to guarantee all Pinia stores and in-memory state
-		// are cleared after factory reset. A simple router push would leave
-		// stale data in every store.
-		const route = this.router.resolve({ name: OnboardingRouteNames.ONBOARDING });
-
-		window.location.href = route.href;
-	}
-
-	private async checkHealth({
-		startTime,
-		timeoutMs,
-		onDone,
-		onFail,
-	}: {
-		startTime: number;
-		timeoutMs: number;
-		onDone?: () => void;
-		onFail?: () => void;
-	}): Promise<void> {
-		try {
-			await this.backend.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/health`);
-
-			ElNotification.success(this.t('systemModule.messages.manage.panelBackOnline'));
-
-			onDone?.();
-		} catch {
-			if (Date.now() - startTime > timeoutMs) {
-				ElNotification.error(this.t('systemModule.messages.manage.rebootTakesTooLong'));
-
-				onFail?.();
-
-				return;
-			}
-
-			setTimeout(() => {
-				this.checkHealth({ startTime, timeoutMs, onDone, onFail });
-			}, 3000);
-		}
+		// Navigate to the factory reset waiting page which polls health
+		// and redirects to sign-in when the backend comes back online.
+		await this.router.push({ name: RouteNames.FACTORY_RESET });
 	}
 }
 
