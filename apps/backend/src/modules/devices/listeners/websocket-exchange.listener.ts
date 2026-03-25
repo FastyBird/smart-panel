@@ -12,18 +12,14 @@ import { PropertyCommandService } from '../services/property-command.service';
  * WebSocket command event types for devices module
  */
 export const DevicesWsEventType = {
-	/** Used by the panel (Flutter) app */
-	SET_PROPERTY: 'DevicesModule.SetProperty',
-	/** Used by the admin (Vue) app */
-	SET_PROPERTY_ADMIN: 'DevicesModule.ChannelProperty.Set',
+	SET_PROPERTY: 'DevicesModule.ChannelProperty.Set',
 } as const;
 
 /**
  * WebSocket command handler names for devices module
  */
 export const DevicesWsHandlerName = {
-	SET_PROPERTY: 'DevicesModule.SetPropertyHandler',
-	SET_PROPERTY_ADMIN: 'DevicesModule.Internal.SetPropertyValue',
+	SET_PROPERTY: 'DevicesModule.Internal.SetPropertyValue',
 } as const;
 
 @Injectable()
@@ -36,17 +32,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	) {}
 
 	onModuleInit(): void {
-		// Register command handler for setting device properties (panel app)
 		this.commandEventRegistry.register(
 			DevicesWsEventType.SET_PROPERTY,
 			DevicesWsHandlerName.SET_PROPERTY,
-			(user, payload) => this.handleSetProperty(user, payload),
-		);
-
-		// Register same handler for admin app (uses different event/handler names)
-		this.commandEventRegistry.register(
-			DevicesWsEventType.SET_PROPERTY_ADMIN,
-			DevicesWsHandlerName.SET_PROPERTY_ADMIN,
 			(user, payload) => this.handleSetProperty(user, payload),
 		);
 

@@ -29,10 +29,10 @@ class DevicesModuleConstants {
       'DevicesModule.ChannelProperty.ValueSet';
 
   // WebSocket command events
-  static const String setPropertyEvent = 'DevicesModule.SetProperty';
+  static const String setPropertyEvent = 'DevicesModule.ChannelProperty.Set';
 }
 
 /// WebSocket command handler names for devices module
 class DevicesModuleEventHandlerName {
-  static const String setProperty = 'DevicesModule.SetPropertyHandler';
+  static const String setProperty = 'DevicesModule.Internal.SetPropertyValue';
 }
