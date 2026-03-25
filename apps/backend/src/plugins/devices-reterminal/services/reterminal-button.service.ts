@@ -121,8 +121,8 @@ export class ReTerminalButtonService {
 					const deviceName = await fs.promises.readFile(`${inputDir}/${entry}/device/name`, 'utf-8');
 					const name = deviceName.trim();
 
-					// reTerminal uses a custom input device for its buttons
-					if (name.includes('gpio_keys') || name.includes('reTerminal') || name.includes('seeed')) {
+					// reTerminal buttons are exposed via gpio_keys kernel driver
+					if (name === 'gpio_keys') {
 						return `/dev/input/${entry}`;
 					}
 				} catch {
