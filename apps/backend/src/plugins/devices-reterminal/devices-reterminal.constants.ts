@@ -56,8 +56,8 @@ export const RETERMINAL_DM_CHANNEL_IDENTIFIERS = {
 export const RETERMINAL_SYSFS = {
 	// LEDs (reTerminal CM4: usr_led0 = USR, usr_led1 = STA green, usr_led2 = STA red)
 	USR_LED: '/sys/class/leds/usr_led0/brightness',
-	STA_LED_GREEN: '/sys/class/leds/usr_led1/brightness',
-	STA_LED_RED: '/sys/class/leds/usr_led2/brightness',
+	STA_LED_GREEN: '/sys/class/leds/usr_led2/brightness',
+	STA_LED_RED: '/sys/class/leds/usr_led1/brightness',
 	STA_LED_DM: '/sys/class/leds/usr-led/brightness',
 	BUZZER: '/sys/class/leds/usr_buzzer/brightness',
 	// Input device for buttons
