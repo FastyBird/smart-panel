@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	IManagedPluginService,
@@ -22,7 +23,7 @@ export class ReTerminalService implements IManagedPluginService {
 	readonly pluginName = DEVICES_RETERMINAL_PLUGIN_NAME;
 	readonly serviceId = 'connector';
 
-	private readonly logger = new Logger(ReTerminalService.name);
+	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalService.name);
 	private state: ServiceState = 'stopped';
 	private device: ReTerminalDeviceEntity | null = null;
 	private pollingInterval: ReturnType<typeof setInterval> | null = null;

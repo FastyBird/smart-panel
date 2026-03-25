@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -8,6 +9,7 @@ import { DeviceConnectivityService } from '../../../modules/devices/services/dev
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	DEVICES_RETERMINAL_PLUGIN_NAME,
 	DEVICES_RETERMINAL_TYPE,
 	RETERMINAL_DEVICE_DESCRIPTOR,
 	RETERMINAL_DM_DEVICE_DESCRIPTOR,
@@ -31,7 +33,7 @@ import { ReTerminalSysfsService } from './reterminal-sysfs.service';
 
 @Injectable()
 export class ReTerminalDeviceMapperService {
-	private readonly logger = new Logger(ReTerminalDeviceMapperService.name);
+	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalDeviceMapperService.name);
 
 	private cachedLightDevicePath: string | null | undefined = undefined;
 	private cachedAccelDevicePath: string | null | undefined = undefined;

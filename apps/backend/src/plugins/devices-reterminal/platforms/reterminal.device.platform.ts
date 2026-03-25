@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
+	DEVICES_RETERMINAL_PLUGIN_NAME,
 	DEVICES_RETERMINAL_TYPE,
 	RETERMINAL_CHANNEL_IDENTIFIERS,
 	RETERMINAL_SYSFS,
@@ -12,7 +14,7 @@ import { ReTerminalSysfsService } from '../services/reterminal-sysfs.service';
 
 @Injectable()
 export class ReTerminalDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(ReTerminalDevicePlatform.name);
+	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalDevicePlatform.name);
 
 	// Track the last active STA LED color so it can be restored after off→on
 	private lastStaColor: 'green' | 'red' = 'green';

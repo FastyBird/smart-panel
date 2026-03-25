@@ -1,13 +1,15 @@
 import * as fs from 'fs';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
 	DEFAULT_BUTTON_DOUBLE_PRESS_MS,
 	DEFAULT_BUTTON_LONG_PRESS_MS,
+	DEVICES_RETERMINAL_PLUGIN_NAME,
 	DEVICES_RETERMINAL_TYPE,
 	RETERMINAL_CHANNEL_IDENTIFIERS,
 } from '../devices-reterminal.constants';
@@ -46,7 +48,7 @@ interface ButtonState {
  */
 @Injectable()
 export class ReTerminalButtonService {
-	private readonly logger = new Logger(ReTerminalButtonService.name);
+	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalButtonService.name);
 	private inputStream: fs.ReadStream | null = null;
 	private deviceId: string | null = null;
 	private readonly buttonStates: Map<string, ButtonState> = new Map();
