@@ -116,24 +116,16 @@ export default {
 			switch (data.event) {
 				case EventType.SYSTEM_REBOOT:
 					if (data.payload && 'status' in data.payload) {
-						if (data.payload.status === 'processing') {
-							systemActions.reboot('in-progress', 'event');
-						} else if (data.payload.status === 'err') {
-							systemActions.reboot('err', 'event');
-						} else if (data.payload.status === 'ok') {
-							systemActions.reboot('ok', 'event');
+						if (data.payload.status === 'processing' || data.payload.status === 'ok') {
+							systemActions.reboot();
 						}
 					}
 					break;
 
 				case EventType.SYSTEM_POWER_OFF:
 					if (data.payload && 'status' in data.payload) {
-						if (data.payload.status === 'processing') {
-							systemActions.powerOff('in-progress', 'event');
-						} else if (data.payload.status === 'err') {
-							systemActions.powerOff('err', 'event');
-						} else if (data.payload.status === 'ok') {
-							systemActions.powerOff('ok', 'event');
+						if (data.payload.status === 'processing' || data.payload.status === 'ok') {
+							systemActions.powerOff();
 						}
 					}
 					break;
@@ -141,9 +133,7 @@ export default {
 				case EventType.SYSTEM_FACTORY_RESET:
 					if (data.payload && 'status' in data.payload) {
 						if (data.payload.status === 'processing') {
-							systemActions.factoryReset('in-progress', 'event');
-						} else if (data.payload.status === 'err') {
-							systemActions.factoryReset('err', 'event');
+							systemActions.setFactoryResetTrigger('event');
 						} else if (data.payload.status === 'ok') {
 							void systemActions.factoryResetDone();
 						}

@@ -3,11 +3,18 @@ import type { RouteRecordRaw } from 'vue-router';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../system.constants';
 
+// Maintenance views are eagerly imported (not lazy) because they must
+// be available even when the backend is down (reboot, power-off, reset).
+import LayoutMaintenance from '../layouts/layout-maintenance.vue';
+import ViewFactoryReset from '../views/view-factory-reset.vue';
+import ViewPowerOff from '../views/view-power-off.vue';
+import ViewRebooting from '../views/view-rebooting.vue';
+
 export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 	{
 		path: '/maintenance',
 		name: RouteNames.MAINTENANCE,
-		component: () => import('../layouts/layout-maintenance.vue'),
+		component: LayoutMaintenance,
 		meta: {
 			title: 'Maintenance',
 			icon: 'mdi:hammer',
@@ -17,7 +24,7 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 			{
 				path: 'power-off',
 				name: RouteNames.POWER_OFF,
-				component: () => import('../views/view-power-off.vue'),
+				component: ViewPowerOff,
 				meta: {
 					title: 'System power off',
 					icon: 'mdi:power',
@@ -26,7 +33,7 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 			{
 				path: 'factory-reset',
 				name: RouteNames.FACTORY_RESET,
-				component: () => import('../views/view-factory-reset.vue'),
+				component: ViewFactoryReset,
 				meta: {
 					title: 'Factory reset',
 					icon: 'mdi:backup-restore',
@@ -35,7 +42,7 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 			{
 				path: 'rebooting',
 				name: RouteNames.REBOOTING,
-				component: () => import('../views/view-rebooting.vue'),
+				component: ViewRebooting,
 				meta: {
 					title: 'System reboot',
 					icon: 'mdi:restart',

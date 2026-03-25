@@ -39,28 +39,17 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.reboot('in-progress', 'action');
+				// Navigate first — the backend may go down before the command response
+				systemActions.reboot();
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-
-					if (response !== true) {
-						// Command was rejected by backend — actual error
-						systemActions.reboot('err', 'action');
-
-						flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
-
-						return;
-					}
-
-					systemActions.reboot('ok', 'action');
+					await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 				} catch {
-					// Server went down before acknowledging — expected for reboot
-					systemActions.reboot('ok', 'action');
+					// Server going down before ack is expected
 				}
 			})
 			.catch((): void => {
-				// Just ignore
+				// Dialog cancelled
 			});
 	};
 
@@ -76,27 +65,16 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.powerOff('in-progress', 'action');
+				systemActions.powerOff();
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-
-					if (response !== true) {
-						systemActions.powerOff('err', 'action');
-
-						flashMessage.error(t('systemModule.messages.manage.powerOffFailed'));
-
-						return;
-					}
-
-					systemActions.powerOff('ok', 'action');
+					await sendCommand(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 				} catch {
-					// Server went down before acknowledging — expected for power off
-					systemActions.powerOff('ok', 'action');
+					// Server going down before ack is expected
 				}
 			})
 			.catch((): void => {
-				// Just ignore
+				// Dialog cancelled
 			});
 	};
 
@@ -112,14 +90,12 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.factoryReset('in-progress', 'action');
+				systemActions.setFactoryResetTrigger('action');
 
 				try {
 					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
 
 					if (response !== true) {
-						systemActions.factoryReset('err', 'action');
-
 						flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
 
 						return;
@@ -130,16 +106,14 @@ export const useSystemActions = (): IUseSystemActions => {
 					await systemActions.factoryResetDone();
 				} catch {
 					// Skip error if factory reset already completed via WS event
-					// (the WS disconnect after token revocation triggers this catch)
 					if (!systemActions.isFactoryResetDone()) {
-						systemActions.factoryReset('err', 'action');
-
-						flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
+						// Server may have gone down during reset — navigate anyway
+						await systemActions.handleFactoryResetRedirect();
 					}
 				}
 			})
 			.catch((): void => {
-				// Just ignore
+				// Dialog cancelled
 			});
 	};
 
