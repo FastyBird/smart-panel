@@ -138,69 +138,39 @@ export class ReTerminalDeviceMapperService {
 
 		// Light sensor and accelerometer are only available on reTerminal CM4
 		if (variant === ReTerminalVariant.RETERMINAL) {
-			// Read light sensor (if available) - cache the IIO device path since it never changes at runtime
+			// Read light sensor (ltr303 IIO device) — uses in_illuminance_input (pre-scaled lux)
 			if (this.cachedLightDevicePath === undefined) {
 				this.cachedLightDevicePath = await this.sysfsService.findIioDevice('ltr303');
 			}
 
 			if (this.cachedLightDevicePath) {
-				const luxRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_raw');
+				const luxStr = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_input');
 
-				if (luxRaw) {
-					const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedLightDevicePath, 'in_illuminance_scale');
-					const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
-
-					await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxRaw) * scale);
+				if (luxStr) {
+					await this.setPropertyValue(deviceId, 'light_sensor', 'illuminance', parseFloat(luxStr));
 				}
 			}
 
-			// Read accelerometer (if available) - cache the IIO device path since it never changes at runtime
-			if (this.cachedAccelDevicePath === undefined) {
-				this.cachedAccelDevicePath = await this.sysfsService.findIioDevice('lis3dh');
-			}
+			// Read accelerometer (lis3lv02d — exposed via /sys/devices/platform/lis3lv02d/position)
+			try {
+				const position = await this.sysfsService.readFile('/sys/devices/platform/lis3lv02d/position');
+				// Position format: "(x,y,z)" in mg (milli-g), e.g. "(0,-64,1024)"
+				const match = position.match(/\((-?\d+),(-?\d+),(-?\d+)\)/);
 
-			if (this.cachedAccelDevicePath) {
-				const scaleRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_scale');
-				const scale = scaleRaw ? parseFloat(scaleRaw) : 1;
+				if (match) {
+					const x = parseInt(match[1], 10) / 1000; // mg to g
+					const y = parseInt(match[2], 10) / 1000;
+					const z = parseInt(match[3], 10) / 1000;
 
-				// IIO accel raw * scale yields m/s²; convert to g-force (1 g = 9.80665 m/s²)
-				const STANDARD_GRAVITY = 9.80665;
+					await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_x', x);
+					await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_y', y);
+					await this.setPropertyValue(deviceId, 'accelerometer', 'acceleration_z', z);
 
-				const xRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_x_raw');
-				const yRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_y_raw');
-				const zRaw = await this.sysfsService.readIioAttribute(this.cachedAccelDevicePath, 'in_accel_z_raw');
-
-				if (xRaw)
-					await this.setPropertyValue(
-						deviceId,
-						'accelerometer',
-						'acceleration_x',
-						(parseFloat(xRaw) * scale) / STANDARD_GRAVITY,
-					);
-				if (yRaw)
-					await this.setPropertyValue(
-						deviceId,
-						'accelerometer',
-						'acceleration_y',
-						(parseFloat(yRaw) * scale) / STANDARD_GRAVITY,
-					);
-				if (zRaw)
-					await this.setPropertyValue(
-						deviceId,
-						'accelerometer',
-						'acceleration_z',
-						(parseFloat(zRaw) * scale) / STANDARD_GRAVITY,
-					);
-
-				// Compute orientation from acceleration values (in g)
-				if (xRaw && yRaw && zRaw) {
-					const x = (parseFloat(xRaw) * scale) / STANDARD_GRAVITY;
-					const y = (parseFloat(yRaw) * scale) / STANDARD_GRAVITY;
-					const z = (parseFloat(zRaw) * scale) / STANDARD_GRAVITY;
 					const orientation = this.computeOrientation(x, y, z);
-
 					await this.setPropertyValue(deviceId, 'accelerometer', 'orientation', orientation);
 				}
+			} catch {
+				// Accelerometer not available
 			}
 		}
 
