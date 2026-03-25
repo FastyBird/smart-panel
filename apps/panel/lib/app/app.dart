@@ -161,6 +161,17 @@ class _MyAppState extends State<MyApp> {
       debugPrint('[APP] Resetting to discovery state');
     }
 
+    // If a compile-time backend URL is configured (AIO mode), try it
+    // directly instead of showing the discovery screen.
+    final url = await _startupManager.getEffectiveBackendUrl();
+
+    if (url != null) {
+      _appState.value = AppState.loading;
+      _initializeApp();
+
+      return;
+    }
+
     _appState.value = AppState.discovery;
   }
 
