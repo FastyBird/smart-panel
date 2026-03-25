@@ -32,21 +32,19 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
-import { ElAlert, ElIcon, ElNotification } from 'element-plus';
+import { ElAlert, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { MODULES_PREFIX } from '../../../app.constants';
-import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 defineOptions({
 	name: 'ViewRebooting',
 });
 
 const { t } = useI18n();
-const router = useRouter();
 
 const timedOut = ref(false);
 

@@ -33,54 +33,78 @@ export class SystemActionsService {
 	}
 
 	reboot(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
-		if (this.rebootLoading === null && state === 'in-progress') {
+		if (state === 'in-progress') {
+			if (this.rebootLoading !== null) return;
+
 			this.rebootTriggeredBy = trigger;
 
-			this.rebootLoading = ElLoading.service({
-				lock: true,
-				text: this.t('systemModule.texts.manage.rebootInProcess'),
-			});
-		} else if (this.rebootTriggeredBy === trigger && this.rebootLoading !== null && (state === 'err' || state === 'ok')) {
-			setTimeout(() => {
-				this.rebootLoading?.close();
-				this.rebootLoading = null;
+			if (trigger === 'event') {
+				// External trigger — navigate directly, backend may go down before 'ok'
+				void this.router.push({ name: RouteNames.REBOOTING });
+			} else {
+				this.rebootLoading = ElLoading.service({
+					lock: true,
+					text: this.t('systemModule.texts.manage.rebootInProcess'),
+				});
+			}
+		} else if (state === 'ok') {
+			this.rebootLoading?.close();
+			this.rebootLoading = null;
 
-				if (state === 'ok') {
-					void this.router.push({ name: RouteNames.REBOOTING });
-				}
-			}, 1000);
+			// Navigate regardless of trigger — handles both local action confirmation
+			// and external event where 'processing' may have been missed
+			setTimeout(() => {
+				void this.router.push({ name: RouteNames.REBOOTING });
+			}, 500);
+		} else if (state === 'err') {
+			this.rebootLoading?.close();
+			this.rebootLoading = null;
 		}
 	}
 
 	powerOff(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
-		if (this.powerOffLoading === null && state === 'in-progress') {
+		if (state === 'in-progress') {
+			if (this.powerOffLoading !== null) return;
+
 			this.powerOffTriggeredBy = trigger;
 
-			this.powerOffLoading = ElLoading.service({
-				lock: true,
-				text: this.t('systemModule.texts.manage.powerOffInProcess'),
-			});
-		} else if (this.powerOffTriggeredBy === trigger && this.powerOffLoading !== null && (state === 'err' || state === 'ok')) {
-			setTimeout(() => {
-				this.powerOffLoading?.close();
-				this.powerOffLoading = null;
+			if (trigger === 'event') {
+				void this.router.push({ name: RouteNames.POWER_OFF });
+			} else {
+				this.powerOffLoading = ElLoading.service({
+					lock: true,
+					text: this.t('systemModule.texts.manage.powerOffInProcess'),
+				});
+			}
+		} else if (state === 'ok') {
+			this.powerOffLoading?.close();
+			this.powerOffLoading = null;
 
-				if (state === 'ok') {
-					void this.router.push({ name: RouteNames.POWER_OFF });
-				}
-			}, 1000);
+			setTimeout(() => {
+				void this.router.push({ name: RouteNames.POWER_OFF });
+			}, 500);
+		} else if (state === 'err') {
+			this.powerOffLoading?.close();
+			this.powerOffLoading = null;
 		}
 	}
 
 	factoryReset(state: 'in-progress' | 'err', trigger: 'action' | 'event'): void {
-		if (this.factoryResetLoading === null && state === 'in-progress') {
+		if (state === 'in-progress') {
+			if (this.factoryResetLoading !== null) return;
+
 			this.factoryResetTriggeredBy = trigger;
 
-			this.factoryResetLoading = ElLoading.service({
-				lock: true,
-				text: this.t('systemModule.texts.manage.factoryResetInProcess'),
-			});
-		} else if (this.factoryResetTriggeredBy === trigger && this.factoryResetLoading !== null && state === 'err') {
+			if (trigger === 'event') {
+				// External trigger — sign out and navigate immediately
+				void this.handleFactoryResetRedirect();
+			} else {
+				this.factoryResetLoading = ElLoading.service({
+					lock: true,
+					text: this.t('systemModule.texts.manage.factoryResetInProcess'),
+				});
+			}
+		} else if (state === 'err') {
 			this.factoryResetLoading?.close();
 			this.factoryResetLoading = null;
 		}
@@ -98,6 +122,12 @@ export class SystemActionsService {
 		this.factoryResetLoading?.close();
 		this.factoryResetLoading = null;
 
+		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
+
+		await this.handleFactoryResetRedirect();
+	}
+
+	private async handleFactoryResetRedirect(): Promise<void> {
 		const accountManager = injectAccountManager(this.app);
 
 		if (accountManager) {
@@ -107,8 +137,6 @@ export class SystemActionsService {
 		// Clear cached onboarding status so the onboarding guard doesn't
 		// redirect away based on stale "onboarding completed" data.
 		invalidateOnboardingStatus();
-
-		ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 
 		// Navigate to the factory reset waiting page which polls health
 		// and redirects to sign-in when the backend comes back online.
