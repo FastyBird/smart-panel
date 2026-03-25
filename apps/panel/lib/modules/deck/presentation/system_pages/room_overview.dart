@@ -1678,7 +1678,6 @@ class _RoomDomainCard extends StatelessWidget {
 																	horizontal: AppSpacings.pMd,
 																	vertical: AppSpacings.pMd,
 																),
-																minimumSize: Size.zero,
 																tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 															),
 															child: Icon(
@@ -1695,6 +1694,7 @@ class _RoomDomainCard extends StatelessWidget {
 																horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
 																vertical: AppSpacings.pMd,
 															),
+															tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 														),
 														child: Text(
 															action.label!,

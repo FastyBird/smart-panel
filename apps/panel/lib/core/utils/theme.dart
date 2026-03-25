@@ -823,6 +823,9 @@ class AppSpacings {
   static double scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  static double unscale(double value) =>
+      _screenService.unscale(value, density: _visualDensityService.density);
+
   static double get pXxs =>
       _screenService.scale(1.0, density: _visualDensityService.density);
 
@@ -2530,6 +2533,9 @@ ButtonStyle createButtonTheme({
   final VisualDensityService visualDensityService =
       locator<VisualDensityService>();
 
+  const verticalPaddingBase = 8.0;
+  const fontSizeBase = 14.0;
+
   return ButtonStyle(
     foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.pressed)) {
@@ -2579,13 +2585,16 @@ ButtonStyle createButtonTheme({
           49,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(8, density: visualDensityService.density),
+        vertical: screenService.scale(verticalPaddingBase, density: visualDensityService.density),
       ),
+    ),
+    minimumSize: WidgetStateProperty.all(
+      Size(0, verticalPaddingBase * 2 + fontSizeBase),
     ),
     textStyle: WidgetStateProperty.all(
       TextStyle(
         fontSize: screenService.scale(
-          14,
+          fontSizeBase,
           density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
@@ -2633,18 +2642,23 @@ ButtonStyle createIconButtonTheme({
     disabledBorderColor: disabledBorderColor,
   );
 
+  const iconPaddingBase = 8.0;
+  const iconSizeBase = 18.0;
+
   return baseStyle.copyWith(
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
         horizontal: screenService.scale(
-          8,
+          iconPaddingBase,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(8, density: visualDensityService.density),
+        vertical: screenService.scale(iconPaddingBase, density: visualDensityService.density),
       ),
     ),
     shape: WidgetStateProperty.all(const CircleBorder()),
-    minimumSize: WidgetStateProperty.all(Size.zero),
+    minimumSize: WidgetStateProperty.all(
+      Size(0, iconPaddingBase * 2 + iconSizeBase),
+    ),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
 }

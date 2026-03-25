@@ -250,26 +250,30 @@ class RightDrawer extends StatelessWidget {
           : ThemeData(
               filledButtonTheme: AppFilledButtonsLightThemes.neutral,
             ),
-      child: FilledButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          Navigator.pop(context);
-        },
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
-          maximumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
-          shape: const CircleBorder(),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Icon(
-          MdiIcons.close,
-          size: AppSpacings.scale(18),
-          color: isDark
-              ? AppFilledButtonsDarkThemes.neutralForegroundColor
-              : AppFilledButtonsLightThemes.neutralForegroundColor,
-        ),
-      ),
+      child: Builder(builder: (context) {
+        final buttonSize = math.max(AppSpacings.scale(32), 26.0);
+        final iconSize = math.max(AppSpacings.scale(15), 12.0);
+        return FilledButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            fixedSize: Size.square(buttonSize),
+            minimumSize: Size.zero,
+            shape: const CircleBorder(),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Icon(
+            MdiIcons.close,
+            size: iconSize,
+            color: isDark
+                ? AppFilledButtonsDarkThemes.neutralForegroundColor
+                : AppFilledButtonsLightThemes.neutralForegroundColor,
+          ),
+        );
+      }),
     );
   }
 }
