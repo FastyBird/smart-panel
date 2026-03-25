@@ -33,7 +33,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElIcon } from 'element-plus';
+import { ElAlert, ElIcon, ElNotification } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
