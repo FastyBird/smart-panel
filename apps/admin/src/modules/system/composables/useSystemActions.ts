@@ -2,7 +2,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElMessageBox } from 'element-plus';
 
-import { useFlashMessage, useSockets } from '../../../common';
+import { useSockets } from '../../../common';
 import { useConfigModule } from '../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../displays/store/config.store.types';
 import { useOnboardingStatus } from '../../onboarding/composables/composables';
@@ -16,7 +16,6 @@ export const useSystemActions = (): IUseSystemActions => {
 
 	const { t } = useI18n();
 	const { sendCommand } = useSockets();
-	const flashMessage = useFlashMessage();
 	const { invalidate: invalidateOnboarding } = useOnboardingStatus();
 
 	const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
@@ -90,26 +89,15 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.setFactoryResetTrigger('action');
+				// Sign out and navigate to the waiting page first — backend will restart
+				invalidateOnboarding();
+
+				await systemActions.handleFactoryResetRedirect();
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
-
-					if (response !== true) {
-						flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
-
-						return;
-					}
-
-					invalidateOnboarding();
-
-					await systemActions.factoryResetDone();
+					await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
 				} catch {
-					// Skip error if factory reset already completed via WS event
-					if (!systemActions.isFactoryResetDone()) {
-						// Server may have gone down during reset — navigate anyway
-						await systemActions.handleFactoryResetRedirect();
-					}
+					// Server going down before ack is expected
 				}
 			})
 			.catch((): void => {
