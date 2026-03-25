@@ -53,8 +53,8 @@ describe('LayoutMaintenance', (): void => {
 		expect(wrapper.exists()).toBe(true);
 	});
 
-	it('displays the sign-in heading when on the sign-in page', async (): Promise<void> => {
-		expect(wrapper.find('[data-test-id="power-off-heading"]').text()).toContain('systemModule.headings.manage.poweredOff');
+	it('displays the maintenance heading', async (): Promise<void> => {
+		expect(wrapper.find('[data-test-id="maintenance-heading"]').text()).toContain('systemModule.headings.manage.poweredOff');
 	});
 
 	it('should show social media links with correct icons', (): void => {
