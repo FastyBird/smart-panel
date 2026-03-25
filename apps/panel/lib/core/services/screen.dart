@@ -160,16 +160,6 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
     return size * scaleFactor * densityMultiplier;
   }
 
-  double unscale(double size, {DisplayDensity? density = DisplayDensity.normal}) {
-    final densityMultiplier = switch (density) {
-      DisplayDensity.compact => 0.85,
-      DisplayDensity.large => 1.15,
-      _ => 1.0,
-    };
-    final divisor = scaleFactor * densityMultiplier;
-    return divisor > 0 ? size / divisor : size;
-  }
-
   void updateFromProfile({
     required int profileCols,
     required int profileRows,
