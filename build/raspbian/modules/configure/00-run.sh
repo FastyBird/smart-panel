@@ -16,6 +16,9 @@ cp "${STAGE_DIR}/files/first-boot.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/environment" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
+# Copy udev rules for hardware access
+cp "${STAGE_DIR}/files/99-reterminal.rules" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+
 # Copy display config files (used by display and aio variants)
 cp "${STAGE_DIR}/files/smart-panel-display.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/display" "${ROOTFS_DIR}/tmp/smart-panel-config/"

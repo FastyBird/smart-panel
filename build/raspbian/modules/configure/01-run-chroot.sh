@@ -40,6 +40,13 @@ DATA_DIR="/var/lib/smart-panel"
 DISPLAY_DIR="/opt/smart-panel-display"
 
 # ──────────────────────────────────────────────────────────────
+# Common configuration (all variants)
+# ──────────────────────────────────────────────────────────────
+
+# Install udev rules for hardware access (reTerminal LEDs, buzzer)
+cp /tmp/smart-panel-config/99-reterminal.rules /etc/udev/rules.d/
+
+# ──────────────────────────────────────────────────────────────
 # Backend services (server + aio)
 # ──────────────────────────────────────────────────────────────
 if [ "${HAS_BACKEND}" = true ]; then

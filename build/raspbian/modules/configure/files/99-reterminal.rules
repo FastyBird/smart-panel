@@ -1,0 +1,3 @@
+# Allow smart-panel service to control reTerminal LEDs and buzzer
+SUBSYSTEM=="leds", KERNEL=="usr_led*", ACTION=="add", RUN+="/bin/chmod 0666 /sys%p/brightness"
+SUBSYSTEM=="leds", KERNEL=="usr_buzzer", ACTION=="add", RUN+="/bin/chmod 0666 /sys%p/brightness"
