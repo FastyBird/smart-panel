@@ -89,16 +89,17 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				// Sign out and navigate to the waiting page first — backend will restart
-				invalidateOnboarding();
-
-				await systemActions.handleFactoryResetRedirect();
-
+				// Send command first while still authenticated
 				try {
 					await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30_000);
 				} catch {
-					// Server going down before ack is expected
+					// Server going down before ack is expected during factory reset
 				}
+
+				// Then sign out and navigate to the waiting page
+				invalidateOnboarding();
+
+				await systemActions.handleFactoryResetRedirect();
 			})
 			.catch((): void => {
 				// Dialog cancelled
