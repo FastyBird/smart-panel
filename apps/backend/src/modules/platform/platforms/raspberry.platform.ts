@@ -103,7 +103,7 @@ export class RaspberryPlatform extends Platform {
 
 	async getThrottleStatus() {
 		try {
-			const { stdout } = await execAsync('vcgencmd get_throttled');
+			const { stdout } = await execAsync('sudo /usr/bin/vcgencmd get_throttled');
 			const match = stdout.match(/throttled=(0x[0-9A-Fa-f]+)/);
 
 			if (match) {

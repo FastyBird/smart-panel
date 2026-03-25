@@ -45,6 +45,7 @@ export const useSystemActions = (): IUseSystemActions => {
 					const response = await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
+						// Command was rejected by backend — actual error
 						systemActions.reboot('err', 'action');
 
 						flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
@@ -54,9 +55,8 @@ export const useSystemActions = (): IUseSystemActions => {
 
 					systemActions.reboot('ok', 'action');
 				} catch {
-					systemActions.reboot('err', 'action');
-
-					flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
+					// Server went down before acknowledging — expected for reboot
+					systemActions.reboot('ok', 'action');
 				}
 			})
 			.catch((): void => {
@@ -91,9 +91,8 @@ export const useSystemActions = (): IUseSystemActions => {
 
 					systemActions.powerOff('ok', 'action');
 				} catch {
-					systemActions.powerOff('err', 'action');
-
-					flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
+					// Server went down before acknowledging — expected for power off
+					systemActions.powerOff('ok', 'action');
 				}
 			})
 			.catch((): void => {
