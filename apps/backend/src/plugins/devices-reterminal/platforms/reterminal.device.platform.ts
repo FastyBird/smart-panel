@@ -132,9 +132,10 @@ export class ReTerminalDevicePlatform implements IDevicePlatform {
 
 	private async handleBuzzerWrite(propertyIdentifier: string, value: string | number | boolean): Promise<void> {
 		if (propertyIdentifier === 'on') {
-			const brightness = this.coerceBoolean(value) ? 255 : 0;
+			// Buzzer max_brightness is 1 (not 255 like LEDs)
+			const buzzerValue = this.coerceBoolean(value) ? 1 : 0;
 
-			await this.sysfsService.writeFile(RETERMINAL_SYSFS.BUZZER, String(brightness));
+			await this.sysfsService.writeFile(RETERMINAL_SYSFS.BUZZER, String(buzzerValue));
 		}
 	}
 
