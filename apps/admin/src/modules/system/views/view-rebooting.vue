@@ -61,7 +61,7 @@ const checkHealth = async (): Promise<void> => {
 		if (response.ok) {
 			ElNotification.success(t('systemModule.messages.manage.panelBackOnline'));
 
-			await router.push({ name: RouteNames.SYSTEM_INFO });
+			window.location.href = '/';
 
 			return;
 		}
