@@ -30,7 +30,7 @@ export class ReTerminalDeviceEntity extends DeviceEntity {
 	@Expose()
 	@IsOptional()
 	@IsEnum(ReTerminalVariant)
-	@Column({ nullable: true, default: null })
+	@Column({ type: 'varchar', nullable: true, default: null })
 	variant: ReTerminalVariant | null = null;
 
 	toString(): string {
