@@ -55,7 +55,11 @@ export class ReTerminalSysfsService {
 			return ReTerminalVariant.RETERMINAL_DM;
 		}
 
-		if (existsSync(RETERMINAL_SYSFS.USR_LED) || existsSync(RETERMINAL_SYSFS.STA_LED_GREEN)) {
+		if (
+			existsSync(RETERMINAL_SYSFS.USR_LED) ||
+			existsSync(RETERMINAL_SYSFS.STA_LED_GREEN) ||
+			existsSync(RETERMINAL_SYSFS.BUZZER)
+		) {
 			this.logger.log('Detected reTerminal via sysfs LED path');
 
 			return ReTerminalVariant.RETERMINAL;
