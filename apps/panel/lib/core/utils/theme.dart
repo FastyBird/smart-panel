@@ -353,6 +353,11 @@ class AppTheme {
       pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbVisibility: WidgetStatePropertyAll(false),
+        trackVisibility: WidgetStatePropertyAll(false),
+        thickness: WidgetStatePropertyAll(0),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsLight.primary,
         linearTrackColor: AppColors.white,
@@ -411,6 +416,11 @@ class AppTheme {
       pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbVisibility: WidgetStatePropertyAll(false),
+        trackVisibility: WidgetStatePropertyAll(false),
+        thickness: WidgetStatePropertyAll(0),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsDark.primary,
         linearTrackColor: AppColors.white,
