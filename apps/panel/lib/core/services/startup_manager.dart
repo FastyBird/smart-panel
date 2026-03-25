@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_register_displa
 import 'package:fastybird_smart_panel/api/models/displays_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/modules/system/services/error_reporter.dart';
 import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
@@ -329,10 +330,21 @@ class StartupManagerService {
         locator.get<EnergyModuleService>().initialize(),
         locator.get<BuddyModuleService>().initialize(),
       ]);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('[REPOS INIT] Data storage initialization failed: $e');
       }
+
+      // Report the initialization failure to the backend before tearing down
+      ErrorReporter.instance.reportError(
+        'Module initialization failed: $e',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'startup',
+      );
+
+      // Give the reporter a moment to flush the error before clearing the client
+      await ErrorReporter.instance.flushNow();
 
       // Clean up registered modules if initialization failed
       // This ensures they don't remain registered with a stale API client

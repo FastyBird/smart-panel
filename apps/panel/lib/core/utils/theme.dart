@@ -353,6 +353,11 @@ class AppTheme {
       pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbVisibility: WidgetStatePropertyAll(false),
+        trackVisibility: WidgetStatePropertyAll(false),
+        thickness: WidgetStatePropertyAll(0),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsLight.primary,
         linearTrackColor: AppColors.white,
@@ -411,6 +416,11 @@ class AppTheme {
       pageTransitionsTheme: _pageTransitionsTheme,
       visualDensity: _visualDensityService.visualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbVisibility: WidgetStatePropertyAll(false),
+        trackVisibility: WidgetStatePropertyAll(false),
+        thickness: WidgetStatePropertyAll(0),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsDark.primary,
         linearTrackColor: AppColors.white,
@@ -2530,6 +2540,9 @@ ButtonStyle createButtonTheme({
   final VisualDensityService visualDensityService =
       locator<VisualDensityService>();
 
+  const verticalPaddingBase = 8.0;
+  const fontSizeBase = 14.0;
+
   return ButtonStyle(
     foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.pressed)) {
@@ -2579,13 +2592,16 @@ ButtonStyle createButtonTheme({
           49,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(8, density: visualDensityService.density),
+        vertical: screenService.scale(verticalPaddingBase, density: visualDensityService.density),
       ),
+    ),
+    minimumSize: WidgetStateProperty.all(
+      Size(0, verticalPaddingBase * 2 + fontSizeBase),
     ),
     textStyle: WidgetStateProperty.all(
       TextStyle(
         fontSize: screenService.scale(
-          14,
+          fontSizeBase,
           density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
@@ -2633,18 +2649,23 @@ ButtonStyle createIconButtonTheme({
     disabledBorderColor: disabledBorderColor,
   );
 
+  const iconPaddingBase = 8.0;
+  const iconSizeBase = 18.0;
+
   return baseStyle.copyWith(
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
         horizontal: screenService.scale(
-          8,
+          iconPaddingBase,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(8, density: visualDensityService.density),
+        vertical: screenService.scale(iconPaddingBase, density: visualDensityService.density),
       ),
     ),
     shape: WidgetStateProperty.all(const CircleBorder()),
-    minimumSize: WidgetStateProperty.all(Size.zero),
+    minimumSize: WidgetStateProperty.all(
+      Size(0, iconPaddingBase * 2 + iconSizeBase),
+    ),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
 }

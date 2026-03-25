@@ -35,8 +35,8 @@ class ModeOption<T> {
   /// If null, uses the selector's default color
   final ThemeColors? color;
 
-  /// Optional override for the icon size (in logical pixels before scaling).
-  /// If null, uses the default size for the current layout variant.
+  /// Optional override for the icon size (in already-scaled logical pixels).
+  /// If null, the default size is scaled automatically for the current layout.
   final double? iconSize;
 
   /// Optional custom label builder that replaces the default [Text] widget.
@@ -235,7 +235,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         final widthPerButton = availableWidth / buttonCount;
         final shouldShowLabels = !widget.showIcon
             ? true
-            : (widget.showLabels ?? (widthPerButton >= widget.minButtonWidth));
+            : (widget.showLabels ?? (widthPerButton >= AppSpacings.scale(widget.minButtonWidth)));
 
         final selectedIndex = widget.selectedValue != null
             ? widget.modes.indexWhere((m) => m.value == widget.selectedValue)
@@ -415,7 +415,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: AppSpacings.scale(mode.iconSize ?? 20),
+          size: mode.iconSize ?? AppSpacings.scale(20),
         ),
       );
     } else if (useTopIcon) {
@@ -428,7 +428,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: AppSpacings.scale(mode.iconSize ?? 18),
+            size: mode.iconSize ?? AppSpacings.scale(18),
           ),
           Flexible(
             child: mode.labelBuilder != null
@@ -473,7 +473,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: AppSpacings.scale(mode.iconSize ?? 18),
+            size: mode.iconSize ?? AppSpacings.scale(18),
           ),
           // When scrollable, don't use Flexible (unbounded width)
           isScrollable ? labelWidget : Flexible(child: labelWidget),

@@ -86,6 +86,10 @@ fi
 if [ "${HAS_DISPLAY}" = true ]; then
 	mkdir -p "${DISPLAY_DIR}"
 
+	# Install display environment file
+	mkdir -p /etc/smart-panel
+	cp /tmp/smart-panel-config/display /etc/smart-panel/display
+
 	# Install display systemd service
 	if [ "${HAS_BACKEND}" = true ]; then
 		# AIO: make display service wait for backend to be ready.

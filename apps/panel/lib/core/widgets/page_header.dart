@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -339,17 +341,22 @@ class HeaderIconButton extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final (filledTheme, foregroundColor) = _filledButtonFor(brightness, color);
 
+    final buttonSize = math.max(AppSpacings.scale(32), 26.0);
+    final iconSize = math.max(AppSpacings.scale(15), 12.0);
+
     return Theme(
       data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
       child: FilledButton(
         onPressed: onTap,
         style: FilledButton.styleFrom(
-          padding: AppSpacings.paddingMd,
+          fixedSize: Size.square(buttonSize),
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Icon(
           icon,
-          size: AppFontSize.extraLarge,
+          size: iconSize,
           color: foregroundColor,
         ),
       ),
@@ -414,17 +421,22 @@ class HeaderHomeButton extends StatelessWidget {
         ? AppFilledButtonsDarkThemes.neutral
         : AppFilledButtonsLightThemes.neutral;
 
+    final buttonSize = math.max(AppSpacings.scale(32), 26.0);
+    final iconSize = math.max(AppSpacings.scale(15), 12.0);
+
     return Theme(
       data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
       child: FilledButton(
         onPressed: onTap,
         style: FilledButton.styleFrom(
-          padding: AppSpacings.paddingMd,
+          fixedSize: Size.square(buttonSize),
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Icon(
           MdiIcons.homeOutline,
-          size: AppFontSize.extraLarge,
+          size: iconSize,
           color: isDark
               ? AppFilledButtonsDarkThemes.neutralForegroundColor
               : AppFilledButtonsLightThemes.neutralForegroundColor,

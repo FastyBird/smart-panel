@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 /// Frosted-glass card for displaying weather info on the sky panel.
@@ -17,17 +18,19 @@ class SkyGlassCard extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
+		final radius = BorderRadius.circular(AppBorderRadius.base);
+
 		return ClipRRect(
-			borderRadius: BorderRadius.circular(12),
+			borderRadius: radius,
 			child: BackdropFilter(
 				filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
 				child: Container(
-					padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+					padding: padding ?? EdgeInsets.symmetric(horizontal: AppSpacings.pLg, vertical: AppSpacings.pMd),
 					decoration: BoxDecoration(
 						color: isDark
 								? Colors.white.withValues(alpha: 0.08)
 								: Colors.white.withValues(alpha: 0.3),
-						borderRadius: BorderRadius.circular(12),
+						borderRadius: radius,
 						border: Border.all(
 							color: isDark
 									? Colors.white.withValues(alpha: 0.12)

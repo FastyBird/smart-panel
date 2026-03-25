@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'fs';
 import si from 'systeminformation';
 
 import { Injectable } from '@nestjs/common';
@@ -132,7 +133,8 @@ export class PlatformService {
 
 		if (
 			systemInfo.model?.toLowerCase().includes('raspberry') ||
-			systemInfo.manufacturer?.toLowerCase().includes('raspberry')
+			systemInfo.manufacturer?.toLowerCase().includes('raspberry') ||
+			this.isRaspberryPiHardware()
 		) {
 			this.logger.log('Raspberry Pi platform detected');
 
@@ -142,6 +144,29 @@ export class PlatformService {
 		this.logger.log('Generic platform detected');
 
 		return { platform: this.createPlatform(PlatformType.GENERIC), type: PlatformType.GENERIC };
+	}
+
+	/**
+	 * Check the device-tree model file for Raspberry Pi hardware.
+	 * This detects CM4-based boards (e.g. reTerminal) where the board
+	 * manufacturer differs but the SoC is still Raspberry Pi.
+	 */
+	private isRaspberryPiHardware(): boolean {
+		const deviceTreePath = '/proc/device-tree/model';
+
+		try {
+			if (existsSync(deviceTreePath)) {
+				const model = readFileSync(deviceTreePath, 'utf-8').toLowerCase();
+
+				this.logger.log(`Device-tree model: ${model.trim()}`);
+
+				return model.includes('raspberry');
+			}
+		} catch {
+			// Ignore read errors — file may not exist on non-Linux platforms
+		}
+
+		return false;
 	}
 
 	private createPlatform(type: PlatformType): Platform {

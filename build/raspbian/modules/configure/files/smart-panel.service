@@ -20,13 +20,13 @@ SyslogIdentifier=smart-panel
 
 # Security hardening
 # Note: NoNewPrivileges=true is NOT set because the app uses sudo for
-# reboot/poweroff via the sudoers policy in /etc/sudoers.d/smart-panel
+# reboot/poweroff via the sudoers policy in /etc/sudoers.d/smart-panel.
+# ProtectKernelTunables and ProtectKernelModules are also omitted because
+# they implicitly enable NoNewPrivileges, which blocks sudo.
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/smart-panel
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
 ProtectControlGroups=true
 
 [Install]

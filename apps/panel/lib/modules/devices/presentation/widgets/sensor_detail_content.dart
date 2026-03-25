@@ -130,6 +130,17 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   }
 
   @override
+  void didUpdateWidget(covariant SensorDetailContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sensor.channel.id != widget.sensor.channel.id) {
+      _currentSensorData = widget.sensor;
+      _selectedPeriod = 1;
+      _timeseries = null;
+      _fetchTimeseries();
+    }
+  }
+
+  @override
   void dispose() {
     _devicesService.removeListener(_onDataChanged);
     super.dispose();

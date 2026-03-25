@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
@@ -135,11 +137,11 @@ class WeatherDetailPage extends StatelessWidget {
 								isDark: config.isDark,
 								padding: EdgeInsets.zero,
 								child: SizedBox(
-									width: AppSpacings.scale(36),
-									height: AppSpacings.scale(36),
+									width: math.max(AppSpacings.scale(36), 28.0),
+									height: math.max(AppSpacings.scale(36), 28.0),
 									child: Icon(
 										MdiIcons.arrowLeft,
-										size: AppSpacings.scale(18),
+										size: math.max(AppSpacings.scale(18), 14.0),
 										color: config.primaryTextColor,
 									),
 								),

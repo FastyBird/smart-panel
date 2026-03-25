@@ -62,6 +62,14 @@ class ErrorReporter {
     _appVersion = version;
   }
 
+  /// Force an immediate flush of all queued entries.
+  /// Returns when the flush completes (or fails).
+  Future<void> flushNow() async {
+    _timer?.cancel();
+    _timer = null;
+    await _flush();
+  }
+
   /// Disconnect from the API client and cancel pending timers on teardown.
   void clearApiClient() {
     _apiClient = null;
