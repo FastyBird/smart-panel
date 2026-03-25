@@ -99,11 +99,11 @@
 				v-if="systemLog.args"
 				:label="t('systemModule.fields.systemLogs.args.title')"
 			>
-				<pre class="p-2 bg-gray-50 rounded text-xs overflow-auto">{{ pretty(systemLog.args) }}</pre>
+				<pre class="p-2 bg-[var(--el-fill-color-light)] rounded text-xs overflow-auto">{{ pretty(systemLog.args) }}</pre>
 			</el-tab-pane>
 
 			<el-tab-pane :label="t('systemModule.fields.systemLogs.rawJson.title')">
-				<pre class="p-2 bg-gray-50 rounded text-xs overflow-auto">{{ pretty(systemLog) }}</pre>
+				<pre class="p-2 bg-[var(--el-fill-color-light)] rounded text-xs overflow-auto">{{ pretty(systemLog) }}</pre>
 
 				<div class="flex gap-2">
 					<el-button
@@ -144,8 +144,20 @@ const pretty = (v: unknown): string => {
 	}
 };
 
-const copy = (text: string): void => {
-	navigator.clipboard?.writeText(text);
+const copy = async (text: string): Promise<void> => {
+	try {
+		await navigator.clipboard.writeText(text);
+	} catch {
+		// Fallback for Safari / non-HTTPS — use legacy execCommand
+		const textarea = document.createElement('textarea');
+		textarea.value = text;
+		textarea.style.position = 'fixed';
+		textarea.style.opacity = '0';
+		document.body.appendChild(textarea);
+		textarea.select();
+		document.execCommand('copy');
+		document.body.removeChild(textarea);
+	}
 };
 
 const levelTagProps = (lvl: SystemModuleLogEntryType) => {

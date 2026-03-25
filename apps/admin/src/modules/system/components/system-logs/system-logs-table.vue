@@ -81,7 +81,7 @@
 		<div
 			v-for="e in items"
 			:key="e.id"
-			class="px-3 py-2 border-b hover:bg-gray-50 cursor-pointer"
+			class="px-3 py-2 border-b hover:bg-[var(--el-fill-color-light)] cursor-pointer"
 			@click="() => onRowClick(e)"
 		>
 			<div class="grid grid-cols-[160px_80px_80px_1fr] md:grid-cols-[160px_80px_80px_1fr] gap-3 items-center">
@@ -114,7 +114,7 @@
 				<div class="truncate">
 					<span
 						v-if="e.tag"
-						class="text-gray-500"
+						class="text-[var(--el-text-color-secondary)]"
 					>
 						[{{ e.tag }}]
 					</span>
