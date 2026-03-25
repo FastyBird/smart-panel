@@ -12,14 +12,14 @@ import { PropertyCommandService } from '../services/property-command.service';
  * WebSocket command event types for devices module
  */
 export const DevicesWsEventType = {
-	SET_PROPERTY: 'DevicesModule.SetProperty',
+	SET_PROPERTY: 'DevicesModule.ChannelProperty.Set',
 } as const;
 
 /**
  * WebSocket command handler names for devices module
  */
 export const DevicesWsHandlerName = {
-	SET_PROPERTY: 'DevicesModule.SetPropertyHandler',
+	SET_PROPERTY: 'DevicesModule.Internal.SetPropertyValue',
 } as const;
 
 @Injectable()
