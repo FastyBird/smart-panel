@@ -20,6 +20,7 @@ vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
+		locale: { value: 'en-US' },
 	}),
 }));
 
@@ -73,7 +74,7 @@ describe('SettingsProfileForm', (): void => {
 		expect(wrapper.exists()).toBe(true);
 
 		expect(wrapper.findComponent(ElForm).exists()).toBe(true);
-		expect(wrapper.findAllComponents(ElFormItem).length).toBe(3);
+		expect(wrapper.findAllComponents(ElFormItem).length).toBe(4);
 	});
 
 	it('sets initial values from props', async (): Promise<void> => {
@@ -98,6 +99,7 @@ describe('SettingsProfileForm', (): void => {
 				firstName: 'John',
 				lastName: 'Doe',
 				email: 'test@example.com',
+				language: null,
 			},
 		});
 

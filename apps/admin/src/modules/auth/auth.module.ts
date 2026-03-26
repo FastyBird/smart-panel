@@ -276,6 +276,7 @@ export default {
 					const browserLocale = detectBrowserLocale();
 
 					(options.i18n.global.locale as unknown as { value: string }).value = browserLocale;
+					clearStoredLocale();
 					setHtmlLang(browserLocale);
 				}
 			},
@@ -305,6 +306,13 @@ export default {
 								(options.i18n.global.locale as unknown as { value: string }).value = serverLocale;
 								applyLocale(serverLocale);
 							}
+						} else {
+							// User had no preference — revert to browser default
+							const browserLocale = detectBrowserLocale();
+
+							(options.i18n.global.locale as unknown as { value: string }).value = browserLocale;
+							clearStoredLocale();
+							setHtmlLang(browserLocale);
 						}
 					});
 			}
