@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type WritableComputedRef } from 'vue';
+import { computed, type Ref, ref, type WritableComputedRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { type AppLocale, LOCALE_LANGUAGE_MAP, SUPPORTED_LOCALES } from '../../locales';
@@ -38,6 +38,10 @@ export const storeLocale = (locale: AppLocale): void => {
 	localStorage.setItem(LANGUAGE_STORAGE_KEY, locale);
 };
 
+export const clearStoredLocale = (): void => {
+	localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+};
+
 export const setHtmlLang = (locale: AppLocale): void => {
 	document.documentElement.setAttribute('lang', locale.split('-')[0]);
 };
@@ -69,9 +73,7 @@ export const useLanguage = (): IUseLanguage => {
 		},
 	});
 
-	const supportedLocales: ComputedRef<{ value: AppLocale; label: string; flag: string }[]> = computed(() => {
-		return SUPPORTED_LOCALES;
-	});
+	const supportedLocales: Ref<{ value: AppLocale; label: string; flag: string }[]> = ref(SUPPORTED_LOCALES);
 
 	return {
 		currentLocale,

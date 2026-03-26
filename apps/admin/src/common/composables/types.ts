@@ -76,7 +76,7 @@ export interface IUseSockets {
 
 export interface IUseLanguage {
 	currentLocale: import('vue').WritableComputedRef<import('../../locales').AppLocale>;
-	supportedLocales: import('vue').ComputedRef<{ value: import('../../locales').AppLocale; label: string; flag: string }[]>;
+	supportedLocales: import('vue').Ref<{ value: import('../../locales').AppLocale; label: string; flag: string }[]>;
 }
 
 export interface IUseUuid {

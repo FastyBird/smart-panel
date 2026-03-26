@@ -21,7 +21,7 @@ import type { IUser } from '../users';
 
 import type { AppLocale } from '../../locales';
 import { LOCALE_LANGUAGE_MAP } from '../../locales';
-import { applyLocale, getStoredLocale, LANGUAGE_CHANGED_EVENT } from '../../common/composables/useLanguage';
+import { applyLocale, clearStoredLocale, LANGUAGE_CHANGED_EVENT } from '../../common/composables/useLanguage';
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
 import { locales } from './locales';
 import {
@@ -222,6 +222,7 @@ export default {
 				try {
 					locked.value = false;
 					localStorage.removeItem(LOCK_SCREEN_STORAGE_KEY);
+					clearStoredLocale();
 
 					sessionStore.clear();
 
@@ -257,9 +258,8 @@ export default {
 		provideAccountManager(app, accountManager);
 
 		// Apply user's preferred language when profile loads.
-		// Only override the locally stored locale when there is no local preference yet
-		// (first visit) or when the server language matches. This prevents a failed
-		// backend save from silently reverting the user's explicit language choice on reload.
+		// localStorage is cleared on sign-out, so this always applies the
+		// server preference for the newly signed-in user.
 		watch(
 			() => sessionStore.profile,
 			(profile: IUser | null) => {
@@ -267,12 +267,8 @@ export default {
 					const locale = LOCALE_LANGUAGE_MAP[profile.language];
 
 					if (locale) {
-						const storedLocale = getStoredLocale();
-
-						if (!storedLocale || storedLocale === locale) {
-							(options.i18n.global.locale as unknown as { value: string }).value = locale;
-							applyLocale(locale);
-						}
+						(options.i18n.global.locale as unknown as { value: string }).value = locale;
+						applyLocale(locale);
 					}
 				}
 			},
