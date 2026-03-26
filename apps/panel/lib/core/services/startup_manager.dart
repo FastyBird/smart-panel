@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/system/services/error_reporter.dar
 import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
+import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/periodic_refresh.dart';
@@ -168,6 +169,7 @@ class StartupManagerService {
       securedStorageFallback: Platform.isAndroid || Platform.isIOS ? null : _securedStorageFallback,
     ));
     locator.registerSingleton(_eventBus);
+    locator.registerSingleton(DeviceControlService());
   }
 
   /// Get the currently configured backend URL

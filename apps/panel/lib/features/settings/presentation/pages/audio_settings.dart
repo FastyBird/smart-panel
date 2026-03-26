@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
@@ -25,6 +26,7 @@ class AudioSettingsPage extends StatefulWidget {
 
 class _AudioSettingsPageState extends State<AudioSettingsPage> {
 	final DisplayRepository _repository = locator<DisplayRepository>();
+	final DeviceControlService _deviceControl = locator<DeviceControlService>();
 
 	late bool _audioOutputSupported;
 	late bool _audioInputSupported;
@@ -267,6 +269,9 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			_hasSpeakerEnabled = !_hasSpeakerEnabled;
 		});
 
+		// Apply mute/unmute to hardware immediately
+		_deviceControl.setSpeakerMute(!_hasSpeakerEnabled);
+
 		final success = await _repository.setSpeakerState(_hasSpeakerEnabled);
 
 		Future.microtask(
@@ -281,6 +286,9 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 					setState(() {
 						_hasSpeakerEnabled = !_hasSpeakerEnabled;
 					});
+
+					// Revert hardware mute state on failure
+					_deviceControl.setSpeakerMute(!_hasSpeakerEnabled);
 
 					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
@@ -299,9 +307,14 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			});
 		}
 
+		final rounded = value.round();
+
 		setState(() {
-			_speakerVolume = value.round();
+			_speakerVolume = rounded;
 		});
+
+		// Apply volume to hardware immediately for responsive feedback
+		_deviceControl.setSpeakerVolume(rounded);
 
 		_speakerDebounce?.cancel();
 
@@ -318,11 +331,16 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 					if (!context.mounted) return;
 
 					if (!success) {
+						final revertValue = _speakerVolumeBackup ?? 50;
+
 						setState(() {
-							_speakerVolume = _speakerVolumeBackup ?? 50;
+							_speakerVolume = revertValue;
 							_speakerVolumeBackup = null;
 							_savingSpeakerVolume = false;
 						});
+
+						// Revert hardware volume on failure
+						_deviceControl.setSpeakerVolume(revertValue);
 
 						Toast.showError(
 							context,
@@ -349,6 +367,9 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			_hasMicrophoneEnabled = !_hasMicrophoneEnabled;
 		});
 
+		// Apply mute/unmute to hardware immediately
+		_deviceControl.setMicrophoneMute(!_hasMicrophoneEnabled);
+
 		final success = await _repository.setMicrophoneState(_hasMicrophoneEnabled);
 
 		Future.microtask(
@@ -363,6 +384,9 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 					setState(() {
 						_hasMicrophoneEnabled = !_hasMicrophoneEnabled;
 					});
+
+					// Revert hardware mute state on failure
+					_deviceControl.setMicrophoneMute(!_hasMicrophoneEnabled);
 
 					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
@@ -381,9 +405,14 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			});
 		}
 
+		final rounded = value.round();
+
 		setState(() {
-			_microphoneVolume = value.round();
+			_microphoneVolume = rounded;
 		});
+
+		// Apply volume to hardware immediately for responsive feedback
+		_deviceControl.setMicrophoneVolume(rounded);
 
 		_microphoneDebounce?.cancel();
 
@@ -400,11 +429,16 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 					if (!context.mounted) return;
 
 					if (!success) {
+						final revertValue = _microphoneVolumeBackup ?? 50;
+
 						setState(() {
-							_microphoneVolume = _microphoneVolumeBackup ?? 50;
+							_microphoneVolume = revertValue;
 							_microphoneVolumeBackup = null;
 							_savingMicrophoneVolume = false;
 						});
+
+						// Revert hardware volume on failure
+						_deviceControl.setMicrophoneVolume(revertValue);
 
 						Toast.showError(
 							context,

@@ -1,5 +1,7 @@
 package com.fastybird.smartpanel
 
+import android.content.Context
+import android.media.AudioManager
 import android.os.Build
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -7,19 +9,48 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-	private val CHANNEL = "com.fastybird.smartpanel/screen_power"
+	private val SCREEN_POWER_CHANNEL = "com.fastybird.smartpanel/screen_power"
+	private val DEVICE_CONTROL_CHANNEL = "com.fastybird.smartpanel/device_control"
 	private var savedBrightness: Float = -1f
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
 
-		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCREEN_POWER_CHANNEL).setMethodCallHandler { call, result ->
 			when (call.method) {
 				"screenOff" -> {
 					result.success(setScreenOff())
 				}
 				"screenOn" -> {
 					result.success(setScreenOn())
+				}
+				else -> {
+					result.notImplemented()
+				}
+			}
+		}
+
+		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CONTROL_CHANNEL).setMethodCallHandler { call, result ->
+			when (call.method) {
+				"setBrightness" -> {
+					val percent = call.argument<Int>("percent") ?: 100
+					result.success(setBrightness(percent))
+				}
+				"setSpeakerVolume" -> {
+					val percent = call.argument<Int>("percent") ?: 50
+					result.success(setSpeakerVolume(percent))
+				}
+				"setSpeakerMute" -> {
+					val mute = call.argument<Boolean>("mute") ?: false
+					result.success(setSpeakerMute(mute))
+				}
+				"setMicrophoneVolume" -> {
+					val percent = call.argument<Int>("percent") ?: 50
+					result.success(setMicrophoneVolume(percent))
+				}
+				"setMicrophoneMute" -> {
+					val mute = call.argument<Boolean>("mute") ?: false
+					result.success(setMicrophoneMute(mute))
 				}
 				else -> {
 					result.notImplemented()
@@ -69,6 +100,85 @@ class MainActivity : FlutterActivity() {
 					setTurnScreenOn(false)
 				}, 1000)
 			}
+
+			true
+		} catch (e: Exception) {
+			false
+		}
+	}
+
+	private fun setBrightness(percent: Int): Boolean {
+		return try {
+			val window = window ?: return false
+			val params = window.attributes
+			val brightness = if (percent <= 0) 0.01f else percent / 100.0f
+
+			// Keep savedBrightness in sync so that setScreenOn restores the
+			// correct value instead of a stale one from before this call.
+			savedBrightness = brightness
+
+			params.screenBrightness = brightness
+			window.attributes = params
+
+			true
+		} catch (e: Exception) {
+			false
+		}
+	}
+
+	private fun setSpeakerVolume(percent: Int): Boolean {
+		return try {
+			val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+			val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+			val volume = (percent * maxVolume / 100).coerceIn(0, maxVolume)
+
+			audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
+
+			true
+		} catch (e: Exception) {
+			false
+		}
+	}
+
+	private fun setSpeakerMute(mute: Boolean): Boolean {
+		return try {
+			val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				audioManager.adjustStreamVolume(
+					AudioManager.STREAM_MUSIC,
+					if (mute) AudioManager.ADJUST_MUTE else AudioManager.ADJUST_UNMUTE,
+					0
+				)
+			} else {
+				@Suppress("DEPRECATION")
+				audioManager.setStreamMute(AudioManager.STREAM_MUSIC, mute)
+			}
+
+			true
+		} catch (e: Exception) {
+			false
+		}
+	}
+
+	private fun setMicrophoneVolume(percent: Int): Boolean {
+		// Android has no public API to set microphone input gain level.
+		// We use isMicrophoneMute for on/off, and treat volume as a
+		// mute threshold: 0% = mute, >0% = unmute.
+		return try {
+			val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+			audioManager.isMicrophoneMute = (percent <= 0)
+
+			true
+		} catch (e: Exception) {
+			false
+		}
+	}
+
+	private fun setMicrophoneMute(mute: Boolean): Boolean {
+		return try {
+			val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+			audioManager.isMicrophoneMute = mute
 
 			true
 		} catch (e: Exception) {

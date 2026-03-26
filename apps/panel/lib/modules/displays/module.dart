@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
@@ -19,6 +20,10 @@ class DisplaysModuleService {
   late DisplayRepository _displayRepository;
 
   bool _isLoading = true;
+
+  /// Guards against concurrent hardware change operations from rapid
+  /// socket events. Each new call waits for the previous to finish.
+  Future<void> _pendingHardwareChange = Future.value();
 
   DisplaysModuleService({
     required ApiClient apiClient,
@@ -114,6 +119,12 @@ class DisplaysModuleService {
         profileUnitSize: _displayRepository.unitSize,
       );
 
+      // Apply stored hardware settings to the device, serialized through
+      // the pending chain so socket events wait for it to finish
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyInitialHardwareState(),
+      );
+
       // Register socket event handlers
       _registerSocketEventHandlers();
 
@@ -142,6 +153,12 @@ class DisplaysModuleService {
         profileRows: _displayRepository.rows,
         profileUnitSize: _displayRepository.unitSize,
       );
+
+      // Apply stored hardware settings to the device, serialized through
+      // the pending chain so socket events wait for it to finish
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyInitialHardwareState(),
+      );
     }
 
     _isLoading = false;
@@ -165,6 +182,12 @@ class DisplaysModuleService {
       profileCols: display.cols,
       profileRows: display.rows,
       profileUnitSize: display.unitSize,
+    );
+
+    // Apply stored hardware settings to the device, serialized through
+    // the pending chain so socket events wait for it to finish
+    _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+      _applyInitialHardwareState(),
     );
 
     _isLoading = false;
@@ -249,6 +272,10 @@ class DisplaysModuleService {
     final previousDarkMode = currentDisplay.darkMode;
     final previousBrightness = currentDisplay.brightness;
     final previousScreenSaver = currentDisplay.screenSaver;
+    final previousSpeaker = currentDisplay.speaker;
+    final previousSpeakerVolume = currentDisplay.speakerVolume;
+    final previousMicrophone = currentDisplay.microphone;
+    final previousMicrophoneVolume = currentDisplay.microphoneVolume;
     final previousRows = currentDisplay.rows;
     final previousCols = currentDisplay.cols;
     final previousUnitSize = currentDisplay.unitSize;
@@ -278,6 +305,18 @@ class DisplaysModuleService {
         }
       }
 
+      // Serialize hardware changes so rapid socket events don't interleave
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyHardwareChanges(
+          previousBrightness: previousBrightness,
+          previousSpeaker: previousSpeaker,
+          previousSpeakerVolume: previousSpeakerVolume,
+          previousMicrophone: previousMicrophone,
+          previousMicrophoneVolume: previousMicrophoneVolume,
+          updatedDisplay: updatedDisplay,
+        ),
+      );
+
       // Log other setting changes for debugging
       if (kDebugMode) {
         if (previousDarkMode != updatedDisplay.darkMode) {
@@ -295,6 +334,108 @@ class DisplaysModuleService {
             '[DISPLAYS MODULE] Screen saver changed: $previousScreenSaver -> ${updatedDisplay.screenSaver}',
           );
         }
+      }
+    }
+  }
+
+  Future<void> _applyInitialHardwareState() async {
+    final display = _displayRepository.display;
+
+    if (display == null) return;
+
+    try {
+      final deviceControl = locator<DeviceControlService>();
+
+      await deviceControl.setBrightness(display.brightness);
+
+      if (display.audioOutputSupported) {
+        // Only set volume when speaker is active to avoid implicit unmute
+        // from amixer/setStreamVolume overriding the mute state
+        if (display.speaker) {
+          await deviceControl.setSpeakerVolume(display.speakerVolume);
+        }
+        await deviceControl.setSpeakerMute(!display.speaker);
+      }
+
+      if (display.audioInputSupported) {
+        // On Android, setMicrophoneVolume manipulates the same mute flag as
+        // setMicrophoneMute, so skip the volume call when muted to avoid a
+        // transient unmute window
+        if (display.microphone) {
+          await deviceControl.setMicrophoneVolume(display.microphoneVolume);
+        }
+        await deviceControl.setMicrophoneMute(!display.microphone);
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Initial hardware state applied: brightness=${display.brightness}, '
+          'speaker=${display.speaker}@${display.speakerVolume}%, '
+          'mic=${display.microphone}@${display.microphoneVolume}%',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Failed to apply initial hardware state: $e',
+        );
+      }
+    }
+  }
+
+  Future<void> _applyHardwareChanges({
+    required int previousBrightness,
+    required bool previousSpeaker,
+    required int previousSpeakerVolume,
+    required bool previousMicrophone,
+    required int previousMicrophoneVolume,
+    required DisplayModel updatedDisplay,
+  }) async {
+    try {
+      final deviceControl = locator<DeviceControlService>();
+
+      if (previousBrightness != updatedDisplay.brightness) {
+        await deviceControl.setBrightness(updatedDisplay.brightness);
+      }
+
+      if (updatedDisplay.audioOutputSupported) {
+        final speakerUnmuting = !previousSpeaker && updatedDisplay.speaker;
+
+        // Skip volume-set while muted: on Android, setStreamVolume can
+        // implicitly clear the mute flag, and on Linux amixer set N%
+        // can unmute the channel. But when transitioning to unmuted,
+        // always apply volume to sync hardware with the stored value.
+        if (updatedDisplay.speaker &&
+            (previousSpeakerVolume != updatedDisplay.speakerVolume || speakerUnmuting)) {
+          await deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
+        }
+
+        if (previousSpeaker != updatedDisplay.speaker) {
+          await deviceControl.setSpeakerMute(!updatedDisplay.speaker);
+        }
+      }
+
+      if (updatedDisplay.audioInputSupported) {
+        final micUnmuting = !previousMicrophone && updatedDisplay.microphone;
+
+        // On Android, setMicrophoneVolume manipulates the same mute flag as
+        // setMicrophoneMute, so skip the volume call when muted to avoid a
+        // transient unmute window. But when transitioning to unmuted,
+        // always apply volume to sync hardware with the stored value.
+        if (updatedDisplay.microphone &&
+            (previousMicrophoneVolume != updatedDisplay.microphoneVolume || micUnmuting)) {
+          await deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
+        }
+
+        if (previousMicrophone != updatedDisplay.microphone) {
+          await deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Failed to apply hardware changes: $e',
+        );
       }
     }
   }
