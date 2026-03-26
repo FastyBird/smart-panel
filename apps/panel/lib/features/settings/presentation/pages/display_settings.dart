@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -29,6 +30,7 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	final DisplayRepository _repository = locator<DisplayRepository>();
+	final DeviceControlService _deviceControl = locator<DeviceControlService>();
 	final LocalPreferencesService _localPrefs = locator<LocalPreferencesService>();
 
 	late bool _isDarkMode;
@@ -538,9 +540,14 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			});
 		}
 
+		final rounded = value.round();
+
 		setState(() {
-			_brightness = value.round();
+			_brightness = rounded;
 		});
+
+		// Apply brightness to hardware immediately for responsive feedback
+		_deviceControl.setBrightness(rounded);
 
 		_debounce?.cancel();
 
@@ -557,11 +564,16 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 					if (!context.mounted) return;
 
 					if (!success) {
+						final revertValue = _brightnessBackup ?? 0;
+
 						setState(() {
-							_brightness = _brightnessBackup ?? 0;
+							_brightness = revertValue;
 							_brightnessBackup = null;
 							_savingBrightness = false;
 						});
+
+						// Revert hardware brightness on failure
+						_deviceControl.setBrightness(revertValue);
 
 						Toast.showError(
 							context,

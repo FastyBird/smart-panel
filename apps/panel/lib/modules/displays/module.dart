@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
@@ -114,6 +115,9 @@ class DisplaysModuleService {
         profileUnitSize: _displayRepository.unitSize,
       );
 
+      // Apply stored hardware settings to the device
+      _applyInitialHardwareState();
+
       // Register socket event handlers
       _registerSocketEventHandlers();
 
@@ -142,6 +146,9 @@ class DisplaysModuleService {
         profileRows: _displayRepository.rows,
         profileUnitSize: _displayRepository.unitSize,
       );
+
+      // Apply stored hardware settings to the device
+      _applyInitialHardwareState();
     }
 
     _isLoading = false;
@@ -166,6 +173,9 @@ class DisplaysModuleService {
       profileRows: display.rows,
       profileUnitSize: display.unitSize,
     );
+
+    // Apply stored hardware settings to the device
+    _applyInitialHardwareState();
 
     _isLoading = false;
 
@@ -249,6 +259,10 @@ class DisplaysModuleService {
     final previousDarkMode = currentDisplay.darkMode;
     final previousBrightness = currentDisplay.brightness;
     final previousScreenSaver = currentDisplay.screenSaver;
+    final previousSpeaker = currentDisplay.speaker;
+    final previousSpeakerVolume = currentDisplay.speakerVolume;
+    final previousMicrophone = currentDisplay.microphone;
+    final previousMicrophoneVolume = currentDisplay.microphoneVolume;
     final previousRows = currentDisplay.rows;
     final previousCols = currentDisplay.cols;
     final previousUnitSize = currentDisplay.unitSize;
@@ -278,6 +292,16 @@ class DisplaysModuleService {
         }
       }
 
+      // Apply hardware changes when settings are updated remotely
+      _applyHardwareChanges(
+        previousBrightness: previousBrightness,
+        previousSpeaker: previousSpeaker,
+        previousSpeakerVolume: previousSpeakerVolume,
+        previousMicrophone: previousMicrophone,
+        previousMicrophoneVolume: previousMicrophoneVolume,
+        updatedDisplay: updatedDisplay,
+      );
+
       // Log other setting changes for debugging
       if (kDebugMode) {
         if (previousDarkMode != updatedDisplay.darkMode) {
@@ -295,6 +319,81 @@ class DisplaysModuleService {
             '[DISPLAYS MODULE] Screen saver changed: $previousScreenSaver -> ${updatedDisplay.screenSaver}',
           );
         }
+      }
+    }
+  }
+
+  void _applyInitialHardwareState() {
+    final display = _displayRepository.display;
+
+    if (display == null) return;
+
+    try {
+      final deviceControl = locator<DeviceControlService>();
+
+      deviceControl.setBrightness(display.brightness);
+
+      if (display.audioOutputSupported) {
+        deviceControl.setSpeakerVolume(display.speakerVolume);
+        deviceControl.setSpeakerMute(!display.speaker);
+      }
+
+      if (display.audioInputSupported) {
+        deviceControl.setMicrophoneVolume(display.microphoneVolume);
+        deviceControl.setMicrophoneMute(!display.microphone);
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Initial hardware state applied: brightness=${display.brightness}, '
+          'speaker=${display.speaker}@${display.speakerVolume}%, '
+          'mic=${display.microphone}@${display.microphoneVolume}%',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Failed to apply initial hardware state: $e',
+        );
+      }
+    }
+  }
+
+  void _applyHardwareChanges({
+    required int previousBrightness,
+    required bool previousSpeaker,
+    required int previousSpeakerVolume,
+    required bool previousMicrophone,
+    required int previousMicrophoneVolume,
+    required DisplayModel updatedDisplay,
+  }) {
+    try {
+      final deviceControl = locator<DeviceControlService>();
+
+      if (previousBrightness != updatedDisplay.brightness) {
+        deviceControl.setBrightness(updatedDisplay.brightness);
+      }
+
+      if (previousSpeaker != updatedDisplay.speaker) {
+        deviceControl.setSpeakerMute(!updatedDisplay.speaker);
+      }
+
+      if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
+        deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
+      }
+
+      if (previousMicrophone != updatedDisplay.microphone) {
+        deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
+      }
+
+      if (previousMicrophoneVolume != updatedDisplay.microphoneVolume) {
+        deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Failed to apply hardware changes: $e',
+        );
       }
     }
   }
