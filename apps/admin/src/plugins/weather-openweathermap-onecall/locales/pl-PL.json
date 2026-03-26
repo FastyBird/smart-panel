@@ -1,1 +1,82 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia OpenWeatherMap One Call API 3.0"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadź swój klucz API OpenWeatherMap One Call",
+				"description": "Wymaga płatnej subskrypcji OpenWeatherMap One Call API 3.0"
+			},
+			"unit": {
+				"title": "Jednostka temperatury",
+				"placeholder": "Wybierz jednostkę temperatury",
+				"values": {
+					"celsius": "Celsjusz (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Nazwa",
+				"description": "Przyjazna nazwa dla tej lokalizacji",
+				"placeholder": "np. Dom, Biuro, Domek na plaży",
+				"validation": {
+					"required": "Nazwa jest wymagana"
+				}
+			},
+			"citySearch": {
+				"title": "Wyszukaj miasto",
+				"placeholder": "Zacznij pisać, aby wyszukać miasto...",
+				"description": "Wyszukaj miasto, a współrzędne zostaną uzupełnione automatycznie"
+			},
+			"latitude": {
+				"title": "Szerokość geograficzna",
+				"placeholder": "np. 51.5074",
+				"validation": {
+					"required": "Szerokość geograficzna jest wymagana",
+					"range": "Szerokość geograficzna musi być między -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Długość geograficzna",
+				"placeholder": "np. -0.1278",
+				"validation": {
+					"required": "Długość geograficzna jest wymagana",
+					"range": "Długość geograficzna musi być między -180 a 180"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja lokalizacja"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia OpenWeatherMap One Call zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień OpenWeatherMap One Call"
+		},
+		"locations": {
+			"created": "Lokalizacja \"{location}\" została utworzona",
+			"notCreated": "Nie udało się utworzyć lokalizacji \"{location}\"",
+			"edited": "Lokalizacja \"{location}\" została zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować lokalizacji \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokalizacja nie jest obsługiwana przez Twoją przeglądarkę",
+		"geolocationDenied": "Dostęp do lokalizacji został odrzucony. Włącz uprawnienia do lokalizacji.",
+		"geolocationUnavailable": "Informacje o lokalizacji są niedostępne",
+		"geolocationTimeout": "Żądanie pobrania Twojej lokalizacji przekroczyło limit czasu",
+		"geolocationError": "Wystąpił błąd podczas pobierania Twojej lokalizacji"
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia OpenWeatherMap One Call API 3.0. To API wymaga płatnej subskrypcji i zapewnia bardziej szczegółowe dane pogodowe, w tym alerty pogodowe.",
+		"orEnterManually": "Lub wprowadź lokalizację ręcznie"
+	}
+}

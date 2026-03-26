@@ -1,1 +1,459 @@
-{}
+{
+	"meta": {
+		"system": {
+			"system": {
+				"title": "Systém"
+			},
+			"systemInfo": {
+				"title": "Informace o systému"
+			}
+		},
+		"systemLogs": {
+			"list": {
+				"title": "Aplikační protokoly"
+			},
+			"detail": {
+				"title": "Detail protokolu"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"system": {
+			"system": "systém",
+			"systemInfo": "informace"
+		},
+		"systemLogs": {
+			"list": "aplikační protokoly",
+			"detail": "detail protokolu"
+		}
+	},
+	"headings": {
+		"system": {
+			"system": "Systém",
+			"about": "O aplikaci"
+		},
+		"update": {
+			"title": "Aktualizace softwaru",
+			"confirmTitle": "Nainstalovat aktualizaci"
+		},
+		"manage": {
+			"manageSystem": "Správa systému",
+			"restart": "Restartovat",
+			"powerOff": "Vypnout",
+			"factoryReset": "Tovární reset",
+			"poweredOff": "Vypnutí dokončeno",
+			"rebooting": "Restartování",
+			"systemLogs": "Aplikační protokoly"
+		},
+		"systemLogs": {
+			"list": "Aplikační protokoly",
+			"detail": "Informace o protokolu",
+			"adjustFilters": "Filtrovat protokoly"
+		},
+		"aboutLanguageSettings": "Jazyk a jednotky",
+		"aboutSystemSettings": "Nastavení systému",
+		"aboutHouseModeSettings": "Režim domu"
+	},
+	"subHeadings": {
+		"system": "Informace o stavu systému smart panelu",
+		"poweredOff": "Smart Panel byl úspěšně vypnut",
+		"systemLogs": {
+			"list": "Náhled všech aplikačních protokolů",
+			"detail": "Náhled podrobností záznamu protokolu",
+			"edit": "Náhled podrobností záznamu protokolu",
+			"adjustFilters": "Upravit filtry protokolů"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurace systému byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci systému"
+		},
+		"manage": {
+			"confirmRestart": "Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.",
+			"confirmPowerOff": "Opravdu chcete vypnout zařízení? Bude nutné jej ručně znovu zapnout.",
+			"confirmFactoryReset": "Opravdu chcete vymazat všechna data a obnovit zařízení do továrního nastavení? Tato akce je nevratná.",
+			"confirmRestartGateway": "Opravdu chcete restartovat bránu? Připojené displeje dočasně ztratí konektivitu, dokud brána nebude zpět online.",
+			"confirmPowerOffGateway": "Opravdu chcete vypnout bránu? Všechny připojené displeje ztratí konektivitu. Bránu bude nutné ručně znovu zapnout.",
+			"confirmFactoryResetGateway": "Opravdu chcete provést tovární reset brány? Tím se vymažou všechna data brány a resetují se všechny připojené displeje. Tato akce je nevratná.",
+			"waitingToBoot": "Čekání na spuštění panelu...",
+			"panelBackOnline": "Smart Panel je zpět online.",
+			"rebootTakesTooLong": "Restart trvá déle, než se očekávalo. Zkontrolujte prosím panel ručně.",
+			"rebootFailed": "Nepodařilo se restartovat Smart Panel. Zkuste to znovu nebo zkontrolujte zařízení ručně.",
+			"powerOffFailed": "Nepodařilo se vypnout Smart Panel. Zkuste to znovu nebo zkontrolujte zařízení ručně.",
+			"factoryResetSuccess": "Všechna data byla vymazána. Začněme znovu — přihlaste se pro zahájení.",
+			"factoryResetFailed": "Nepodařilo se provést tovární reset Smart Panelu. Zkuste to znovu nebo zkontrolujte zařízení ručně."
+		},
+		"misc": {
+			"requestError": "Něco se pokazilo, zkuste to prosím znovu později."
+		},
+		"update": {
+			"confirmInstall": "Opravdu chcete aktualizovat na verzi {version}?",
+			"majorUpdateWarning": "Jedná se o aktualizaci hlavní verze na {version}. Hlavní aktualizace mohou obsahovat zásadní změny. Opravdu chcete pokračovat?",
+			"confirmTitle": "Nainstalovat aktualizaci",
+			"updateStarted": "Proces aktualizace byl zahájen. Systém se automaticky restartuje.",
+			"updateComplete": "Aktualizace byla úspěšně dokončena!",
+			"updateFailed": "Aktualizace selhala. Zkontrolujte prosím systémové protokoly pro podrobnosti.",
+			"checkFailed": "Nepodařilo se zkontrolovat aktualizace. Zkuste to prosím znovu později.",
+			"installFailed": "Nepodařilo se spustit aktualizaci. Zkuste to prosím znovu později."
+		}
+	},
+	"texts": {
+		"system": {
+			"loadingSystemInfo": "Načítání systémových informací...",
+			"about": "FastyBird Smart Panel je aplikace pro domácí automatizaci, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí vylepšené ovládání a monitorování."
+		},
+		"manage": {
+			"rebootDevice": "Restartujte zařízení pro aplikaci změn nebo vyřešení problémů.",
+			"rebootGateway": "Restartujte bránu pro aplikaci změn nebo vyřešení problémů. Připojené displeje dočasně ztratí konektivitu.",
+			"powerOffDevice": "Kompletní vypnutí zařízení.",
+			"powerOffGateway": "Kompletní vypnutí brány. Připojené displeje ztratí konektivitu.",
+			"factoryResetDevice": "Obnovení zařízení do původního továrního nastavení.",
+			"factoryResetGateway": "Vymazání všech dat brány a reset všech připojených displejů do továrního nastavení.",
+			"rebootInProcess": "Smart Panel se restartuje...",
+			"powerOffInProcess": "Smart Panel se vypíná...",
+			"factoryResetInProcess": "Smart Panel se resetuje do továrního stavu...",
+			"factoryResetWaiting": "Čekání na restart Smart Panelu po továrním resetu...",
+			"factoryResetTimeout": "Tovární reset trvá déle, než se očekávalo. Zkontrolujte prosím zařízení ručně.",
+			"poweredOff": "Můžete zavřít toto okno — není vyžadována žádná další akce.",
+			"systemLogs": "Náhled a diagnostika aplikačních protokolů."
+		},
+		"update": {
+			"available": "Aktualizace k dispozici",
+			"upToDate": "Váš systém je aktuální.",
+			"checking": "Kontrola aktualizací...",
+			"installing": "Instalace aktualizace...",
+			"waitingForRestart": "Služba se restartuje, prosím čekejte...",
+			"noVersionInfo": "Nelze získat informace o verzi."
+		},
+		"systemLogs": {
+			"loadingLogs": "Načítání aplikačních protokolů...",
+			"noLogs": "Nebyly zaznamenány žádné aplikační protokoly.",
+			"noFilteredLogs": "Nebyly nalezeny žádné aplikační protokoly odpovídající aktivním kritériím filtru",
+			"noMessage": "Tento záznam protokolu je bez doplňující zprávy",
+			"noMoreEntries": "Žádné další záznamy"
+		},
+		"aboutLanguageSettings": "Nakonfigurujte jazyk rozhraní, časovou zónu, formát času a měrné jednotky pro Smart Panel. Tato nastavení ovlivňují, jak se v celém systému zobrazují data, časy, teploty a měření.",
+		"aboutSystemSettings": "Spravujte celkovou konfiguraci protokolování systému. Vyberte, které úrovně závažnosti protokolů mají být monitorovány a zobrazeny v aplikačních protokolech.",
+		"aboutHouseModeSettings": "Nastavte aktuální režim domu pro ovládání chování Smart Panelu a připojených zařízení. Režim Doma je pro běžný pobyt, režim Mimo domov pro případ, že nikdo není doma, a režim Noc pro dobu spánku."
+	},
+	"fields": {
+		"config": {
+			"language": {
+				"title": "Jazyk",
+				"description": "Jazyk aplikace",
+				"placeholder": "Vyberte jazyk",
+				"values": {
+					"english": "Angličtina",
+					"czech": "Čeština",
+					"german": "Němčina",
+					"spanish": "Španělština",
+					"polish": "Polština",
+					"slovak": "Slovenština"
+				},
+				"validation": {
+					"required": "Jazyk je povinný"
+				}
+			},
+			"timezone": {
+				"title": "Časová zóna",
+				"description": "Systémová časová zóna",
+				"placeholder": "Vyberte časovou zónu",
+				"validation": {
+					"required": "Časová zóna je povinná"
+				}
+			},
+			"timeFormat": {
+				"title": "Formát času",
+				"description": "Formát zobrazení času",
+				"placeholder": "Vyberte formát času",
+				"values": {
+					"hour12": "12hodinový",
+					"hour24": "24hodinový"
+				},
+				"validation": {
+					"required": "Formát času je povinný"
+				}
+			},
+			"numberFormat": {
+				"title": "Formát čísel",
+				"description": "Formát zobrazení čísel pro oddělovače tisíců a desetinných míst",
+				"placeholder": "Vyberte formát čísel",
+				"values": {
+					"commaDot": "1,234.56 (čárka / tečka)",
+					"dotComma": "1.234,56 (tečka / čárka)",
+					"spaceComma": "1 234,56 (mezera / čárka)",
+					"none": "1234.56 (bez seskupení)"
+				},
+				"validation": {
+					"required": "Formát čísel je povinný"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Jednotka teploty",
+				"description": "Jednotka zobrazení teploty",
+				"placeholder": "Vyberte jednotku teploty",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				},
+				"validation": {
+					"required": "Jednotka teploty je povinná"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Jednotka rychlosti větru",
+				"description": "Jednotka zobrazení rychlosti větru",
+				"placeholder": "Vyberte jednotku rychlosti větru",
+				"values": {
+					"ms": "Metry za sekundu (m/s)",
+					"kmh": "Kilometry za hodinu (km/h)",
+					"mph": "Míle za hodinu (mph)",
+					"knots": "Uzly (kn)"
+				},
+				"validation": {
+					"required": "Jednotka rychlosti větru je povinná"
+				}
+			},
+			"pressureUnit": {
+				"title": "Jednotka tlaku",
+				"description": "Jednotka zobrazení tlaku",
+				"placeholder": "Vyberte jednotku tlaku",
+				"values": {
+					"hpa": "Hektopascal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Palce rtuti (inHg)",
+					"mmhg": "Milimetry rtuti (mmHg)"
+				},
+				"validation": {
+					"required": "Jednotka tlaku je povinná"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Jednotka srážek",
+				"description": "Jednotka zobrazení srážek",
+				"placeholder": "Vyberte jednotku srážek",
+				"values": {
+					"mm": "Milimetry (mm)",
+					"inches": "Palce (in)"
+				},
+				"validation": {
+					"required": "Jednotka srážek je povinná"
+				}
+			},
+			"distanceUnit": {
+				"title": "Jednotka vzdálenosti",
+				"description": "Jednotka zobrazení vzdálenosti",
+				"placeholder": "Vyberte jednotku vzdálenosti",
+				"values": {
+					"km": "Kilometry (km)",
+					"miles": "Míle (mi)",
+					"meters": "Metry (m)",
+					"feet": "Stopy (ft)"
+				},
+				"validation": {
+					"required": "Jednotka vzdálenosti je povinná"
+				}
+			},
+			"logLevels": {
+				"title": "Úrovně protokolování",
+				"description": "Povolené úrovně protokolování",
+				"placeholder": "Vyberte, které úrovně protokolů mají být monitorovány",
+				"values": {
+					"silent": "Tichý",
+					"verbose": "Podrobný",
+					"debug": "Debug",
+					"trace": "Trasování",
+					"log": "Protokol",
+					"info": "Info",
+					"success": "Úspěch",
+					"warn": "Varování",
+					"error": "Chyba",
+					"fail": "Selhání",
+					"fatal": "Fatální"
+				},
+				"validation": {
+					"required": "Musí být vybrána alespoň jedna úroveň protokolování",
+					"min": "Musí být vybrána alespoň jedna úroveň protokolování"
+				}
+			},
+			"houseMode": {
+				"title": "Režim domu",
+				"description": "Aktuální nastavení režimu domu",
+				"placeholder": "Vyberte režim domu",
+				"values": {
+					"home": "Doma",
+					"away": "Mimo domov",
+					"night": "Noc"
+				},
+				"validation": {
+					"required": "Režim domu je povinný"
+				}
+			}
+		},
+		"systemLogs": {
+			"search": {
+				"title": "Hledat",
+				"placeholder": "Hledat v protokolech..."
+			},
+			"timestamp": {
+				"title": "Časové razítko"
+			},
+			"ingestedAt": {
+				"title": "Přijato v"
+			},
+			"source": {
+				"title": "Zdroj"
+			},
+			"level": {
+				"title": "Úroveň"
+			},
+			"message": {
+				"title": "Zpráva",
+				"noMessage": "Žádná zpráva"
+			},
+			"tag": {
+				"title": "Značka"
+			},
+			"user": {
+				"title": "Uživatel"
+			},
+			"appVersion": {
+				"title": "Verze aplikace"
+			},
+			"url": {
+				"title": "URL"
+			},
+			"userAgent": {
+				"title": "User agent"
+			},
+			"locale": {
+				"title": "Lokalizace"
+			},
+			"args": {
+				"title": "Argumenty"
+			},
+			"rawJson": {
+				"title": "Surový JSON"
+			}
+		}
+	},
+	"filters": {
+		"systemLogs": {
+			"levels": {
+				"title": "Filtrovat podle úrovně protokolu"
+			},
+			"sources": {
+				"title": "Filtrovat podle zdroje protokolu"
+			},
+			"tag": {
+				"title": "Filtrovat podle značky",
+				"placeholder": "Hledat podle značky..."
+			}
+		}
+	},
+	"buttons": {
+		"about": {
+			"title": "O aplikaci"
+		},
+		"manage": {
+			"title": "Správa systému"
+		},
+		"resetFilters": {
+			"title": "Resetovat filtry"
+		},
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"reset": {
+			"title": "Reset"
+		},
+		"edit": {
+			"title": "Upravit"
+		},
+		"discard": {
+			"title": "Zahodit"
+		},
+		"cancel": {
+			"title": "Zrušit"
+		},
+		"close": {
+			"title": "Zavřít"
+		},
+		"save": {
+			"title": "Uložit"
+		},
+		"copyJson": {
+			"title": "Kopírovat JSON"
+		},
+		"liveTail": {
+			"title": "Živý přenos"
+		},
+		"paused": {
+			"title": "Pozastaveno"
+		},
+		"loadMore": {
+			"title": "Načíst další"
+		},
+		"update": {
+			"checkForUpdates": "Zkontrolovat aktualizace",
+			"installUpdate": "Nainstalovat aktualizaci"
+		}
+	},
+	"labels": {
+		"update": {
+			"currentVersion": "Aktuální verze",
+			"latestVersion": "Nejnovější verze",
+			"lastChecked": "Naposledy zkontrolováno",
+			"updateStatus": "Stav",
+			"actions": "Akce"
+		}
+	},
+	"systemInfo": {
+		"cpuLoad": "Vytížení CPU",
+		"memoryUsage": "Využití paměti",
+		"cpuTemperature": "Teplota CPU",
+		"gpuTemperature": "Teplota GPU",
+		"osPlatform": "Platforma",
+		"osDistro": "Distribuce",
+		"osRelease": "Verze",
+		"uptime": "Doba běhu systému",
+		"networkInterface": "Síťové rozhraní",
+		"ip4Address": "IP adresa",
+		"ip6Address": "IPv6 adresa",
+		"macAddress": "MAC adresa",
+		"undervoltage": "Zjištěno podpětí",
+		"frequencyCapping": "Frekvence omezena",
+		"throttling": "Aktivní omezování CPU",
+		"softTempLimit": "Dosažen měkký teplotní limit"
+	},
+	"states": {
+		"ok": "Vše v pořádku",
+		"error": "Zjištěn problém"
+	},
+	"levels": {
+		"silent": "Tichý",
+		"fatal": "Fatální",
+		"error": "Chyba",
+		"warn": "Varování",
+		"log": "Protokol",
+		"info": "Info",
+		"success": "Úspěch",
+		"fail": "Selhání",
+		"ready": "Připraven",
+		"start": "Start",
+		"box": "Box",
+		"debug": "Debug",
+		"trace": "Trasování",
+		"verbose": "Podrobný"
+	},
+	"sources": {
+		"admin": "Administrační aplikace",
+		"display": "Aplikace displeje",
+		"backend": "Backend aplikace",
+		"other": "Ostatní"
+	}
+}

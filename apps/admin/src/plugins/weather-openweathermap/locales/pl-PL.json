@@ -1,1 +1,129 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia API OpenWeatherMap"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadź swój klucz API OpenWeatherMap",
+				"description": "Uzyskaj darmowy klucz API na openweathermap.org",
+				"validation": {
+					"required": "Wprowadź swój klucz API"
+				}
+			},
+			"unit": {
+				"title": "Jednostka temperatury",
+				"placeholder": "Wybierz jednostkę temperatury",
+				"values": {
+					"celsius": "Celsjusz (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Nazwa",
+				"description": "Przyjazna nazwa dla tej lokalizacji",
+				"placeholder": "np. Dom, Biuro, Domek na plaży",
+				"validation": {
+					"required": "Nazwa jest wymagana"
+				}
+			},
+			"citySearch": {
+				"title": "Wyszukaj miasto",
+				"placeholder": "Zacznij pisać, aby wyszukać miasto...",
+				"description": "Wyszukaj miasto, a współrzędne zostaną uzupełnione automatycznie"
+			},
+			"locationType": {
+				"title": "Typ lokalizacji",
+				"placeholder": "Wybierz sposób identyfikacji lokalizacji",
+				"values": {
+					"latLon": "Współrzędne GPS",
+					"cityName": "Nazwa miasta",
+					"cityId": "ID miasta",
+					"zipCode": "Kod pocztowy"
+				},
+				"validation": {
+					"required": "Typ lokalizacji jest wymagany"
+				}
+			},
+			"coordinates": {
+				"title": "Współrzędne"
+			},
+			"latitude": {
+				"title": "Szerokość geograficzna",
+				"placeholder": "np. 51.5074",
+				"validation": {
+					"required": "Szerokość geograficzna jest wymagana",
+					"range": "Szerokość geograficzna musi być między -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Długość geograficzna",
+				"placeholder": "np. -0.1278",
+				"validation": {
+					"required": "Długość geograficzna jest wymagana",
+					"range": "Długość geograficzna musi być między -180 a 180"
+				}
+			},
+			"map": {
+				"title": "Lokalizacja na mapie"
+			},
+			"cityName": {
+				"title": "Nazwa miasta",
+				"placeholder": "np. Warszawa",
+				"validation": {
+					"required": "Nazwa miasta jest wymagana"
+				}
+			},
+			"countryCode": {
+				"title": "Kod kraju",
+				"placeholder": "np. PL"
+			},
+			"cityId": {
+				"title": "ID miasta",
+				"placeholder": "np. 2643743",
+				"description": "ID miasta OpenWeatherMap (znajdziesz je na openweathermap.org)",
+				"validation": {
+					"required": "ID miasta jest wymagane"
+				}
+			},
+			"zipCode": {
+				"title": "Kod pocztowy",
+				"placeholder": "np. 00-001",
+				"validation": {
+					"required": "Kod pocztowy jest wymagany"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja lokalizacja"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia OpenWeatherMap zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień OpenWeatherMap"
+		},
+		"locations": {
+			"created": "Lokalizacja \"{location}\" została utworzona",
+			"notCreated": "Nie udało się utworzyć lokalizacji \"{location}\"",
+			"edited": "Lokalizacja \"{location}\" została zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować lokalizacji \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokalizacja nie jest obsługiwana przez Twoją przeglądarkę",
+		"geolocationDenied": "Dostęp do lokalizacji został odrzucony. Włącz uprawnienia do lokalizacji.",
+		"geolocationUnavailable": "Informacje o lokalizacji są niedostępne",
+		"geolocationTimeout": "Żądanie pobrania Twojej lokalizacji przekroczyło limit czasu",
+		"geolocationError": "Wystąpił błąd podczas pobierania Twojej lokalizacji"
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia API OpenWeatherMap. Potrzebujesz prawidłowego klucza API, aby pobierać dane pogodowe. Wybierz preferowaną jednostkę temperatury dla wyświetlania pogody."
+	}
+}

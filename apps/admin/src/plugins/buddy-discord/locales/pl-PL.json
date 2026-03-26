@@ -1,1 +1,48 @@
-{}
+{
+	"headings": {
+		"aboutDiscordSettings": "Ustawienia bota Discord"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"botToken": {
+				"title": "Token bota",
+				"placeholder": "Wprowadź token bota Discord",
+				"description": "Uzyskaj token bota z Portalu deweloperskiego Discord w ustawieniach bota Twojej aplikacji."
+			},
+			"guildId": {
+				"title": "ID serwera (guild)",
+				"placeholder": "np. 123456789012345678",
+				"description": "ID serwera Discord. Włącz Tryb dewelopera w ustawieniach Discord, a następnie kliknij prawym przyciskiem myszy serwer, aby skopiować jego ID."
+			},
+			"generalChannelId": {
+				"title": "ID kanału ogólnego",
+				"placeholder": "np. 123456789012345678",
+				"description": "Domyślny kanał dla zapytań międzyprzestrzennych i nieprzekazanych sugestii. Kliknij prawym przyciskiem myszy kanał, aby skopiować jego ID."
+			},
+			"spaceChannelMappings": {
+				"title": "Mapowania przestrzeń-kanał",
+				"selectSpace": "Wybierz przestrzeń",
+				"channelPlaceholder": "ID kanału Discord",
+				"add": "Dodaj mapowanie",
+				"description": "Mapuj przestrzenie inteligentnego domu na kanały Discord. Wiadomości na mapowanym kanale będą zawierać kontekst danej przestrzeni."
+			},
+			"allowedRoleId": {
+				"title": "ID dozwolonej roli",
+				"placeholder": "np. 123456789012345678",
+				"description": "ID roli Discord wymaganej do interakcji z botem. Pozostaw puste, aby zezwolić wszystkim członkom serwera."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia bota Discord zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień bota Discord"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Skonfiguruj integrację z botem Discord. Utwórz bota w Portalu deweloperskim Discord, włącz Message Content Intent i dodaj go do swojego serwera. Mapuj kanały Discord na przestrzenie inteligentnego domu dla kontekstowych rozmów."
+	}
+}

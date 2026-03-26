@@ -1,1 +1,8 @@
-{}
+{
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja pamięci tymczasowej została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji pamięci tymczasowej"
+		}
+	}
+}

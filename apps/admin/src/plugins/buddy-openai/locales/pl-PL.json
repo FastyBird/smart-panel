@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia API OpenAI"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadź swój klucz API OpenAI",
+				"description": "Uzyskaj klucz API na platform.openai.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "np. gpt-4o, gpt-4o-mini",
+				"description": "Model OpenAI używany do generowania odpowiedzi"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia OpenAI zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień OpenAI"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia API OpenAI. Potrzebujesz prawidłowego klucza API, aby używać modeli OpenAI jako dostawcy LLM dla asystenta."
+	}
+}

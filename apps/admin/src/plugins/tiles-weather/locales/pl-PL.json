@@ -1,1 +1,21 @@
-{}
+{
+	"preview": {
+		"day": {
+			"temperature": "22°C",
+			"condition": "Słonecznie"
+		},
+		"forecast": {
+			"mon": "Pon",
+			"tue": "Wt",
+			"wed": "Śr",
+			"thu": "Czw"
+		}
+	},
+	"fields": {
+		"locationId": {
+			"title": "Lokalizacja pogodowa",
+			"placeholder": "Wybierz lokalizację",
+			"description": "Wybierz lokalizację pogodową do wyświetlenia. Jeśli nie ustawiono, zostanie użyta główna lokalizacja z ustawień pogody."
+		}
+	}
+}

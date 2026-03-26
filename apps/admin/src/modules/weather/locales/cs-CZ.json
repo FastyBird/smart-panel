@@ -1,1 +1,247 @@
-{}
+{
+	"headings": {
+		"weather": "Počasí",
+		"aboutPrimaryLocation": "Primární lokace",
+		"locations": "Meteorologické lokace",
+		"locationDetail": "{location}",
+		"forecast": "Předpověď",
+		"hourlyForecast": "Hodinová předpověď",
+		"addLocation": "Přidat lokaci",
+		"editLocation": "Upravit lokaci",
+		"deleteLocation": "Smazat lokaci",
+		"bulkDeleteLocations": "Smazat lokace",
+		"discard": "Zahodit změny",
+		"selectProvider": "Vyberte poskytovatele počasí",
+		"unsupportedProvider": "Nepodporovaný poskytovatel",
+		"adjustFilters": "Upravit filtry"
+	},
+	"subHeadings": {
+		"locations": "Správa lokací meteorologických dat",
+		"locationDetail": "Informace o počasí pro {location}",
+		"addLocation": "Přidat novou meteorologickou lokaci",
+		"editLocation": "Upravit podrobnosti lokace",
+		"adjustFilters": "Přizpůsobit filtry seznamu lokací"
+	},
+	"breadcrumbs": {
+		"locations": "lokace",
+		"locationDetail": "lokace: {location}",
+		"addLocation": "přidat lokaci",
+		"editLocation": "upravit lokaci"
+	},
+	"messages": {
+		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
+		"requestError": "Při načítání dat došlo k chybě",
+		"config": {
+			"edited": "Konfigurace počasí byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci počasí"
+		},
+		"locations": {
+			"created": "Lokace \"{location}\" byla vytvořena",
+			"notCreated": "Nepodařilo se vytvořit lokaci \"{location}\"",
+			"updated": "Lokace \"{location}\" byla aktualizována",
+			"notUpdated": "Nepodařilo se aktualizovat lokaci \"{location}\"",
+			"deleted": "Lokace byla smazána",
+			"notDeleted": "Nepodařilo se smazat lokaci",
+			"deleteCanceled": "Smazání lokace \"{location}\" bylo zrušeno",
+			"confirmBulkDelete": "Opravdu chcete smazat {count} lokací?",
+			"bulkDeleted": "{count} lokací bylo smazáno",
+			"bulkDeleteFailed": "Nepodařilo se smazat {count} lokací",
+			"bulkDeleteCanceled": "Hromadné smazání lokací bylo zrušeno",
+			"noLocations": "Žádné lokace nejsou nakonfigurovány. Přidejte lokaci pro získání dat o počasí.",
+			"notFound": "Lokace nebyla nalezena",
+			"confirmDeleteLocation": "Opravdu chcete smazat lokaci \"{name}\"?",
+			"deletedWhileEditing": "Lokace byla smazána. Přesměrování..."
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Přidat"
+		},
+		"save": {
+			"title": "Uložit"
+		},
+		"cancel": {
+			"title": "Zrušit"
+		},
+		"discard": {
+			"title": "Zahodit"
+		},
+		"resetFilters": {
+			"title": "Resetovat filtry"
+		},
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"reset": {
+			"title": "Resetovat filtry"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"retry": {
+			"title": "Opakovat"
+		},
+		"back": {
+			"title": "Zpět"
+		}
+	},
+	"fields": {
+		"locations": {
+			"search": {
+				"placeholder": "Hledat lokace..."
+			},
+			"provider": {
+				"title": "Poskytovatel počasí",
+				"placeholder": "Vyberte poskytovatele meteorologických dat"
+			},
+			"name": {
+				"title": "Název lokace",
+				"placeholder": "např. Domov, Kancelář, Chata",
+				"validation": {
+					"required": "Název lokace je povinný"
+				}
+			}
+		},
+		"config": {
+			"primaryLocation": {
+				"title": "Primární lokace",
+				"description": "Výchozí lokace zobrazená v widgetech počasí",
+				"placeholder": "Vyberte primární lokaci"
+			}
+		}
+	},
+	"texts": {
+		"aboutPrimaryLocation": "Vyberte primární lokaci pro zobrazení ve widgetech počasí. Lokace lze spravovat v sekci Lokace. Data o počasí budou načítána pro všechny nakonfigurované lokace.",
+		"selectProvider": "Vyberte poskytovatele meteorologických dat pro přidání nové lokace. Různí poskytovatelé mohou nabízet různé možnosti konfigurace.",
+		"unsupportedProvider": "Vybraný poskytovatel \"{provider}\" není momentálně podporován. Vyberte prosím jiného poskytovatele.",
+		"weatherError": "Nelze načíst počasí",
+		"weatherErrorDescription": "Data o počasí se nepodařilo načíst pro tuto lokaci. Zkontrolujte prosím konfiguraci API a zkuste to znovu.",
+		"locationDetail": {
+			"provider": "Poskytovatel",
+			"temperature": "Teplota",
+			"feelsLike": "Pocitová teplota",
+			"conditions": "Podmínky",
+			"humidity": "Vlhkost",
+			"wind": "Vítr",
+			"pressure": "Tlak"
+		},
+		"misc": {
+			"loadingLocations": "Načítání lokací...",
+			"noLocations": "Zatím nejsou nakonfigurovány žádné lokace",
+			"noFilteredLocations": "Žádné lokace neodpovídají kritériím filtru"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": {
+				"title": "Poskytovatel počasí"
+			},
+			"primary": {
+				"title": "Stav primární lokace",
+				"values": {
+					"all": "Vše",
+					"primary": "Primární",
+					"secondary": "Sekundární"
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Název"
+			},
+			"weather": {
+				"title": "Počasí",
+				"failed": "Selhalo",
+				"error": "Nepodařilo se načíst data o počasí. Zkontrolujte prosím konfiguraci API."
+			},
+			"type": {
+				"title": "Poskytovatel"
+			},
+			"primary": {
+				"title": "Primární",
+				"values": {
+					"yes": "Ano",
+					"no": "Ne"
+				}
+			}
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": {
+				"title": "Meteorologické lokace"
+			},
+			"detail": {
+				"title": "Detail meteorologické lokace"
+			},
+			"add": {
+				"title": "Přidat meteorologickou lokaci"
+			},
+			"edit": {
+				"title": "Upravit meteorologickou lokaci"
+			}
+		}
+	},
+	"conditions": {
+		"thunderstormWithLightRain": "Bouřka s lehkým deštěm",
+		"thunderstormWithRain": "Bouřka s deštěm",
+		"thunderstormWithHeavyRain": "Bouřka se silným deštěm",
+		"lightThunderstorm": "Slabá bouřka",
+		"thunderstorm": "Bouřka",
+		"heavyThunderstorm": "Silná bouřka",
+		"raggedThunderstorm": "Přeháňková bouřka",
+		"thunderstormWithLightDrizzle": "Bouřka s lehkým mrholením",
+		"thunderstormWithDrizzle": "Bouřka s mrholením",
+		"thunderstormWithHeavyDrizzle": "Bouřka se silným mrholením",
+		"lightIntensityDrizzle": "Slabé mrholení",
+		"drizzle": "Mrholení",
+		"heavyIntensityDrizzle": "Silné mrholení",
+		"lightIntensityDrizzleRain": "Slabý déšť s mrholením",
+		"drizzleRain": "Déšť s mrholením",
+		"heavyIntensityDrizzleRain": "Silný déšť s mrholením",
+		"showerRainAndDrizzle": "Přeháňky s mrholením",
+		"heavyShowerRainAndDrizzle": "Silné přeháňky s mrholením",
+		"showerDrizzle": "Přeháňkové mrholení",
+		"lightRain": "Lehký déšť",
+		"moderateRain": "Mírný déšť",
+		"heavyIntensityRain": "Silný déšť",
+		"veryHeavyRain": "Velmi silný déšť",
+		"extremeRain": "Extrémní déšť",
+		"freezingRain": "Mrznoucí déšť",
+		"lightIntensityShowerRain": "Slabé přeháňky",
+		"showerRain": "Přeháňky",
+		"heavyIntensityShowerRain": "Silné přeháňky",
+		"raggedShowerRain": "Nepravidelné přeháňky",
+		"lightSnow": "Lehké sněžení",
+		"snow": "Sněžení",
+		"heavySnow": "Silné sněžení",
+		"sleet": "Plískanice",
+		"lightShowerSleet": "Slabá plískanice",
+		"showerSleet": "Přeháňková plískanice",
+		"lightRainAndSnow": "Lehký déšť se sněhem",
+		"rainAndSnow": "Déšť se sněhem",
+		"lightShowerSnow": "Slabé sněhové přeháňky",
+		"showerSnow": "Sněhové přeháňky",
+		"heavyShowerSnow": "Silné sněhové přeháňky",
+		"mist": "Mlha",
+		"smoke": "Kouř",
+		"haze": "Opar",
+		"fog": "Hustá mlha",
+		"sand": "Písek",
+		"dust": "Prach",
+		"volcanicAsh": "Vulkanický popel",
+		"squalls": "Poryvy větru",
+		"tornado": "Tornádo",
+		"clearSky": "Jasno",
+		"fewClouds": "Málo oblačno",
+		"scatteredClouds": "Rozptýlená oblačnost",
+		"brokenClouds": "Oblačno s přeháňkami",
+		"overcastClouds": "Zataženo",
+		"unknown": "Neznámé"
+	}
+}

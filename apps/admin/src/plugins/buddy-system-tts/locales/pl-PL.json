@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "Ustawienia systemowego TTS"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"engine": {
+				"title": "Silnik",
+				"placeholder": "piper lub espeak (automatyczne wykrycie, jeśli puste)",
+				"description": "Silnik TTS do użycia. Pozostaw puste, aby wykryć automatycznie (preferuje piper, zastępczo espeak)"
+			},
+			"voice": {
+				"title": "Głos",
+				"placeholder": "Nazwa głosu lub kod (opcjonalnie)",
+				"description": "Nazwa modelu piper lub kod głosu espeak. Pozostaw puste dla domyślnego głosu"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia systemowego TTS zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień systemowego TTS"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Skonfiguruj lokalny silnik zamiany tekstu na mowę. Nie jest wymagany klucz API. Używa piper (neuronowy TTS) lub espeak (podstawowy TTS) zainstalowany w systemie."
+	}
+}

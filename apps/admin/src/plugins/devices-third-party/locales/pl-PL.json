@@ -1,1 +1,43 @@
-{}
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID urządzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urządzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urządzenia",
+				"validation": {
+					"required": "Wybierz kategorię urządzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urządzenia",
+				"validation": {
+					"required": "Wprowadź nazwę urządzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urządzenia"
+			},
+			"enabled": {
+				"title": "Włączone"
+			},
+			"serviceAddress": {
+				"title": "Adres usługi",
+				"placeholder": "http://device-address.local",
+				"validation": {
+					"required": "Wprowadź adres usługi urządzenia",
+					"url": "Podaj prawidłowy adres URL"
+				}
+			}
+		}
+	}
+}

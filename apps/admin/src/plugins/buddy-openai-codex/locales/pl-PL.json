@@ -1,1 +1,70 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia OpenAI Codex",
+		"advancedSettings": "Ustawienia zaawansowane"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"clientId": {
+				"title": "Client ID",
+				"placeholder": "Wprowadź swój OAuth client ID",
+				"description": "OAuth client ID dla API OpenAI Codex"
+			},
+			"clientSecret": {
+				"title": "Client secret",
+				"placeholder": "Wprowadź swój OAuth client secret"
+			},
+			"accessToken": {
+				"title": "Token dostępu",
+				"placeholder": "Wprowadź swój token dostępu"
+			},
+			"refreshToken": {
+				"title": "Token odświeżania",
+				"placeholder": "Wprowadź swój token odświeżania"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "np. codex-mini",
+				"description": "Model OpenAI Codex używany do generowania odpowiedzi"
+			},
+			"callbackUrl": {
+				"placeholder": "Wklej tutaj adres URL przekierowania..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Pobierz URL autoryzacji",
+		"copyUrl": "Kopiuj",
+		"openUrl": "Otwórz w przeglądarce",
+		"exchange": "Wymień token",
+		"exchanging": "Wymiana...",
+		"disconnect": "Rozłącz"
+	},
+	"statuses": {
+		"connected": "Połączony",
+		"notConnected": "Niepołączony"
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia OpenAI Codex zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień OpenAI Codex"
+		},
+		"oauth": {
+			"urlCopied": "URL skopiowany do schowka",
+			"missingClientId": "Wprowadź Client ID przed rozpoczęciem procesu OAuth",
+			"authorizeError": "Nie udało się uzyskać URL autoryzacji",
+			"exchangeSuccess": "Wymiana tokenu zakończona pomyślnie",
+			"exchangeError": "Wymiana tokenu nie powiodła się"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia OAuth OpenAI Codex. Kliknij \"Pobierz URL autoryzacji\", aby rozpocząć proces OAuth, lub rozwiń Ustawienia zaawansowane, aby ręcznie wprowadzić tokeny.",
+		"oauthStep1": "Kliknij \"Pobierz URL autoryzacji\" powyżej",
+		"oauthStep2": "Otwórz URL w przeglądarce i dokonaj autoryzacji",
+		"oauthStep3": "Skopiuj URL przekierowania z przeglądarki po autoryzacji",
+		"oauthStep4": "Wklej go poniżej i kliknij \"Wymień token\""
+	}
+}

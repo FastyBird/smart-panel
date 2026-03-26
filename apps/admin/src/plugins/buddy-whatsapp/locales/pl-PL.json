@@ -1,1 +1,35 @@
-{}
+{
+	"headings": {
+		"aboutWhatsappSettings": "Ustawienia bota WhatsApp"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"allowedPhoneNumbers": {
+				"title": "Dozwolone numery telefonów",
+				"placeholder": "np. 1234567890,9876543210",
+				"description": "Oddzielone przecinkami numery telefonów uprawnione do interakcji z botem (z prefiksem '+' lub bez). Pozostaw puste, aby zezwolić wszystkim numerom."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia bota WhatsApp zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień bota WhatsApp"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Połącz dedykowany numer WhatsApp dla bota. Użyj drugiej karty SIM, eSIM lub wirtualnego numeru — zainstaluj WhatsApp (lub WhatsApp Business) z tym numerem i zeskanuj poniższy kod QR. Użytkownicy mogą następnie wysyłać wiadomości do numeru bota ze swojego osobistego WhatsApp.",
+		"status": {
+			"disconnected": "Niepołączony. Włącz wtyczkę i poczekaj na kod QR.",
+			"connecting": "Łączenie z WhatsApp...",
+			"qrReady": "Otwórz WhatsApp na telefonie bota (dedykowany numer) i zeskanuj ten kod QR przez Ustawienia > Połączone urządzenia > Połącz urządzenie.",
+			"connected": "Bot WhatsApp jest połączony i działa. Użytkownicy mogą wysyłać wiadomości na numer bota, aby rozmawiać."
+		}
+	},
+	"buttons": {
+		"logout": "Rozłącz i sparuj ponownie"
+	}
+}

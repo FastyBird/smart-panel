@@ -1,1 +1,29 @@
-{}
+{
+	"fields": {
+		"device": {
+			"title": "Urządzenie",
+			"placeholder": "Urządzenie źródła danych",
+			"validation": {
+				"required": "Wybierz urządzenie źródła danych"
+			}
+		},
+		"channel": {
+			"title": "Kanał",
+			"placeholder": "Kanał źródła danych",
+			"validation": {
+				"required": "Wybierz kanał źródła danych"
+			}
+		},
+		"property": {
+			"title": "Właściwość",
+			"placeholder": "Właściwość źródła danych",
+			"validation": {
+				"required": "Wybierz właściwość źródła danych"
+			}
+		},
+		"icon": {
+			"title": "Ikona",
+			"placeholder": "Ikona źródła danych"
+		}
+	}
+}

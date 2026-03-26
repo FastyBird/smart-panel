@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia API Voice.ai"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadź swój klucz API Voice.ai",
+				"description": "Uzyskaj klucz API z panelu Voice.ai"
+			},
+			"voiceId": {
+				"title": "ID głosu",
+				"placeholder": "Wprowadź ID głosu Voice.ai",
+				"description": "ID głosu Voice.ai używany do syntezy mowy. Użyj API Voice.ai, aby wyświetlić dostępne głosy"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia Voice.ai zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień Voice.ai"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia API Voice.ai. Potrzebujesz prawidłowego klucza API i ID głosu, aby używać Voice.ai jako dostawcy TTS dla asystenta."
+	}
+}
