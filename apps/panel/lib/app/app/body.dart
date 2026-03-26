@@ -106,6 +106,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_syncStateWithRepository);
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
+    _localPrefs.addListener(_syncStateWithRepository);
 
     // Wire security status to overlay controller
     _onSecurityStatusChanged();
@@ -218,6 +219,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
+    _localPrefs.removeListener(_syncStateWithRepository);
     _securityStatusRepository.removeListener(_onSecurityStatusChanged);
     _socketService.removeConnectionListener(_onSocketConnectionChanged);
     _socketService.removeErrorTypeListener(_onSocketErrorType);

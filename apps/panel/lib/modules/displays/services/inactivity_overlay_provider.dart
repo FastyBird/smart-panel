@@ -23,6 +23,7 @@ class InactivityOverlayProvider {
   bool _isInitialized = false;
   Timer? _inactivityTimer;
   bool _wasActive = false;
+  bool _screenPowerOffRequested = false;
 
   int _screenLockDuration = 30;
   bool _hasScreenSaver = true;
@@ -109,8 +110,12 @@ class InactivityOverlayProvider {
       },
     );
 
-    // Power off the screen if enabled and not showing screen saver
+    // Power off the screen if enabled and not showing screen saver.
+    // Set the flag synchronously before the async call so that
+    // _onOverlayChanged can detect the intent even if the platform
+    // call hasn't completed yet.
     if (_screenPowerOff && !_hasScreenSaver) {
+      _screenPowerOffRequested = true;
       _screenPowerService.screenOff();
     }
   }
@@ -122,8 +127,12 @@ class InactivityOverlayProvider {
     final isActive = entry?.isActive ?? false;
 
     if (_wasActive && !isActive) {
-      // Overlay was just dismissed — power on screen and restart timer
-      if (_screenPowerService.isScreenOff) {
+      // Overlay was just dismissed — power on screen and restart timer.
+      // Check _screenPowerOffRequested (synchronous flag) instead of
+      // _screenPowerService.isScreenOff which may still be false if the
+      // async platform call hasn't completed yet.
+      if (_screenPowerOffRequested) {
+        _screenPowerOffRequested = false;
         _screenPowerService.screenOn();
       }
       resetTimer();

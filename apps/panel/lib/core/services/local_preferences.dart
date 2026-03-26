@@ -7,7 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Caches UI preferences (language, dark mode) locally so the app
 /// can apply them immediately on startup — before the backend config loads.
-class LocalPreferencesService {
+class LocalPreferencesService extends ChangeNotifier {
   static const _languageKey = 'ui_language';
   static const _darkModeKey = 'ui_dark_mode';
   static const _screenPowerOffKey = 'ui_screen_power_off';
@@ -92,6 +92,8 @@ class LocalPreferencesService {
     _screenPowerOff = enabled;
 
     await _write(key: _screenPowerOffKey, value: enabled.toString());
+
+    notifyListeners();
   }
 
   /// Clear all cached preferences (used during factory reset).
