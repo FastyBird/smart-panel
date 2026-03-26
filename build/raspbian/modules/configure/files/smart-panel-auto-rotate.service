@@ -2,7 +2,7 @@
 Description=Smart Panel Auto-Rotate (reTerminal accelerometer)
 Documentation=https://smart-panel.fastybird.com
 After=smart-panel-display.service
-Requires=smart-panel-display.service
+Wants=smart-panel-display.service
 ConditionPathExists=/sys/devices/platform/lis3lv02d/position
 
 [Service]

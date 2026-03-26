@@ -208,7 +208,10 @@ cmd_daemon() {
 		local x y z
 		read -r x y z <<< "$parsed" || continue
 
-		# Validate we got integers
+		# Validate we got three non-empty integers
+		if [ -z "$x" ] || [ -z "$y" ] || [ -z "$z" ]; then
+			continue
+		fi
 		case "$x$y$z" in
 			*[!0-9-]*) continue ;;
 		esac
