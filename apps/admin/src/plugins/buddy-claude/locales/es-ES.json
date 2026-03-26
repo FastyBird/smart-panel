@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Configuraci\u00f3n de la API de Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"apiKey": {
+				"title": "Clave API",
+				"placeholder": "Introduzca su clave API de Anthropic",
+				"description": "Obtenga su clave API en console.anthropic.com"
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "p. ej., claude-sonnet-4-20250514",
+				"description": "El modelo de Claude a utilizar para generar respuestas"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de Claude ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure los ajustes de la API de Anthropic Claude. Necesita una clave API v\u00e1lida para utilizar los modelos de Claude como proveedor LLM del asistente."
+	}
+}
