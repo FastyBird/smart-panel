@@ -52,6 +52,7 @@ import {
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
+import { PropertyCommandService } from '../services/property-command.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
@@ -65,6 +66,7 @@ export class DevicesChannelsPropertiesController {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyTimeseriesService: PropertyTimeseriesService,
+		private readonly propertyCommandService: PropertyCommandService,
 	) {}
 
 	@ApiOperation({
@@ -346,7 +348,7 @@ export class DevicesChannelsPropertiesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: { data: object },
+		@Body() updateDto: { data: UpdateChannelPropertyDto },
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(
 			`Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
@@ -408,6 +410,15 @@ export class DevicesChannelsPropertiesController {
 			this.logger.debug(
 				`Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
 			);
+
+			// If value was provided, send command to the physical device (fire-and-forget)
+			if (typeof updateDto.data.value !== 'undefined' && updateDto.data.value !== null) {
+				this.propertyCommandService
+					.processApiPropertyCommand(device.id, channel.id, updatedProperty.id, updateDto.data.value)
+					.catch((err: Error) => {
+						this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
+					});
+			}
 
 			const response = new ChannelPropertyResponseModel();
 

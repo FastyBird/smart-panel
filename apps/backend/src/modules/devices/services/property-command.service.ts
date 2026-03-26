@@ -255,6 +255,25 @@ export class PropertyCommandService {
 		return { device: deviceId, success: true };
 	}
 
+	/**
+	 * Process a device command triggered by an API PATCH request.
+	 * This sends the value to the physical device via its platform, without WebSocket auth or intent tracking.
+	 */
+	async processApiPropertyCommand(
+		deviceId: string,
+		channelId: string,
+		propertyId: string,
+		value: string | number | boolean,
+	): Promise<void> {
+		const result = await this.processDeviceCommands(deviceId, [
+			{ device: deviceId, channel: channelId, property: propertyId, value },
+		]);
+
+		if (!result.success) {
+			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${result.reason}`);
+		}
+	}
+
 	private validateValueType(dataType: DataTypeType, value: unknown): boolean {
 		switch (dataType) {
 			case DataTypeType.STRING:

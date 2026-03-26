@@ -49,6 +49,7 @@ import {
 } from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
+import { PropertyCommandService } from '../services/property-command.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
@@ -61,6 +62,7 @@ export class ChannelsPropertiesController {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyTimeseriesService: PropertyTimeseriesService,
+		private readonly propertyCommandService: PropertyCommandService,
 	) {}
 
 	@ApiOperation({
@@ -316,7 +318,7 @@ export class ChannelsPropertiesController {
 	async update(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: { data: object },
+		@Body() updateDto: { data: UpdateChannelPropertyDto },
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`Incoming update request for property id=${id} for channelId=${channelId}`);
 
@@ -373,6 +375,17 @@ export class ChannelsPropertiesController {
 			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
 			this.logger.debug(`Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
+
+			// If value was provided, send command to the physical device (fire-and-forget)
+			if (typeof updateDto.data.value !== 'undefined' && updateDto.data.value !== null) {
+				const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
+
+				this.propertyCommandService
+					.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, updateDto.data.value)
+					.catch((err: Error) => {
+						this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
+					});
+			}
 
 			const response = new ChannelPropertyResponseModel();
 
