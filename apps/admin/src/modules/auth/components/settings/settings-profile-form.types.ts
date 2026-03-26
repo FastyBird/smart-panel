@@ -5,6 +5,7 @@ export type SettingsProfileFormFields = {
 	email: string | null;
 	firstName: string | null;
 	lastName: string | null;
+	language: string | null;
 };
 
 export type SettingsProfileFormProps = {

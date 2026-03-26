@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Přehled"
+	},
 	"meta": {
 		"stats": {
 			"title": "Přehled aplikace"
@@ -18,7 +21,7 @@
 		"logs": "Logy",
 		"dashboard": "Stránky Smart Panelu",
 		"devices": "Připojená zařízení",
-		"devicesCommunication": "Aktualizace zařízení dnes",
+		"devicesCommunication": "Aktualizace dnes",
 		"spaces": "Prostory Smart Panelu"
 	},
 	"subHeadings": {

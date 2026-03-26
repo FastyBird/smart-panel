@@ -1,43 +1,43 @@
 {
-	"fields": {
-		"devices": {
-			"id": {
-				"title": "Internal identifier",
-				"placeholder": "Device id"
-			},
-			"identifier": {
-				"title": "System identifier",
-				"placeholder": "Device system identifier"
-			},
-			"category": {
-				"title": "Categoría",
-				"placeholder": "Device category",
-				"validation": {
-					"required": "Please select device category"
-				}
-			},
-			"name": {
-				"title": "Nombre",
-				"placeholder": "Device name",
-				"validation": {
-					"required": "Please fill in device name"
-				}
-			},
-			"description": {
-				"title": "Descripción",
-				"placeholder": "Device description"
-			},
-			"enabled": {
-				"title": "Activado"
-			},
-			"serviceAddress": {
-				"title": "Service address",
-				"placeholder": "http://device-address.local",
-				"validation": {
-					"required": "Please fill in device service address",
-					"url": "Please provide valid URL address"
-				}
-			}
-		}
-	}
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "identifier": {
+        "title": "Identificador del sistema",
+        "placeholder": "Identificador del sistema del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "serviceAddress": {
+        "title": "Dirección del servicio",
+        "placeholder": "http://device-address.local",
+        "validation": {
+          "required": "Por favor, introduzca la dirección del servicio del dispositivo",
+          "url": "Por favor, proporcione una dirección URL válida"
+        }
+      }
+    }
+  }
 }

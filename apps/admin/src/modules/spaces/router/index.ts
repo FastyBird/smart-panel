@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import i18n from '../../../locales';
 import { RouteNames } from '../spaces.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
@@ -9,7 +10,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		component: () => import('../views/view-spaces.vue'),
 		meta: {
 			guards: { authenticated: true },
-			title: 'Spaces',
+			title: () => i18n.global.t('spacesModule.menu.title'),
 			icon: 'mdi:home-group',
 			menu: 9000,
 		},

@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../scenes.constants';
 
@@ -11,7 +12,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		props: true,
 		meta: {
 			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
-			title: 'Scenes',
+			title: () => i18n.global.t('scenes.menu.title'),
 			icon: 'mdi:play-box-multiple',
 			menu: 5000,
 		},

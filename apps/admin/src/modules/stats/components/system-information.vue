@@ -15,7 +15,7 @@
 			border
 		>
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none!"
 				label-class-name="border-l-none! border-t-none!"
 			>
@@ -27,7 +27,7 @@
 			</el-descriptions-item>
 
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none!"
 				label-class-name="border-l-none! border-t-none!"
 			>
@@ -39,7 +39,7 @@
 			</el-descriptions-item>
 
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none!"
 				label-class-name="border-l-none! border-t-none!"
 			>
@@ -51,7 +51,7 @@
 			</el-descriptions-item>
 
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none!"
 				label-class-name="border-l-none! border-t-none!"
 			>
@@ -61,7 +61,7 @@
 			</el-descriptions-item>
 
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none!"
 				label-class-name="border-l-none! border-t-none!"
 			>
@@ -71,7 +71,7 @@
 			</el-descriptions-item>
 
 			<el-descriptions-item
-				:label-width="120"
+				:label-width="150"
 				class-name="border-l-none! border-t-none! border-b-none!"
 				label-class-name="border-l-none! border-t-none! border-b-none!"
 			>

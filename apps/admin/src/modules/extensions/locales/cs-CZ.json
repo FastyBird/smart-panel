@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Rozšíření"
+	},
 	"meta": {
 		"extensions": {
 			"list": {

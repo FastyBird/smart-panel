@@ -86,6 +86,10 @@
         "required": "Bitte geben Sie den Nachnamen ein"
       }
     },
+    "language": {
+      "title": "Sprache",
+      "placeholder": "Standard-Browsersprache verwenden"
+    },
     "currentPassword": {
       "title": "Aktuelles Passwort",
       "help": "Ihr aktuelles Passwort",

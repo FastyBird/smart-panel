@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Resumen"
+	},
 	"meta": {
 		"stats": {
 			"title": "Resumen de la aplicación"
@@ -18,7 +21,7 @@
 		"logs": "Registros",
 		"dashboard": "Páginas del Smart Panel",
 		"devices": "Dispositivos conectados",
-		"devicesCommunication": "Actualizaciones de dispositivos hoy",
+		"devicesCommunication": "Actualizaciones hoy",
 		"spaces": "Espacios del Smart Panel"
 	},
 	"subHeadings": {

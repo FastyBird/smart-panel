@@ -252,7 +252,7 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="180"
+			:width="190"
 			align="right"
 		>
 			<template #default="scope">

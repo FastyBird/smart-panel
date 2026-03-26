@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Anzeigen"
+	},
 	"title": "Displays",
 	"description": "Verwalten Sie Ihre Display-Geräte",
 	"headings": {

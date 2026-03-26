@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Spaces"
+	},
 	"title": "Spaces",
 	"description": "Manage your spaces (rooms and zones)",
 	"headings": {

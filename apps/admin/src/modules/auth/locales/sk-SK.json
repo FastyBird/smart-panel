@@ -86,6 +86,10 @@
 				"required": "Prosím vyplňte priezvisko"
 			}
 		},
+		"language": {
+			"title": "Jazyk",
+			"placeholder": "Použiť predvolený jazyk prehliadača"
+		},
 		"currentPassword": {
 			"title": "Aktuálne heslo",
 			"help": "Vaše aktuálne heslo",

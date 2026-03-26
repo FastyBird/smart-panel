@@ -1,4 +1,9 @@
 {
+  "menu": {
+    "title": "Konfiguracja",
+    "modules": "Moduły",
+    "plugins": "Wtyczki"
+  },
   "meta": {
     "config": {
       "title": "Konfiguracja"

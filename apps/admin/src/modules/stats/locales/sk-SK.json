@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Prehľad"
+	},
 	"meta": {
 		"stats": {
 			"title": "Prehľad aplikácie"
@@ -18,7 +21,7 @@
 		"logs": "Logy",
 		"dashboard": "Stránky Smart Panelu",
 		"devices": "Pripojené zariadenia",
-		"devicesCommunication": "Aktualizácie zariadení dnes",
+		"devicesCommunication": "Aktualizácie dnes",
 		"spaces": "Priestory Smart Panelu"
 	},
 	"subHeadings": {

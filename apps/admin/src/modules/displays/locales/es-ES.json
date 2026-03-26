@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Pantallas"
+	},
 	"title": "Pantallas",
 	"description": "Gestiona tus dispositivos de pantalla",
 	"headings": {

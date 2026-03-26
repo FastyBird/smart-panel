@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Lokality počasia"
+	},
 	"headings": {
 		"weather": "Počasie",
 		"aboutPrimaryLocation": "Primárna poloha",

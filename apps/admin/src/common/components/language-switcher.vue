@@ -4,13 +4,11 @@
 		@command="onLanguageChange"
 	>
 		<el-button
-			type="primary"
 			circle
 			link
+			class="lang-trigger"
 		>
-			<template #icon>
-				<icon icon="mdi:translate" />
-			</template>
+			<span class="lang-flag">{{ currentFlag }}</span>
 		</el-button>
 
 		<template #dropdown>
@@ -30,9 +28,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import { computed } from 'vue';
 
-import { Icon } from '@iconify/vue';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 
 import type { AppLocale } from '../../locales';
 import { useLanguage } from '../composables/useLanguage';
@@ -47,6 +45,10 @@ const emit = defineEmits<{
 
 const { currentLocale, supportedLocales } = useLanguage();
 
+const currentFlag = computed((): string => {
+	return supportedLocales.value.find((l) => l.value === currentLocale.value)?.flag ?? '🌐';
+});
+
 const onLanguageChange = (locale: AppLocale): void => {
 	currentLocale.value = locale;
 	emit('change', locale);
@@ -54,6 +56,14 @@ const onLanguageChange = (locale: AppLocale): void => {
 </script>
 
 <style scoped>
+.lang-trigger {
+	font-size: 18px;
+}
+
+.lang-flag {
+	line-height: 1;
+}
+
 .is-active {
 	color: var(--el-color-primary);
 	font-weight: 600;

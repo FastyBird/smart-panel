@@ -86,6 +86,10 @@
         "required": "Proszę podać nazwisko"
       }
     },
+    "language": {
+      "title": "Język",
+      "placeholder": "Użyj domyślnego języka przeglądarki"
+    },
     "currentPassword": {
       "title": "Obecne hasło",
       "help": "Twoje aktualne hasło",

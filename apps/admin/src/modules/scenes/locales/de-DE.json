@@ -1,5 +1,8 @@
 {
 	"scenes": {
+		"menu": {
+			"title": "Szenen"
+		},
 		"headings": {
 			"list": "Szenen",
 			"add": "Szene hinzufügen",

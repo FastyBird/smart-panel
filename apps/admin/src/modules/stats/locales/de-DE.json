@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Übersicht"
+	},
 	"meta": {
 		"stats": {
 			"title": "Anwendungsübersicht"
@@ -18,7 +21,7 @@
 		"logs": "Protokolle",
 		"dashboard": "Smart Panel Seiten",
 		"devices": "Verbundene Geräte",
-		"devicesCommunication": "Geräteaktualisierungen heute",
+		"devicesCommunication": "Updates heute",
 		"spaces": "Smart Panel Räume"
 	},
 	"subHeadings": {

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Weather locations"
+	},
 	"headings": {
 		"weather": "Weather",
 		"aboutPrimaryLocation": "Primary location",

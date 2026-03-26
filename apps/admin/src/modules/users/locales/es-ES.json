@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Usuarios"
+	},
 	"meta": {
 		"users": {
 			"list": {

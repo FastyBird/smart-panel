@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Displeje"
+	},
 	"title": "Displeje",
 	"description": "Správa vašich displejových zařízení",
 	"headings": {

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Displays"
+	},
 	"title": "Displays",
 	"description": "Manage your display devices",
 	"headings": {

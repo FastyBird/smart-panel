@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Wyświetlacze"
+	},
 	"title": "Wyświetlacze",
 	"description": "Zarządzaj urządzeniami wyświetlaczy",
 	"headings": {

@@ -1,15 +1,15 @@
 {
 	"headings": {
-		"aboutSettings": "Open-Meteo weather settings"
+		"aboutSettings": "Configuración del clima Open-Meteo"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Activado"
+				"title": "Habilitado"
 			},
 			"unit": {
-				"title": "Temperature unit",
-				"placeholder": "Select temperature unit",
+				"title": "Unidad de temperatura",
+				"placeholder": "Seleccione la unidad de temperatura",
 				"values": {
 					"celsius": "Celsius (°C)",
 					"fahrenheit": "Fahrenheit (°F)"
@@ -19,59 +19,59 @@
 		"locations": {
 			"name": {
 				"title": "Nombre",
-				"description": "A friendly name for this location",
-				"placeholder": "e.g., Home, Office, Beach House",
+				"description": "Un nombre descriptivo para esta ubicación",
+				"placeholder": "p. ej., Casa, Oficina, Casa de playa",
 				"validation": {
-					"required": "Name is required"
+					"required": "El nombre es obligatorio"
 				}
 			},
 			"citySearch": {
-				"title": "Search city",
-				"placeholder": "Start typing to search for a city...",
-				"description": "Search for a city and we'll auto-fill the coordinates"
+				"title": "Buscar ciudad",
+				"placeholder": "Comience a escribir para buscar una ciudad...",
+				"description": "Busque una ciudad y completaremos automáticamente las coordenadas"
 			},
 			"latitude": {
-				"title": "Latitude",
-				"placeholder": "e.g., 51.5074",
+				"title": "Latitud",
+				"placeholder": "p. ej., 51.5074",
 				"validation": {
-					"required": "Latitude is required",
-					"range": "Latitude must be between -90 and 90"
+					"required": "La latitud es obligatoria",
+					"range": "La latitud debe estar entre -90 y 90"
 				}
 			},
 			"longitude": {
-				"title": "Longitude",
-				"placeholder": "e.g., -0.1278",
+				"title": "Longitud",
+				"placeholder": "p. ej., -0.1278",
 				"validation": {
-					"required": "Longitude is required",
-					"range": "Longitude must be between -180 and 180"
+					"required": "La longitud es obligatoria",
+					"range": "La longitud debe estar entre -180 y 180"
 				}
 			}
 		}
 	},
 	"buttons": {
 		"myLocation": {
-			"title": "My location"
+			"title": "Mi ubicación"
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Open-Meteo settings have been updated",
-			"notEdited": "Failed to update Open-Meteo settings"
+			"edited": "La configuración de Open-Meteo se ha actualizado",
+			"notEdited": "No se pudo actualizar la configuración de Open-Meteo"
 		},
 		"locations": {
-			"created": "Location \"{location}\" has been created",
-			"notCreated": "Failed to create location \"{location}\"",
-			"edited": "Location \"{location}\" has been updated",
-			"notEdited": "Failed to update location \"{location}\""
+			"created": "La ubicación \"{location}\" ha sido creada",
+			"notCreated": "No se pudo crear la ubicación \"{location}\"",
+			"edited": "La ubicación \"{location}\" ha sido actualizada",
+			"notEdited": "No se pudo actualizar la ubicación \"{location}\""
 		},
-		"geolocationNotSupported": "Geolocation is not supported by your browser",
-		"geolocationDenied": "Location access was denied. Please enable location permissions.",
-		"geolocationUnavailable": "Location information is unavailable",
-		"geolocationTimeout": "The request to get your location timed out",
-		"geolocationError": "An error occurred while getting your location"
+		"geolocationNotSupported": "La geolocalización no es compatible con su navegador",
+		"geolocationDenied": "Se denegó el acceso a la ubicación. Por favor, habilite los permisos de ubicación.",
+		"geolocationUnavailable": "La información de ubicación no está disponible",
+		"geolocationTimeout": "La solicitud para obtener su ubicación ha expirado",
+		"geolocationError": "Se produjo un error al obtener su ubicación"
 	},
 	"texts": {
-		"aboutSettings": "Configure your Open-Meteo weather settings. This provider is free and requires no API key.",
-		"orEnterManually": "Or enter location manually"
+		"aboutSettings": "Configure los ajustes del clima Open-Meteo. Este proveedor es gratuito y no requiere clave API.",
+		"orEnterManually": "O introduzca la ubicación manualmente"
 	}
 }

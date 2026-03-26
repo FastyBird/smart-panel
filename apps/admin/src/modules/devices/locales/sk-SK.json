@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Zariadenia"
+	},
 	"meta": {
 		"devices": {
 			"list": {

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Wetterstandorte"
+	},
 	"headings": {
 		"weather": "Wetter",
 		"aboutPrimaryLocation": "Primärer Standort",

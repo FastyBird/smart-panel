@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Przestrzenie"
+	},
 	"title": "Przestrzenie",
 	"description": "Zarzadzaj przestrzeniami (pokoje i strefy)",
 	"headings": {

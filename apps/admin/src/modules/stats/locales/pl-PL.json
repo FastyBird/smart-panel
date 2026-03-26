@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Przegląd"
+	},
 	"meta": {
 		"stats": {
 			"title": "Przegląd aplikacji"
@@ -18,7 +21,7 @@
 		"logs": "Logi",
 		"dashboard": "Strony Smart Panel",
 		"devices": "Podłączone urządzenia",
-		"devicesCommunication": "Aktualizacje urządzeń dzisiaj",
+		"devicesCommunication": "Aktualizacje dziś",
 		"spaces": "Przestrzenie Smart Panel"
 	},
 	"subHeadings": {

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Priestory"
+	},
 	"title": "Priestory",
 	"description": "Spravujte svoje priestory (miestnosti a zóny)",
 	"headings": {

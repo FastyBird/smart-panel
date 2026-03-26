@@ -86,6 +86,10 @@
         "required": "Por favor ingresa el apellido"
       }
     },
+    "language": {
+      "title": "Idioma",
+      "placeholder": "Usar idioma predeterminado del navegador"
+    },
     "currentPassword": {
       "title": "Contraseña actual",
       "help": "Tu contraseña actual",

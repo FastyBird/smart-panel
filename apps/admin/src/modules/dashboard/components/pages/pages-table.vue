@@ -170,7 +170,7 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="280"
+			:width="300"
 			align="right"
 		>
 			<template #default="scope">

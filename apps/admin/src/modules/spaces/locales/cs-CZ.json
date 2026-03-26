@@ -1,16 +1,19 @@
 {
+	"menu": {
+		"title": "Prostory"
+	},
 	"title": "Prostory",
-	"description": "Manage your spaces (rooms and zones)",
+	"description": "Správa vašich prostorů (místnosti a zóny)",
 	"headings": {
 		"list": "Prostory",
 		"spaces": "Prostory",
-		"detail": "Space detail",
-		"add": "Add space",
-		"edit": "Edit space",
-		"removeSpace": "Remove space",
-		"bulkRemoveSpace": "Remove spaces",
-		"discard": "Discard changes",
-		"adjustFilters": "Filter spaces"
+		"detail": "Detail prostoru",
+		"add": "Přidat prostor",
+		"edit": "Upravit prostor",
+		"removeSpace": "Odebrat prostor",
+		"bulkRemoveSpace": "Odebrat prostory",
+		"discard": "Zahodit změny",
+		"adjustFilters": "Filtrovat prostory"
 	},
 	"edit": {
 		"sections": {
@@ -19,64 +22,64 @@
 			},
 			"organization": {
 				"title": "Organizace",
-				"hint": "Assign this room to a zone (e.g. \"Ground Floor\", \"Upstairs\") to group related rooms together."
+				"hint": "Přiřaďte tuto místnost k zóně (např. \"Přízemí\", \"Patro\"), abyste mohli seskupit související místnosti."
 			},
 			"devicesDisplays": {
-				"title": "Devices & Displays",
+				"title": "Zařízení a displeje",
 				"titleDevicesOnly": "Zařízení",
-				"summary": "{devices} devices and {displays} displays are currently assigned to this space.",
-				"summaryDevicesOnly": "{devices} devices are currently assigned to this space.",
-				"manageDevices": "Manage devices",
-				"manageDisplays": "Manage displays"
+				"summary": "{devices} zařízení a {displays} displejů je aktuálně přiřazeno k tomuto prostoru.",
+				"summaryDevicesOnly": "{devices} zařízení je aktuálně přiřazeno k tomuto prostoru.",
+				"manageDevices": "Spravovat zařízení",
+				"manageDisplays": "Spravovat displeje"
 			},
 			"statusWidgets": {
-				"title": "Status widgets",
-				"hint": "Configure widgets displayed in the space status area on the panel."
+				"title": "Stavové widgety",
+				"hint": "Nakonfigurujte widgety zobrazené ve stavové oblasti prostoru na panelu."
 			},
 			"smartOverrides": {
-				"title": "Smart overrides",
+				"title": "Chytrá přepsání",
 				"badge": "Pokročilé",
-				"hint": "Optional settings to improve smart behavior and intent-based control.",
-				"lightingRoles": "Lighting roles",
-				"climateRoles": "Climate roles",
-				"coversRoles": "Covers roles",
-				"sensorRoles": "Sensor roles",
-				"smartSuggestions": "Smart suggestions"
+				"hint": "Volitelná nastavení pro zlepšení chytrého chování a ovládání na základě záměrů.",
+				"lightingRoles": "Role osvětlení",
+				"climateRoles": "Role klimatu",
+				"coversRoles": "Role rolet",
+				"sensorRoles": "Role senzorů",
+				"smartSuggestions": "Chytré návrhy"
 			}
 		}
 	},
 	"subHeadings": {
-		"list": "Organize devices and displays by rooms or zones",
-		"adjustFilters": "Adjust display filters",
-		"add": "Add new space",
-		"detail": "Manage space: {space}",
-		"onboarding": "Setup wizard for spaces, devices and displays"
+		"list": "Organizujte zařízení a displeje podle místností nebo zón",
+		"adjustFilters": "Upravit nastavení filtrů",
+		"add": "Přidat nový prostor",
+		"detail": "Správa prostoru: {space}",
+		"onboarding": "Průvodce nastavením prostorů, zařízení a displejů"
 	},
 	"breadcrumbs": {
 		"spaces": {
 			"list": "prostory",
-			"detail": "space: {space}",
-			"edit": "edit space",
-			"add": "add space",
-			"onboarding": "setup wizard"
+			"detail": "prostor: {space}",
+			"edit": "upravit prostor",
+			"add": "přidat prostor",
+			"onboarding": "průvodce nastavením"
 		}
 	},
 	"meta": {
 		"spaces": {
 			"list": {
-				"title": "List spaces"
+				"title": "Seznam prostorů"
 			},
 			"edit": {
-				"title": "Edit space: {space}"
+				"title": "Upravit prostor: {space}"
 			},
 			"add": {
-				"title": "Add space"
+				"title": "Přidat prostor"
 			},
 			"detail": {
-				"title": "Space: {space}"
+				"title": "Prostor: {space}"
 			},
 			"onboarding": {
-				"title": "Spaces setup wizard"
+				"title": "Průvodce nastavením prostorů"
 			}
 		}
 	},
@@ -91,28 +94,28 @@
 			"displays": "Displeje",
 			"actions": "Akce"
 		},
-		"empty": "No spaces found. Create your first space to get started."
+		"empty": "Nebyly nalezeny žádné prostory. Vytvořte svůj první prostor a začněte."
 	},
 	"fields": {
 		"search": {
-			"placeholder": "Search spaces..."
+			"placeholder": "Hledat prostory..."
 		},
 		"spaces": {
 			"id": {
-				"title": "Internal identifier",
-				"placeholder": "Space id"
+				"title": "Interní identifikátor",
+				"placeholder": "ID prostoru"
 			},
 			"name": {
 				"title": "Název",
-				"placeholder": "Enter space name (e.g., Living Room)",
+				"placeholder": "Zadejte název prostoru (např. Obývací pokoj)",
 				"validation": {
-					"required": "Name is required",
-					"maxLength": "Name must be less than 100 characters"
+					"required": "Název je povinný",
+					"maxLength": "Název musí mít méně než 100 znaků"
 				}
 			},
 			"description": {
 				"title": "Popis",
-				"placeholder": "Optional description of the space"
+				"placeholder": "Volitelný popis prostoru"
 			},
 			"type": {
 				"title": "Typ",
@@ -121,15 +124,15 @@
 					"zone": "Zóna"
 				},
 				"validation": {
-					"required": "Type is required"
+					"required": "Typ je povinný"
 				}
 			},
 			"category": {
 				"title": "Kategorie",
-				"placeholder": "Select a category",
-				"hint": "Choosing a category will automatically suggest an icon and description for this space. Available categories depend on whether this is a room or zone.",
+				"placeholder": "Vyberte kategorii",
+				"hint": "Volba kategorie automaticky navrhne ikonu a popis pro tento prostor. Dostupné kategorie závisí na tom, zda se jedná o místnost nebo zónu.",
 				"validation": {
-					"requiredForZone": "Category is required for zones"
+					"requiredForZone": "Kategorie je povinná pro zóny"
 				},
 				"groups": {
 					"floors": "Podlaží",
@@ -143,8 +146,8 @@
 					"toilet": "Toaleta",
 					"kitchen": "Kuchyně",
 					"dining_room": "Jídelna",
-					"office": "Kancelář",
-					"entryway": "Vstup",
+					"office": "Pracovna",
+					"entryway": "Předsíň",
 					"garage": "Garáž",
 					"hallway": "Chodba",
 					"laundry": "Prádelna",
@@ -161,100 +164,100 @@
 					"floor_ground": "Přízemí",
 					"floor_first": "První patro",
 					"floor_second": "Druhé patro",
-					"floor_basement": "Sklep",
-					"floor_attic": "Půda",
-					"outdoor_front_yard": "Přední zahrada",
-					"outdoor_backyard": "Zadní zahrada",
+					"floor_basement": "Suterén",
+					"floor_attic": "Podkroví",
+					"outdoor_front_yard": "Předzahrádka",
+					"outdoor_backyard": "Zahrada za domem",
 					"outdoor_driveway": "Příjezdová cesta",
 					"outdoor_garden": "Zahrada",
 					"outdoor_terrace": "Terasa",
 					"outdoor_balcony": "Balkón",
 					"outdoor_walkway": "Chodník",
-					"security_perimeter": "Bezpečnostní zóna",
-					"utility": "Technické",
+					"security_perimeter": "Bezpečnostní obvod",
+					"utility": "Technická",
 					"zone_other": "Ostatní"
 				}
 			},
 			"icon": {
 				"title": "Ikona",
-				"placeholder": "mdi:home (Iconify icon name)"
+				"placeholder": "mdi:home (název ikony Iconify)"
 			},
 			"displayOrder": {
-				"title": "Display order",
-				"placeholder": "Order in lists"
+				"title": "Pořadí zobrazení",
+				"placeholder": "Pořadí v seznamech"
 			},
 			"parentZone": {
-				"title": "Parent zone",
-				"placeholder": "Select a parent zone (optional)",
-				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
+				"title": "Nadřazená zóna",
+				"placeholder": "Vyberte nadřazenou zónu (volitelné)",
+				"hint": "Tuto místnost můžete organizovat přiřazením k zóně, jako je \"Přízemí\" nebo \"Patro\". To pomáhá seskupit související místnosti."
 			},
 			"lightingRoles": {
-				"title": "Lighting roles",
-				"description": "Assign roles to lights to help the panel understand how each light is typically used (Work, Relax, Night)",
-				"noLights": "No lights found in this space",
+				"title": "Role osvětlení",
+				"description": "Přiřaďte role světlům, aby panel rozuměl, jak se každé světlo obvykle používá (Práce, Relax, Noc)",
+				"noLights": "V tomto prostoru nebyla nalezena žádná světla",
 				"role": {
 					"title": "Role",
-					"placeholder": "Select a role"
+					"placeholder": "Vyberte roli"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
+				"applyDefaults": "Použít výchozí",
+				"applyDefaultsHint": "Nastaví první světlo jako Hlavní, ostatní jako Ambientní"
 			},
 			"climateRoles": {
-				"title": "Climate roles",
-				"description": "Assign roles to climate devices to help the panel understand how each device controls temperature and air quality",
-				"noDevices": "No climate devices found in this space",
+				"title": "Role klimatu",
+				"description": "Přiřaďte role klimatickým zařízením, aby panel rozuměl, jak každé zařízení ovládá teplotu a kvalitu vzduchu",
+				"noDevices": "V tomto prostoru nebyla nalezena žádná klimatická zařízení",
 				"role": {
 					"title": "Role",
-					"placeholder": "Select a role"
+					"placeholder": "Vyberte roli"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on device type"
+				"applyDefaults": "Použít výchozí",
+				"applyDefaultsHint": "Automaticky přiřadí role na základě typu zařízení"
 			},
 			"coversRoles": {
-				"title": "Covers roles",
-				"description": "Assign roles to window coverings to help the panel understand how each cover is used (primary, blackout, sheer)",
-				"noCovers": "No window coverings found in this space",
+				"title": "Role rolet",
+				"description": "Přiřaďte role okenním roletám, aby panel rozuměl, jak se každá roleta používá (primární, zatemňovací, záclonová)",
+				"noCovers": "V tomto prostoru nebyly nalezeny žádné okenní rolety",
 				"role": {
 					"title": "Role",
-					"placeholder": "Select a role"
+					"placeholder": "Vyberte roli"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first cover as Primary, others based on type"
+				"applyDefaults": "Použít výchozí",
+				"applyDefaultsHint": "Nastaví první roletu jako Primární, ostatní na základě typu"
 			},
 			"sensorRoles": {
-				"title": "Sensor roles",
-				"description": "Assign roles to sensor channels so the panel can group environment, safety, security, air quality, and energy readings.",
-				"noSensors": "No sensors found in this space",
+				"title": "Role senzorů",
+				"description": "Přiřaďte role kanálům senzorů, aby panel mohl seskupit hodnoty prostředí, bezpečnosti, zabezpečení, kvality vzduchu a energie.",
+				"noSensors": "V tomto prostoru nebyly nalezeny žádné senzory",
 				"channel": {
-					"title": "Channel"
+					"title": "Kanál"
 				},
 				"role": {
 					"title": "Role",
-					"placeholder": "Select a role"
+					"placeholder": "Vyberte roli"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on sensor channel category"
+				"applyDefaults": "Použít výchozí",
+				"applyDefaultsHint": "Automaticky přiřadí role na základě kategorie kanálu senzoru"
 			},
 			"suggestions": {
-				"title": "Smart suggestions"
+				"title": "Chytré návrhy"
 			},
 			"suggestionsEnabled": {
-				"title": "Enable suggestions",
-				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
+				"title": "Povolit návrhy",
+				"hint": "Když je povoleno, panel bude zobrazovat nenápadné návrhy osvětlení na základě denní doby a aktuálního stavu."
 			},
 			"statusWidgets": {
 				"energy": {
 					"title": "Energie",
 					"range": {
-						"title": "Range",
+						"title": "Rozsah",
 						"options": {
-							"today": "Today",
-							"week": "Week",
-							"month": "Month"
+							"today": "Dnes",
+							"week": "Týden",
+							"month": "Měsíc"
 						}
 					},
 					"showProduction": {
-						"title": "Show production"
+						"title": "Zobrazit výrobu"
 					}
 				}
 			}
@@ -263,20 +266,20 @@
 	"lightingRoles": {
 		"main": "Hlavní",
 		"task": "Pracovní",
-		"ambient": "Okolní",
+		"ambient": "Ambientní",
 		"accent": "Akcentové",
 		"night": "Noční",
 		"other": "Ostatní",
 		"hidden": "Skryté",
-		"unassigned": "Nepřiřazené",
+		"unassigned": "Nepřiřazeno",
 		"descriptions": {
-			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
-			"task": "Focused lighting for specific activities like reading, cooking, or working.",
-			"ambient": "Soft background lighting used to create atmosphere and comfort.",
-			"accent": "Decorative lighting used to highlight features or create visual interest.",
-			"night": "Low-level lighting for nighttime navigation and safety.",
-			"other": "Lighting that doesn't fit into standard categories.",
-			"hidden": "Hidden lights are excluded from the panel UI and intent-based control."
+			"main": "Hlavní osvětlení prostoru, obvykle stropní nebo centrální svítidla pro obecné osvětlení.",
+			"task": "Zaměřené osvětlení pro specifické činnosti jako čtení, vaření nebo práci.",
+			"ambient": "Jemné pozadí osvětlení pro vytvoření atmosféry a komfortu.",
+			"accent": "Dekorativní osvětlení pro zvýraznění prvků nebo vytvoření vizuálního efektu.",
+			"night": "Slabé osvětlení pro noční navigaci a bezpečnost.",
+			"other": "Osvětlení, které nespadá do standardních kategorií.",
+			"hidden": "Skrytá světla jsou vyloučena z panelového rozhraní a ovládání na základě záměrů."
 		}
 	},
 	"climateRoles": {
@@ -284,16 +287,16 @@
 		"cooling_only": "Pouze chlazení",
 		"auto": "Automaticky",
 		"auxiliary": "Pomocné",
-		"sensor": "Čidlo",
+		"sensor": "Senzor",
 		"hidden": "Skryté",
-		"unassigned": "Nepřiřazené",
+		"unassigned": "Nepřiřazeno",
 		"descriptions": {
-			"heating_only": "Device is used only for heating in the climate domain.",
-			"cooling_only": "Device is used only for cooling in the climate domain.",
-			"auto": "Device can be used for both heating and cooling automatically.",
-			"auxiliary": "Auxiliary climate devices like dehumidifiers, humidifiers, air purifiers, and fans.",
-			"sensor": "Climate sensor providing readings (temperature, humidity, air quality, etc.) for the space.",
-			"hidden": "Hidden devices are excluded from the climate domain UI and control."
+			"heating_only": "Zařízení je používáno pouze pro topení v klimatické doméně.",
+			"cooling_only": "Zařízení je používáno pouze pro chlazení v klimatické doméně.",
+			"auto": "Zařízení může být automaticky použito pro topení i chlazení.",
+			"auxiliary": "Pomocná klimatická zařízení jako odvlhčovače, zvlhčovače, čističky vzduchu a ventilátory.",
+			"sensor": "Klimatický senzor poskytující hodnoty (teplota, vlhkost, kvalita vzduchu atd.) pro prostor.",
+			"hidden": "Skrytá zařízení jsou vyloučena z rozhraní klimatické domény a ovládání."
 		}
 	},
 	"sensorRoles": {
@@ -305,19 +308,19 @@
 		"other": "Ostatní",
 		"hidden": "Skryté",
 		"descriptions": {
-			"environment": "Environmental sensors such as temperature, humidity, pressure, or light levels.",
-			"safety": "Safety sensors like smoke, gas, leak, or carbon monoxide detectors.",
-			"security": "Security and presence sensors like motion, occupancy, and contact sensors.",
-			"air_quality": "Air quality sensors including CO2, VOC, particulate matter, and other pollutants.",
-			"energy": "Energy monitoring sensors such as power or energy consumption.",
-			"other": "Sensors that don't fit a specific category.",
-			"hidden": "Hidden sensors are excluded from the UI."
+			"environment": "Senzory prostředí jako teplota, vlhkost, tlak nebo úroveň osvětlení.",
+			"safety": "Bezpečnostní senzory jako detektory kouře, plynu, úniku vody nebo oxidu uhelnatého.",
+			"security": "Zabezpečovací senzory a senzory přítomnosti jako pohybové, obsazenostní a kontaktní senzory.",
+			"air_quality": "Senzory kvality vzduchu včetně CO2, VOC, pevných částic a dalších znečišťujících látek.",
+			"energy": "Senzory pro monitoring energie jako spotřeba elektřiny nebo energie.",
+			"other": "Senzory, které nespadají do specifické kategorie.",
+			"hidden": "Skryté senzory jsou vyloučeny z rozhraní."
 		},
 		"categories": {
 			"temperature": "Teplota",
 			"humidity": "Vlhkost",
 			"pressure": "Tlak",
-			"illuminance": "Illuminance",
+			"illuminance": "Osvětlení",
 			"smoke": "Kouř",
 			"gas": "Plyn",
 			"carbon_monoxide": "Oxid uhelnatý",
@@ -327,30 +330,30 @@
 			"occupancy": "Obsazenost",
 			"contact": "Kontakt",
 			"air_quality": "Kvalita vzduchu",
-			"air_particulate": "Air particulate",
-			"nitrogen_dioxide": "Nitrogen dioxide",
-			"ozone": "Ozone",
-			"sulphur_dioxide": "Sulphur dioxide",
-			"volatile_organic_compounds": "Volatile organic compounds",
+			"air_particulate": "Pevné částice",
+			"nitrogen_dioxide": "Oxid dusičitý",
+			"ozone": "Ozón",
+			"sulphur_dioxide": "Oxid siřičitý",
+			"volatile_organic_compounds": "Těkavé organické sloučeniny",
 			"electrical_energy": "Energie",
-			"electrical_generation": "Generation",
+			"electrical_generation": "Výroba",
 			"electrical_power": "Výkon",
 			"battery": "Baterie"
 		}
 	},
 	"coversRoles": {
 		"primary": "Primární",
-		"blackout": "Zatemnění",
-		"sheer": "Průsvitné",
+		"blackout": "Zatemňovací",
+		"sheer": "Záclonová",
 		"outdoor": "Venkovní",
 		"hidden": "Skryté",
-		"unassigned": "Nepřiřazené",
+		"unassigned": "Nepřiřazeno",
 		"descriptions": {
-			"primary": "Main window covering for the space, typically used for general privacy and light control.",
-			"blackout": "Light-blocking covers designed for complete darkness, ideal for bedrooms or media rooms.",
-			"sheer": "Semi-transparent covers that provide privacy while allowing natural light to filter through.",
-			"outdoor": "External shutters, awnings, or pergola covers for outdoor protection.",
-			"hidden": "Hidden covers are excluded from the panel UI and intent-based control."
+			"primary": "Hlavní okenní roleta prostoru, obvykle používaná pro obecné soukromí a regulaci světla.",
+			"blackout": "Zatemňovací rolety navržené pro úplnou tmu, ideální pro ložnice nebo mediální místnosti.",
+			"sheer": "Poloprůhledné záclony zajišťující soukromí a zároveň propouštějící přirozené světlo.",
+			"outdoor": "Vnější žaluzie, markýzy nebo pergolové kryty pro venkovní ochranu.",
+			"hidden": "Skryté rolety jsou vyloučeny z panelového rozhraní a ovládání na základě záměrů."
 		}
 	},
 	"filters": {
@@ -360,27 +363,27 @@
 		}
 	},
 	"texts": {
-		"loadingSpaces": "Loading spaces...",
-		"loadingSpace": "Loading space...",
-		"noSpaces": "You don't have configured any space",
-		"noFilteredSpaces": "No spaces match your filter criteria",
-		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+		"loadingSpaces": "Načítání prostorů...",
+		"loadingSpace": "Načítání prostoru...",
+		"noSpaces": "Nemáte nakonfigurovaný žádný prostor",
+		"noFilteredSpaces": "Žádné prostory neodpovídají kritériím filtru",
+		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
 	},
 	"dialogs": {
 		"lightingRoles": {
-			"title": "Edit Lighting Roles"
+			"title": "Upravit role osvětlení"
 		},
 		"climateRoles": {
-			"title": "Edit Climate Roles"
+			"title": "Upravit role klimatu"
 		},
 		"coversRoles": {
-			"title": "Edit Covers Roles"
+			"title": "Upravit role rolet"
 		},
 		"sensorRoles": {
-			"title": "Edit Sensor Roles"
+			"title": "Upravit role senzorů"
 		},
 		"mediaActivities": {
-			"title": "Edit Media Activities"
+			"title": "Upravit mediální aktivity"
 		}
 	},
 	"buttons": {
@@ -394,10 +397,10 @@
 			"title": "Detail"
 		},
 		"adjust": {
-			"title": "Filtrovat"
+			"title": "Filtr"
 		},
 		"resetFilters": {
-			"title": "Reset filters"
+			"title": "Resetovat filtry"
 		},
 		"reset": {
 			"title": "Resetovat"
@@ -436,166 +439,166 @@
 			"title": "Dokončit"
 		},
 		"onboarding": {
-			"title": "Setup wizard"
+			"title": "Průvodce nastavením"
 		},
 		"viewAll": {
-			"title": "View all"
+			"title": "Zobrazit vše"
 		},
 		"back": {
 			"title": "Zpět"
 		}
 	},
 	"detail": {
-		"title": "Space detail",
+		"title": "Detail prostoru",
 		"lightingRoles": {
-			"title": "Lighting roles",
-			"lightsAssigned": "Lights assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Role osvětlení",
+			"lightsAssigned": "Přiřazená světla",
+			"noRolesAssigned": "Zatím nejsou přiřazeny žádné role"
 		},
 		"climateRoles": {
-			"title": "Climate roles",
-			"devicesAssigned": "Devices assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Role klimatu",
+			"devicesAssigned": "Přiřazená zařízení",
+			"noRolesAssigned": "Zatím nejsou přiřazeny žádné role"
 		},
 		"coversRoles": {
-			"title": "Covers roles",
-			"coversAssigned": "Covers assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Role rolet",
+			"coversAssigned": "Přiřazené rolety",
+			"noRolesAssigned": "Zatím nejsou přiřazeny žádné role"
 		},
 		"sensorRoles": {
-			"title": "Sensor roles",
-			"sensorsAssigned": "Sensors assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Role senzorů",
+			"sensorsAssigned": "Přiřazené senzory",
+			"noRolesAssigned": "Zatím nejsou přiřazeny žádné role"
 		},
 		"mediaActivities": {
-			"title": "Media Activities",
-			"noActivities": "No activities configured yet"
+			"title": "Mediální aktivity",
+			"noActivities": "Zatím nejsou nakonfigurovány žádné aktivity"
 		},
 		"info": {
-			"title": "Space information",
+			"title": "Informace o prostoru",
 			"name": "Název",
 			"description": "Popis",
 			"type": "Typ",
 			"icon": "Ikona",
-			"displayOrder": "Display order"
+			"displayOrder": "Pořadí zobrazení"
 		},
 		"devices": {
 			"title": "Zařízení",
-			"add": "Add device",
-			"empty": "No devices assigned to this space",
-			"loading": "Loading devices...",
+			"add": "Přidat zařízení",
+			"empty": "K tomuto prostoru nejsou přiřazena žádná zařízení",
+			"loading": "Načítání zařízení...",
 			"remove": "Odebrat",
-			"removeHeading": "Remove device from space",
+			"removeHeading": "Odebrat zařízení z prostoru",
 			"reassign": "Přeřadit",
 			"assign": "Přiřadit",
-			"selectDevice": "Select devices to add",
-			"confirmRemove": "Remove device \"{name}\" from this space?",
-			"selectRoom": "Select room for device",
-			"noAvailable": "No devices available to add",
-			"removed": "Device \"{name}\" was removed from this space.",
-			"removeCanceled": "Device removal was canceled."
+			"selectDevice": "Vyberte zařízení k přidání",
+			"confirmRemove": "Odebrat zařízení \"{name}\" z tohoto prostoru?",
+			"selectRoom": "Vyberte místnost pro zařízení",
+			"noAvailable": "Nejsou k dispozici žádná zařízení k přidání",
+			"removed": "Zařízení \"{name}\" bylo odebráno z tohoto prostoru.",
+			"removeCanceled": "Odebrání zařízení bylo zrušeno."
 		},
 		"parentZone": {
-			"title": "Floor",
-			"none": "No floor assigned",
-			"select": "Select floor"
+			"title": "Podlaží",
+			"none": "Žádné podlaží nepřiřazeno",
+			"select": "Vyberte podlaží"
 		},
 		"displays": {
 			"title": "Displeje",
-			"add": "Add display",
-			"empty": "No displays assigned to this space",
-			"loading": "Loading displays...",
+			"add": "Přidat displej",
+			"empty": "K tomuto prostoru nejsou přiřazeny žádné displeje",
+			"loading": "Načítání displejů...",
 			"remove": "Odebrat",
-			"removeHeading": "Remove display from space",
+			"removeHeading": "Odebrat displej z prostoru",
 			"reassign": "Přeřadit",
 			"assign": "Přiřadit",
-			"selectDisplay": "Select display to add",
-			"confirmRemove": "Remove display \"{name}\" from this space?",
-			"selectRoom": "Select the room for this display",
-			"noAvailable": "No displays available to add",
-			"removed": "Display \"{name}\" was removed from this space.",
-			"removeCanceled": "Display removal was canceled."
+			"selectDisplay": "Vyberte displej k přidání",
+			"confirmRemove": "Odebrat displej \"{name}\" z tohoto prostoru?",
+			"selectRoom": "Vyberte místnost pro tento displej",
+			"noAvailable": "Nejsou k dispozici žádné displeje k přidání",
+			"removed": "Displej \"{name}\" byl odebrán z tohoto prostoru.",
+			"removeCanceled": "Odebrání displeje bylo zrušeno."
 		},
 		"media": {
-			"activities": "Media Activities"
+			"activities": "Mediální aktivity"
 		},
 		"scenes": {
 			"title": "Scény",
-			"add": "Add scene",
-			"empty": "No scenes assigned to this space",
-			"loading": "Loading scenes...",
-			"name": "Scene name",
+			"add": "Přidat scénu",
+			"empty": "K tomuto prostoru nejsou přiřazeny žádné scény",
+			"loading": "Načítání scén...",
+			"name": "Název scény",
 			"category": "Kategorie",
 			"status": "Stav",
-			"enabled": "Aktivní",
-			"disabled": "Neaktivní",
+			"enabled": "Povoleno",
+			"disabled": "Zakázáno",
 			"remove": "Odebrat",
-			"removeHeading": "Remove scene from space",
+			"removeHeading": "Odebrat scénu z prostoru",
 			"reassign": "Přeřadit",
-			"reassigned": "Scene \"{name}\" was reassigned successfully.",
+			"reassigned": "Scéna \"{name}\" byla úspěšně přeřazena.",
 			"assign": "Přiřadit",
-			"selectScene": "Select scene to add",
-			"selectSpace": "Select space for scene",
-			"searchPlaceholder": "Search scenes...",
-			"confirmRemove": "Remove scene \"{name}\" from this space?",
-			"assignedSpace": "Assigned space",
-			"noAvailable": "No scenes available to add",
-			"noFilteredScenes": "No scenes match your search",
-			"assigned": "Scene \"{name}\" was assigned to this space.",
-			"removed": "Scene \"{name}\" was removed from this space.",
-			"removeCanceled": "Scene removal was canceled."
+			"selectScene": "Vyberte scénu k přidání",
+			"selectSpace": "Vyberte prostor pro scénu",
+			"searchPlaceholder": "Hledat scény...",
+			"confirmRemove": "Odebrat scénu \"{name}\" z tohoto prostoru?",
+			"assignedSpace": "Přiřazený prostor",
+			"noAvailable": "Nejsou k dispozici žádné scény k přidání",
+			"noFilteredScenes": "Žádné scény neodpovídají vašemu hledání",
+			"assigned": "Scéna \"{name}\" byla přiřazena k tomuto prostoru.",
+			"removed": "Scéna \"{name}\" byla odebrána z tohoto prostoru.",
+			"removeCanceled": "Odebrání scény bylo zrušeno."
 		}
 	},
 	"media": {
 		"endpointTypes": {
 			"display": "Displej",
-			"audio_output": "Audio Output",
+			"audio_output": "Zvukový výstup",
 			"source": "Zdroj",
-			"remote_target": "Remote Target"
+			"remote_target": "Vzdálený cíl"
 		},
 		"capabilities": {
-			"power": "Výkon",
+			"power": "Napájení",
 			"input": "Vstup",
 			"volume": "Hlasitost",
-			"playback": "Playback",
-			"track": "Track",
-			"remote": "Remote",
-			"mute": "Ztlumit"
+			"playback": "Přehrávání",
+			"track": "Stopa",
+			"remote": "Dálkové ovládání",
+			"mute": "Ztlumení"
 		},
 		"activityLabels": {
-			"watch": "Sledovat",
-			"listen": "Poslouchat",
+			"watch": "Sledování",
+			"listen": "Poslech",
 			"gaming": "Hraní",
 			"background": "Pozadí",
 			"off": "Vypnuto"
 		},
 		"activities": {
-			"loading": "Loading media configuration...",
-			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
-			"applyDefaults": "Apply defaults",
-			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
-			"defaultsApplied": "Default bindings have been applied.",
-			"defaultsFailed": "Failed to apply default bindings.",
-			"selectPrompt": "Select an activity from the list to configure its bindings.",
-			"selectEndpoint": "Select endpoint...",
+			"loading": "Načítání konfigurace médií...",
+			"description": "Přiřaďte displej, zvuk, zdroj a dálkově ovládaná zařízení ke každé mediální aktivitě. Změny se ukládají automaticky.",
+			"applyDefaults": "Použít výchozí",
+			"applyDefaultsHint": "Automaticky přiřadí koncové body na základě typů zařízení a jejich schopností",
+			"defaultsApplied": "Výchozí vazby byly použity.",
+			"defaultsFailed": "Nepodařilo se použít výchozí vazby.",
+			"selectPrompt": "Vyberte aktivitu ze seznamu pro konfiguraci jejích vazeb.",
+			"selectEndpoint": "Vyberte koncový bod...",
 			"save": "Uložit",
 			"reset": "Resetovat",
-			"saveError": "Failed to save binding",
-			"savedSuccessfully": "Binding saved successfully.",
+			"saveError": "Nepodařilo se uložit vazbu",
+			"savedSuccessfully": "Vazba byla úspěšně uložena.",
 			"slots": {
 				"display": "Displej",
-				"audio": "Audio output",
+				"audio": "Zvukový výstup",
 				"source": "Zdroj",
-				"remote": "Remote target"
+				"remote": "Vzdálený cíl"
 			},
 			"overrides": {
-				"displayInput": "Display input preset",
-				"displayInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioInput": "Audio input preset",
-				"audioInputPlaceholder": "e.g. HDMI1, ARC",
-				"sourceInput": "Source input preset",
-				"sourceInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioVolume": "Audio volume preset"
+				"displayInput": "Preset vstupu displeje",
+				"displayInputPlaceholder": "např. HDMI1, Apps",
+				"audioInput": "Preset zvukového vstupu",
+				"audioInputPlaceholder": "např. HDMI1, ARC",
+				"sourceInput": "Preset vstupu zdroje",
+				"sourceInputPlaceholder": "např. HDMI1, Apps",
+				"audioVolume": "Preset hlasitosti zvuku"
 			},
 			"mediaInputSources": {
 				"hdmi1": "HDMI 1",
@@ -612,7 +615,7 @@
 				"antenna": "Anténa",
 				"av1": "AV 1",
 				"av2": "AV 2",
-				"component": "Component",
+				"component": "Komponent",
 				"vga": "VGA",
 				"dvi": "DVI",
 				"usb": "USB",
@@ -640,56 +643,56 @@
 			},
 			"run": "Spustit",
 			"deactivate": "Deaktivovat",
-			"refreshStatus": "Refresh status",
-			"rerun": "Re-run",
-			"copyDebugJson": "Copy debug JSON",
-			"copiedToClipboard": "Debug JSON copied to clipboard.",
-			"activateSuccess": "Activity activated successfully.",
-			"activateFailed": "Failed to activate activity.",
-			"deactivateSuccess": "Activity deactivated.",
-			"deactivateFailed": "Failed to deactivate activity.",
-			"fetchFailed": "Failed to refresh activity status.",
+			"refreshStatus": "Obnovit stav",
+			"rerun": "Spustit znovu",
+			"copyDebugJson": "Kopírovat ladící JSON",
+			"copiedToClipboard": "Ladící JSON byl zkopírován do schránky.",
+			"activateSuccess": "Aktivita byla úspěšně aktivována.",
+			"activateFailed": "Nepodařilo se aktivovat aktivitu.",
+			"deactivateSuccess": "Aktivita byla deaktivována.",
+			"deactivateFailed": "Nepodařilo se deaktivovat aktivitu.",
+			"fetchFailed": "Nepodařilo se obnovit stav aktivity.",
 			"preview": "Náhled",
-			"previewFailed": "Failed to preview activity.",
+			"previewFailed": "Nepodařilo se zobrazit náhled aktivity.",
 			"previewDialog": {
-				"title": "Execution Plan Preview",
-				"resolvedDevices": "Resolved devices",
-				"executionPlan": "Execution plan",
+				"title": "Náhled plánu provedení",
+				"resolvedDevices": "Rozpoznaná zařízení",
+				"executionPlan": "Plán provedení",
 				"step": "#",
-				"action": "Action",
-				"device": "Device",
-				"critical": "Critical",
-				"criticalYes": "Critical",
-				"criticalNo": "Optional",
-				"warnings": "Warnings & skipped steps",
-				"noSteps": "No execution steps in plan.",
+				"action": "Akce",
+				"device": "Zařízení",
+				"critical": "Kritické",
+				"criticalYes": "Kritické",
+				"criticalNo": "Volitelné",
+				"warnings": "Varování a přeskočené kroky",
+				"noSteps": "V plánu nejsou žádné kroky provedení.",
 				"close": "Zavřít"
 			},
 			"activePanel": {
-				"title": "Active State",
-				"currentActivity": "Current activity",
-				"none": "None",
-				"state": "State",
-				"activatedAt": "Activated at",
-				"updatedAt": "Updated at",
-				"resolvedDevices": "Resolved devices",
+				"title": "Aktivní stav",
+				"currentActivity": "Aktuální aktivita",
+				"none": "Žádná",
+				"state": "Stav",
+				"activatedAt": "Aktivováno v",
+				"updatedAt": "Aktualizováno v",
+				"resolvedDevices": "Rozpoznaná zařízení",
 				"display": "Displej",
-				"audio": "Audio",
+				"audio": "Zvuk",
 				"source": "Zdroj",
-				"remote": "Remote"
+				"remote": "Dálkové ovládání"
 			},
 			"failures": {
-				"title": "Failures",
-				"total": "Total steps",
-				"succeeded": "Succeeded",
-				"failed": "Selhalo",
-				"stepIndex": "Step",
-				"device": "Device",
-				"property": "Property",
-				"reason": "Reason"
+				"title": "Selhání",
+				"total": "Celkem kroků",
+				"succeeded": "Úspěšných",
+				"failed": "Neúspěšných",
+				"stepIndex": "Krok",
+				"device": "Zařízení",
+				"property": "Vlastnost",
+				"reason": "Důvod"
 			},
 			"activationState": {
-				"activating": "Activating",
+				"activating": "Aktivace",
 				"active": "Aktivní",
 				"failed": "Selhalo",
 				"deactivated": "Deaktivováno"
@@ -697,24 +700,24 @@
 		}
 	},
 	"messages": {
-		"notFound": "Space not found",
-		"loadError": "Failed to load spaces",
-		"notLoaded": "Failed to load space. Please try again later.",
-		"confirmRemove": "Are you sure you want to remove space \"{name}\"? This action cannot be undone.",
-		"confirmDelete": "Are you sure you want to delete this space?",
-		"created": "New space added successfully.",
-		"notCreated": "Something went wrong. Unable to create the space.",
-		"edited": "Changes saved! The space: {space} has been updated.",
-		"notEdited": "Something went wrong. Space update was not successful.",
-		"removed": "The space: {space} was successfully removed.",
-		"removeCanceled": "Space: {space} removal has been canceled.",
-		"deletedWhileEditing": "This space was deleted and is no longer available.",
-		"createError": "Failed to create space. Please try again.",
-		"saveError": "Failed to save changes. Please try again.",
-		"confirmBulkRemove": "Are you sure you want to remove {count} spaces? This action cannot be undone.",
-		"bulkRemoved": "{count} spaces were successfully removed.",
-		"bulkRemoveFailed": "Failed to remove {count} spaces.",
-		"bulkRemoveCanceled": "Bulk space removal has been canceled."
+		"notFound": "Prostor nebyl nalezen",
+		"loadError": "Nepodařilo se načíst prostory",
+		"notLoaded": "Nepodařilo se načíst prostor. Zkuste to prosím později.",
+		"confirmRemove": "Opravdu chcete odebrat prostor \"{name}\"? Tuto akci nelze vrátit zpět.",
+		"confirmDelete": "Opravdu chcete smazat tento prostor?",
+		"created": "Nový prostor byl úspěšně přidán.",
+		"notCreated": "Něco se pokazilo. Prostor se nepodařilo vytvořit.",
+		"edited": "Změny uloženy! Prostor: {space} byl aktualizován.",
+		"notEdited": "Něco se pokazilo. Aktualizace prostoru nebyla úspěšná.",
+		"removed": "Prostor: {space} byl úspěšně odebrán.",
+		"removeCanceled": "Odebrání prostoru: {space} bylo zrušeno.",
+		"deletedWhileEditing": "Tento prostor byl smazán a již není dostupný.",
+		"createError": "Nepodařilo se vytvořit prostor. Zkuste to prosím znovu.",
+		"saveError": "Nepodařilo se uložit změny. Zkuste to prosím znovu.",
+		"confirmBulkRemove": "Opravdu chcete odebrat {count} prostorů? Tuto akci nelze vrátit zpět.",
+		"bulkRemoved": "{count} prostorů bylo úspěšně odebráno.",
+		"bulkRemoveFailed": "Nepodařilo se odebrat {count} prostorů.",
+		"bulkRemoveCanceled": "Hromadné odebrání prostorů bylo zrušeno."
 	},
 	"misc": {
 		"types": {
@@ -723,76 +726,76 @@
 		}
 	},
 	"onboarding": {
-		"title": "Spaces setup wizard",
+		"title": "Průvodce nastavením prostorů",
 		"devices": "zařízení",
 		"displays": "displeje",
-		"selectSpace": "Select space",
-		"selectZones": "Select zones...",
-		"deviceName": "Device name",
-		"displayName": "Display name",
-		"assignedSpace": "Assigned space",
-		"spaceName": "Space name",
-		"zones": "Zones (optional)",
+		"selectSpace": "Vyberte prostor",
+		"selectZones": "Vyberte zóny...",
+		"deviceName": "Název zařízení",
+		"displayName": "Název displeje",
+		"assignedSpace": "Přiřazený prostor",
+		"spaceName": "Název prostoru",
+		"zones": "Zóny (volitelné)",
 		"advanced": "Pokročilé",
-		"basic": "Basic",
+		"basic": "Základní",
 		"steps": {
 			"spaces": {
-				"title": "Create spaces",
-				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
-				"alertTitle": "Spaces represent rooms or areas in your home",
-				"alertDescription": "We've suggested some spaces based on your device names. You can adjust them now or change everything later.",
-				"proposed": "Proposed spaces",
-				"custom": "Custom spaces",
-				"existing": "Existing spaces",
-				"matchedExisting": "Using existing spaces",
-				"usingExisting": "Using existing",
-				"matchedWith": "Will use: {name}",
-				"addManual": "Add custom space",
-				"placeholder": "Enter space name (e.g., Living Room)",
-				"noProposals": "No spaces could be detected from your device names. Add spaces manually below.",
-				"duplicateWarning": "A space similar to \"{name}\" already exists.",
-				"convertedToMatch": "This space matches an existing space and has been moved to the 'Using existing spaces' section.",
-				"multipleMatchedWith": "{count} detected spaces will use existing space '{name}'",
-				"existingTag": "Stávající"
+				"title": "Vytvořit prostory",
+				"description": "Prostory vám pomáhají organizovat zařízení a displeje podle místností nebo zón (např. Obývací pokoj, Kuchyně, Ložnice). Automaticky jsme detekovali některé prostory z názvů vašich zařízení - zkontrolujte a vyberte ty, které chcete vytvořit, nebo přidejte vlastní prostory níže.",
+				"alertTitle": "Prostory představují místnosti nebo oblasti ve vašem domě",
+				"alertDescription": "Navrhli jsme některé prostory na základě názvů vašich zařízení. Můžete je nyní upravit nebo vše změnit později.",
+				"proposed": "Navrhované prostory",
+				"custom": "Vlastní prostory",
+				"existing": "Existující prostory",
+				"matchedExisting": "Použití existujících prostorů",
+				"usingExisting": "Použití existujícího",
+				"matchedWith": "Bude použit: {name}",
+				"addManual": "Přidat vlastní prostor",
+				"placeholder": "Zadejte název prostoru (např. Obývací pokoj)",
+				"noProposals": "Z názvů vašich zařízení nebylo možné detekovat žádné prostory. Přidejte prostory ručně níže.",
+				"duplicateWarning": "Prostor podobný \"{name}\" již existuje.",
+				"convertedToMatch": "Tento prostor odpovídá existujícímu prostoru a byl přesunut do sekce \"Použití existujících prostorů\".",
+				"multipleMatchedWith": "{count} detekovaných prostorů bude používat existující prostor \"{name}\"",
+				"existingTag": "Existující"
 			},
 			"displays": {
-				"title": "Assign displays",
-				"description": "Assign each display to a space. This determines which space the display will show by default.",
-				"alertTitle": "Choose a default space for each display",
-				"alertDescription": "This only sets the initial view—you can switch spaces anytime from the display itself.",
-				"noDisplays": "No displays registered yet."
+				"title": "Přiřadit displeje",
+				"description": "Přiřaďte každý displej k prostoru. Toto určuje, který prostor bude displej ve výchozím nastavení zobrazovat.",
+				"alertTitle": "Vyberte výchozí prostor pro každý displej",
+				"alertDescription": "Toto nastavuje pouze počáteční zobrazení - prostory můžete kdykoli přepínat přímo na displeji.",
+				"noDisplays": "Zatím nejsou registrovány žádné displeje."
 			},
 			"devices": {
-				"title": "Assign devices",
-				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
-				"alertTitle": "Connect your devices to rooms",
-				"alertDescription": "Some devices are pre-filled based on their names. Feel free to adjust—you can always change assignments later.",
-				"noDevices": "No devices found."
+				"title": "Přiřadit zařízení",
+				"description": "Přiřaďte zařízení k prostorům. Zařízení budou předvyplněna na základě jejich názvů, pokud byly detekovány.",
+				"alertTitle": "Propojte zařízení s místnostmi",
+				"alertDescription": "Některá zařízení jsou předvyplněna na základě jejich názvů. Můžete je upravit - přiřazení můžete kdykoli změnit později.",
+				"noDevices": "Nebyla nalezena žádná zařízení."
 			},
 			"summary": {
 				"title": "Souhrn",
-				"description": "Review your configuration before applying changes.",
-				"alertTitle": "Summary of your setup",
-				"alertDescription": "You can still go back and adjust anything before finishing."
+				"description": "Zkontrolujte konfiguraci před použitím změn.",
+				"alertTitle": "Souhrn vašeho nastavení",
+				"alertDescription": "Stále se můžete vrátit zpět a cokoli upravit před dokončením."
 			}
 		},
 		"summary": {
 			"overview": "Souhrn",
-			"totalSpaces": "Total spaces",
-			"assignedDevices": "Assigned devices",
-			"unassignedDevices": "Unassigned devices",
-			"assignedDisplays": "Assigned displays",
-			"unassignedDisplays": "Unassigned displays",
-			"bySpace": "Assignments by space",
-			"unassignedDevicesTitle": "Unassigned devices",
-			"unassignedDisplaysTitle": "Unassigned displays",
+			"totalSpaces": "Celkem prostorů",
+			"assignedDevices": "Přiřazená zařízení",
+			"unassignedDevices": "Nepřiřazená zařízení",
+			"assignedDisplays": "Přiřazené displeje",
+			"unassignedDisplays": "Nepřiřazené displeje",
+			"bySpace": "Přiřazení podle prostoru",
+			"unassignedDevicesTitle": "Nepřiřazená zařízení",
+			"unassignedDisplaysTitle": "Nepřiřazené displeje",
 			"noDevices": "Žádná zařízení",
-			"clickToAssignDevices": "Click to assign devices",
-			"clickToAssignDisplays": "Click to assign displays"
+			"clickToAssignDevices": "Klikněte pro přiřazení zařízení",
+			"clickToAssignDisplays": "Klikněte pro přiřazení displejů"
 		},
 		"messages": {
-			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
+			"spacesCreated": "{count} prostor(ů) bylo úspěšně vytvořeno",
+			"completed": "Nastavení dokončeno! {devices} zařízení, {displays} displej(ů) a {zones} přiřazení zón."
 		}
 	}
 }

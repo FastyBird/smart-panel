@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Extensions"
+	},
 	"meta": {
 		"extensions": {
 			"list": {

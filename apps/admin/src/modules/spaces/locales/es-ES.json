@@ -1,16 +1,19 @@
 {
+	"menu": {
+		"title": "Espacios"
+	},
 	"title": "Espacios",
-	"description": "Manage your spaces (rooms and zones)",
+	"description": "Gestiona tus espacios (habitaciones y zonas)",
 	"headings": {
 		"list": "Espacios",
 		"spaces": "Espacios",
-		"detail": "Space detail",
-		"add": "Add space",
-		"edit": "Edit space",
-		"removeSpace": "Remove space",
-		"bulkRemoveSpace": "Remove spaces",
-		"discard": "Discard changes",
-		"adjustFilters": "Filter spaces"
+		"detail": "Detalle del espacio",
+		"add": "Añadir espacio",
+		"edit": "Editar espacio",
+		"removeSpace": "Eliminar espacio",
+		"bulkRemoveSpace": "Eliminar espacios",
+		"discard": "Descartar cambios",
+		"adjustFilters": "Filtrar espacios"
 	},
 	"edit": {
 		"sections": {
@@ -19,64 +22,64 @@
 			},
 			"organization": {
 				"title": "Organización",
-				"hint": "Assign this room to a zone (e.g. \"Ground Floor\", \"Upstairs\") to group related rooms together."
+				"hint": "Asigne esta habitación a una zona (p. ej., \"Planta baja\", \"Planta alta\") para agrupar habitaciones relacionadas."
 			},
 			"devicesDisplays": {
-				"title": "Devices & Displays",
+				"title": "Dispositivos y pantallas",
 				"titleDevicesOnly": "Dispositivos",
-				"summary": "{devices} devices and {displays} displays are currently assigned to this space.",
-				"summaryDevicesOnly": "{devices} devices are currently assigned to this space.",
-				"manageDevices": "Manage devices",
-				"manageDisplays": "Manage displays"
+				"summary": "Actualmente hay {devices} dispositivos y {displays} pantallas asignados a este espacio.",
+				"summaryDevicesOnly": "Actualmente hay {devices} dispositivos asignados a este espacio.",
+				"manageDevices": "Gestionar dispositivos",
+				"manageDisplays": "Gestionar pantallas"
 			},
 			"statusWidgets": {
-				"title": "Status widgets",
-				"hint": "Configure widgets displayed in the space status area on the panel."
+				"title": "Widgets de estado",
+				"hint": "Configure los widgets que se muestran en el área de estado del espacio en el panel."
 			},
 			"smartOverrides": {
-				"title": "Smart overrides",
+				"title": "Anulaciones inteligentes",
 				"badge": "Avanzado",
-				"hint": "Optional settings to improve smart behavior and intent-based control.",
-				"lightingRoles": "Lighting roles",
-				"climateRoles": "Climate roles",
-				"coversRoles": "Covers roles",
-				"sensorRoles": "Sensor roles",
-				"smartSuggestions": "Smart suggestions"
+				"hint": "Configuraciones opcionales para mejorar el comportamiento inteligente y el control basado en intenciones.",
+				"lightingRoles": "Roles de iluminación",
+				"climateRoles": "Roles de climatización",
+				"coversRoles": "Roles de cubiertas",
+				"sensorRoles": "Roles de sensores",
+				"smartSuggestions": "Sugerencias inteligentes"
 			}
 		}
 	},
 	"subHeadings": {
-		"list": "Organize devices and displays by rooms or zones",
-		"adjustFilters": "Adjust display filters",
-		"add": "Add new space",
-		"detail": "Manage space: {space}",
-		"onboarding": "Setup wizard for spaces, devices and displays"
+		"list": "Organiza dispositivos y pantallas por habitaciones o zonas",
+		"adjustFilters": "Ajustar filtros de visualización",
+		"add": "Añadir nuevo espacio",
+		"detail": "Gestionar espacio: {space}",
+		"onboarding": "Asistente de configuración para espacios, dispositivos y pantallas"
 	},
 	"breadcrumbs": {
 		"spaces": {
 			"list": "espacios",
-			"detail": "space: {space}",
-			"edit": "edit space",
-			"add": "add space",
-			"onboarding": "setup wizard"
+			"detail": "espacio: {space}",
+			"edit": "editar espacio",
+			"add": "añadir espacio",
+			"onboarding": "asistente de configuración"
 		}
 	},
 	"meta": {
 		"spaces": {
 			"list": {
-				"title": "List spaces"
+				"title": "Listar espacios"
 			},
 			"edit": {
-				"title": "Edit space: {space}"
+				"title": "Editar espacio: {space}"
 			},
 			"add": {
-				"title": "Add space"
+				"title": "Añadir espacio"
 			},
 			"detail": {
-				"title": "Space: {space}"
+				"title": "Espacio: {space}"
 			},
 			"onboarding": {
-				"title": "Spaces setup wizard"
+				"title": "Asistente de configuración de espacios"
 			}
 		}
 	},
@@ -91,28 +94,28 @@
 			"displays": "Pantallas",
 			"actions": "Acciones"
 		},
-		"empty": "No spaces found. Create your first space to get started."
+		"empty": "No se encontraron espacios. Cree su primer espacio para comenzar."
 	},
 	"fields": {
 		"search": {
-			"placeholder": "Search spaces..."
+			"placeholder": "Buscar espacios..."
 		},
 		"spaces": {
 			"id": {
-				"title": "Internal identifier",
-				"placeholder": "Space id"
+				"title": "Identificador interno",
+				"placeholder": "ID de espacio"
 			},
 			"name": {
 				"title": "Nombre",
-				"placeholder": "Enter space name (e.g., Living Room)",
+				"placeholder": "Introduzca el nombre del espacio (p. ej., Salón)",
 				"validation": {
-					"required": "Name is required",
-					"maxLength": "Name must be less than 100 characters"
+					"required": "El nombre es obligatorio",
+					"maxLength": "El nombre debe tener menos de 100 caracteres"
 				}
 			},
 			"description": {
 				"title": "Descripción",
-				"placeholder": "Optional description of the space"
+				"placeholder": "Descripción opcional del espacio"
 			},
 			"type": {
 				"title": "Tipo",
@@ -121,23 +124,23 @@
 					"zone": "Zona"
 				},
 				"validation": {
-					"required": "Type is required"
+					"required": "El tipo es obligatorio"
 				}
 			},
 			"category": {
 				"title": "Categoría",
-				"placeholder": "Select a category",
-				"hint": "Choosing a category will automatically suggest an icon and description for this space. Available categories depend on whether this is a room or zone.",
+				"placeholder": "Seleccione una categoría",
+				"hint": "Elegir una categoría sugerirá automáticamente un icono y una descripción para este espacio. Las categorías disponibles dependen de si se trata de una habitación o una zona.",
 				"validation": {
-					"requiredForZone": "Category is required for zones"
+					"requiredForZone": "La categoría es obligatoria para las zonas"
 				},
 				"groups": {
 					"floors": "Plantas",
 					"outdoor": "Áreas exteriores",
-					"other": "Otro"
+					"other": "Otros"
 				},
 				"options": {
-					"living_room": "Sala de estar",
+					"living_room": "Salón",
 					"bedroom": "Dormitorio",
 					"bathroom": "Baño",
 					"toilet": "Aseo",
@@ -152,109 +155,109 @@
 					"storage": "Almacén",
 					"closet": "Armario",
 					"pantry": "Despensa",
-					"nursery": "Cuarto infantil",
+					"nursery": "Habitación infantil",
 					"guest_room": "Habitación de invitados",
 					"gym": "Gimnasio",
-					"media_room": "Sala de medios",
+					"media_room": "Sala multimedia",
 					"workshop": "Taller",
 					"other": "Otro",
 					"floor_ground": "Planta baja",
-					"floor_first": "Primer piso",
-					"floor_second": "Segundo piso",
+					"floor_first": "Primera planta",
+					"floor_second": "Segunda planta",
 					"floor_basement": "Sótano",
 					"floor_attic": "Ático",
 					"outdoor_front_yard": "Jardín delantero",
-					"outdoor_backyard": "Patio trasero",
+					"outdoor_backyard": "Jardín trasero",
 					"outdoor_driveway": "Entrada de vehículos",
 					"outdoor_garden": "Jardín",
 					"outdoor_terrace": "Terraza",
 					"outdoor_balcony": "Balcón",
 					"outdoor_walkway": "Pasarela",
 					"security_perimeter": "Perímetro de seguridad",
-					"utility": "Servicio",
+					"utility": "Servicios",
 					"zone_other": "Otro"
 				}
 			},
 			"icon": {
 				"title": "Icono",
-				"placeholder": "mdi:home (Iconify icon name)"
+				"placeholder": "mdi:home (nombre de icono Iconify)"
 			},
 			"displayOrder": {
-				"title": "Display order",
-				"placeholder": "Order in lists"
+				"title": "Orden de visualización",
+				"placeholder": "Orden en las listas"
 			},
 			"parentZone": {
-				"title": "Parent zone",
-				"placeholder": "Select a parent zone (optional)",
-				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
+				"title": "Zona principal",
+				"placeholder": "Seleccione una zona principal (opcional)",
+				"hint": "Puede organizar esta habitación asignándola a una zona, como 'Planta baja' o 'Planta alta'. Esto ayuda a agrupar habitaciones relacionadas."
 			},
 			"lightingRoles": {
-				"title": "Lighting roles",
-				"description": "Assign roles to lights to help the panel understand how each light is typically used (Work, Relax, Night)",
-				"noLights": "No lights found in this space",
+				"title": "Roles de iluminación",
+				"description": "Asigne roles a las luces para ayudar al panel a comprender cómo se usa normalmente cada luz (Trabajo, Relax, Noche)",
+				"noLights": "No se encontraron luces en este espacio",
 				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
+					"title": "Rol",
+					"placeholder": "Seleccione un rol"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
+				"applyDefaults": "Aplicar valores predeterminados",
+				"applyDefaultsHint": "Establece la primera luz como Principal, las demás como Ambiental"
 			},
 			"climateRoles": {
-				"title": "Climate roles",
-				"description": "Assign roles to climate devices to help the panel understand how each device controls temperature and air quality",
-				"noDevices": "No climate devices found in this space",
+				"title": "Roles de climatización",
+				"description": "Asigne roles a los dispositivos de climatización para ayudar al panel a comprender cómo cada dispositivo controla la temperatura y la calidad del aire",
+				"noDevices": "No se encontraron dispositivos de climatización en este espacio",
 				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
+					"title": "Rol",
+					"placeholder": "Seleccione un rol"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on device type"
+				"applyDefaults": "Aplicar valores predeterminados",
+				"applyDefaultsHint": "Asigna automáticamente roles según el tipo de dispositivo"
 			},
 			"coversRoles": {
-				"title": "Covers roles",
-				"description": "Assign roles to window coverings to help the panel understand how each cover is used (primary, blackout, sheer)",
-				"noCovers": "No window coverings found in this space",
+				"title": "Roles de cubiertas",
+				"description": "Asigne roles a las cubiertas de ventanas para ayudar al panel a comprender cómo se usa cada cubierta (principal, opaca, translúcida)",
+				"noCovers": "No se encontraron cubiertas de ventanas en este espacio",
 				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
+					"title": "Rol",
+					"placeholder": "Seleccione un rol"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets first cover as Primary, others based on type"
+				"applyDefaults": "Aplicar valores predeterminados",
+				"applyDefaultsHint": "Establece la primera cubierta como Principal, las demás según el tipo"
 			},
 			"sensorRoles": {
-				"title": "Sensor roles",
-				"description": "Assign roles to sensor channels so the panel can group environment, safety, security, air quality, and energy readings.",
-				"noSensors": "No sensors found in this space",
+				"title": "Roles de sensores",
+				"description": "Asigne roles a los canales de sensores para que el panel pueda agrupar lecturas de entorno, seguridad, calidad del aire y energía.",
+				"noSensors": "No se encontraron sensores en este espacio",
 				"channel": {
-					"title": "Channel"
+					"title": "Canal"
 				},
 				"role": {
-					"title": "Role",
-					"placeholder": "Select a role"
+					"title": "Rol",
+					"placeholder": "Seleccione un rol"
 				},
-				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Auto-assigns roles based on sensor channel category"
+				"applyDefaults": "Aplicar valores predeterminados",
+				"applyDefaultsHint": "Asigna automáticamente roles según la categoría del canal del sensor"
 			},
 			"suggestions": {
-				"title": "Smart suggestions"
+				"title": "Sugerencias inteligentes"
 			},
 			"suggestionsEnabled": {
-				"title": "Enable suggestions",
-				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
+				"title": "Activar sugerencias",
+				"hint": "Cuando está activado, el panel mostrará sugerencias de iluminación no intrusivas basadas en la hora del día y el estado actual."
 			},
 			"statusWidgets": {
 				"energy": {
 					"title": "Energía",
 					"range": {
-						"title": "Range",
+						"title": "Rango",
 						"options": {
-							"today": "Today",
-							"week": "Week",
-							"month": "Month"
+							"today": "Hoy",
+							"week": "Semana",
+							"month": "Mes"
 						}
 					},
 					"showProduction": {
-						"title": "Show production"
+						"title": "Mostrar producción"
 					}
 				}
 			}
@@ -265,18 +268,18 @@
 		"task": "Tarea",
 		"ambient": "Ambiental",
 		"accent": "Acento",
-		"night": "Noche",
-		"other": "Otro",
-		"hidden": "Oculto",
+		"night": "Nocturna",
+		"other": "Otra",
+		"hidden": "Oculta",
 		"unassigned": "Sin asignar",
 		"descriptions": {
-			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
-			"task": "Focused lighting for specific activities like reading, cooking, or working.",
-			"ambient": "Soft background lighting used to create atmosphere and comfort.",
-			"accent": "Decorative lighting used to highlight features or create visual interest.",
-			"night": "Low-level lighting for nighttime navigation and safety.",
-			"other": "Lighting that doesn't fit into standard categories.",
-			"hidden": "Hidden lights are excluded from the panel UI and intent-based control."
+			"main": "Iluminación principal del espacio, normalmente luminarias de techo o centrales utilizadas para la iluminación general.",
+			"task": "Iluminación enfocada para actividades específicas como leer, cocinar o trabajar.",
+			"ambient": "Iluminación suave de fondo utilizada para crear ambiente y confort.",
+			"accent": "Iluminación decorativa utilizada para resaltar elementos o crear interés visual.",
+			"night": "Iluminación de bajo nivel para la navegación y seguridad nocturna.",
+			"other": "Iluminación que no encaja en las categorías estándar.",
+			"hidden": "Las luces ocultas se excluyen de la interfaz del panel y del control basado en intenciones."
 		}
 	},
 	"climateRoles": {
@@ -288,12 +291,12 @@
 		"hidden": "Oculto",
 		"unassigned": "Sin asignar",
 		"descriptions": {
-			"heating_only": "Device is used only for heating in the climate domain.",
-			"cooling_only": "Device is used only for cooling in the climate domain.",
-			"auto": "Device can be used for both heating and cooling automatically.",
-			"auxiliary": "Auxiliary climate devices like dehumidifiers, humidifiers, air purifiers, and fans.",
-			"sensor": "Climate sensor providing readings (temperature, humidity, air quality, etc.) for the space.",
-			"hidden": "Hidden devices are excluded from the climate domain UI and control."
+			"heating_only": "El dispositivo se utiliza solo para calefacción en el dominio de climatización.",
+			"cooling_only": "El dispositivo se utiliza solo para refrigeración en el dominio de climatización.",
+			"auto": "El dispositivo puede utilizarse tanto para calefacción como para refrigeración automáticamente.",
+			"auxiliary": "Dispositivos auxiliares de climatización como deshumidificadores, humidificadores, purificadores de aire y ventiladores.",
+			"sensor": "Sensor de climatización que proporciona lecturas (temperatura, humedad, calidad del aire, etc.) del espacio.",
+			"hidden": "Los dispositivos ocultos se excluyen de la interfaz de climatización y del control."
 		}
 	},
 	"sensorRoles": {
@@ -305,19 +308,19 @@
 		"other": "Otro",
 		"hidden": "Oculto",
 		"descriptions": {
-			"environment": "Environmental sensors such as temperature, humidity, pressure, or light levels.",
-			"safety": "Safety sensors like smoke, gas, leak, or carbon monoxide detectors.",
-			"security": "Security and presence sensors like motion, occupancy, and contact sensors.",
-			"air_quality": "Air quality sensors including CO2, VOC, particulate matter, and other pollutants.",
-			"energy": "Energy monitoring sensors such as power or energy consumption.",
-			"other": "Sensors that don't fit a specific category.",
-			"hidden": "Hidden sensors are excluded from the UI."
+			"environment": "Sensores ambientales como temperatura, humedad, presión o niveles de luz.",
+			"safety": "Sensores de seguridad como detectores de humo, gas, fugas o monóxido de carbono.",
+			"security": "Sensores de vigilancia y presencia como sensores de movimiento, ocupación y contacto.",
+			"air_quality": "Sensores de calidad del aire incluyendo CO2, COV, partículas en suspensión y otros contaminantes.",
+			"energy": "Sensores de monitorización energética como consumo de potencia o energía.",
+			"other": "Sensores que no encajan en una categoría específica.",
+			"hidden": "Los sensores ocultos se excluyen de la interfaz."
 		},
 		"categories": {
 			"temperature": "Temperatura",
 			"humidity": "Humedad",
 			"pressure": "Presión",
-			"illuminance": "Illuminance",
+			"illuminance": "Iluminancia",
 			"smoke": "Humo",
 			"gas": "Gas",
 			"carbon_monoxide": "Monóxido de carbono",
@@ -327,30 +330,30 @@
 			"occupancy": "Ocupación",
 			"contact": "Contacto",
 			"air_quality": "Calidad del aire",
-			"air_particulate": "Air particulate",
-			"nitrogen_dioxide": "Nitrogen dioxide",
-			"ozone": "Ozone",
-			"sulphur_dioxide": "Sulphur dioxide",
-			"volatile_organic_compounds": "Volatile organic compounds",
+			"air_particulate": "Partículas en el aire",
+			"nitrogen_dioxide": "Dióxido de nitrógeno",
+			"ozone": "Ozono",
+			"sulphur_dioxide": "Dióxido de azufre",
+			"volatile_organic_compounds": "Compuestos orgánicos volátiles",
 			"electrical_energy": "Energía",
-			"electrical_generation": "Generation",
+			"electrical_generation": "Generación",
 			"electrical_power": "Potencia",
 			"battery": "Batería"
 		}
 	},
 	"coversRoles": {
-		"primary": "Primario",
-		"blackout": "Oscurecimiento",
-		"sheer": "Transparente",
+		"primary": "Principal",
+		"blackout": "Opaca",
+		"sheer": "Translúcida",
 		"outdoor": "Exterior",
-		"hidden": "Oculto",
+		"hidden": "Oculta",
 		"unassigned": "Sin asignar",
 		"descriptions": {
-			"primary": "Main window covering for the space, typically used for general privacy and light control.",
-			"blackout": "Light-blocking covers designed for complete darkness, ideal for bedrooms or media rooms.",
-			"sheer": "Semi-transparent covers that provide privacy while allowing natural light to filter through.",
-			"outdoor": "External shutters, awnings, or pergola covers for outdoor protection.",
-			"hidden": "Hidden covers are excluded from the panel UI and intent-based control."
+			"primary": "Cubierta de ventana principal del espacio, normalmente utilizada para privacidad general y control de luz.",
+			"blackout": "Cubiertas que bloquean la luz diseñadas para oscuridad total, ideales para dormitorios o salas multimedia.",
+			"sheer": "Cubiertas semitransparentes que proporcionan privacidad mientras permiten el paso de la luz natural.",
+			"outdoor": "Persianas exteriores, toldos o cubiertas de pérgola para protección exterior.",
+			"hidden": "Las cubiertas ocultas se excluyen de la interfaz del panel y del control basado en intenciones."
 		}
 	},
 	"filters": {
@@ -360,27 +363,27 @@
 		}
 	},
 	"texts": {
-		"loadingSpaces": "Loading spaces...",
-		"loadingSpace": "Loading space...",
-		"noSpaces": "You don't have configured any space",
-		"noFilteredSpaces": "No spaces match your filter criteria",
-		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+		"loadingSpaces": "Cargando espacios...",
+		"loadingSpace": "Cargando espacio...",
+		"noSpaces": "No tiene ningún espacio configurado",
+		"noFilteredSpaces": "Ningún espacio coincide con los criterios de filtro",
+		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?"
 	},
 	"dialogs": {
 		"lightingRoles": {
-			"title": "Edit Lighting Roles"
+			"title": "Editar roles de iluminación"
 		},
 		"climateRoles": {
-			"title": "Edit Climate Roles"
+			"title": "Editar roles de climatización"
 		},
 		"coversRoles": {
-			"title": "Edit Covers Roles"
+			"title": "Editar roles de cubiertas"
 		},
 		"sensorRoles": {
-			"title": "Edit Sensor Roles"
+			"title": "Editar roles de sensores"
 		},
 		"mediaActivities": {
-			"title": "Edit Media Activities"
+			"title": "Editar actividades multimedia"
 		}
 	},
 	"buttons": {
@@ -397,7 +400,7 @@
 			"title": "Filtrar"
 		},
 		"resetFilters": {
-			"title": "Reset filters"
+			"title": "Restablecer filtros"
 		},
 		"reset": {
 			"title": "Restablecer"
@@ -424,7 +427,7 @@
 			"title": "Editar"
 		},
 		"delete": {
-			"title": "Borrar"
+			"title": "Eliminar"
 		},
 		"previous": {
 			"title": "Anterior"
@@ -436,130 +439,130 @@
 			"title": "Finalizar"
 		},
 		"onboarding": {
-			"title": "Setup wizard"
+			"title": "Asistente de configuración"
 		},
 		"viewAll": {
-			"title": "View all"
+			"title": "Ver todo"
 		},
 		"back": {
 			"title": "Volver"
 		}
 	},
 	"detail": {
-		"title": "Space detail",
+		"title": "Detalle del espacio",
 		"lightingRoles": {
-			"title": "Lighting roles",
-			"lightsAssigned": "Lights assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Roles de iluminación",
+			"lightsAssigned": "Luces asignadas",
+			"noRolesAssigned": "Aún no se han asignado roles"
 		},
 		"climateRoles": {
-			"title": "Climate roles",
-			"devicesAssigned": "Devices assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Roles de climatización",
+			"devicesAssigned": "Dispositivos asignados",
+			"noRolesAssigned": "Aún no se han asignado roles"
 		},
 		"coversRoles": {
-			"title": "Covers roles",
-			"coversAssigned": "Covers assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Roles de cubiertas",
+			"coversAssigned": "Cubiertas asignadas",
+			"noRolesAssigned": "Aún no se han asignado roles"
 		},
 		"sensorRoles": {
-			"title": "Sensor roles",
-			"sensorsAssigned": "Sensors assigned",
-			"noRolesAssigned": "No roles assigned yet"
+			"title": "Roles de sensores",
+			"sensorsAssigned": "Sensores asignados",
+			"noRolesAssigned": "Aún no se han asignado roles"
 		},
 		"mediaActivities": {
-			"title": "Media Activities",
-			"noActivities": "No activities configured yet"
+			"title": "Actividades multimedia",
+			"noActivities": "Aún no se han configurado actividades"
 		},
 		"info": {
-			"title": "Space information",
+			"title": "Información del espacio",
 			"name": "Nombre",
 			"description": "Descripción",
 			"type": "Tipo",
 			"icon": "Icono",
-			"displayOrder": "Display order"
+			"displayOrder": "Orden de visualización"
 		},
 		"devices": {
 			"title": "Dispositivos",
-			"add": "Add device",
-			"empty": "No devices assigned to this space",
-			"loading": "Loading devices...",
+			"add": "Añadir dispositivo",
+			"empty": "No hay dispositivos asignados a este espacio",
+			"loading": "Cargando dispositivos...",
 			"remove": "Eliminar",
-			"removeHeading": "Remove device from space",
+			"removeHeading": "Eliminar dispositivo del espacio",
 			"reassign": "Reasignar",
 			"assign": "Asignar",
-			"selectDevice": "Select devices to add",
-			"confirmRemove": "Remove device \"{name}\" from this space?",
-			"selectRoom": "Select room for device",
-			"noAvailable": "No devices available to add",
-			"removed": "Device \"{name}\" was removed from this space.",
-			"removeCanceled": "Device removal was canceled."
+			"selectDevice": "Seleccione los dispositivos a añadir",
+			"confirmRemove": "¿Eliminar el dispositivo \"{name}\" de este espacio?",
+			"selectRoom": "Seleccione la habitación para el dispositivo",
+			"noAvailable": "No hay dispositivos disponibles para añadir",
+			"removed": "El dispositivo \"{name}\" fue eliminado de este espacio.",
+			"removeCanceled": "La eliminación del dispositivo ha sido cancelada."
 		},
 		"parentZone": {
-			"title": "Floor",
-			"none": "No floor assigned",
-			"select": "Select floor"
+			"title": "Planta",
+			"none": "Sin planta asignada",
+			"select": "Seleccionar planta"
 		},
 		"displays": {
 			"title": "Pantallas",
-			"add": "Add display",
-			"empty": "No displays assigned to this space",
-			"loading": "Loading displays...",
+			"add": "Añadir pantalla",
+			"empty": "No hay pantallas asignadas a este espacio",
+			"loading": "Cargando pantallas...",
 			"remove": "Eliminar",
-			"removeHeading": "Remove display from space",
+			"removeHeading": "Eliminar pantalla del espacio",
 			"reassign": "Reasignar",
 			"assign": "Asignar",
-			"selectDisplay": "Select display to add",
-			"confirmRemove": "Remove display \"{name}\" from this space?",
-			"selectRoom": "Select the room for this display",
-			"noAvailable": "No displays available to add",
-			"removed": "Display \"{name}\" was removed from this space.",
-			"removeCanceled": "Display removal was canceled."
+			"selectDisplay": "Seleccione la pantalla a añadir",
+			"confirmRemove": "¿Eliminar la pantalla \"{name}\" de este espacio?",
+			"selectRoom": "Seleccione la habitación para esta pantalla",
+			"noAvailable": "No hay pantallas disponibles para añadir",
+			"removed": "La pantalla \"{name}\" fue eliminada de este espacio.",
+			"removeCanceled": "La eliminación de la pantalla ha sido cancelada."
 		},
 		"media": {
-			"activities": "Media Activities"
+			"activities": "Actividades multimedia"
 		},
 		"scenes": {
 			"title": "Escenas",
-			"add": "Add scene",
-			"empty": "No scenes assigned to this space",
-			"loading": "Loading scenes...",
-			"name": "Scene name",
+			"add": "Añadir escena",
+			"empty": "No hay escenas asignadas a este espacio",
+			"loading": "Cargando escenas...",
+			"name": "Nombre de la escena",
 			"category": "Categoría",
 			"status": "Estado",
-			"enabled": "Activado",
-			"disabled": "Desactivado",
+			"enabled": "Activada",
+			"disabled": "Desactivada",
 			"remove": "Eliminar",
-			"removeHeading": "Remove scene from space",
+			"removeHeading": "Eliminar escena del espacio",
 			"reassign": "Reasignar",
-			"reassigned": "Scene \"{name}\" was reassigned successfully.",
+			"reassigned": "La escena \"{name}\" fue reasignada correctamente.",
 			"assign": "Asignar",
-			"selectScene": "Select scene to add",
-			"selectSpace": "Select space for scene",
-			"searchPlaceholder": "Search scenes...",
-			"confirmRemove": "Remove scene \"{name}\" from this space?",
-			"assignedSpace": "Assigned space",
-			"noAvailable": "No scenes available to add",
-			"noFilteredScenes": "No scenes match your search",
-			"assigned": "Scene \"{name}\" was assigned to this space.",
-			"removed": "Scene \"{name}\" was removed from this space.",
-			"removeCanceled": "Scene removal was canceled."
+			"selectScene": "Seleccione la escena a añadir",
+			"selectSpace": "Seleccione el espacio para la escena",
+			"searchPlaceholder": "Buscar escenas...",
+			"confirmRemove": "¿Eliminar la escena \"{name}\" de este espacio?",
+			"assignedSpace": "Espacio asignado",
+			"noAvailable": "No hay escenas disponibles para añadir",
+			"noFilteredScenes": "Ninguna escena coincide con su búsqueda",
+			"assigned": "La escena \"{name}\" fue asignada a este espacio.",
+			"removed": "La escena \"{name}\" fue eliminada de este espacio.",
+			"removeCanceled": "La eliminación de la escena ha sido cancelada."
 		}
 	},
 	"media": {
 		"endpointTypes": {
 			"display": "Pantalla",
-			"audio_output": "Audio Output",
+			"audio_output": "Salida de audio",
 			"source": "Fuente",
-			"remote_target": "Remote Target"
+			"remote_target": "Destino remoto"
 		},
 		"capabilities": {
-			"power": "Potencia",
+			"power": "Alimentación",
 			"input": "Entrada",
 			"volume": "Volumen",
-			"playback": "Playback",
-			"track": "Track",
-			"remote": "Remote",
+			"playback": "Reproducción",
+			"track": "Pista",
+			"remote": "Remoto",
 			"mute": "Silencio"
 		},
 		"activityLabels": {
@@ -570,32 +573,32 @@
 			"off": "Apagado"
 		},
 		"activities": {
-			"loading": "Loading media configuration...",
-			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
-			"applyDefaults": "Apply defaults",
-			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
-			"defaultsApplied": "Default bindings have been applied.",
-			"defaultsFailed": "Failed to apply default bindings.",
-			"selectPrompt": "Select an activity from the list to configure its bindings.",
-			"selectEndpoint": "Select endpoint...",
+			"loading": "Cargando configuración multimedia...",
+			"description": "Asigne dispositivos de pantalla, audio, fuente y remoto a cada actividad multimedia. Los cambios se guardan automáticamente.",
+			"applyDefaults": "Aplicar valores predeterminados",
+			"applyDefaultsHint": "Asigna automáticamente los endpoints según los tipos de dispositivo y capacidades",
+			"defaultsApplied": "Se han aplicado las asignaciones predeterminadas.",
+			"defaultsFailed": "Error al aplicar las asignaciones predeterminadas.",
+			"selectPrompt": "Seleccione una actividad de la lista para configurar sus asignaciones.",
+			"selectEndpoint": "Seleccionar endpoint...",
 			"save": "Guardar",
 			"reset": "Restablecer",
-			"saveError": "Failed to save binding",
-			"savedSuccessfully": "Binding saved successfully.",
+			"saveError": "Error al guardar la asignación",
+			"savedSuccessfully": "Asignación guardada correctamente.",
 			"slots": {
 				"display": "Pantalla",
-				"audio": "Audio output",
+				"audio": "Salida de audio",
 				"source": "Fuente",
-				"remote": "Remote target"
+				"remote": "Destino remoto"
 			},
 			"overrides": {
-				"displayInput": "Display input preset",
-				"displayInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioInput": "Audio input preset",
-				"audioInputPlaceholder": "e.g. HDMI1, ARC",
-				"sourceInput": "Source input preset",
-				"sourceInputPlaceholder": "e.g. HDMI1, Apps",
-				"audioVolume": "Audio volume preset"
+				"displayInput": "Preajuste de entrada de pantalla",
+				"displayInputPlaceholder": "p. ej., HDMI1, Apps",
+				"audioInput": "Preajuste de entrada de audio",
+				"audioInputPlaceholder": "p. ej., HDMI1, ARC",
+				"sourceInput": "Preajuste de entrada de fuente",
+				"sourceInputPlaceholder": "p. ej., HDMI1, Apps",
+				"audioVolume": "Preajuste de volumen de audio"
 			},
 			"mediaInputSources": {
 				"hdmi1": "HDMI 1",
@@ -612,7 +615,7 @@
 				"antenna": "Antena",
 				"av1": "AV 1",
 				"av2": "AV 2",
-				"component": "Component",
+				"component": "Componente",
 				"vga": "VGA",
 				"dvi": "DVI",
 				"usb": "USB",
@@ -636,60 +639,60 @@
 			"status": {
 				"configured": "Configurado",
 				"incomplete": "Incompleto",
-				"unconfigured": "No configurado"
+				"unconfigured": "Sin configurar"
 			},
 			"run": "Ejecutar",
 			"deactivate": "Desactivar",
-			"refreshStatus": "Refresh status",
-			"rerun": "Re-run",
-			"copyDebugJson": "Copy debug JSON",
-			"copiedToClipboard": "Debug JSON copied to clipboard.",
-			"activateSuccess": "Activity activated successfully.",
-			"activateFailed": "Failed to activate activity.",
-			"deactivateSuccess": "Activity deactivated.",
-			"deactivateFailed": "Failed to deactivate activity.",
-			"fetchFailed": "Failed to refresh activity status.",
+			"refreshStatus": "Actualizar estado",
+			"rerun": "Volver a ejecutar",
+			"copyDebugJson": "Copiar JSON de depuración",
+			"copiedToClipboard": "JSON de depuración copiado al portapapeles.",
+			"activateSuccess": "Actividad activada correctamente.",
+			"activateFailed": "Error al activar la actividad.",
+			"deactivateSuccess": "Actividad desactivada.",
+			"deactivateFailed": "Error al desactivar la actividad.",
+			"fetchFailed": "Error al actualizar el estado de la actividad.",
 			"preview": "Vista previa",
-			"previewFailed": "Failed to preview activity.",
+			"previewFailed": "Error al previsualizar la actividad.",
 			"previewDialog": {
-				"title": "Execution Plan Preview",
-				"resolvedDevices": "Resolved devices",
-				"executionPlan": "Execution plan",
+				"title": "Vista previa del plan de ejecución",
+				"resolvedDevices": "Dispositivos resueltos",
+				"executionPlan": "Plan de ejecución",
 				"step": "#",
-				"action": "Action",
-				"device": "Device",
-				"critical": "Critical",
-				"criticalYes": "Critical",
-				"criticalNo": "Optional",
-				"warnings": "Warnings & skipped steps",
-				"noSteps": "No execution steps in plan.",
+				"action": "Acción",
+				"device": "Dispositivo",
+				"critical": "Crítico",
+				"criticalYes": "Crítico",
+				"criticalNo": "Opcional",
+				"warnings": "Advertencias y pasos omitidos",
+				"noSteps": "No hay pasos de ejecución en el plan.",
 				"close": "Cerrar"
 			},
 			"activePanel": {
-				"title": "Active State",
-				"currentActivity": "Current activity",
-				"none": "None",
-				"state": "State",
-				"activatedAt": "Activated at",
-				"updatedAt": "Updated at",
-				"resolvedDevices": "Resolved devices",
+				"title": "Estado activo",
+				"currentActivity": "Actividad actual",
+				"none": "Ninguna",
+				"state": "Estado",
+				"activatedAt": "Activado a las",
+				"updatedAt": "Actualizado a las",
+				"resolvedDevices": "Dispositivos resueltos",
 				"display": "Pantalla",
 				"audio": "Audio",
 				"source": "Fuente",
-				"remote": "Remote"
+				"remote": "Remoto"
 			},
 			"failures": {
-				"title": "Failures",
-				"total": "Total steps",
-				"succeeded": "Succeeded",
-				"failed": "Fallido",
-				"stepIndex": "Step",
-				"device": "Device",
-				"property": "Property",
-				"reason": "Reason"
+				"title": "Errores",
+				"total": "Pasos totales",
+				"succeeded": "Exitosos",
+				"failed": "Fallidos",
+				"stepIndex": "Paso",
+				"device": "Dispositivo",
+				"property": "Propiedad",
+				"reason": "Razón"
 			},
 			"activationState": {
-				"activating": "Activating",
+				"activating": "Activando",
 				"active": "Activo",
 				"failed": "Fallido",
 				"deactivated": "Desactivado"
@@ -697,24 +700,24 @@
 		}
 	},
 	"messages": {
-		"notFound": "Space not found",
-		"loadError": "Failed to load spaces",
-		"notLoaded": "Failed to load space. Please try again later.",
-		"confirmRemove": "Are you sure you want to remove space \"{name}\"? This action cannot be undone.",
-		"confirmDelete": "Are you sure you want to delete this space?",
-		"created": "New space added successfully.",
-		"notCreated": "Something went wrong. Unable to create the space.",
-		"edited": "Changes saved! The space: {space} has been updated.",
-		"notEdited": "Something went wrong. Space update was not successful.",
-		"removed": "The space: {space} was successfully removed.",
-		"removeCanceled": "Space: {space} removal has been canceled.",
-		"deletedWhileEditing": "This space was deleted and is no longer available.",
-		"createError": "Failed to create space. Please try again.",
-		"saveError": "Failed to save changes. Please try again.",
-		"confirmBulkRemove": "Are you sure you want to remove {count} spaces? This action cannot be undone.",
-		"bulkRemoved": "{count} spaces were successfully removed.",
-		"bulkRemoveFailed": "Failed to remove {count} spaces.",
-		"bulkRemoveCanceled": "Bulk space removal has been canceled."
+		"notFound": "Espacio no encontrado",
+		"loadError": "Error al cargar los espacios",
+		"notLoaded": "Error al cargar el espacio. Por favor, inténtelo de nuevo más tarde.",
+		"confirmRemove": "¿Está seguro de que desea eliminar el espacio \"{name}\"? Esta acción no se puede deshacer.",
+		"confirmDelete": "¿Está seguro de que desea eliminar este espacio?",
+		"created": "Nuevo espacio añadido correctamente.",
+		"notCreated": "Algo salió mal. No se pudo crear el espacio.",
+		"edited": "¡Cambios guardados! El espacio: {space} ha sido actualizado.",
+		"notEdited": "Algo salió mal. La actualización del espacio no fue exitosa.",
+		"removed": "El espacio: {space} fue eliminado correctamente.",
+		"removeCanceled": "La eliminación del espacio: {space} ha sido cancelada.",
+		"deletedWhileEditing": "Este espacio fue eliminado y ya no está disponible.",
+		"createError": "Error al crear el espacio. Por favor, inténtelo de nuevo.",
+		"saveError": "Error al guardar los cambios. Por favor, inténtelo de nuevo.",
+		"confirmBulkRemove": "¿Está seguro de que desea eliminar {count} espacios? Esta acción no se puede deshacer.",
+		"bulkRemoved": "{count} espacios fueron eliminados correctamente.",
+		"bulkRemoveFailed": "Error al eliminar {count} espacios.",
+		"bulkRemoveCanceled": "La eliminación masiva de espacios ha sido cancelada."
 	},
 	"misc": {
 		"types": {
@@ -723,76 +726,76 @@
 		}
 	},
 	"onboarding": {
-		"title": "Spaces setup wizard",
+		"title": "Asistente de configuración de espacios",
 		"devices": "dispositivos",
 		"displays": "pantallas",
-		"selectSpace": "Select space",
-		"selectZones": "Select zones...",
-		"deviceName": "Device name",
-		"displayName": "Display name",
-		"assignedSpace": "Assigned space",
-		"spaceName": "Space name",
-		"zones": "Zones (optional)",
+		"selectSpace": "Seleccionar espacio",
+		"selectZones": "Seleccionar zonas...",
+		"deviceName": "Nombre del dispositivo",
+		"displayName": "Nombre de la pantalla",
+		"assignedSpace": "Espacio asignado",
+		"spaceName": "Nombre del espacio",
+		"zones": "Zonas (opcional)",
 		"advanced": "Avanzado",
-		"basic": "Basic",
+		"basic": "Básico",
 		"steps": {
 			"spaces": {
-				"title": "Create spaces",
-				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
-				"alertTitle": "Spaces represent rooms or areas in your home",
-				"alertDescription": "We've suggested some spaces based on your device names. You can adjust them now or change everything later.",
-				"proposed": "Proposed spaces",
-				"custom": "Custom spaces",
-				"existing": "Existing spaces",
-				"matchedExisting": "Using existing spaces",
-				"usingExisting": "Using existing",
-				"matchedWith": "Will use: {name}",
-				"addManual": "Add custom space",
-				"placeholder": "Enter space name (e.g., Living Room)",
-				"noProposals": "No spaces could be detected from your device names. Add spaces manually below.",
-				"duplicateWarning": "A space similar to \"{name}\" already exists.",
-				"convertedToMatch": "This space matches an existing space and has been moved to the 'Using existing spaces' section.",
-				"multipleMatchedWith": "{count} detected spaces will use existing space '{name}'",
+				"title": "Crear espacios",
+				"description": "Los espacios le ayudan a organizar sus dispositivos y pantallas por habitaciones o zonas (p. ej., Salón, Cocina, Dormitorio). Hemos detectado automáticamente algunos espacios a partir de los nombres de sus dispositivos. Revise y seleccione los que desea crear, o añada sus propios espacios personalizados a continuación.",
+				"alertTitle": "Los espacios representan habitaciones o áreas de su hogar",
+				"alertDescription": "Hemos sugerido algunos espacios basándonos en los nombres de sus dispositivos. Puede ajustarlos ahora o cambiar todo más tarde.",
+				"proposed": "Espacios propuestos",
+				"custom": "Espacios personalizados",
+				"existing": "Espacios existentes",
+				"matchedExisting": "Usando espacios existentes",
+				"usingExisting": "Usando existente",
+				"matchedWith": "Usará: {name}",
+				"addManual": "Añadir espacio personalizado",
+				"placeholder": "Introduzca el nombre del espacio (p. ej., Salón)",
+				"noProposals": "No se pudieron detectar espacios a partir de los nombres de sus dispositivos. Añada espacios manualmente a continuación.",
+				"duplicateWarning": "Ya existe un espacio similar a \"{name}\".",
+				"convertedToMatch": "Este espacio coincide con un espacio existente y se ha movido a la sección 'Usando espacios existentes'.",
+				"multipleMatchedWith": "{count} espacios detectados usarán el espacio existente '{name}'",
 				"existingTag": "Existente"
 			},
 			"displays": {
-				"title": "Assign displays",
-				"description": "Assign each display to a space. This determines which space the display will show by default.",
-				"alertTitle": "Choose a default space for each display",
-				"alertDescription": "This only sets the initial view—you can switch spaces anytime from the display itself.",
-				"noDisplays": "No displays registered yet."
+				"title": "Asignar pantallas",
+				"description": "Asigne cada pantalla a un espacio. Esto determina qué espacio mostrará la pantalla de forma predeterminada.",
+				"alertTitle": "Elija un espacio predeterminado para cada pantalla",
+				"alertDescription": "Esto solo establece la vista inicial; puede cambiar de espacio en cualquier momento desde la propia pantalla.",
+				"noDisplays": "Aún no hay pantallas registradas."
 			},
 			"devices": {
-				"title": "Assign devices",
-				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
-				"alertTitle": "Connect your devices to rooms",
-				"alertDescription": "Some devices are pre-filled based on their names. Feel free to adjust—you can always change assignments later.",
-				"noDevices": "No devices found."
+				"title": "Asignar dispositivos",
+				"description": "Asigne dispositivos a espacios. Los dispositivos se preasignarán según sus nombres si se detectan.",
+				"alertTitle": "Conecte sus dispositivos a las habitaciones",
+				"alertDescription": "Algunos dispositivos se han rellenado previamente según sus nombres. Puede ajustarlos; siempre podrá cambiar las asignaciones más tarde.",
+				"noDevices": "No se encontraron dispositivos."
 			},
 			"summary": {
 				"title": "Resumen",
-				"description": "Review your configuration before applying changes.",
-				"alertTitle": "Summary of your setup",
-				"alertDescription": "You can still go back and adjust anything before finishing."
+				"description": "Revise su configuración antes de aplicar los cambios.",
+				"alertTitle": "Resumen de su configuración",
+				"alertDescription": "Todavía puede volver atrás y ajustar cualquier cosa antes de finalizar."
 			}
 		},
 		"summary": {
 			"overview": "Resumen",
-			"totalSpaces": "Total spaces",
-			"assignedDevices": "Assigned devices",
-			"unassignedDevices": "Unassigned devices",
-			"assignedDisplays": "Assigned displays",
-			"unassignedDisplays": "Unassigned displays",
-			"bySpace": "Assignments by space",
-			"unassignedDevicesTitle": "Unassigned devices",
-			"unassignedDisplaysTitle": "Unassigned displays",
+			"totalSpaces": "Total de espacios",
+			"assignedDevices": "Dispositivos asignados",
+			"unassignedDevices": "Dispositivos sin asignar",
+			"assignedDisplays": "Pantallas asignadas",
+			"unassignedDisplays": "Pantallas sin asignar",
+			"bySpace": "Asignaciones por espacio",
+			"unassignedDevicesTitle": "Dispositivos sin asignar",
+			"unassignedDisplaysTitle": "Pantallas sin asignar",
 			"noDevices": "Sin dispositivos",
-			"clickToAssignDevices": "Click to assign devices",
-			"clickToAssignDisplays": "Click to assign displays"
+			"clickToAssignDevices": "Haga clic para asignar dispositivos",
+			"clickToAssignDisplays": "Haga clic para asignar pantallas"
 		},
 		"messages": {
-			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
+			"spacesCreated": "{count} espacio(s) creado(s) correctamente",
+			"completed": "¡Configuración completada! {devices} dispositivo(s), {displays} pantalla(s) y {zones} asignación(es) de zona."
 		}
 	}
 }

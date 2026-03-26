@@ -1,70 +1,70 @@
 {
 	"headings": {
-		"aboutApiSettings": "OpenAI Codex settings",
-		"advancedSettings": "Advanced settings"
+		"aboutApiSettings": "Configuración de OpenAI Codex",
+		"advancedSettings": "Configuración avanzada"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Activado"
+				"title": "Habilitado"
 			},
 			"clientId": {
-				"title": "Client ID",
-				"placeholder": "Enter your OAuth client ID",
-				"description": "The OAuth client ID for OpenAI Codex API"
+				"title": "ID de cliente",
+				"placeholder": "Introduzca su ID de cliente OAuth",
+				"description": "El ID de cliente OAuth para la API de OpenAI Codex"
 			},
 			"clientSecret": {
-				"title": "Client secret",
-				"placeholder": "Enter your OAuth client secret"
+				"title": "Secreto de cliente",
+				"placeholder": "Introduzca su secreto de cliente OAuth"
 			},
 			"accessToken": {
-				"title": "Access token",
-				"placeholder": "Enter your access token"
+				"title": "Token de acceso",
+				"placeholder": "Introduzca su token de acceso"
 			},
 			"refreshToken": {
-				"title": "Refresh token",
-				"placeholder": "Enter your refresh token"
+				"title": "Token de actualización",
+				"placeholder": "Introduzca su token de actualización"
 			},
 			"model": {
-				"title": "Model",
-				"placeholder": "e.g., codex-mini",
-				"description": "The OpenAI Codex model to use for generating responses"
+				"title": "Modelo",
+				"placeholder": "p. ej., codex-mini",
+				"description": "El modelo de OpenAI Codex a utilizar para generar respuestas"
 			},
 			"callbackUrl": {
-				"placeholder": "Paste the redirect URL here..."
+				"placeholder": "Pegue la URL de redirección aquí..."
 			}
 		}
 	},
 	"buttons": {
-		"getUrl": "Get Authorization URL",
-		"copyUrl": "Copy",
-		"openUrl": "Open in Browser",
-		"exchange": "Exchange Token",
-		"exchanging": "Exchanging...",
-		"disconnect": "Disconnect"
+		"getUrl": "Obtener URL de autorización",
+		"copyUrl": "Copiar",
+		"openUrl": "Abrir en el navegador",
+		"exchange": "Intercambiar token",
+		"exchanging": "Intercambiando...",
+		"disconnect": "Desconectar"
 	},
 	"statuses": {
-		"connected": "Connected",
-		"notConnected": "Not connected"
+		"connected": "Conectado",
+		"notConnected": "No conectado"
 	},
 	"messages": {
 		"config": {
-			"edited": "OpenAI Codex settings have been updated",
-			"notEdited": "Failed to update OpenAI Codex settings"
+			"edited": "La configuración de OpenAI Codex se ha actualizado",
+			"notEdited": "No se pudo actualizar la configuración de OpenAI Codex"
 		},
 		"oauth": {
-			"urlCopied": "URL copied to clipboard",
-			"missingClientId": "Please enter a Client ID before starting the OAuth flow",
-			"authorizeError": "Failed to get authorization URL",
-			"exchangeSuccess": "Token exchange successful",
-			"exchangeError": "Token exchange failed"
+			"urlCopied": "URL copiada al portapapeles",
+			"missingClientId": "Por favor, introduzca un ID de cliente antes de iniciar el flujo OAuth",
+			"authorizeError": "No se pudo obtener la URL de autorización",
+			"exchangeSuccess": "Intercambio de token exitoso",
+			"exchangeError": "El intercambio de token falló"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Get Authorization URL\" to start the OAuth flow, or expand Advanced Settings to enter tokens manually.",
-		"oauthStep1": "Click \"Get Authorization URL\" above",
-		"oauthStep2": "Open the URL in your browser and authorize",
-		"oauthStep3": "Copy the redirect URL from your browser after authorization",
-		"oauthStep4": "Paste it below and click \"Exchange Token\""
+		"aboutApiSettings": "Configure los ajustes de OAuth de OpenAI Codex. Haga clic en \"Obtener URL de autorización\" para iniciar el flujo OAuth, o expanda la configuración avanzada para introducir los tokens manualmente.",
+		"oauthStep1": "Haga clic en \"Obtener URL de autorización\" arriba",
+		"oauthStep2": "Abra la URL en su navegador y autorice",
+		"oauthStep3": "Copie la URL de redirección de su navegador después de la autorización",
+		"oauthStep4": "Péguela a continuación y haga clic en \"Intercambiar token\""
 	}
 }

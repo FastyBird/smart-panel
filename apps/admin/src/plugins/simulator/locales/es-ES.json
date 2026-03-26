@@ -1,97 +1,97 @@
 {
-	"headings": {
-		"aboutPluginStatus": "Plugin status",
-		"aboutSimulation": "Simulation behaviour",
-		"aboutEnvironment": "Environment settings"
-	},
-	"fields": {
-		"devices": {
-			"id": {
-				"title": "Internal identifier",
-				"placeholder": "Device id"
-			},
-			"identifier": {
-				"title": "System identifier",
-				"placeholder": "Device system identifier"
-			},
-			"category": {
-				"title": "Categoría",
-				"placeholder": "Device category",
-				"validation": {
-					"required": "Please select device category"
-				}
-			},
-			"name": {
-				"title": "Nombre",
-				"placeholder": "Device name",
-				"validation": {
-					"required": "Please fill in device name"
-				}
-			},
-			"description": {
-				"title": "Descripción",
-				"placeholder": "Device description"
-			},
-			"enabled": {
-				"title": "Activado"
-			}
-		},
-		"config": {
-			"enabled": {
-				"title": "Activado"
-			},
-			"updateOnStart": {
-				"title": "Simulate on service start"
-			},
-			"simulationInterval": {
-				"title": "Auto simulation interval (ms)",
-				"placeholder": "Set 0 to disable automatic updates",
-				"validation": {
-					"required": "Please set simulation interval",
-					"number": "Simulation interval must be between 0 and 3 600 000"
-				}
-			},
-			"latitude": {
-				"title": "Latitude",
-				"placeholder": "Latitude used for environment-based simulations",
-				"validation": {
-					"required": "Please set latitude",
-					"number": "Latitude must be between -90 and 90"
-				}
-			},
-			"smoothTransitions": {
-				"title": "Smooth value transitions"
-			},
-			"connectionStateOnStart": {
-				"title": "Initial connection state",
-				"placeholder": "Choose the connection state to set on startup",
-				"validation": {
-					"required": "Please select initial connection state"
-				},
-				"options": {
-					"connected": "Connected",
-					"disconnected": "Disconnected",
-					"init": "Initializing",
-					"ready": "Ready",
-					"running": "Running",
-					"sleeping": "Sleeping",
-					"stopped": "Stopped",
-					"lost": "Lost",
-					"alert": "Alert",
-					"unknown": "Unknown"
-				}
-			}
-		}
-	},
-	"messages": {
-		"config": {
-			"edited": "Changes saved! The device simulator configuration has been updated.",
-			"notEdited": "Something went wrong. Device simulator configuration update was not successful."
-		}
-	},
-	"texts": {
-		"aboutPluginStatus": "Enable or disable the Device Simulator integration so that simulated devices are available across the Smart Panel.",
-		"aboutSimulation": "Configure how the simulator updates values automatically. You can trigger a single pass on service start or run a recurring update loop.",
-		"aboutEnvironment": "Set environmental parameters used by the simulator when generating realistic values. Only latitude is used in calculations; longitude is ignored."
-	}
+  "headings": {
+    "aboutPluginStatus": "Estado del plugin",
+    "aboutSimulation": "Comportamiento de la simulación",
+    "aboutEnvironment": "Configuración del entorno"
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "identifier": {
+        "title": "Identificador del sistema",
+        "placeholder": "Identificador del sistema del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "updateOnStart": {
+        "title": "Simular al iniciar el servicio"
+      },
+      "simulationInterval": {
+        "title": "Intervalo de simulación automática (ms)",
+        "placeholder": "Establezca 0 para desactivar las actualizaciones automáticas",
+        "validation": {
+          "required": "Por favor, establezca el intervalo de simulación",
+          "number": "El intervalo de simulación debe estar entre 0 y 3 600 000"
+        }
+      },
+      "latitude": {
+        "title": "Latitud",
+        "placeholder": "Latitud utilizada para simulaciones basadas en el entorno",
+        "validation": {
+          "required": "Por favor, establezca la latitud",
+          "number": "La latitud debe estar entre -90 y 90"
+        }
+      },
+      "smoothTransitions": {
+        "title": "Transiciones suaves de valores"
+      },
+      "connectionStateOnStart": {
+        "title": "Estado de conexión inicial",
+        "placeholder": "Elija el estado de conexión al iniciar",
+        "validation": {
+          "required": "Por favor, seleccione el estado de conexión inicial"
+        },
+        "options": {
+          "connected": "Conectado",
+          "disconnected": "Desconectado",
+          "init": "Inicializando",
+          "ready": "Listo",
+          "running": "En ejecución",
+          "sleeping": "En reposo",
+          "stopped": "Detenido",
+          "lost": "Perdido",
+          "alert": "Alerta",
+          "unknown": "Desconocido"
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "¡Cambios guardados! La configuración del simulador de dispositivos se ha actualizado.",
+      "notEdited": "Algo salió mal. La actualización de la configuración del simulador de dispositivos no fue exitosa."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Habilite o deshabilite la integración del simulador de dispositivos para que los dispositivos simulados estén disponibles en todo el panel inteligente.",
+    "aboutSimulation": "Configure cómo el simulador actualiza los valores automáticamente. Puede activar una única pasada al iniciar el servicio o ejecutar un ciclo de actualización recurrente.",
+    "aboutEnvironment": "Establezca los parámetros ambientales utilizados por el simulador al generar valores realistas. Solo se utiliza la latitud en los cálculos; la longitud se ignora."
+  }
 }

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Lokalizacje pogodowe"
+	},
 	"headings": {
 		"weather": "Pogoda",
 		"aboutPrimaryLocation": "Lokalizacja główna",

@@ -1,4 +1,7 @@
 {
+	"menu": {
+		"title": "Buddy"
+	},
 	"headings": {
 		"settings": "Buddy",
 		"chat": "Chat de Buddy",
