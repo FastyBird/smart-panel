@@ -192,14 +192,18 @@ const onLanguageChange = (locale: AppLocale): void => {
 		try {
 			const sessionStore = storesManager.getStore(sessionStoreKey);
 
-			sessionStore.edit({
-				id: profile.id,
-				data: {
-					language: locale.split('-')[0],
-				},
-			});
+			sessionStore
+				.edit({
+					id: profile.id,
+					data: {
+						language: locale.split('-')[0],
+					},
+				})
+				.catch(() => {
+					// Silently fail - the locale is already applied locally
+				});
 		} catch {
-			// Silently fail - the locale is already applied locally
+			// getStore may throw if stores manager is not ready
 		}
 	}
 };
