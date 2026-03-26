@@ -119,8 +119,11 @@ class DisplaysModuleService {
         profileUnitSize: _displayRepository.unitSize,
       );
 
-      // Apply stored hardware settings to the device
-      _applyInitialHardwareState();
+      // Apply stored hardware settings to the device, serialized through
+      // the pending chain so socket events wait for it to finish
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyInitialHardwareState(),
+      );
 
       // Register socket event handlers
       _registerSocketEventHandlers();
@@ -151,8 +154,11 @@ class DisplaysModuleService {
         profileUnitSize: _displayRepository.unitSize,
       );
 
-      // Apply stored hardware settings to the device
-      _applyInitialHardwareState();
+      // Apply stored hardware settings to the device, serialized through
+      // the pending chain so socket events wait for it to finish
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyInitialHardwareState(),
+      );
     }
 
     _isLoading = false;
@@ -178,8 +184,11 @@ class DisplaysModuleService {
       profileUnitSize: display.unitSize,
     );
 
-    // Apply stored hardware settings to the device
-    _applyInitialHardwareState();
+    // Apply stored hardware settings to the device, serialized through
+    // the pending chain so socket events wait for it to finish
+    _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+      _applyInitialHardwareState(),
+    );
 
     _isLoading = false;
 
@@ -340,9 +349,11 @@ class DisplaysModuleService {
       await deviceControl.setBrightness(display.brightness);
 
       if (display.audioOutputSupported) {
-        // Set volume before mute so that an implicit unmute from volume-set
-        // doesn't override the intended mute state
-        await deviceControl.setSpeakerVolume(display.speakerVolume);
+        // Only set volume when speaker is active to avoid implicit unmute
+        // from amixer/setStreamVolume overriding the mute state
+        if (display.speaker) {
+          await deviceControl.setSpeakerVolume(display.speakerVolume);
+        }
         await deviceControl.setSpeakerMute(!display.speaker);
       }
 
@@ -388,9 +399,11 @@ class DisplaysModuleService {
       }
 
       if (updatedDisplay.audioOutputSupported) {
-        // Set volume before mute so that an implicit unmute from volume-set
-        // doesn't override the intended mute state
-        if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
+        // Skip volume-set while muted: on Android, setStreamVolume can
+        // implicitly clear the mute flag, and on Linux amixer set N%
+        // can unmute the channel. Apply volume only when speaker is active.
+        if (previousSpeakerVolume != updatedDisplay.speakerVolume &&
+            updatedDisplay.speaker) {
           await deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
         }
 
