@@ -172,27 +172,13 @@ class ScreenPowerService {
 			_savedBacklightBrightness = parsedBrightness;
 			_backlightPath = path;
 
-			// Try direct write first (flutter-pi runs as root)
-			try {
-				await brightnessFile.writeAsString('0');
+			// Use shell redirect — Dart's File.writeAsString may not work
+			// on sysfs files (truncate mode incompatible with kernel pseudo-files)
+			final result = await Process.run('sh', ['-c', 'echo 0 > $path/brightness']);
 
+			if (result.exitCode == 0) {
 				if (kDebugMode) {
 					debugPrint('$_tag Backlight set to 0 at $path');
-				}
-				return true;
-			} catch (_) {
-				// Direct write failed — try sudo tee as fallback
-			}
-
-			final quotedPath = path.replaceAll("'", r"'\''");
-			final writeResult = await Process.run(
-				'bash',
-				['-c', "echo 0 | sudo tee '$quotedPath/brightness'"],
-			);
-
-			if (writeResult.exitCode == 0) {
-				if (kDebugMode) {
-					debugPrint('$_tag Backlight set to 0 (sudo) at $path');
 				}
 				return true;
 			}
@@ -213,29 +199,11 @@ class ScreenPowerService {
 			final brightness = _savedBacklightBrightness!;
 			final path = _backlightPath!;
 
-			// Try direct write first (flutter-pi runs as root)
-			try {
-				await File('$path/brightness').writeAsString('$brightness');
-
-				if (kDebugMode) {
-					debugPrint('$_tag Backlight restored to $brightness at $path');
-				}
-				_savedBacklightBrightness = null;
-				_backlightPath = null;
-				return true;
-			} catch (_) {
-				// Direct write failed — try sudo tee as fallback
-			}
-
-			final quotedPath = path.replaceAll("'", r"'\''");
-			final result = await Process.run(
-				'bash',
-				['-c', "echo $brightness | sudo tee '$quotedPath/brightness'"],
-			);
+			final result = await Process.run('sh', ['-c', 'echo $brightness > $path/brightness']);
 
 			if (result.exitCode == 0) {
 				if (kDebugMode) {
-					debugPrint('$_tag Backlight restored to $brightness (sudo) at $path');
+					debugPrint('$_tag Backlight restored to $brightness at $path');
 				}
 				_savedBacklightBrightness = null;
 				_backlightPath = null;
