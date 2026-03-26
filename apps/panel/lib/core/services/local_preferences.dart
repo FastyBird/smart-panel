@@ -74,6 +74,8 @@ class LocalPreferencesService extends ChangeNotifier {
     _language = language;
 
     await _write(key: _languageKey, value: language.value);
+
+    notifyListeners();
   }
 
   /// Persist the current dark mode selection.
@@ -83,6 +85,8 @@ class LocalPreferencesService extends ChangeNotifier {
     _darkMode = darkMode;
 
     await _write(key: _darkModeKey, value: darkMode.toString());
+
+    notifyListeners();
   }
 
   /// Persist the screen power off preference.

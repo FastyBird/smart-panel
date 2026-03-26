@@ -163,10 +163,11 @@ class ScreenPowerService {
 			_savedBacklightBrightness = int.tryParse(current.trim()) ?? 0;
 			_backlightPath = path;
 
-			// Write '0' to brightness file
+			// Write '0' to brightness file (quote path for shell safety)
+			final quotedPath = path.replaceAll("'", r"'\''");
 			final writeResult = await Process.run(
 				'bash',
-				['-c', 'echo 0 | sudo tee $path/brightness'],
+				['-c', "echo 0 | sudo tee '$quotedPath/brightness'"],
 			);
 
 			if (writeResult.exitCode == 0) {
@@ -202,9 +203,10 @@ class ScreenPowerService {
 			final brightness = _savedBacklightBrightness!;
 			final path = _backlightPath!;
 
+			final quotedPath = path.replaceAll("'", r"'\''");
 			final result = await Process.run(
 				'bash',
-				['-c', 'echo $brightness | sudo tee $path/brightness'],
+				['-c', "echo $brightness | sudo tee '$quotedPath/brightness'"],
 			);
 
 			if (result.exitCode == 0) {
