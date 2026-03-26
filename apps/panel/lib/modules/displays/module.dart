@@ -323,7 +323,7 @@ class DisplaysModuleService {
     }
   }
 
-  void _applyInitialHardwareState() {
+  Future<void> _applyInitialHardwareState() async {
     final display = _displayRepository.display;
 
     if (display == null) return;
@@ -331,16 +331,23 @@ class DisplaysModuleService {
     try {
       final deviceControl = locator<DeviceControlService>();
 
-      deviceControl.setBrightness(display.brightness);
+      await deviceControl.setBrightness(display.brightness);
 
       if (display.audioOutputSupported) {
-        deviceControl.setSpeakerVolume(display.speakerVolume);
-        deviceControl.setSpeakerMute(!display.speaker);
+        // Set volume before mute so that an implicit unmute from volume-set
+        // doesn't override the intended mute state
+        await deviceControl.setSpeakerVolume(display.speakerVolume);
+        await deviceControl.setSpeakerMute(!display.speaker);
       }
 
       if (display.audioInputSupported) {
-        deviceControl.setMicrophoneVolume(display.microphoneVolume);
-        deviceControl.setMicrophoneMute(!display.microphone);
+        // On Android, setMicrophoneVolume manipulates the same mute flag as
+        // setMicrophoneMute, so skip the volume call when muted to avoid a
+        // transient unmute window
+        if (display.microphone) {
+          await deviceControl.setMicrophoneVolume(display.microphoneVolume);
+        }
+        await deviceControl.setMicrophoneMute(!display.microphone);
       }
 
       if (kDebugMode) {
@@ -359,38 +366,44 @@ class DisplaysModuleService {
     }
   }
 
-  void _applyHardwareChanges({
+  Future<void> _applyHardwareChanges({
     required int previousBrightness,
     required bool previousSpeaker,
     required int previousSpeakerVolume,
     required bool previousMicrophone,
     required int previousMicrophoneVolume,
     required DisplayModel updatedDisplay,
-  }) {
+  }) async {
     try {
       final deviceControl = locator<DeviceControlService>();
 
       if (previousBrightness != updatedDisplay.brightness) {
-        deviceControl.setBrightness(updatedDisplay.brightness);
+        await deviceControl.setBrightness(updatedDisplay.brightness);
       }
 
       if (updatedDisplay.audioOutputSupported) {
-        if (previousSpeaker != updatedDisplay.speaker) {
-          deviceControl.setSpeakerMute(!updatedDisplay.speaker);
+        // Set volume before mute so that an implicit unmute from volume-set
+        // doesn't override the intended mute state
+        if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
+          await deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
         }
 
-        if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
-          deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
+        if (previousSpeaker != updatedDisplay.speaker) {
+          await deviceControl.setSpeakerMute(!updatedDisplay.speaker);
         }
       }
 
       if (updatedDisplay.audioInputSupported) {
-        if (previousMicrophone != updatedDisplay.microphone) {
-          deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
+        // On Android, setMicrophoneVolume manipulates the same mute flag as
+        // setMicrophoneMute, so skip the volume call when muted to avoid a
+        // transient unmute window
+        if (previousMicrophoneVolume != updatedDisplay.microphoneVolume &&
+            updatedDisplay.microphone) {
+          await deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
         }
 
-        if (previousMicrophoneVolume != updatedDisplay.microphoneVolume) {
-          deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
+        if (previousMicrophone != updatedDisplay.microphone) {
+          await deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
         }
       }
     } catch (e) {
