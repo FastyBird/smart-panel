@@ -23,9 +23,9 @@ class ScreenPowerService {
 	bool get isScreenOff => _isScreenOff;
 
 	/// Turn the screen off (display power save).
+	///
+	/// Safe to call multiple times — the platform calls are idempotent.
 	Future<bool> screenOff() async {
-		if (_isScreenOff) return true;
-
 		try {
 			bool success = false;
 
@@ -53,9 +53,12 @@ class ScreenPowerService {
 	}
 
 	/// Turn the screen back on.
+	///
+	/// Always issues the platform call regardless of [_isScreenOff].
+	/// A concurrent [screenOff] may still be in flight when this is
+	/// called, so skipping based on the flag could leave the display
+	/// permanently dark.
 	Future<bool> screenOn() async {
-		if (!_isScreenOff) return true;
-
 		try {
 			bool success = false;
 
@@ -65,12 +68,10 @@ class ScreenPowerService {
 				success = await _androidScreenOn();
 			}
 
-			if (success) {
-				_isScreenOff = false;
+			_isScreenOff = false;
 
-				if (kDebugMode) {
-					debugPrint('$_tag Screen powered on');
-				}
+			if (success && kDebugMode) {
+				debugPrint('$_tag Screen powered on');
 			}
 
 			return success;

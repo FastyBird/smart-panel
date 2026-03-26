@@ -58,6 +58,9 @@ class MainActivity : FlutterActivity() {
 			params.screenBrightness = if (savedBrightness >= 0f) savedBrightness else -1f
 			window.attributes = params
 
+			// Remove the keep-screen-on flag added by setScreenOff
+			window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
 			// Ensure screen wakes up
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
 				setTurnScreenOn(true)
