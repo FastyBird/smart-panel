@@ -172,9 +172,11 @@ class ScreenPowerService {
 			_savedBacklightBrightness = parsedBrightness;
 			_backlightPath = path;
 
-			// Use shell redirect — Dart's File.writeAsString may not work
-			// on sysfs files (truncate mode incompatible with kernel pseudo-files)
-			final result = await Process.run('sh', ['-c', 'echo 0 > $path/brightness']);
+			final quotedPath = path.replaceAll("'", r"'\''");
+			final result = await Process.run(
+				'bash',
+				['-c', "echo 0 | sudo tee '$quotedPath/brightness'"],
+			);
 
 			if (result.exitCode == 0) {
 				if (kDebugMode) {
@@ -199,7 +201,11 @@ class ScreenPowerService {
 			final brightness = _savedBacklightBrightness!;
 			final path = _backlightPath!;
 
-			final result = await Process.run('sh', ['-c', 'echo $brightness > $path/brightness']);
+			final quotedPath = path.replaceAll("'", r"'\''");
+			final result = await Process.run(
+				'bash',
+				['-c', "echo $brightness | sudo tee '$quotedPath/brightness'"],
+			);
 
 			if (result.exitCode == 0) {
 				if (kDebugMode) {
