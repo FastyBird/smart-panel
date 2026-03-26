@@ -622,10 +622,10 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		HapticFeedback.lightImpact();
 
 		setState(() {
-			_screenPowerOff = !_screenPowerOff;
+			_screenPowerOff = state;
 		});
 
-		_localPrefs.setScreenPowerOff(_screenPowerOff);
+		_localPrefs.setScreenPowerOff(state);
 	}
 
 	Future<void> _handleScreenSaverChange(

@@ -116,6 +116,8 @@ class LocalPreferencesService extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] All preferences cleared');
       }
+
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] Failed to clear: $e');
