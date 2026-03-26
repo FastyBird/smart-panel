@@ -21,7 +21,7 @@ import type { IUser } from '../users';
 
 import type { AppLocale } from '../../locales';
 import { LOCALE_LANGUAGE_MAP } from '../../locales';
-import { applyLocale, clearStoredLocale, LANGUAGE_CHANGED_EVENT } from '../../common/composables/useLanguage';
+import { applyLocale, clearStoredLocale, detectBrowserLocale, LANGUAGE_CHANGED_EVENT, setHtmlLang } from '../../common/composables/useLanguage';
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
 import { locales } from './locales';
 import {
@@ -260,6 +260,8 @@ export default {
 		// Apply user's preferred language when profile loads.
 		// localStorage is cleared on sign-out, so this always applies the
 		// server preference for the newly signed-in user.
+		// When profile is null (sign-out) or has no language preference,
+		// reset to browser-detected locale to avoid leaking the previous user's language.
 		watch(
 			() => sessionStore.profile,
 			(profile: IUser | null) => {
@@ -270,6 +272,11 @@ export default {
 						(options.i18n.global.locale as unknown as { value: string }).value = locale;
 						applyLocale(locale);
 					}
+				} else if (profile && !profile.language) {
+					const browserLocale = detectBrowserLocale();
+
+					(options.i18n.global.locale as unknown as { value: string }).value = browserLocale;
+					setHtmlLang(browserLocale);
 				}
 			},
 			{ immediate: true },
