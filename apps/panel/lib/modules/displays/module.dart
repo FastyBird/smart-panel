@@ -399,11 +399,14 @@ class DisplaysModuleService {
       }
 
       if (updatedDisplay.audioOutputSupported) {
+        final speakerUnmuting = !previousSpeaker && updatedDisplay.speaker;
+
         // Skip volume-set while muted: on Android, setStreamVolume can
         // implicitly clear the mute flag, and on Linux amixer set N%
-        // can unmute the channel. Apply volume only when speaker is active.
-        if (previousSpeakerVolume != updatedDisplay.speakerVolume &&
-            updatedDisplay.speaker) {
+        // can unmute the channel. But when transitioning to unmuted,
+        // always apply volume to sync hardware with the stored value.
+        if (updatedDisplay.speaker &&
+            (previousSpeakerVolume != updatedDisplay.speakerVolume || speakerUnmuting)) {
           await deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
         }
 
@@ -413,11 +416,14 @@ class DisplaysModuleService {
       }
 
       if (updatedDisplay.audioInputSupported) {
+        final micUnmuting = !previousMicrophone && updatedDisplay.microphone;
+
         // On Android, setMicrophoneVolume manipulates the same mute flag as
         // setMicrophoneMute, so skip the volume call when muted to avoid a
-        // transient unmute window
-        if (previousMicrophoneVolume != updatedDisplay.microphoneVolume &&
-            updatedDisplay.microphone) {
+        // transient unmute window. But when transitioning to unmuted,
+        // always apply volume to sync hardware with the stored value.
+        if (updatedDisplay.microphone &&
+            (previousMicrophoneVolume != updatedDisplay.microphoneVolume || micUnmuting)) {
           await deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
         }
 
