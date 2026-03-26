@@ -172,7 +172,18 @@ class ScreenPowerService {
 			_savedBacklightBrightness = parsedBrightness;
 			_backlightPath = path;
 
-			// Write '0' to brightness file (quote path for shell safety)
+			// Try direct write first (flutter-pi runs as root)
+			try {
+				await brightnessFile.writeAsString('0');
+
+				if (kDebugMode) {
+					debugPrint('$_tag Backlight set to 0 at $path');
+				}
+				return true;
+			} catch (_) {
+				// Direct write failed — try sudo tee as fallback
+			}
+
 			final quotedPath = path.replaceAll("'", r"'\''");
 			final writeResult = await Process.run(
 				'bash',
@@ -181,22 +192,12 @@ class ScreenPowerService {
 
 			if (writeResult.exitCode == 0) {
 				if (kDebugMode) {
-					debugPrint('$_tag Backlight set to 0 at $path');
+					debugPrint('$_tag Backlight set to 0 (sudo) at $path');
 				}
 				return true;
 			}
 
-			// Fallback: try without sudo (some systems allow direct write)
-			try {
-				await brightnessFile.writeAsString('0');
-
-				if (kDebugMode) {
-					debugPrint('$_tag Backlight set to 0 (direct write) at $path');
-				}
-				return true;
-			} catch (_) {
-				return false;
-			}
+			return false;
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('$_tag Backlight off failed: $e');
@@ -212,6 +213,20 @@ class ScreenPowerService {
 			final brightness = _savedBacklightBrightness!;
 			final path = _backlightPath!;
 
+			// Try direct write first (flutter-pi runs as root)
+			try {
+				await File('$path/brightness').writeAsString('$brightness');
+
+				if (kDebugMode) {
+					debugPrint('$_tag Backlight restored to $brightness at $path');
+				}
+				_savedBacklightBrightness = null;
+				_backlightPath = null;
+				return true;
+			} catch (_) {
+				// Direct write failed — try sudo tee as fallback
+			}
+
 			final quotedPath = path.replaceAll("'", r"'\''");
 			final result = await Process.run(
 				'bash',
@@ -220,26 +235,14 @@ class ScreenPowerService {
 
 			if (result.exitCode == 0) {
 				if (kDebugMode) {
-					debugPrint('$_tag Backlight restored to $brightness at $path');
+					debugPrint('$_tag Backlight restored to $brightness (sudo) at $path');
 				}
 				_savedBacklightBrightness = null;
 				_backlightPath = null;
 				return true;
 			}
 
-			// Fallback: try direct write
-			try {
-				await File('$path/brightness').writeAsString('$brightness');
-
-				if (kDebugMode) {
-					debugPrint('$_tag Backlight restored (direct write) to $brightness');
-				}
-				_savedBacklightBrightness = null;
-				_backlightPath = null;
-				return true;
-			} catch (_) {
-				return false;
-			}
+			return false;
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('$_tag Backlight on failed: $e');
