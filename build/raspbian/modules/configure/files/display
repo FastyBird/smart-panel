@@ -22,3 +22,19 @@ FB_DISPLAY_DIMENSIONS=
 #   Leave empty for default (no rotation):
 #     FB_DISPLAY_ROTATION=
 FB_DISPLAY_ROTATION=
+
+# Enable accelerometer-based auto-rotation (reTerminal CM4 only).
+# When enabled, the smart-panel-auto-rotate service monitors the
+# built-in accelerometer and restarts the display with the correct
+# rotation when the device orientation changes.
+#
+# Valid values: 0 (disabled, default), 1 (enabled)
+#
+# Note: When auto-rotate is active, FB_DISPLAY_ROTATION is updated
+# automatically and any manual value will be overwritten on rotation.
+#
+# Tunables (optional):
+#   FB_AUTO_ROTATE_POLL_INTERVAL=1    # Polling interval in seconds
+#   FB_AUTO_ROTATE_DEBOUNCE=3         # Consecutive readings before rotating
+#   FB_AUTO_ROTATE_THRESHOLD=400      # Minimum tilt in mg to detect orientation
+FB_AUTO_ROTATE=0
