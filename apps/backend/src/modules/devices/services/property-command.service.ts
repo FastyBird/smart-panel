@@ -265,52 +265,12 @@ export class PropertyCommandService {
 		propertyId: string,
 		value: string | number | boolean,
 	): Promise<void> {
-		const device = await this.devicesService.findOne(deviceId);
+		const result = await this.processDeviceCommands(deviceId, [
+			{ device: deviceId, channel: channelId, property: propertyId, value },
+		]);
 
-		if (!device) {
-			this.logger.warn(`[API Command] Device not found id=${deviceId}`);
-			return;
-		}
-
-		if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
-			this.logger.warn(`[API Command] Device is offline id=${deviceId} status=${device.status.status}`);
-			return;
-		}
-
-		const platform = this.platformRegistryService.get(device);
-
-		if (!platform) {
-			this.logger.warn(`[API Command] No platform registered for device id=${device.id} type=${device.type}`);
-			return;
-		}
-
-		const channel = await this.channelsService.findOne(channelId, device.id);
-
-		if (!channel) {
-			this.logger.warn(`[API Command] Channel not found id=${channelId} for deviceId=${device.id}`);
-			return;
-		}
-
-		const property = await this.channelsPropertiesService.findOne(propertyId, channel.id);
-
-		if (!property) {
-			this.logger.warn(`[API Command] Property not found id=${propertyId} for channelId=${channel.id}`);
-			return;
-		}
-
-		if (!this.validateValueType(property.dataType, value)) {
-			this.logger.warn(`[API Command] Invalid value type for property id=${property.id} expected=${property.dataType}`);
-			return;
-		}
-
-		this.logger.log(`[API Command] Sending command for propertyId=${property.id} value=${value}`);
-
-		const success = await platform.processBatch([{ device, channel, property, value }]);
-
-		if (!success) {
-			this.logger.error(`[API Command] Command execution failed for deviceId=${device.id}`);
-		} else {
-			this.logger.log(`[API Command] Successfully executed command for deviceId=${device.id}`);
+		if (!result.success) {
+			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${result.reason}`);
 		}
 	}
 

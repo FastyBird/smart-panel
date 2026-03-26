@@ -378,20 +378,13 @@ export class ChannelsPropertiesController {
 
 			// If value was provided, send command to the physical device (fire-and-forget)
 			if (typeof updateDto.data.value !== 'undefined' && updateDto.data.value !== null) {
-				const deviceId =
-					typeof updatedProperty.channel === 'string'
-						? undefined
-						: typeof updatedProperty.channel.device === 'string'
-							? updatedProperty.channel.device
-							: updatedProperty.channel.device?.id;
+				const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
 
-				if (deviceId) {
-					this.propertyCommandService
-						.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, updateDto.data.value)
-						.catch((err: Error) => {
-							this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
-						});
-				}
+				this.propertyCommandService
+					.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, updateDto.data.value)
+					.catch((err: Error) => {
+						this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
+					});
 			}
 
 			const response = new ChannelPropertyResponseModel();
