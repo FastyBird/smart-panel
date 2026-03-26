@@ -176,8 +176,12 @@ class DeviceControlService {
 			// completely, which would leave the user unable to interact with the UI)
 			final raw = (percent * _maxBrightness! / 100).round();
 			final value = raw < 1 ? 1 : raw;
+			final quotedPath = _backlightPath!.replaceAll("'", r"'\''");
 
-			final result = await Process.run('sh', ['-c', 'echo $value > $_backlightPath/brightness']);
+			final result = await Process.run(
+				'bash',
+				['-c', "echo $value | sudo tee '$quotedPath/brightness'"],
+			);
 
 			if (result.exitCode == 0) {
 				if (kDebugMode) {
@@ -186,7 +190,17 @@ class DeviceControlService {
 				return true;
 			}
 
-			return false;
+			// Fallback: direct write (some systems allow it without sudo)
+			try {
+				await File('$_backlightPath/brightness').writeAsString('$value');
+
+				if (kDebugMode) {
+					debugPrint('$_tag Backlight set to $value (direct write)');
+				}
+				return true;
+			} catch (_) {
+				return false;
+			}
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('$_tag Backlight brightness failed: $e');
