@@ -23,14 +23,6 @@ ACCEL_PATH="/sys/devices/platform/lis3lv02d/position"
 DISPLAY_SERVICE="smart-panel-display.service"
 AUTO_ROTATE_SERVICE="smart-panel-auto-rotate.service"
 
-# ── Tunables ─────────────────────────────────────────────────────────
-# How often to poll the accelerometer (seconds)
-POLL_INTERVAL="${FB_AUTO_ROTATE_POLL_INTERVAL:-1}"
-# Number of consecutive identical readings before committing a rotation
-DEBOUNCE_COUNT="${FB_AUTO_ROTATE_DEBOUNCE:-3}"
-# Minimum axis magnitude (in mg) to consider a valid tilt
-THRESHOLD="${FB_AUTO_ROTATE_THRESHOLD:-400}"
-
 # ── Helpers ──────────────────────────────────────────────────────────
 log_info() { logger -t "$LOG_TAG" "$*"; }
 log_err()  { logger -t "$LOG_TAG" -p user.err "$*"; }
@@ -40,7 +32,8 @@ log_err()  { logger -t "$LOG_TAG" -p user.err "$*"; }
 read_current_rotation() {
 	if [ -f "$DISPLAY_CONFIG" ]; then
 		grep -E '^FB_DISPLAY_ROTATION=' "$DISPLAY_CONFIG" 2>/dev/null \
-			| tail -1 | cut -d= -f2 | tr -d '"' | tr -d "'" | xargs
+			| tail -1 | cut -d= -f2 | tr -d '"' | tr -d "'" | xargs \
+			|| true
 	fi
 }
 
@@ -48,7 +41,8 @@ read_current_rotation() {
 read_auto_rotate_flag() {
 	if [ -f "$DISPLAY_CONFIG" ]; then
 		grep -E '^FB_AUTO_ROTATE=' "$DISPLAY_CONFIG" 2>/dev/null \
-			| tail -1 | cut -d= -f2 | tr -d '"' | tr -d "'" | xargs
+			| tail -1 | cut -d= -f2 | tr -d '"' | tr -d "'" | xargs \
+			|| true
 	fi
 }
 
@@ -190,14 +184,19 @@ cmd_daemon() {
 	fi
 
 	if [ "${FB_AUTO_ROTATE:-0}" != "1" ]; then
-		log_err "Auto-rotate is disabled (FB_AUTO_ROTATE=${FB_AUTO_ROTATE:-0}). Enable it with: smart-panel-auto-rotate enable"
-		exit 1
+		log_info "Auto-rotate is disabled (FB_AUTO_ROTATE=${FB_AUTO_ROTATE:-0}). Enable it with: smart-panel-auto-rotate enable"
+		exit 0
 	fi
 
 	if [ ! -f "$ACCEL_PATH" ]; then
 		log_err "Accelerometer not found at $ACCEL_PATH — is this a reTerminal CM4?"
 		exit 1
 	fi
+
+	# Resolve tunables now that the config has been sourced
+	POLL_INTERVAL="${FB_AUTO_ROTATE_POLL_INTERVAL:-1}"
+	DEBOUNCE_COUNT="${FB_AUTO_ROTATE_DEBOUNCE:-3}"
+	THRESHOLD="${FB_AUTO_ROTATE_THRESHOLD:-400}"
 
 	log_info "Auto-rotate daemon starting (poll=${POLL_INTERVAL}s, debounce=${DEBOUNCE_COUNT}, threshold=${THRESHOLD}mg)"
 
