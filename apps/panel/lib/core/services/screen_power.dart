@@ -3,6 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// Which Linux screen-off strategy succeeded, so [screenOn] only
+/// invokes the matching restore method.
+enum _LinuxScreenOffMethod {
+	backlight,
+	dpms,
+	framebuffer,
+}
+
 /// Service for controlling the physical display power state.
 ///
 /// Supports turning the screen on/off across multiple platforms:
@@ -19,6 +27,9 @@ class ScreenPowerService {
 	// Saved backlight brightness for restore on Linux/DRM
 	int? _savedBacklightBrightness;
 	String? _backlightPath;
+
+	// Which Linux strategy was used to turn the screen off
+	_LinuxScreenOffMethod? _linuxMethod;
 
 	bool get isScreenOff => _isScreenOff;
 
@@ -90,13 +101,22 @@ class ScreenPowerService {
 
 	Future<bool> _linuxScreenOff() async {
 		// Strategy 1: Backlight sysfs (Raspberry Pi official display, etc.)
-		if (await _linuxBacklightOff()) return true;
+		if (await _linuxBacklightOff()) {
+			_linuxMethod = _LinuxScreenOffMethod.backlight;
+			return true;
+		}
 
 		// Strategy 2: DPMS via xset (X11 sessions)
-		if (await _linuxDpmsOff()) return true;
+		if (await _linuxDpmsOff()) {
+			_linuxMethod = _LinuxScreenOffMethod.dpms;
+			return true;
+		}
 
 		// Strategy 3: Framebuffer blanking (DRM/KMS without backlight sysfs)
-		if (await _linuxFbBlankOff()) return true;
+		if (await _linuxFbBlankOff()) {
+			_linuxMethod = _LinuxScreenOffMethod.framebuffer;
+			return true;
+		}
 
 		if (kDebugMode) {
 			debugPrint('$_tag No supported Linux screen power method found');
@@ -105,14 +125,23 @@ class ScreenPowerService {
 	}
 
 	Future<bool> _linuxScreenOn() async {
-		// Try all methods - at least one should work if screenOff succeeded
-		bool success = false;
+		final method = _linuxMethod;
+		_linuxMethod = null;
 
-		if (await _linuxBacklightOn()) success = true;
-		if (await _linuxDpmsOn()) success = true;
-		if (await _linuxFbBlankOn()) success = true;
-
-		return success;
+		switch (method) {
+			case _LinuxScreenOffMethod.backlight:
+				return _linuxBacklightOn();
+			case _LinuxScreenOffMethod.dpms:
+				return _linuxDpmsOn();
+			case _LinuxScreenOffMethod.framebuffer:
+				return _linuxFbBlankOn();
+			case null:
+				// No method recorded — try all as a fallback
+				if (await _linuxBacklightOn()) return true;
+				if (await _linuxDpmsOn()) return true;
+				if (await _linuxFbBlankOn()) return true;
+				return false;
+		}
 	}
 
 	/// Backlight sysfs: `/sys/class/backlight/*/brightness`
@@ -126,20 +155,13 @@ class ScreenPowerService {
 
 			final path = entries.first.path;
 			final brightnessFile = File('$path/brightness');
-			final maxBrightnessFile = File('$path/max_brightness');
 
 			if (!await brightnessFile.exists()) return false;
 
-			// Save current brightness for restore
+			// Save current brightness for restore (even if 0)
 			final current = await brightnessFile.readAsString();
-			_savedBacklightBrightness = int.tryParse(current.trim());
+			_savedBacklightBrightness = int.tryParse(current.trim()) ?? 0;
 			_backlightPath = path;
-
-			// If max_brightness exists, verify we have a valid saved value
-			if (await maxBrightnessFile.exists() && _savedBacklightBrightness == 0) {
-				final max = await maxBrightnessFile.readAsString();
-				_savedBacklightBrightness = int.tryParse(max.trim()) ?? 255;
-			}
 
 			// Write '0' to brightness file
 			final writeResult = await Process.run(
