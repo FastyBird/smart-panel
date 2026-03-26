@@ -16,7 +16,7 @@ import {
 
 import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/components';
 import { DEVICES_THIRD_PARTY_PLUGIN_NAME, DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ThirdPartyDeviceAddFormSchema, ThirdPartyDeviceEditFormSchema } from './schemas/devices.schemas';
 import { ThirdPartyChannelPropertySchema } from './store/channels.properties.store.schemas';
 import { ThirdPartyChannelSchema } from './store/channels.store.schemas';
@@ -33,7 +33,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesThirdPartyPlugin: translations });
 

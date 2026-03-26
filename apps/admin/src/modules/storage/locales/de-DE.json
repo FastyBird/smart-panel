@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutStorage": "Speicherkonfiguration"
+	},
+	"messages": {
+		"config": {
+			"edited": "Speicherkonfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der Speicherkonfiguration fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Konfigurieren Sie das Datenspeicher-Backend für die Speicherung von Zeitreihendaten wie Geräteeigenschafts-Verlauf und Analysen."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Primärspeicher",
+				"placeholder": "Primärspeicher-Plugin auswählen",
+				"validation": {
+					"required": "Primärspeicher ist erforderlich"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Ausweichspeicher",
+				"placeholder": "Ausweichspeicher-Plugin auswählen (optional)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "In-Memory-Speicher"
+			}
+		}
+	}
+}

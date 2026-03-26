@@ -12,6 +12,7 @@ export const transformUserResponse = (response: IUserRes): IUser => {
 		lastName: response.last_name,
 		isHidden: response.is_hidden,
 		role: response.role,
+		language: response.language ?? null,
 		createdAt: response.created_at,
 		updatedAt: response.updated_at,
 	});
@@ -32,6 +33,7 @@ export const transformUserCreateRequest = (user: IUsersAddActionPayload['data'] 
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
+		language: user.language,
 	});
 
 	if (!parsedRequest.success) {
@@ -49,6 +51,7 @@ export const transformUserUpdateRequest = (user: IUsersEditActionPayload['data']
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
+		language: user.language,
 	});
 
 	if (!parsedRequest.success) {

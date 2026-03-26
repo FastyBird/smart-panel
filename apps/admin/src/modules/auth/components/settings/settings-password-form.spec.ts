@@ -17,6 +17,7 @@ import SettingsPasswordForm from './settings-password-form.vue';
 type SettingsPasswordFormInstance = ComponentPublicInstance<SettingsPasswordFormProps> & { passwordForm: SettingsPasswordFormFields };
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -64,6 +65,7 @@ describe('SettingsPasswordForm', (): void => {
 					draft: false,
 					isHidden: false,
 					role: UsersModuleUserRole.user,
+					language: null,
 					createdAt: new Date(),
 					updatedAt: null,
 				},

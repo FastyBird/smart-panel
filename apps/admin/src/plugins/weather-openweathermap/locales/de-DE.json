@@ -1,0 +1,129 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenWeatherMap API-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"apiKey": {
+				"title": "API-Schlüssel",
+				"placeholder": "Geben Sie Ihren OpenWeatherMap API-Schlüssel ein",
+				"description": "Holen Sie sich Ihren kostenlosen API-Schlüssel von openweathermap.org",
+				"validation": {
+					"required": "Bitte geben Sie Ihren API-Schlüssel ein"
+				}
+			},
+			"unit": {
+				"title": "Temperatureinheit",
+				"placeholder": "Temperatureinheit auswählen",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Name",
+				"description": "Ein freundlicher Name für diesen Standort",
+				"placeholder": "z.B. Zuhause, Büro, Ferienhaus",
+				"validation": {
+					"required": "Name ist erforderlich"
+				}
+			},
+			"citySearch": {
+				"title": "Stadt suchen",
+				"placeholder": "Beginnen Sie zu tippen, um eine Stadt zu suchen...",
+				"description": "Suchen Sie eine Stadt und wir füllen die Koordinaten automatisch aus"
+			},
+			"locationType": {
+				"title": "Standorttyp",
+				"placeholder": "Wählen Sie, wie der Standort identifiziert wird",
+				"values": {
+					"latLon": "GPS-Koordinaten",
+					"cityName": "Stadtname",
+					"cityId": "Stadt-ID",
+					"zipCode": "Postleitzahl"
+				},
+				"validation": {
+					"required": "Standorttyp ist erforderlich"
+				}
+			},
+			"coordinates": {
+				"title": "Koordinaten"
+			},
+			"latitude": {
+				"title": "Breitengrad",
+				"placeholder": "z.B. 51.5074",
+				"validation": {
+					"required": "Breitengrad ist erforderlich",
+					"range": "Breitengrad muss zwischen -90 und 90 liegen"
+				}
+			},
+			"longitude": {
+				"title": "Längengrad",
+				"placeholder": "z.B. -0.1278",
+				"validation": {
+					"required": "Längengrad ist erforderlich",
+					"range": "Längengrad muss zwischen -180 und 180 liegen"
+				}
+			},
+			"map": {
+				"title": "Standort auf Karte"
+			},
+			"cityName": {
+				"title": "Stadtname",
+				"placeholder": "z.B. Berlin",
+				"validation": {
+					"required": "Stadtname ist erforderlich"
+				}
+			},
+			"countryCode": {
+				"title": "Ländercode",
+				"placeholder": "z.B. DE"
+			},
+			"cityId": {
+				"title": "Stadt-ID",
+				"placeholder": "z.B. 2643743",
+				"description": "OpenWeatherMap Stadt-ID (finden Sie unter openweathermap.org)",
+				"validation": {
+					"required": "Stadt-ID ist erforderlich"
+				}
+			},
+			"zipCode": {
+				"title": "Postleitzahl",
+				"placeholder": "z.B. 10115",
+				"validation": {
+					"required": "Postleitzahl ist erforderlich"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Mein Standort"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenWeatherMap-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der OpenWeatherMap-Einstellungen fehlgeschlagen"
+		},
+		"locations": {
+			"created": "Standort \"{location}\" wurde erstellt",
+			"notCreated": "Standort \"{location}\" konnte nicht erstellt werden",
+			"edited": "Standort \"{location}\" wurde aktualisiert",
+			"notEdited": "Standort \"{location}\" konnte nicht aktualisiert werden"
+		},
+		"geolocationNotSupported": "Geolokalisierung wird von Ihrem Browser nicht unterstützt",
+		"geolocationDenied": "Standortzugriff wurde verweigert. Bitte aktivieren Sie die Standortberechtigung.",
+		"geolocationUnavailable": "Standortinformationen sind nicht verfügbar",
+		"geolocationTimeout": "Die Anfrage zur Standortermittlung hat das Zeitlimit überschritten",
+		"geolocationError": "Beim Abrufen Ihres Standorts ist ein Fehler aufgetreten"
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre OpenWeatherMap API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel, um Wetterdaten abzurufen. Wählen Sie Ihre bevorzugte Temperatureinheit für die Wetteranzeige."
+	}
+}

@@ -1,0 +1,200 @@
+{
+	"menu": {
+		"title": "Uživatelé"
+	},
+	"meta": {
+		"users": {
+			"list": {
+				"title": "Seznam uživatelů"
+			},
+			"edit": {
+				"title": "Upravit uživatele: {user}"
+			},
+			"add": {
+				"title": "Přidat uživatele"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"users": "uživatelé",
+		"addUser": "přidat uživatele",
+		"editUser": "upravit uživatele"
+	},
+	"headings": {
+		"users": "Uživatelé",
+		"addUser": "Přidat uživatele",
+		"editUser": "Upravit uživatele",
+		"remove": "Odebrat uživatele?",
+		"removeBulk": "Odebrat uživatele?",
+		"discard": "Zahodit změny?",
+		"changeUsername": "Změnit uživatelské jméno",
+		"changePassword": "Změnit heslo"
+	},
+	"subHeadings": {
+		"users": "Správa uživatelských účtů smart panelu",
+		"addUser": "Přidat nového uživatele smart panelu"
+	},
+	"messages": {
+		"requestError": "Něco se pokazilo, zkuste to prosím znovu později.",
+		"created": "Nový uživatel byl úspěšně přidán.",
+		"notCreated": "Něco se pokazilo. Uživatele se nepodařilo vytvořit.",
+		"edited": "Změny uloženy! Uživatel: {user} byl aktualizován.",
+		"notEdited": "Něco se pokazilo. Aktualizace uživatele nebyla úspěšná.",
+		"notFound": "Uživatel, kterého hledáte, neexistuje nebo byl odebrán.",
+		"removed": "Uživatel: {user} byl úspěšně odebrán.",
+		"removeCanceled": "Odebrání uživatele: {user} bylo zrušeno.",
+		"notRemoved": "Něco se pokazilo a uživatel: {user} nebyl odebrán.",
+		"deletedWhileEditing": "Tento uživatel byl smazán a již není k dispozici.",
+		"usernameEdited": "Uživatelské jméno bylo úspěšně aktualizováno.",
+		"usernameNotEdited": "Nepodařilo se aktualizovat uživatelské jméno. Zkuste to prosím znovu.",
+		"passwordEdited": "Heslo uživatele bylo úspěšně aktualizováno.",
+		"passwordNotEdited": "Nepodařilo se aktualizovat heslo uživatele. Zkuste to prosím znovu.",
+		"bulkRemoved": "{count} uživatel(ů) bylo odebráno.",
+		"bulkRemoveFailed": "Nepodařilo se odebrat {count} uživatel(ů).",
+		"bulkRemoveCanceled": "Hromadné odebrání uživatelů bylo zrušeno."
+	},
+	"texts": {
+		"confirmRemove": "Opravdu chcete odebrat uživatele: {user}? Tuto akci nelze vrátit zpět.",
+		"confirmBulkRemove": "Opravdu chcete odebrat {count} uživatel(ů)? Tuto akci nelze vrátit zpět.",
+		"misc": {
+			"noUsers": "Nemáte nakonfigurovaného žádného uživatele",
+			"noFilteredUsers": "Nebyli nalezeni žádní uživatelé odpovídající aktivním kritériím filtru",
+			"loadingUsers": "Načítání uživatelů...",
+			"loadingUser": "Načítání uživatele...",
+			"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Hledat uživatele..."
+		},
+		"role": {
+			"title": "Role uživatele",
+			"placeholder": "Vyberte roli",
+			"validation": {
+				"required": "Vyberte prosím roli uživatele"
+			},
+			"options": {
+				"user": "Uživatel",
+				"admin": "Administrátor",
+				"owner": "Vlastník"
+			}
+		},
+		"username": {
+			"title": "Uživatelské jméno",
+			"validation": {
+				"required": "Vyplňte prosím své uživatelské jméno"
+			}
+		},
+		"newUsername": {
+			"title": "Nové uživatelské jméno",
+			"validation": {
+				"required": "Vyplňte prosím nové uživatelské jméno"
+			}
+		},
+		"password": {
+			"title": "Heslo",
+			"validation": {
+				"required": "Vyplňte prosím své heslo"
+			}
+		},
+		"repeatPassword": {
+			"title": "Potvrzení hesla",
+			"validation": {
+				"required": "Potvrďte prosím své nové heslo",
+				"different": "Hesla se neshodují"
+			}
+		},
+		"newPassword": {
+			"title": "Nové heslo",
+			"validation": {
+				"required": "Vyplňte prosím nové heslo"
+			}
+		},
+		"newRepeatPassword": {
+			"title": "Potvrzení hesla",
+			"validation": {
+				"required": "Potvrďte prosím nové heslo",
+				"different": "Hesla se neshodují"
+			}
+		},
+		"email": {
+			"title": "E-mail",
+			"placeholder": "např. jan{'@'}novak.cz",
+			"validation": {
+				"email": "Zadejte prosím platnou e-mailovou adresu"
+			}
+		},
+		"firstName": {
+			"title": "Jméno",
+			"placeholder": "např. Jan"
+		},
+		"lastName": {
+			"title": "Příjmení",
+			"placeholder": "např. Novák"
+		}
+	},
+	"table": {
+		"columns": {
+			"username": {
+				"title": "Uživatelské jméno"
+			},
+			"firstName": {
+				"title": "Jméno"
+			},
+			"lastName": {
+				"title": "Příjmení"
+			},
+			"email": {
+				"title": "E-mail"
+			},
+			"role": {
+				"title": "Role"
+			}
+		}
+	},
+	"role": {
+		"user": "Uživatel",
+		"admin": "Administrátor",
+		"owner": "Vlastník",
+		"display": "Displej"
+	},
+	"buttons": {
+		"add": {
+			"title": "Přidat"
+		},
+		"edit": {
+			"title": "Upravit"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"discard": {
+			"title": "Zahodit"
+		},
+		"cancel": {
+			"title": "Zrušit"
+		},
+		"close": {
+			"title": "Zavřít"
+		},
+		"save": {
+			"title": "Uložit"
+		},
+		"change": {
+			"title": "Změnit"
+		},
+		"remove": {
+			"title": "Odebrat"
+		},
+		"resetFilters": {
+			"title": "Resetovat filtry"
+		},
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		}
+	}
+}

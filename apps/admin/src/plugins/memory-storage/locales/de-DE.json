@@ -1,0 +1,8 @@
+{
+	"messages": {
+		"config": {
+			"edited": "In-Memory-Speicherkonfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der In-Memory-Speicherkonfiguration fehlgeschlagen"
+		}
+	}
+}

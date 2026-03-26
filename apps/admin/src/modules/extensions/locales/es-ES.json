@@ -1,0 +1,258 @@
+{
+	"menu": {
+		"title": "Extensiones"
+	},
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "Listar extensiones"
+			},
+			"detail": {
+				"title": "Extensión: {extension}"
+			}
+		}
+	},
+	"headings": {
+		"list": "Extensiones",
+		"detail": "Detalle de extensión",
+		"adjustFilters": "Ajustar filtros",
+		"bulkEnable": "Activar extensiones",
+		"bulkDisable": "Desactivar extensiones"
+	},
+	"subHeadings": {
+		"list": "Gestiona los módulos y complementos de tu aplicación",
+		"detail": "Ver información y configuración de la extensión",
+		"adjustFilters": "Filtra extensiones por varios criterios"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "extensiones",
+			"detail": "extensión: {extension}"
+		}
+	},
+	"tabs": {
+		"all": "Todas las extensiones",
+		"modules": "Módulos",
+		"plugins": "Complementos",
+		"services": "Servicios"
+	},
+	"labels": {
+		"module": "Módulo",
+		"plugin": "Complemento",
+		"core": "Núcleo",
+		"addon": "Complemento",
+		"enabled": "Activado",
+		"disabled": "Desactivado",
+		"version": "Versión",
+		"author": "Autor",
+		"type": "Tipo",
+		"kind": "Clase",
+		"source": "Origen",
+		"status": "Estado",
+		"configuration": "Configuración",
+		"description": "Descripción",
+		"details": "Detalles",
+		"links": "Enlaces",
+		"readme": "Acerca de",
+		"documentation": "Documentación",
+		"logs": "Registros",
+		"live": "En vivo"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Buscar extensiones..."
+		}
+	},
+	"filters": {
+		"kind": {
+			"title": "Clase"
+		},
+		"enabled": {
+			"title": "Estado"
+		},
+		"type": {
+			"title": "Tipo"
+		}
+	},
+	"states": {
+		"all": "Todos"
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Nombre"
+			},
+			"type": {
+				"title": "Tipo"
+			},
+			"kind": {
+				"title": "Clase"
+			},
+			"version": {
+				"title": "Versión"
+			},
+			"core": {
+				"title": "Núcleo"
+			},
+			"enabled": {
+				"title": "Activado"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Cargando extensiones...",
+		"noExtensions": "No hay extensiones instaladas",
+		"noFilteredExtensions": "Ninguna extensión coincide con los filtros actuales",
+		"logs": {
+			"noLogs": "No hay registros disponibles",
+			"noLogsDescription": "Esta extensión aún no ha producido ninguna entrada de registro",
+			"noFilteredLogs": "Ningún registro coincide con los filtros actuales",
+			"noMessage": "Sin mensaje",
+			"noMoreEntries": "No hay más entradas de registro",
+			"allLevels": "Todos los niveles",
+			"timeRange": {
+				"all": "Todo el tiempo",
+				"1h": "Última hora",
+				"6h": "Últimas 6 horas",
+				"24h": "Últimas 24 horas",
+				"7d": "Últimos 7 días"
+			}
+		}
+	},
+	"buttons": {
+		"actions": "Acciones",
+		"documentation": "Docs",
+		"repository": "Repositorio",
+		"issues": "Incidencias",
+		"enable": "Activar",
+		"disable": "Desactivar",
+		"remove": "Eliminar",
+		"configure": "Configurar",
+		"viewDetails": "Ver detalles",
+		"refresh": "Actualizar",
+		"loadMore": "Cargar más",
+		"detail": {
+			"title": "Detalle"
+		},
+		"reset": {
+			"title": "Restablecer filtros"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		},
+		"yes": "Sí",
+		"no": "No"
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Las extensiones del núcleo no se pueden eliminar",
+		"coreModuleCannotBeDisabled": "Los módulos del núcleo no se pueden desactivar",
+		"removeNotSupported": "La eliminación de extensiones aún no está disponible",
+		"cannotToggleEnabled": "Esta extensión no se puede activar/desactivar",
+		"openConfiguration": "Abrir configuración de la extensión"
+	},
+	"messages": {
+		"noExtensions": "No se encontraron extensiones",
+		"noDescription": "No hay descripción disponible",
+		"extensionEnabled": "La extensión ha sido activada",
+		"extensionDisabled": "La extensión ha sido desactivada",
+		"updateError": "Error al actualizar la extensión",
+		"coreExtensionError": "Las extensiones del núcleo no se pueden modificar",
+		"notConfigurableError": "Esta extensión no admite activar/desactivar",
+		"loadError": "Error al cargar las extensiones",
+		"noMatchingExtensions": "Ninguna extensión coincide con los filtros",
+		"confirmBulkEnable": "¿Estás seguro de que deseas activar {count} extensión(es)?",
+		"confirmBulkDisable": "¿Estás seguro de que deseas desactivar {count} extensión(es)?",
+		"bulkEnabled": "{count} extensión(es) han sido activadas",
+		"bulkDisabled": "{count} extensión(es) han sido desactivadas",
+		"bulkEnableFailed": "Error al activar {count} extensión(es)",
+		"bulkDisableFailed": "Error al desactivar {count} extensión(es)",
+		"bulkEnableCanceled": "La activación masiva ha sido cancelada",
+		"bulkDisableCanceled": "La desactivación masiva ha sido cancelada",
+		"noExtensionsToEnable": "No hay extensiones para activar (todas las seleccionadas ya están activadas o no se pueden cambiar)",
+		"noExtensionsToDisable": "No hay extensiones para desactivar (todas las seleccionadas ya están desactivadas o no se pueden cambiar)"
+	},
+	"actions": {
+		"labels": {
+			"tab": "Acciones",
+			"category": {
+				"general": "General",
+				"simulation": "Simulación",
+				"data": "Datos",
+				"diagnostics": "Diagnósticos",
+				"maintenance": "Mantenimiento"
+			},
+			"required": "Requerido",
+			"dangerous": "Peligroso",
+			"comingSoon": "Próximamente"
+		},
+		"buttons": {
+			"run": "Ejecutar",
+			"confirm": "Confirmar",
+			"cancel": "Cancelar"
+		},
+		"messages": {
+			"success": "Acción completada correctamente",
+			"error": "La acción falló",
+			"confirmDangerous": "Esta acción puede tener efectos significativos. ¿Estás seguro de que deseas continuar?",
+			"noActions": "No hay acciones disponibles para esta extensión",
+			"interactiveNotAvailable": "Las acciones interactivas estarán disponibles en una futura actualización",
+			"loading": "Cargando acciones..."
+		}
+	},
+	"services": {
+		"headings": {
+			"list": "Servicios de complementos",
+			"subHeading": "Monitorea y controla los servicios de complementos"
+		},
+		"labels": {
+			"pluginName": "Complemento",
+			"serviceId": "Servicio",
+			"state": "Estado",
+			"enabled": "Activado",
+			"disabled": "Desactivado",
+			"healthy": "Saludable",
+			"unhealthy": "No saludable",
+			"uptime": "Tiempo activo",
+			"startCount": "Inicios",
+			"lastStarted": "Último inicio",
+			"lastStopped": "Última detención",
+			"lastError": "Último error"
+		},
+		"states": {
+			"stopped": "Detenido",
+			"starting": "Iniciando",
+			"started": "En ejecución",
+			"stopping": "Deteniéndose",
+			"error": "Error"
+		},
+		"buttons": {
+			"start": "Iniciar",
+			"stop": "Detener",
+			"restart": "Reiniciar",
+			"refresh": "Actualizar"
+		},
+		"messages": {
+			"started": "El servicio ha sido iniciado",
+			"serviceStarting": "El servicio está iniciándose — puede tardar un momento en estar completamente listo",
+			"stopped": "El servicio ha sido detenido",
+			"restarted": "El servicio ha sido reiniciado",
+			"startError": "Error al iniciar el servicio",
+			"stopError": "Error al detener el servicio",
+			"restartError": "Error al reiniciar el servicio",
+			"loadError": "Error al cargar los servicios",
+			"noServices": "No hay servicios disponibles"
+		},
+		"tooltips": {
+			"disabledPlugin": "El complemento está desactivado",
+			"transitioning": "El servicio está en transición",
+			"startService": "Iniciar este servicio",
+			"stopService": "Detener este servicio",
+			"restartService": "Reiniciar este servicio"
+		},
+		"texts": {
+			"loadingServices": "Cargando servicios...",
+			"noServices": "No se encontraron servicios gestionados",
+			"pluginDisabled": "Complemento desactivado"
+		}
+	}
+}

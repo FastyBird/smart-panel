@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../devices.constants';
 
@@ -14,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				authenticated: true,
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
-			title: 'Devices',
+			title: () => i18n.global.t('devicesModule.menu.title'),
 			icon: 'mdi:devices',
 			menu: 7000,
 		},

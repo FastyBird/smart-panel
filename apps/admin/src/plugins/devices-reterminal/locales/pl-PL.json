@@ -1,0 +1,72 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutPolling": "Odpytywanie czujnikow"
+	},
+	"texts": {
+		"aboutPluginStatus": "Wlacz lub wylacz wtyczke reTerminal. Po wylaczeniu zadne peryferia sprzetowe reTerminal nie beda monitorowane ani sterowane.",
+		"aboutPolling": "Skonfiguruj, jak czesto wtyczka odpytuje czujniki sprzetowe (swiatlo, akcelerometr, temperatura) w celu uzyskania zaktualizowanych odczytow."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Wlacz wtyczke"
+			},
+			"polling": {
+				"interval": {
+					"title": "Interwal odpytywania (ms)",
+					"validation": {
+						"required": "Interwal odpytywania jest wymagany",
+						"number": "Musi byc liczba >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID urzadzenia",
+				"placeholder": "ID urzadzenia"
+			},
+			"name": {
+				"title": "Nazwa urzadzenia",
+				"placeholder": "Wprowadz nazwe urzadzenia",
+				"validation": {
+					"required": "Nazwa urzadzenia jest wymagana"
+				}
+			},
+			"category": {
+				"title": "Kategoria urzadzenia",
+				"placeholder": "Wybierz kategorie",
+				"validation": {
+					"required": "Kategoria urzadzenia jest wymagana"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Wprowadz opis urzadzenia (opcjonalnie)"
+			},
+			"variant": {
+				"title": "Wariant sprzetowy",
+				"placeholder": "Wybierz wariant sprzetowy",
+				"validation": {
+					"required": "Wariant sprzetowy jest wymagany"
+				}
+			},
+			"enabled": {
+				"title": "Wlaczony"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja wtyczki reTerminal zostala zaktualizowana",
+			"notEdited": "Nie udalo sie zaktualizowac konfiguracji wtyczki reTerminal"
+		},
+		"devices": {
+			"created": "Urzadzenie reTerminal '{device}' zostalo utworzone",
+			"notCreated": "Nie udalo sie utworzyc urzadzenia reTerminal '{device}'",
+			"edited": "Urzadzenie reTerminal '{device}' zostalo zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac urzadzenia reTerminal '{device}'"
+		}
+	}
+}

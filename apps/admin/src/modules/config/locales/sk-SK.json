@@ -1,0 +1,316 @@
+{
+	"menu": {
+		"title": "Konfigurácia",
+		"modules": "Moduly",
+		"plugins": "Pluginy"
+	},
+	"meta": {
+		"config": {
+			"title": "Konfigurácia"
+		},
+		"configAudio": {
+			"title": "Konfigurácia zvuku"
+		},
+		"configDisplay": {
+			"title": "Konfigurácia displeja"
+		},
+		"configLanguage": {
+			"title": "Konfigurácia jazyka"
+		},
+		"configWeather": {
+			"title": "Konfigurácia počasia"
+		},
+		"configSystem": {
+			"title": "Konfigurácia systému"
+		},
+		"configPlugins": {
+			"title": "Konfigurácia pluginov"
+		},
+		"configModules": {
+			"title": "Konfigurácia modulov"
+		},
+		"configModuleEdit": {
+			"title": "Upraviť modul: {module}"
+		},
+		"configPluginEdit": {
+			"title": "Upraviť plugin: {plugin}"
+		}
+	},
+	"breadcrumbs": {
+		"config": "konfigurácia",
+		"configAudio": "konfigurácia zvuku",
+		"configDisplay": "konfigurácia displeja",
+		"configLanguage": "konfigurácia jazyka",
+		"configWeather": "konfigurácia počasia",
+		"configSystem": "konfigurácia systému",
+		"configPlugins": "konfigurácia pluginov",
+		"configModules": "konfigurácia modulov"
+	},
+	"messages": {
+		"loadError": "Nepodarilo sa načítať konfiguráciu",
+		"configAudio": {
+			"edited": "Zmeny uložené! Konfigurácia zvuku bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie zvuku nebola úspešná."
+		},
+		"configDisplay": {
+			"edited": "Zmeny uložené! Konfigurácia displeja bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie displeja nebola úspešná."
+		},
+		"configLanguage": {
+			"edited": "Zmeny uložené! Konfigurácia jazyka bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie jazyka nebola úspešná."
+		},
+		"configWeather": {
+			"edited": "Zmeny uložené! Konfigurácia počasia bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie počasia nebola úspešná."
+		},
+		"configSystem": {
+			"edited": "Zmeny uložené! Konfigurácia systému bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie systému nebola úspešná."
+		},
+		"configPlugin": {
+			"edited": "Zmeny uložené! Konfigurácia pluginu bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie pluginu nebola úspešná."
+		},
+		"configModule": {
+			"edited": "Zmeny uložené! Konfigurácia modulu bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie modulu nebola úspešná."
+		},
+		"moduleConfigNotFound": {
+			"title": "Konfigurácia modulu nebola nájdená",
+			"message": "Konfiguráciu modulu \"{module}\" sa nepodarilo načítať. Skontrolujte, či je modul správne nainštalovaný a nakonfigurovaný."
+		},
+		"moduleNotFound": {
+			"title": "Modul nebol nájdený",
+			"message": "Modul \"{module}\" nebol nájdený v systéme. Overte, či je modul nainštalovaný a povolený."
+		},
+		"moduleElementNotFound": {
+			"title": "Element modulu nie je zaregistrovaný",
+			"message": "Konfiguračný element pre modul \"{module}\" nie je zaregistrovaný. Tento modul nemusí podporovať úpravu konfigurácie."
+		},
+		"moduleComponentsNotFound": {
+			"message": "Modul \"{module}\" nemá dostupné žiadne konfiguračné komponenty."
+		},
+		"moduleFormNotFound": {
+			"title": "Konfiguračný formulár nie je dostupný",
+			"message": "Komponent konfiguračného formulára pre modul \"{module}\" nie je dostupný. Tento modul nemusí podporovať úpravu konfigurácie cez používateľské rozhranie."
+		},
+		"pluginConfigNotFound": {
+			"title": "Konfigurácia pluginu nebola nájdená",
+			"message": "Konfiguráciu pluginu \"{plugin}\" sa nepodarilo načítať. Skontrolujte, či je plugin správne nainštalovaný a nakonfigurovaný."
+		},
+		"pluginNotFound": {
+			"title": "Plugin nebol nájdený",
+			"message": "Plugin \"{plugin}\" nebol nájdený v systéme. Overte, či je plugin nainštalovaný a povolený."
+		},
+		"pluginElementNotFound": {
+			"title": "Element pluginu nie je zaregistrovaný",
+			"message": "Konfiguračný element pre plugin \"{plugin}\" nie je zaregistrovaný. Tento plugin nemusí podporovať úpravu konfigurácie."
+		},
+		"pluginComponentsNotFound": {
+			"message": "Plugin \"{plugin}\" nemá dostupné žiadne konfiguračné komponenty."
+		},
+		"pluginFormNotFound": {
+			"title": "Konfiguračný formulár nie je dostupný",
+			"message": "Komponent konfiguračného formulára pre plugin \"{plugin}\" nie je dostupný. Tento plugin nemusí podporovať úpravu konfigurácie cez používateľské rozhranie."
+		}
+	},
+	"headings": {
+		"config": "Konfigurácia",
+		"misc": {
+			"discard": "Zahodiť zmeny"
+		}
+	},
+	"subHeadings": {
+		"config": "Konfigurácia smart panelu",
+		"configModule": "Konfigurácia modulu",
+		"configPlugin": "Konfigurácia pluginu"
+	},
+	"tabs": {
+		"configAudio": "Konfigurácia zvuku",
+		"configDisplay": "Konfigurácia displeja",
+		"configLanguage": "Konfigurácia jazyka",
+		"configWeather": "Konfigurácia počasia",
+		"configSystem": "Konfigurácia systému",
+		"configPlugins": "Konfigurácia pluginov",
+		"configModules": "Konfigurácia modulov"
+	},
+	"texts": {
+		"loadingAudioConfig": "Načítavanie konfigurácie zvuku...",
+		"loadingDisplayConfig": "Načítavanie konfigurácie displeja...",
+		"loadingLanguageConfig": "Načítavanie konfigurácie jazyka...",
+		"loadingWeatherConfig": "Načítavanie konfigurácie počasia...",
+		"loadingSystemConfig": "Načítavanie konfigurácie systému...",
+		"loadingPluginConfig": "Načítavanie konfigurácie pluginu...",
+		"loadingModuleConfig": "Načítavanie konfigurácie modulu...",
+		"misc": {
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+		}
+	},
+	"fields": {
+		"speaker": {
+			"title": "Reproduktor",
+			"placeholder": "Povoliť alebo zakázať reproduktor",
+			"values": {
+				"enabled": "Povolený",
+				"disabled": "Zakázaný"
+			}
+		},
+		"speakerVolume": {
+			"title": "Hlasitosť reproduktora"
+		},
+		"microphone": {
+			"title": "Mikrofón",
+			"placeholder": "Povoliť alebo zakázať mikrofón",
+			"values": {
+				"enabled": "Povolený",
+				"disabled": "Zakázaný"
+			}
+		},
+		"microphoneVolume": {
+			"title": "Hlasitosť mikrofónu"
+		},
+		"darkMode": {
+			"title": "Režim témy",
+			"placeholder": "Vyberte si medzi svetlým a tmavým režimom",
+			"values": {
+				"dark": "Tmavý",
+				"light": "Svetlý"
+			}
+		},
+		"brightness": {
+			"title": "Jas"
+		},
+		"screenLockDuration": {
+			"title": "Uzamknutie obrazovky",
+			"placeholder": "Nastaviť oneskorenie uzamknutia obrazovky",
+			"values": {
+				"enabled": "Povolené",
+				"disabled": "Zakázané"
+			}
+		},
+		"screenSaver": {
+			"title": "Šetrič obrazovky",
+			"placeholder": "Povoliť alebo zakázať šetrič obrazovky",
+			"values": {
+				"enabled": "Povolený",
+				"disabled": "Zakázaný"
+			}
+		},
+		"language": {
+			"title": "Jazyk",
+			"placeholder": "Vyberte svoj preferovaný jazyk"
+		},
+		"timezone": {
+			"title": "Časové pásmo",
+			"placeholder": "Vyberte svoje časové pásmo"
+		},
+		"timeFormat": {
+			"title": "Formát času",
+			"placeholder": "Vyberte svoj preferovaný formát času"
+		},
+		"locationType": {
+			"title": "Typ polohy počasia",
+			"placeholder": "Vyberte spôsob načítania počasia"
+		},
+		"coordinates": {
+			"title": "Súradnice polohy"
+		},
+		"latitude": {
+			"title": "Zemepisná šírka",
+			"placeholder": "Zemepisná šírka"
+		},
+		"longitude": {
+			"title": "Zemepisná dĺžka",
+			"placeholder": "Zemepisná dĺžka"
+		},
+		"cityName": {
+			"title": "Názov mesta",
+			"placeholder": "Vyplňte názov mesta, je možné pridať štát a kód krajiny"
+		},
+		"cityId": {
+			"title": "ID mesta",
+			"placeholder": "Vyberte mestá podporované OpenWeather"
+		},
+		"zipCode": {
+			"title": "PSČ",
+			"placeholder": "Vyhľadávanie podľa PSČ, je možné pridať kód krajiny"
+		},
+		"unit": {
+			"title": "Jednotka teploty",
+			"placeholder": "Vyberte jednotku teploty"
+		},
+		"openWeatherApiKey": {
+			"title": "API kľúč Open Weather",
+			"placeholder": "Váš API kľúč služby Open Weather na prístup k údajom o počasí"
+		},
+		"logLevels": {
+			"title": "Úrovne logovania",
+			"placeholder": "Vyberte, ktoré úrovne logovania majú byť monitorované"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Uložiť"
+		},
+		"myLocation": {
+			"title": "Moja poloha"
+		},
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"retry": {
+			"title": "Skúsiť znova"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		}
+	},
+	"languages": {
+		"en_US": "Angličtina",
+		"cs_CZ": "Česky"
+	},
+	"timeFormats": {
+		"12h": "12-hodinový formát",
+		"24h": "24-hodinový formát"
+	},
+	"locationTypes": {
+		"lat_lon": "Súradnice šírky a dĺžky",
+		"city_name": "Názov mesta",
+		"city_id": "OpenWeather ID mesta",
+		"zip_code": "PSČ"
+	},
+	"weatherUnits": {
+		"celsius": "Celsius",
+		"fahrenheit": "Fahrenheit"
+	},
+	"screenLockDurations": {
+		"15s": "15s",
+		"30s": "30s",
+		"60s": "1min",
+		"120s": "2min",
+		"300s": "5min",
+		"600s": "10min",
+		"1800s": "30min",
+		"0s": "Nikdy"
+	},
+	"logLevels": {
+		"silent": "Tichý",
+		"verbose": "Podrobný",
+		"debug": "Debug",
+		"trace": "Trace",
+		"log": "Log",
+		"info": "Info",
+		"success": "Úspech",
+		"warn": "Varovanie",
+		"error": "Chyba",
+		"fail": "Zlyhanie",
+		"fatal": "Fatálne"
+	}
+}

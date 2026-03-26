@@ -1,0 +1,12 @@
+{
+	"fields": {
+		"device": {
+			"title": "Zariadenie",
+			"placeholder": "Zariadenie stránky",
+			"description": "O zariadení",
+			"validation": {
+				"required": "Prosím vyberte zariadenie stránky"
+			}
+		}
+	}
+}

@@ -1,0 +1,199 @@
+{
+	"menu": {
+		"title": "Buddy"
+	},
+	"headings": {
+		"settings": "Buddy",
+		"chat": "Czat Buddy",
+		"chats": "Czaty",
+		"aboutBuddy": "Konfiguracja AI Buddy"
+	},
+	"subHeadings": {
+		"settings": "Skonfiguruj ustawienia asystenta AI Buddy",
+		"chat": "Rozmawiaj ze swoim asystentem AI Buddy"
+	},
+	"messages": {
+		"loadError": "Nie udało się wczytać konfiguracji buddy",
+		"config": {
+			"edited": "Konfiguracja buddy została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji buddy"
+		},
+		"errors": {
+			"unexpectedError": "Wystąpił nieoczekiwany błąd",
+			"loadConversations": "Nie udało się wczytać konwersacji",
+			"createConversation": "Nie udało się utworzyć konwersacji",
+			"loadMessages": "Nie udało się wczytać wiadomości",
+			"providerUnavailable": "Dostawca AI jest tymczasowo niedostępny. Spróbuj ponownie później.",
+			"sendMessage": "Nie udało się wysłać wiadomości",
+			"deleteConversation": "Nie udało się usunąć konwersacji",
+			"audioPlayback": "Nie udało się odtworzyć audio",
+			"loadPersonality": "Nie udało się wczytać osobowości",
+			"savePersonality": "Nie udało się zapisać osobowości"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Zapisz"
+		},
+		"back": {
+			"title": "Wstecz"
+		},
+		"retry": {
+			"title": "Ponów"
+		},
+		"newChat": {
+			"title": "Nowy czat"
+		},
+		"delete": {
+			"title": "Usuń"
+		},
+		"cancel": {
+			"title": "Anuluj"
+		},
+		"configure": {
+			"title": "Skonfiguruj dostawcę"
+		},
+		"goToSettings": {
+			"title": "Przejdź do ustawień"
+		},
+		"setupWizard": {
+			"title": "Kreator konfiguracji"
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włącz moduł"
+			},
+			"name": {
+				"title": "Nazwa buddy",
+				"placeholder": "Wprowadź nazwę buddy"
+			},
+			"provider": {
+				"title": "Wtyczka dostawcy AI",
+				"placeholder": "Wybierz wtyczkę dostawcy AI",
+				"notConfigured": "nie skonfigurowano",
+				"tags": {
+					"ruleBasedOnly": "tylko oparte na regułach"
+				},
+				"options": {
+					"none": "Brak"
+				}
+			},
+			"voiceEnabled": {
+				"title": "Interfejs głosowy",
+				"description": "Włącz rozpoznawanie mowy i syntezę głosu do bezręcznej interakcji z asystentem"
+			},
+			"sttPlugin": {
+				"title": "Dostawca rozpoznawania mowy (Speech-to-Text)",
+				"placeholder": "Wybierz dostawcę rozpoznawania mowy",
+				"notConfigured": "nie skonfigurowano",
+				"options": {
+					"none": "Brak"
+				},
+				"tags": {
+					"disabled": "wyłączony"
+				}
+			},
+			"ttsPlugin": {
+				"title": "Dostawca syntezy mowy (Text-to-Speech)",
+				"placeholder": "Wybierz dostawcę syntezy mowy",
+				"notConfigured": "nie skonfigurowano",
+				"options": {
+					"none": "Brak"
+				},
+				"tags": {
+					"disabled": "wyłączony"
+				}
+			},
+			"personality": {
+				"title": "Osobowość",
+				"description": "Zdefiniuj ton, styl i osobowość buddy. Ten tekst jest dołączany do systemowego promptu AI.",
+				"placeholder": "Jesteś pomocnym asystentem inteligentnego domu. Bądź zwięzły, przyjazny i praktyczny.\nSkup się na praktycznych sugestiach. Używaj prostego języka."
+			}
+		},
+		"message": {
+			"placeholder": "Wpisz wiadomość..."
+		}
+	},
+	"texts": {
+		"loadingConfig": "Ładowanie konfiguracji buddy...",
+		"loadingConversations": "Ładowanie konwersacji...",
+		"aboutBuddy": "Skonfiguruj asystenta AI buddy, który obserwuje Twoje działania, uczy się Twoich wzorców i sugeruje automatyzacje. Wybierz wtyczkę dostawcy AI, aby włączyć funkcję czatu. Ustawienia specyficzne dla dostawcy (klucz API, model) konfiguruje się na stronie ustawień wtyczki. Bez dostawcy sugestie oparte na regułach nadal będą działać.",
+		"emptyChat": "Wybierz lub utwórz konwersację, aby rozpocząć czat",
+		"startConversation": "Zapytaj mnie o cokolwiek dotyczącego Twojego domu!",
+		"thinking": "Myślę...",
+		"newConversation": "Nowa konwersacja",
+		"confirmDelete": "Usunąć tę konwersację?",
+		"providerNotConfigured": "Dostawca AI nie jest skonfigurowany",
+		"providerNotConfiguredHint": "Skonfiguruj wtyczkę dostawcy AI, aby rozpocząć czat z buddy.",
+		"noProviderSelected": "Nie wybrano dostawcy AI",
+		"noProviderSelectedHint": "Wybierz i skonfiguruj dostawcę AI, aby rozpocząć. Użyj kreatora konfiguracji dla wspomaganych instrukcji.",
+		"providerNotEnabled": "Dostawca {name} nie jest włączony",
+		"providerNotEnabledHint": "Włącz go w konfiguracji wtyczki.",
+		"providerMissingConfig": "Dostawca {name} wymaga konfiguracji",
+		"providerMissingConfigHint": "Ustaw wymagany klucz API lub połączenie OAuth.",
+		"availableProviders": "Dostępni dostawcy",
+		"configured": "Skonfigurowany",
+		"notConfigured": "Nie skonfigurowany",
+		"justNow": "właśnie teraz",
+		"minutesAgo": "{n}min temu",
+		"hoursAgo": "{n}godz. temu",
+		"daysAgo": "{n}dn. temu",
+		"noSpace": "Brak przestrzeni",
+		"noActiveConversation": "Nie wybrano konwersacji",
+		"providersFetchFailed": "Nie udało się wczytać dostępnych dostawców. Lista dostawców może być niekompletna.",
+		"sttProvidersFetchFailed": "Nie udało się wczytać dostępnych dostawców rozpoznawania mowy. Lista dostawców może być niekompletna.",
+		"ttsProvidersFetchFailed": "Nie udało się wczytać dostępnych dostawców syntezy mowy. Lista dostawców może być niekompletna.",
+		"moduleDisabled": "Moduł Buddy jest wyłączony",
+		"moduleDisabledHint": "Moduł AI buddy jest aktualnie wyłączony. Włącz go w konfiguracji systemu, aby korzystać z czatu i sugestii."
+	},
+	"wizard": {
+		"title": "Kreator konfiguracji Buddy",
+		"steps": {
+			"provider": "Dostawca AI",
+			"voice": "Głos",
+			"messaging": "Wiadomości",
+			"done": "Gotowe"
+		},
+		"providerDescription": "Wybierz dostawcę AI, aby zasilić możliwości czatu buddy. Każdy dostawca wymaga własnego klucza API lub danych uwierzytelniających.",
+		"voiceDescription": "Opcjonalnie skonfiguruj możliwości głosowe. Text-to-Speech pozwala buddy odczytywać odpowiedzi na głos. Speech-to-Text włącza wprowadzanie głosowe.",
+		"messagingDescription": "Opcjonalnie podłącz platformy komunikacyjne, aby czatować z buddy zdalnie przez Telegram, Discord, WhatsApp lub inne usługi.",
+		"noProvidersAvailable": "Nie zainstalowano żadnych wtyczek dostawców AI. Zainstaluj wtyczkę dostawcy (np. Claude, OpenAI, Ollama), aby włączyć czat AI.",
+		"configureProvider": "Skonfiguruj {name}",
+		"configured": "Skonfigurowany",
+		"needsSetup": "Wymaga konfiguracji",
+		"disabled": "Wyłączony",
+		"configRequired": "Wymagana konfiguracja",
+		"configSaved": "Konfiguracja została pomyślnie zapisana",
+		"saveError": "Nie udało się zapisać konfiguracji",
+		"doneTitle": "Konfiguracja zakończona",
+		"doneDescription": "Twój buddy jest gotowy do użycia. Zawsze możesz zmienić te ustawienia później na stronie konfiguracji.",
+		"summaryLlm": "Dostawca AI: {name}",
+		"summaryLlmSkipped": "Nie wybrano dostawcy AI",
+		"summaryVoice": "Głos: {summary}",
+		"summaryVoiceSkipped": "Głos pominięty",
+		"summaryMessaging": "Wiadomości: {name}",
+		"summaryMessagingSkipped": "Wiadomości pominięte",
+		"notSelected": "Nie wybrano",
+		"skipped": "Pominięto",
+		"ttsHeading": "Text-to-Speech (TTS)",
+		"sttHeading": "Speech-to-Text (STT)",
+		"buttons": {
+			"back": "Wstecz",
+			"next": "Dalej",
+			"skip": "Pomiń",
+			"configure": "Skonfiguruj",
+			"saveConfig": "Zapisz konfigurację",
+			"startChatting": "Rozpocznij czat"
+		}
+	},
+	"meta": {
+		"settings": {
+			"title": "Ustawienia Buddy"
+		},
+		"chat": {
+			"title": "Czat Buddy"
+		}
+	}
+}

@@ -1,0 +1,139 @@
+{
+  "meta": {
+    "sign": {
+      "in": {
+        "title": "Přihlášení"
+      },
+      "up": {
+        "title": "Registrace"
+      }
+    },
+    "lock": {
+      "screen": {
+        "title": "Zamknutá obrazovka"
+      }
+    },
+    "profile": {
+      "general": {
+        "title": "Obecné"
+      },
+      "security": {
+        "title": "Zabezpečení"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "homepage": "úvodní stránka",
+    "profile": "profil",
+    "general": "obecné",
+    "security": "zabezpečení"
+  },
+  "headings": {
+    "signIn": "Přihlášení",
+    "signUp": "Registrace",
+    "lockScreen": "Obrazovka zamčena",
+    "profileGeneral": "Obecné nastavení",
+    "profileSecurity": "Nastavení zabezpečení",
+    "yourProfile": "Váš profil"
+  },
+  "messages": {
+    "requestError": "Něco se pokazilo, zkuste to prosím později.",
+    "invalidPassword": "Zadané heslo je nesprávné.",
+    "profileEdited": "Váš profil byl úspěšně aktualizován.",
+    "profileNotEdited": "Váš profil se nepodařilo upravit.",
+    "passwordEdited": "Vaše heslo bylo úspěšně aktualizováno.",
+    "passwordNotEdited": "Vaše heslo se nepodařilo změnit."
+  },
+  "texts": {
+    "processing": "Zpracování požadavku..."
+  },
+  "tabs": {
+    "general": "Obecné",
+    "security": "Zabezpečení"
+  },
+  "fields": {
+    "username": {
+      "title": "Uživatelské jméno",
+      "validation": {
+        "required": "Vyplňte prosím své uživatelské jméno"
+      }
+    },
+    "password": {
+      "title": "Heslo",
+      "validation": {
+        "required": "Vyplňte prosím své heslo"
+      }
+    },
+    "email": {
+      "title": "E-mail",
+      "placeholder": "např. jan{'@'}novak.cz",
+      "validation": {
+        "required": "Vyplňte prosím svou e-mailovou adresu",
+        "email": "Zadejte prosím platnou e-mailovou adresu"
+      }
+    },
+    "firstName": {
+      "title": "Jméno",
+      "placeholder": "např. Jan",
+      "validation": {
+        "required": "Vyplňte prosím jméno"
+      }
+    },
+    "lastName": {
+      "title": "Příjmení",
+      "placeholder": "např. Novák",
+      "validation": {
+        "required": "Vyplňte prosím příjmení"
+      }
+    },
+    "language": {
+      "title": "Jazyk",
+      "placeholder": "Použít výchozí jazyk prohlížeče"
+    },
+    "currentPassword": {
+      "title": "Aktuální heslo",
+      "help": "Vaše aktuální heslo",
+      "validation": {
+        "required": "Vyplňte prosím své aktuální heslo"
+      }
+    },
+    "newPassword": {
+      "title": "Nové heslo",
+      "help": "Vaše nové heslo",
+      "validation": {
+        "required": "Vyplňte prosím své nové heslo"
+      }
+    },
+    "repeatPassword": {
+      "title": "Zopakujte nové heslo",
+      "help": "Potvrďte své nové heslo",
+      "validation": {
+        "required": "Zopakujte prosím své nové heslo",
+        "different": "Zadaná nová hesla se neshodují"
+      }
+    }
+  },
+  "buttons": {
+    "signIn": {
+      "title": "Přihlásit se"
+    },
+    "signUp": {
+      "title": "Zaregistrovat se"
+    },
+    "unlock": {
+      "title": "Odemknout"
+    },
+    "signOut": {
+      "title": "Odhlásit se"
+    },
+    "backToSignIn": {
+      "title": "Zpět na přihlášení"
+    },
+    "save": {
+      "title": "Uložit"
+    },
+    "close": {
+      "title": "Zavřít"
+    }
+  }
+}

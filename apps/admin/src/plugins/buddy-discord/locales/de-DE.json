@@ -1,0 +1,48 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Discord-Bot-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"botToken": {
+				"title": "Bot-Token",
+				"placeholder": "Geben Sie Ihren Discord-Bot-Token ein",
+				"description": "Holen Sie sich Ihren Bot-Token vom Discord Developer Portal unter den Bot-Einstellungen Ihrer Anwendung."
+			},
+			"guildId": {
+				"title": "Guild (Server) ID",
+				"placeholder": "z.B. 123456789012345678",
+				"description": "Die Discord-Server-ID. Aktivieren Sie den Entwicklermodus in den Discord-Einstellungen, dann klicken Sie mit der rechten Maustaste auf den Server, um seine ID zu kopieren."
+			},
+			"generalChannelId": {
+				"title": "Allgemeiner Kanal-ID",
+				"placeholder": "z.B. 123456789012345678",
+				"description": "Der Standardkanal für raumübergreifende Anfragen und nicht zugeordnete Vorschläge. Rechtsklicken Sie auf einen Kanal, um seine ID zu kopieren."
+			},
+			"spaceChannelMappings": {
+				"title": "Raum-Kanal-Zuordnungen",
+				"selectSpace": "Raum auswählen",
+				"channelPlaceholder": "Discord-Kanal-ID",
+				"add": "Zuordnung hinzufügen",
+				"description": "Ordnen Sie Smart-Home-Räume Discord-Kanälen zu. Nachrichten in einem zugeordneten Kanal enthalten den Kontext dieses Raums."
+			},
+			"allowedRoleId": {
+				"title": "Erlaubte Rollen-ID",
+				"placeholder": "z.B. 123456789012345678",
+				"description": "Discord-Rollen-ID, die für die Interaktion mit dem Bot erforderlich ist. Leer lassen, um allen Servermitgliedern den Zugriff zu erlauben."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Discord-Bot-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Discord-Bot-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Konfigurieren Sie Ihre Discord-Bot-Integration. Erstellen Sie einen Bot im Discord Developer Portal, aktivieren Sie den Message Content Intent und fügen Sie ihn Ihrem Server hinzu. Ordnen Sie Discord-Kanäle Smart-Home-Räumen zu für kontextbezogene Konversationen."
+	}
+}

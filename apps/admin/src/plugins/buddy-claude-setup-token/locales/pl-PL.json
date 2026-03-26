@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia tokenu konfiguracji Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"accessToken": {
+				"title": "Token konfiguracji",
+				"placeholder": "Wklej swoj token konfiguracji tutaj",
+				"howTo": "Uruchom",
+				"howToSuffix": "w terminalu i wklej wygenerowany token tutaj.",
+				"machineNote": "Polecenie mozna uruchomic na dowolnej maszynie z zainstalowanym Claude CLI - nie musi to byc ta sama maszyna, na ktorej dziala backend Smart Panel."
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "np. claude-sonnet-4-20250514",
+				"description": "Model Claude uzywany do generowania odpowiedzi"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia tokenu konfiguracji Claude zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien tokenu konfiguracji Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj polaczenie z Anthropic Claude za pomoca tokenu konfiguracji. Token konfiguracji uwierzytelnia Smart Panel z Twoja subskrypcja Claude - klucz API nie jest wymagany."
+	}
+}

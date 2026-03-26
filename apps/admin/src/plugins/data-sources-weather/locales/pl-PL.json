@@ -1,0 +1,41 @@
+{
+	"fields": {
+		"locationId": {
+			"title": "Lokalizacja pogody",
+			"placeholder": "Wybierz lokalizacje",
+			"description": "Wybierz lokalizacje pogody do wyswietlenia. Jesli nie ustawiono, zostanie uzyta glowna lokalizacja z ustawien pogody."
+		},
+		"field": {
+			"title": "Pole danych",
+			"placeholder": "Wybierz pole",
+			"validation": {
+				"required": "Prosze wybrac pole danych"
+			}
+		},
+		"dayOffset": {
+			"title": "Przesuniecie dni",
+			"placeholder": "Dni od dzisiaj",
+			"validation": {
+				"required": "Prosze wprowadzic przesuniecie dni",
+				"min": "Przesuniecie dni musi wynosic co najmniej 0",
+				"max": "Przesuniecie dni moze wynosic najwyzej 7"
+			}
+		},
+		"icon": {
+			"title": "Ikona niestandardowa",
+			"placeholder": "mdi:thermometer"
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Temperatura",
+		"temperature_min": "Temperatura minimalna",
+		"temperature_max": "Temperatura maksymalna",
+		"feels_like": "Temperatura odczuwalna",
+		"humidity": "Wilgotnosc",
+		"pressure": "Cisnienie",
+		"weather_icon": "Ikona pogody",
+		"weather_main": "Warunki pogodowe",
+		"weather_description": "Opis pogody",
+		"wind_speed": "Predkosc wiatru"
+	}
+}

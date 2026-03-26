@@ -1,0 +1,35 @@
+{
+	"headings": {
+		"aboutWhatsappSettings": "Nastavenia WhatsApp bota"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"allowedPhoneNumbers": {
+				"title": "Povolené telefónne čísla",
+				"placeholder": "napr. 1234567890,9876543210",
+				"description": "Čiarkami oddelené telefónne čísla oprávnené interagovať s botom (s alebo bez predpony '+'). Ponechajte prázdne na povolenie všetkých čísel."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia WhatsApp bota boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia WhatsApp bota"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Pripojte vyhradené WhatsApp číslo pre bota. Použite druhú SIM, eSIM alebo virtuálne číslo — nainštalujte WhatsApp (alebo WhatsApp Business) s týmto číslom a naskenujte QR kód nižšie. Používatelia potom môžu posielať správy na číslo bota zo svojho osobného WhatsAppu.",
+		"status": {
+			"disconnected": "Nepripojený. Povoľte plugin a počkajte na QR kód.",
+			"connecting": "Pripájanie k WhatsAppu...",
+			"qrReady": "Otvorte WhatsApp na telefóne bota (vyhradené číslo) a naskenujte tento QR kód cez Nastavenia > Prepojené zariadenia > Prepojiť zariadenie.",
+			"connected": "WhatsApp bot je pripojený a beží. Používatelia môžu posielať správy na číslo bota na chatovanie."
+		}
+	},
+	"buttons": {
+		"logout": "Odpojiť a znovu spárovať"
+	}
+}

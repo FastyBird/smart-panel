@@ -1,0 +1,35 @@
+{
+	"headings": {
+		"aboutWhatsappSettings": "Configuraci\u00f3n del bot de WhatsApp"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"allowedPhoneNumbers": {
+				"title": "N\u00fameros de tel\u00e9fono permitidos",
+				"placeholder": "p. ej., 1234567890,9876543210",
+				"description": "N\u00fameros de tel\u00e9fono separados por comas que pueden interactuar con el bot (con o sin prefijo '+'). D\u00e9jelo vac\u00edo para permitir todos los n\u00fameros."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n del bot de WhatsApp ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n del bot de WhatsApp"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Conecte un n\u00famero de WhatsApp dedicado para el bot. Use una segunda SIM, eSIM o n\u00famero virtual: instale WhatsApp (o WhatsApp Business) con ese n\u00famero y escanee el c\u00f3digo QR a continuaci\u00f3n. Los usuarios pueden enviar mensajes al n\u00famero del bot desde su WhatsApp personal.",
+		"status": {
+			"disconnected": "No conectado. Habilite el plugin y espere el c\u00f3digo QR.",
+			"connecting": "Conectando a WhatsApp...",
+			"qrReady": "Abra WhatsApp en el tel\u00e9fono del bot (el n\u00famero dedicado) y escanee este c\u00f3digo QR desde Ajustes > Dispositivos vinculados > Vincular un dispositivo.",
+			"connected": "El bot de WhatsApp est\u00e1 conectado y en funcionamiento. Los usuarios pueden enviar mensajes al n\u00famero del bot para chatear."
+		}
+	},
+	"buttons": {
+		"logout": "Desconectar y volver a vincular"
+	}
+}

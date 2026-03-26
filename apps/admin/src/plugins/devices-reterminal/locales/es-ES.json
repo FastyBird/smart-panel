@@ -1,0 +1,72 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Estado del plugin",
+		"aboutPolling": "Sondeo de sensores"
+	},
+	"texts": {
+		"aboutPluginStatus": "Habilitar o deshabilitar el plugin reTerminal. Cuando está deshabilitado, no se monitorizarán ni controlarán los periféricos de hardware del reTerminal.",
+		"aboutPolling": "Configure con qué frecuencia el plugin sondea los sensores de hardware (luz, acelerómetro, temperatura) para obtener lecturas actualizadas."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitar plugin"
+			},
+			"polling": {
+				"interval": {
+					"title": "Intervalo de sondeo (ms)",
+					"validation": {
+						"required": "El intervalo de sondeo es obligatorio",
+						"number": "Debe ser un número >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID del dispositivo",
+				"placeholder": "ID del dispositivo"
+			},
+			"name": {
+				"title": "Nombre del dispositivo",
+				"placeholder": "Introduzca el nombre del dispositivo",
+				"validation": {
+					"required": "El nombre del dispositivo es obligatorio"
+				}
+			},
+			"category": {
+				"title": "Categoría del dispositivo",
+				"placeholder": "Seleccionar categoría",
+				"validation": {
+					"required": "La categoría del dispositivo es obligatoria"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Introduzca la descripción del dispositivo (opcional)"
+			},
+			"variant": {
+				"title": "Variante de hardware",
+				"placeholder": "Seleccione la variante de hardware",
+				"validation": {
+					"required": "La variante de hardware es obligatoria"
+				}
+			},
+			"enabled": {
+				"title": "Habilitado"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración del plugin reTerminal ha sido actualizada",
+			"notEdited": "Error al actualizar la configuración del plugin reTerminal"
+		},
+		"devices": {
+			"created": "El dispositivo reTerminal '{device}' ha sido creado",
+			"notCreated": "Error al crear el dispositivo reTerminal '{device}'",
+			"edited": "El dispositivo reTerminal '{device}' ha sido actualizado",
+			"notEdited": "Error al actualizar el dispositivo reTerminal '{device}'"
+		}
+	}
+}

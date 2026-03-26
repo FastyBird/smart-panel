@@ -1,0 +1,49 @@
+{
+	"headings": {
+		"aboutFileLoggingSettings": "Ustawienia logowania do pliku"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"dir": {
+				"title": "Katalog logów",
+				"placeholder": "Ścieżka bezwzględna lub względna, np. /var/log/smart-panel",
+				"validation": {
+					"nonEmpty": "Katalog logów nie może być pusty."
+				}
+			},
+			"retentionDays": {
+				"title": "Przechowywanie (dni)",
+				"placeholder": "Ile dni przechowywać pliki logów (np. 7)",
+				"validation": {
+					"min": "Liczba dni przechowywania musi wynosić co najmniej 1."
+				}
+			},
+			"cleanupCron": {
+				"title": "Harmonogram czyszczenia (cron)",
+				"placeholder": "Wyrażenie cron, np. 15 3 * * * (codziennie o 03:15)",
+				"validation": {
+					"invalid": "Wprowadź prawidłowe wyrażenie cron (np. 15 3 * * *)."
+				}
+			},
+			"filePrefix": {
+				"title": "Prefiks pliku",
+				"placeholder": "Prefiks nazwy pliku, np. smart-panel",
+				"validation": {
+					"pattern": "Dozwolone są tylko litery, cyfry, kropka, podkreślenie i myślnik."
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Rotating File Logger została zaktualizowana.",
+			"notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wtyczki Rotating File Logger nie powiodła się."
+		}
+	},
+	"texts": {
+		"aboutFileLoggingSettings": "Skonfiguruj trwałe zapisywanie logów do plików z codzienną rotacją i automatycznym czyszczeniem. Po włączeniu logi są zapisywane do plików w celu długoterminowego przechowywania i analizy offline. Pliki są automatycznie rotowane codziennie i czyszczone zgodnie z ustawieniami przechowywania."
+	}
+}

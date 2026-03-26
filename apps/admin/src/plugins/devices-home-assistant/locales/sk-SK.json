@@ -1,0 +1,250 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID zariadenia"
+			},
+			"identifier": {
+				"title": "Systémový identifikátor",
+				"placeholder": "Systémový identifikátor zariadenia"
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Kategória zariadenia",
+				"description": "O kategórii",
+				"validation": {
+					"required": "Prosím vyberte kategóriu zariadenia"
+				}
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Názov zariadenia",
+				"validation": {
+					"required": "Prosím vyplňte názov zariadenia"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zariadenia"
+			},
+			"enabled": {
+				"title": "Povolené",
+				"placeholder": "Povoliť alebo zakázať zariadenie"
+			},
+			"haDeviceId": {
+				"title": "Zariadenie Home Assistant",
+				"placeholder": "Vyberte zariadenie z inštancie Home Assistant",
+				"validation": {
+					"required": "Prosím vyberte zariadenie Home Assistant"
+				}
+			},
+			"manufacturer": {
+				"title": "Výrobca"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"entities": {
+				"title": "Entity"
+			},
+			"domain": {
+				"title": "Doména"
+			},
+			"type": {
+				"title": "Typ"
+			}
+		},
+		"channelsProperties": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID vlastnosti kanála"
+			},
+			"channel": {
+				"title": "Kanál",
+				"placeholder": "Vyberte kanál",
+				"validation": {
+					"required": "Prosím vyberte kanál vlastnosti kanála"
+				}
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Kategória vlastnosti kanála",
+				"validation": {
+					"required": "Prosím vyberte kategóriu vlastnosti kanála"
+				}
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Názov vlastnosti kanála"
+			},
+			"dataType": {
+				"validation": {
+					"required": "Prosím vyberte dátový typ"
+				}
+			},
+			"permissions": {
+				"validation": {
+					"required": "Prosím vyberte oprávnenia"
+				}
+			},
+			"haEntityId": {
+				"title": "Entita zariadenia Home Assistant",
+				"placeholder": "Vyberte entitu zariadenia Home Assistant",
+				"validation": {
+					"required": "Prosím vyberte entitu zariadenia Home Assistant"
+				}
+			},
+			"haAttribute": {
+				"title": "Atribút entity Home Assistant",
+				"placeholder": "Vyberte atribút entity Home Assistant",
+				"validation": {
+					"required": "Prosím vyberte atribút entity Home Assistant"
+				}
+			}
+		},
+		"mapping": {
+			"totalEntities": "Celkový počet entít",
+			"mapped": "Namapované",
+			"partial": "Čiastočné",
+			"unmapped": "Nenamapované",
+			"skipped": "Preskočené",
+			"incompatible": "Nekompatibilné",
+			"excluded": "Vylúčené",
+			"suggestedCategory": "Navrhovaná kategória",
+			"suggestedChannel": {
+				"title": "Navrhovaný kanál",
+				"validation": {
+					"required": "Prosím vyberte kategóriu kanála pre túto entitu"
+				}
+			},
+			"properties": "Vlastnosti",
+			"unmappedAttributes": "Nenamapované atribúty",
+			"missingRequiredProperties": "Chýbajúce povinné vlastnosti",
+			"incompatibleChannel": "Kanál nie je podporovaný pre túto kategóriu zariadenia",
+			"virtualTypes": {
+				"static": "Statický",
+				"derived": "Automaticky",
+				"command": "Príkaz",
+				"virtual": "Virtuálny"
+			},
+			"validation": {
+				"valid": "Konfigurácia zariadenia je platná",
+				"invalid": "Konfigurácia zariadenia má problémy",
+				"missingChannels": "Chýbajúce povinné kanály",
+				"missingProperties": "Chýbajúce povinné vlastnosti",
+				"autoFilled": "Automaticky vyplnené virtuálnymi vlastnosťami",
+				"unknownChannels": "Kanály nie sú povolené pre tento typ zariadenia",
+				"duplicateChannels": "Duplicitné kanály (mali by byť jedinečné)",
+				"constraintViolations": "Porušenia konfiguračných obmedzení"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povolené"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj dlhodobý prístupový token Home Assistant",
+				"validation": {
+					"required": "Prosím vyplňte API kľúč"
+				}
+			},
+			"hostname": {
+				"title": "Hostname",
+				"placeholder": "Zadajte hostname Home Assistant (napr. homeassistant.local:8123)",
+				"validation": {
+					"required": "Prosím vyplňte hostname"
+				}
+			}
+		}
+	},
+	"headings": {
+		"aboutConnectionSettings": "Pripojenie Home Assistant",
+		"device": {
+			"deviceSelection": "Výber zariadenia",
+			"deviceInformation": "Informácie o zariadení",
+			"categorySelection": "Kategória zariadenia",
+			"mappingPreview": "Náhľad mapovania",
+			"mappingCustomization": "Prispôsobenie mapovania",
+			"deviceConfiguration": "Konfigurácia zariadenia"
+		},
+		"mapping": {
+			"entityMappings": "Mapovania entít",
+			"warnings": "Varovania mapovania ({count})",
+			"errors": "Chyby",
+			"summary": "Súhrn mapovania",
+			"debugData": "Debug dáta"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmeny uložené! Konfigurácia pluginu Home Assistant bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie pluginu Home Assistant nebola úspešná."
+		},
+		"devices": {
+			"created": "Nové zariadenie Home Assistant bolo úspešne pridané.",
+			"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť zariadenie Home Assistant.",
+			"exists": "Zariadenie je už prijaté v systéme.",
+			"alreadyAdopted": "Toto zariadenie je už prijaté",
+			"alreadyAdoptedDescription": "Pokračovaním sa zariadenie znovu prijme s novou konfiguráciou. Existujúce zariadenie bude aktualizované.",
+			"noDiscoveredDevices": "Žiadne zariadenia Home Assistant nie sú dostupné. Uistite sa, že vaša inštancia Home Assistant je pripojená a zariadenia sú objavené."
+		},
+		"mapping": {
+			"previewLoading": "Načítavanie náhľadu mapovania...",
+			"previewError": "Nepodarilo sa načítať náhľad mapovania",
+			"adoptionSuccess": "Zariadenie {device} bolo úspešne prijaté",
+			"adoptionError": "Nepodarilo sa prijať zariadenie",
+			"readyToAdopt": "Zariadenie je pripravené na prijatie",
+			"notReadyToAdopt": "Zariadenie má chýbajúce povinné mapovania",
+			"noPreview": "Náhľad mapovania nie je dostupný",
+			"selectDeviceFirst": "Prosím vyberte zariadenie v kroku 1 na generovanie náhľadu mapovania",
+			"invalidSuggestedCategory": "Navrhovaná kategória nie je podporovaná. Prosím vyberte platnú kategóriu.",
+			"missingChannelCategory": "Nasledujúce entity sú povolené, ale chýba im kategória kanála: {entities}. Prosím vyberte kategóriu kanála pre každú povolenú entitu pred pokračovaním.",
+			"debugDescription": "Skopírujte tieto dáta a zdieľajte ich s vývojármi na pomoc pri diagnostike problémov mapovania alebo na žiadosť o vlastné mapovania.",
+			"debugCopied": "Debug dáta skopírované do schránky",
+			"debugCopyFailed": "Nepodarilo sa skopírovať debug dáta do schránky"
+		},
+		"categorySelection": {
+			"description": "Na základe entít zariadenia bola navrhnutá kategória. Prosím skontrolujte a vyberte správnu kategóriu pre toto zariadenie. Náhľad mapovania bude aktualizovaný na základe vášho výberu."
+		},
+		"discovery": {
+			"fetchFailed": "Nepodarilo sa načítať objavené inštancie",
+			"refreshFailed": "Nepodarilo sa obnoviť objavené inštancie"
+		}
+	},
+	"buttons": {
+		"loadPreview": "Načítať náhľad",
+		"updatePreview": "Aktualizovať náhľad",
+		"adoptDevice": "Prijať zariadenie",
+		"next": "Ďalej",
+		"previous": "Predchádzajúci",
+		"skip": "Preskočiť",
+		"use": "Použiť",
+		"applyChanges": "Aplikovať zmeny",
+		"refreshDiscovery": "Obnoviť objavovanie",
+		"debug": "Debug",
+		"copyToClipboard": "Kopírovať do schránky",
+		"close": "Zavrieť"
+	},
+	"labels": {
+		"suggested": "Navrhované"
+	},
+	"misc": {
+		"options": {
+			"entities": {
+				"noEntity": "Nepripojené k entite zariadenia"
+			},
+			"attributes": {
+				"noAttribute": "Nepripojené k atribútu entity",
+				"mainState": "Hlavný stavový atribút entity"
+			}
+		}
+	},
+	"texts": {
+		"aboutConnectionSettings": "Nakonfigurujte pripojenie k vašej inštancii Home Assistant. Keď je povolená, zariadenia z Home Assistant budú dostupné v Smart Paneli. Budete potrebovať dlhodobý prístupový token z Home Assistant a hostname alebo IP adresu vašej inštancie.",
+		"mapping": {
+			"customizationDescription": "Môžete prispôsobiť mapovanie zmenou kategórií kanálov pre entity alebo povolením/zakázaním entít. Predvolene sú všetky entity s navrhovanou kategóriou kanála povolené. Kliknite na 'Ďalej' pre pokračovanie s vybranou konfiguráciou."
+		}
+	}
+}

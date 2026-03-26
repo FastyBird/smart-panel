@@ -1,0 +1,49 @@
+{
+	"headings": {
+		"aboutFileLoggingSettings": "Configuraci\u00f3n de registro en archivo"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"dir": {
+				"title": "Directorio de registros",
+				"placeholder": "Ruta absoluta o relativa, p. ej., /var/log/smart-panel",
+				"validation": {
+					"nonEmpty": "El directorio de registros no debe estar vac\u00edo."
+				}
+			},
+			"retentionDays": {
+				"title": "Retenci\u00f3n (d\u00edas)",
+				"placeholder": "Cu\u00e1ntos d\u00edas conservar los archivos de registro (p. ej., 7)",
+				"validation": {
+					"min": "Los d\u00edas de retenci\u00f3n deben ser al menos 1."
+				}
+			},
+			"cleanupCron": {
+				"title": "Programaci\u00f3n de limpieza (cron)",
+				"placeholder": "Expresi\u00f3n cron, p. ej., 15 3 * * * (diariamente a las 03:15)",
+				"validation": {
+					"invalid": "Por favor, introduzca una expresi\u00f3n cron v\u00e1lida (p. ej., 15 3 * * *)."
+				}
+			},
+			"filePrefix": {
+				"title": "Prefijo del archivo",
+				"placeholder": "Prefijo del nombre de archivo, p. ej., smart-panel",
+				"validation": {
+					"pattern": "Solo se permiten letras, n\u00fameros, puntos, guiones bajos y guiones."
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "\u00a1Cambios guardados! La configuraci\u00f3n del plugin de registro en archivo rotativo ha sido actualizada.",
+			"notEdited": "Algo sali\u00f3 mal. La actualizaci\u00f3n de la configuraci\u00f3n del plugin de registro en archivo rotativo no fue exitosa."
+		}
+	},
+	"texts": {
+		"aboutFileLoggingSettings": "Configure la persistencia de registros basada en archivos con rotaci\u00f3n diaria y limpieza autom\u00e1tica. Cuando est\u00e1 habilitado, los registros se guardan en archivos para retenci\u00f3n a largo plazo y an\u00e1lisis sin conexi\u00f3n. Los archivos se rotan autom\u00e1ticamente a diario y se limpian seg\u00fan la configuraci\u00f3n de retenci\u00f3n."
+	}
+}

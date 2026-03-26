@@ -1,0 +1,77 @@
+{
+	"headings": {
+		"aboutSettings": "Nastavenia počasia Open-Meteo"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"unit": {
+				"title": "Jednotka teploty",
+				"placeholder": "Vyberte jednotku teploty",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Názov",
+				"description": "Priateľský názov pre túto polohu",
+				"placeholder": "napr. Domov, Kancelária, Chata",
+				"validation": {
+					"required": "Názov je povinný"
+				}
+			},
+			"citySearch": {
+				"title": "Vyhľadať mesto",
+				"placeholder": "Začnite písať na vyhľadanie mesta...",
+				"description": "Vyhľadajte mesto a automaticky vyplníme súradnice"
+			},
+			"latitude": {
+				"title": "Zemepisná šírka",
+				"placeholder": "napr. 51.5074",
+				"validation": {
+					"required": "Zemepisná šírka je povinná",
+					"range": "Zemepisná šírka musí byť medzi -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Zemepisná dĺžka",
+				"placeholder": "napr. -0.1278",
+				"validation": {
+					"required": "Zemepisná dĺžka je povinná",
+					"range": "Zemepisná dĺžka musí byť medzi -180 a 180"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja poloha"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Open-Meteo boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Open-Meteo"
+		},
+		"locations": {
+			"created": "Poloha \"{location}\" bola vytvorená",
+			"notCreated": "Nepodarilo sa vytvoriť polohu \"{location}\"",
+			"edited": "Poloha \"{location}\" bola aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať polohu \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokácia nie je podporovaná vaším prehliadačom",
+		"geolocationDenied": "Prístup k polohe bol zamietnutý. Prosím povoľte oprávnenia polohy.",
+		"geolocationUnavailable": "Informácie o polohe nie sú dostupné",
+		"geolocationTimeout": "Požiadavka na získanie polohy vypršala",
+		"geolocationError": "Pri získavaní vašej polohy sa vyskytla chyba"
+	},
+	"texts": {
+		"aboutSettings": "Nakonfigurujte nastavenia počasia Open-Meteo. Tento poskytovateľ je zadarmo a nevyžaduje API kľúč.",
+		"orEnterManually": "Alebo zadajte polohu manuálne"
+	}
+}

@@ -1,0 +1,43 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID zariadenia"
+			},
+			"identifier": {
+				"title": "Systémový identifikátor",
+				"placeholder": "Systémový identifikátor zariadenia"
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Kategória zariadenia",
+				"validation": {
+					"required": "Prosím vyberte kategóriu zariadenia"
+				}
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Názov zariadenia",
+				"validation": {
+					"required": "Prosím vyplňte názov zariadenia"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zariadenia"
+			},
+			"enabled": {
+				"title": "Povolené"
+			},
+			"serviceAddress": {
+				"title": "Adresa služby",
+				"placeholder": "http://device-address.local",
+				"validation": {
+					"required": "Prosím vyplňte adresu služby zariadenia",
+					"url": "Prosím zadajte platnú URL adresu"
+				}
+			}
+		}
+	}
+}

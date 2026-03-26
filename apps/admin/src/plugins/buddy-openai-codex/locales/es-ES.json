@@ -1,0 +1,70 @@
+{
+	"headings": {
+		"aboutApiSettings": "Configuración de OpenAI Codex",
+		"advancedSettings": "Configuración avanzada"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"clientId": {
+				"title": "ID de cliente",
+				"placeholder": "Introduzca su ID de cliente OAuth",
+				"description": "El ID de cliente OAuth para la API de OpenAI Codex"
+			},
+			"clientSecret": {
+				"title": "Secreto de cliente",
+				"placeholder": "Introduzca su secreto de cliente OAuth"
+			},
+			"accessToken": {
+				"title": "Token de acceso",
+				"placeholder": "Introduzca su token de acceso"
+			},
+			"refreshToken": {
+				"title": "Token de actualización",
+				"placeholder": "Introduzca su token de actualización"
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "p. ej., codex-mini",
+				"description": "El modelo de OpenAI Codex a utilizar para generar respuestas"
+			},
+			"callbackUrl": {
+				"placeholder": "Pegue la URL de redirección aquí..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Obtener URL de autorización",
+		"copyUrl": "Copiar",
+		"openUrl": "Abrir en el navegador",
+		"exchange": "Intercambiar token",
+		"exchanging": "Intercambiando...",
+		"disconnect": "Desconectar"
+	},
+	"statuses": {
+		"connected": "Conectado",
+		"notConnected": "No conectado"
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración de OpenAI Codex se ha actualizado",
+			"notEdited": "No se pudo actualizar la configuración de OpenAI Codex"
+		},
+		"oauth": {
+			"urlCopied": "URL copiada al portapapeles",
+			"missingClientId": "Por favor, introduzca un ID de cliente antes de iniciar el flujo OAuth",
+			"authorizeError": "No se pudo obtener la URL de autorización",
+			"exchangeSuccess": "Intercambio de token exitoso",
+			"exchangeError": "El intercambio de token falló"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure los ajustes de OAuth de OpenAI Codex. Haga clic en \"Obtener URL de autorización\" para iniciar el flujo OAuth, o expanda la configuración avanzada para introducir los tokens manualmente.",
+		"oauthStep1": "Haga clic en \"Obtener URL de autorización\" arriba",
+		"oauthStep2": "Abra la URL en su navegador y autorice",
+		"oauthStep3": "Copie la URL de redirección de su navegador después de la autorización",
+		"oauthStep4": "Péguela a continuación y haga clic en \"Intercambiar token\""
+	}
+}

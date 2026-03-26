@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"connection": "Połączenie InfluxDB",
+		"authentication": "Uwierzytelnianie (opcjonalnie)"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja InfluxDB została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji InfluxDB"
+		}
+	},
+	"texts": {
+		"about": "Skonfiguruj połączenie InfluxDB v1 do przechowywania danych szeregów czasowych."
+	},
+	"fields": {
+		"config": {
+			"host": {
+				"title": "Host",
+				"placeholder": "127.0.0.1",
+				"validation": {
+					"required": "Host jest wymagany"
+				}
+			},
+			"database": {
+				"title": "Baza danych",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Nazwa bazy danych jest wymagana"
+				}
+			},
+			"username": {
+				"title": "Nazwa użytkownika",
+				"placeholder": "Pozostaw puste, jeśli nie jest wymagane"
+			},
+			"password": {
+				"title": "Hasło",
+				"placeholder": "Pozostaw puste, jeśli nie jest wymagane"
+			}
+		}
+	}
+}

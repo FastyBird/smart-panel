@@ -1,4 +1,4 @@
-import { type App, computed, ref } from 'vue';
+import { type App, computed, ref, watch } from 'vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep, get } from 'lodash';
@@ -9,6 +9,7 @@ import {
 	type IModule,
 	type ModuleInjectionKey,
 	injectBackendClient,
+	injectEventBus,
 	injectLogger,
 	injectModulesManager,
 	injectRouterGuard,
@@ -18,8 +19,11 @@ import {
 } from '../../common';
 import type { IUser } from '../users';
 
+import type { AppLocale } from '../../locales';
+import { LOCALE_LANGUAGE_MAP } from '../../locales';
+import { applyLocale, clearStoredLocale, detectBrowserLocale, LANGUAGE_CHANGED_EVENT, setHtmlLang } from '../../common/composables/useLanguage';
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import {
 	ModuleAccountRoutes,
 	ModuleAnonymousRoutes,
@@ -44,7 +48,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { authModule: translations });
 
@@ -218,6 +222,7 @@ export default {
 				try {
 					locked.value = false;
 					localStorage.removeItem(LOCK_SCREEN_STORAGE_KEY);
+					clearStoredLocale();
 
 					sessionStore.clear();
 
@@ -251,6 +256,67 @@ export default {
 		};
 
 		provideAccountManager(app, accountManager);
+
+		// Apply user's preferred language when profile loads.
+		// localStorage is cleared on sign-out, so this always applies the
+		// server preference for the newly signed-in user.
+		// When profile is null (sign-out) or has no language preference,
+		// reset to browser-detected locale to avoid leaking the previous user's language.
+		watch(
+			() => sessionStore.profile,
+			(profile: IUser | null) => {
+				if (profile?.language) {
+					const locale = LOCALE_LANGUAGE_MAP[profile.language];
+
+					if (locale) {
+						(options.i18n.global.locale as unknown as { value: string }).value = locale;
+						applyLocale(locale);
+					}
+				} else if (profile && !profile.language) {
+					const browserLocale = detectBrowserLocale();
+
+					(options.i18n.global.locale as unknown as { value: string }).value = browserLocale;
+					clearStoredLocale();
+					setHtmlLang(browserLocale);
+				}
+			},
+			{ immediate: true },
+		);
+
+		// Persist language preference to backend when user changes it via the UI
+		const eventBus = injectEventBus(app);
+
+		eventBus.on(LANGUAGE_CHANGED_EVENT, (locale: unknown) => {
+			const profile = sessionStore.profile;
+
+			if (profile && typeof locale === 'string') {
+				sessionStore
+					.edit({
+						id: profile.id,
+						data: {
+							language: (locale as AppLocale).split('-')[0],
+						},
+					})
+					.catch(() => {
+						// Revert i18n locale, localStorage, and lang attr to server value
+						if (profile.language) {
+							const serverLocale = LOCALE_LANGUAGE_MAP[profile.language];
+
+							if (serverLocale) {
+								(options.i18n.global.locale as unknown as { value: string }).value = serverLocale;
+								applyLocale(serverLocale);
+							}
+						} else {
+							// User had no preference — revert to browser default
+							const browserLocale = detectBrowserLocale();
+
+							(options.i18n.global.locale as unknown as { value: string }).value = browserLocale;
+							clearStoredLocale();
+							setHtmlLang(browserLocale);
+						}
+					});
+			}
+		});
 
 		routerGuard.register((_appUser: IAppUser | undefined, route: RouteRecordRaw) => {
 			return lockedGuard(accountManager, route);

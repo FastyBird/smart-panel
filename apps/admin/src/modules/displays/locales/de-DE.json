@@ -1,0 +1,480 @@
+{
+	"menu": {
+		"title": "Anzeigen"
+	},
+	"title": "Displays",
+	"description": "Verwalten Sie Ihre Display-Geräte",
+	"headings": {
+		"list": "Displays",
+		"adjustFilters": "Displays filtern",
+		"removeDisplay": "Display entfernen",
+		"removeBulkDisplays": "Displays entfernen",
+		"discard": "Änderungen verwerfen",
+		"aboutDisplayConfiguration": "Display-Konfiguration"
+	},
+	"subHeadings": {
+		"list": "Verbundene Display-Geräte verwalten",
+		"adjustFilters": "Filtereinstellungen anpassen"
+	},
+	"breadcrumbs": {
+		"displays": {
+			"list": "Displays",
+			"detail": "Display: {display}",
+			"edit": "Display bearbeiten",
+			"tokens": "Zugriffstoken"
+		}
+	},
+	"meta": {
+		"displays": {
+			"list": {
+				"title": "Displays auflisten"
+			},
+			"edit": {
+				"title": "Display bearbeiten: {display}"
+			},
+			"detail": {
+				"title": "Display: {display}"
+			},
+			"tokens": {
+				"title": "Zugriffstoken: {display}"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Name",
+			"role": "Rolle",
+			"macAddress": "MAC-Adresse",
+			"version": "Version",
+			"resolution": "Auflösung",
+			"layout": "Layout",
+			"audio": "Audio",
+			"state": {
+				"title": "Status"
+			},
+			"currentIpAddress": "Aktuelle IP",
+			"local": "Lokal",
+			"status": "Status"
+		},
+		"tooltips": {
+			"speakerSupported": "Lautsprecher unterstützt",
+			"microphoneSupported": "Mikrofon unterstützt"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Displays suchen..."
+		},
+		"config": {
+			"deploymentMode": {
+				"title": "Gateway-Modus",
+				"description": "Gateway-Modus für Display-Registrierung",
+				"placeholder": "Gateway-Modus auswählen",
+				"validation": {
+					"required": "Gateway-Modus ist erforderlich"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Beitrittsdauer erlauben",
+				"description": "Dauer in Millisekunden, die der Beitritt aktiv bleibt",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "Beitrittsdauer ist erforderlich",
+					"min": "Beitrittsdauer muss mindestens 1000 ms sein"
+				}
+			}
+		},
+		"displays": {
+			"id": {
+				"title": "Interner Bezeichner",
+				"placeholder": "Display-ID"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Display-Namen eingeben",
+				"validation": {
+					"maxLength": "Name muss weniger als 100 Zeichen haben"
+				}
+			},
+			"role": {
+				"title": "Display-Rolle",
+				"description": "Der Zweck dieses Displays in Ihrem Smart-Home-Setup",
+				"options": {
+					"room": "Raum (Einzelraumsteuerung)",
+					"master": "Master (Gesamthaus-Überblick)",
+					"entry": "Eingang (Hausmodi und Sicherheit)"
+				},
+				"comingSoon": "Bald"
+			},
+			"unitSize": {
+				"title": "Einheitsgröße",
+				"unit": "px",
+				"validation": {
+					"min": "Einheitsgröße muss mindestens 1 sein"
+				}
+			},
+			"rows": {
+				"title": "Zeilen",
+				"validation": {
+					"min": "Zeilen müssen mindestens 1 sein"
+				}
+			},
+			"cols": {
+				"title": "Spalten",
+				"validation": {
+					"min": "Spalten müssen mindestens 1 sein"
+				}
+			},
+			"brightness": {
+				"title": "Helligkeit",
+				"validation": {
+					"range": "Helligkeit muss zwischen 0 und 100 liegen"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Bildschirmsperrdauer",
+				"options": {
+					"15s": "15 Sekunden",
+					"30s": "30 Sekunden",
+					"1min": "1 Minute",
+					"2min": "2 Minuten",
+					"5min": "5 Minuten",
+					"10min": "10 Minuten",
+					"30min": "30 Minuten",
+					"never": "Nie"
+				}
+			},
+			"darkMode": {
+				"title": "Dunkelmodus"
+			},
+			"screenSaver": {
+				"title": "Bildschirmschoner"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Lautsprecher (Audioausgang)"
+				},
+				"microphone": {
+					"title": "Mikrofon (Audioeingang)"
+				}
+			},
+			"speaker": {
+				"title": "Lautsprecher aktiviert"
+			},
+			"speakerVolume": {
+				"title": "Lautsprecherlautstärke",
+				"validation": {
+					"range": "Lautstärke muss zwischen 0 und 100 liegen"
+				}
+			},
+			"microphone": {
+				"title": "Mikrofon aktiviert"
+			},
+			"microphoneVolume": {
+				"title": "Mikrofonlautstärke",
+				"validation": {
+					"range": "Lautstärke muss zwischen 0 und 100 liegen"
+				}
+			},
+			"homeMode": {
+				"title": "Startseitenmodus",
+				"description": "Wie die Startseite bestimmt wird, wenn das Display startet",
+				"options": {
+					"autoSpace": "Auto",
+					"explicit": "Explizit"
+				}
+			},
+			"homePageId": {
+				"title": "Startseite",
+				"placeholder": "Startseite auswählen",
+				"description": "Die Seite, die beim Start des Displays angezeigt wird (nur wenn der Startseitenmodus auf Explizit steht)",
+				"validation": {
+					"required": "Startseite ist erforderlich, wenn der Startseitenmodus auf Explizit steht"
+				}
+			},
+			"roomId": {
+				"title": "Zugewiesener Raum",
+				"placeholder": "Raum auswählen",
+				"description": "Der Raum, den dieses Display steuert. Erforderlich für Displays mit Raum-Rolle.",
+				"validation": {
+					"required": "Raumzuweisung ist für Displays mit Raum-Rolle erforderlich"
+				}
+			},
+			"numberFormat": {
+				"title": "Zahlenformat",
+				"placeholder": "Systemstandard",
+				"values": {
+					"commaDot": "1,234.56 (Komma / Punkt)",
+					"dotComma": "1.234,56 (Punkt / Komma)",
+					"spaceComma": "1 234,56 (Leerzeichen / Komma)",
+					"none": "1234.56 (keine Gruppierung)"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Temperatureinheit",
+				"placeholder": "Systemstandard",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Windgeschwindigkeitseinheit",
+				"placeholder": "Systemstandard",
+				"values": {
+					"ms": "Meter pro Sekunde (m/s)",
+					"kmh": "Kilometer pro Stunde (km/h)",
+					"mph": "Meilen pro Stunde (mph)",
+					"knots": "Knoten (kn)"
+				}
+			},
+			"pressureUnit": {
+				"title": "Druckeinheit",
+				"placeholder": "Systemstandard",
+				"values": {
+					"hpa": "Hektopascal (hPa)",
+					"mbar": "Millibar (mbar)",
+					"inhg": "Zoll Quecksilbersäule (inHg)",
+					"mmhg": "Millimeter Quecksilbersäule (mmHg)"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Niederschlagseinheit",
+				"placeholder": "Systemstandard",
+				"values": {
+					"mm": "Millimeter (mm)",
+					"inches": "Zoll (in)"
+				}
+			},
+			"distanceUnit": {
+				"title": "Entfernungseinheit",
+				"placeholder": "Systemstandard",
+				"values": {
+					"km": "Kilometer (km)",
+					"miles": "Meilen (mi)",
+					"meters": "Meter (m)",
+					"feet": "Fuß (ft)"
+				}
+			},
+			"weatherLocationId": {
+				"title": "Wetterstandort",
+				"placeholder": "Systemstandard (primärer Standort)",
+				"description": "Überschreiben Sie den Wetterstandort für dieses Display. Leer lassen, um den primären Standort aus der Wetterkonfiguration zu verwenden."
+			}
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Dunkelmodus",
+			"values": {
+				"enabled": "Aktiviert",
+				"disabled": "Deaktiviert",
+				"all": "Alle"
+			}
+		},
+		"screenSaver": {
+			"title": "Bildschirmschoner",
+			"values": {
+				"enabled": "Aktiviert",
+				"disabled": "Deaktiviert",
+				"all": "Alle"
+			}
+		},
+		"state": {
+			"title": "Status"
+		},
+		"states": {
+			"title": "Status"
+		}
+	},
+	"states": {
+		"connected": "Verbunden",
+		"disconnected": "Getrennt",
+		"lost": "Verloren",
+		"unknown": "Unbekannt"
+	},
+	"roles": {
+		"room": "Raum",
+		"master": "Master",
+		"entry": "Eingang"
+	},
+	"texts": {
+		"loadingDisplays": "Displays werden geladen...",
+		"loadingDisplay": "Display wird geladen...",
+		"noDisplays": "Noch keine Displays registriert",
+		"noFilteredDisplays": "Keine Displays entsprechen Ihren Filterkriterien",
+		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+		"aboutDisplayConfiguration": "Konfigurieren Sie den Bereitstellungsmodus und die Display-Registrierungseinstellungen. Der Bereitstellungsmodus bestimmt, wie Backend und Panel organisiert sind, während die Beitrittsdauer steuert, wie lange sich neue Displays im Netzwerk registrieren können."
+	},
+	"buttons": {
+		"detail": {
+			"title": "Details"
+		},
+		"adjust": {
+			"title": "Filtern"
+		},
+		"resetFilters": {
+			"title": "Filter zurücksetzen"
+		},
+		"reset": {
+			"title": "Filter zurücksetzen"
+		},
+		"yes": {
+			"title": "Ja"
+		},
+		"no": {
+			"title": "Nein"
+		},
+		"save": {
+			"title": "Speichern"
+		},
+		"cancel": {
+			"title": "Abbrechen"
+		},
+		"close": {
+			"title": "Schließen"
+		},
+		"discard": {
+			"title": "Verwerfen"
+		},
+		"permitJoin": {
+			"title": "Beitritt erlauben",
+			"disable": "Beitritt deaktivieren ({time})"
+		},
+		"back": {
+			"title": "Zurück"
+		}
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "Allgemein"
+			},
+			"layout": {
+				"title": "Layout",
+				"badge": "Erweitert",
+				"description": "Erweiterte Einstellungen, die steuern, wie viele Kacheln auf dem Bildschirm angezeigt und wie sie im Raster angeordnet werden."
+			},
+			"appearance": {
+				"title": "Erscheinungsbild"
+			},
+			"homePage": {
+				"title": "Startseite",
+				"autoRoomHint": "Im <strong>Auto-Modus</strong> öffnet das Display die Standard-Systemansicht basierend auf seiner Rolle und Zuweisung."
+			},
+			"weather": {
+				"title": "Wetterstandort",
+				"description": "Überschreiben Sie den Wetterstandort für dieses Display. Wenn nicht gesetzt, wird der primäre Standort aus der Wetterkonfiguration verwendet."
+			},
+			"units": {
+				"title": "Einheiten-Überschreibungen",
+				"description": "Überschreiben Sie systemweite Maßeinheiten für dieses Display. Leer lassen, um den Systemstandard zu verwenden."
+			},
+			"audio": {
+				"title": "Audio",
+				"badge": "Erweitert"
+			}
+		}
+	},
+	"detail": {
+		"title": "Display-Details",
+		"info": {
+			"title": "Display-Informationen",
+			"role": "Rolle",
+			"macAddress": "MAC-Adresse",
+			"version": "Version",
+			"build": "Build",
+			"resolution": "Auflösung",
+			"pixelRatio": "Pixelverhältnis",
+			"gridSize": "Rastergröße",
+			"registeredFromIp": "Registrierte IP",
+			"currentIpAddress": "Aktuelle IP",
+			"status": "Verbindungsstatus"
+		},
+		"settings": {
+			"title": "Display-Einstellungen",
+			"gridSize": "Rastergröße",
+			"darkMode": "Dunkelmodus",
+			"brightness": "Helligkeit",
+			"screenLockDuration": "Bildschirmsperrdauer",
+			"screenSaver": "Bildschirmschoner",
+			"speakerEnabled": "Lautsprecher aktiviert",
+			"speakerVolume": "Lautsprecherlautstärke",
+			"microphoneEnabled": "Mikrofon aktiviert",
+			"microphoneVolume": "Mikrofonlautstärke"
+		},
+		"peripherals": {
+			"title": "Peripheriegeräte",
+			"audioOutput": "Audioausgang",
+			"audioOutputVolume": "Audioausgang-Lautstärke",
+			"audioInput": "Audioeingang",
+			"audioInputVolume": "Audioeingang-Lautstärke"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Lautsprecher (Audioausgang)"
+			},
+			"microphone": {
+				"title": "Mikrofon (Audioeingang)"
+			}
+		},
+		"tokens": {
+			"title": "Zugriffstoken",
+			"subtitle": "Token verwalten",
+			"description": "Verwalten Sie Zugriffstoken für dieses Display. Jedes Display sollte höchstens einen aktiven Token haben.",
+			"noTokens": "Keine aktiven Token",
+			"revokeConfirm": "Sind Sie sicher, dass Sie den Zugriffstoken widerrufen möchten? Das Display muss sich erneut registrieren.",
+			"revoked": "Token erfolgreich widerrufen"
+		},
+		"spaceContext": {
+			"title": "Raumkontext",
+			"role": "Display-Rolle",
+			"homeMode": "Startseitenmodus",
+			"assignedRoom": "Zugewiesener Raum",
+			"notAssigned": "Nicht zugewiesen",
+			"initialView": "Anfangsansicht",
+			"systemViews": "Systemansichten",
+			"selectedPage": "Ausgewählte Seite",
+			"hint": "Die Hauptansichten dieses Displays werden automatisch basierend auf seiner Rolle und dem zugewiesenen Raum generiert.",
+			"homeModes": {
+				"auto_space": "Auto",
+				"explicit": "Explizit"
+			},
+			"initialViews": {
+				"roomOverview": "Raumübersicht",
+				"houseOverview": "Hausübersicht",
+				"entryOverview": "Eingangsübersicht"
+			},
+			"views": {
+				"overview": "Übersicht",
+				"lights": "Lichter",
+				"climate": "Klima"
+			}
+		}
+	},
+	"messages": {
+		"notFound": "Display nicht gefunden",
+		"loadError": "Displays konnten nicht geladen werden",
+		"confirmRemove": "Sind Sie sicher, dass Sie das Display \"{name}\" entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+		"confirmBulkRemove": "Sind Sie sicher, dass Sie {count} Display(s) entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+		"removed": "Display erfolgreich entfernt",
+		"bulkRemoved": "{count} Display(s) wurden entfernt",
+		"bulkRemoveFailed": "Entfernung von {count} Display(s) fehlgeschlagen",
+		"edited": "Display {display} wurde aktualisiert",
+		"notEdited": "Display {display} wurde nicht aktualisiert",
+		"deletedWhileEditing": "Dieses Display wurde gelöscht und ist nicht mehr verfügbar.",
+		"permitJoinActivated": "Beitrittserlaubnis erfolgreich aktiviert",
+		"permitJoinDeactivated": "Beitrittserlaubnis erfolgreich deaktiviert",
+		"permitJoinError": "Aktivierung der Beitrittserlaubnis fehlgeschlagen",
+		"permitJoinDeactivateError": "Deaktivierung der Beitrittserlaubnis fehlgeschlagen",
+		"config": {
+			"edited": "Display-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der Display-Konfiguration fehlgeschlagen"
+		}
+	},
+	"actions": {
+		"revokeToken": "Token widerrufen",
+		"manageTokens": "Token verwalten"
+	}
+}

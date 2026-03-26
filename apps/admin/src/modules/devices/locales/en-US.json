@@ -1,4 +1,7 @@
 {
+  "menu": {
+    "title": "Devices"
+  },
   "meta": {
     "devices": {
       "list": {

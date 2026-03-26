@@ -1,0 +1,48 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Configuraci\u00f3n del bot de Discord"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"botToken": {
+				"title": "Token del bot",
+				"placeholder": "Introduzca el token de su bot de Discord",
+				"description": "Obtenga el token de su bot en el Portal de Desarrolladores de Discord, en la configuraci\u00f3n de Bot de su aplicaci\u00f3n."
+			},
+			"guildId": {
+				"title": "ID del servidor (guild)",
+				"placeholder": "p. ej., 123456789012345678",
+				"description": "El ID del servidor de Discord. Active el Modo Desarrollador en la configuraci\u00f3n de Discord, luego haga clic derecho en el servidor para copiar su ID."
+			},
+			"generalChannelId": {
+				"title": "ID del canal general",
+				"placeholder": "p. ej., 123456789012345678",
+				"description": "El canal predeterminado para consultas entre espacios y sugerencias sin enrutar. Haga clic derecho en un canal para copiar su ID."
+			},
+			"spaceChannelMappings": {
+				"title": "Asignaciones de espacio a canal",
+				"selectSpace": "Seleccione un espacio",
+				"channelPlaceholder": "ID del canal de Discord",
+				"add": "A\u00f1adir asignaci\u00f3n",
+				"description": "Asigne espacios del hogar inteligente a canales de Discord. Los mensajes en un canal asignado incluir\u00e1n el contexto de ese espacio."
+			},
+			"allowedRoleId": {
+				"title": "ID del rol permitido",
+				"placeholder": "p. ej., 123456789012345678",
+				"description": "ID del rol de Discord requerido para interactuar con el bot. D\u00e9jelo vac\u00edo para permitir a todos los miembros del servidor."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n del bot de Discord ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n del bot de Discord"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Configure la integraci\u00f3n de su bot de Discord. Cree un bot en el Portal de Desarrolladores de Discord, habilite el Message Content Intent y a\u00f1\u00e1dalo a su servidor. Asigne canales de Discord a espacios del hogar inteligente para conversaciones con contexto."
+	}
+}

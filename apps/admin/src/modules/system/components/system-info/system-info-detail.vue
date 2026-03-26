@@ -79,7 +79,7 @@
 				body-class="p-0!"
 			>
 				<el-descriptions
-					:label-width="170"
+					:label-width="250"
 					:column="1"
 					border
 				>
@@ -163,7 +163,7 @@
 				body-class="p-0!"
 			>
 				<el-descriptions
-					:label-width="230"
+					:label-width="290"
 					:column="1"
 					border
 				>

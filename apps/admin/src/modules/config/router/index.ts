@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../config.constants';
 
@@ -13,7 +14,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				authenticated: true,
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
-			title: 'Configuration',
+			title: () => i18n.global.t('configModule.menu.title'),
 			icon: 'mdi:cog',
 			menu: 2000,
 		},
@@ -29,7 +30,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 						authenticated: true,
 						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
-					title: 'Modules',
+					title: () => i18n.global.t('configModule.menu.modules'),
 					icon: 'mdi:package-variant',
 					menu: 4000,
 				},
@@ -58,7 +59,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 						authenticated: true,
 						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
-					title: 'Plugins',
+					title: () => i18n.global.t('configModule.menu.plugins'),
 					icon: 'mdi:toy-brick',
 					menu: 3000,
 				},

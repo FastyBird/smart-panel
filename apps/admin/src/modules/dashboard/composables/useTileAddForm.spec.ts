@@ -19,6 +19,7 @@ type ITestTileAddForm = z.infer<typeof TestTileAddFormSchema>;
 const mockAdd = vi.fn();
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

@@ -1,0 +1,21 @@
+{
+	"preview": {
+		"day": {
+			"temperature": "22\u00b0C",
+			"condition": "Soleado"
+		},
+		"forecast": {
+			"mon": "Lun",
+			"tue": "Mar",
+			"wed": "Mi\u00e9",
+			"thu": "Jue"
+		}
+	},
+	"fields": {
+		"locationId": {
+			"title": "Ubicaci\u00f3n meteorol\u00f3gica",
+			"placeholder": "Seleccione una ubicaci\u00f3n",
+			"description": "Seleccione una ubicaci\u00f3n meteorol\u00f3gica para mostrar. Si no se establece, se utilizar\u00e1 la ubicaci\u00f3n principal de la configuraci\u00f3n meteorol\u00f3gica."
+		}
+	}
+}

@@ -1,0 +1,32 @@
+{
+	"headings": {
+		"aboutServiceAdvertisement": "Nastavení inzerce služby"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurace mDNS byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci mDNS"
+		}
+	},
+	"texts": {
+		"aboutServiceAdvertisement": "Nakonfigurujte, jak Smart Panel inzeruje svou přítomnost v místní síti pomocí mDNS (Multicast DNS). To umožňuje automatické objevení zařízeními a klienty bez nutnosti znát IP adresu."
+	},
+	"fields": {
+		"config": {
+			"serviceName": {
+				"title": "Název služby",
+				"placeholder": "FastyBird Smart Panel",
+				"validation": {
+					"required": "Název služby je povinný"
+				}
+			},
+			"serviceType": {
+				"title": "Typ služby",
+				"placeholder": "fastybird-panel",
+				"validation": {
+					"required": "Typ služby je povinný"
+				}
+			}
+		}
+	}
+}

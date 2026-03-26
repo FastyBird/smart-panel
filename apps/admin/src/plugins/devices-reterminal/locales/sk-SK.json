@@ -1,0 +1,72 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutPolling": "Dotazovanie senzorov"
+	},
+	"texts": {
+		"aboutPluginStatus": "Povoľte alebo zakážte plugin reTerminal. Keď je zakázaný, žiadne periférie hardvéru reTerminal nebudú monitorované ani ovládané.",
+		"aboutPolling": "Nakonfigurujte, ako často plugin dotazuje hardvérové senzory (svetlo, akcelerometer, teplota) na aktualizované hodnoty."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoliť plugin"
+			},
+			"polling": {
+				"interval": {
+					"title": "Interval dotazovania (ms)",
+					"validation": {
+						"required": "Interval dotazovania je povinný",
+						"number": "Musí byť číslo >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID zariadenia",
+				"placeholder": "ID zariadenia"
+			},
+			"name": {
+				"title": "Názov zariadenia",
+				"placeholder": "Zadajte názov zariadenia",
+				"validation": {
+					"required": "Názov zariadenia je povinný"
+				}
+			},
+			"category": {
+				"title": "Kategória zariadenia",
+				"placeholder": "Vyberte kategóriu",
+				"validation": {
+					"required": "Kategória zariadenia je povinná"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Zadajte popis zariadenia (voliteľné)"
+			},
+			"variant": {
+				"title": "Hardvérový variant",
+				"placeholder": "Vyberte hardvérový variant",
+				"validation": {
+					"required": "Hardvérový variant je povinný"
+				}
+			},
+			"enabled": {
+				"title": "Povolené"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurácia pluginu reTerminal bola aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu pluginu reTerminal"
+		},
+		"devices": {
+			"created": "Zariadenie reTerminal '{device}' bolo vytvorené",
+			"notCreated": "Nepodarilo sa vytvoriť zariadenie reTerminal '{device}'",
+			"edited": "Zariadenie reTerminal '{device}' bolo aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať zariadenie reTerminal '{device}'"
+		}
+	}
+}

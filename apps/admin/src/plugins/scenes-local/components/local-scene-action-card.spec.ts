@@ -32,6 +32,7 @@ vi.mock('../../../modules/devices', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {

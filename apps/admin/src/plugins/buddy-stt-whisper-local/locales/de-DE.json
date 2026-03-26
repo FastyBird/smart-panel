@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutSettings": "Lokale Whisper-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"model": {
+				"title": "Modell",
+				"placeholder": "base",
+				"description": "Whisper-Modellgröße: tiny, base, small, medium oder large"
+			},
+			"language": {
+				"title": "Sprachhinweis",
+				"placeholder": "z.B. en, de, cs (optional)",
+				"description": "ISO 639-1 Sprachcode zur Verbesserung der Transkriptionsgenauigkeit"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Lokale Whisper-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der lokalen Whisper-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Konfigurieren Sie die lokale Whisper Speech-to-Text-Funktion. Kein API-Schlüssel erforderlich. Der whisper-Befehl muss installiert und im System-PATH verfügbar sein."
+	}
+}

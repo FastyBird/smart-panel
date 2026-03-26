@@ -14,6 +14,7 @@ import UsersTable from './users-table.vue';
 type UsersTableInstance = ComponentPublicInstance<IUsersTableProps>;
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -30,6 +31,7 @@ describe('UsersTable', (): void => {
 			lastName: 'User',
 			email: 'admin@example.com',
 			role: UsersModuleUserRole.admin,
+			language: null,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -42,6 +44,7 @@ describe('UsersTable', (): void => {
 			lastName: 'Doe',
 			email: 'john@example.com',
 			role: UsersModuleUserRole.owner,
+			language: null,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),

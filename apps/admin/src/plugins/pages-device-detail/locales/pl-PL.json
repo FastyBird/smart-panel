@@ -1,0 +1,12 @@
+{
+	"fields": {
+		"device": {
+			"title": "Urządzenie",
+			"placeholder": "Urządzenie strony",
+			"description": "O urządzeniu",
+			"validation": {
+				"required": "Wybierz urządzenie strony"
+			}
+		}
+	}
+}

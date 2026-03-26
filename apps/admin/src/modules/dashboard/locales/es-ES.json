@@ -1,0 +1,413 @@
+{
+  "menu": {
+    "title": "Páginas"
+  },
+  "meta": {
+    "pages": {
+      "list": {
+        "title": "Listar páginas"
+      },
+      "edit": {
+        "title": "Editar página: {page}"
+      },
+      "add": {
+        "title": "Añadir página"
+      },
+      "detail": {
+        "title": "Página: {page}"
+      },
+      "editDataSource": {
+        "title": "Editar fuente de datos de página"
+      },
+      "addDataSource": {
+        "title": "Añadir fuente de datos de página"
+      }
+    },
+    "tiles": {
+      "edit": {
+        "title": "Editar mosaico"
+      },
+      "detail": {
+        "title": "Detalle del mosaico"
+      },
+      "editDataSource": {
+        "title": "Editar fuente de datos del mosaico"
+      },
+      "addDataSource": {
+        "title": "Añadir fuente de datos del mosaico"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "list": "páginas",
+      "add": "añadir página",
+      "edit": "editar página",
+      "detail": "página: {page}",
+      "addDataSource": "añadir fuente de datos de página",
+      "editDataSource": "editar fuente de datos de página"
+    },
+    "tiles": {
+      "edit": "editar mosaico",
+      "detail": "detalle del mosaico",
+      "addDataSource": "añadir fuente de datos del mosaico",
+      "editDataSource": "editar fuente de datos del mosaico"
+    }
+  },
+  "headings": {
+    "pages": {
+      "list": "Páginas",
+      "add": "Añadir página",
+      "edit": "Editar página",
+      "detail": "Página: {page}",
+      "remove": "¿Eliminar página?",
+      "bulkRemove": "¿Eliminar páginas?",
+      "selectPlugin": "Se requiere plugin de página",
+      "adjustFilters": "Filtrar páginas",
+      "addDataSource": "Añadir fuente de datos de página",
+      "editDataSource": "Editar fuente de datos de página"
+    },
+    "tiles": {
+      "add": "Añadir mosaico",
+      "edit": "Editar mosaico",
+      "detail": "Detalle del mosaico",
+      "remove": "¿Eliminar mosaico?",
+      "selectPlugin": "Se requiere plugin de mosaico",
+      "adjustFilters": "Filtrar mosaicos",
+      "addDataSource": "Añadir fuente de datos del mosaico",
+      "editDataSource": "Editar fuente de datos del mosaico"
+    },
+    "dataSources": {
+      "add": "Añadir fuente de datos",
+      "edit": "Editar fuente de datos",
+      "remove": "¿Eliminar fuente de datos?",
+      "selectPlugin": "Se requiere plugin de fuente de datos",
+      "adjustFilters": "Filtrar fuentes de datos"
+    },
+    "misc": {
+      "discard": "¿Descartar cambios?"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "list": "Gestionar páginas del panel inteligente",
+      "add": "Añadir nueva página del panel inteligente",
+      "edit": "Editar página del panel inteligente",
+      "detail": "Gestionar página del panel inteligente",
+      "adjustFilters": "Ajustar filtros de visualización",
+      "addDataSource": "Añadir nueva fuente de datos de página del panel inteligente",
+      "editDataSource": "Editar fuente de datos de página del panel inteligente"
+    },
+    "tiles": {
+      "add": "Añadir nuevo mosaico del panel inteligente",
+      "edit": "Editar mosaico del panel inteligente",
+      "detail": "Gestionar mosaico del panel inteligente",
+      "adjustFilters": "Ajustar filtros de visualización",
+      "addDataSource": "Añadir nueva fuente de datos de mosaico del panel inteligente",
+      "editDataSource": "Editar fuente de datos de mosaico del panel inteligente"
+    },
+    "dataSources": {
+      "add": "Añadir nueva fuente de datos del panel inteligente",
+      "edit": "Editar fuente de datos del panel inteligente",
+      "detail": "Gestionar fuente de datos del panel inteligente",
+      "adjustFilters": "Ajustar filtros de visualización"
+    }
+  },
+  "messages": {
+    "pages": {
+      "notFound": "La página que buscas no existe o pudo haber sido eliminada.",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar la página: {page}? Esto no se puede revertir.",
+      "created": "Nueva página añadida correctamente.",
+      "notCreated": "Algo salió mal. No se pudo crear la página.",
+      "edited": "¡Cambios guardados! La página: {page} ha sido actualizada.",
+      "notEdited": "Algo salió mal. La actualización de la página no fue exitosa.",
+      "removed": "La página: {page} fue eliminada correctamente.",
+      "removeCanceled": "La eliminación de la página: {page} ha sido cancelada.",
+      "notRemoved": "Algo salió mal y la página: {page} no fue eliminada.",
+      "noDetailAllowed": "Este tipo de página no se puede abrir porque no tiene vista de detalle.",
+      "deletedWhileEditing": "Esta página fue eliminada y ya no está disponible.",
+      "bulkRemoved": "{count} páginas fueron eliminadas correctamente.",
+      "bulkRemoveFailed": "Error al eliminar {count} páginas.",
+      "bulkRemoveCanceled": "La eliminación masiva de páginas ha sido cancelada."
+    },
+    "tiles": {
+      "notFound": "El mosaico que buscas no existe o pudo haber sido eliminado.",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar el mosaico? Esto no se puede revertir.",
+      "created": "Nuevo mosaico añadido correctamente.",
+      "notCreated": "Algo salió mal. No se pudo crear el mosaico.",
+      "edited": "¡Cambios guardados! El mosaico ha sido actualizado.",
+      "notEdited": "Algo salió mal. La actualización del mosaico no fue exitosa.",
+      "removed": "El mosaico fue eliminado correctamente.",
+      "removeCanceled": "La eliminación del mosaico ha sido cancelada.",
+      "notRemoved": "Algo salió mal y el mosaico no fue eliminado.",
+      "deletedWhileEditing": "Este mosaico fue eliminado y ya no está disponible."
+    },
+    "dataSources": {
+      "notFound": "La fuente de datos que buscas no existe o pudo haber sido eliminada.",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar la fuente de datos? Esto no se puede revertir.",
+      "created": "Nueva fuente de datos añadida correctamente.",
+      "notCreated": "Algo salió mal. No se pudo crear la fuente de datos.",
+      "edited": "¡Cambios guardados! La fuente de datos ha sido actualizada.",
+      "notEdited": "Algo salió mal. La actualización de la fuente de datos no fue exitosa.",
+      "removed": "La fuente de datos fue eliminada correctamente.",
+      "removeCanceled": "La eliminación de la fuente de datos ha sido cancelada.",
+      "notRemoved": "Algo salió mal y la fuente de datos no fue eliminada.",
+      "deletedWhileEditing": "Esta fuente de datos fue eliminada y ya no está disponible."
+    },
+    "misc": {
+      "requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde."
+    }
+  },
+  "texts": {
+    "pages": {
+      "noPages": "No tienes ninguna página configurada",
+      "noFilteredPages": "No se encontraron páginas que coincidan con los criterios de filtro activos",
+      "loadingPages": "Cargando páginas...",
+      "loadingPage": "Cargando página...",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar la página: {page}? Esto no se puede revertir.",
+      "confirmBulkRemove": "¿Estás seguro de que deseas eliminar {count} páginas? Esto no se puede revertir.",
+      "selectPlugin": "Para crear una nueva página, por favor selecciona un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de página específicos.",
+      "noPlugins": "Aún no se han configurado plugins de página.",
+      "noDisplays": "Aún no se han emparejado pantallas."
+    },
+    "tiles": {
+      "noTiles": "No tienes ningún mosaico configurado",
+      "noFilteredTiles": "No se encontraron mosaicos que coincidan con los criterios de filtro activos",
+      "loadingTiles": "Cargando mosaicos...",
+      "loadingTile": "Cargando mosaico...",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar el mosaico? Esto no se puede revertir.",
+      "selectPlugin": "Para crear nuevos mosaicos, por favor selecciona un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de mosaico específicos.",
+      "noPlugins": "Aún no se han configurado plugins de mosaico.",
+      "plugin": "Plugin",
+      "dataSources": "Fuentes de datos",
+      "dataSourcesCount": "Sin fuentes de datos configuradas | Una fuente de datos configurada | {count} fuentes de datos configuradas",
+      "row": "Posición de fila",
+      "col": "Posición de columna",
+      "size": "Tamaño",
+      "visibility": "Visibilidad",
+      "hidden": "El mosaico está oculto",
+      "visible": "El mosaico es visible"
+    },
+    "dataSources": {
+      "noDataSources": "No tienes ninguna fuente de datos configurada",
+      "noFilteredDataSources": "No se encontraron fuentes de datos que coincidan con los criterios de filtro activos",
+      "loadingDataSources": "Cargando fuentes de datos...",
+      "loadingDataSource": "Cargando fuente de datos...",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar la fuente de datos? Esto no se puede revertir.",
+      "selectPlugin": "Para crear una nueva fuente de datos, por favor selecciona un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de fuente de datos específicos.",
+      "noPlugins": "Aún no se han configurado plugins de fuente de datos."
+    },
+    "misc": {
+      "confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?"
+    }
+  },
+  "fields": {
+    "pages": {
+      "search": {
+        "placeholder": "Buscar páginas..."
+      },
+      "plugin": {
+        "title": "Plugin de página",
+        "placeholder": "Seleccionar plugin de página"
+      },
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID de página"
+      },
+      "title": {
+        "title": "Título",
+        "placeholder": "Título de la página",
+        "validation": {
+          "required": "Por favor ingresa el título de la página"
+        }
+      },
+      "icon": {
+        "title": "Icono",
+        "placeholder": "Icono de la página"
+      },
+      "order": {
+        "title": "Orden",
+        "placeholder": "Posición de la página"
+      },
+      "showTopBar": {
+        "title": "Mostrar barra superior",
+        "placeholder": "Mostrar barra superior de la página"
+      },
+      "displays": {
+        "title": "Pantallas",
+        "placeholder": "Seleccionar pantallas (dejar vacío para todas las pantallas)",
+        "description": "Selecciona pantallas específicas para esta página. Déjalo vacío para hacerla visible en todas las pantallas."
+      }
+    },
+    "tiles": {
+      "search": {
+        "placeholder": "Buscar mosaicos..."
+      },
+      "plugin": {
+        "title": "Plugin de mosaico",
+        "placeholder": "Seleccionar plugin de mosaico"
+      },
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del mosaico"
+      },
+      "row": {
+        "title": "Posición de fila",
+        "placeholder": "Número de fila 1-n",
+        "validation": {
+          "required": "Por favor ingresa la fila del mosaico"
+        }
+      },
+      "col": {
+        "title": "Posición de columna",
+        "placeholder": "Número de columna 1-n",
+        "validation": {
+          "required": "Por favor ingresa la columna del mosaico"
+        }
+      },
+      "rowSpan": {
+        "title": "Extensión de filas",
+        "placeholder": "Tamaño del mosaico en filas"
+      },
+      "colSpan": {
+        "title": "Extensión de columnas",
+        "placeholder": "Tamaño del mosaico en columnas"
+      },
+      "hidden": {
+        "title": "Oculto",
+        "placeholder": "Hacer el mosaico invisible en la aplicación de pantalla"
+      }
+    },
+    "dataSources": {
+      "search": {
+        "placeholder": "Buscar fuentes de datos..."
+      },
+      "plugin": {
+        "title": "Plugin de fuente de datos",
+        "placeholder": "Seleccionar plugin de fuente de datos"
+      },
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID de fuente de datos"
+      }
+    }
+  },
+  "table": {
+    "pages": {
+      "columns": {
+        "title": {
+          "title": "Título"
+        },
+        "type": {
+          "title": "Tipo"
+        },
+        "display": {
+          "title": "Pantallas",
+          "all": "Todas las pantallas"
+        },
+        "order": {
+          "title": "Orden"
+        },
+        "showTopBar": {
+          "title": "Mostrar barra superior"
+        }
+      }
+    },
+    "tiles": {
+      "columns": {
+        "type": {
+          "title": "Tipo"
+        },
+        "row": {
+          "title": "Fila"
+        },
+        "col": {
+          "title": "Columna"
+        },
+        "rowSpan": {
+          "title": "Extensión de filas"
+        },
+        "colSpan": {
+          "title": "Extensión de columnas"
+        },
+        "hidden": {
+          "title": "Oculto"
+        }
+      }
+    },
+    "dataSources": {
+      "columns": {
+        "type": {
+          "title": "Tipo"
+        }
+      }
+    }
+  },
+  "filters": {
+    "pages": {
+      "types": {
+        "title": "Filtrar por tipo de página"
+      },
+      "displays": {
+        "title": "Filtrar por pantalla de página"
+      }
+    },
+    "tiles": {
+      "types": {
+        "title": "Filtrar por tipo de mosaico"
+      }
+    },
+    "dataSources": {
+      "types": {
+        "title": "Filtrar por tipo de fuente de datos"
+      }
+    }
+  },
+  "buttons": {
+    "add": {
+      "title": "Añadir"
+    },
+    "edit": {
+      "title": "Editar"
+    },
+    "detail": {
+      "title": "Detalle"
+    },
+    "configure": {
+      "title": "Configurar"
+    },
+    "discard": {
+      "title": "Descartar"
+    },
+    "cancel": {
+      "title": "Cancelar"
+    },
+    "close": {
+      "title": "Cerrar"
+    },
+    "save": {
+      "title": "Guardar"
+    },
+    "change": {
+      "title": "Cambiar"
+    },
+    "remove": {
+      "title": "Eliminar"
+    },
+    "resetFilters": {
+      "title": "Restablecer filtros"
+    },
+    "yes": {
+      "title": "Sí"
+    },
+    "no": {
+      "title": "No"
+    },
+    "reset": {
+      "title": "Restablecer"
+    },
+    "addDataSource": {
+      "title": "Añadir fuente de datos"
+    }
+  }
+}

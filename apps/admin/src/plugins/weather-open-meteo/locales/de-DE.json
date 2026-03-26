@@ -1,0 +1,77 @@
+{
+	"headings": {
+		"aboutSettings": "Open-Meteo Wetter-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"unit": {
+				"title": "Temperatureinheit",
+				"placeholder": "Temperatureinheit auswählen",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Name",
+				"description": "Ein freundlicher Name für diesen Standort",
+				"placeholder": "z.B. Zuhause, Büro, Ferienhaus",
+				"validation": {
+					"required": "Name ist erforderlich"
+				}
+			},
+			"citySearch": {
+				"title": "Stadt suchen",
+				"placeholder": "Beginnen Sie zu tippen, um eine Stadt zu suchen...",
+				"description": "Suchen Sie eine Stadt und wir füllen die Koordinaten automatisch aus"
+			},
+			"latitude": {
+				"title": "Breitengrad",
+				"placeholder": "z.B. 51.5074",
+				"validation": {
+					"required": "Breitengrad ist erforderlich",
+					"range": "Breitengrad muss zwischen -90 und 90 liegen"
+				}
+			},
+			"longitude": {
+				"title": "Längengrad",
+				"placeholder": "z.B. -0.1278",
+				"validation": {
+					"required": "Längengrad ist erforderlich",
+					"range": "Längengrad muss zwischen -180 und 180 liegen"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Mein Standort"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Open-Meteo-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Open-Meteo-Einstellungen fehlgeschlagen"
+		},
+		"locations": {
+			"created": "Standort \"{location}\" wurde erstellt",
+			"notCreated": "Standort \"{location}\" konnte nicht erstellt werden",
+			"edited": "Standort \"{location}\" wurde aktualisiert",
+			"notEdited": "Standort \"{location}\" konnte nicht aktualisiert werden"
+		},
+		"geolocationNotSupported": "Geolokalisierung wird von Ihrem Browser nicht unterstützt",
+		"geolocationDenied": "Standortzugriff wurde verweigert. Bitte aktivieren Sie die Standortberechtigung.",
+		"geolocationUnavailable": "Standortinformationen sind nicht verfügbar",
+		"geolocationTimeout": "Die Anfrage zur Standortermittlung hat das Zeitlimit überschritten",
+		"geolocationError": "Beim Abrufen Ihres Standorts ist ein Fehler aufgetreten"
+	},
+	"texts": {
+		"aboutSettings": "Konfigurieren Sie Ihre Open-Meteo Wetter-Einstellungen. Dieser Anbieter ist kostenlos und erfordert keinen API-Schlüssel.",
+		"orEnterManually": "Oder Standort manuell eingeben"
+	}
+}

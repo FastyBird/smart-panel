@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia API ElevenLabs"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj API kľúč ElevenLabs",
+				"description": "Získajte svoj API kľúč z elevenlabs.io/app/settings/api-keys"
+			},
+			"voiceId": {
+				"title": "ID hlasu",
+				"placeholder": "napr. 21m00Tcm4TlvDq8ikWAM",
+				"description": "ID hlasu ElevenLabs použitého na syntézu reči"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia ElevenLabs boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia ElevenLabs"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia API ElevenLabs. Na používanie ElevenLabs ako poskytovateľa TTS buddy potrebujete platný API kľúč a ID hlasu."
+	}
+}

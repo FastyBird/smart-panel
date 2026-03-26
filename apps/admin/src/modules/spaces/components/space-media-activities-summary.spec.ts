@@ -8,6 +8,7 @@ import { MediaActivityKey, type IMediaActiveState, type IMediaStepFailure } from
 import SpaceMediaActivitiesSummary from './space-media-activities-summary.vue';
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

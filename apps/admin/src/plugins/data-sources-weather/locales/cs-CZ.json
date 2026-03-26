@@ -1,0 +1,41 @@
+{
+	"fields": {
+		"locationId": {
+			"title": "Meteorologická lokace",
+			"placeholder": "Vyberte lokaci",
+			"description": "Vyberte meteorologickou lokaci k zobrazení. Pokud není nastavena, bude použita primární lokace z nastavení počasí."
+		},
+		"field": {
+			"title": "Datové pole",
+			"placeholder": "Vyberte pole",
+			"validation": {
+				"required": "Vyberte prosím datové pole"
+			}
+		},
+		"dayOffset": {
+			"title": "Posun dne",
+			"placeholder": "Dní od dneška",
+			"validation": {
+				"required": "Zadejte prosím posun dne",
+				"min": "Posun dne musí být alespoň 0",
+				"max": "Posun dne může být maximálně 7"
+			}
+		},
+		"icon": {
+			"title": "Vlastní ikona",
+			"placeholder": "mdi:thermometer"
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Teplota",
+		"temperature_min": "Minimální teplota",
+		"temperature_max": "Maximální teplota",
+		"feels_like": "Pocitová teplota",
+		"humidity": "Vlhkost",
+		"pressure": "Tlak",
+		"weather_icon": "Ikona počasí",
+		"weather_main": "Stav počasí",
+		"weather_description": "Popis počasí",
+		"wind_speed": "Rychlost větru"
+	}
+}

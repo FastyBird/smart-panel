@@ -1,0 +1,250 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID urzadzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urzadzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urzadzenia",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Prosze wybrac kategorie urzadzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urzadzenia",
+				"validation": {
+					"required": "Prosze podac nazwe urzadzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urzadzenia"
+			},
+			"enabled": {
+				"title": "Wlaczony",
+				"placeholder": "Wlacz lub wylacz urzadzenie"
+			},
+			"haDeviceId": {
+				"title": "Urzadzenie Home Assistant",
+				"placeholder": "Wybierz urzadzenie z instancji Home Assistant",
+				"validation": {
+					"required": "Prosze wybrac urzadzenie Home Assistant"
+				}
+			},
+			"manufacturer": {
+				"title": "Producent"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"entities": {
+				"title": "Encje"
+			},
+			"domain": {
+				"title": "Domena"
+			},
+			"type": {
+				"title": "Typ"
+			}
+		},
+		"channelsProperties": {
+			"id": {
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID wlasciwosci kanalu"
+			},
+			"channel": {
+				"title": "Kanal",
+				"placeholder": "Wybierz kanal",
+				"validation": {
+					"required": "Prosze wybrac kanal wlasciwosci"
+				}
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria wlasciwosci kanalu",
+				"validation": {
+					"required": "Prosze wybrac kategorie wlasciwosci kanalu"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa wlasciwosci kanalu"
+			},
+			"dataType": {
+				"validation": {
+					"required": "Prosze wybrac typ danych"
+				}
+			},
+			"permissions": {
+				"validation": {
+					"required": "Prosze wybrac uprawnienia"
+				}
+			},
+			"haEntityId": {
+				"title": "Encja urzadzenia Home Assistant",
+				"placeholder": "Wybierz encje urzadzenia Home Assistant",
+				"validation": {
+					"required": "Prosze wybrac encje urzadzenia Home Assistant"
+				}
+			},
+			"haAttribute": {
+				"title": "Atrybut encji Home Assistant",
+				"placeholder": "Wybierz atrybut encji Home Assistant",
+				"validation": {
+					"required": "Prosze wybrac atrybut encji Home Assistant"
+				}
+			}
+		},
+		"mapping": {
+			"totalEntities": "Laczna liczba encji",
+			"mapped": "Zmapowane",
+			"partial": "Czesciowe",
+			"unmapped": "Niezmapowane",
+			"skipped": "Pominiete",
+			"incompatible": "Niekompatybilne",
+			"excluded": "Wykluczone",
+			"suggestedCategory": "Sugerowana kategoria",
+			"suggestedChannel": {
+				"title": "Sugerowany kanal",
+				"validation": {
+					"required": "Prosze wybrac kategorie kanalu dla tej encji"
+				}
+			},
+			"properties": "Wlasciwosci",
+			"unmappedAttributes": "Niezmapowane atrybuty",
+			"missingRequiredProperties": "Brakujace wymagane wlasciwosci",
+			"incompatibleChannel": "Kanal nie jest obslugiwany dla tej kategorii urzadzenia",
+			"virtualTypes": {
+				"static": "Statyczny",
+				"derived": "Automatyczny",
+				"command": "Komenda",
+				"virtual": "Wirtualny"
+			},
+			"validation": {
+				"valid": "Konfiguracja urzadzenia jest prawidlowa",
+				"invalid": "Konfiguracja urzadzenia ma problemy",
+				"missingChannels": "Brakujace wymagane kanaly",
+				"missingProperties": "Brakujace wymagane wlasciwosci",
+				"autoFilled": "Automatycznie uzupelnione wirtualnymi wlasciwosciami",
+				"unknownChannels": "Kanaly niedozwolone dla tego typu urzadzenia",
+				"duplicateChannels": "Zduplikowane kanaly (powinny byc unikalne)",
+				"constraintViolations": "Naruszenia ograniczen konfiguracji"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadz dlugoterminowy token dostepu Home Assistant",
+				"validation": {
+					"required": "Prosze podac klucz API"
+				}
+			},
+			"hostname": {
+				"title": "Nazwa hosta",
+				"placeholder": "Wprowadz nazwe hosta Home Assistant (np. homeassistant.local:8123)",
+				"validation": {
+					"required": "Prosze podac nazwe hosta"
+				}
+			}
+		}
+	},
+	"headings": {
+		"aboutConnectionSettings": "Polaczenie Home Assistant",
+		"device": {
+			"deviceSelection": "Wybierz urzadzenie",
+			"deviceInformation": "Informacje o urzadzeniu",
+			"categorySelection": "Kategoria urzadzenia",
+			"mappingPreview": "Podglad mapowania",
+			"mappingCustomization": "Dostosowanie mapowania",
+			"deviceConfiguration": "Konfiguracja urzadzenia"
+		},
+		"mapping": {
+			"entityMappings": "Mapowania encji",
+			"warnings": "Ostrzezenia mapowania ({count})",
+			"errors": "Bledy",
+			"summary": "Podsumowanie mapowania",
+			"debugData": "Dane debugowania"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Home Assistant zostala zaktualizowana.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja konfiguracji wtyczki Home Assistant nie powiodla sie."
+		},
+		"devices": {
+			"created": "Nowe urzadzenie Home Assistant zostalo pomyslnie dodane.",
+			"notCreated": "Cos poszlo nie tak. Nie udalo sie utworzyc urzadzenia Home Assistant.",
+			"exists": "Urzadzenie jest juz zaadoptowane w systemie.",
+			"alreadyAdopted": "To urzadzenie jest juz zaadoptowane",
+			"alreadyAdoptedDescription": "Kontynuowanie spowoduje ponowna adopcje urzadzenia z nowa konfiguracja. Istniejace urzadzenie zostanie zaktualizowane.",
+			"noDiscoveredDevices": "Brak dostepnych urzadzen Home Assistant. Upewnij sie, ze instancja Home Assistant jest polaczona i urzadzenia sa wykryte."
+		},
+		"mapping": {
+			"previewLoading": "Ladowanie podgladu mapowania...",
+			"previewError": "Nie udalo sie zaladowac podgladu mapowania",
+			"adoptionSuccess": "Urzadzenie {device} pomyslnie zaadoptowane",
+			"adoptionError": "Nie udalo sie zaadoptowac urzadzenia",
+			"readyToAdopt": "Urzadzenie jest gotowe do adopcji",
+			"notReadyToAdopt": "Urzadzenie ma brakujace wymagane mapowania",
+			"noPreview": "Brak dostepnego podgladu mapowania",
+			"selectDeviceFirst": "Prosze wybrac urzadzenie w kroku 1, aby wygenerowac podglad mapowania",
+			"invalidSuggestedCategory": "Sugerowana kategoria nie jest obslugiwana. Prosze wybrac prawidlowa kategorie.",
+			"missingChannelCategory": "Nastepujace encje sa wlaczone, ale brakuje im kategorii kanalu: {entities}. Prosze wybrac kategorie kanalu dla kazdej wlaczonej encji przed kontynuowaniem.",
+			"debugDescription": "Skopiuj te dane i udostepnij deweloperom, aby pomoc zdiagnozowac problemy z mapowaniem lub zlozyc prosbe o niestandardowe mapowania.",
+			"debugCopied": "Dane debugowania skopiowane do schowka",
+			"debugCopyFailed": "Nie udalo sie skopiowac danych debugowania do schowka"
+		},
+		"categorySelection": {
+			"description": "Na podstawie encji urzadzenia zasugerowano kategorie. Prosze przejrzec i wybrac prawidlowa kategorie dla tego urzadzenia. Podglad mapowania zostanie zaktualizowany na podstawie wyboru."
+		},
+		"discovery": {
+			"fetchFailed": "Nie udalo sie pobrac wykrytych instancji",
+			"refreshFailed": "Nie udalo sie odswiezyc wykrytych instancji"
+		}
+	},
+	"buttons": {
+		"loadPreview": "Zaladuj podglad",
+		"updatePreview": "Zaktualizuj podglad",
+		"adoptDevice": "Adoptuj urzadzenie",
+		"next": "Dalej",
+		"previous": "Wstecz",
+		"skip": "Pomin",
+		"use": "Uzyj",
+		"applyChanges": "Zastosuj zmiany",
+		"refreshDiscovery": "Odswiez wykrywanie",
+		"debug": "Debugowanie",
+		"copyToClipboard": "Kopiuj do schowka",
+		"close": "Zamknij"
+	},
+	"labels": {
+		"suggested": "Sugerowane"
+	},
+	"misc": {
+		"options": {
+			"entities": {
+				"noEntity": "Nie polaczone z encja urzadzenia"
+			},
+			"attributes": {
+				"noAttribute": "Nie polaczone z atrybutem encji",
+				"mainState": "Glowny atrybut stanu encji"
+			}
+		}
+	},
+	"texts": {
+		"aboutConnectionSettings": "Skonfiguruj polaczenie z instancja Home Assistant. Po wlaczeniu urzadzenia z Home Assistant beda dostepne w Smart Panel. Potrzebujesz dlugoterminowego tokenu dostepu z Home Assistant i nazwy hosta lub adresu IP instancji.",
+		"mapping": {
+			"customizationDescription": "Mozesz dostosowac mapowanie zmieniajac kategorie kanalow dla encji lub wlaczajac/wylaczajac encje. Domyslnie wszystkie encje z sugerowana kategoria kanalu sa wlaczone. Kliknij 'Dalej', aby kontynuowac z wybrana konfiguracja."
+		}
+	}
+}

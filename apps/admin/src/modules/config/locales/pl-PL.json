@@ -1,0 +1,316 @@
+{
+  "menu": {
+    "title": "Konfiguracja",
+    "modules": "Moduły",
+    "plugins": "Wtyczki"
+  },
+  "meta": {
+    "config": {
+      "title": "Konfiguracja"
+    },
+    "configAudio": {
+      "title": "Konfiguracja audio"
+    },
+    "configDisplay": {
+      "title": "Konfiguracja wyświetlacza"
+    },
+    "configLanguage": {
+      "title": "Konfiguracja języka"
+    },
+    "configWeather": {
+      "title": "Konfiguracja pogody"
+    },
+    "configSystem": {
+      "title": "Konfiguracja systemu"
+    },
+    "configPlugins": {
+      "title": "Konfiguracja wtyczek"
+    },
+    "configModules": {
+      "title": "Konfiguracja modułów"
+    },
+    "configModuleEdit": {
+      "title": "Edytuj moduł: {module}"
+    },
+    "configPluginEdit": {
+      "title": "Edytuj wtyczkę: {plugin}"
+    }
+  },
+  "breadcrumbs": {
+    "config": "konfiguracja",
+    "configAudio": "konfiguracja audio",
+    "configDisplay": "konfiguracja wyświetlacza",
+    "configLanguage": "konfiguracja języka",
+    "configWeather": "konfiguracja pogody",
+    "configSystem": "konfiguracja systemu",
+    "configPlugins": "konfiguracja wtyczek",
+    "configModules": "konfiguracja modułów"
+  },
+  "messages": {
+    "loadError": "Nie udało się wczytać konfiguracji",
+    "configAudio": {
+      "edited": "Zmiany zapisane! Konfiguracja audio została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji audio nie powiodła się."
+    },
+    "configDisplay": {
+      "edited": "Zmiany zapisane! Konfiguracja wyświetlacza została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wyświetlacza nie powiodła się."
+    },
+    "configLanguage": {
+      "edited": "Zmiany zapisane! Konfiguracja języka została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji języka nie powiodła się."
+    },
+    "configWeather": {
+      "edited": "Zmiany zapisane! Konfiguracja pogody została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji pogody nie powiodła się."
+    },
+    "configSystem": {
+      "edited": "Zmiany zapisane! Konfiguracja systemu została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji systemu nie powiodła się."
+    },
+    "configPlugin": {
+      "edited": "Zmiany zapisane! Konfiguracja wtyczki została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wtyczki nie powiodła się."
+    },
+    "configModule": {
+      "edited": "Zmiany zapisane! Konfiguracja modułu została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji modułu nie powiodła się."
+    },
+    "moduleConfigNotFound": {
+      "title": "Konfiguracja modułu nie znaleziona",
+      "message": "Nie udało się wczytać konfiguracji modułu \"{module}\". Sprawdź, czy moduł jest poprawnie zainstalowany i skonfigurowany."
+    },
+    "moduleNotFound": {
+      "title": "Moduł nie znaleziony",
+      "message": "Moduł \"{module}\" nie został znaleziony w systemie. Sprawdź, czy moduł jest zainstalowany i włączony."
+    },
+    "moduleElementNotFound": {
+      "title": "Element modułu nie zarejestrowany",
+      "message": "Element konfiguracji modułu \"{module}\" nie jest zarejestrowany. Ten moduł może nie obsługiwać edycji konfiguracji."
+    },
+    "moduleComponentsNotFound": {
+      "message": "Moduł \"{module}\" nie posiada dostępnych komponentów konfiguracji."
+    },
+    "moduleFormNotFound": {
+      "title": "Formularz konfiguracji niedostępny",
+      "message": "Komponent formularza konfiguracji modułu \"{module}\" nie jest dostępny. Ten moduł może nie obsługiwać edycji konfiguracji przez interfejs użytkownika."
+    },
+    "pluginConfigNotFound": {
+      "title": "Konfiguracja wtyczki nie znaleziona",
+      "message": "Nie udało się wczytać konfiguracji wtyczki \"{plugin}\". Sprawdź, czy wtyczka jest poprawnie zainstalowana i skonfigurowana."
+    },
+    "pluginNotFound": {
+      "title": "Wtyczka nie znaleziona",
+      "message": "Wtyczka \"{plugin}\" nie została znaleziona w systemie. Sprawdź, czy wtyczka jest zainstalowana i włączona."
+    },
+    "pluginElementNotFound": {
+      "title": "Element wtyczki nie zarejestrowany",
+      "message": "Element konfiguracji wtyczki \"{plugin}\" nie jest zarejestrowany. Ta wtyczka może nie obsługiwać edycji konfiguracji."
+    },
+    "pluginComponentsNotFound": {
+      "message": "Wtyczka \"{plugin}\" nie posiada dostępnych komponentów konfiguracji."
+    },
+    "pluginFormNotFound": {
+      "title": "Formularz konfiguracji niedostępny",
+      "message": "Komponent formularza konfiguracji wtyczki \"{plugin}\" nie jest dostępny. Ta wtyczka może nie obsługiwać edycji konfiguracji przez interfejs użytkownika."
+    }
+  },
+  "headings": {
+    "config": "Konfiguracja",
+    "misc": {
+      "discard": "Odrzuć zmiany"
+    }
+  },
+  "subHeadings": {
+    "config": "Konfiguracja smart panelu",
+    "configModule": "Konfiguracja modułu",
+    "configPlugin": "Konfiguracja wtyczki"
+  },
+  "tabs": {
+    "configAudio": "Konfiguracja audio",
+    "configDisplay": "Konfiguracja wyświetlacza",
+    "configLanguage": "Konfiguracja języka",
+    "configWeather": "Konfiguracja pogody",
+    "configSystem": "Konfiguracja systemu",
+    "configPlugins": "Konfiguracja wtyczek",
+    "configModules": "Konfiguracja modułów"
+  },
+  "texts": {
+    "loadingAudioConfig": "Ładowanie konfiguracji audio...",
+    "loadingDisplayConfig": "Ładowanie konfiguracji wyświetlacza...",
+    "loadingLanguageConfig": "Ładowanie konfiguracji języka...",
+    "loadingWeatherConfig": "Ładowanie konfiguracji pogody...",
+    "loadingSystemConfig": "Ładowanie konfiguracji systemu...",
+    "loadingPluginConfig": "Ładowanie konfiguracji wtyczki...",
+    "loadingModuleConfig": "Ładowanie konfiguracji modułu...",
+    "misc": {
+      "confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+    }
+  },
+  "fields": {
+    "speaker": {
+      "title": "Głośnik",
+      "placeholder": "Włącz lub wyłącz głośnik",
+      "values": {
+        "enabled": "Włączony",
+        "disabled": "Wyłączony"
+      }
+    },
+    "speakerVolume": {
+      "title": "Głośność głośnika"
+    },
+    "microphone": {
+      "title": "Mikrofon",
+      "placeholder": "Włącz lub wyłącz mikrofon",
+      "values": {
+        "enabled": "Włączony",
+        "disabled": "Wyłączony"
+      }
+    },
+    "microphoneVolume": {
+      "title": "Głośność mikrofonu"
+    },
+    "darkMode": {
+      "title": "Tryb motywu",
+      "placeholder": "Wybierz tryb jasny lub ciemny",
+      "values": {
+        "dark": "Ciemny",
+        "light": "Jasny"
+      }
+    },
+    "brightness": {
+      "title": "Jasność"
+    },
+    "screenLockDuration": {
+      "title": "Blokada ekranu",
+      "placeholder": "Ustaw opóźnienie blokady ekranu",
+      "values": {
+        "enabled": "Włączony",
+        "disabled": "Wyłączony"
+      }
+    },
+    "screenSaver": {
+      "title": "Wygaszacz ekranu",
+      "placeholder": "Włącz lub wyłącz wygaszacz ekranu",
+      "values": {
+        "enabled": "Włączony",
+        "disabled": "Wyłączony"
+      }
+    },
+    "language": {
+      "title": "Język",
+      "placeholder": "Wybierz preferowany język"
+    },
+    "timezone": {
+      "title": "Strefa czasowa",
+      "placeholder": "Wybierz strefę czasową"
+    },
+    "timeFormat": {
+      "title": "Format czasu",
+      "placeholder": "Wybierz preferowany format czasu"
+    },
+    "locationType": {
+      "title": "Typ lokalizacji pogody",
+      "placeholder": "Wybierz sposób pobierania pogody"
+    },
+    "coordinates": {
+      "title": "Współrzędne lokalizacji"
+    },
+    "latitude": {
+      "title": "Szerokość geograficzna",
+      "placeholder": "Szerokość geograficzna"
+    },
+    "longitude": {
+      "title": "Długość geograficzna",
+      "placeholder": "Długość geograficzna"
+    },
+    "cityName": {
+      "title": "Nazwa miasta",
+      "placeholder": "Wpisz nazwę miasta, możliwe dodanie stanu i kodu kraju"
+    },
+    "cityId": {
+      "title": "ID miasta lokalizacji",
+      "placeholder": "Wybierz miasta obsługiwane przez OpenWeather"
+    },
+    "zipCode": {
+      "title": "Kod pocztowy lokalizacji",
+      "placeholder": "Wyszukaj po kodzie pocztowym, możliwe dodanie kodu kraju"
+    },
+    "unit": {
+      "title": "Jednostka temperatury",
+      "placeholder": "Wybierz jednostkę temperatury"
+    },
+    "openWeatherApiKey": {
+      "title": "Klucz API Open Weather",
+      "placeholder": "Twój klucz API usługi Open Weather do dostępu do danych pogodowych"
+    },
+    "logLevels": {
+      "title": "Poziomy logowania",
+      "placeholder": "Wybierz, które poziomy logowania mają być monitorowane"
+    }
+  },
+  "buttons": {
+    "save": {
+      "title": "Zapisz"
+    },
+    "myLocation": {
+      "title": "Moja lokalizacja"
+    },
+    "discard": {
+      "title": "Odrzuć"
+    },
+    "close": {
+      "title": "Zamknij"
+    },
+    "retry": {
+      "title": "Ponów"
+    },
+    "yes": {
+      "title": "Tak"
+    },
+    "no": {
+      "title": "Nie"
+    }
+  },
+  "languages": {
+    "en_US": "English",
+    "cs_CZ": "Česky"
+  },
+  "timeFormats": {
+    "12h": "Format 12-godzinny",
+    "24h": "Format 24-godzinny"
+  },
+  "locationTypes": {
+    "lat_lon": "Współrzędne geograficzne",
+    "city_name": "Nazwa miasta",
+    "city_id": "ID miasta OpenWeather",
+    "zip_code": "Kod pocztowy"
+  },
+  "weatherUnits": {
+    "celsius": "Celsjusz",
+    "fahrenheit": "Fahrenheit"
+  },
+  "screenLockDurations": {
+    "15s": "15s",
+    "30s": "30s",
+    "60s": "1min",
+    "120s": "2min",
+    "300s": "5min",
+    "600s": "10min",
+    "1800s": "30min",
+    "0s": "Nigdy"
+  },
+  "logLevels": {
+    "silent": "Cichy",
+    "verbose": "Szczegółowy",
+    "debug": "Debug",
+    "trace": "Trace",
+    "log": "Log",
+    "info": "Info",
+    "success": "Sukces",
+    "warn": "Ostrzeżenie",
+    "error": "Błąd",
+    "fail": "Niepowodzenie",
+    "fatal": "Krytyczny"
+  }
+}

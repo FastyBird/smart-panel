@@ -1,0 +1,163 @@
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Editar tarjeta"
+			},
+			"addCard": {
+				"title": "Añadir tarjeta"
+			},
+			"editTile": {
+				"title": "Editar mosaico de tarjeta"
+			},
+			"addTile": {
+				"title": "Añadir mosaico de tarjeta"
+			},
+			"editDataSource": {
+				"title": "Editar fuente de datos de página"
+			},
+			"addDataSource": {
+				"title": "Añadir fuente de datos de página"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "página: {page}",
+			"addCard": "añadir tarjeta",
+			"editCard": "editar tarjeta",
+			"addTile": "añadir mosaico de tarjeta",
+			"editTile": "editar mosaico de tarjeta",
+			"addDataSource": "añadir fuente de datos de página",
+			"editDataSource": "editar fuente de datos de página"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Añadir tarjeta",
+			"editCard": "Editar tarjeta",
+			"addTile": "Añadir mosaico de tarjeta",
+			"editTile": "Editar mosaico de tarjeta",
+			"addDataSource": "Añadir fuente de datos de página",
+			"editDataSource": "Editar fuente de datos de página"
+		},
+		"cards": {
+			"remove": "Eliminar tarjeta"
+		},
+		"configure": {
+			"display": "Pantalla",
+			"cards": "Tarjetas"
+		},
+		"misc": {
+			"discard": "¿Descartar cambios?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Añadir nueva tarjeta a esta página",
+			"editCard": "Editar propiedades de la tarjeta",
+			"addTile": "Añadir nuevo mosaico a esta tarjeta",
+			"editTile": "Editar mosaico de tarjeta",
+			"addDataSource": "Añadir nueva fuente de datos de página",
+			"editDataSource": "Editar fuente de datos de página"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "La tarjeta {card} se ha eliminado correctamente.",
+			"notFound": "No se encontró la tarjeta {card}.",
+			"notRemoved": "No se pudo eliminar la tarjeta {card}.",
+			"removeCanceled": "Se canceló la eliminación de la tarjeta {card}.",
+			"deletedWhileEditing": "Esta tarjeta fue eliminada y ya no está disponible."
+		},
+		"tiles": {
+			"deletedWhileEditing": "Este mosaico fue eliminado y ya no está disponible."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Esta fuente de datos fue eliminada y ya no está disponible."
+		},
+		"misc": {
+			"requestError": "Algo salió mal, por favor inténtelo de nuevo más tarde."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "¿Está seguro de que desea eliminar la tarjeta {card}?",
+			"noCards": "Aún no se han añadido tarjetas a esta página.",
+			"noTiles": "No hay mosaicos en esta tarjeta. Haga clic en + para añadir uno.",
+			"tilesCount": "mosaicos",
+			"loadingCard": "Cargando tarjeta..."
+		},
+		"tiles": {
+			"loadingTile": "Cargando mosaico..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Cargando fuente de datos..."
+		},
+		"misc": {
+			"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Descartar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"add": {
+			"title": "Añadir"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"update": {
+			"title": "Actualizar"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"manageElements": {
+			"title": "Gestionar elementos"
+		},
+		"addCard": {
+			"title": "Añadir tarjeta"
+		},
+		"addPageDataSource": {
+			"title": "Añadir fuente de datos de página"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Identificador"
+			},
+			"title": {
+				"title": "Título",
+				"placeholder": "Introduzca el título de la tarjeta",
+				"validation": {
+					"required": "Por favor, introduzca un título de tarjeta"
+				}
+			},
+			"icon": {
+				"title": "Icono",
+				"placeholder": "Seleccione un icono"
+			},
+			"order": {
+				"title": "Orden",
+				"placeholder": "Orden de visualización"
+			},
+			"rows": {
+				"title": "Filas",
+				"placeholder": "Número de filas"
+			},
+			"cols": {
+				"title": "Columnas",
+				"placeholder": "Número de columnas"
+			}
+		}
+	}
+}

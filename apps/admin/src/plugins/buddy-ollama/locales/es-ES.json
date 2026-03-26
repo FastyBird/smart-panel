@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Configuraci\u00f3n de Ollama"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "p. ej., llama3, mistral, codellama",
+				"description": "El modelo de Ollama a utilizar para generar respuestas"
+			},
+			"baseUrl": {
+				"title": "URL base",
+				"placeholder": "p. ej., http://localhost:11434",
+				"description": "La URL de su instancia local de Ollama"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de Ollama ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de Ollama"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure los ajustes de su instancia local de Ollama. Ollama se ejecuta localmente y no requiere clave API. Aseg\u00farese de que Ollama est\u00e9 en ejecuci\u00f3n y accesible en la URL configurada."
+	}
+}

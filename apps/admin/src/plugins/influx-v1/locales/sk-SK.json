@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"connection": "Pripojenie InfluxDB",
+		"authentication": "Autentifikácia (voliteľná)"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurácia InfluxDB bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu InfluxDB"
+		}
+	},
+	"texts": {
+		"about": "Nakonfigurujte pripojenie InfluxDB v1 na ukladanie časových radov."
+	},
+	"fields": {
+		"config": {
+			"host": {
+				"title": "Hostiteľ",
+				"placeholder": "127.0.0.1",
+				"validation": {
+					"required": "Hostiteľ je povinný"
+				}
+			},
+			"database": {
+				"title": "Databáza",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Názov databázy je povinný"
+				}
+			},
+			"username": {
+				"title": "Používateľské meno",
+				"placeholder": "Ponechajte prázdne ak nie je potrebné"
+			},
+			"password": {
+				"title": "Heslo",
+				"placeholder": "Ponechajte prázdne ak nie je potrebné"
+			}
+		}
+	}
+}

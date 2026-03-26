@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Nastavení OpenAI API"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"apiKey": {
+				"title": "API klíč",
+				"placeholder": "Zadejte svůj OpenAI API klíč",
+				"description": "Získejte svůj API klíč na platform.openai.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "např. gpt-4o, gpt-4o-mini",
+				"description": "Model OpenAI používaný pro generování odpovědí"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení OpenAI bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení OpenAI"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavení OpenAI API. Pro použití modelů OpenAI jako poskytovatele LLM potřebujete platný API klíč."
+	}
+}

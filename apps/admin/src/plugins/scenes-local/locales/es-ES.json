@@ -1,0 +1,60 @@
+{
+	"plugin": {
+		"name": "Escenas locales",
+		"description": "Ejecutar escenas localmente controlando las propiedades de los dispositivos"
+	},
+	"actionCard": {
+		"device": "Dispositivo",
+		"channel": "Canal",
+		"property": "Propiedad",
+		"value": "Valor",
+		"unknownDevice": "Dispositivo desconocido",
+		"unknownChannel": "Canal desconocido",
+		"unknownProperty": "Propiedad desconocida",
+		"missingResource": "Esta acci\u00f3n hace referencia a un dispositivo, canal o propiedad eliminado"
+	},
+	"fields": {
+		"device": {
+			"title": "Dispositivo",
+			"placeholder": "Seleccione un dispositivo",
+			"showAll": "Mostrar todos los dispositivos",
+			"hints": {
+				"recommended": "Mostrando dispositivos recomendados para esta categor\u00eda de escena.",
+				"allDevices": "Est\u00e1 seleccionando dispositivos fuera de la categor\u00eda recomendada."
+			},
+			"groups": {
+				"recommended": "Recomendados",
+				"other": "Otros dispositivos"
+			},
+			"validation": {
+				"required": "El dispositivo es obligatorio"
+			}
+		},
+		"channel": {
+			"title": "Canal",
+			"placeholder": "Seleccione un canal",
+			"noChannels": "No hay canales disponibles",
+			"validation": {
+				"required": "El canal es obligatorio"
+			}
+		},
+		"property": {
+			"title": "Propiedad",
+			"placeholder": "Seleccione una propiedad",
+			"noProperties": "No hay propiedades editables",
+			"validation": {
+				"required": "La propiedad es obligatoria"
+			}
+		},
+		"value": {
+			"title": "Valor",
+			"placeholder": "Introduzca un valor",
+			"validation": {
+				"required": "El valor es obligatorio"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "No hay dispositivos disponibles. Por favor, a\u00f1ada dispositivos primero en la secci\u00f3n Dispositivos."
+	}
+}

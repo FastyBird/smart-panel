@@ -161,6 +161,7 @@ describe('Session Store', (): void => {
 			lastName: null,
 			isHidden: false,
 			role: UsersModuleUserRole.user,
+			language: null,
 			createdAt: new Date('2024-03-01T12:00:00Z'),
 			updatedAt: null,
 		});

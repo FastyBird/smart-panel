@@ -18,7 +18,7 @@ import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { DisplaysConfigForm } from './components/components';
 import { DISPLAYS_MODULE_EVENT_PREFIX, DISPLAYS_MODULE_NAME, EventType } from './displays.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { DisplaysConfigEditFormSchema } from './schemas/config.schemas';
 import { DisplaysConfigSchema, DisplaysConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -34,7 +34,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { displaysModule: translations });
 

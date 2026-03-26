@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenAI API-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"apiKey": {
+				"title": "API-Schlüssel",
+				"placeholder": "Geben Sie Ihren OpenAI API-Schlüssel ein",
+				"description": "Holen Sie sich Ihren API-Schlüssel von platform.openai.com"
+			},
+			"model": {
+				"title": "Modell",
+				"placeholder": "z.B. gpt-4o, gpt-4o-mini",
+				"description": "Das OpenAI-Modell, das für die Generierung von Antworten verwendet wird"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenAI-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der OpenAI-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre OpenAI API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel, um OpenAI-Modelle als Buddy-LLM-Anbieter zu verwenden."
+	}
+}

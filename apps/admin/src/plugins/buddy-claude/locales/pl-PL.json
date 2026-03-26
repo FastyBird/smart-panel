@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia API Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadz klucz API Anthropic",
+				"description": "Pobierz klucz API z console.anthropic.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "np. claude-sonnet-4-20250514",
+				"description": "Model Claude uzywany do generowania odpowiedzi"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia Claude zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia API Anthropic Claude. Potrzebujesz prawidlowego klucza API, aby uzyc modeli Claude jako dostawcy LLM buddy."
+	}
+}

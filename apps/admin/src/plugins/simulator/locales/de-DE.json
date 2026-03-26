@@ -1,0 +1,97 @@
+{
+  "headings": {
+    "aboutPluginStatus": "Plugin-Status",
+    "aboutSimulation": "Simulationsverhalten",
+    "aboutEnvironment": "Umgebungseinstellungen"
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Geräte-ID"
+      },
+      "identifier": {
+        "title": "Systembezeichner",
+        "placeholder": "Geräte-Systembezeichner"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Gerätekategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Gerätekategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Gerätename",
+        "validation": {
+          "required": "Bitte geben Sie den Gerätenamen ein"
+        }
+      },
+      "description": {
+        "title": "Beschreibung",
+        "placeholder": "Gerätebeschreibung"
+      },
+      "enabled": {
+        "title": "Aktiviert"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "updateOnStart": {
+        "title": "Bei Dienststart simulieren"
+      },
+      "simulationInterval": {
+        "title": "Automatisches Simulationsintervall (ms)",
+        "placeholder": "0 setzen, um automatische Aktualisierungen zu deaktivieren",
+        "validation": {
+          "required": "Bitte legen Sie das Simulationsintervall fest",
+          "number": "Simulationsintervall muss zwischen 0 und 3 600 000 liegen"
+        }
+      },
+      "latitude": {
+        "title": "Breitengrad",
+        "placeholder": "Breitengrad für umgebungsbasierte Simulationen",
+        "validation": {
+          "required": "Bitte legen Sie den Breitengrad fest",
+          "number": "Breitengrad muss zwischen -90 und 90 liegen"
+        }
+      },
+      "smoothTransitions": {
+        "title": "Sanfte Wertübergänge"
+      },
+      "connectionStateOnStart": {
+        "title": "Anfänglicher Verbindungsstatus",
+        "placeholder": "Wählen Sie den Verbindungsstatus beim Start",
+        "validation": {
+          "required": "Bitte wählen Sie den anfänglichen Verbindungsstatus"
+        },
+        "options": {
+          "connected": "Verbunden",
+          "disconnected": "Getrennt",
+          "init": "Initialisierung",
+          "ready": "Bereit",
+          "running": "Aktiv",
+          "sleeping": "Ruhezustand",
+          "stopped": "Gestoppt",
+          "lost": "Verloren",
+          "alert": "Alarm",
+          "unknown": "Unbekannt"
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Änderungen gespeichert! Die Gerätesimulator-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Gerätesimulator-Konfiguration war nicht erfolgreich."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Gerätesimulator-Integration, damit simulierte Geräte im gesamten Smart Panel verfügbar sind.",
+    "aboutSimulation": "Konfigurieren Sie, wie der Simulator Werte automatisch aktualisiert. Sie können einen einzelnen Durchlauf beim Dienststart auslösen oder eine wiederkehrende Aktualisierungsschleife ausführen.",
+    "aboutEnvironment": "Legen Sie Umgebungsparameter fest, die der Simulator bei der Generierung realistischer Werte verwendet. Für Berechnungen wird nur der Breitengrad verwendet; der Längengrad wird ignoriert."
+  }
+}

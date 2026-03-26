@@ -9,7 +9,7 @@ import type { IModuleOptions } from '../../app.types';
 import { injectLogger, injectModulesManager, injectSockets, injectStoresManager } from '../../common';
 
 import { EventType, SPACES_MODULE_EVENT_PREFIX, SPACES_MODULE_NAME } from './spaces.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerSpacesStore } from './store/spaces.store';
 import { spacesRefreshSignalsKey, spacesStoreKey } from './store/keys';
@@ -22,7 +22,7 @@ export default {
 		const modulesManager = injectModulesManager(app);
 
 		// Register module translations
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { spacesModule: translations });
 

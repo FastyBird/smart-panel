@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutStorage": "Configuración de almacenamiento"
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración de almacenamiento se ha actualizado correctamente",
+			"notEdited": "Error al actualizar la configuración de almacenamiento"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Configura el backend de almacenamiento de datos para almacenar datos de series temporales como el historial de propiedades de dispositivos y analíticas."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Almacenamiento principal",
+				"placeholder": "Seleccionar complemento de almacenamiento principal",
+				"validation": {
+					"required": "El almacenamiento principal es obligatorio"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Almacenamiento alternativo",
+				"placeholder": "Seleccionar complemento de almacenamiento alternativo (opcional)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "Almacenamiento en memoria"
+			}
+		}
+	}
+}

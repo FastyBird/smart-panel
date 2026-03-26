@@ -1,0 +1,116 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutDiscovery": "Nastavenia objavovania",
+		"aboutTimeouts": "Nastavenia časových limitov",
+		"device": {
+			"deviceConnection": "Pripojenie zariadenia",
+			"information": "Informácie o zariadení",
+			"supported": "Gratulujeme! Zariadenie je podporované",
+			"notSupported": "Ľutujeme, vaše zariadenie nie je podporované",
+			"model": "Model",
+			"firmware": "Firmware"
+		}
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID zariadenia"
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Kategória zariadenia",
+				"description": "O kategórii",
+				"validation": {
+					"required": "Prosím vyberte kategóriu zariadenia"
+				}
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Názov zariadenia",
+				"validation": {
+					"required": "Prosím vyplňte názov zariadenia"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zariadenia"
+			},
+			"enabled": {
+				"title": "Povolené",
+				"placeholder": "Povoliť alebo zakázať zariadenie"
+			},
+			"password": {
+				"title": "Heslo administrátora",
+				"placeholder": "Zadajte heslo zariadenia, ak je chránené"
+			},
+			"hostname": {
+				"title": "Hostname zariadenia",
+				"placeholder": "Sieťový názov alebo IP adresa zariadenia",
+				"validation": {
+					"required": "Prosím vyplňte hostname alebo IP adresu zariadenia"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povolené"
+			},
+			"discovery": {
+				"enabled": {
+					"title": "Objavovanie povolené"
+				},
+				"interface": {
+					"title": "Rozhranie",
+					"placeholder": "Sieťové rozhranie na použitie. Ak nie je špecifikované, budú použité všetky dostupné rozhrania."
+				}
+			},
+			"timeouts": {
+				"requestTimeout": {
+					"title": "Časový limit požiadavky",
+					"placeholder": "Čas v sekundách na čakanie na odpoveď pred zrušením požiadavky.",
+					"validation": {
+						"required": "Prosím vyplňte časový limit požiadavky",
+						"number": "Časový limit požiadavky musí byť kladné celé číslo"
+					}
+				},
+				"staleTimeout": {
+					"title": "Časový limit neaktivity",
+					"placeholder": "Čas v sekundách, po ktorom je zariadenie považované za offline, ak nie je prijatá žiadna aktualizácia stavu.",
+					"validation": {
+						"required": "Prosím vyplňte časový limit neaktivity",
+						"number": "Časový limit neaktivity musí byť kladné celé číslo"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmeny uložené! Konfigurácia pluginu Shelly Gen 1 bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie pluginu Shelly Gen 1 nebola úspešná."
+		},
+		"devices": {
+			"exists": "Zariadenie s poskytnutým hostname a heslom je už zaregistrované v systéme.",
+			"created": "Nové zariadenie Shelly Gen 1 bolo úspešne pridané.",
+			"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť zariadenie Shelly Gen 1.",
+			"notChecked": "Niečo sa pokazilo. Informácie o zariadení sa nepodarilo načítať. Skontrolujte hostname alebo heslo zariadenia.",
+			"notReachable": "Zariadenie nie je dosiahnuteľné. Skontrolujte hostname alebo IP adresu.",
+			"invalidPassword": "Neplatné heslo. Skontrolujte heslo zariadenia.",
+			"edited": "Zmeny uložené! Zariadenie Shelly Gen 1: {device} bolo aktualizované.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia zariadenia Shelly Gen 1 nebola úspešná.",
+			"failedLoadSupportedDevices": "Niečo sa pokazilo. Podporované zariadenia pluginu sa nepodarilo načítať."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Povoľte alebo zakážte integráciu zariadení Shelly Gen 1. Keď je povolená, zariadenia Shelly môžu byť objavené a ovládané cez Smart Panel.",
+		"aboutDiscovery": "Nakonfigurujte, ako plugin objavuje zariadenia Shelly Gen 1 na vašej lokálnej sieti pomocou Multicast DNS (mDNS). To umožňuje automatickú detekciu bez potreby manuálneho zadávania IP adries.",
+		"aboutTimeouts": "Nakonfigurujte nastavenia časových limitov pre HTTP komunikáciu so zariadeniami Shelly Gen 1. Tieto nastavenia ovládajú spracovanie požiadaviek a monitorovanie stavu zariadení."
+	},
+	"buttons": {
+		"next": {
+			"title": "Ďalej"
+		}
+	}
+}

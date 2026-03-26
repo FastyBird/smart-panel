@@ -15,7 +15,7 @@ import {
 import LocalSceneActionAddForm from './components/local-scene-action-add-form.vue';
 import LocalSceneActionCard from './components/local-scene-action-card.vue';
 import LocalSceneActionEditForm from './components/local-scene-action-edit-form.vue';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { LocalSceneActionAddFormSchema, LocalSceneActionEditFormSchema } from './schemas/actions.schemas';
 import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
 
@@ -29,7 +29,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { scenesLocalPlugin: translations });
 

@@ -1,0 +1,77 @@
+{
+	"headings": {
+		"aboutSettings": "Ustawienia pogody Open-Meteo"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"unit": {
+				"title": "Jednostka temperatury",
+				"placeholder": "Wybierz jednostkę temperatury",
+				"values": {
+					"celsius": "Celsjusz (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Nazwa",
+				"description": "Przyjazna nazwa dla tej lokalizacji",
+				"placeholder": "np. Dom, Biuro, Domek na plaży",
+				"validation": {
+					"required": "Nazwa jest wymagana"
+				}
+			},
+			"citySearch": {
+				"title": "Wyszukaj miasto",
+				"placeholder": "Zacznij pisać, aby wyszukać miasto...",
+				"description": "Wyszukaj miasto, a współrzędne zostaną uzupełnione automatycznie"
+			},
+			"latitude": {
+				"title": "Szerokość geograficzna",
+				"placeholder": "np. 51.5074",
+				"validation": {
+					"required": "Szerokość geograficzna jest wymagana",
+					"range": "Szerokość geograficzna musi być między -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Długość geograficzna",
+				"placeholder": "np. -0.1278",
+				"validation": {
+					"required": "Długość geograficzna jest wymagana",
+					"range": "Długość geograficzna musi być między -180 a 180"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja lokalizacja"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia Open-Meteo zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień Open-Meteo"
+		},
+		"locations": {
+			"created": "Lokalizacja \"{location}\" została utworzona",
+			"notCreated": "Nie udało się utworzyć lokalizacji \"{location}\"",
+			"edited": "Lokalizacja \"{location}\" została zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować lokalizacji \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokalizacja nie jest obsługiwana przez Twoją przeglądarkę",
+		"geolocationDenied": "Dostęp do lokalizacji został odrzucony. Włącz uprawnienia do lokalizacji.",
+		"geolocationUnavailable": "Informacje o lokalizacji są niedostępne",
+		"geolocationTimeout": "Żądanie pobrania Twojej lokalizacji przekroczyło limit czasu",
+		"geolocationError": "Wystąpił błąd podczas pobierania Twojej lokalizacji"
+	},
+	"texts": {
+		"aboutSettings": "Skonfiguruj ustawienia pogody Open-Meteo. Ten dostawca jest darmowy i nie wymaga klucza API.",
+		"orEnterManually": "Lub wprowadź lokalizację ręcznie"
+	}
+}

@@ -21,6 +21,8 @@
 		<div class="flex flex-row items-center gap-5">
 			<update-notification-badge />
 
+			<language-switcher />
+
 			<div @click.stop="onSwitchTheme">
 				<el-switch
 					v-model="darkMode"
@@ -106,6 +108,8 @@ import { Icon } from '@iconify/vue';
 import { UpdateNotificationBadge } from '../../modules/system/components/components';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
+
+import LanguageSwitcher from './language-switcher.vue';
 
 import { type AppTopBarProps, BREADCRUMBS_TARGET } from './app-top-bar.types';
 import UserAvatar from './user-avatar.vue';

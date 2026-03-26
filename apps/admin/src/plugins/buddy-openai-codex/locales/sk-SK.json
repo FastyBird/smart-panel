@@ -1,0 +1,70 @@
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia OpenAI Codex",
+		"advancedSettings": "Pokročilé nastavenia"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"clientId": {
+				"title": "Client ID",
+				"placeholder": "Zadajte svoj OAuth client ID",
+				"description": "OAuth client ID pre OpenAI Codex API"
+			},
+			"clientSecret": {
+				"title": "Client secret",
+				"placeholder": "Zadajte svoj OAuth client secret"
+			},
+			"accessToken": {
+				"title": "Prístupový token",
+				"placeholder": "Zadajte svoj prístupový token"
+			},
+			"refreshToken": {
+				"title": "Obnovovací token",
+				"placeholder": "Zadajte svoj obnovovací token"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "napr. codex-mini",
+				"description": "Model OpenAI Codex použitý na generovanie odpovedí"
+			},
+			"callbackUrl": {
+				"placeholder": "Vložte sem URL presmerovanie..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Získať autorizačnú URL",
+		"copyUrl": "Kopírovať",
+		"openUrl": "Otvoriť v prehliadači",
+		"exchange": "Vymeniť token",
+		"exchanging": "Prebieha výmena...",
+		"disconnect": "Odpojiť"
+	},
+	"statuses": {
+		"connected": "Pripojený",
+		"notConnected": "Nepripojený"
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia OpenAI Codex boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia OpenAI Codex"
+		},
+		"oauth": {
+			"urlCopied": "URL skopírovaná do schránky",
+			"missingClientId": "Pred spustením OAuth procesu zadajte Client ID",
+			"authorizeError": "Nepodarilo sa získať autorizačnú URL",
+			"exchangeSuccess": "Výmena tokenu bola úspešná",
+			"exchangeError": "Výmena tokenu zlyhala"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia OAuth OpenAI Codex. Kliknite na \"Získať autorizačnú URL\" na spustenie OAuth procesu, alebo rozbaľte Pokročilé nastavenia na manuálne zadanie tokenov.",
+		"oauthStep1": "Kliknite na \"Získať autorizačnú URL\" vyššie",
+		"oauthStep2": "Otvorte URL vo svojom prehliadači a autorizujte",
+		"oauthStep3": "Po autorizácii skopírujte URL presmerovanie z prehliadača",
+		"oauthStep4": "Vložte ju nižšie a kliknite na \"Vymeniť token\""
+	}
+}

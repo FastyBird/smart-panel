@@ -1,0 +1,60 @@
+{
+	"plugin": {
+		"name": "Lokale Szenen",
+		"description": "Szenen lokal durch Steuerung von Geräteeigenschaften ausführen"
+	},
+	"actionCard": {
+		"device": "Gerät",
+		"channel": "Kanal",
+		"property": "Eigenschaft",
+		"value": "Wert",
+		"unknownDevice": "Unbekanntes Gerät",
+		"unknownChannel": "Unbekannter Kanal",
+		"unknownProperty": "Unbekannte Eigenschaft",
+		"missingResource": "Diese Aktion verweist auf ein gelöschtes Gerät, einen Kanal oder eine Eigenschaft"
+	},
+	"fields": {
+		"device": {
+			"title": "Gerät",
+			"placeholder": "Gerät auswählen",
+			"showAll": "Alle Geräte anzeigen",
+			"hints": {
+				"recommended": "Empfohlene Geräte für diese Szenenkategorie werden angezeigt.",
+				"allDevices": "Sie wählen Geräte außerhalb der empfohlenen Kategorie aus."
+			},
+			"groups": {
+				"recommended": "Empfohlen",
+				"other": "Andere Geräte"
+			},
+			"validation": {
+				"required": "Gerät ist erforderlich"
+			}
+		},
+		"channel": {
+			"title": "Kanal",
+			"placeholder": "Kanal auswählen",
+			"noChannels": "Keine Kanäle verfügbar",
+			"validation": {
+				"required": "Kanal ist erforderlich"
+			}
+		},
+		"property": {
+			"title": "Eigenschaft",
+			"placeholder": "Eigenschaft auswählen",
+			"noProperties": "Keine beschreibbaren Eigenschaften",
+			"validation": {
+				"required": "Eigenschaft ist erforderlich"
+			}
+		},
+		"value": {
+			"title": "Wert",
+			"placeholder": "Wert eingeben",
+			"validation": {
+				"required": "Wert ist erforderlich"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "Keine Geräte verfügbar. Bitte fügen Sie zuerst Geräte im Geräte-Bereich hinzu."
+	}
+}

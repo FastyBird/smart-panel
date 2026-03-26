@@ -1,0 +1,163 @@
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Upraviť kartu"
+			},
+			"addCard": {
+				"title": "Pridať kartu"
+			},
+			"editTile": {
+				"title": "Upraviť dlaždicu karty"
+			},
+			"addTile": {
+				"title": "Pridať dlaždicu karty"
+			},
+			"editDataSource": {
+				"title": "Upraviť zdroj dát stránky"
+			},
+			"addDataSource": {
+				"title": "Pridať zdroj dát stránky"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "stránka: {page}",
+			"addCard": "pridať kartu",
+			"editCard": "upraviť kartu",
+			"addTile": "pridať dlaždicu karty",
+			"editTile": "upraviť dlaždicu karty",
+			"addDataSource": "pridať zdroj dát stránky",
+			"editDataSource": "upraviť zdroj dát stránky"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Pridať kartu",
+			"editCard": "Upraviť kartu",
+			"addTile": "Pridať dlaždicu karty",
+			"editTile": "Upraviť dlaždicu karty",
+			"addDataSource": "Pridať zdroj dát stránky",
+			"editDataSource": "Upraviť zdroj dát stránky"
+		},
+		"cards": {
+			"remove": "Odstrániť kartu"
+		},
+		"configure": {
+			"display": "Displej",
+			"cards": "Karty"
+		},
+		"misc": {
+			"discard": "Zahodiť zmeny?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Pridať novú kartu na túto stránku",
+			"editCard": "Upraviť vlastnosti karty",
+			"addTile": "Pridať novú dlaždicu do tejto karty",
+			"editTile": "Upraviť dlaždicu karty",
+			"addDataSource": "Pridať nový zdroj dát stránky",
+			"editDataSource": "Upraviť zdroj dát stránky"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Karta {card} bola úspešne odstránená.",
+			"notFound": "Karta {card} nebola nájdená.",
+			"notRemoved": "Kartu {card} sa nepodarilo odstrániť.",
+			"removeCanceled": "Odstránenie karty {card} bolo zrušené.",
+			"deletedWhileEditing": "Táto karta bola odstránená a už nie je dostupná."
+		},
+		"tiles": {
+			"deletedWhileEditing": "Táto dlaždica bola odstránená a už nie je dostupná."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Tento zdroj dát bol odstránený a už nie je dostupný."
+		},
+		"misc": {
+			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Naozaj chcete odstrániť kartu {card}?",
+			"noCards": "Na túto stránku ešte neboli pridané žiadne karty.",
+			"noTiles": "Žiadne dlaždice v tejto karte. Kliknite na + pre pridanie.",
+			"tilesCount": "dlaždíc",
+			"loadingCard": "Načítavanie karty..."
+		},
+		"tiles": {
+			"loadingTile": "Načítavanie dlaždice..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Načítavanie zdroja dát..."
+		},
+		"misc": {
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"add": {
+			"title": "Pridať"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"update": {
+			"title": "Aktualizovať"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"manageElements": {
+			"title": "Spravovať elementy"
+		},
+		"addCard": {
+			"title": "Pridať kartu"
+		},
+		"addPageDataSource": {
+			"title": "Pridať zdroj dát stránky"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Identifikátor"
+			},
+			"title": {
+				"title": "Názov",
+				"placeholder": "Zadajte názov karty",
+				"validation": {
+					"required": "Prosím zadajte názov karty"
+				}
+			},
+			"icon": {
+				"title": "Ikona",
+				"placeholder": "Vyberte ikonu"
+			},
+			"order": {
+				"title": "Poradie",
+				"placeholder": "Poradie zobrazenia"
+			},
+			"rows": {
+				"title": "Riadky",
+				"placeholder": "Počet riadkov"
+			},
+			"cols": {
+				"title": "Stĺpce",
+				"placeholder": "Počet stĺpcov"
+			}
+		}
+	}
+}

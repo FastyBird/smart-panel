@@ -1,0 +1,48 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Nastavení Discord bota"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"botToken": {
+				"title": "Token bota",
+				"placeholder": "Zadejte svůj Discord bot token",
+				"description": "Získejte svůj bot token z Discord Developer Portal v nastavení Bot vaší aplikace."
+			},
+			"guildId": {
+				"title": "ID serveru (guild)",
+				"placeholder": "např. 123456789012345678",
+				"description": "ID Discord serveru. Povolte režim vývojáře v nastavení Discordu, poté klikněte pravým tlačítkem na server pro zkopírování jeho ID."
+			},
+			"generalChannelId": {
+				"title": "ID obecného kanálu",
+				"placeholder": "např. 123456789012345678",
+				"description": "Výchozí kanál pro dotazy napříč prostory a nesměrované návrhy. Klikněte pravým tlačítkem na kanál pro zkopírování jeho ID."
+			},
+			"spaceChannelMappings": {
+				"title": "Mapování prostor-kanál",
+				"selectSpace": "Vyberte prostor",
+				"channelPlaceholder": "ID Discord kanálu",
+				"add": "Přidat mapování",
+				"description": "Mapujte prostory chytré domácnosti na Discord kanály. Zprávy v mapovaném kanálu budou obsahovat kontext daného prostoru."
+			},
+			"allowedRoleId": {
+				"title": "ID povolené role",
+				"placeholder": "např. 123456789012345678",
+				"description": "ID Discord role vyžadované pro interakci s botem. Ponechte prázdné pro povolení všem členům serveru."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení Discord bota bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení Discord bota"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Nakonfigurujte integraci Discord bota. Vytvořte bota na Discord Developer Portal, povolte Message Content Intent a přidejte ho na svůj server. Mapujte Discord kanály na prostory chytré domácnosti pro kontextové konverzace."
+	}
+}

@@ -1,0 +1,70 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenAI Codex-Einstellungen",
+		"advancedSettings": "Erweiterte Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"clientId": {
+				"title": "Client-ID",
+				"placeholder": "Geben Sie Ihre OAuth Client-ID ein",
+				"description": "Die OAuth Client-ID für die OpenAI Codex API"
+			},
+			"clientSecret": {
+				"title": "Client-Geheimnis",
+				"placeholder": "Geben Sie Ihr OAuth Client-Geheimnis ein"
+			},
+			"accessToken": {
+				"title": "Zugriffstoken",
+				"placeholder": "Geben Sie Ihren Zugriffstoken ein"
+			},
+			"refreshToken": {
+				"title": "Aktualisierungstoken",
+				"placeholder": "Geben Sie Ihren Aktualisierungstoken ein"
+			},
+			"model": {
+				"title": "Modell",
+				"placeholder": "z.B. codex-mini",
+				"description": "Das OpenAI Codex-Modell, das für die Generierung von Antworten verwendet wird"
+			},
+			"callbackUrl": {
+				"placeholder": "Fügen Sie hier die Weiterleitungs-URL ein..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Autorisierungs-URL abrufen",
+		"copyUrl": "Kopieren",
+		"openUrl": "Im Browser öffnen",
+		"exchange": "Token austauschen",
+		"exchanging": "Wird ausgetauscht...",
+		"disconnect": "Trennen"
+	},
+	"statuses": {
+		"connected": "Verbunden",
+		"notConnected": "Nicht verbunden"
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenAI Codex-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der OpenAI Codex-Einstellungen fehlgeschlagen"
+		},
+		"oauth": {
+			"urlCopied": "URL in Zwischenablage kopiert",
+			"missingClientId": "Bitte geben Sie eine Client-ID ein, bevor Sie den OAuth-Ablauf starten",
+			"authorizeError": "Autorisierungs-URL konnte nicht abgerufen werden",
+			"exchangeSuccess": "Token-Austausch erfolgreich",
+			"exchangeError": "Token-Austausch fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre OpenAI Codex OAuth-Einstellungen. Klicken Sie auf \"Autorisierungs-URL abrufen\", um den OAuth-Ablauf zu starten, oder erweitern Sie die erweiterten Einstellungen, um Token manuell einzugeben.",
+		"oauthStep1": "Klicken Sie oben auf \"Autorisierungs-URL abrufen\"",
+		"oauthStep2": "Öffnen Sie die URL in Ihrem Browser und autorisieren Sie",
+		"oauthStep3": "Kopieren Sie die Weiterleitungs-URL aus Ihrem Browser nach der Autorisierung",
+		"oauthStep4": "Fügen Sie sie unten ein und klicken Sie auf \"Token austauschen\""
+	}
+}

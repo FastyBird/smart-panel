@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutApiSettings": "Configuraci\u00f3n del token de configuraci\u00f3n de Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"accessToken": {
+				"title": "Token de configuraci\u00f3n",
+				"placeholder": "Pegue su token de configuraci\u00f3n aqu\u00ed",
+				"howTo": "Ejecute",
+				"howToSuffix": "en su terminal y pegue el token generado aqu\u00ed.",
+				"machineNote": "El comando se puede ejecutar en cualquier m\u00e1quina con la CLI de Claude instalada; no es necesario que sea la misma m\u00e1quina que ejecuta el backend de Smart Panel."
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "p. ej., claude-sonnet-4-20250514",
+				"description": "El modelo de Claude a utilizar para generar respuestas"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n del token de configuraci\u00f3n de Claude ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n del token de configuraci\u00f3n de Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure su conexi\u00f3n con Anthropic Claude mediante un token de configuraci\u00f3n. El token de configuraci\u00f3n autentica el Smart Panel con su suscripci\u00f3n a Claude, sin necesidad de clave API."
+	}
+}

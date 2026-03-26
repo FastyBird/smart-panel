@@ -34,6 +34,7 @@ import {
 import { provideLogger } from './common';
 import CommonModule from './common/common.module';
 import i18n from './locales';
+import { detectBrowserLocale, getStoredLocale, setHtmlLang } from './common/composables/useLanguage';
 import { AuthModule } from './modules/auth';
 import { BuddyModule } from './modules/buddy';
 import { ConfigModule } from './modules/config';
@@ -94,6 +95,14 @@ import { weatherOpenweathermapOnecallPlugin as WeatherOpenweathermapOnecallPlugi
 const app = createApp(AppMain);
 
 app.use(i18n);
+
+// Apply stored or browser-detected locale (don't persist browser-detected to localStorage
+// so the server preference can override it when the profile loads)
+const storedLocale = getStoredLocale();
+const initialLocale = storedLocale ?? detectBrowserLocale();
+(i18n.global.locale as unknown as { value: string }).value = initialLocale;
+setHtmlLang(initialLocale);
+
 app.use(createMetaManager());
 app.use(metaPlugin);
 

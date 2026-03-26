@@ -5,6 +5,7 @@ import { EventHandlerName, EventType } from '../system.constants';
 import { useSystemActions } from './useSystemActions';
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

@@ -1,0 +1,60 @@
+{
+	"plugin": {
+		"name": "Lokální scény",
+		"description": "Provádějte scény lokálně ovládáním vlastností zařízení"
+	},
+	"actionCard": {
+		"device": "Zařízení",
+		"channel": "Kanál",
+		"property": "Vlastnost",
+		"value": "Hodnota",
+		"unknownDevice": "Neznámé zařízení",
+		"unknownChannel": "Neznámý kanál",
+		"unknownProperty": "Neznámá vlastnost",
+		"missingResource": "Tato akce odkazuje na smazané zařízení, kanál nebo vlastnost"
+	},
+	"fields": {
+		"device": {
+			"title": "Zařízení",
+			"placeholder": "Vyberte zařízení",
+			"showAll": "Zobrazit všechna zařízení",
+			"hints": {
+				"recommended": "Zobrazení zařízení doporučených pro tuto kategorii scén.",
+				"allDevices": "Vybíráte zařízení mimo doporučenou kategorii."
+			},
+			"groups": {
+				"recommended": "Doporučená",
+				"other": "Ostatní zařízení"
+			},
+			"validation": {
+				"required": "Zařízení je povinné"
+			}
+		},
+		"channel": {
+			"title": "Kanál",
+			"placeholder": "Vyberte kanál",
+			"noChannels": "Žádné kanály nejsou k dispozici",
+			"validation": {
+				"required": "Kanál je povinný"
+			}
+		},
+		"property": {
+			"title": "Vlastnost",
+			"placeholder": "Vyberte vlastnost",
+			"noProperties": "Žádné zapisovatelné vlastnosti",
+			"validation": {
+				"required": "Vlastnost je povinná"
+			}
+		},
+		"value": {
+			"title": "Hodnota",
+			"placeholder": "Zadejte hodnotu",
+			"validation": {
+				"required": "Hodnota je povinná"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "Žádná zařízení nejsou k dispozici. Nejprve prosím přidejte zařízení v sekci Zařízení."
+	}
+}

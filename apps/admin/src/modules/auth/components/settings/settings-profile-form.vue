@@ -36,6 +36,24 @@
 				name="lastName"
 			/>
 		</el-form-item>
+
+		<el-form-item
+			:label="t('authModule.fields.language.title')"
+			prop="language"
+		>
+			<el-select
+				v-model="profileForm.language"
+				:placeholder="t('authModule.fields.language.placeholder')"
+				clearable
+			>
+				<el-option
+					v-for="loc in supportedLocales"
+					:key="loc.value"
+					:label="`${loc.flag} ${loc.label}`"
+					:value="loc.value"
+				/>
+			</el-select>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -43,9 +61,11 @@
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
+import { type AppLocale, LOCALE_LANGUAGE_MAP, SUPPORTED_LOCALES } from '../../../../locales';
+import { applyLocale } from '../../../../common/composables/useLanguage';
 import { FormResult, type FormResultType, Layout } from '../../auth.constants';
 import { sessionStoreKey } from '../../store/keys';
 
@@ -68,7 +88,7 @@ const emit = defineEmits<{
 	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const flashMessage = useFlashMessage();
 
 const storesManager = injectStoresManager();
@@ -86,10 +106,23 @@ const rules = reactive<FormRules<SettingsProfileFormFields>>({
 	lastName: [{ required: false, message: t('authModule.fields.lastName.validation.required'), trigger: 'change' }],
 });
 
+const supportedLocales = SUPPORTED_LOCALES;
+
+const langToLocale = (lang: string | null): string | null => {
+	if (!lang) return null;
+	return LOCALE_LANGUAGE_MAP[lang] ?? null;
+};
+
+const localeToLang = (localeCode: string | null): string | null => {
+	if (!localeCode) return null;
+	return localeCode.split('-')[0];
+};
+
 const profileForm = reactive<SettingsProfileFormFields>({
 	email: props.profile.email ?? '@',
 	firstName: props.profile.firstName,
 	lastName: props.profile.lastName,
+	language: langToLocale(props.profile.language ?? null),
 });
 
 let timer: number;
@@ -124,8 +157,15 @@ watch(
 							firstName: profileForm.firstName,
 							lastName: profileForm.lastName,
 							email: profileForm.email,
+							language: localeToLang(profileForm.language),
 						},
 					});
+
+					// Apply locale change to UI immediately
+					if (profileForm.language) {
+						locale.value = profileForm.language;
+						applyLocale(profileForm.language as AppLocale);
+					}
 
 					emit('update:remoteFormResult', FormResult.OK);
 
@@ -157,6 +197,7 @@ watch(
 			profileForm.email = props.profile.email ?? '@';
 			profileForm.firstName = props.profile.firstName;
 			profileForm.lastName = props.profile.lastName;
+			profileForm.language = langToLocale(props.profile.language ?? null);
 		}
 	}
 );

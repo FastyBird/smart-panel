@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Configuraci\u00f3n de la API de Voice.ai"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"apiKey": {
+				"title": "Clave API",
+				"placeholder": "Introduzca su clave API de Voice.ai",
+				"description": "Obtenga su clave API en el panel de Voice.ai"
+			},
+			"voiceId": {
+				"title": "ID de voz",
+				"placeholder": "Introduzca un ID de voz de Voice.ai",
+				"description": "El ID de voz de Voice.ai a utilizar para la s\u00edntesis de voz. Use la API de Voice.ai para ver las voces disponibles"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de Voice.ai ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de Voice.ai"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure los ajustes de la API de Voice.ai. Necesita una clave API v\u00e1lida y un ID de voz para utilizar Voice.ai como proveedor TTS del asistente."
+	}
+}

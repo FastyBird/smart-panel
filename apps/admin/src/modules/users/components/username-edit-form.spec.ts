@@ -13,6 +13,7 @@ import type { IUsernameEditFormProps } from './username-edit-form.types';
 import UsernameEditForm from './username-edit-form.vue';
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -45,6 +46,7 @@ describe('UsernameEditForm', (): void => {
 		lastName: 'User',
 		email: 'admin@example.com',
 		role: UsersModuleUserRole.admin,
+		language: null,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),

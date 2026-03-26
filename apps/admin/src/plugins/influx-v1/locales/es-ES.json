@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"connection": "Conexi\u00f3n de InfluxDB",
+		"authentication": "Autenticaci\u00f3n (Opcional)"
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de InfluxDB ha sido actualizada correctamente",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de InfluxDB"
+		}
+	},
+	"texts": {
+		"about": "Configure la conexi\u00f3n de InfluxDB v1 para el almacenamiento de datos de series temporales."
+	},
+	"fields": {
+		"config": {
+			"host": {
+				"title": "Host",
+				"placeholder": "127.0.0.1",
+				"validation": {
+					"required": "El host es obligatorio"
+				}
+			},
+			"database": {
+				"title": "Base de datos",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "El nombre de la base de datos es obligatorio"
+				}
+			},
+			"username": {
+				"title": "Nombre de usuario",
+				"placeholder": "D\u00e9jelo vac\u00edo si no es necesario"
+			},
+			"password": {
+				"title": "Contrase\u00f1a",
+				"placeholder": "D\u00e9jelo vac\u00edo si no es necesario"
+			}
+		}
+	}
+}

@@ -8,7 +8,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
 import { SceneTileAddForm, SceneTileEditForm, SceneTilePreview } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { SceneTileAddFormSchema, SceneTileEditFormSchema } from './schemas/tiles.schemas';
 import { SceneTileCreateReqSchema, SceneTileSchema, SceneTileUpdateReqSchema } from './store/tiles.store.schemas';
 import { TILES_SCENE_PLUGIN_NAME, TILES_SCENE_TYPE } from './tiles-scene.constants';
@@ -21,7 +21,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { tilesScenePlugin: translations });
 

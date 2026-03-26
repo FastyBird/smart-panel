@@ -74,6 +74,11 @@ export interface IUseSockets {
 	sendCommand: <Payload extends object>(event: string, payload: Payload | null, handler: string, timeout?: number) => Promise<true | string>;
 }
 
+export interface IUseLanguage {
+	currentLocale: import('vue').WritableComputedRef<import('../../locales').AppLocale>;
+	supportedLocales: import('vue').Ref<{ value: import('../../locales').AppLocale; label: string; flag: string }[]>;
+}
+
 export interface IUseUuid {
 	generate: () => string;
 	validate: (uuid: string) => boolean;

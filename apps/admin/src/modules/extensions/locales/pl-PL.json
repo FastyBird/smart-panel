@@ -1,0 +1,258 @@
+{
+	"menu": {
+		"title": "Rozszerzenia"
+	},
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "Lista rozszerzeń"
+			},
+			"detail": {
+				"title": "Rozszerzenie: {extension}"
+			}
+		}
+	},
+	"headings": {
+		"list": "Rozszerzenia",
+		"detail": "Szczegóły rozszerzenia",
+		"adjustFilters": "Dostosuj filtry",
+		"bulkEnable": "Włącz rozszerzenia",
+		"bulkDisable": "Wyłącz rozszerzenia"
+	},
+	"subHeadings": {
+		"list": "Zarządzaj modułami i wtyczkami aplikacji",
+		"detail": "Wyświetl informacje i konfigurację rozszerzenia",
+		"adjustFilters": "Filtruj rozszerzenia według różnych kryteriów"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "rozszerzenia",
+			"detail": "rozszerzenie: {extension}"
+		}
+	},
+	"tabs": {
+		"all": "Wszystkie rozszerzenia",
+		"modules": "Moduły",
+		"plugins": "Wtyczki",
+		"services": "Usługi"
+	},
+	"labels": {
+		"module": "Moduł",
+		"plugin": "Wtyczka",
+		"core": "Rdzeń",
+		"addon": "Dodatek",
+		"enabled": "Włączony",
+		"disabled": "Wyłączony",
+		"version": "Wersja",
+		"author": "Autor",
+		"type": "Typ",
+		"kind": "Rodzaj",
+		"source": "Źródło",
+		"status": "Status",
+		"configuration": "Konfiguracja",
+		"description": "Opis",
+		"details": "Szczegóły",
+		"links": "Łącza",
+		"readme": "O rozszerzeniu",
+		"documentation": "Dokumentacja",
+		"logs": "Logi",
+		"live": "Na żywo"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Szukaj rozszerzeń..."
+		}
+	},
+	"filters": {
+		"kind": {
+			"title": "Rodzaj"
+		},
+		"enabled": {
+			"title": "Status"
+		},
+		"type": {
+			"title": "Typ"
+		}
+	},
+	"states": {
+		"all": "Wszystkie"
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Nazwa"
+			},
+			"type": {
+				"title": "Typ"
+			},
+			"kind": {
+				"title": "Rodzaj"
+			},
+			"version": {
+				"title": "Wersja"
+			},
+			"core": {
+				"title": "Rdzeń"
+			},
+			"enabled": {
+				"title": "Włączony"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Ładowanie rozszerzeń...",
+		"noExtensions": "Brak zainstalowanych rozszerzeń",
+		"noFilteredExtensions": "Żadne rozszerzenia nie pasują do bieżących filtrów",
+		"logs": {
+			"noLogs": "Brak dostępnych logów",
+			"noLogsDescription": "To rozszerzenie nie wygenerowało jeszcze żadnych wpisów w logach",
+			"noFilteredLogs": "Żadne logi nie pasują do bieżących filtrów",
+			"noMessage": "Brak wiadomości",
+			"noMoreEntries": "Brak więcej wpisów w logach",
+			"allLevels": "Wszystkie poziomy",
+			"timeRange": {
+				"all": "Cały czas",
+				"1h": "Ostatnia 1 godzina",
+				"6h": "Ostatnie 6 godzin",
+				"24h": "Ostatnie 24 godziny",
+				"7d": "Ostatnie 7 dni"
+			}
+		}
+	},
+	"buttons": {
+		"actions": "Akcje",
+		"documentation": "Dokumentacja",
+		"repository": "Repozytorium",
+		"issues": "Problemy",
+		"enable": "Włącz",
+		"disable": "Wyłącz",
+		"remove": "Usuń",
+		"configure": "Skonfiguruj",
+		"viewDetails": "Pokaż szczegóły",
+		"refresh": "Odśwież",
+		"loadMore": "Załaduj więcej",
+		"detail": {
+			"title": "Szczegóły"
+		},
+		"reset": {
+			"title": "Resetuj filtry"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		},
+		"yes": "Tak",
+		"no": "Nie"
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Rozszerzenia rdzenne nie mogą być usunięte",
+		"coreModuleCannotBeDisabled": "Moduły rdzenne nie mogą być wyłączone",
+		"removeNotSupported": "Usuwanie rozszerzeń nie jest jeszcze obsługiwane",
+		"cannotToggleEnabled": "To rozszerzenie nie może być włączone/wyłączone",
+		"openConfiguration": "Otwórz konfigurację rozszerzenia"
+	},
+	"messages": {
+		"noExtensions": "Nie znaleziono rozszerzeń",
+		"noDescription": "Brak dostępnego opisu",
+		"extensionEnabled": "Rozszerzenie zostało włączone",
+		"extensionDisabled": "Rozszerzenie zostało wyłączone",
+		"updateError": "Nie udało się zaktualizować rozszerzenia",
+		"coreExtensionError": "Rozszerzenia rdzenne nie mogą być modyfikowane",
+		"notConfigurableError": "To rozszerzenie nie obsługuje włączania/wyłączania",
+		"loadError": "Nie udało się wczytać rozszerzeń",
+		"noMatchingExtensions": "Żadne rozszerzenia nie pasują do filtrów",
+		"confirmBulkEnable": "Czy na pewno chcesz włączyć {count} rozszerzeń?",
+		"confirmBulkDisable": "Czy na pewno chcesz wyłączyć {count} rozszerzeń?",
+		"bulkEnabled": "Włączono {count} rozszerzeń",
+		"bulkDisabled": "Wyłączono {count} rozszerzeń",
+		"bulkEnableFailed": "Nie udało się włączyć {count} rozszerzeń",
+		"bulkDisableFailed": "Nie udało się wyłączyć {count} rozszerzeń",
+		"bulkEnableCanceled": "Masowe włączanie zostało anulowane",
+		"bulkDisableCanceled": "Masowe wyłączanie zostało anulowane",
+		"noExtensionsToEnable": "Brak rozszerzeń do włączenia (wszystkie zaznaczone są już włączone lub nie można ich przełączyć)",
+		"noExtensionsToDisable": "Brak rozszerzeń do wyłączenia (wszystkie zaznaczone są już wyłączone lub nie można ich przełączyć)"
+	},
+	"actions": {
+		"labels": {
+			"tab": "Akcje",
+			"category": {
+				"general": "Ogólne",
+				"simulation": "Symulacja",
+				"data": "Dane",
+				"diagnostics": "Diagnostyka",
+				"maintenance": "Konserwacja"
+			},
+			"required": "Wymagane",
+			"dangerous": "Niebezpieczne",
+			"comingSoon": "Wkrótce"
+		},
+		"buttons": {
+			"run": "Uruchom",
+			"confirm": "Potwierdź",
+			"cancel": "Anuluj"
+		},
+		"messages": {
+			"success": "Akcja zakończona pomyślnie",
+			"error": "Akcja nie powiodła się",
+			"confirmDangerous": "Ta akcja może mieć znaczące konsekwencje. Czy na pewno chcesz kontynuować?",
+			"noActions": "Brak dostępnych akcji dla tego rozszerzenia",
+			"interactiveNotAvailable": "Akcje interaktywne będą dostępne w przyszłej aktualizacji",
+			"loading": "Ładowanie akcji..."
+		}
+	},
+	"services": {
+		"headings": {
+			"list": "Usługi wtyczek",
+			"subHeading": "Monitoruj i kontroluj usługi wtyczek"
+		},
+		"labels": {
+			"pluginName": "Wtyczka",
+			"serviceId": "Usługa",
+			"state": "Stan",
+			"enabled": "Włączony",
+			"disabled": "Wyłączony",
+			"healthy": "Sprawny",
+			"unhealthy": "Niesprawny",
+			"uptime": "Czas pracy",
+			"startCount": "Uruchomienia",
+			"lastStarted": "Ostatnio uruchomiony",
+			"lastStopped": "Ostatnio zatrzymany",
+			"lastError": "Ostatni błąd"
+		},
+		"states": {
+			"stopped": "Zatrzymany",
+			"starting": "Uruchamianie",
+			"started": "Działa",
+			"stopping": "Zatrzymywanie",
+			"error": "Błąd"
+		},
+		"buttons": {
+			"start": "Uruchom",
+			"stop": "Zatrzymaj",
+			"restart": "Uruchom ponownie",
+			"refresh": "Odśwież"
+		},
+		"messages": {
+			"started": "Usługa została uruchomiona",
+			"serviceStarting": "Usługa się uruchamia — może to chwilę potrwać zanim będzie w pełni gotowa",
+			"stopped": "Usługa została zatrzymana",
+			"restarted": "Usługa została uruchomiona ponownie",
+			"startError": "Nie udało się uruchomić usługi",
+			"stopError": "Nie udało się zatrzymać usługi",
+			"restartError": "Nie udało się uruchomić ponownie usługi",
+			"loadError": "Nie udało się wczytać usług",
+			"noServices": "Brak dostępnych usług"
+		},
+		"tooltips": {
+			"disabledPlugin": "Wtyczka jest wyłączona",
+			"transitioning": "Usługa jest w trakcie przejścia",
+			"startService": "Uruchom tę usługę",
+			"stopService": "Zatrzymaj tę usługę",
+			"restartService": "Uruchom ponownie tę usługę"
+		},
+		"texts": {
+			"loadingServices": "Ładowanie usług...",
+			"noServices": "Nie znaleziono zarządzanych usług",
+			"pluginDisabled": "Wtyczka wyłączona"
+		}
+	}
+}

@@ -1,0 +1,16 @@
+{
+  "preview": {
+    "defaultName": "Gerät",
+    "statusOnline": "Online",
+    "statusOffline": "Offline"
+  },
+  "fields": {
+    "device": {
+      "title": "Gerät",
+      "placeholder": "Kachel-Gerät",
+      "validation": {
+        "required": "Bitte wählen Sie ein Kachel-Gerät"
+      }
+    }
+  }
+}

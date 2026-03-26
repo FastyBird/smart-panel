@@ -1,0 +1,258 @@
+{
+	"menu": {
+		"title": "Rozšírenia"
+	},
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "Zoznam rozšírení"
+			},
+			"detail": {
+				"title": "Rozšírenie: {extension}"
+			}
+		}
+	},
+	"headings": {
+		"list": "Rozšírenia",
+		"detail": "Detail rozšírenia",
+		"adjustFilters": "Upraviť filtre",
+		"bulkEnable": "Povoliť rozšírenia",
+		"bulkDisable": "Zakázať rozšírenia"
+	},
+	"subHeadings": {
+		"list": "Spravujte moduly a pluginy aplikácie",
+		"detail": "Zobraziť informácie a konfiguráciu rozšírenia",
+		"adjustFilters": "Filtrovať rozšírenia podľa rôznych kritérií"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "rozšírenia",
+			"detail": "rozšírenie: {extension}"
+		}
+	},
+	"tabs": {
+		"all": "Všetky rozšírenia",
+		"modules": "Moduly",
+		"plugins": "Pluginy",
+		"services": "Služby"
+	},
+	"labels": {
+		"module": "Modul",
+		"plugin": "Plugin",
+		"core": "Jadro",
+		"addon": "Doplnok",
+		"enabled": "Povolené",
+		"disabled": "Zakázané",
+		"version": "Verzia",
+		"author": "Autor",
+		"type": "Typ",
+		"kind": "Druh",
+		"source": "Zdroj",
+		"status": "Stav",
+		"configuration": "Konfigurácia",
+		"description": "Popis",
+		"details": "Detaily",
+		"links": "Odkazy",
+		"readme": "O rozšírení",
+		"documentation": "Dokumentácia",
+		"logs": "Logy",
+		"live": "Naživo"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Vyhľadať rozšírenia..."
+		}
+	},
+	"filters": {
+		"kind": {
+			"title": "Druh"
+		},
+		"enabled": {
+			"title": "Stav"
+		},
+		"type": {
+			"title": "Typ"
+		}
+	},
+	"states": {
+		"all": "Všetky"
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Názov"
+			},
+			"type": {
+				"title": "Typ"
+			},
+			"kind": {
+				"title": "Druh"
+			},
+			"version": {
+				"title": "Verzia"
+			},
+			"core": {
+				"title": "Jadro"
+			},
+			"enabled": {
+				"title": "Povolené"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Načítavanie rozšírení...",
+		"noExtensions": "Žiadne rozšírenia nie sú nainštalované",
+		"noFilteredExtensions": "Žiadne rozšírenia nezodpovedajú aktuálnym filtrom",
+		"logs": {
+			"noLogs": "Žiadne logy nie sú dostupné",
+			"noLogsDescription": "Toto rozšírenie zatiaľ nevytvorilo žiadne záznamy logov",
+			"noFilteredLogs": "Žiadne logy nezodpovedajú aktuálnym filtrom",
+			"noMessage": "Žiadna správa",
+			"noMoreEntries": "Žiadne ďalšie záznamy logov",
+			"allLevels": "Všetky úrovne",
+			"timeRange": {
+				"all": "Celý čas",
+				"1h": "Posledná 1 hodina",
+				"6h": "Posledných 6 hodín",
+				"24h": "Posledných 24 hodín",
+				"7d": "Posledných 7 dní"
+			}
+		}
+	},
+	"buttons": {
+		"actions": "Akcie",
+		"documentation": "Dokumentácia",
+		"repository": "Repozitár",
+		"issues": "Problémy",
+		"enable": "Povoliť",
+		"disable": "Zakázať",
+		"remove": "Odstrániť",
+		"configure": "Konfigurovať",
+		"viewDetails": "Zobraziť detaily",
+		"refresh": "Obnoviť",
+		"loadMore": "Načítať viac",
+		"detail": {
+			"title": "Detail"
+		},
+		"reset": {
+			"title": "Resetovať filtre"
+		},
+		"resetFilters": {
+			"title": "Resetovať filtre"
+		},
+		"yes": "Áno",
+		"no": "Nie"
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Jadrové rozšírenia nie je možné odstrániť",
+		"coreModuleCannotBeDisabled": "Jadrové moduly nie je možné zakázať",
+		"removeNotSupported": "Odstránenie rozšírení zatiaľ nie je podporované",
+		"cannotToggleEnabled": "Toto rozšírenie nie je možné povoliť/zakázať",
+		"openConfiguration": "Otvoriť konfiguráciu rozšírenia"
+	},
+	"messages": {
+		"noExtensions": "Neboli nájdené žiadne rozšírenia",
+		"noDescription": "Popis nie je dostupný",
+		"extensionEnabled": "Rozšírenie bolo povolené",
+		"extensionDisabled": "Rozšírenie bolo zakázané",
+		"updateError": "Nepodarilo sa aktualizovať rozšírenie",
+		"coreExtensionError": "Jadrové rozšírenia nie je možné upravovať",
+		"notConfigurableError": "Toto rozšírenie nepodporuje povolenie/zakázanie",
+		"loadError": "Nepodarilo sa načítať rozšírenia",
+		"noMatchingExtensions": "Žiadne rozšírenia nezodpovedajú vašim filtrom",
+		"confirmBulkEnable": "Naozaj chcete povoliť {count} rozšírení?",
+		"confirmBulkDisable": "Naozaj chcete zakázať {count} rozšírení?",
+		"bulkEnabled": "{count} rozšírení bolo povolených",
+		"bulkDisabled": "{count} rozšírení bolo zakázaných",
+		"bulkEnableFailed": "Nepodarilo sa povoliť {count} rozšírení",
+		"bulkDisableFailed": "Nepodarilo sa zakázať {count} rozšírení",
+		"bulkEnableCanceled": "Hromadné povolenie bolo zrušené",
+		"bulkDisableCanceled": "Hromadné zakázanie bolo zrušené",
+		"noExtensionsToEnable": "Žiadne rozšírenia na povolenie (všetky vybrané sú už povolené alebo ich nie je možné prepnúť)",
+		"noExtensionsToDisable": "Žiadne rozšírenia na zakázanie (všetky vybrané sú už zakázané alebo ich nie je možné prepnúť)"
+	},
+	"actions": {
+		"labels": {
+			"tab": "Akcie",
+			"category": {
+				"general": "Všeobecné",
+				"simulation": "Simulácia",
+				"data": "Dáta",
+				"diagnostics": "Diagnostika",
+				"maintenance": "Údržba"
+			},
+			"required": "Povinné",
+			"dangerous": "Nebezpečné",
+			"comingSoon": "Čoskoro"
+		},
+		"buttons": {
+			"run": "Spustiť",
+			"confirm": "Potvrdiť",
+			"cancel": "Zrušiť"
+		},
+		"messages": {
+			"success": "Akcia bola úspešne dokončená",
+			"error": "Akcia zlyhala",
+			"confirmDangerous": "Táto akcia môže mať významné dôsledky. Naozaj chcete pokračovať?",
+			"noActions": "Pre toto rozšírenie nie sú dostupné žiadne akcie",
+			"interactiveNotAvailable": "Interaktívne akcie budú dostupné v budúcej aktualizácii",
+			"loading": "Načítavanie akcií..."
+		}
+	},
+	"services": {
+		"headings": {
+			"list": "Služby pluginu",
+			"subHeading": "Monitorovať a ovládať služby pluginu"
+		},
+		"labels": {
+			"pluginName": "Plugin",
+			"serviceId": "Služba",
+			"state": "Stav",
+			"enabled": "Povolené",
+			"disabled": "Zakázané",
+			"healthy": "Zdravé",
+			"unhealthy": "Nezdravé",
+			"uptime": "Doba behu",
+			"startCount": "Počet štartov",
+			"lastStarted": "Naposledy spustené",
+			"lastStopped": "Naposledy zastavené",
+			"lastError": "Posledná chyba"
+		},
+		"states": {
+			"stopped": "Zastavené",
+			"starting": "Spúšťanie",
+			"started": "Beží",
+			"stopping": "Zastavovanie",
+			"error": "Chyba"
+		},
+		"buttons": {
+			"start": "Spustiť",
+			"stop": "Zastaviť",
+			"restart": "Reštartovať",
+			"refresh": "Obnoviť"
+		},
+		"messages": {
+			"started": "Služba bola spustená",
+			"serviceStarting": "Služba sa spúšťa — môže chvíľu trvať, kým bude plne pripravená",
+			"stopped": "Služba bola zastavená",
+			"restarted": "Služba bola reštartovaná",
+			"startError": "Nepodarilo sa spustiť službu",
+			"stopError": "Nepodarilo sa zastaviť službu",
+			"restartError": "Nepodarilo sa reštartovať službu",
+			"loadError": "Nepodarilo sa načítať služby",
+			"noServices": "Žiadne služby nie sú dostupné"
+		},
+		"tooltips": {
+			"disabledPlugin": "Plugin je zakázaný",
+			"transitioning": "Služba prechádza medzi stavmi",
+			"startService": "Spustiť túto službu",
+			"stopService": "Zastaviť túto službu",
+			"restartService": "Reštartovať túto službu"
+		},
+		"texts": {
+			"loadingServices": "Načítavanie služieb...",
+			"noServices": "Neboli nájdené žiadne spravované služby",
+			"pluginDisabled": "Plugin zakázaný"
+		}
+	}
+}

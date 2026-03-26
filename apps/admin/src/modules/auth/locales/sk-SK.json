@@ -1,0 +1,139 @@
+{
+	"meta": {
+		"sign": {
+			"in": {
+				"title": "Prihlásenie"
+			},
+			"up": {
+				"title": "Registrácia"
+			}
+		},
+		"lock": {
+			"screen": {
+				"title": "Uzamknutá obrazovka"
+			}
+		},
+		"profile": {
+			"general": {
+				"title": "Všeobecné"
+			},
+			"security": {
+				"title": "Bezpečnosť"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"homepage": "domovská stránka",
+		"profile": "profil",
+		"general": "všeobecné",
+		"security": "bezpečnosť"
+	},
+	"headings": {
+		"signIn": "Prihlásiť sa",
+		"signUp": "Zaregistrovať sa",
+		"lockScreen": "Obrazovka uzamknutá",
+		"profileGeneral": "Všeobecné nastavenia",
+		"profileSecurity": "Bezpečnostné nastavenia",
+		"yourProfile": "Váš profil"
+	},
+	"messages": {
+		"requestError": "Niečo sa pokazilo, skúste to prosím neskôr.",
+		"invalidPassword": "Zadané heslo je nesprávne.",
+		"profileEdited": "Váš profil bol úspešne aktualizovaný.",
+		"profileNotEdited": "Váš profil sa nepodarilo upraviť.",
+		"passwordEdited": "Vaše heslo bolo úspešne aktualizované.",
+		"passwordNotEdited": "Vaše heslo sa nepodarilo zmeniť."
+	},
+	"texts": {
+		"processing": "Spracovanie požiadavky..."
+	},
+	"tabs": {
+		"general": "Všeobecné",
+		"security": "Bezpečnosť"
+	},
+	"fields": {
+		"username": {
+			"title": "Používateľské meno",
+			"validation": {
+				"required": "Prosím vyplňte svoje používateľské meno"
+			}
+		},
+		"password": {
+			"title": "Heslo",
+			"validation": {
+				"required": "Prosím vyplňte svoje heslo"
+			}
+		},
+		"email": {
+			"title": "Email",
+			"placeholder": "napr. jan{'@'}novak.sk",
+			"validation": {
+				"required": "Prosím vyplňte svoju emailovú adresu",
+				"email": "Prosím zadajte platnú emailovú adresu"
+			}
+		},
+		"firstName": {
+			"title": "Meno",
+			"placeholder": "napr. Ján",
+			"validation": {
+				"required": "Prosím vyplňte meno"
+			}
+		},
+		"lastName": {
+			"title": "Priezvisko",
+			"placeholder": "napr. Novák",
+			"validation": {
+				"required": "Prosím vyplňte priezvisko"
+			}
+		},
+		"language": {
+			"title": "Jazyk",
+			"placeholder": "Použiť predvolený jazyk prehliadača"
+		},
+		"currentPassword": {
+			"title": "Aktuálne heslo",
+			"help": "Vaše aktuálne heslo",
+			"validation": {
+				"required": "Prosím vyplňte svoje aktuálne heslo"
+			}
+		},
+		"newPassword": {
+			"title": "Nové heslo",
+			"help": "Vaše nové heslo",
+			"validation": {
+				"required": "Prosím vyplňte svoje nové heslo"
+			}
+		},
+		"repeatPassword": {
+			"title": "Zopakujte nové heslo",
+			"help": "Potvrďte svoje nové heslo",
+			"validation": {
+				"required": "Prosím zopakujte svoje nové heslo",
+				"different": "Zadané nové heslá sa nezhodujú"
+			}
+		}
+	},
+	"buttons": {
+		"signIn": {
+			"title": "Prihlásiť sa"
+		},
+		"signUp": {
+			"title": "Zaregistrovať sa"
+		},
+		"unlock": {
+			"title": "Odomknúť"
+		},
+		"signOut": {
+			"title": "Odhlásiť sa"
+		},
+		"backToSignIn": {
+			"title": "Späť na prihlásenie"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		}
+	}
+}

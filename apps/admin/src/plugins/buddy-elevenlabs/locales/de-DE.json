@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "ElevenLabs API-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"apiKey": {
+				"title": "API-Schlüssel",
+				"placeholder": "Geben Sie Ihren ElevenLabs API-Schlüssel ein",
+				"description": "Holen Sie sich Ihren API-Schlüssel von elevenlabs.io/app/settings/api-keys"
+			},
+			"voiceId": {
+				"title": "Stimmen-ID",
+				"placeholder": "z.B. 21m00Tcm4TlvDq8ikWAM",
+				"description": "Die ElevenLabs Stimmen-ID für die Sprachsynthese"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "ElevenLabs-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der ElevenLabs-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre ElevenLabs API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel und eine Stimmen-ID, um ElevenLabs als Buddy-TTS-Anbieter zu verwenden."
+	}
+}

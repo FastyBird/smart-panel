@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutStorage": "Konfigurácia úložiska"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurácia úložiska bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu úložiska"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Nakonfigurujte backend úložiska dát na ukladanie časových radov, ako sú história vlastností zariadení a analytika."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Primárne úložisko",
+				"placeholder": "Vyberte plugin primárneho úložiska",
+				"validation": {
+					"required": "Primárne úložisko je povinné"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Záložné úložisko",
+				"placeholder": "Vyberte plugin záložného úložiska (voliteľné)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "Úložisko v pamäti"
+			}
+		}
+	}
+}

@@ -1,0 +1,116 @@
+{
+  "headings": {
+    "aboutPluginStatus": "Estado del plugin",
+    "aboutDiscovery": "Configuración de descubrimiento",
+    "aboutTimeouts": "Configuración de tiempos de espera",
+    "device": {
+      "deviceConnection": "Conexión del dispositivo",
+      "information": "Información del dispositivo",
+      "supported": "¡Felicidades! El dispositivo es compatible",
+      "notSupported": "Lo sentimos, su dispositivo no es compatible",
+      "model": "Modelo",
+      "firmware": "Firmware"
+    }
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "description": "Acerca de la categoría",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado",
+        "placeholder": "Habilitar o deshabilitar el dispositivo"
+      },
+      "password": {
+        "title": "Contraseña de administrador",
+        "placeholder": "Proporcione la contraseña del dispositivo si está protegido"
+      },
+      "hostname": {
+        "title": "Nombre de host del dispositivo",
+        "placeholder": "Nombre de red o dirección IP del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre de host o la dirección IP del dispositivo"
+        }
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "discovery": {
+        "enabled": {
+          "title": "Descubrimiento habilitado"
+        },
+        "interface": {
+          "title": "Interfaz",
+          "placeholder": "La interfaz de red a utilizar. Si no se especifica ninguna, se utilizarán todas las interfaces disponibles."
+        }
+      },
+      "timeouts": {
+        "requestTimeout": {
+          "title": "Tiempo de espera de solicitud",
+          "placeholder": "El tiempo, en segundos, de espera para una respuesta antes de abortar la solicitud.",
+          "validation": {
+            "required": "Por favor, introduzca el tiempo de espera de solicitud",
+            "number": "El tiempo de espera de solicitud debe ser un entero positivo"
+          }
+        },
+        "staleTimeout": {
+          "title": "Tiempo de espera de inactividad",
+          "placeholder": "El tiempo, en segundos, antes de que un dispositivo se considere desconectado si no se recibe ninguna actualización de estado.",
+          "validation": {
+            "required": "Por favor, introduzca el tiempo de espera de inactividad",
+            "number": "El tiempo de espera de inactividad debe ser un entero positivo"
+          }
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "¡Cambios guardados! La configuración del plugin Shelly Gen 1 ha sido actualizada.",
+      "notEdited": "Algo salió mal. La actualización de la configuración del plugin Shelly Gen 1 no fue exitosa."
+    },
+    "devices": {
+      "exists": "El dispositivo con el nombre de host y la contraseña proporcionados ya está registrado en el sistema.",
+      "created": "Nuevo dispositivo Shelly Gen 1 agregado correctamente.",
+      "notCreated": "Algo salió mal. No se pudo crear el dispositivo Shelly Gen 1.",
+      "notChecked": "Algo salió mal. No se pudo cargar la información del dispositivo. Verifique el nombre de host o la contraseña del dispositivo.",
+      "notReachable": "El dispositivo no es accesible. Por favor, verifique el nombre de host o la dirección IP.",
+      "invalidPassword": "Contraseña incorrecta. Por favor, verifique la contraseña del dispositivo.",
+      "edited": "¡Cambios guardados! El dispositivo Shelly Gen 1: {device} ha sido actualizado.",
+      "notEdited": "Algo salió mal. La actualización del dispositivo Shelly Gen 1 no fue exitosa.",
+      "failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Habilitar o deshabilitar la integración de dispositivos Shelly Gen 1. Cuando está habilitado, los dispositivos Shelly pueden ser descubiertos y controlados a través del Smart Panel.",
+    "aboutDiscovery": "Configure cómo el plugin descubre dispositivos Shelly Gen 1 en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
+    "aboutTimeouts": "Configure los tiempos de espera para la comunicación HTTP con los dispositivos Shelly Gen 1. Estos ajustes controlan el manejo de solicitudes y la monitorización del estado del dispositivo."
+  },
+  "buttons": {
+    "next": {
+      "title": "Siguiente"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID urzadzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urzadzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urzadzenia",
+				"validation": {
+					"required": "Prosze wybrac kategorie urzadzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urzadzenia",
+				"validation": {
+					"required": "Prosze podac nazwe urzadzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urzadzenia"
+			},
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"serviceAddress": {
+				"title": "Adres uslugi",
+				"placeholder": "http://device-address.local",
+				"validation": {
+					"required": "Prosze podac adres uslugi urzadzenia",
+					"url": "Prosze podac prawidlowy adres URL"
+				}
+			}
+		}
+	}
+}

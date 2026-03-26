@@ -15,7 +15,7 @@ import {
 } from '../../common';
 
 import { DASHBOARD_MODULE_EVENT_PREFIX, DASHBOARD_MODULE_NAME, EventType } from './dashboard.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerDataSourcesStore } from './store/data-sources.store';
 import { dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys';
@@ -31,7 +31,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { dashboardModule: translations });
 

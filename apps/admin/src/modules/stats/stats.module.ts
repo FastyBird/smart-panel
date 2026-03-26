@@ -14,7 +14,7 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { EventType, STATS_MODULE_EVENT_PREFIX, STATS_MODULE_NAME } from './stats.constants';
 import { statsStoreKey } from './store/keys';
@@ -29,7 +29,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { statsModule: translations });
 

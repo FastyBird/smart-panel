@@ -1,0 +1,220 @@
+{
+	"scenes": {
+		"menu": {
+			"title": "Scény"
+		},
+		"headings": {
+			"list": "Scény",
+			"add": "Pridať scénu",
+			"edit": "Upraviť scénu",
+			"delete": "Odstrániť scénu",
+			"discard": "Zahodiť zmeny",
+			"adjustFilters": "Upraviť filtre",
+			"bulkRemove": "Odstrániť scény",
+			"bulkEnable": "Povoliť scény",
+			"bulkDisable": "Zakázať scény"
+		},
+		"subHeadings": {
+			"list": "Spravujte automatizačné scény pre vašu inteligentnú domácnosť",
+			"adjustFilters": "Filtrovať scény podľa rôznych kritérií"
+		},
+		"breadcrumbs": {
+			"scenes": "Scény"
+		},
+		"filters": {
+			"allSpaces": "Všetky priestory",
+			"enabled": {
+				"title": "Stav",
+				"values": {
+					"enabled": "Povolené",
+					"disabled": "Zakázané",
+					"all": "Všetky"
+				}
+			},
+			"category": {
+				"title": "Kategória",
+				"placeholder": "Vyberte kategórie"
+			},
+			"space": {
+				"title": "Priestor",
+				"placeholder": "Všetky priestory"
+			}
+		},
+		"fields": {
+			"name": "Názov",
+			"category": "Kategória",
+			"space": "Priestor",
+			"enabled": "Povolené",
+			"actions": "Akcie",
+			"unknownSpace": "Neznámy priestor",
+			"wholeHome": "Celý dom",
+			"lastTriggered": "Naposledy spustené",
+			"neverTriggered": "Nikdy",
+			"search": {
+				"placeholder": "Vyhľadať scény..."
+			},
+			"config": {
+				"executionTimeoutMs": {
+					"title": "Časový limit vykonávania (ms)",
+					"alertTitle": "Časový limit vykonávania",
+					"hint": "Maximálny čas povolený na vykonanie scény pred tým, ako je považovaná za neúspešnú. Ak sa dosiahne časový limit, zostávajúce akcie môžu byť zrušené v závislosti od nastavenia spracovania chýb.",
+					"validation": {
+						"range": "Časový limit vykonávania musí byť medzi 1000 a 300000 ms"
+					}
+				},
+				"maxConcurrentExecutions": {
+					"title": "Maximálny počet súbežných vykonaní",
+					"alertTitle": "Maximálny počet súbežných vykonaní",
+					"hint": "Obmedzuje počet vykonaní scén, ktoré môžu bežať súčasne. Pomáha predchádzať preťaženiu pri opakovanom alebo paralelnom spúšťaní scén.",
+					"validation": {
+						"range": "Maximálny počet súbežných vykonaní musí byť medzi 1 a 100"
+					}
+				},
+				"continueOnActionFailure": {
+					"title": "Pokračovať pri zlyhaní akcie",
+					"alertTitle": "Pokračovať pri zlyhaní akcie",
+					"hint": "Keď je povolené, scéna bude pokračovať vo vykonávaní zostávajúcich akcií aj keď jedna akcia zlyhá. Keď je zakázané, scéna sa okamžite zastaví pri prvom zlyhaní."
+				}
+			}
+		},
+		"texts": {
+			"loadingScenes": "Načítavanie scén...",
+			"noScenes": "Nemáte nakonfigurovanú žiadnu scénu",
+			"noFilteredScenes": "Žiadne scény nezodpovedajú vašim filtrom",
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+			"confirmBulkRemove": "Naozaj chcete odstrániť {count} vybraných scén?",
+			"confirmBulkEnable": "Naozaj chcete povoliť {count} vybraných scén?",
+			"confirmBulkDisable": "Naozaj chcete zakázať {count} vybraných scén?",
+			"actionsCount": "Žiadne akcie | {count} akcia | {count} akcií",
+			"lastTriggered": "Naposledy spustené",
+			"order": "#"
+		},
+		"edit": {
+			"sections": {
+				"general": {
+					"title": "Všeobecné",
+					"hint": "<strong>Scény sú manuálne predvoľby</strong>, ktoré aplikujú viacero akcií zariadení naraz. Nikdy sa nespúšťajú automaticky a nemajú žiadne podmienky."
+				},
+				"actions": {
+					"title": "Akcie",
+					"emptyTitle": "Zatiaľ neboli pridané žiadne akcie",
+					"emptyDescription": "Pridajte jednu alebo viac akcií zariadení, ktoré sa vykonajú pri aktivácii tejto scény.",
+					"helperText": "Môžete ovládať svetlá, prepínače, klimatizačné zariadenia a ďalšie."
+				}
+			}
+		},
+		"form": {
+			"space": "Priestor",
+			"selectSpace": "Celý dom",
+			"spaceGroups": {
+				"rooms": "Miestnosti",
+				"zones": "Zóny"
+			},
+			"name": "Názov scény",
+			"namePlaceholder": "Zadajte názov scény",
+			"nameRequired": "Názov scény je povinný",
+			"category": "Kategória",
+			"categoryRequired": "Kategória je povinná",
+			"description": "Popis",
+			"descriptionPlaceholder": "Voliteľný popis pre túto scénu",
+			"actionsSection": "Akcie scény",
+			"noActions": "Nie sú definované žiadne akcie. Pridajte akcie na ovládanie zariadení pri spustení tejto scény.",
+			"actionsRequired": "Je vyžadovaná aspoň jedna akcia",
+			"actionNumber": "Akcia {number}",
+			"device": "Zariadenie",
+			"selectDevice": "Vyberte zariadenie",
+			"deviceRequired": "Zariadenie je povinné",
+			"actionDeviceRequired": "Akcia {number}: Zariadenie je povinné",
+			"channel": "Kanál",
+			"selectChannel": "Vyberte kanál",
+			"actionChannelRequired": "Akcia {number}: Kanál je povinný",
+			"property": "Vlastnosť",
+			"selectProperty": "Vyberte vlastnosť",
+			"propertyRequired": "Vlastnosť je povinná",
+			"actionPropertyRequired": "Akcia {number}: Vlastnosť je povinná",
+			"value": "Hodnota",
+			"valuePlaceholder": "Zadajte hodnotu",
+			"valueRequired": "Hodnota je povinná",
+			"actionValueRequired": "Akcia {number}: Hodnota je povinná",
+			"addAction": "Pridať akciu",
+			"editAction": "Upraviť akciu"
+		},
+		"buttons": {
+			"add": {
+				"title": "Pridať scénu"
+			},
+			"delete": {
+				"title": "Odstrániť"
+			},
+			"cancel": {
+				"title": "Zrušiť"
+			},
+			"save": {
+				"title": "Uložiť"
+			},
+			"yes": {
+				"title": "Áno"
+			},
+			"no": {
+				"title": "Nie"
+			},
+			"close": {
+				"title": "Zavrieť"
+			},
+			"discard": {
+				"title": "Zahodiť"
+			},
+			"backToList": {
+				"title": "Späť na zoznam"
+			},
+			"resetFilters": {
+				"title": "Resetovať filtre"
+			}
+		},
+		"messages": {
+			"config": {
+				"edited": "Konfigurácia modulu scén bola úspešne aktualizovaná",
+				"notEdited": "Nepodarilo sa aktualizovať konfiguráciu modulu scén"
+			},
+			"triggered": "Scéna \"{name}\" bola úspešne spustená",
+			"triggerFailed": "Nepodarilo sa spustiť scénu",
+			"confirmDelete": "Naozaj chcete odstrániť scénu \"{name}\"?",
+			"deleted": "Scéna bola úspešne odstránená",
+			"deleteFailed": "Nepodarilo sa odstrániť scénu",
+			"created": "Scéna bola úspešne vytvorená",
+			"createFailed": "Nepodarilo sa vytvoriť scénu",
+			"edited": "Scéna \"{scene}\" bola úspešne aktualizovaná",
+			"editFailed": "Nepodarilo sa aktualizovať scénu \"{scene}\"",
+			"notFound": "Scéna nebola nájdená",
+			"duplicateAction": "Akcia pre túto vlastnosť už v tejto scéne existuje",
+			"addFormPlaceholder": "Formulár na pridanie scény bude implementovaný tu",
+			"editFormPlaceholder": "Formulár na úpravu scény bude implementovaný tu",
+			"requestError": "Pri spracovaní vašej požiadavky sa vyskytla chyba",
+			"bulkRemoved": "Úspešne odstránených {count} scén",
+			"bulkRemoveFailed": "Nepodarilo sa odstrániť {count} scén",
+			"bulkEnabled": "Úspešne povolených {count} scén",
+			"bulkEnableFailed": "Nepodarilo sa povoliť {count} scén",
+			"bulkEnableCanceled": "Operácia povolenia bola zrušená",
+			"bulkDisabled": "Úspešne zakázaných {count} scén",
+			"bulkDisableFailed": "Nepodarilo sa zakázať {count} scén",
+			"bulkDisableCanceled": "Operácia zakázania bola zrušená"
+		},
+		"categories": {
+			"generic": "Všeobecné",
+			"lighting": "Osvetlenie",
+			"climate": "Klíma",
+			"media": "Médiá",
+			"work": "Práca",
+			"relax": "Relax",
+			"night": "Noc",
+			"morning": "Ráno",
+			"party": "Párty",
+			"movie": "Film",
+			"away": "Preč",
+			"home": "Doma",
+			"security": "Bezpečnosť",
+			"energy": "Energia",
+			"custom": "Vlastné"
+		}
+	}
+}

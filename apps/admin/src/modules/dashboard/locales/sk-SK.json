@@ -1,0 +1,413 @@
+{
+	"menu": {
+		"title": "Stránky"
+	},
+	"meta": {
+		"pages": {
+			"list": {
+				"title": "Zoznam stránok"
+			},
+			"edit": {
+				"title": "Upraviť stránku: {page}"
+			},
+			"add": {
+				"title": "Pridať stránku"
+			},
+			"detail": {
+				"title": "Stránka: {page}"
+			},
+			"editDataSource": {
+				"title": "Upraviť zdroj dát stránky"
+			},
+			"addDataSource": {
+				"title": "Pridať zdroj dát stránky"
+			}
+		},
+		"tiles": {
+			"edit": {
+				"title": "Upraviť dlaždicu"
+			},
+			"detail": {
+				"title": "Detail dlaždice"
+			},
+			"editDataSource": {
+				"title": "Upraviť zdroj dát dlaždice"
+			},
+			"addDataSource": {
+				"title": "Pridať zdroj dát dlaždice"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"list": "stránky",
+			"add": "pridať stránku",
+			"edit": "upraviť stránku",
+			"detail": "stránka: {page}",
+			"addDataSource": "pridať zdroj dát stránky",
+			"editDataSource": "upraviť zdroj dát stránky"
+		},
+		"tiles": {
+			"edit": "upraviť dlaždicu",
+			"detail": "detail dlaždice",
+			"addDataSource": "pridať zdroj dát dlaždice",
+			"editDataSource": "upraviť zdroj dát dlaždice"
+		}
+	},
+	"headings": {
+		"pages": {
+			"list": "Stránky",
+			"add": "Pridať stránku",
+			"edit": "Upraviť stránku",
+			"detail": "Stránka: {page}",
+			"remove": "Odstrániť stránku?",
+			"bulkRemove": "Odstrániť stránky?",
+			"selectPlugin": "Vyžaduje sa plugin stránky",
+			"adjustFilters": "Filtrovať stránky",
+			"addDataSource": "Pridať zdroj dát stránky",
+			"editDataSource": "Upraviť zdroj dát stránky"
+		},
+		"tiles": {
+			"add": "Pridať dlaždicu",
+			"edit": "Upraviť dlaždicu",
+			"detail": "Detail dlaždice",
+			"remove": "Odstrániť dlaždicu?",
+			"selectPlugin": "Vyžaduje sa plugin dlaždice",
+			"adjustFilters": "Filtrovať dlaždice",
+			"addDataSource": "Pridať zdroj dát dlaždice",
+			"editDataSource": "Upraviť zdroj dát dlaždice"
+		},
+		"dataSources": {
+			"add": "Pridať zdroj dát",
+			"edit": "Upraviť zdroj dát",
+			"remove": "Odstrániť zdroj dát?",
+			"selectPlugin": "Vyžaduje sa plugin zdroja dát",
+			"adjustFilters": "Filtrovať zdroje dát"
+		},
+		"misc": {
+			"discard": "Zahodiť zmeny?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"list": "Spravujte stránky smart panelu",
+			"add": "Pridať novú stránku smart panelu",
+			"edit": "Upraviť stránku smart panelu",
+			"detail": "Spravovať stránku smart panelu",
+			"adjustFilters": "Upraviť filtre zobrazenia",
+			"addDataSource": "Pridať nový zdroj dát stránky smart panelu",
+			"editDataSource": "Upraviť zdroj dát stránky smart panelu"
+		},
+		"tiles": {
+			"add": "Pridať novú dlaždicu smart panelu",
+			"edit": "Upraviť dlaždicu smart panelu",
+			"detail": "Spravovať dlaždicu smart panelu",
+			"adjustFilters": "Upraviť filtre zobrazenia",
+			"addDataSource": "Pridať nový zdroj dát dlaždice smart panelu",
+			"editDataSource": "Upraviť zdroj dát dlaždice smart panelu"
+		},
+		"dataSources": {
+			"add": "Pridať nový zdroj dát smart panelu",
+			"edit": "Upraviť zdroj dát smart panelu",
+			"detail": "Spravovať zdroj dát smart panelu",
+			"adjustFilters": "Upraviť filtre zobrazenia"
+		}
+	},
+	"messages": {
+		"pages": {
+			"notFound": "Stránka, ktorú hľadáte, neexistuje alebo bola odstránená.",
+			"confirmRemove": "Naozaj chcete odstrániť stránku: {page}? Toto sa nedá vrátiť.",
+			"created": "Nová stránka bola úspešne pridaná.",
+			"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť stránku.",
+			"edited": "Zmeny uložené! Stránka: {page} bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia stránky nebola úspešná.",
+			"removed": "Stránka: {page} bola úspešne odstránená.",
+			"removeCanceled": "Odstránenie stránky: {page} bolo zrušené.",
+			"notRemoved": "Niečo sa pokazilo a stránka: {page} nebola odstránená.",
+			"noDetailAllowed": "Tento typ stránky sa nedá otvoriť, pretože nemá detailné zobrazenie.",
+			"deletedWhileEditing": "Táto stránka bola odstránená a už nie je dostupná.",
+			"bulkRemoved": "{count} stránok bolo úspešne odstránených.",
+			"bulkRemoveFailed": "Nepodarilo sa odstrániť {count} stránok.",
+			"bulkRemoveCanceled": "Hromadné odstránenie stránok bolo zrušené."
+		},
+		"tiles": {
+			"notFound": "Dlaždica, ktorú hľadáte, neexistuje alebo bola odstránená.",
+			"confirmRemove": "Naozaj chcete odstrániť dlaždicu? Toto sa nedá vrátiť.",
+			"created": "Nová dlaždica bola úspešne pridaná.",
+			"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť dlaždicu.",
+			"edited": "Zmeny uložené! Dlaždica bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia dlaždice nebola úspešná.",
+			"removed": "Dlaždica bola úspešne odstránená.",
+			"removeCanceled": "Odstránenie dlaždice bolo zrušené.",
+			"notRemoved": "Niečo sa pokazilo a dlaždica nebola odstránená.",
+			"deletedWhileEditing": "Táto dlaždica bola odstránená a už nie je dostupná."
+		},
+		"dataSources": {
+			"notFound": "Zdroj dát, ktorý hľadáte, neexistuje alebo bol odstránený.",
+			"confirmRemove": "Naozaj chcete odstrániť zdroj dát? Toto sa nedá vrátiť.",
+			"created": "Nový zdroj dát bol úspešne pridaný.",
+			"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť zdroj dát.",
+			"edited": "Zmeny uložené! Zdroj dát bol aktualizovaný.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia zdroja dát nebola úspešná.",
+			"removed": "Zdroj dát bol úspešne odstránený.",
+			"removeCanceled": "Odstránenie zdroja dát bolo zrušené.",
+			"notRemoved": "Niečo sa pokazilo a zdroj dát nebol odstránený.",
+			"deletedWhileEditing": "Tento zdroj dát bol odstránený a už nie je dostupný."
+		},
+		"misc": {
+			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr."
+		}
+	},
+	"texts": {
+		"pages": {
+			"noPages": "Nemáte nakonfigurovanú žiadnu stránku",
+			"noFilteredPages": "Neboli nájdené žiadne stránky zodpovedajúce aktívnym filtrom",
+			"loadingPages": "Načítavanie stránok...",
+			"loadingPage": "Načítavanie stránky...",
+			"confirmRemove": "Naozaj chcete odstrániť stránku: {page}? Toto sa nedá vrátiť.",
+			"confirmBulkRemove": "Naozaj chcete odstrániť {count} stránok? Toto sa nedá vrátiť.",
+			"selectPlugin": "Na vytvorenie novej stránky vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétne typy stránok.",
+			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy stránok.",
+			"noDisplays": "Zatiaľ neboli spárované žiadne displeje."
+		},
+		"tiles": {
+			"noTiles": "Nemáte nakonfigurovanú žiadnu dlaždicu",
+			"noFilteredTiles": "Neboli nájdené žiadne dlaždice zodpovedajúce aktívnym filtrom",
+			"loadingTiles": "Načítavanie dlaždíc...",
+			"loadingTile": "Načítavanie dlaždice...",
+			"confirmRemove": "Naozaj chcete odstrániť dlaždicu? Toto sa nedá vrátiť.",
+			"selectPlugin": "Na vytvorenie novej dlaždice vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétne typy dlaždíc.",
+			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy dlaždíc.",
+			"plugin": "Plugin",
+			"dataSources": "Zdroje dát",
+			"dataSourcesCount": "Žiadne zdroje dát nakonfigurované | Jeden zdroj dát nakonfigurovaný | {count} zdrojov dát nakonfigurovaných",
+			"row": "Pozícia riadku",
+			"col": "Pozícia stĺpca",
+			"size": "Veľkosť",
+			"visibility": "Viditeľnosť",
+			"hidden": "Dlaždica je skrytá",
+			"visible": "Dlaždica je viditeľná"
+		},
+		"dataSources": {
+			"noDataSources": "Nemáte nakonfigurovaný žiadny zdroj dát",
+			"noFilteredDataSources": "Neboli nájdené žiadne zdroje dát zodpovedajúce aktívnym filtrom",
+			"loadingDataSources": "Načítavanie zdrojov dát...",
+			"loadingDataSource": "Načítavanie zdroja dát...",
+			"confirmRemove": "Naozaj chcete odstrániť zdroj dát? Toto sa nedá vrátiť.",
+			"selectPlugin": "Na vytvorenie nového zdroja dát vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétne typy zdrojov dát.",
+			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy zdrojov dát."
+		},
+		"misc": {
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+		}
+	},
+	"fields": {
+		"pages": {
+			"search": {
+				"placeholder": "Vyhľadať stránky..."
+			},
+			"plugin": {
+				"title": "Plugin stránky",
+				"placeholder": "Vyberte plugin stránky"
+			},
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID stránky"
+			},
+			"title": {
+				"title": "Názov",
+				"placeholder": "Názov stránky",
+				"validation": {
+					"required": "Prosím vyplňte názov stránky"
+				}
+			},
+			"icon": {
+				"title": "Ikona",
+				"placeholder": "Ikona stránky"
+			},
+			"order": {
+				"title": "Poradie",
+				"placeholder": "Pozícia stránky"
+			},
+			"showTopBar": {
+				"title": "Zobraziť hornú lištu",
+				"placeholder": "Zobraziť hornú lištu stránky"
+			},
+			"displays": {
+				"title": "Displeje",
+				"placeholder": "Vyberte displeje (ponechajte prázdne pre všetky displeje)",
+				"description": "Vyberte konkrétne displeje pre túto stránku. Ponechajte prázdne, aby bola viditeľná na všetkých displejoch."
+			}
+		},
+		"tiles": {
+			"search": {
+				"placeholder": "Vyhľadať dlaždice..."
+			},
+			"plugin": {
+				"title": "Plugin dlaždice",
+				"placeholder": "Vyberte plugin dlaždice"
+			},
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID dlaždice"
+			},
+			"row": {
+				"title": "Pozícia riadku",
+				"placeholder": "Číslo riadku 1-n",
+				"validation": {
+					"required": "Prosím vyplňte riadok dlaždice"
+				}
+			},
+			"col": {
+				"title": "Pozícia stĺpca",
+				"placeholder": "Číslo stĺpca 1-n",
+				"validation": {
+					"required": "Prosím vyplňte stĺpec dlaždice"
+				}
+			},
+			"rowSpan": {
+				"title": "Rozpätie riadkov",
+				"placeholder": "Veľkosť riadku dlaždice"
+			},
+			"colSpan": {
+				"title": "Rozpätie stĺpcov",
+				"placeholder": "Veľkosť stĺpca dlaždice"
+			},
+			"hidden": {
+				"title": "Skrytá",
+				"placeholder": "Urobiť dlaždicu neviditeľnou v aplikácii displeja"
+			}
+		},
+		"dataSources": {
+			"search": {
+				"placeholder": "Vyhľadať zdroje dát..."
+			},
+			"plugin": {
+				"title": "Plugin zdroja dát",
+				"placeholder": "Vyberte plugin zdroja dát"
+			},
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID zdroja dát"
+			}
+		}
+	},
+	"table": {
+		"pages": {
+			"columns": {
+				"title": {
+					"title": "Názov"
+				},
+				"type": {
+					"title": "Typ"
+				},
+				"display": {
+					"title": "Displeje",
+					"all": "Všetky displeje"
+				},
+				"order": {
+					"title": "Poradie"
+				},
+				"showTopBar": {
+					"title": "Zobraziť hornú lištu"
+				}
+			}
+		},
+		"tiles": {
+			"columns": {
+				"type": {
+					"title": "Typ"
+				},
+				"row": {
+					"title": "Riadok"
+				},
+				"col": {
+					"title": "Stĺpec"
+				},
+				"rowSpan": {
+					"title": "Rozpätie riadkov"
+				},
+				"colSpan": {
+					"title": "Rozpätie stĺpcov"
+				},
+				"hidden": {
+					"title": "Skrytá"
+				}
+			}
+		},
+		"dataSources": {
+			"columns": {
+				"type": {
+					"title": "Typ"
+				}
+			}
+		}
+	},
+	"filters": {
+		"pages": {
+			"types": {
+				"title": "Filtrovať podľa typu stránky"
+			},
+			"displays": {
+				"title": "Filtrovať podľa displeja stránky"
+			}
+		},
+		"tiles": {
+			"types": {
+				"title": "Filtrovať podľa typu dlaždice"
+			}
+		},
+		"dataSources": {
+			"types": {
+				"title": "Filtrovať podľa typu zdroja dát"
+			}
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Pridať"
+		},
+		"edit": {
+			"title": "Upraviť"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"configure": {
+			"title": "Konfigurovať"
+		},
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"cancel": {
+			"title": "Zrušiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"change": {
+			"title": "Zmeniť"
+		},
+		"remove": {
+			"title": "Odstrániť"
+		},
+		"resetFilters": {
+			"title": "Resetovať filtre"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"reset": {
+			"title": "Resetovať"
+		},
+		"addDataSource": {
+			"title": "Pridať zdroj dát"
+		}
+	}
+}

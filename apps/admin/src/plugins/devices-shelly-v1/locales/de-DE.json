@@ -1,0 +1,116 @@
+{
+  "headings": {
+    "aboutPluginStatus": "Plugin-Status",
+    "aboutDiscovery": "Erkennungseinstellungen",
+    "aboutTimeouts": "Zeitlimit-Einstellungen",
+    "device": {
+      "deviceConnection": "Geräteverbindung",
+      "information": "Geräteinformationen",
+      "supported": "Glückwunsch! Gerät wird unterstützt",
+      "notSupported": "Leider wird Ihr Gerät nicht unterstützt",
+      "model": "Modell",
+      "firmware": "Firmware"
+    }
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Geräte-ID"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Gerätekategorie",
+        "description": "Über Kategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Gerätekategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Gerätename",
+        "validation": {
+          "required": "Bitte geben Sie den Gerätenamen ein"
+        }
+      },
+      "description": {
+        "title": "Beschreibung",
+        "placeholder": "Gerätebeschreibung"
+      },
+      "enabled": {
+        "title": "Aktiviert",
+        "placeholder": "Gerät aktivieren oder deaktivieren"
+      },
+      "password": {
+        "title": "Admin-Passwort",
+        "placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
+      },
+      "hostname": {
+        "title": "Geräte-Hostname",
+        "placeholder": "Netzwerkname oder IP-Adresse des Geräts",
+        "validation": {
+          "required": "Bitte geben Sie den Geräte-Hostname oder die IP-Adresse ein"
+        }
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "discovery": {
+        "enabled": {
+          "title": "Erkennung aktiviert"
+        },
+        "interface": {
+          "title": "Schnittstelle",
+          "placeholder": "Die zu verwendende Netzwerkschnittstelle. Wenn keine angegeben ist, werden alle verfügbaren Schnittstellen verwendet."
+        }
+      },
+      "timeouts": {
+        "requestTimeout": {
+          "title": "Anfragezeitlimit",
+          "placeholder": "Die Zeit in Sekunden, die auf eine Antwort gewartet wird, bevor eine Anfrage abgebrochen wird.",
+          "validation": {
+            "required": "Bitte geben Sie das Anfragezeitlimit ein",
+            "number": "Anfragezeitlimit muss eine positive Ganzzahl sein"
+          }
+        },
+        "staleTimeout": {
+          "title": "Veraltetungs-Zeitlimit",
+          "placeholder": "Die Zeit in Sekunden, bevor ein Gerät als offline gilt, wenn kein Statusupdate empfangen wird.",
+          "validation": {
+            "required": "Bitte geben Sie das Veraltetungs-Zeitlimit ein",
+            "number": "Veraltetungs-Zeitlimit muss eine positive Ganzzahl sein"
+          }
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Änderungen gespeichert! Die Shelly Gen 1 Plugin-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Shelly Gen 1 Plugin-Konfiguration war nicht erfolgreich."
+    },
+    "devices": {
+      "exists": "Ein Gerät mit diesem Hostname und Passwort ist bereits im System registriert.",
+      "created": "Neues Shelly Gen 1-Gerät erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Das Shelly Gen 1-Gerät konnte nicht erstellt werden.",
+      "notChecked": "Etwas ist schiefgelaufen. Geräteinformationen konnten nicht geladen werden. Überprüfen Sie den Geräte-Hostname oder das Passwort.",
+      "notReachable": "Gerät ist nicht erreichbar. Bitte überprüfen Sie den Hostname oder die IP-Adresse.",
+      "invalidPassword": "Ungültiges Passwort. Bitte überprüfen Sie das Gerätepasswort.",
+      "edited": "Änderungen gespeichert! Das Shelly Gen 1-Gerät: {device} wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung des Shelly Gen 1-Geräts war nicht erfolgreich.",
+      "failedLoadSupportedDevices": "Etwas ist schiefgelaufen. Die unterstützten Geräte des Plugins konnten nicht geladen werden."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Shelly Gen 1 Geräteintegration. Wenn aktiviert, können Shelly-Geräte über das Smart Panel erkannt und gesteuert werden.",
+    "aboutDiscovery": "Konfigurieren Sie, wie das Plugin Shelly Gen 1-Geräte in Ihrem lokalen Netzwerk über Multicast DNS (mDNS) erkennt. Dies ermöglicht die automatische Erkennung ohne manuelle Eingabe von IP-Adressen.",
+    "aboutTimeouts": "Konfigurieren Sie Zeitlimit-Einstellungen für die HTTP-Kommunikation mit Shelly Gen 1-Geräten. Diese Einstellungen steuern die Anfrageverarbeitung und Gerätestatusüberwachung."
+  },
+  "buttons": {
+    "next": {
+      "title": "Weiter"
+    }
+  }
+}

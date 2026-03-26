@@ -1,0 +1,70 @@
+{
+	"headings": {
+		"aboutApiSettings": "Nastavení OpenAI Codex",
+		"advancedSettings": "Pokročilá nastavení"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"clientId": {
+				"title": "ID klienta",
+				"placeholder": "Zadejte své OAuth ID klienta",
+				"description": "OAuth ID klienta pro OpenAI Codex API"
+			},
+			"clientSecret": {
+				"title": "Tajný klíč klienta",
+				"placeholder": "Zadejte svůj OAuth tajný klíč klienta"
+			},
+			"accessToken": {
+				"title": "Přístupový token",
+				"placeholder": "Zadejte svůj přístupový token"
+			},
+			"refreshToken": {
+				"title": "Obnovovací token",
+				"placeholder": "Zadejte svůj obnovovací token"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "např. codex-mini",
+				"description": "Model OpenAI Codex používaný pro generování odpovědí"
+			},
+			"callbackUrl": {
+				"placeholder": "Vložte URL přesměrování sem..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Získat autorizační URL",
+		"copyUrl": "Kopírovat",
+		"openUrl": "Otevřít v prohlížeči",
+		"exchange": "Vyměnit token",
+		"exchanging": "Probíhá výměna...",
+		"disconnect": "Odpojit"
+	},
+	"statuses": {
+		"connected": "Připojeno",
+		"notConnected": "Nepřipojeno"
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení OpenAI Codex bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení OpenAI Codex"
+		},
+		"oauth": {
+			"urlCopied": "URL zkopírována do schránky",
+			"missingClientId": "Zadejte prosím ID klienta před zahájením OAuth procesu",
+			"authorizeError": "Nepodařilo se získat autorizační URL",
+			"exchangeSuccess": "Výměna tokenu úspěšná",
+			"exchangeError": "Výměna tokenu selhala"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavení OAuth pro OpenAI Codex. Klikněte na \"Získat autorizační URL\" pro zahájení OAuth procesu, nebo rozbalte Pokročilá nastavení pro ruční zadání tokenů.",
+		"oauthStep1": "Klikněte na \"Získat autorizační URL\" výše",
+		"oauthStep2": "Otevřete URL v prohlížeči a autorizujte",
+		"oauthStep3": "Zkopírujte URL přesměrování z prohlížeče po autorizaci",
+		"oauthStep4": "Vložte ji níže a klikněte na \"Vyměnit token\""
+	}
+}

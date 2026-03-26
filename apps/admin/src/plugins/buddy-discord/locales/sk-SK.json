@@ -1,0 +1,48 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Nastavenia Discord bota"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"botToken": {
+				"title": "Token bota",
+				"placeholder": "Zadajte token svojho Discord bota",
+				"description": "Získajte token bota z Discord Developer Portal v nastaveniach Bot vašej aplikácie."
+			},
+			"guildId": {
+				"title": "ID guildu (servera)",
+				"placeholder": "napr. 123456789012345678",
+				"description": "ID Discord servera. Povoľte vývojársky režim v nastaveniach Discordu, potom kliknite pravým tlačidlom na server a skopírujte jeho ID."
+			},
+			"generalChannelId": {
+				"title": "ID všeobecného kanála",
+				"placeholder": "napr. 123456789012345678",
+				"description": "Predvolený kanál pre medzipriestorové dotazy a nesmerované návrhy. Kliknite pravým tlačidlom na kanál a skopírujte jeho ID."
+			},
+			"spaceChannelMappings": {
+				"title": "Mapovanie priestorov na kanály",
+				"selectSpace": "Vyberte priestor",
+				"channelPlaceholder": "ID Discord kanála",
+				"add": "Pridať mapovanie",
+				"description": "Namapujte priestory inteligentnej domácnosti na Discord kanály. Správy v namapovanom kanáli budú obsahovať kontext daného priestoru."
+			},
+			"allowedRoleId": {
+				"title": "ID povolenej roly",
+				"placeholder": "napr. 123456789012345678",
+				"description": "ID Discord roly potrebnej na interakciu s botom. Ponechajte prázdne na povolenie všetkých členov servera."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Discord bota boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Discord bota"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Nakonfigurujte integráciu Discord bota. Vytvorte bota na Discord Developer Portal, povoľte Message Content Intent a pridajte ho na svoj server. Namapujte Discord kanály na priestory inteligentnej domácnosti pre kontextové konverzácie."
+	}
+}

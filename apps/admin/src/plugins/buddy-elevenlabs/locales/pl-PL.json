@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Ustawienia API ElevenLabs"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadz klucz API ElevenLabs",
+				"description": "Pobierz klucz API z elevenlabs.io/app/settings/api-keys"
+			},
+			"voiceId": {
+				"title": "ID glosu",
+				"placeholder": "np. 21m00Tcm4TlvDq8ikWAM",
+				"description": "ID glosu ElevenLabs uzywany do syntezy mowy"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia ElevenLabs zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien ElevenLabs"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Skonfiguruj ustawienia API ElevenLabs. Potrzebujesz prawidlowego klucza API i ID glosu, aby uzyc ElevenLabs jako dostawcy TTS buddy."
+	}
+}

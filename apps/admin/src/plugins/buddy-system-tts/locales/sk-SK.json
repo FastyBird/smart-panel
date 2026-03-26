@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutSettings": "Nastavenia systémového TTS"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"engine": {
+				"title": "Engine",
+				"placeholder": "piper alebo espeak (automatická detekcia ak prázdne)",
+				"description": "TTS engine na použitie. Ponechajte prázdne na automatickú detekciu (preferuje piper, záloha espeak)"
+			},
+			"voice": {
+				"title": "Hlas",
+				"placeholder": "Názov hlasu alebo kód (voliteľné)",
+				"description": "Názov modelu piper alebo kód hlasu espeak. Ponechajte prázdne pre predvolený hlas"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia systémového TTS boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia systémového TTS"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Nakonfigurujte lokálny text-to-speech engine. Nie je potrebný API kľúč. Používa piper (neurónové TTS) alebo espeak (základné TTS) nainštalované v systéme."
+	}
+}

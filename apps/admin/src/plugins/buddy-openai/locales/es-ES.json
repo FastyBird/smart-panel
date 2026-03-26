@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Configuraci\u00f3n de la API de OpenAI"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"apiKey": {
+				"title": "Clave API",
+				"placeholder": "Introduzca su clave API de OpenAI",
+				"description": "Obtenga su clave API en platform.openai.com"
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "p. ej., gpt-4o, gpt-4o-mini",
+				"description": "El modelo de OpenAI a utilizar para generar respuestas"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de OpenAI ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de OpenAI"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure los ajustes de la API de OpenAI. Necesita una clave API v\u00e1lida para utilizar los modelos de OpenAI como proveedor LLM del asistente."
+	}
+}

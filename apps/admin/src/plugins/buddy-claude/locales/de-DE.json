@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Claude API-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"apiKey": {
+				"title": "API-Schlüssel",
+				"placeholder": "Geben Sie Ihren Anthropic API-Schlüssel ein",
+				"description": "Holen Sie sich Ihren API-Schlüssel von console.anthropic.com"
+			},
+			"model": {
+				"title": "Modell",
+				"placeholder": "z.B. claude-sonnet-4-20250514",
+				"description": "Das Claude-Modell, das für die Generierung von Antworten verwendet wird"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Claude-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Claude-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre Anthropic Claude API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel, um Claude-Modelle als Buddy-LLM-Anbieter zu verwenden."
+	}
+}

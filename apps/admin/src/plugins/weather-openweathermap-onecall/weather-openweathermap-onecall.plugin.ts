@@ -8,7 +8,7 @@ import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents,
 import { WEATHER_MODULE_NAME, type ILocationPluginsComponents, type ILocationPluginsSchemas } from '../../modules/weather';
 
 import { OpenWeatherMapOneCallConfigForm, OpenWeatherMapOneCallLocationAddForm, OpenWeatherMapOneCallLocationEditForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { OpenWeatherMapOneCallConfigEditFormSchema, OpenWeatherMapOneCallLocationAddFormSchema, OpenWeatherMapOneCallLocationEditFormSchema } from './schemas/schemas';
 import { OpenWeatherMapOneCallConfigSchema, OpenWeatherMapOneCallConfigUpdateReqSchema } from './store/config.store.schemas';
 import { OpenWeatherMapOneCallLocationCreateReqSchema, OpenWeatherMapOneCallLocationSchema, OpenWeatherMapOneCallLocationUpdateReqSchema } from './store/locations.store.schemas';
@@ -22,7 +22,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { weatherOpenweathermapOnecallPlugin: translations });
 

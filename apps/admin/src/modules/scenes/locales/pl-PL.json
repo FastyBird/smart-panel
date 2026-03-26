@@ -1,0 +1,220 @@
+{
+	"scenes": {
+		"menu": {
+			"title": "Sceny"
+		},
+		"headings": {
+			"list": "Sceny",
+			"add": "Dodaj scenę",
+			"edit": "Edytuj scenę",
+			"delete": "Usuń scenę",
+			"discard": "Odrzuć zmiany",
+			"adjustFilters": "Dostosuj filtry",
+			"bulkRemove": "Usuń sceny",
+			"bulkEnable": "Włącz sceny",
+			"bulkDisable": "Wyłącz sceny"
+		},
+		"subHeadings": {
+			"list": "Zarządzaj scenami automatyzacji inteligentnego domu",
+			"adjustFilters": "Filtruj sceny według różnych kryteriów"
+		},
+		"breadcrumbs": {
+			"scenes": "Sceny"
+		},
+		"filters": {
+			"allSpaces": "Wszystkie przestrzenie",
+			"enabled": {
+				"title": "Status",
+				"values": {
+					"enabled": "Włączona",
+					"disabled": "Wyłączona",
+					"all": "Wszystkie"
+				}
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Wybierz kategorie"
+			},
+			"space": {
+				"title": "Przestrzeń",
+				"placeholder": "Wszystkie przestrzenie"
+			}
+		},
+		"fields": {
+			"name": "Nazwa",
+			"category": "Kategoria",
+			"space": "Przestrzeń",
+			"enabled": "Włączona",
+			"actions": "Akcje",
+			"unknownSpace": "Nieznana przestrzeń",
+			"wholeHome": "Cały dom",
+			"lastTriggered": "Ostatnio uruchomiona",
+			"neverTriggered": "Nigdy",
+			"search": {
+				"placeholder": "Szukaj scen..."
+			},
+			"config": {
+				"executionTimeoutMs": {
+					"title": "Limit czasu wykonania (ms)",
+					"alertTitle": "Limit czasu wykonania",
+					"hint": "Maksymalny czas dozwolony na wykonanie sceny zanim zostanie uznana za nieudaną. Po osiągnięciu limitu pozostałe akcje mogą zostać anulowane w zależności od obsługi błędów.",
+					"validation": {
+						"range": "Limit czasu wykonania musi wynosić od 1000 do 300000 ms"
+					}
+				},
+				"maxConcurrentExecutions": {
+					"title": "Maks. równoczesnych wykonań",
+					"alertTitle": "Maks. równoczesnych wykonań",
+					"hint": "Ogranicza liczbę wykonań scen, które mogą działać jednocześnie. Pomaga zapobiegać przeciążeniu, gdy sceny są uruchamiane wielokrotnie lub równolegle.",
+					"validation": {
+						"range": "Maks. równoczesnych wykonań musi wynosić od 1 do 100"
+					}
+				},
+				"continueOnActionFailure": {
+					"title": "Kontynuuj przy błędzie akcji",
+					"alertTitle": "Kontynuuj przy błędzie akcji",
+					"hint": "Po włączeniu scena będzie kontynuować wykonywanie pozostałych akcji nawet jeśli jedna z nich się nie powiedzie. Po wyłączeniu scena zatrzyma się natychmiast przy pierwszym błędzie."
+				}
+			}
+		},
+		"texts": {
+			"loadingScenes": "Ładowanie scen...",
+			"noScenes": "Nie masz skonfigurowanych żadnych scen",
+			"noFilteredScenes": "Żadne sceny nie pasują do filtrów",
+			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+			"confirmBulkRemove": "Czy na pewno chcesz usunąć {count} wybranych scen?",
+			"confirmBulkEnable": "Czy na pewno chcesz włączyć {count} wybranych scen?",
+			"confirmBulkDisable": "Czy na pewno chcesz wyłączyć {count} wybranych scen?",
+			"actionsCount": "Brak akcji | {count} akcja | {count} akcji",
+			"lastTriggered": "Ostatnio uruchomiona",
+			"order": "#"
+		},
+		"edit": {
+			"sections": {
+				"general": {
+					"title": "Ogólne",
+					"hint": "<strong>Sceny to ręczne presety</strong>, które stosują wiele akcji urządzeń jednocześnie. Nigdy nie uruchamiają się automatycznie i nie mają warunków."
+				},
+				"actions": {
+					"title": "Akcje",
+					"emptyTitle": "Nie dodano jeszcze żadnych akcji",
+					"emptyDescription": "Dodaj jedną lub więcej akcji urządzenia, które zostaną wykonane po aktywacji tej sceny.",
+					"helperText": "Możesz sterować oświetleniem, przełącznikami, urządzeniami klimatycznymi i innymi."
+				}
+			}
+		},
+		"form": {
+			"space": "Przestrzeń",
+			"selectSpace": "Cały dom",
+			"spaceGroups": {
+				"rooms": "Pokoje",
+				"zones": "Strefy"
+			},
+			"name": "Nazwa sceny",
+			"namePlaceholder": "Wprowadź nazwę sceny",
+			"nameRequired": "Nazwa sceny jest wymagana",
+			"category": "Kategoria",
+			"categoryRequired": "Kategoria jest wymagana",
+			"description": "Opis",
+			"descriptionPlaceholder": "Opcjonalny opis tej sceny",
+			"actionsSection": "Akcje sceny",
+			"noActions": "Nie zdefiniowano akcji. Dodaj akcje, aby sterować urządzeniami po uruchomieniu tej sceny.",
+			"actionsRequired": "Wymagana jest co najmniej jedna akcja",
+			"actionNumber": "Akcja {number}",
+			"device": "Urządzenie",
+			"selectDevice": "Wybierz urządzenie",
+			"deviceRequired": "Urządzenie jest wymagane",
+			"actionDeviceRequired": "Akcja {number}: Urządzenie jest wymagane",
+			"channel": "Kanał",
+			"selectChannel": "Wybierz kanał",
+			"actionChannelRequired": "Akcja {number}: Kanał jest wymagany",
+			"property": "Właściwość",
+			"selectProperty": "Wybierz właściwość",
+			"propertyRequired": "Właściwość jest wymagana",
+			"actionPropertyRequired": "Akcja {number}: Właściwość jest wymagana",
+			"value": "Wartość",
+			"valuePlaceholder": "Wprowadź wartość",
+			"valueRequired": "Wartość jest wymagana",
+			"actionValueRequired": "Akcja {number}: Wartość jest wymagana",
+			"addAction": "Dodaj akcję",
+			"editAction": "Edytuj akcję"
+		},
+		"buttons": {
+			"add": {
+				"title": "Dodaj scenę"
+			},
+			"delete": {
+				"title": "Usuń"
+			},
+			"cancel": {
+				"title": "Anuluj"
+			},
+			"save": {
+				"title": "Zapisz"
+			},
+			"yes": {
+				"title": "Tak"
+			},
+			"no": {
+				"title": "Nie"
+			},
+			"close": {
+				"title": "Zamknij"
+			},
+			"discard": {
+				"title": "Odrzuć"
+			},
+			"backToList": {
+				"title": "Powrót do listy"
+			},
+			"resetFilters": {
+				"title": "Resetuj filtry"
+			}
+		},
+		"messages": {
+			"config": {
+				"edited": "Konfiguracja modułu scen została pomyślnie zaktualizowana",
+				"notEdited": "Nie udało się zaktualizować konfiguracji modułu scen"
+			},
+			"triggered": "Scena \"{name}\" została pomyślnie uruchomiona",
+			"triggerFailed": "Nie udało się uruchomić sceny",
+			"confirmDelete": "Czy na pewno chcesz usunąć scenę \"{name}\"?",
+			"deleted": "Scena została pomyślnie usunięta",
+			"deleteFailed": "Nie udało się usunąć sceny",
+			"created": "Scena została pomyślnie utworzona",
+			"createFailed": "Nie udało się utworzyć sceny",
+			"edited": "Scena \"{scene}\" została pomyślnie zaktualizowana",
+			"editFailed": "Nie udało się zaktualizować sceny \"{scene}\"",
+			"notFound": "Scena nie znaleziona",
+			"duplicateAction": "Akcja dla tej właściwości już istnieje w tej scenie",
+			"addFormPlaceholder": "Formularz dodawania sceny zostanie zaimplementowany tutaj",
+			"editFormPlaceholder": "Formularz edycji sceny zostanie zaimplementowany tutaj",
+			"requestError": "Wystąpił błąd podczas przetwarzania żądania",
+			"bulkRemoved": "Pomyślnie usunięto {count} scen",
+			"bulkRemoveFailed": "Nie udało się usunąć {count} scen",
+			"bulkEnabled": "Pomyślnie włączono {count} scen",
+			"bulkEnableFailed": "Nie udało się włączyć {count} scen",
+			"bulkEnableCanceled": "Operacja włączania została anulowana",
+			"bulkDisabled": "Pomyślnie wyłączono {count} scen",
+			"bulkDisableFailed": "Nie udało się wyłączyć {count} scen",
+			"bulkDisableCanceled": "Operacja wyłączania została anulowana"
+		},
+		"categories": {
+			"generic": "Ogólna",
+			"lighting": "Oświetlenie",
+			"climate": "Klimat",
+			"media": "Media",
+			"work": "Praca",
+			"relax": "Relaks",
+			"night": "Noc",
+			"morning": "Poranek",
+			"party": "Impreza",
+			"movie": "Film",
+			"away": "Poza domem",
+			"home": "Dom",
+			"security": "Bezpieczeństwo",
+			"energy": "Energia",
+			"custom": "Niestandardowa"
+		}
+	}
+}

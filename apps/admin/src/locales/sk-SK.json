@@ -1,0 +1,42 @@
+{
+	"application": {
+		"menu": {
+			"root": "FastyBird SmartPanel",
+			"user": "Používateľ"
+		},
+		"userMenu": {
+			"profileGeneralSettings": "Všeobecné nastavenia profilu",
+			"profileSecuritySettings": "Bezpečnostné nastavenia profilu",
+			"lockScreen": "Uzamknúť obrazovku",
+			"signOut": "Odhlásiť sa"
+		},
+		"headings": {
+			"loadingFailed": "Vyskytla sa chyba",
+			"notFound": "Stránka nebola nájdená",
+			"home": "Administrácia"
+		},
+		"messages": {
+			"notFound": "Stránka, ktorú hľadáte, neexistuje alebo bola presunutá."
+		},
+		"subHeadings": {
+			"home": "Administrácia displeja Smart Panel"
+		},
+		"breadcrumbs": {
+			"homepage": "domovská stránka"
+		},
+		"value": {
+			"notAvailable": "N/A"
+		},
+		"buttons": {
+			"home": {
+				"title": "Domov"
+			}
+		},
+		"bulkActions": {
+			"selected": "{count} vybraných",
+			"delete": "Odstrániť",
+			"enable": "Povoliť",
+			"disable": "Zakázať"
+		}
+	}
+}

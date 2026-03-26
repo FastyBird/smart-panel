@@ -1,0 +1,97 @@
+{
+  "headings": {
+    "aboutPluginStatus": "Estado del plugin",
+    "aboutSimulation": "Comportamiento de la simulación",
+    "aboutEnvironment": "Configuración del entorno"
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "identifier": {
+        "title": "Identificador del sistema",
+        "placeholder": "Identificador del sistema del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "updateOnStart": {
+        "title": "Simular al iniciar el servicio"
+      },
+      "simulationInterval": {
+        "title": "Intervalo de simulación automática (ms)",
+        "placeholder": "Establezca 0 para desactivar las actualizaciones automáticas",
+        "validation": {
+          "required": "Por favor, establezca el intervalo de simulación",
+          "number": "El intervalo de simulación debe estar entre 0 y 3 600 000"
+        }
+      },
+      "latitude": {
+        "title": "Latitud",
+        "placeholder": "Latitud utilizada para simulaciones basadas en el entorno",
+        "validation": {
+          "required": "Por favor, establezca la latitud",
+          "number": "La latitud debe estar entre -90 y 90"
+        }
+      },
+      "smoothTransitions": {
+        "title": "Transiciones suaves de valores"
+      },
+      "connectionStateOnStart": {
+        "title": "Estado de conexión inicial",
+        "placeholder": "Elija el estado de conexión al iniciar",
+        "validation": {
+          "required": "Por favor, seleccione el estado de conexión inicial"
+        },
+        "options": {
+          "connected": "Conectado",
+          "disconnected": "Desconectado",
+          "init": "Inicializando",
+          "ready": "Listo",
+          "running": "En ejecución",
+          "sleeping": "En reposo",
+          "stopped": "Detenido",
+          "lost": "Perdido",
+          "alert": "Alerta",
+          "unknown": "Desconocido"
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "¡Cambios guardados! La configuración del simulador de dispositivos se ha actualizado.",
+      "notEdited": "Algo salió mal. La actualización de la configuración del simulador de dispositivos no fue exitosa."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Habilite o deshabilite la integración del simulador de dispositivos para que los dispositivos simulados estén disponibles en todo el panel inteligente.",
+    "aboutSimulation": "Configure cómo el simulador actualiza los valores automáticamente. Puede activar una única pasada al iniciar el servicio o ejecutar un ciclo de actualización recurrente.",
+    "aboutEnvironment": "Establezca los parámetros ambientales utilizados por el simulador al generar valores realistas. Solo se utiliza la latitud en los cálculos; la longitud se ignora."
+  }
+}

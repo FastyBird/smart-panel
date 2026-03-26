@@ -1,0 +1,193 @@
+{
+	"wizard": {
+		"title": "Nastavenie Smart Panelu",
+		"steps": {
+			"welcome": "Vitajte",
+			"account": "Účet",
+			"location": "Poloha",
+			"spaces": "Priestory",
+			"integrations": "Integrácie",
+			"complete": "Dokončenie"
+		},
+		"buttons": {
+			"getStarted": "Začať",
+			"next": "Ďalej",
+			"back": "Späť",
+			"skip": "Preskočiť",
+			"finishSetup": "Dokončiť nastavenie"
+		}
+	},
+	"welcome": {
+		"title": "Vitajte v Smart Paneli",
+		"description": "Poďme nastaviť vašu inteligentnú domácnosť. Tento sprievodca vás prevedie počiatočnou konfiguráciou.",
+		"steps": {
+			"account": "Vytvoriť účet",
+			"accountDescription": "Nastavte si účet administrátora",
+			"location": "Nastaviť polohu",
+			"locationDescription": "Nakonfigurujte svoju polohu pre údaje o počasí",
+			"spaces": "Vytvoriť priestory",
+			"spacesDescription": "Pridajte miestnosti a oblasti na organizáciu zariadení",
+			"integrations": "Povoliť integrácie",
+			"integrationsDescription": "Pripojte platformy inteligentnej domácnosti",
+			"finish": "Začať používať",
+			"finishDescription": "Váš smart panel je pripravený"
+		}
+	},
+	"account": {
+		"description": "Vytvorte si účet administrátora. Tento bude vlastníkom smart panelu.",
+		"created": "Účet bol úspešne vytvorený! Teraz ste prihlásení.",
+		"fields": {
+			"firstName": "Meno",
+			"lastName": "Priezvisko",
+			"email": "Email",
+			"username": "Používateľské meno",
+			"password": "Heslo"
+		},
+		"placeholders": {
+			"firstName": "Zadajte svoje meno",
+			"lastName": "Zadajte svoje priezvisko",
+			"email": "Zadajte svoju emailovú adresu",
+			"username": "Zvoľte si používateľské meno",
+			"password": "Zvoľte si heslo"
+		},
+		"validation": {
+			"firstNameRequired": "Meno je povinné",
+			"lastNameRequired": "Priezvisko je povinné",
+			"emailRequired": "Email je povinný",
+			"emailInvalid": "Prosím zadajte platnú emailovú adresu",
+			"usernameRequired": "Používateľské meno je povinné",
+			"passwordRequired": "Heslo je povinné"
+		},
+		"messages": {
+			"created": "Váš účet bol vytvorený a teraz ste prihlásení.",
+			"error": "Nepodarilo sa vytvoriť účet. Skúste to prosím znova."
+		}
+	},
+	"location": {
+		"description": "Nastavte svoju polohu pre informácie o počasí a ďalšie funkcie založené na polohe. Tento krok môžete preskočiť a nakonfigurovať neskôr.",
+		"fields": {
+			"citySearch": "Vyhľadať mesto",
+			"latitude": "Zemepisná šírka",
+			"longitude": "Zemepisná dĺžka"
+		},
+		"placeholders": {
+			"citySearch": "Zadajte názov mesta na vyhľadanie...",
+			"latitude": "napr. 50.0755",
+			"longitude": "napr. 14.4378"
+		},
+		"buttons": {
+			"myLocation": "Moja poloha"
+		},
+		"orEnterManually": "Alebo zadajte súradnice manuálne",
+		"hint": "Svoju polohu môžete nakonfigurovať neskôr v nastaveniach Počasia.",
+		"messages": {
+			"error": "Nepodarilo sa uložiť polohu.",
+			"geolocationNotSupported": "Geolokácia nie je podporovaná vaším prehliadačom.",
+			"geolocationDenied": "Prístup k polohe bol zamietnutý. Prosím povoľte prístup k polohe v nastaveniach prehliadača.",
+			"geolocationUnavailable": "Informácie o polohe sú momentálne nedostupné.",
+			"geolocationTimeout": "Požiadavka na polohu vypršala. Skúste to prosím znova.",
+			"geolocationError": "Pri získavaní vašej polohy sa vyskytla chyba."
+		}
+	},
+	"spaces": {
+		"description": "Vytvorte miestnosti a oblasti na organizáciu zariadení. Ďalšie priestory môžete pridať neskôr.",
+		"quickAdd": "Rýchle pridanie bežných miestností",
+		"orAddCustom": "Alebo pridajte vlastnú miestnosť",
+		"fields": {
+			"name": "Názov miestnosti"
+		},
+		"placeholders": {
+			"name": "napr. Hlavná spálňa"
+		},
+		"buttons": {
+			"add": "Pridať"
+		},
+		"roomsToCreate": "Miestnosti na vytvorenie ({count})",
+		"categories": {
+			"livingRoom": "Obývacia izba",
+			"bedroom": "Spálňa",
+			"kitchen": "Kuchyňa",
+			"bathroom": "Kúpeľňa",
+			"toilet": "Toaleta",
+			"office": "Kancelária",
+			"hallway": "Chodba",
+			"entryway": "Vstupná hala",
+			"garage": "Garáž",
+			"diningRoom": "Jedáleň",
+			"laundry": "Práčovňa",
+			"nursery": "Detská izba",
+			"guestRoom": "Hosťovská izba",
+			"storage": "Sklad",
+			"workshop": "Dielňa"
+		},
+		"devices": {
+			"title": "Priradiť zariadenia k miestnostiam",
+			"count": "zariadení",
+			"unassigned": "Nepriradené zariadenia ({count})",
+			"assigned": "Priradené zariadenia ({count})",
+			"selected": "{count} vybraných",
+			"assignTo": "Priradiť do miestnosti...",
+			"assign": "Priradiť",
+			"clearSelection": "Zrušiť",
+			"selectSpace": "Vyberte miestnosť..."
+		},
+		"hint": "Priestory môžete pridávať, premenovávať alebo reorganizovať neskôr v nastaveniach Priestorov.",
+		"messages": {
+			"error": "Nepodarilo sa vytvoriť priestory.",
+			"assignmentError": "Nepodarilo sa priradiť zariadenia k priestorom."
+		}
+	},
+	"integrations": {
+		"description": "Povoľte integrácie zariadení na pripojenie platforiem inteligentnej domácnosti. Zapnite tie, ktoré používate, a nakonfigurujte ich nastavenia pripojenia.",
+		"noPlugins": "Nie sú dostupné žiadne integrácie zariadení.",
+		"hint": "Integrácie môžete povoliť alebo zakázať neskôr v nastaveniach Rozšírení.",
+		"searching": "Vyhľadávanie zariadení...",
+		"devicesFound": "{count} zariadenie nájdené | {count} zariadenie nájdené | {count} zariadení nájdených",
+		"noDevicesYet": "Zatiaľ neboli nájdené žiadne zariadenia - nakonfigurujte pripojenie na objavenie zariadení",
+		"noDevicesFound": "Zatiaľ neboli nájdené žiadne zariadenia",
+		"enabled": "Integrácia povolená",
+		"configure": "Konfigurovať",
+		"configRequired": "Na pripojenie je potrebná konfigurácia",
+		"setupNow": "Nastaviť teraz",
+		"stopScan": "Zastaviť",
+		"summary": "{count} integrácia povolená | {count} integrácia povolená | {count} integrácií povolených",
+		"totalDevices": "{count} zariadenie nájdené | {count} zariadenie nájdené | {count} zariadení nájdených",
+		"configDialog": {
+			"title": "Konfigurovať {name}",
+			"noConfig": "Pre túto integráciu nie sú dostupné žiadne konfiguračné možnosti.",
+			"buttons": {
+				"cancel": "Zrušiť",
+				"validate": "Overiť",
+				"save": "Uložiť"
+			},
+			"messages": {
+				"saved": "Konfigurácia bola úspešne uložená.",
+				"validationSuccess": "Konfigurácia je platná.",
+				"validationFailed": "Overenie konfigurácie zlyhalo.",
+				"validationError": "Konfiguráciu sa nepodarilo overiť."
+			}
+		},
+		"messages": {
+			"error": "Nepodarilo sa aktualizovať integrácie."
+		}
+	},
+	"complete": {
+		"title": "Všetko je pripravené!",
+		"description": "Váš Smart Panel je nakonfigurovaný a pripravený na použitie. Teraz môžete začať pridávať zariadenia, vytvárať priestory a prispôsobovať dashboard.",
+		"summary": {
+			"accountCreated": "Účet administrátora vytvorený",
+			"locationConfigured": "Poloha počasia nakonfigurovaná",
+			"locationSkipped": "Poloha počasia preskočená (možno nakonfigurovať neskôr)",
+			"spacesCreated": "{count} miestností bude vytvorených | {count} miestnosť bude vytvorená | {count} miestností bude vytvorených",
+			"spacesSkipped": "Žiadne miestnosti neboli pridané (možno vytvoriť neskôr)",
+			"devicesAssigned": "{count} zariadení priradených k miestnostiam | {count} zariadenie priradené k miestnosti | {count} zariadení priradených k miestnostiam",
+			"devicesSkipped": "Žiadne zariadenia neboli priradené k miestnostiam",
+			"integrationsEnabled": "{count} integrácií povolených | {count} integrácia povolená | {count} integrácií povolených",
+			"integrationsSkipped": "Žiadne integrácie neboli povolené (možno nakonfigurovať neskôr)"
+		},
+		"messages": {
+			"finished": "Nastavenie dokončené! Vitajte v Smart Paneli.",
+			"error": "Nepodarilo sa dokončiť úvodné nastavenie."
+		}
+	}
+}

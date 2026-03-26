@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin-Status",
+		"aboutMdns": "mDNS-Erkennung",
+		"aboutWebsocket": "WebSocket-Verbindung",
+		"aboutPolling": "Geräte-Abfrage",
+		"aboutTimeouts": "Zeitlimit-Konfiguration"
+	},
+	"texts": {
+		"aboutPluginStatus": "Aktivieren oder deaktivieren Sie das WLED-Plugin. Wenn deaktiviert, werden keine WLED-Geräte überwacht oder gesteuert.",
+		"aboutMdns": "mDNS-Erkennung ermöglicht die automatische Erkennung von WLED-Geräten in Ihrem Netzwerk.",
+		"aboutWebsocket": "WebSocket bietet Echtzeitaktualisierungen von Ihren WLED-Geräten für eine schnellere Zustandssynchronisierung.",
+		"aboutPolling": "Konfigurieren Sie, wie oft das Plugin Geräte nach Statusaktualisierungen abfragt, wenn WebSocket nicht verfügbar ist.",
+		"aboutTimeouts": "Konfigurieren Sie Verbindungs- und Befehlszeitlimits für die WLED-Gerätekommunikation."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Plugin aktivieren"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "mDNS-Erkennung aktivieren"
+				},
+				"interface": {
+					"title": "Netzwerkschnittstelle",
+					"placeholder": "Leer lassen für Standard"
+				},
+				"autoAdd": {
+					"title": "Erkannte Geräte automatisch hinzufügen"
+				}
+			},
+			"websocket": {
+				"enabled": {
+					"title": "WebSocket aktivieren"
+				},
+				"reconnectInterval": {
+					"title": "Wiederverbindungsintervall (ms)",
+					"validation": {
+						"required": "Wiederverbindungsintervall ist erforderlich",
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				}
+			},
+			"polling": {
+				"interval": {
+					"title": "Abfrageintervall (ms)",
+					"validation": {
+						"required": "Abfrageintervall ist erforderlich",
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				}
+			},
+			"timeouts": {
+				"connectionTimeout": {
+					"title": "Verbindungszeitlimit (ms)",
+					"validation": {
+						"required": "Verbindungszeitlimit ist erforderlich",
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				},
+				"commandDebounce": {
+					"title": "Befehls-Entprellung (ms)",
+					"validation": {
+						"required": "Befehls-Entprellung ist erforderlich",
+						"number": "Muss eine Zahl >= 0 sein"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Geräte-ID",
+				"placeholder": "Geräte-ID"
+			},
+			"name": {
+				"title": "Gerätename",
+				"placeholder": "Gerätenamen eingeben",
+				"validation": {
+					"required": "Gerätename ist erforderlich"
+				}
+			},
+			"category": {
+				"title": "Gerätekategorie",
+				"placeholder": "Kategorie auswählen",
+				"validation": {
+					"required": "Gerätekategorie ist erforderlich"
+				}
+			},
+			"description": {
+				"title": "Beschreibung",
+				"placeholder": "Gerätebeschreibung eingeben (optional)"
+			},
+			"hostname": {
+				"title": "Hostname oder IP-Adresse",
+				"placeholder": "z.B. 192.168.1.100 oder wled-device.local",
+				"validation": {
+					"required": "Hostname oder IP-Adresse ist erforderlich"
+				}
+			},
+			"enabled": {
+				"title": "Aktiviert"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "WLED-Plugin-Konfiguration wurde aktualisiert",
+			"notEdited": "Aktualisierung der WLED-Plugin-Konfiguration fehlgeschlagen"
+		},
+		"devices": {
+			"created": "WLED-Gerät '{device}' wurde erstellt",
+			"notCreated": "Erstellung des WLED-Geräts '{device}' fehlgeschlagen",
+			"edited": "WLED-Gerät '{device}' wurde aktualisiert",
+			"notEdited": "Aktualisierung des WLED-Geräts '{device}' fehlgeschlagen"
+		}
+	}
+}

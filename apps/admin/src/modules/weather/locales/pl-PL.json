@@ -1,0 +1,250 @@
+{
+	"menu": {
+		"title": "Lokalizacje pogodowe"
+	},
+	"headings": {
+		"weather": "Pogoda",
+		"aboutPrimaryLocation": "Lokalizacja główna",
+		"locations": "Lokalizacje pogody",
+		"locationDetail": "{location}",
+		"forecast": "Prognoza",
+		"hourlyForecast": "Prognoza godzinowa",
+		"addLocation": "Dodaj lokalizację",
+		"editLocation": "Edytuj lokalizację",
+		"deleteLocation": "Usuń lokalizację",
+		"bulkDeleteLocations": "Usuń lokalizacje",
+		"discard": "Odrzuć zmiany",
+		"selectProvider": "Wybierz dostawcę pogody",
+		"unsupportedProvider": "Nieobsługiwany dostawca",
+		"adjustFilters": "Dostosuj filtry"
+	},
+	"subHeadings": {
+		"locations": "Zarządzaj lokalizacjami danych pogodowych",
+		"locationDetail": "Informacje pogodowe dla {location}",
+		"addLocation": "Dodaj nową lokalizację pogody",
+		"editLocation": "Edytuj szczegóły lokalizacji",
+		"adjustFilters": "Dostosuj filtry listy lokalizacji"
+	},
+	"breadcrumbs": {
+		"locations": "lokalizacje",
+		"locationDetail": "lokalizacja: {location}",
+		"addLocation": "dodaj lokalizację",
+		"editLocation": "edytuj lokalizację"
+	},
+	"messages": {
+		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+		"requestError": "Wystąpił błąd podczas ładowania danych",
+		"config": {
+			"edited": "Konfiguracja pogody została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji pogody"
+		},
+		"locations": {
+			"created": "Lokalizacja \"{location}\" została utworzona",
+			"notCreated": "Nie udało się utworzyć lokalizacji \"{location}\"",
+			"updated": "Lokalizacja \"{location}\" została zaktualizowana",
+			"notUpdated": "Nie udało się zaktualizować lokalizacji \"{location}\"",
+			"deleted": "Lokalizacja została usunięta",
+			"notDeleted": "Nie udało się usunąć lokalizacji",
+			"deleteCanceled": "Usuwanie lokalizacji \"{location}\" zostało anulowane",
+			"confirmBulkDelete": "Czy na pewno chcesz usunąć {count} lokalizacji?",
+			"bulkDeleted": "Usunięto {count} lokalizacji",
+			"bulkDeleteFailed": "Nie udało się usunąć {count} lokalizacji",
+			"bulkDeleteCanceled": "Masowe usuwanie lokalizacji zostało anulowane",
+			"noLocations": "Brak skonfigurowanych lokalizacji. Dodaj lokalizację, aby uzyskać dane pogodowe.",
+			"notFound": "Lokalizacja nie znaleziona",
+			"confirmDeleteLocation": "Czy na pewno chcesz usunąć lokalizację \"{name}\"?",
+			"deletedWhileEditing": "Lokalizacja została usunięta. Przekierowywanie..."
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Dodaj"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"cancel": {
+			"title": "Anuluj"
+		},
+		"discard": {
+			"title": "Odrzuć"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"reset": {
+			"title": "Resetuj filtry"
+		},
+		"detail": {
+			"title": "Szczegóły"
+		},
+		"retry": {
+			"title": "Ponów"
+		},
+		"back": {
+			"title": "Wstecz"
+		}
+	},
+	"fields": {
+		"locations": {
+			"search": {
+				"placeholder": "Szukaj lokalizacji..."
+			},
+			"provider": {
+				"title": "Dostawca pogody",
+				"placeholder": "Wybierz dostawcę danych pogodowych"
+			},
+			"name": {
+				"title": "Nazwa lokalizacji",
+				"placeholder": "np. Dom, Biuro, Domek letniskowy",
+				"validation": {
+					"required": "Nazwa lokalizacji jest wymagana"
+				}
+			}
+		},
+		"config": {
+			"primaryLocation": {
+				"title": "Lokalizacja główna",
+				"description": "Domyślna lokalizacja wyświetlana w widżetach pogody",
+				"placeholder": "Wybierz lokalizację główną"
+			}
+		}
+	},
+	"texts": {
+		"aboutPrimaryLocation": "Wybierz główną lokalizację do wyświetlania w widżetach pogody. Lokalizacjami można zarządzać w sekcji Lokalizacje. Dane pogodowe będą pobierane dla wszystkich skonfigurowanych lokalizacji.",
+		"selectProvider": "Wybierz dostawcę danych pogodowych, aby dodać nową lokalizację. Różni dostawcy mogą oferować różne opcje konfiguracji.",
+		"unsupportedProvider": "Wybrany dostawca \"{provider}\" nie jest obecnie obsługiwany. Proszę wybrać innego dostawcę.",
+		"weatherError": "Nie udało się załadować pogody",
+		"weatherErrorDescription": "Nie udało się załadować danych pogodowych dla tej lokalizacji. Sprawdź konfigurację API i spróbuj ponownie.",
+		"locationDetail": {
+			"provider": "Dostawca",
+			"temperature": "Temperatura",
+			"feelsLike": "Odczuwalna",
+			"conditions": "Warunki",
+			"humidity": "Wilgotność",
+			"wind": "Wiatr",
+			"pressure": "Ciśnienie"
+		},
+		"misc": {
+			"loadingLocations": "Ładowanie lokalizacji...",
+			"noLocations": "Nie skonfigurowano jeszcze żadnych lokalizacji",
+			"noFilteredLocations": "Żadne lokalizacje nie pasują do kryteriów filtra"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": {
+				"title": "Dostawca pogody"
+			},
+			"primary": {
+				"title": "Status głównej",
+				"values": {
+					"all": "Wszystkie",
+					"primary": "Główna",
+					"secondary": "Drugorzędna"
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Nazwa"
+			},
+			"weather": {
+				"title": "Pogoda",
+				"failed": "Błąd",
+				"error": "Nie udało się załadować danych pogodowych. Sprawdź konfigurację API."
+			},
+			"type": {
+				"title": "Dostawca"
+			},
+			"primary": {
+				"title": "Główna",
+				"values": {
+					"yes": "Tak",
+					"no": "Nie"
+				}
+			}
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": {
+				"title": "Lokalizacje pogody"
+			},
+			"detail": {
+				"title": "Szczegóły lokalizacji pogody"
+			},
+			"add": {
+				"title": "Dodaj lokalizację pogody"
+			},
+			"edit": {
+				"title": "Edytuj lokalizację pogody"
+			}
+		}
+	},
+	"conditions": {
+		"thunderstormWithLightRain": "Burza z lekkim deszczem",
+		"thunderstormWithRain": "Burza z deszczem",
+		"thunderstormWithHeavyRain": "Burza z silnym deszczem",
+		"lightThunderstorm": "Lekka burza",
+		"thunderstorm": "Burza",
+		"heavyThunderstorm": "Silna burza",
+		"raggedThunderstorm": "Burza z porywistym wiatrem",
+		"thunderstormWithLightDrizzle": "Burza z lekką mżawką",
+		"thunderstormWithDrizzle": "Burza z mżawką",
+		"thunderstormWithHeavyDrizzle": "Burza z silną mżawką",
+		"lightIntensityDrizzle": "Lekka mżawka",
+		"drizzle": "Mżawka",
+		"heavyIntensityDrizzle": "Silna mżawka",
+		"lightIntensityDrizzleRain": "Lekki deszcz ze mżawką",
+		"drizzleRain": "Deszcz ze mżawką",
+		"heavyIntensityDrizzleRain": "Silny deszcz ze mżawką",
+		"showerRainAndDrizzle": "Przelotny deszcz ze mżawką",
+		"heavyShowerRainAndDrizzle": "Silny przelotny deszcz ze mżawką",
+		"showerDrizzle": "Przelotna mżawka",
+		"lightRain": "Lekki deszcz",
+		"moderateRain": "Umiarkowany deszcz",
+		"heavyIntensityRain": "Intensywny deszcz",
+		"veryHeavyRain": "Bardzo silny deszcz",
+		"extremeRain": "Ekstremalny deszcz",
+		"freezingRain": "Marznący deszcz",
+		"lightIntensityShowerRain": "Lekki przelotny deszcz",
+		"showerRain": "Przelotny deszcz",
+		"heavyIntensityShowerRain": "Silny przelotny deszcz",
+		"raggedShowerRain": "Nieregularny przelotny deszcz",
+		"lightSnow": "Lekki śnieg",
+		"snow": "Śnieg",
+		"heavySnow": "Intensywny śnieg",
+		"sleet": "Deszcz ze śniegiem",
+		"lightShowerSleet": "Lekki przelotny deszcz ze śniegiem",
+		"showerSleet": "Przelotny deszcz ze śniegiem",
+		"lightRainAndSnow": "Lekki deszcz ze śniegiem",
+		"rainAndSnow": "Deszcz ze śniegiem",
+		"lightShowerSnow": "Lekki przelotny śnieg",
+		"showerSnow": "Przelotny śnieg",
+		"heavyShowerSnow": "Silny przelotny śnieg",
+		"mist": "Mgła",
+		"smoke": "Dym",
+		"haze": "Zamglenie",
+		"fog": "Gęsta mgła",
+		"sand": "Piasek",
+		"dust": "Kurz",
+		"volcanicAsh": "Popiół wulkaniczny",
+		"squalls": "Szkwały",
+		"tornado": "Tornado",
+		"clearSky": "Bezchmurne niebo",
+		"fewClouds": "Lekkie zachmurzenie",
+		"scatteredClouds": "Rozproszone chmury",
+		"brokenClouds": "Duże zachmurzenie",
+		"overcastClouds": "Pochmurno",
+		"unknown": "Nieznane"
+	}
+}

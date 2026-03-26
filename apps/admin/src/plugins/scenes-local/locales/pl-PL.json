@@ -1,0 +1,60 @@
+{
+	"plugin": {
+		"name": "Lokalne sceny",
+		"description": "Wykonuj sceny lokalnie, sterując właściwościami urządzeń"
+	},
+	"actionCard": {
+		"device": "Urządzenie",
+		"channel": "Kanał",
+		"property": "Właściwość",
+		"value": "Wartość",
+		"unknownDevice": "Nieznane urządzenie",
+		"unknownChannel": "Nieznany kanał",
+		"unknownProperty": "Nieznana właściwość",
+		"missingResource": "Ta akcja odwołuje się do usuniętego urządzenia, kanału lub właściwości"
+	},
+	"fields": {
+		"device": {
+			"title": "Urządzenie",
+			"placeholder": "Wybierz urządzenie",
+			"showAll": "Pokaż wszystkie urządzenia",
+			"hints": {
+				"recommended": "Wyświetlanie urządzeń zalecanych dla tej kategorii sceny.",
+				"allDevices": "Wybierasz urządzenia spoza zalecanej kategorii."
+			},
+			"groups": {
+				"recommended": "Zalecane",
+				"other": "Inne urządzenia"
+			},
+			"validation": {
+				"required": "Urządzenie jest wymagane"
+			}
+		},
+		"channel": {
+			"title": "Kanał",
+			"placeholder": "Wybierz kanał",
+			"noChannels": "Brak dostępnych kanałów",
+			"validation": {
+				"required": "Kanał jest wymagany"
+			}
+		},
+		"property": {
+			"title": "Właściwość",
+			"placeholder": "Wybierz właściwość",
+			"noProperties": "Brak właściwości do zapisu",
+			"validation": {
+				"required": "Właściwość jest wymagana"
+			}
+		},
+		"value": {
+			"title": "Wartość",
+			"placeholder": "Wprowadź wartość",
+			"validation": {
+				"required": "Wartość jest wymagana"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "Brak dostępnych urządzeń. Najpierw dodaj urządzenia w sekcji Urządzenia."
+	}
+}

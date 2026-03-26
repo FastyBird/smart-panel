@@ -1,0 +1,29 @@
+{
+	"fields": {
+		"device": {
+			"title": "Zariadenie",
+			"placeholder": "Zariadenie zdroja dát",
+			"validation": {
+				"required": "Prosím vyberte zariadenie zdroja dát"
+			}
+		},
+		"channel": {
+			"title": "Kanál",
+			"placeholder": "Kanál zdroja dát",
+			"validation": {
+				"required": "Prosím vyberte kanál zdroja dát"
+			}
+		},
+		"property": {
+			"title": "Vlastnosť",
+			"placeholder": "Vlastnosť zdroja dát",
+			"validation": {
+				"required": "Prosím vyberte vlastnosť zdroja dát"
+			}
+		},
+		"icon": {
+			"title": "Ikona",
+			"placeholder": "Ikona zdroja dát"
+		}
+	}
+}

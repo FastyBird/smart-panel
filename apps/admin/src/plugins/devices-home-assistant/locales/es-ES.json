@@ -1,0 +1,250 @@
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "identifier": {
+        "title": "Identificador del sistema",
+        "placeholder": "Identificador del sistema del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "description": "Acerca de la categoría",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado",
+        "placeholder": "Habilitar o deshabilitar el dispositivo"
+      },
+      "haDeviceId": {
+        "title": "Dispositivo de Home Assistant",
+        "placeholder": "Seleccione un dispositivo de la instancia de Home Assistant",
+        "validation": {
+          "required": "Por favor, seleccione un dispositivo de Home Assistant"
+        }
+      },
+      "manufacturer": {
+        "title": "Fabricante"
+      },
+      "model": {
+        "title": "Modelo"
+      },
+      "entities": {
+        "title": "Entidades"
+      },
+      "domain": {
+        "title": "Dominio"
+      },
+      "type": {
+        "title": "Tipo"
+      }
+    },
+    "channelsProperties": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID de la propiedad del canal"
+      },
+      "channel": {
+        "title": "Canal",
+        "placeholder": "Seleccionar canal",
+        "validation": {
+          "required": "Por favor, seleccione el canal de la propiedad"
+        }
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría de la propiedad del canal",
+        "validation": {
+          "required": "Por favor, seleccione la categoría de la propiedad del canal"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre de la propiedad del canal"
+      },
+      "dataType": {
+        "validation": {
+          "required": "Por favor, seleccione el tipo de dato"
+        }
+      },
+      "permissions": {
+        "validation": {
+          "required": "Por favor, seleccione los permisos"
+        }
+      },
+      "haEntityId": {
+        "title": "Entidad del dispositivo de Home Assistant",
+        "placeholder": "Seleccione la entidad del dispositivo de Home Assistant",
+        "validation": {
+          "required": "Por favor, seleccione la entidad del dispositivo de Home Assistant"
+        }
+      },
+      "haAttribute": {
+        "title": "Atributo de entidad de Home Assistant",
+        "placeholder": "Seleccione el atributo de entidad de Home Assistant",
+        "validation": {
+          "required": "Por favor, seleccione el atributo de entidad de Home Assistant"
+        }
+      }
+    },
+    "mapping": {
+      "totalEntities": "Total de entidades",
+      "mapped": "Mapeado",
+      "partial": "Parcial",
+      "unmapped": "Sin mapear",
+      "skipped": "Omitido",
+      "incompatible": "Incompatible",
+      "excluded": "Excluido",
+      "suggestedCategory": "Categoría sugerida",
+      "suggestedChannel": {
+        "title": "Canal sugerido",
+        "validation": {
+          "required": "Por favor, seleccione una categoría de canal para esta entidad"
+        }
+      },
+      "properties": "Propiedades",
+      "unmappedAttributes": "Atributos sin mapear",
+      "missingRequiredProperties": "Propiedades requeridas faltantes",
+      "incompatibleChannel": "Canal no compatible con esta categoría de dispositivo",
+      "virtualTypes": {
+        "static": "Estático",
+        "derived": "Automático",
+        "command": "Comando",
+        "virtual": "Virtual"
+      },
+      "validation": {
+        "valid": "La configuración del dispositivo es válida",
+        "invalid": "La configuración del dispositivo tiene problemas",
+        "missingChannels": "Faltan canales requeridos",
+        "missingProperties": "Faltan propiedades requeridas",
+        "autoFilled": "Completado automáticamente con propiedades virtuales",
+        "unknownChannels": "Canales no permitidos para este tipo de dispositivo",
+        "duplicateChannels": "Canales duplicados (deben ser únicos)",
+        "constraintViolations": "Violaciones de restricciones de configuración"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "apiKey": {
+        "title": "Clave API",
+        "placeholder": "Introduzca su token de acceso de larga duración de Home Assistant",
+        "validation": {
+          "required": "Por favor, introduzca la clave API"
+        }
+      },
+      "hostname": {
+        "title": "Nombre de host",
+        "placeholder": "Introduzca el nombre de host de Home Assistant (p. ej., homeassistant.local:8123)",
+        "validation": {
+          "required": "Por favor, introduzca el nombre de host"
+        }
+      }
+    }
+  },
+  "headings": {
+    "aboutConnectionSettings": "Conexión de Home Assistant",
+    "device": {
+      "deviceSelection": "Seleccionar dispositivo",
+      "deviceInformation": "Información del dispositivo",
+      "categorySelection": "Categoría del dispositivo",
+      "mappingPreview": "Vista previa del mapeo",
+      "mappingCustomization": "Personalización del mapeo",
+      "deviceConfiguration": "Configuración del dispositivo"
+    },
+    "mapping": {
+      "entityMappings": "Mapeo de entidades",
+      "warnings": "Advertencias del mapeo ({count})",
+      "errors": "Errores",
+      "summary": "Resumen del mapeo",
+      "debugData": "Datos de depuración"
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "¡Cambios guardados! La configuración del plugin de Home Assistant ha sido actualizada.",
+      "notEdited": "Algo salió mal. La actualización de la configuración del plugin de Home Assistant no fue exitosa."
+    },
+    "devices": {
+      "created": "Nuevo dispositivo de Home Assistant agregado correctamente.",
+      "notCreated": "Algo salió mal. No se pudo crear el dispositivo de Home Assistant.",
+      "exists": "El dispositivo ya está registrado en el sistema.",
+      "alreadyAdopted": "Este dispositivo ya ha sido adoptado",
+      "alreadyAdoptedDescription": "Al continuar se volverá a adoptar el dispositivo con la nueva configuración. El dispositivo existente será actualizado.",
+      "noDiscoveredDevices": "No hay dispositivos de Home Assistant disponibles. Asegúrese de que su instancia de Home Assistant esté conectada y los dispositivos hayan sido descubiertos."
+    },
+    "mapping": {
+      "previewLoading": "Cargando vista previa del mapeo...",
+      "previewError": "Error al cargar la vista previa del mapeo",
+      "adoptionSuccess": "El dispositivo {device} ha sido adoptado correctamente",
+      "adoptionError": "Error al adoptar el dispositivo",
+      "readyToAdopt": "El dispositivo está listo para ser adoptado",
+      "notReadyToAdopt": "El dispositivo tiene mapeos requeridos faltantes",
+      "noPreview": "No hay vista previa de mapeo disponible",
+      "selectDeviceFirst": "Por favor, seleccione un dispositivo en el paso 1 para generar una vista previa del mapeo",
+      "invalidSuggestedCategory": "La categoría sugerida no es compatible. Por favor, seleccione una categoría válida.",
+      "missingChannelCategory": "Las siguientes entidades están habilitadas pero no tienen una categoría de canal: {entities}. Por favor, seleccione una categoría de canal para cada entidad habilitada antes de continuar.",
+      "debugDescription": "Copie estos datos y compártalos con los desarrolladores para ayudar a diagnosticar problemas de mapeo o solicitar mapeos personalizados.",
+      "debugCopied": "Datos de depuración copiados al portapapeles",
+      "debugCopyFailed": "Error al copiar los datos de depuración al portapapeles"
+    },
+    "categorySelection": {
+      "description": "Basándose en las entidades del dispositivo, se ha sugerido una categoría. Por favor, revise y seleccione la categoría correcta para este dispositivo. La vista previa del mapeo se actualizará según su selección."
+    },
+    "discovery": {
+      "fetchFailed": "Error al obtener las instancias descubiertas",
+      "refreshFailed": "Error al actualizar las instancias descubiertas"
+    }
+  },
+  "buttons": {
+    "loadPreview": "Cargar vista previa",
+    "updatePreview": "Actualizar vista previa",
+    "adoptDevice": "Adoptar dispositivo",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "skip": "Omitir",
+    "use": "Usar",
+    "applyChanges": "Aplicar cambios",
+    "refreshDiscovery": "Actualizar descubrimiento",
+    "debug": "Depuración",
+    "copyToClipboard": "Copiar al portapapeles",
+    "close": "Cerrar"
+  },
+  "labels": {
+    "suggested": "Sugerido"
+  },
+  "misc": {
+    "options": {
+      "entities": {
+        "noEntity": "No conectado a la entidad del dispositivo"
+      },
+      "attributes": {
+        "noAttribute": "No conectado al atributo de la entidad",
+        "mainState": "Atributo de estado principal de la entidad"
+      }
+    }
+  },
+  "texts": {
+    "aboutConnectionSettings": "Configure la conexión a su instancia de Home Assistant. Cuando esté habilitado, los dispositivos de Home Assistant estarán disponibles en el Smart Panel. Necesitará un token de acceso de larga duración de Home Assistant y el nombre de host o la dirección IP de su instancia.",
+    "mapping": {
+      "customizationDescription": "Puede personalizar el mapeo cambiando las categorías de canal para las entidades o habilitando/deshabilitando entidades. Por defecto, todas las entidades con una categoría de canal sugerida están habilitadas. Haga clic en 'Siguiente' para continuar con la configuración seleccionada."
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../system.constants';
 
@@ -61,7 +62,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				authenticated: true,
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
-			title: 'System',
+			title: () => i18n.global.t('systemModule.menu.title'),
 			icon: 'mdi:hammer',
 			menu: 4000,
 		},

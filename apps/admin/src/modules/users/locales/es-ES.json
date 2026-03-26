@@ -1,0 +1,200 @@
+{
+	"menu": {
+		"title": "Usuarios"
+	},
+	"meta": {
+		"users": {
+			"list": {
+				"title": "Listar usuarios"
+			},
+			"edit": {
+				"title": "Editar usuario: {user}"
+			},
+			"add": {
+				"title": "Añadir usuario"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"users": "usuarios",
+		"addUser": "añadir usuario",
+		"editUser": "editar usuario"
+	},
+	"headings": {
+		"users": "Usuarios",
+		"addUser": "Añadir usuario",
+		"editUser": "Editar usuario",
+		"remove": "¿Eliminar usuario?",
+		"removeBulk": "¿Eliminar usuarios?",
+		"discard": "¿Descartar cambios?",
+		"changeUsername": "Cambiar nombre de usuario",
+		"changePassword": "Cambiar contraseña"
+	},
+	"subHeadings": {
+		"users": "Gestionar cuentas de usuario del panel inteligente",
+		"addUser": "Añadir nuevo usuario del panel inteligente"
+	},
+	"messages": {
+		"requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde.",
+		"created": "Nuevo usuario añadido correctamente.",
+		"notCreated": "Algo salió mal. No se pudo crear el usuario.",
+		"edited": "¡Cambios guardados! El usuario: {user} ha sido actualizado.",
+		"notEdited": "Algo salió mal. La actualización del usuario no fue exitosa.",
+		"notFound": "El usuario que buscas no existe o puede haber sido eliminado.",
+		"removed": "El usuario: {user} fue eliminado correctamente.",
+		"removeCanceled": "La eliminación del usuario: {user} ha sido cancelada.",
+		"notRemoved": "Algo salió mal y el usuario: {user} no fue eliminado.",
+		"deletedWhileEditing": "Este usuario fue eliminado y ya no está disponible.",
+		"usernameEdited": "El nombre de usuario ha sido actualizado correctamente.",
+		"usernameNotEdited": "Error al actualizar el nombre de usuario. Por favor, inténtalo de nuevo.",
+		"passwordEdited": "La contraseña del usuario ha sido actualizada correctamente.",
+		"passwordNotEdited": "Error al actualizar la contraseña del usuario. Por favor, inténtalo de nuevo.",
+		"bulkRemoved": "{count} usuario(s) han sido eliminados.",
+		"bulkRemoveFailed": "Error al eliminar {count} usuario(s).",
+		"bulkRemoveCanceled": "La eliminación masiva de usuarios ha sido cancelada."
+	},
+	"texts": {
+		"confirmRemove": "¿Estás seguro de que deseas eliminar al usuario: {user}? Esto no se puede revertir.",
+		"confirmBulkRemove": "¿Estás seguro de que deseas eliminar {count} usuario(s)? Esta acción no se puede deshacer.",
+		"misc": {
+			"noUsers": "No tienes ningún usuario configurado",
+			"noFilteredUsers": "No se encontraron usuarios que coincidan con los criterios de filtro activos",
+			"loadingUsers": "Cargando usuarios...",
+			"loadingUser": "Cargando usuario...",
+			"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Buscar usuarios..."
+		},
+		"role": {
+			"title": "Rol del usuario",
+			"placeholder": "Seleccionar rol",
+			"validation": {
+				"required": "Por favor selecciona el rol del usuario"
+			},
+			"options": {
+				"user": "Usuario",
+				"admin": "Administrador",
+				"owner": "Propietario"
+			}
+		},
+		"username": {
+			"title": "Nombre de usuario",
+			"validation": {
+				"required": "Por favor introduce tu nombre de usuario"
+			}
+		},
+		"newUsername": {
+			"title": "Nuevo nombre de usuario",
+			"validation": {
+				"required": "Por favor introduce el nuevo nombre de usuario"
+			}
+		},
+		"password": {
+			"title": "Contraseña",
+			"validation": {
+				"required": "Por favor introduce tu contraseña"
+			}
+		},
+		"repeatPassword": {
+			"title": "Confirmar contraseña",
+			"validation": {
+				"required": "Por favor confirma tu nueva contraseña",
+				"different": "Las contraseñas no coinciden"
+			}
+		},
+		"newPassword": {
+			"title": "Nueva contraseña",
+			"validation": {
+				"required": "Por favor introduce la nueva contraseña"
+			}
+		},
+		"newRepeatPassword": {
+			"title": "Confirmar contraseña",
+			"validation": {
+				"required": "Por favor confirma la nueva contraseña",
+				"different": "Las contraseñas no coinciden"
+			}
+		},
+		"email": {
+			"title": "Correo electrónico",
+			"placeholder": "ej. juan{'@'}ejemplo.com",
+			"validation": {
+				"email": "Por favor proporciona una dirección de correo electrónico válida"
+			}
+		},
+		"firstName": {
+			"title": "Nombre",
+			"placeholder": "ej. Juan"
+		},
+		"lastName": {
+			"title": "Apellido",
+			"placeholder": "ej. García"
+		}
+	},
+	"table": {
+		"columns": {
+			"username": {
+				"title": "Nombre de usuario"
+			},
+			"firstName": {
+				"title": "Nombre"
+			},
+			"lastName": {
+				"title": "Apellido"
+			},
+			"email": {
+				"title": "Correo electrónico"
+			},
+			"role": {
+				"title": "Rol"
+			}
+		}
+	},
+	"role": {
+		"user": "Usuario",
+		"admin": "Administrador",
+		"owner": "Propietario",
+		"display": "Pantalla"
+	},
+	"buttons": {
+		"add": {
+			"title": "Añadir"
+		},
+		"edit": {
+			"title": "Editar"
+		},
+		"detail": {
+			"title": "Detalle"
+		},
+		"discard": {
+			"title": "Descartar"
+		},
+		"cancel": {
+			"title": "Cancelar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"change": {
+			"title": "Cambiar"
+		},
+		"remove": {
+			"title": "Eliminar"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		}
+	}
+}

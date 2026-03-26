@@ -3,21 +3,23 @@ import type { Router } from 'vue-router';
 
 import type { Pinia } from 'pinia';
 
-import type { MessageSchema } from './locales';
 import { UsersModuleUserRole } from './openapi.constants';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AppI18n = I18n<any, any, any, string, boolean>;
 
 export type IExtensionOptions = IModuleOptions & IPluginOptions;
 
 export interface IModuleOptions {
 	router: Router;
 	store: Pinia;
-	i18n: I18n<{ 'en-US': MessageSchema }>;
+	i18n: AppI18n;
 }
 
 export interface IPluginOptions {
 	router: Router;
 	store: Pinia;
-	i18n: I18n<{ 'en-US': MessageSchema }>;
+	i18n: AppI18n;
 }
 
 export interface IAppUser {

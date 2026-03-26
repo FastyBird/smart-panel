@@ -17,7 +17,7 @@ import {
 
 import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ShellyNgConfigEditFormSchema } from './schemas/config.schemas';
 import { ShellyNgDeviceAddFormSchema, ShellyNgDeviceEditFormSchema } from './schemas/devices.schemas';
 import {
@@ -40,7 +40,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesShellyNgPlugin: translations });
 

@@ -8,7 +8,7 @@ import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents,
 
 import { BUDDY_VOICEAI_PLUGIN_NAME } from './buddy-voiceai.constants';
 import { VoiceaiConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { VoiceaiConfigEditFormSchema } from './schemas/schemas';
 import { VoiceaiConfigSchema, VoiceaiConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -18,7 +18,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { buddyVoiceaiPlugin: translations });
 

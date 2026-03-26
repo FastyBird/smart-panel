@@ -1,0 +1,29 @@
+{
+	"fields": {
+		"device": {
+			"title": "Dispositivo",
+			"placeholder": "Dispositivo de origen de datos",
+			"validation": {
+				"required": "Por favor, seleccione un dispositivo de origen de datos"
+			}
+		},
+		"channel": {
+			"title": "Canal",
+			"placeholder": "Canal de origen de datos",
+			"validation": {
+				"required": "Por favor, seleccione un canal de origen de datos"
+			}
+		},
+		"property": {
+			"title": "Propiedad",
+			"placeholder": "Propiedad de origen de datos",
+			"validation": {
+				"required": "Por favor, seleccione una propiedad de origen de datos"
+			}
+		},
+		"icon": {
+			"title": "Icono",
+			"placeholder": "Icono de origen de datos"
+		}
+	}
+}

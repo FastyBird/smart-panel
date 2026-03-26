@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutMdns": "Wykrywanie mDNS",
+		"aboutWebsocket": "Polaczenie WebSocket",
+		"aboutPolling": "Odpytywanie urzadzen",
+		"aboutTimeouts": "Konfiguracja limitow czasu"
+	},
+	"texts": {
+		"aboutPluginStatus": "Wlacz lub wylacz wtyczke WLED. Po wylaczeniu zadne urzadzenia WLED nie beda monitorowane ani sterowane.",
+		"aboutMdns": "Wykrywanie mDNS umozliwia automatyczne wykrywanie urzadzen WLED w sieci.",
+		"aboutWebsocket": "WebSocket zapewnia aktualizacje w czasie rzeczywistym z urzadzen WLED dla szybszej synchronizacji stanu.",
+		"aboutPolling": "Skonfiguruj, jak czesto wtyczka odpytuje urzadzenia o aktualizacje stanu, gdy WebSocket nie jest dostepny.",
+		"aboutTimeouts": "Skonfiguruj limity czasu polaczenia i komend dla komunikacji z urzadzeniami WLED."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Wlacz wtyczke"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Wlacz wykrywanie mDNS"
+				},
+				"interface": {
+					"title": "Interfejs sieciowy",
+					"placeholder": "Pozostaw puste dla domyslnego"
+				},
+				"autoAdd": {
+					"title": "Automatyczne dodawanie wykrytych urzadzen"
+				}
+			},
+			"websocket": {
+				"enabled": {
+					"title": "Wlacz WebSocket"
+				},
+				"reconnectInterval": {
+					"title": "Interwal ponownego polaczenia (ms)",
+					"validation": {
+						"required": "Interwal ponownego polaczenia jest wymagany",
+						"number": "Musi byc liczba >= 1000"
+					}
+				}
+			},
+			"polling": {
+				"interval": {
+					"title": "Interwal odpytywania (ms)",
+					"validation": {
+						"required": "Interwal odpytywania jest wymagany",
+						"number": "Musi byc liczba >= 1000"
+					}
+				}
+			},
+			"timeouts": {
+				"connectionTimeout": {
+					"title": "Limit czasu polaczenia (ms)",
+					"validation": {
+						"required": "Limit czasu polaczenia jest wymagany",
+						"number": "Musi byc liczba >= 1000"
+					}
+				},
+				"commandDebounce": {
+					"title": "Opoznienie komendy (ms)",
+					"validation": {
+						"required": "Opoznienie komendy jest wymagane",
+						"number": "Musi byc liczba >= 0"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID urzadzenia",
+				"placeholder": "ID urzadzenia"
+			},
+			"name": {
+				"title": "Nazwa urzadzenia",
+				"placeholder": "Wprowadz nazwe urzadzenia",
+				"validation": {
+					"required": "Nazwa urzadzenia jest wymagana"
+				}
+			},
+			"category": {
+				"title": "Kategoria urzadzenia",
+				"placeholder": "Wybierz kategorie",
+				"validation": {
+					"required": "Kategoria urzadzenia jest wymagana"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Wprowadz opis urzadzenia (opcjonalnie)"
+			},
+			"hostname": {
+				"title": "Nazwa hosta lub adres IP",
+				"placeholder": "np. 192.168.1.100 lub wled-device.local",
+				"validation": {
+					"required": "Nazwa hosta lub adres IP jest wymagana"
+				}
+			},
+			"enabled": {
+				"title": "Wlaczony"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja wtyczki WLED zostala zaktualizowana",
+			"notEdited": "Nie udalo sie zaktualizowac konfiguracji wtyczki WLED"
+		},
+		"devices": {
+			"created": "Urzadzenie WLED '{device}' zostalo utworzone",
+			"notCreated": "Nie udalo sie utworzyc urzadzenia WLED '{device}'",
+			"edited": "Urzadzenie WLED '{device}' zostalo zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac urzadzenia WLED '{device}'"
+		}
+	}
+}

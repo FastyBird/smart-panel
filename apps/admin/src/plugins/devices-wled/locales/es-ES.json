@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Estado del plugin",
+		"aboutMdns": "Descubrimiento mDNS",
+		"aboutWebsocket": "Conexión WebSocket",
+		"aboutPolling": "Sondeo de dispositivos",
+		"aboutTimeouts": "Configuración de tiempos de espera"
+	},
+	"texts": {
+		"aboutPluginStatus": "Habilitar o deshabilitar el plugin WLED. Cuando está deshabilitado, no se monitorizarán ni controlarán dispositivos WLED.",
+		"aboutMdns": "El descubrimiento mDNS permite la detección automática de dispositivos WLED en su red.",
+		"aboutWebsocket": "WebSocket proporciona actualizaciones en tiempo real desde sus dispositivos WLED para una sincronización de estado más rápida.",
+		"aboutPolling": "Configure con qué frecuencia el plugin sondea los dispositivos para obtener actualizaciones de estado cuando WebSocket no está disponible.",
+		"aboutTimeouts": "Configure los tiempos de espera de conexión y comandos para la comunicación con dispositivos WLED."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitar plugin"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Habilitar descubrimiento mDNS"
+				},
+				"interface": {
+					"title": "Interfaz de red",
+					"placeholder": "Dejar vacío para usar la predeterminada"
+				},
+				"autoAdd": {
+					"title": "Agregar automáticamente dispositivos descubiertos"
+				}
+			},
+			"websocket": {
+				"enabled": {
+					"title": "Habilitar WebSocket"
+				},
+				"reconnectInterval": {
+					"title": "Intervalo de reconexión (ms)",
+					"validation": {
+						"required": "El intervalo de reconexión es obligatorio",
+						"number": "Debe ser un número >= 1000"
+					}
+				}
+			},
+			"polling": {
+				"interval": {
+					"title": "Intervalo de sondeo (ms)",
+					"validation": {
+						"required": "El intervalo de sondeo es obligatorio",
+						"number": "Debe ser un número >= 1000"
+					}
+				}
+			},
+			"timeouts": {
+				"connectionTimeout": {
+					"title": "Tiempo de espera de conexión (ms)",
+					"validation": {
+						"required": "El tiempo de espera de conexión es obligatorio",
+						"number": "Debe ser un número >= 1000"
+					}
+				},
+				"commandDebounce": {
+					"title": "Rebote de comandos (ms)",
+					"validation": {
+						"required": "El rebote de comandos es obligatorio",
+						"number": "Debe ser un número >= 0"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID del dispositivo",
+				"placeholder": "ID del dispositivo"
+			},
+			"name": {
+				"title": "Nombre del dispositivo",
+				"placeholder": "Introduzca el nombre del dispositivo",
+				"validation": {
+					"required": "El nombre del dispositivo es obligatorio"
+				}
+			},
+			"category": {
+				"title": "Categoría del dispositivo",
+				"placeholder": "Seleccionar categoría",
+				"validation": {
+					"required": "La categoría del dispositivo es obligatoria"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Introduzca la descripción del dispositivo (opcional)"
+			},
+			"hostname": {
+				"title": "Nombre de host o dirección IP",
+				"placeholder": "p. ej., 192.168.1.100 o wled-device.local",
+				"validation": {
+					"required": "El nombre de host o la dirección IP es obligatorio"
+				}
+			},
+			"enabled": {
+				"title": "Habilitado"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración del plugin WLED ha sido actualizada",
+			"notEdited": "Error al actualizar la configuración del plugin WLED"
+		},
+		"devices": {
+			"created": "El dispositivo WLED '{device}' ha sido creado",
+			"notCreated": "Error al crear el dispositivo WLED '{device}'",
+			"edited": "El dispositivo WLED '{device}' ha sido actualizado",
+			"notEdited": "Error al actualizar el dispositivo WLED '{device}'"
+		}
+	}
+}

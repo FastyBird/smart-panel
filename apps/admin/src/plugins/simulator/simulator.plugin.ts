@@ -22,7 +22,7 @@ import {
 
 import { SimulatorConfigForm } from './components/components';
 import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from './simulator.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { SimulatorConfigEditFormSchema } from './schemas/config.schemas';
 import { SimulatorDeviceAddFormSchema, SimulatorDeviceEditFormSchema } from './schemas/devices.schemas';
 import { SimulatorChannelPropertySchema } from './store/channels.properties.store.schemas';
@@ -41,7 +41,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { simulatorPlugin: translations });
 

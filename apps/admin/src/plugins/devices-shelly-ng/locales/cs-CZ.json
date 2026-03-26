@@ -1,0 +1,123 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutMdns": "Nastavení mDNS",
+		"aboutWebsockets": "Nastavení WebSocket",
+		"device": {
+			"deviceConnection": "Připojení zařízení",
+			"information": "Informace o zařízení",
+			"supported": "Gratulujeme! Zařízení je podporováno",
+			"notSupported": "Je nám líto, vaše zařízení není podporováno",
+			"model": "Model",
+			"firmware": "Firmware"
+		}
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interní identifikátor",
+				"placeholder": "ID zařízení"
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie zařízení",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Vyberte prosím kategorii zařízení"
+				}
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název zařízení"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zařízení"
+			},
+			"enabled": {
+				"title": "Povoleno",
+				"placeholder": "Povolit nebo zakázat zařízení"
+			},
+			"password": {
+				"title": "Heslo administrátora",
+				"placeholder": "Zadejte heslo zařízení, pokud je chráněno"
+			},
+			"hostname": {
+				"title": "Název hostitele zařízení",
+				"placeholder": "Síťový název nebo IP adresa zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název hostitele nebo IP adresu zařízení"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Vyhledávání povoleno"
+				},
+				"interface": {
+					"title": "Rozhraní",
+					"placeholder": "Síťové rozhraní k použití. Pokud není zadáno, budou použita všechna dostupná rozhraní."
+				}
+			},
+			"websockets": {
+				"requestTimeout": {
+					"title": "Časový limit požadavku",
+					"placeholder": "Čas v sekundách pro čekání na odpověď před přerušením požadavku.",
+					"validation": {
+						"required": "Vyplňte prosím časový limit požadavku",
+						"number": "Časový limit požadavku musí být číslo"
+					}
+				},
+				"pingInterval": {
+					"title": "Interval pingu",
+					"placeholder": "Interval v sekundách, ve kterém se odesílají ping požadavky pro ověření otevřeného spojení. Nastavte na 0 pro zakázání.",
+					"validation": {
+						"required": "Vyplňte prosím interval pingu",
+						"number": "Interval pingu musí být číslo"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Interval opětovného připojení",
+					"placeholder": "Interval v sekundách, ve kterém by měl být proveden pokus o připojení po uzavření socketu.",
+					"validation": {
+						"required": "Vyplňte prosím interval opětovného připojení",
+						"number": "Interval opětovného připojení musí být číslo",
+						"array": "Interval opětovného připojení musí být pole čísel"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Změny uloženy! Konfigurace pluginu Shelly Next Generation byla aktualizována.",
+			"notEdited": "Něco se pokazilo. Aktualizace konfigurace pluginu Shelly Next Generation nebyla úspěšná."
+		},
+		"devices": {
+			"exists": "Zařízení se zadaným názvem hostitele a heslem je již registrováno v systému.",
+			"created": "Nové zařízení Shelly Next-Generation bylo úspěšně přidáno.",
+			"notCreated": "Něco se pokazilo. Nepodařilo se vytvořit zařízení Shelly Next-Generation.",
+			"notChecked": "Něco se pokazilo. Nepodařilo se načíst informace o zařízení. Zkontrolujte název hostitele nebo heslo zařízení.",
+			"edited": "Změny uloženy! Zařízení Shelly Next-Generation: {device} bylo aktualizováno.",
+			"notEdited": "Něco se pokazilo. Aktualizace zařízení Shelly Next-Generation nebyla úspěšná.",
+			"failedLoadSupportedDevices": "Něco se pokazilo. Nepodařilo se načíst podporovaná zařízení pluginu."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte integraci zařízení Shelly Next Generation. Pokud je povolena, zařízení Shelly mohou být vyhledána a ovládána prostřednictvím Smart Panelu.",
+		"aboutMdns": "Nakonfigurujte, jak plugin vyhledává zařízení Shelly ve vaší lokální síti pomocí Multicast DNS (mDNS). To umožňuje automatickou detekci bez nutnosti ručního zadávání IP adres.",
+		"aboutWebsockets": "Spravujte parametry WebSocket připojení pro zařízení Shelly. Tato nastavení řídí stabilitu komunikace, zpracování požadavků a chování opětovného připojení."
+	},
+	"buttons": {
+		"next": {
+			"title": "Další"
+		}
+	}
+}

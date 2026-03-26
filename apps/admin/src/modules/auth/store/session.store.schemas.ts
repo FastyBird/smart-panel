@@ -51,6 +51,7 @@ export const SessionEditActionPayloadSchema = z.object({
 		firstName: z.string().nullable().optional(),
 		lastName: z.string().nullable().optional(),
 		email: z.string().nullable().optional(),
+		language: z.string().nullable().optional(),
 		password: z
 			.object({
 				current: z.string().trim().min(1),

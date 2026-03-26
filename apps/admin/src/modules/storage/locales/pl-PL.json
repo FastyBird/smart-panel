@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutStorage": "Konfiguracja magazynu danych"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja magazynu danych została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji magazynu danych"
+		}
+	},
+	"texts": {
+		"aboutStorage": "Skonfiguruj backend magazynu danych do przechowywania danych szeregów czasowych, takich jak historia właściwości urządzeń i analityka."
+	},
+	"fields": {
+		"config": {
+			"primaryStorage": {
+				"title": "Magazyn główny",
+				"placeholder": "Wybierz główną wtyczkę magazynu",
+				"validation": {
+					"required": "Magazyn główny jest wymagany"
+				}
+			},
+			"fallbackStorage": {
+				"title": "Magazyn zapasowy",
+				"placeholder": "Wybierz zapasową wtyczkę magazynu (opcjonalnie)"
+			},
+			"plugins": {
+				"influxV1": "InfluxDB v1",
+				"memory": "Magazyn w pamięci"
+			}
+		}
+	}
+}

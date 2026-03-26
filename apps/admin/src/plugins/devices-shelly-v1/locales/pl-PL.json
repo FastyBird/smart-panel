@@ -1,0 +1,116 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutDiscovery": "Ustawienia wykrywania",
+		"aboutTimeouts": "Ustawienia limitow czasu",
+		"device": {
+			"deviceConnection": "Polaczenie urzadzenia",
+			"information": "Informacje o urzadzeniu",
+			"supported": "Gratulacje! Urzadzenie jest obslugiwane",
+			"notSupported": "Przepraszamy, Twoje urzadzenie nie jest obslugiwane",
+			"model": "Model",
+			"firmware": "Firmware"
+		}
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID urzadzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urzadzenia",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Prosze wybrac kategorie urzadzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urzadzenia",
+				"validation": {
+					"required": "Prosze podac nazwe urzadzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urzadzenia"
+			},
+			"enabled": {
+				"title": "Wlaczony",
+				"placeholder": "Wlacz lub wylacz urzadzenie"
+			},
+			"password": {
+				"title": "Haslo administratora",
+				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
+			},
+			"hostname": {
+				"title": "Nazwa hosta urzadzenia",
+				"placeholder": "Nazwa sieciowa lub adres IP urzadzenia",
+				"validation": {
+					"required": "Prosze podac nazwe hosta lub adres IP urzadzenia"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Wlaczony"
+			},
+			"discovery": {
+				"enabled": {
+					"title": "Wykrywanie wlaczone"
+				},
+				"interface": {
+					"title": "Interfejs",
+					"placeholder": "Interfejs sieciowy do uzycia. Jesli nie podano, wszystkie dostepne interfejsy zostana uzyte."
+				}
+			},
+			"timeouts": {
+				"requestTimeout": {
+					"title": "Limit czasu zadania",
+					"placeholder": "Czas w sekundach oczekiwania na odpowiedz przed przerwaniem zadania.",
+					"validation": {
+						"required": "Prosze podac limit czasu zadania",
+						"number": "Limit czasu zadania musi byc dodatnia liczba calkowita"
+					}
+				},
+				"staleTimeout": {
+					"title": "Limit czasu przestarzalosci",
+					"placeholder": "Czas w sekundach, po jakim urzadzenie jest uznawane za offline, jesli nie otrzymano aktualizacji stanu.",
+					"validation": {
+						"required": "Prosze podac limit czasu przestarzalosci",
+						"number": "Limit czasu przestarzalosci musi byc dodatnia liczba calkowita"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Shelly Gen 1 zostala zaktualizowana.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja konfiguracji wtyczki Shelly Gen 1 nie powiodla sie."
+		},
+		"devices": {
+			"exists": "Urzadzenie z podana nazwa hosta i haslem jest juz zarejestrowane w systemie.",
+			"created": "Nowe urzadzenie Shelly Gen 1 zostalo pomyslnie dodane.",
+			"notCreated": "Cos poszlo nie tak. Nie udalo sie utworzyc urzadzenia Shelly Gen 1.",
+			"notChecked": "Cos poszlo nie tak. Informacje o urzadzeniu nie mogly zostac zaladowane. Sprawdz nazwe hosta lub haslo urzadzenia.",
+			"notReachable": "Urzadzenie jest nieosiagalne. Sprawdz nazwe hosta lub adres IP.",
+			"invalidPassword": "Nieprawidlowe haslo. Sprawdz haslo urzadzenia.",
+			"edited": "Zmiany zapisane! Urzadzenie Shelly Gen 1: {device} zostalo zaktualizowane.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja urzadzenia Shelly Gen 1 nie powiodla sie.",
+			"failedLoadSupportedDevices": "Cos poszlo nie tak. Obslugiwane urzadzenia wtyczki nie mogly zostac zaladowane."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Wlacz lub wylacz integracje urzadzen Shelly Gen 1. Po wlaczeniu urzadzenia Shelly moga byc wykrywane i sterowane przez Smart Panel.",
+		"aboutDiscovery": "Skonfiguruj, jak wtyczka wykrywa urzadzenia Shelly Gen 1 w sieci lokalnej za pomoca Multicast DNS (mDNS).",
+		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1."
+	},
+	"buttons": {
+		"next": {
+			"title": "Dalej"
+		}
+	}
+}

@@ -1,0 +1,930 @@
+{
+  "menu": {
+    "title": "Zařízení"
+  },
+  "meta": {
+    "devices": {
+      "list": {
+        "title": "Seznam zařízení"
+      },
+      "edit": {
+        "title": "Upravit zařízení: {device}"
+      },
+      "add": {
+        "title": "Přidat zařízení"
+      },
+      "detail": {
+        "title": "Zařízení: {device}"
+      },
+      "control": {
+        "title": "Ovládání zařízení: {device}"
+      }
+    },
+    "channels": {
+      "list": {
+        "title": "Seznam kanálů"
+      },
+      "edit": {
+        "title": "Upravit kanál: {channel}"
+      },
+      "add": {
+        "title": "Přidat kanál"
+      },
+      "detail": {
+        "title": "Kanál: {channel}"
+      }
+    },
+    "channelsProperties": {
+      "edit": {
+        "title": "Upravit vlastnost kanálu: {property}"
+      },
+      "add": {
+        "title": "Přidat vlastnost kanálu"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "devices": {
+      "list": "zařízení",
+      "add": "přidat zařízení",
+      "edit": "upravit zařízení",
+      "detail": "zařízení: {device}",
+      "control": "ovládání: {device}"
+    },
+    "channels": {
+      "list": "kanály",
+      "add": "přidat kanál",
+      "edit": "upravit kanál",
+      "detail": "kanál: {channel}"
+    },
+    "channelsProperties": {
+      "add": "přidat vlastnost kanálu",
+      "edit": "upravit vlastnost kanálu"
+    }
+  },
+  "headings": {
+    "devices": {
+      "list": "Zařízení",
+      "add": "Přidat zařízení",
+      "edit": "Upravit zařízení",
+      "detail": "Zařízení: {device}",
+      "control": "Ovládání: {device}",
+      "remove": "Odebrat zařízení?",
+      "bulkRemove": "Odebrat zařízení?",
+      "bulkEnable": "Povolit zařízení?",
+      "bulkDisable": "Zakázat zařízení?",
+      "adjustFilters": "Filtrovat zařízení",
+      "selectPlugin": "Vyžadován plugin zařízení"
+    },
+    "channels": {
+      "list": "Kanály",
+      "add": "Přidat kanál",
+      "edit": "Upravit kanál",
+      "detail": "Kanál: {channel}",
+      "remove": "Odebrat kanál?",
+      "adjustFilters": "Filtrovat kanály",
+      "selectPlugin": "Vyžadován plugin kanálu"
+    },
+    "channelsProperties": {
+      "add": "Přidat vlastnost kanálu",
+      "edit": "Upravit vlastnost kanálu",
+      "remove": "Odebrat vlastnost kanálu?",
+      "adjustFilters": "Filtrovat vlastnosti"
+    },
+    "misc": {
+      "discard": "Zahodit změny?"
+    }
+  },
+  "subHeadings": {
+    "devices": {
+      "list": "Správa zařízení Smart panelu",
+      "add": "Přidat nové zařízení Smart panelu",
+      "edit": "Upravit zařízení Smart panelu",
+      "detail": "Správa zařízení Smart panelu",
+      "control": "Ovládání zařízení Smart panelu",
+      "adjustFilters": "Upravit filtry zobrazení"
+    },
+    "channels": {
+      "list": "Správa kanálů zařízení Smart panelu",
+      "add": "Přidat nový kanál zařízení Smart panelu",
+      "edit": "Upravit kanál zařízení Smart panelu",
+      "detail": "Správa kanálu zařízení Smart panelu",
+      "adjustFilters": "Upravit filtry zobrazení"
+    },
+    "channelsProperties": {
+      "add": "Přidat novou vlastnost kanálu Smart panelu",
+      "edit": "Upravit vlastnost kanálu Smart panelu",
+      "adjustFilters": "Upravit filtry zobrazení"
+    }
+  },
+  "messages": {
+    "devices": {
+      "notFound": "Zařízení, které hledáte, neexistuje nebo bylo odebráno.",
+      "created": "Nové zařízení bylo úspěšně přidáno.",
+      "notCreated": "Něco se pokazilo. Zařízení se nepodařilo vytvořit.",
+      "edited": "Změny uloženy! Zařízení: {device} bylo aktualizováno.",
+      "notEdited": "Něco se pokazilo. Aktualizace zařízení nebyla úspěšná.",
+      "removed": "Zařízení: {device} bylo úspěšně odebráno.",
+      "removeCanceled": "Odebrání zařízení: {device} bylo zrušeno.",
+      "notRemoved": "Něco se pokazilo a zařízení: {device} nebylo odebráno.",
+      "deletedWhileEditing": "Toto zařízení bylo smazáno a již není dostupné.",
+      "bulkRemoved": "{count} zařízení bylo úspěšně odebráno.",
+      "bulkRemoveFailed": "Nepodařilo se odebrat {count} zařízení.",
+      "bulkRemoveCanceled": "Hromadné odebrání zařízení bylo zrušeno.",
+      "bulkEnabled": "{count} zařízení bylo úspěšně povoleno.",
+      "bulkEnableFailed": "Nepodařilo se povolit {count} zařízení.",
+      "bulkEnableCanceled": "Hromadné povolení zařízení bylo zrušeno.",
+      "bulkDisabled": "{count} zařízení bylo úspěšně zakázáno.",
+      "bulkDisableFailed": "Nepodařilo se zakázat {count} zařízení.",
+      "bulkDisableCanceled": "Hromadné zakázání zařízení bylo zrušeno.",
+      "notLoaded": "Nepodařilo se načíst zařízení. Zkuste to prosím později."
+    },
+    "channels": {
+      "notFound": "Kanál, který hledáte, neexistuje nebo byl odebrán.",
+      "notLoaded": "Nepodařilo se načíst kanál. Zkuste to prosím později.",
+      "notLoadedForDevice": "Nepodařilo se načíst kanály pro toto zařízení.",
+      "created": "Nový kanál byl úspěšně přidán.",
+      "notCreated": "Něco se pokazilo. Kanál se nepodařilo vytvořit.",
+      "edited": "Změny uloženy! Kanál: {channel} byl aktualizován.",
+      "notEdited": "Něco se pokazilo. Aktualizace kanálu nebyla úspěšná.",
+      "removed": "Kanál: {channel} byl úspěšně odebrán.",
+      "removeCanceled": "Odebrání kanálu: {channel} bylo zrušeno.",
+      "notRemoved": "Něco se pokazilo a kanál: {channel} nebyl odebrán.",
+      "noMoreAllowed": "Všechny povinné a volitelné kanály jsou přiřazeny k zařízení. Žádné další nelze přidat.",
+      "deletedWhileEditing": "Tento kanál byl smazán a již není dostupný."
+    },
+    "channelsProperties": {
+      "notFound": "Vlastnost kanálu, kterou hledáte, neexistuje nebo byla odebrána.",
+      "notLoadedForChannel": "Nepodařilo se načíst vlastnosti pro tento kanál.",
+      "created": "Nová vlastnost kanálu byla úspěšně přidána.",
+      "notCreated": "Něco se pokazilo. Vlastnost kanálu se nepodařilo vytvořit.",
+      "edited": "Změny uloženy! Vlastnost kanálu: {property} byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace vlastnosti kanálu nebyla úspěšná.",
+      "removed": "Vlastnost kanálu: {property} byla úspěšně odebrána.",
+      "removeCanceled": "Odebrání vlastnosti kanálu: {property} bylo zrušeno.",
+      "notRemoved": "Něco se pokazilo a vlastnost kanálu: {property} nebyla odebrána.",
+      "noMoreAllowed": "Všechny povinné a volitelné vlastnosti jsou přiřazeny ke kanálu. Žádné další nelze přidat.",
+      "deletedWhileEditing": "Tato vlastnost kanálu byla smazána a již není dostupná."
+    },
+    "misc": {
+      "requestError": "Něco se pokazilo, zkuste to prosím později."
+    }
+  },
+  "texts": {
+    "devices": {
+      "noDevices": "Nemáte nakonfigurované žádné zařízení",
+      "noFilteredDevices": "Nebyly nalezeny žádné zařízení odpovídající aktivním kritériím filtru",
+      "loadingDevices": "Načítání zařízení...",
+      "loadingDevice": "Načítání zařízení...",
+      "confirmRemove": "Opravdu chcete odebrat zařízení: {device}? Tuto akci nelze vrátit zpět.",
+      "confirmBulkRemove": "Opravdu chcete odebrat {count} zařízení? Tuto akci nelze vrátit zpět.",
+      "confirmBulkEnable": "Opravdu chcete povolit {count} zařízení?",
+      "confirmBulkDisable": "Opravdu chcete zakázat {count} zařízení?",
+      "description": {
+        "generic": "",
+        "air_conditioner": "Zařízení Klimatizace představuje chladicí systém s doplňkovými funkcemi pro monitorování prostředí a správu energie.",
+        "air_dehumidifier": "Zařízení Odvlhčovač vzduchu představuje systém určený ke snižování vlhkosti v prostředí s doplňkovými možnostmi monitorování a ovládání.",
+        "air_humidifier": "Zařízení Zvlhčovač vzduchu představuje systém určený ke zvyšování vlhkosti v prostředí s doplňkovými možnostmi monitorování a ovládání.",
+        "air_purifier": "Zařízení Čistička vzduchu představuje systém určený ke zlepšování kvality vnitřního vzduchu odstraňováním znečišťujících látek a monitorováním podmínek prostředí.",
+        "alarm": "",
+        "av_receiver": "Zařízení AV přijímač představuje receiver/zesilovač domácího kina s přepínáním vstupů a ovládáním reproduktorových výstupů.",
+        "camera": "Zařízení Kamera představuje sledovací nebo monitorovací systém určený pro zachycování videa a obrazu s doplňkovými funkcemi pro monitorování prostředí a interakci.",
+        "doorbell": "Zařízení Zvonek představuje chytrý zvonkový systém poskytující video, zvuk a doplňkové monitorovací funkce pro zvýšenou bezpečnost domácnosti.",
+        "door": "Zařízení Dveře představuje automatizované nebo monitorované dveře, jako jsou garážová vrata, vstupní dveře nebo jiné typy dveří, s doplňkovými funkcemi pro zabezpečení a sledování prostředí.",
+        "fan": "Zařízení Ventilátor představuje samostatný nebo integrovaný ventilátorový systém s funkcemi pro ovládání rychlosti, nastavení směru a monitorování energie.",
+        "game_console": "Zařízení Herní konzole představuje herní konzoli, kterou lze ovládat z hlediska základního stavu napájení/aktivity a přehrávání médií, pokud je podporováno.",
+        "heating_unit": "Zařízení Topná jednotka představuje prostorový nebo pokojový topný systém určený k ovládání a monitorování teploty prostředí s volitelnými funkcemi pro správu energie a vlhkosti.",
+        "lighting": "Zařízení Osvětlení představuje osvětlovací systém určený k poskytování iluminace s volitelnými funkcemi pro sledování energie, ovládání jasu a adaptivní osvětlení na základě okolních podmínek.",
+        "lock": "Zařízení Zámek představuje elektronický nebo chytrý zamykací systém poskytující ovládání a monitorování přístupových bodů, jako jsou dveře nebo brány.",
+        "media": "Zařízení Média představuje multimediální systém schopný přehrávat, nahrávat nebo spravovat audio a video obsah.",
+        "outlet": "Zařízení Zásuvka představuje elektrickou zásuvku s pokročilými funkcemi monitorování a ovládání, umožňující vzdálené ovládání a sledování energie. Podporuje jednu nebo více zásuvek pro flexibilní správu napájení.",
+        "projector": "Zařízení Projektor představuje projekční displej, který lze zapínat/vypínat a přepínat mezi vstupními zdroji.",
+        "pump": "Zařízení Čerpadlo představuje vodní nebo kapalinové čerpadlo s funkcemi pro ovládání průtoku, monitorování a sledování energie.",
+        "robot_vacuum": "Zařízení Robotický vysavač představuje autonomní čisticí zařízení se schopnostmi sledování energie a monitorování provozu.",
+        "sensor": "Zařízení Senzor představuje univerzální monitorovací jednotku schopnou sledovat různé parametry prostředí a bezpečnosti.",
+        "set_top_box": "Zařízení Set-top box představuje mediální zařízení připojené k TV (streamovací box, IPTV box nebo HDMI stick) poskytující ovládání přehrávání a volitelný výběr zdroje.",
+        "speaker": "Zařízení Reproduktor představuje zvukový výstupní systém schopný produkovat zvuk a potenciálně podporující přehrávání médií a vstupní funkce.",
+        "sprinkler": "Zařízení Zavlažovač představuje zavlažovací systém určený k ovládání průtoku vody a monitorování podmínek prostředí pro optimalizaci zalévání.",
+        "streaming_service": "Zařízení Streamovací služba představuje cloudový přehrávač médií (např. Spotify), který poskytuje ovládání přehrávání a metadata bez fyzického stavu napájení.",
+        "switcher": "Zařízení Spínač představuje ovladatelnou zásuvku nebo spínač, který může přepínat napájení připojených zařízení a monitorovat spotřebu energie. Podporuje více zásuvek pro ovládání napájení.",
+        "television": "Zařízení Televize představuje chytrou TV nebo podobné mediální zařízení, které lze ovládat a monitorovat z hlediska zvukové a zobrazovací funkcionality.",
+        "thermostat": "Zařízení Termostat představuje systém řízení klimatu, který monitoruje a upravuje teplotu a související parametry prostředí.",
+        "valve": "Zařízení Ventil představuje ovladatelný ventil používaný pro řízení průtoku kapalin nebo plynů v různých systémech.",
+        "water_heater": "Zařízení Ohřívač vody představuje systém ohřevu vody určený k zahřívání a udržování teploty vody s volitelnými funkcemi pro monitorování energie a detekci úniku.",
+        "window_covering": "Zařízení Okenní krytina představuje automatizované okenní prvky, jako jsou žaluzie, rolety nebo záclony."
+      },
+      "selectPlugin": "Pro vytvoření nového zařízení vyberte prosím kompatibilní plugin ze seznamu. Pluginy poskytují potřebné konfigurační možnosti pro konkrétní typ zařízení.",
+      "noChannels": "Toto zařízení zatím nemá žádné kanály. Kanály definují vstupy nebo výstupy zařízení. Vytvořte nový kanál pro zahájení interakce s tímto zařízením.",
+      "category": "Kategorie",
+      "channelsCount": "Žádné kanály nakonfigurovány | Jeden kanál nakonfigurován | {count} kanálů nakonfigurováno",
+      "alertsCount": "Žádné výstrahy detekovány | Jedna výstraha detekována | {count} výstrah detekováno",
+      "channels": "Kanály",
+      "alerts": "Výstrahy",
+      "status": "Stav",
+      "validation": "Validace",
+      "noControllableProperties": "Toto zařízení nemá žádné ovladatelné vlastnosti. Vlastnosti musí mít oprávnění pro čtení a zápis nebo pouze pro zápis, aby je bylo možné ovládat.",
+      "logs": {
+        "title": "Protokoly zařízení",
+        "noLogs": "Žádné protokoly nejsou k dispozici",
+        "noLogsDescription": "Pro toto zařízení zatím nebyly zaznamenány žádné protokoly",
+        "noMessage": "(žádná zpráva)",
+        "noMoreEntries": "Žádné další záznamy protokolu"
+      }
+    },
+    "channels": {
+      "noChannels": "Nemáte nakonfigurovaný žádný kanál zařízení",
+      "noFilteredChannels": "Nebyly nalezeny žádné kanály odpovídající aktivním kritériím filtru",
+      "loadingChannels": "Načítání kanálů...",
+      "loadingChannel": "Načítání kanálu...",
+      "confirmRemove": "Opravdu chcete odebrat kanál: {channel}? Tuto akci nelze vrátit zpět.",
+      "description": {
+        "generic": "",
+        "air_particulate": "Monitoruje koncentraci pevných částic (např. PM2.5 a PM10) ve vzduchu a poskytuje přehled o kvalitě ovzduší a úrovni znečištění.",
+        "air_quality": "Monitoruje celkovou kvalitu vzduchu pomocí indexu (0-500) nebo ukazatele úrovně a poskytuje zjednodušené hodnocení vnitřních podmínek ovzduší.",
+        "alarm": "",
+        "battery": "Hlásí stav baterie zařízení včetně úrovně nabití, stavu nabíjení a provozního stavu.",
+        "camera": "Poskytuje video a obrazové datové proudy ze sledovacích nebo monitorovacích kamer. Tento kanál podporuje konfiguraci a ovládání kamerových zařízení, jako jsou bezpečnostní kamery nebo chůvičky.",
+        "carbon_dioxide": "Monitoruje hladiny CO₂ v prostředí pro sledování kvality vzduchu a účinnosti větrání.",
+        "carbon_monoxide": "Detekuje přítomnost oxidu uhelnatého (CO) pro zajištění bezpečnosti v uzavřených prostorech.",
+        "contact": "Sleduje otevřený nebo zavřený stav kontaktního bodu, jako jsou dveře, okno nebo skříňka.",
+        "cooler": "Ovládá zařízení, která snižují teplotu vzduchu nebo kapalin, jako jsou klimatizace nebo chladicí systémy.",
+        "dehumidifier": "Ovládá odvlhčovací zařízení a řídí snižování vlhkosti s funkcemi jako cílová vlhkost, provozní režimy a monitorování zásobníku vody.",
+        "device_information": "Tento kanál poskytuje metadata o zařízení včetně údajů o výrobci, informací o modelu a provozních stavech.",
+        "doorbell": "Představuje chytré zvonky a poskytuje funkce jako detekce stisku tlačítka a volitelná integrace kamery.",
+        "door": "Spravuje stavy otevření/zavření dveří včetně garážových vrat a vstupních dveří.",
+        "electrical_energy": "Měří kumulativní spotřebu energie v čase v kilowatthodinách (kWh).",
+        "electrical_generation": "Hlásí produkci energie z fotovoltaických (PV) nebo jiných zdrojů a sleduje kumulativní vyrobenou energii v kWh.",
+        "electrical_power": "Hlásí okamžité výkonové metriky jako napětí, proud, výkon a frekvenci pro monitorování a diagnostiku v reálném čase.",
+        "fan": "Ovládá ventilátorová zařízení včetně rychlosti, oscilace a režimů pro cirkulaci vzduchu.",
+        "filter": "Monitoruje stav a zbývající životnost vzduchových nebo vodních filtrů a indikuje potřebu výměny.",
+        "flow": "Monitoruje průtok kapalin nebo vzduchu, obvykle měřený v kubických metrech za hodinu (m³/h).",
+        "gas": "Detekuje přítomnost zemního plynu nebo jiných hořlavých plynů pro zajištění bezpečnosti v uzavřených prostorech.",
+        "heater": "Spravuje topná zařízení a umožňuje ovládání nastavení teploty a režimů.",
+        "humidifier": "Ovládá zvlhčovací zařízení a řídí zvyšování vlhkosti s funkcemi jako cílová vlhkost, ovládání úrovně mlhy a monitorování zásobníku vody.",
+        "humidity": "Měří relativní vlhkost v prostředí vyjádřenou v procentech.",
+        "illuminance": "Detekuje úrovně okolního osvětlení, obvykle měřené v luxech, pro monitorování jasu v prostoru.",
+        "leak": "Identifikuje přítomnost vody nebo jiných kapalin pro detekci úniků a prevenci škod.",
+        "light": "Ovládá osvětlovací zařízení s podporou jasu, teploty barev a nastavení barev.",
+        "lock": "Spravuje stav zamčení/odemčení fyzických zámků pro dveře, trezory nebo jiné zabezpečené oblasti.",
+        "media_input": "Spravuje vstupní zdroje multimediálních zařízení jako televizory, projektory nebo audio přijímače.",
+        "media_playback": "Poskytuje ovládání přehrávání pro multimediální zařízení, bez ovládání hlasitosti (to je řešeno kanály Reproduktor a Mikrofon).",
+        "microphone": "Představuje zvukové vstupní zařízení, hlásí aktivitu nebo zachycuje zvuk.",
+        "motion": "Detekuje pohyb v oblasti pro spuštění výstrah nebo automatizaci reakcí.",
+        "nitrogen_dioxide": "Monitoruje koncentraci NO₂ ve vzduchu, často používaný v environmentálním a průmyslovém monitorování.",
+        "occupancy": "Detekuje přítomnost osob v prostoru pro automatizaci nebo účely energetické účinnosti.",
+        "outlet": "Ovládá a monitoruje elektrické zásuvky.",
+        "ozone": "Měří hladiny ozónu (O₃) ve vzduchu, často používaný při hodnocení kvality životního prostředí.",
+        "pressure": "Hlásí hodnoty atmosférického nebo kapalinového tlaku, obvykle měřené v pascalech (kPa).",
+        "robot_vacuum": "Ovládá robotické vysavače a poskytuje příkazy pro spuštění, zastavení, dokování a monitorování stavů.",
+        "smoke": "Detekuje kouř v prostředí a spouští alarmy nebo výstrahy pro bezpečnost.",
+        "speaker": "Ovládá reproduktorová zařízení včetně hlasitosti, stavu ztlumení a režimů zvukového výstupu.",
+        "sulphur_dioxide": "Měří hladiny oxidu siřičitého (SO₂) ve vzduchu pro environmentální monitorování.",
+        "switcher": "Představuje binární spínače pro ovládání zařízení jako světla, ventilátory nebo spotřebiče.",
+        "television": "Poskytuje ovládání televizorů včetně vstupního zdroje, jasu a stavu napájení.",
+        "projector": "Poskytuje ovládání projektorů včetně napájení, vstupního zdroje, jasu a dálkových tlačítek.",
+        "temperature": "Měří aktuální teplotu v prostředí vyjádřenou ve stupních Celsia.",
+        "thermostat": "Spravuje systémy řízení klimatu a umožňuje nastavení topení, chlazení a ventilátoru.",
+        "valve": "Ovládá ventily pro kapaliny nebo plyny a řídí stavy otevření/zavření nebo průtok.",
+        "volatile_organic_compounds": "Monitoruje koncentraci těkavých organických sloučenin (VOC) ve vzduchu pro sledování znečištění nebo kvality vzduchu.",
+        "window_covering": "Ovládá okenní krytiny jako žaluzie, záclony a rolety včetně nastavení polohy a náklonu."
+      },
+      "selectPlugin": "Pro vytvoření nového kanálu vyberte prosím kompatibilní plugin ze seznamu. Pluginy poskytují potřebné konfigurační možnosti pro konkrétní typ kanálu."
+    },
+    "channelsProperties": {
+      "noProperties": "Nemáte nakonfigurovanou žádnou vlastnost kanálu",
+      "noFilteredProperties": "Nebyly nalezeny žádné vlastnosti kanálů odpovídající aktivním kritériím filtru",
+      "loadingProperties": "Načítání vlastností kanálů...",
+      "loadingProperty": "Načítání vlastnosti kanálu...",
+      "loadingChannels": "Načítání kanálů...",
+      "loadingChannel": "Načítání kanálu...",
+      "confirmRemove": "Opravdu chcete odebrat vlastnost kanálu: {property}? Tuto akci nelze vrátit zpět.",
+      "dataTypes": {
+        "char": "8bitové celé číslo se znaménkem (-128 až 127).",
+        "uchar": "8bitové celé číslo bez znaménka (0 až 255).",
+        "short": "16bitové celé číslo se znaménkem (-32 768 až 32 767).",
+        "ushort": "16bitové celé číslo bez znaménka (0 až 65 535).",
+        "int": "32bitové celé číslo se znaménkem (-2 147 483 648 až 2 147 483 647).",
+        "uint": "32bitové celé číslo bez znaménka (0 až 4 294 967 295).",
+        "float": "Číslo s plovoucí desetinnou čárkou (např. 3,14, -0,001).",
+        "bool": "Logická hodnota: pravda nebo nepravda.",
+        "string": "Sekvence znaků (např. \"hello\").",
+        "enum": "Výčtová hodnota vybraná z předdefinované množiny.",
+        "unknown": "Neznámý nebo nespecifikovaný datový typ."
+      },
+      "editValue": "Ruční změna této hodnoty je povolena, ale může být automaticky přepsána, pokud je tato vlastnost mapována na zařízení. Používejte s opatrností."
+    },
+    "misc": {
+      "notSet": "Nenastaveno",
+      "noValuesProvided": "Žádné hodnoty nebyly zadány",
+      "confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+    }
+  },
+  "fields": {
+    "devices": {
+      "search": {
+        "placeholder": "Hledat zařízení..."
+      },
+      "plugin": {
+        "title": "Plugin zařízení",
+        "placeholder": "Vyberte plugin zařízení"
+      },
+      "state": {
+        "title": "Stav",
+        "placeholder": "Vyberte stav"
+      },
+      "id": {
+        "title": "Interní identifikátor",
+        "placeholder": "ID zařízení"
+      },
+      "identifier": {
+        "title": "Systémový identifikátor",
+        "placeholder": "Systémový identifikátor zařízení"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Kategorie zařízení",
+        "description": "O kategorii",
+        "validation": {
+          "required": "Vyberte prosím kategorii zařízení"
+        }
+      },
+      "name": {
+        "title": "Název",
+        "placeholder": "Název zařízení",
+        "validation": {
+          "required": "Vyplňte prosím název zařízení"
+        }
+      },
+      "description": {
+        "title": "Popis",
+        "placeholder": "Popis zařízení"
+      },
+      "enabled": {
+        "title": "Povoleno",
+        "placeholder": "Povolit nebo zakázat zařízení"
+      },
+      "room": {
+        "title": "Místnost",
+        "placeholder": "Vyberte místnost (volitelné)",
+        "hint": "Přiřaďte toto zařízení k fyzické místnosti"
+      },
+      "zones": {
+        "title": "Zóny",
+        "placeholder": "Vyberte zóny (volitelné)",
+        "hint": "Přiřaďte toto zařízení k logickým zónám (např. Zabezpečení, Venkovní). Členství v zóně patra je odvozeno z přiřazení místnosti."
+      },
+      "validation": {
+        "title": "Validace"
+      }
+    },
+    "channels": {
+      "search": {
+        "placeholder": "Hledat kanály..."
+      },
+      "plugin": {
+        "title": "Plugin kanálu",
+        "placeholder": "Vyberte plugin kanálu"
+      },
+      "device": {
+        "title": "Zařízení",
+        "placeholder": "Zařízení kanálu",
+        "description": "O zařízení",
+        "validation": {
+          "required": "Vyberte prosím zařízení kanálu"
+        }
+      },
+      "id": {
+        "title": "Interní identifikátor",
+        "placeholder": "ID kanálu"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Kategorie kanálu",
+        "description": "O kategorii",
+        "validation": {
+          "required": "Vyberte prosím kategorii kanálu"
+        }
+      },
+      "name": {
+        "title": "Název",
+        "placeholder": "Název kanálu",
+        "validation": {
+          "required": "Vyplňte prosím název kanálu"
+        }
+      },
+      "description": {
+        "title": "Popis",
+        "placeholder": "Popis kanálu"
+      }
+    },
+    "channelsProperties": {
+      "search": {
+        "placeholder": "Hledat vlastnosti..."
+      },
+      "channel": {
+        "title": "Kanál",
+        "placeholder": "Kanál vlastnosti kanálu",
+        "description": "O kanálu",
+        "validation": {
+          "required": "Vyberte prosím kanál vlastnosti kanálu"
+        }
+      },
+      "id": {
+        "title": "Interní identifikátor",
+        "placeholder": "ID vlastnosti kanálu"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Kategorie vlastnosti kanálu",
+        "description": "O kategorii",
+        "validation": {
+          "required": "Vyberte prosím kategorii vlastnosti kanálu"
+        }
+      },
+      "name": {
+        "title": "Název",
+        "placeholder": "Název vlastnosti kanálu"
+      },
+      "permissions": {
+        "title": "Oprávnění",
+        "placeholder": "Oprávnění pro čtení a zápis vlastnosti kanálu",
+        "validation": {
+          "required": "Vyberte prosím oprávnění vlastnosti kanálu"
+        }
+      },
+      "dataType": {
+        "title": "Datový typ",
+        "placeholder": "Datový typ hodnoty vlastnosti kanálu",
+        "validation": {
+          "required": "Vyberte prosím datový typ vlastnosti kanálu"
+        }
+      },
+      "unit": {
+        "title": "Jednotka",
+        "placeholder": "Jednotka vlastnosti kanálu"
+      },
+      "format": {
+        "title": {
+          "enum": "Povolené hodnoty",
+          "min": "Minimální hodnota",
+          "max": "Maximální hodnota"
+        },
+        "placeholder": {
+          "enum": "Seznam povolených hodnot",
+          "min": "Minimální povolená hodnota",
+          "max": "Maximální povolená hodnota"
+        },
+        "validation": {
+          "required": {
+            "enum": "Vyplňte prosím seznam povolených hodnot vlastnosti kanálu"
+          }
+        }
+      },
+      "invalid": {
+        "title": "Neplatná hodnota",
+        "placeholder": "Neplatná hodnota vlastnosti kanálu"
+      },
+      "step": {
+        "title": "Hodnota kroku",
+        "placeholder": "Hodnota kroku vlastnosti kanálu"
+      },
+      "enterValue": {
+        "title": "Zadejte hodnotu"
+      },
+      "value": {
+        "title": "Hodnota",
+        "placeholder": "Aktuální hodnota vlastnosti kanálu"
+      }
+    }
+  },
+  "table": {
+    "devices": {
+      "columns": {
+        "name": {
+          "title": "Název"
+        },
+        "type": {
+          "title": "Typ"
+        },
+        "state": {
+          "title": "Stav"
+        },
+        "category": {
+          "title": "Kategorie"
+        },
+        "enabled": {
+          "title": "Povoleno",
+          "values": {
+            "enabled": "Povoleno",
+            "disabled": "Zakázáno"
+          }
+        },
+        "validation": {
+          "title": "Validace"
+        }
+      }
+    },
+    "channels": {
+      "columns": {
+        "name": {
+          "title": "Název"
+        },
+        "device": {
+          "title": "Zařízení"
+        },
+        "category": {
+          "title": "Kategorie"
+        }
+      }
+    },
+    "channelsProperties": {
+      "columns": {
+        "name": {
+          "title": "Název"
+        },
+        "channel": {
+          "title": "Kanál"
+        },
+        "category": {
+          "title": "Kategorie"
+        },
+        "permissions": {
+          "title": "Oprávnění"
+        },
+        "dataType": {
+          "title": "Datový typ",
+          "type": {
+            "enum": "Informace o výčtové hodnotě",
+            "numeric": "Informace o číselné hodnotě"
+          }
+        },
+        "value": {
+          "title": "Hodnota"
+        }
+      }
+    }
+  },
+  "filters": {
+    "devices": {
+      "types": {
+        "title": "Filtrovat podle typu zařízení"
+      },
+      "states": {
+        "title": "Filtrovat podle stavu připojení"
+      },
+      "enabled": {
+        "title": "Filtrovat podle stavu zařízení",
+        "placeholder": "Vyberte stav zařízení",
+        "values": {
+          "enabled": "Povoleno",
+          "disabled": "Zakázáno",
+          "all": "Vše"
+        }
+      },
+      "category": {
+        "title": "Filtrovat podle kategorie zařízení",
+        "placeholder": "Vyberte jednu nebo více"
+      },
+      "validation": {
+        "title": "Filtrovat podle stavu validace"
+      }
+    },
+    "channels": {
+      "category": {
+        "title": "Filtrovat podle kategorie kanálu",
+        "placeholder": "Vyberte jednu nebo více"
+      }
+    },
+    "channelsProperties": {
+      "category": {
+        "title": "Filtrovat podle kategorie vlastnosti",
+        "placeholder": "Vyberte jednu nebo více"
+      },
+      "dataType": {
+        "title": "Filtrovat podle datového typu vlastnosti"
+      },
+      "permission": {
+        "title": "Filtrovat podle oprávnění vlastnosti"
+      }
+    }
+  },
+  "buttons": {
+    "add": {
+      "title": "Přidat"
+    },
+    "edit": {
+      "title": "Upravit"
+    },
+    "detail": {
+      "title": "Detail"
+    },
+    "discard": {
+      "title": "Zahodit"
+    },
+    "cancel": {
+      "title": "Zrušit"
+    },
+    "close": {
+      "title": "Zavřít"
+    },
+    "save": {
+      "title": "Uložit"
+    },
+    "change": {
+      "title": "Změnit"
+    },
+    "remove": {
+      "title": "Odebrat"
+    },
+    "resetFilters": {
+      "title": "Resetovat filtry"
+    },
+    "yes": {
+      "title": "Ano"
+    },
+    "no": {
+      "title": "Ne"
+    },
+    "reset": {
+      "title": "Resetovat"
+    },
+    "addChannel": {
+      "title": "Přidat kanál"
+    },
+    "addProperty": {
+      "title": "Přidat vlastnost"
+    },
+    "control": {
+      "title": "Ovládat"
+    },
+    "refresh": {
+      "title": "Obnovit"
+    },
+    "loadMore": {
+      "title": "Načíst více"
+    },
+    "viewLogs": {
+      "title": "Zobrazit protokoly"
+    },
+    "back": {
+      "title": "Zpět"
+    }
+  },
+  "labels": {
+    "live": "Živě"
+  },
+  "states": {
+    "online": "Online",
+    "offline": "Offline",
+    "all": "Vše",
+    "connected": "Připojeno",
+    "disconnected": "Odpojeno",
+    "init": "Inicializováno",
+    "ready": "Připraveno",
+    "running": "Běží",
+    "sleeping": "Spí",
+    "stopped": "Zastaveno",
+    "lost": "Ztraceno",
+    "alert": "Výstraha",
+    "unknown": "Neznámý"
+  },
+  "permissions": {
+    "ro": "Pouze pro čtení",
+    "rw": "Čtení a zápis",
+    "wo": "Pouze pro zápis",
+    "ev": "Událost"
+  },
+  "dataTypes": {
+    "char": "Char",
+    "uchar": "Unsigned char",
+    "short": "Short integer",
+    "ushort": "Unsigned short integer",
+    "int": "Integer",
+    "uint": "Unsigned integer",
+    "float": "Float",
+    "bool": "Boolean",
+    "string": "String",
+    "enum": "Enum",
+    "unknown": "Neznámý"
+  },
+  "categories": {
+    "devices": {
+      "generic": "Obecné",
+      "air_conditioner": "Klimatizace",
+      "air_dehumidifier": "Odvlhčovač vzduchu",
+      "air_humidifier": "Zvlhčovač vzduchu",
+      "air_purifier": "Čistička vzduchu",
+      "alarm": "Alarm",
+      "av_receiver": "AV přijímač",
+      "camera": "Kamera",
+      "door": "Dveře",
+      "doorbell": "Zvonek",
+      "fan": "Ventilátor",
+      "game_console": "Herní konzole",
+      "heating_unit": "Topná jednotka",
+      "lighting": "Osvětlení",
+      "lock": "Zámek",
+      "media": "Média",
+      "outlet": "Zásuvka",
+      "projector": "Projektor",
+      "pump": "Čerpadlo",
+      "robot_vacuum": "Robotický vysavač",
+      "sensor": "Senzor",
+      "set_top_box": "Set-top box",
+      "speaker": "Reproduktor",
+      "sprinkler": "Zavlažovač",
+      "streaming_service": "Streamovací služba",
+      "switcher": "Spínač",
+      "television": "Televize",
+      "thermostat": "Termostat",
+      "valve": "Ventil",
+      "water_heater": "Ohřívač vody",
+      "window_covering": "Okenní krytina"
+    },
+    "channels": {
+      "generic": "Obecný",
+      "air_particulate": "Pevné částice ve vzduchu",
+      "air_quality": "Kvalita vzduchu",
+      "alarm": "Alarm",
+      "battery": "Baterie",
+      "camera": "Kamera",
+      "carbon_dioxide": "Oxid uhličitý",
+      "carbon_monoxide": "Oxid uhelnatý",
+      "contact": "Kontakt",
+      "cooler": "Chladič",
+      "dehumidifier": "Odvlhčovač",
+      "device_information": "Informace o zařízení",
+      "door": "Dveře",
+      "doorbell": "Zvonek",
+      "electrical_energy": "Elektrická energie",
+      "electrical_generation": "Výroba elektřiny",
+      "electrical_power": "Elektrický výkon",
+      "fan": "Ventilátor",
+      "filter": "Filtr",
+      "flow": "Průtok",
+      "gas": "Plyn",
+      "heater": "Topení",
+      "humidifier": "Zvlhčovač",
+      "humidity": "Vlhkost",
+      "illuminance": "Osvětlení",
+      "leak": "Únik",
+      "light": "Světlo",
+      "lock": "Zámek",
+      "media_input": "Mediální vstup",
+      "media_playback": "Přehrávání médií",
+      "microphone": "Mikrofon",
+      "motion": "Pohyb",
+      "nitrogen_dioxide": "Oxid dusičitý",
+      "occupancy": "Obsazenost",
+      "outlet": "Zásuvka",
+      "ozone": "Ozón",
+      "pressure": "Tlak",
+      "robot_vacuum": "Robotický vysavač",
+      "smoke": "Kouř",
+      "speaker": "Reproduktor",
+      "sulphur_dioxide": "Oxid siřičitý",
+      "switcher": "Spínač",
+      "television": "Televize",
+      "projector": "Projektor",
+      "temperature": "Teplota",
+      "thermostat": "Termostat",
+      "valve": "Ventil",
+      "volatile_organic_compounds": "Těkavé organické sloučeniny",
+      "window_covering": "Okenní krytina"
+    },
+    "channelsProperties": {
+      "generic": "Obecná",
+      "active": "Aktivní",
+      "alarm_state": "Stav alarmu",
+      "album": "Album",
+      "angle": "Úhel",
+      "aqi": "AQI",
+      "artist": "Interpret",
+      "artwork_url": "URL obalu",
+      "average_power": "Průměrný výkon",
+      "balance": "Vyvážení",
+      "bass": "Basy",
+      "brightness": "Jas",
+      "change_needed": "Vyžadována výměna",
+      "child_lock": "Dětský zámek",
+      "color_blue": "Modrá barva",
+      "color_green": "Zelená barva",
+      "color_red": "Červená barva",
+      "color_temperature": "Teplota barev",
+      "color_white": "Bílá barva",
+      "command": "Příkaz",
+      "connection_type": "Typ připojení",
+      "consumption": "Spotřeba",
+      "current": "Proud",
+      "concentration": "Koncentrace",
+      "defrost_active": "Odmrazování aktivní",
+      "detected": "Detekováno",
+      "direction": "Směr",
+      "distance": "Vzdálenost",
+      "duration": "Doba trvání",
+      "event": "Událost",
+      "fault": "Porucha",
+      "fault_description": "Popis poruchy",
+      "firmware_revision": "Revize firmwaru",
+      "frequency": "Frekvence",
+      "hardware_revision": "Revize hardwaru",
+      "hue": "Odstín",
+      "humidity": "Vlhkost",
+      "illuminance": "Osvětlení",
+      "in_use": "Používáno",
+      "infrared": "Infračervený",
+      "last_event": "Poslední událost",
+      "level": "Úroveň",
+      "life_remaining": "Zbývající životnost",
+      "link_quality": "Kvalita spojení",
+      "locked": "Zamčeno",
+      "manufacturer": "Výrobce",
+      "media_type": "Typ média",
+      "mist_level": "Úroveň mlhy",
+      "model": "Model",
+      "mode": "Režim",
+      "mute": "Ztlumení",
+      "natural_breeze": "Přirozený vánek",
+      "obstruction": "Překážka",
+      "on": "Zapnuto",
+      "over_current": "Nadproud",
+      "over_voltage": "Přepětí",
+      "over_power": "Přetížení",
+      "pan": "Otáčení",
+      "peak_level": "Špičková úroveň",
+      "percentage": "Procento",
+      "position": "Poloha",
+      "power": "Výkon",
+      "pressure": "Tlak",
+      "production": "Produkce",
+      "rate": "Průtok",
+      "remaining": "Zbývající",
+      "repeat": "Opakování",
+      "reset": "Reset",
+      "remote_key": "Dálkové tlačítko",
+      "saturation": "Sytost",
+      "serial_number": "Sériové číslo",
+      "shuffle": "Náhodné přehrávání",
+      "siren": "Siréna",
+      "source": "Zdroj",
+      "source_label": "Popis zdroje",
+      "speed": "Rychlost",
+      "state": "Stav",
+      "status": "Stav",
+      "swing": "Oscilace",
+      "tampered": "Narušeno",
+      "temperature": "Teplota",
+      "tilt": "Náklon",
+      "timer": "Časovač",
+      "track": "Skladba",
+      "treble": "Výšky",
+      "triggered": "Spuštěno",
+      "type": "Typ",
+      "units": "Jednotky",
+      "voltage": "Napětí",
+      "volume": "Hlasitost",
+      "warm_mist": "Teplá mlha",
+      "water_tank_empty": "Zásobník vody prázdný",
+      "water_tank_full": "Zásobník vody plný",
+      "water_tank_level": "Hladina zásobníku vody",
+      "zoom": "Přiblížení"
+    }
+  },
+  "validation": {
+    "status": {
+      "valid": "Platné",
+      "invalid": "Neplatné",
+      "unknown": "Neznámé"
+    },
+    "filter": {
+      "valid": "Platné",
+      "invalid": "Neplatné",
+      "all": "Vše"
+    },
+    "errors": "chyby",
+    "warnings": "varování",
+    "issuesTitle": "Problémy validace",
+    "severity": {
+      "error": "Chyba",
+      "warning": "Varování"
+    },
+    "table": {
+      "severity": "Závažnost",
+      "type": "Typ",
+      "message": "Zpráva",
+      "channel": "Kanál"
+    },
+    "issueTypes": {
+      "missing_channel": "Chybějící kanál",
+      "missing_property": "Chybějící vlastnost",
+      "invalid_data_type": "Neplatný datový typ",
+      "invalid_permissions": "Neplatná oprávnění",
+      "invalid_format": "Neplatný formát",
+      "unknown_channel": "Neznámý kanál",
+      "duplicate_channel": "Duplicitní kanál",
+      "constraint_one_of_violation": "Porušení omezení (jeden z)",
+      "constraint_one_or_more_of_violation": "Porušení omezení (jeden nebo více z)",
+      "constraint_mutually_exclusive_violation": "Porušení omezení (vzájemně vylučující)"
+    }
+  }
+}

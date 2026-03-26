@@ -1,0 +1,193 @@
+{
+	"wizard": {
+		"title": "Configuración del panel inteligente",
+		"steps": {
+			"welcome": "Bienvenida",
+			"account": "Cuenta",
+			"location": "Ubicación",
+			"spaces": "Espacios",
+			"integrations": "Integraciones",
+			"complete": "Completado"
+		},
+		"buttons": {
+			"getStarted": "Comenzar",
+			"next": "Siguiente",
+			"back": "Atrás",
+			"skip": "Omitir",
+			"finishSetup": "Finalizar configuración"
+		}
+	},
+	"welcome": {
+		"title": "Bienvenido al panel inteligente",
+		"description": "Configuremos tu hogar inteligente. Este asistente te guiará a través de la configuración inicial.",
+		"steps": {
+			"account": "Crear cuenta",
+			"accountDescription": "Configura tu cuenta de administrador",
+			"location": "Establecer ubicación",
+			"locationDescription": "Configura tu ubicación para datos meteorológicos",
+			"spaces": "Crear espacios",
+			"spacesDescription": "Añade habitaciones y áreas para organizar tus dispositivos",
+			"integrations": "Habilitar integraciones",
+			"integrationsDescription": "Conecta tus plataformas de hogar inteligente",
+			"finish": "Comenzar a usar",
+			"finishDescription": "Tu panel inteligente está listo para funcionar"
+		}
+	},
+	"account": {
+		"description": "Crea tu cuenta de administrador. Este será el propietario del panel inteligente.",
+		"created": "¡Cuenta creada correctamente! Ya has iniciado sesión.",
+		"fields": {
+			"firstName": "Nombre",
+			"lastName": "Apellido",
+			"email": "Correo electrónico",
+			"username": "Nombre de usuario",
+			"password": "Contraseña"
+		},
+		"placeholders": {
+			"firstName": "Ingresa tu nombre",
+			"lastName": "Ingresa tu apellido",
+			"email": "Ingresa tu dirección de correo electrónico",
+			"username": "Elige un nombre de usuario",
+			"password": "Elige una contraseña"
+		},
+		"validation": {
+			"firstNameRequired": "El nombre es obligatorio",
+			"lastNameRequired": "El apellido es obligatorio",
+			"emailRequired": "El correo electrónico es obligatorio",
+			"emailInvalid": "Por favor ingresa una dirección de correo electrónico válida",
+			"usernameRequired": "El nombre de usuario es obligatorio",
+			"passwordRequired": "La contraseña es obligatoria"
+		},
+		"messages": {
+			"created": "Tu cuenta ha sido creada y ya has iniciado sesión.",
+			"error": "No se pudo crear la cuenta. Por favor, inténtalo de nuevo."
+		}
+	},
+	"location": {
+		"description": "Establece tu ubicación para información meteorológica y otras funciones basadas en la ubicación. Puedes omitir este paso y configurarlo más tarde.",
+		"fields": {
+			"citySearch": "Buscar ciudad",
+			"latitude": "Latitud",
+			"longitude": "Longitud"
+		},
+		"placeholders": {
+			"citySearch": "Escribe un nombre de ciudad para buscar...",
+			"latitude": "ej. 50.0755",
+			"longitude": "ej. 14.4378"
+		},
+		"buttons": {
+			"myLocation": "Mi ubicación"
+		},
+		"orEnterManually": "O ingresa las coordenadas manualmente",
+		"hint": "Puedes configurar tu ubicación más tarde en los ajustes del clima.",
+		"messages": {
+			"error": "No se pudo guardar la ubicación.",
+			"geolocationNotSupported": "La geolocalización no es compatible con tu navegador.",
+			"geolocationDenied": "Se denegó el acceso a la ubicación. Por favor, permite el acceso a la ubicación en la configuración de tu navegador.",
+			"geolocationUnavailable": "La información de ubicación no está disponible en este momento.",
+			"geolocationTimeout": "La solicitud de ubicación ha expirado. Por favor, inténtalo de nuevo.",
+			"geolocationError": "Ocurrió un error al obtener tu ubicación."
+		}
+	},
+	"spaces": {
+		"description": "Crea habitaciones y áreas para organizar tus dispositivos. Puedes añadir más espacios más tarde.",
+		"quickAdd": "Añadir habitaciones comunes rápidamente",
+		"orAddCustom": "O añadir habitación personalizada",
+		"fields": {
+			"name": "Nombre de la habitación"
+		},
+		"placeholders": {
+			"name": "ej. Dormitorio principal"
+		},
+		"buttons": {
+			"add": "Añadir"
+		},
+		"roomsToCreate": "Habitaciones a crear ({count})",
+		"categories": {
+			"livingRoom": "Sala de estar",
+			"bedroom": "Dormitorio",
+			"kitchen": "Cocina",
+			"bathroom": "Baño",
+			"toilet": "Aseo",
+			"office": "Oficina",
+			"hallway": "Pasillo",
+			"entryway": "Entrada",
+			"garage": "Garaje",
+			"diningRoom": "Comedor",
+			"laundry": "Lavandería",
+			"nursery": "Cuarto infantil",
+			"guestRoom": "Habitación de invitados",
+			"storage": "Almacén",
+			"workshop": "Taller"
+		},
+		"devices": {
+			"title": "Asignar dispositivos a habitaciones",
+			"count": "dispositivos",
+			"unassigned": "Dispositivos sin asignar ({count})",
+			"assigned": "Dispositivos asignados ({count})",
+			"selected": "{count} seleccionados",
+			"assignTo": "Asignar a habitación...",
+			"assign": "Asignar",
+			"clearSelection": "Limpiar",
+			"selectSpace": "Seleccionar habitación..."
+		},
+		"hint": "Puedes añadir, renombrar o reorganizar espacios más tarde en los ajustes de Espacios.",
+		"messages": {
+			"error": "No se pudieron crear los espacios.",
+			"assignmentError": "No se pudieron asignar los dispositivos a los espacios."
+		}
+	},
+	"integrations": {
+		"description": "Habilita las integraciones de dispositivos para conectar tus plataformas de hogar inteligente. Activa las que uses y configura sus ajustes de conexión.",
+		"noPlugins": "No hay integraciones de dispositivos disponibles.",
+		"hint": "Puedes habilitar o deshabilitar integraciones más tarde en los ajustes de Extensiones.",
+		"searching": "Buscando dispositivos...",
+		"devicesFound": "{count} dispositivo encontrado | {count} dispositivo encontrado | {count} dispositivos encontrados",
+		"noDevicesYet": "Aún no se encontraron dispositivos — configura la conexión para descubrir dispositivos",
+		"noDevicesFound": "Aún no se encontraron dispositivos",
+		"enabled": "Integración habilitada",
+		"configure": "Configurar",
+		"configRequired": "Se requiere configuración para conectar",
+		"setupNow": "Configurar ahora",
+		"stopScan": "Detener",
+		"summary": "{count} integración habilitada | {count} integración habilitada | {count} integraciones habilitadas",
+		"totalDevices": "{count} dispositivo encontrado | {count} dispositivo encontrado | {count} dispositivos encontrados",
+		"configDialog": {
+			"title": "Configurar {name}",
+			"noConfig": "No hay opciones de configuración disponibles para esta integración.",
+			"buttons": {
+				"cancel": "Cancelar",
+				"validate": "Validar",
+				"save": "Guardar"
+			},
+			"messages": {
+				"saved": "Configuración guardada correctamente.",
+				"validationSuccess": "La configuración es válida.",
+				"validationFailed": "La validación de la configuración falló.",
+				"validationError": "No se pudo validar la configuración."
+			}
+		},
+		"messages": {
+			"error": "No se pudieron actualizar las integraciones."
+		}
+	},
+	"complete": {
+		"title": "¡Todo listo!",
+		"description": "Tu panel inteligente está configurado y listo para usar. Ahora puedes comenzar a añadir dispositivos, crear espacios y personalizar tu panel de control.",
+		"summary": {
+			"accountCreated": "Cuenta de administrador creada",
+			"locationConfigured": "Ubicación meteorológica configurada",
+			"locationSkipped": "Ubicación meteorológica omitida (se puede configurar más tarde)",
+			"spacesCreated": "{count} habitación(es) serán creadas | {count} habitación será creada | {count} habitaciones serán creadas",
+			"spacesSkipped": "No se añadieron habitaciones (se pueden crear más tarde)",
+			"devicesAssigned": "{count} dispositivo(s) asignados a habitaciones | {count} dispositivo asignado a una habitación | {count} dispositivos asignados a habitaciones",
+			"devicesSkipped": "No se asignaron dispositivos a habitaciones",
+			"integrationsEnabled": "{count} integración(es) habilitadas | {count} integración habilitada | {count} integraciones habilitadas",
+			"integrationsSkipped": "No se habilitaron integraciones (se pueden configurar más tarde)"
+		},
+		"messages": {
+			"finished": "¡Configuración completada! Bienvenido al panel inteligente.",
+			"error": "No se pudo completar la configuración inicial."
+		}
+	}
+}

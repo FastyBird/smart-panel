@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "pages": {
+      "editTile": {
+        "title": "Editar mosaico de página"
+      },
+      "addTile": {
+        "title": "Añadir mosaico de página"
+      },
+      "editDataSource": {
+        "title": "Editar fuente de datos de página"
+      },
+      "addDataSource": {
+        "title": "Añadir fuente de datos de página"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "configure": "página: {page}",
+      "addTile": "añadir mosaico de página",
+      "editTile": "editar mosaico de página",
+      "addDataSource": "añadir fuente de datos de página",
+      "editDataSource": "editar fuente de datos de página"
+    }
+  },
+  "headings": {
+    "pages": {
+      "addTile": "Añadir mosaico de página",
+      "editTile": "Editar mosaico de página",
+      "addDataSource": "Añadir fuente de datos de página",
+      "editDataSource": "Editar fuente de datos de página"
+    },
+    "configure": {
+      "draft": "Borrador",
+      "display": "Pantalla",
+      "quickAddTile": "Añadir mosaico rápido"
+    },
+    "misc": {
+      "discard": "¿Descartar cambios?",
+      "tip": "Consejo"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "addTile": "Añadir nuevo mosaico de página del panel inteligente",
+      "editTile": "Editar mosaico de página del panel inteligente",
+      "addDataSource": "Añadir nueva fuente de datos de página del panel inteligente",
+      "editDataSource": "Editar fuente de datos de página del panel inteligente"
+    }
+  },
+  "messages": {
+    "tiles": {
+      "deletedWhileEditing": "Este mosaico fue eliminado y ya no está disponible."
+    },
+    "dataSources": {
+      "deletedWhileEditing": "Esta fuente de datos fue eliminada y ya no está disponible."
+    },
+    "misc": {
+      "requestError": "Algo salió mal, por favor inténtelo de nuevo más tarde."
+    }
+  },
+  "texts": {
+    "misc": {
+      "confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
+      "gridLayoutTip": "Puede cambiar cuántos mosaicos caben en la página — establezca Filas y Columnas o elija un tamaño de mosaico."
+    },
+    "tiles": {
+      "loadingTile": "Cargando mosaico..."
+    },
+    "dataSources": {
+      "loadingDataSource": "Cargando fuente de datos..."
+    }
+  },
+  "buttons": {
+    "discard": {
+      "title": "Descartar"
+    },
+    "close": {
+      "title": "Cerrar"
+    },
+    "add": {
+      "title": "Añadir"
+    },
+    "save": {
+      "title": "Guardar"
+    },
+    "update": {
+      "title": "Actualizar"
+    },
+    "yes": {
+      "title": "Sí"
+    },
+    "no": {
+      "title": "No"
+    },
+    "manageElements": {
+      "title": "Gestionar elementos"
+    },
+    "addPageTile": {
+      "title": "Añadir mosaico de página"
+    },
+    "addPageDataSource": {
+      "title": "Añadir fuente de datos de página"
+    }
+  },
+  "fields": {
+    "rows": {
+      "title": "Filas",
+      "placeholder": "Número de filas"
+    },
+    "cols": {
+      "title": "Columnas",
+      "placeholder": "Número de columnas"
+    },
+    "tileSize": {
+      "title": "Tamaño de mosaico",
+      "placeholder": "Tamaño de mosaico"
+    }
+  }
+}

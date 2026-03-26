@@ -1,0 +1,49 @@
+{
+	"headings": {
+		"aboutFileLoggingSettings": "Nastavení souborového protokolování"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"dir": {
+				"title": "Adresář protokolů",
+				"placeholder": "Absolutní nebo relativní cesta, např. /var/log/smart-panel",
+				"validation": {
+					"nonEmpty": "Adresář protokolů nesmí být prázdný."
+				}
+			},
+			"retentionDays": {
+				"title": "Doba uchovávání (dny)",
+				"placeholder": "Kolik dní uchovávat soubory protokolů (např. 7)",
+				"validation": {
+					"min": "Doba uchovávání musí být alespoň 1 den."
+				}
+			},
+			"cleanupCron": {
+				"title": "Plán úklidu (cron)",
+				"placeholder": "Cron výraz, např. 15 3 * * * (denně ve 03:15)",
+				"validation": {
+					"invalid": "Zadejte prosím platný cron výraz (např. 15 3 * * *)."
+				}
+			},
+			"filePrefix": {
+				"title": "Prefix souboru",
+				"placeholder": "Prefix názvu souboru, např. smart-panel",
+				"validation": {
+					"pattern": "Jsou povolena pouze písmena, čísla, tečka, podtržítko a pomlčka."
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Změny uloženy! Konfigurace pluginu rotujícího souboru protokolů byla aktualizována.",
+			"notEdited": "Něco se pokazilo. Aktualizace konfigurace pluginu rotujícího souboru protokolů nebyla úspěšná."
+		}
+	},
+	"texts": {
+		"aboutFileLoggingSettings": "Nakonfigurujte souborovou persistenci protokolů s denní rotací a automatickým úklidem. Pokud je povoleno, protokoly se ukládají do souborů pro dlouhodobé uchovávání a offline analýzu. Soubory jsou automaticky rotovány denně a uklízeny na základě nastavení doby uchovávání."
+	}
+}

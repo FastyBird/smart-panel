@@ -1,0 +1,72 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutPolling": "Dotazování senzorů"
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte plugin reTerminal. Pokud je zakázán, žádné periferie hardwaru reTerminal nebudou monitorovány ani ovládány.",
+		"aboutPolling": "Nakonfigurujte, jak často plugin dotazuje hardwarové senzory (světlo, akcelerometr, teplota) na aktualizované hodnoty."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolit plugin"
+			},
+			"polling": {
+				"interval": {
+					"title": "Interval dotazování (ms)",
+					"validation": {
+						"required": "Interval dotazování je povinný",
+						"number": "Musí být číslo >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID zařízení",
+				"placeholder": "ID zařízení"
+			},
+			"name": {
+				"title": "Název zařízení",
+				"placeholder": "Zadejte název zařízení",
+				"validation": {
+					"required": "Název zařízení je povinný"
+				}
+			},
+			"category": {
+				"title": "Kategorie zařízení",
+				"placeholder": "Vyberte kategorii",
+				"validation": {
+					"required": "Kategorie zařízení je povinná"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Zadejte popis zařízení (volitelné)"
+			},
+			"variant": {
+				"title": "Hardwarová varianta",
+				"placeholder": "Vyberte hardwarovou variantu",
+				"validation": {
+					"required": "Hardwarová varianta je povinná"
+				}
+			},
+			"enabled": {
+				"title": "Povoleno"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurace pluginu reTerminal byla aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci pluginu reTerminal"
+		},
+		"devices": {
+			"created": "Zařízení reTerminal '{device}' bylo vytvořeno",
+			"notCreated": "Nepodařilo se vytvořit zařízení reTerminal '{device}'",
+			"edited": "Zařízení reTerminal '{device}' bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat zařízení reTerminal '{device}'"
+		}
+	}
+}

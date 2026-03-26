@@ -7,7 +7,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../
 import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSchemas } from '../../modules/dashboard';
 
 import { DeviceDetailPageAddForm, DeviceDetailPageEditForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { PAGES_DEVICE_DETAIL_PLUGIN_NAME, PAGES_DEVICE_DETAIL_TYPE } from './pages-device-detail.constants';
 import { DeviceDetailPageAddFormSchema, DeviceDetailPageEditFormSchema } from './schemas/pages.schemas';
 import { DeviceDetailPageCreateReqSchema, DeviceDetailPageSchema, DeviceDetailPageUpdateReqSchema } from './store/pages.store.schemas';
@@ -19,7 +19,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { pagesDeviceDetailPlugin: translations });
 

@@ -8,7 +8,7 @@ import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents,
 
 import { BUDDY_SYSTEM_TTS_PLUGIN_NAME } from './buddy-system-tts.constants';
 import { SystemTtsConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { SystemTtsConfigEditFormSchema } from './schemas/schemas';
 import { SystemTtsConfigSchema, SystemTtsConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -18,7 +18,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { buddySystemTtsPlugin: translations });
 

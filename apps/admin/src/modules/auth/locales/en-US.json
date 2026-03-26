@@ -86,6 +86,10 @@
         "required": "Please fill in last name"
       }
     },
+    "language": {
+      "title": "Language",
+      "placeholder": "Use browser default"
+    },
     "currentPassword": {
       "title": "Current password",
       "help": "Your actual password",

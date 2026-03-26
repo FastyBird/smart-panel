@@ -1,0 +1,41 @@
+{
+	"fields": {
+		"locationId": {
+			"title": "Wetterstandort",
+			"placeholder": "Standort auswählen",
+			"description": "Wählen Sie einen Wetterstandort zur Anzeige. Wenn nicht festgelegt, wird der primäre Standort aus den Wettereinstellungen verwendet."
+		},
+		"field": {
+			"title": "Datenfeld",
+			"placeholder": "Feld auswählen",
+			"validation": {
+				"required": "Bitte wählen Sie ein Datenfeld"
+			}
+		},
+		"dayOffset": {
+			"title": "Tagesversatz",
+			"placeholder": "Tage ab heute",
+			"validation": {
+				"required": "Bitte geben Sie einen Tagesversatz ein",
+				"min": "Tagesversatz muss mindestens 0 sein",
+				"max": "Tagesversatz darf höchstens 7 sein"
+			}
+		},
+		"icon": {
+			"title": "Benutzerdefiniertes Symbol",
+			"placeholder": "mdi:thermometer"
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Temperatur",
+		"temperature_min": "Mindesttemperatur",
+		"temperature_max": "Höchsttemperatur",
+		"feels_like": "Gefühlt wie",
+		"humidity": "Luftfeuchtigkeit",
+		"pressure": "Luftdruck",
+		"weather_icon": "Wettersymbol",
+		"weather_main": "Wetterbedingung",
+		"weather_description": "Wetterbeschreibung",
+		"wind_speed": "Windgeschwindigkeit"
+	}
+}

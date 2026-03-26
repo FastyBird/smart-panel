@@ -1,0 +1,43 @@
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Identificador interno",
+        "placeholder": "ID del dispositivo"
+      },
+      "identifier": {
+        "title": "Identificador del sistema",
+        "placeholder": "Identificador del sistema del dispositivo"
+      },
+      "category": {
+        "title": "Categoría",
+        "placeholder": "Categoría del dispositivo",
+        "validation": {
+          "required": "Por favor, seleccione la categoría del dispositivo"
+        }
+      },
+      "name": {
+        "title": "Nombre",
+        "placeholder": "Nombre del dispositivo",
+        "validation": {
+          "required": "Por favor, introduzca el nombre del dispositivo"
+        }
+      },
+      "description": {
+        "title": "Descripción",
+        "placeholder": "Descripción del dispositivo"
+      },
+      "enabled": {
+        "title": "Habilitado"
+      },
+      "serviceAddress": {
+        "title": "Dirección del servicio",
+        "placeholder": "http://device-address.local",
+        "validation": {
+          "required": "Por favor, introduzca la dirección del servicio del dispositivo",
+          "url": "Por favor, proporcione una dirección URL válida"
+        }
+      }
+    }
+  }
+}

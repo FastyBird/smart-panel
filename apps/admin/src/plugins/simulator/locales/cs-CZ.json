@@ -1,0 +1,97 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutSimulation": "Chování simulace",
+		"aboutEnvironment": "Nastavení prostředí"
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interní identifikátor",
+				"placeholder": "ID zařízení"
+			},
+			"identifier": {
+				"title": "Systémový identifikátor",
+				"placeholder": "Systémový identifikátor zařízení"
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie zařízení",
+				"validation": {
+					"required": "Vyberte prosím kategorii zařízení"
+				}
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název zařízení"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zařízení"
+			},
+			"enabled": {
+				"title": "Povoleno"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"updateOnStart": {
+				"title": "Simulovat při spuštění služby"
+			},
+			"simulationInterval": {
+				"title": "Interval automatické simulace (ms)",
+				"placeholder": "Nastavte 0 pro zakázání automatických aktualizací",
+				"validation": {
+					"required": "Nastavte prosím interval simulace",
+					"number": "Interval simulace musí být mezi 0 a 3 600 000"
+				}
+			},
+			"latitude": {
+				"title": "Zeměpisná šířka",
+				"placeholder": "Zeměpisná šířka používaná pro simulace založené na prostředí",
+				"validation": {
+					"required": "Nastavte prosím zeměpisnou šířku",
+					"number": "Zeměpisná šířka musí být mezi -90 a 90"
+				}
+			},
+			"smoothTransitions": {
+				"title": "Plynulé přechody hodnot"
+			},
+			"connectionStateOnStart": {
+				"title": "Počáteční stav připojení",
+				"placeholder": "Vyberte stav připojení při spuštění",
+				"validation": {
+					"required": "Vyberte prosím počáteční stav připojení"
+				},
+				"options": {
+					"connected": "Připojeno",
+					"disconnected": "Odpojeno",
+					"init": "Inicializace",
+					"ready": "Připraveno",
+					"running": "Běží",
+					"sleeping": "Uspáno",
+					"stopped": "Zastaveno",
+					"lost": "Ztraceno",
+					"alert": "Výstraha",
+					"unknown": "Neznámý"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Změny uloženy! Konfigurace simulátoru zařízení byla aktualizována.",
+			"notEdited": "Něco se pokazilo. Aktualizace konfigurace simulátoru zařízení nebyla úspěšná."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte integraci simulátoru zařízení, aby byla simulovaná zařízení dostupná v celém Smart Panelu.",
+		"aboutSimulation": "Nakonfigurujte, jak simulátor automaticky aktualizuje hodnoty. Můžete spustit jednorázový průchod při startu služby nebo spustit opakovanou smyčku aktualizací.",
+		"aboutEnvironment": "Nastavte parametry prostředí používané simulátorem při generování realistických hodnot. Ve výpočtech se používá pouze zeměpisná šířka; zeměpisná délka je ignorována."
+	}
+}
