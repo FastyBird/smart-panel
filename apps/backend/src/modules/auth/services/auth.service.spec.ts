@@ -39,6 +39,7 @@ describe('AuthService', () => {
 		firstName: 'John',
 		lastName: 'Doe',
 		role: UserRole.USER,
+		language: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -250,6 +251,7 @@ describe('AuthService', () => {
 				password: registerDto.password,
 				email: null,
 				role: UserRole.USER,
+				language: null,
 				firstName: null,
 				lastName: null,
 				createdAt: new Date(),

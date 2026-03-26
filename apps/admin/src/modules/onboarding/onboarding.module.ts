@@ -6,14 +6,14 @@ import type { IModuleOptions } from '../../app.types';
 import { injectRouterGuard } from '../../common';
 
 import { useOnboardingStatus } from './composables/composables';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes, onboardingGuard } from './router';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const routerGuard = injectRouterGuard(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { onboardingModule: translations });
 

@@ -13,7 +13,7 @@ import {
 	WeatherTileAddForm,
 	WeatherTileEditForm,
 } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { WeatherTileAddFormSchema, WeatherTileEditFormSchema } from './schemas/tiles.schemas';
 import {
 	DayWeatherTileCreateReqSchema,
@@ -37,7 +37,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { tilesWeatherPlugin: translations });
 

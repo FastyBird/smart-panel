@@ -23,7 +23,7 @@ import {
 	HomeAssistantDeviceEditForm,
 } from './components/components';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { HomeAssistantChannelPropertyAddFormSchema, HomeAssistantChannelPropertyEditFormSchema } from './schemas/channels.properties.schemas';
 import { HomeAssistantConfigEditFormSchema } from './schemas/config.schemas';
 import { HomeAssistantDeviceAddFormSchema, HomeAssistantDeviceEditFormSchema } from './schemas/devices.schemas';
@@ -56,7 +56,7 @@ export default {
 		const pluginsManager = injectPluginsManager(app);
 		const storesManager = injectStoresManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesHomeAssistantPlugin: translations });
 

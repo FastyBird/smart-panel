@@ -12,7 +12,7 @@ import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { StorageConfigForm } from './components/components';
 import { STORAGE_MODULE_NAME } from './storage.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { StorageConfigEditFormSchema } from './schemas/config.schemas';
 import { StorageConfigSchema, StorageConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -22,7 +22,7 @@ export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { storageModule: translations });
 

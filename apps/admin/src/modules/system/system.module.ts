@@ -19,7 +19,7 @@ import {
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { SystemConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { SystemConfigEditFormSchema } from './schemas/config.schemas';
 import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.store.schemas';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
@@ -42,7 +42,7 @@ export default {
 
 		const isTest = import.meta.env.NODE_ENV === 'test' || ('VITEST' in import.meta.env && import.meta.env.VITEST);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { systemModule: translations });
 

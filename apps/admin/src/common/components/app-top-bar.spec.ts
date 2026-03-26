@@ -49,6 +49,14 @@ vi.mock('../services/account-manager', () => ({
 	}),
 }));
 
+vi.mock('../services/store', () => ({
+	injectStoresManager: vi.fn().mockReturnValue({
+		getStore: vi.fn().mockReturnValue({
+			edit: vi.fn(),
+		}),
+	}),
+}));
+
 describe('AppTopBar.vue', () => {
 	let wrapper: ReturnType<typeof mount>;
 
@@ -101,8 +109,9 @@ describe('AppTopBar.vue', () => {
 
 	it('calls sign out method when clicking sign out', async () => {
 		const dropdownItems = wrapper.findAllComponents(ElDropdownItem);
+		const signOutItem = dropdownItems[dropdownItems.length - 1];
 
-		await dropdownItems[1]?.find('div').trigger('click');
+		await signOutItem?.find('div').trigger('click');
 		await nextTick();
 
 		expect(injectAccountManager()?.signOut).toHaveBeenCalled();

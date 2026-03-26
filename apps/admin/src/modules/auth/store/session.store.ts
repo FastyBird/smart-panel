@@ -255,6 +255,10 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				updateData.email = payload.data.email;
 			}
 
+			if (typeof payload.data.language !== 'undefined') {
+				updateData.language = payload.data.language;
+			}
+
 			// Handle password change
 			if (typeof payload.data.password !== 'undefined') {
 				updateData.password = {

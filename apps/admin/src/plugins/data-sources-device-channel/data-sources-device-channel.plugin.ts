@@ -8,7 +8,7 @@ import { DASHBOARD_MODULE_NAME, type IDataSourcePluginsComponents, type IDataSou
 
 import { DeviceChannelDataSourceAddForm, DeviceChannelDataSourceEditForm } from './components/components';
 import { DATA_SOURCES_DEVICE_PLUGIN_NAME, DATA_SOURCES_DEVICE_TYPE } from './data-sources-device-channel.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { DeviceChannelDataSourceAddFormSchema, DeviceChannelDataSourceEditFormSchema } from './schemas/data-sources.schemas';
 import {
 	DeviceChannelDataSourceCreateReqSchema,
@@ -23,7 +23,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { dataSourcesDeviceChannelPlugin: translations });
 

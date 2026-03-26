@@ -41,6 +41,7 @@ describe('UsersService', () => {
 		firstName: 'John',
 		lastName: 'Doe',
 		role: UserRole.USER,
+		language: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -133,6 +134,7 @@ describe('UsersService', () => {
 				password: mockCreateUser.password,
 				email: mockCreateUser.email,
 				role: UserRole.USER,
+				language: null,
 				firstName: null,
 				lastName: null,
 				createdAt: new Date(),
@@ -180,6 +182,7 @@ describe('UsersService', () => {
 				lastName: mockUser.lastName,
 				email: mockUser.email,
 				role: mockUser.role,
+				language: null,
 				createdAt: mockUser.createdAt,
 				updatedAt: mockUser.updatedAt,
 			};
@@ -192,6 +195,7 @@ describe('UsersService', () => {
 				lastName: mockUpdateUser.lastName,
 				email: mockUpdateUser.email,
 				role: mockUpdateUser.role,
+				language: null,
 				createdAt: mockUpdateUser.createdAt,
 				updatedAt: new Date(),
 			};

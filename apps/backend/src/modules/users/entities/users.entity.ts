@@ -5,7 +5,7 @@ import { Column, Entity } from 'typeorm';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { UserRole } from '../users.constants';
+import { UserLanguage, UserRole } from '../users.constants';
 
 @ApiSchema({ name: 'UsersModuleDataUser' })
 @Entity('users_module_users')
@@ -96,4 +96,20 @@ export class UserEntity extends BaseEntity {
 		default: UserRole.USER,
 	})
 	role: UserRole;
+
+	@ApiProperty({
+		description: 'Preferred language of the user.',
+		enum: UserLanguage,
+		nullable: true,
+		default: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(UserLanguage)
+	@Column({
+		type: 'text',
+		nullable: true,
+		default: null,
+	})
+	language: UserLanguage | null;
 }

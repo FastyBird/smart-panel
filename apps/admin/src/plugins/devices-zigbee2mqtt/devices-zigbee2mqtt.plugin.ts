@@ -17,7 +17,7 @@ import {
 
 import { Zigbee2mqttConfigForm, Zigbee2mqttDeviceAddFormMultiStep, Zigbee2mqttDeviceEditForm } from './components/components';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from './devices-zigbee2mqtt.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { Zigbee2mqttConfigEditFormSchema } from './schemas/config.schemas';
 import { Zigbee2mqttDeviceAddFormSchema, Zigbee2mqttDeviceEditFormSchema } from './schemas/devices.schemas';
 import {
@@ -41,7 +41,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesZigbee2mqttPlugin: translations });
 

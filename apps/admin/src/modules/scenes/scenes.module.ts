@@ -19,7 +19,7 @@ import { ScenesConfigForm } from './components/components';
 import { SCENES_MODULE_EVENT_PREFIX, SCENES_MODULE_NAME, EventType } from './scenes.constants';
 import { ScenesConfigEditFormSchema } from './schemas/config.schemas';
 import { ScenesConfigSchema, ScenesConfigUpdateReqSchema } from './store/config.store.schemas';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerScenesActionsStore } from './store/scenes.actions.store';
 import { registerScenesStore } from './store/scenes.store';
@@ -33,7 +33,7 @@ export default {
 		const sockets = injectSockets(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, translations);
 

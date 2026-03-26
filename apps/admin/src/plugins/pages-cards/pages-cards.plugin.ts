@@ -16,7 +16,7 @@ import {
 } from '../../modules/dashboard';
 
 import { CardsPageAddForm, CardsPageEditForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { EventType, PAGES_CARDS_PLUGIN_EVENT_PREFIX, PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE, RouteNames } from './pages-cards.contants';
 import { PluginRoutes } from './router';
 import { CardsPageAddFormSchema, CardsPageEditFormSchema } from './schemas/pages.schemas';
@@ -34,7 +34,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { pagesCardsPlugin: translations });
 

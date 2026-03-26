@@ -15,7 +15,7 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import roleGuard from './router/guards/role.guard';
 import { usersStoreKey } from './store/keys';
@@ -32,7 +32,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { usersModule: translations });
 

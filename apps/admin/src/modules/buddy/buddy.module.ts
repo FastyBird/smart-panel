@@ -14,7 +14,7 @@ import {
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { BuddyConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { BuddyConfigEditFormSchema } from './schemas/config.schemas';
 import { BuddyConfigSchema, BuddyConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -26,7 +26,7 @@ export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { buddyModule: translations });
 

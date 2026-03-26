@@ -34,6 +34,7 @@ describe('UsersController', () => {
 		firstName: 'John',
 		lastName: 'Doe',
 		role: UserRole.USER,
+		language: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};

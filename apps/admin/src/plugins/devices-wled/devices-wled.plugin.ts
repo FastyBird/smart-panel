@@ -17,7 +17,7 @@ import {
 
 import { WledConfigForm, WledDeviceAddForm, WledDeviceEditForm } from './components/components';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from './devices-wled.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { WledConfigEditFormSchema } from './schemas/config.schemas';
 import { WledDeviceAddFormSchema, WledDeviceEditFormSchema } from './schemas/devices.schemas';
 import {
@@ -40,7 +40,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesWledPlugin: translations });
 

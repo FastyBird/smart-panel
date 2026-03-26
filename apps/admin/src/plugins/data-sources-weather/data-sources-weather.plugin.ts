@@ -17,7 +17,7 @@ import {
 	DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
 	DATA_SOURCES_WEATHER_PLUGIN_NAME,
 } from './data-sources-weather.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import {
 	CurrentWeatherDataSourceAddFormSchema,
 	CurrentWeatherDataSourceEditFormSchema,
@@ -40,7 +40,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { dataSourcesWeatherPlugin: translations });
 

@@ -7,7 +7,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 
 import { RotatingFileConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from './logger-rotating-file.constants';
 import { RotatingFileConfigEditFormSchema } from './schemas/config.schemas';
 import { RotatingFileConfigSchema, RotatingFileConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -18,7 +18,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { loggerRotatingFilePlugin: translations });
 

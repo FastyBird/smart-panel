@@ -8,7 +8,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
 import { DevicePreviewTileAddForm, DevicePreviewTileEditForm, DevicePreviewTilePreview } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { DevicePreviewTileAddFormSchema, DevicePreviewTileEditFormSchema } from './schemas/tiles.schemas';
 import { DevicePreviewTileCreateReqSchema, DevicePreviewTileSchema, DevicePreviewTileUpdateReqSchema } from './store/tiles.store.schemas';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
@@ -22,7 +22,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { tilesDevicePreviewPlugin: translations });
 

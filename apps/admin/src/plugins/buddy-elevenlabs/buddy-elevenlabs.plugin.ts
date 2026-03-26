@@ -8,7 +8,7 @@ import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents,
 
 import { BUDDY_ELEVENLABS_PLUGIN_NAME } from './buddy-elevenlabs.constants';
 import { ElevenlabsConfigForm } from './components/components';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ElevenlabsConfigEditFormSchema } from './schemas/schemas';
 import { ElevenlabsConfigSchema, ElevenlabsConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -18,7 +18,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { buddyElevenlabsPlugin: translations });
 

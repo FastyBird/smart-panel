@@ -7,6 +7,7 @@ export { useListQuery } from './useListQuery';
 export { useLogger } from './useLogger';
 export { useMenu } from './useMenu';
 export { useSockets } from './useSockets';
+export { useLanguage } from './useLanguage';
 export { useUuid } from './useUuid';
 
 export * from './types';

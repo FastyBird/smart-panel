@@ -1,4 +1,4 @@
-import { type App, computed, ref } from 'vue';
+import { type App, computed, ref, watch } from 'vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep, get } from 'lodash';
@@ -18,8 +18,10 @@ import {
 } from '../../common';
 import type { IUser } from '../users';
 
+import { LOCALE_LANGUAGE_MAP } from '../../locales';
+import { storeLocale } from '../../common/composables/useLanguage';
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import {
 	ModuleAccountRoutes,
 	ModuleAnonymousRoutes,
@@ -44,7 +46,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { authModule: translations });
 
@@ -251,6 +253,23 @@ export default {
 		};
 
 		provideAccountManager(app, accountManager);
+
+		// Apply user's preferred language when profile loads
+		watch(
+			() => sessionStore.profile,
+			(profile: IUser | null) => {
+				if (profile?.language) {
+					const locale = LOCALE_LANGUAGE_MAP[profile.language];
+
+					if (locale) {
+						options.i18n.global.locale.value = locale as string;
+						storeLocale(locale);
+						document.documentElement.setAttribute('lang', profile.language);
+					}
+				}
+			},
+			{ immediate: true },
+		);
 
 		routerGuard.register((_appUser: IAppUser | undefined, route: RouteRecordRaw) => {
 			return lockedGuard(accountManager, route);

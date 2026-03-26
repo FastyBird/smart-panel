@@ -17,7 +17,7 @@ import {
 
 import { ReTerminalConfigForm, ReTerminalDeviceAddForm, ReTerminalDeviceEditForm } from './components/components';
 import { DEVICES_RETERMINAL_PLUGIN_NAME, DEVICES_RETERMINAL_TYPE } from './devices-reterminal.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ReTerminalConfigEditFormSchema } from './schemas/config.schemas';
 import { ReTerminalDeviceAddFormSchema, ReTerminalDeviceEditFormSchema } from './schemas/devices.schemas';
 import {
@@ -40,7 +40,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesReTerminalPlugin: translations });
 

@@ -44,6 +44,7 @@ describe('AuthGuard', () => {
 		lastName: 'User',
 		username: 'testuser',
 		role: UserRole.ADMIN,
+		language: null,
 		isHidden: false,
 		password: null,
 		createdAt: new Date(),

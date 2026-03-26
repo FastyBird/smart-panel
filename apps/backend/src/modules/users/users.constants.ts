@@ -20,3 +20,12 @@ export enum UserRole {
 	ADMIN = 'admin',
 	USER = 'user',
 }
+
+export enum UserLanguage {
+	EN = 'en',
+	CS = 'cs',
+	DE = 'de',
+	ES = 'es',
+	PL = 'pl',
+	SK = 'sk',
+}

@@ -3,7 +3,7 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UserRole } from '../users.constants';
+import { UserLanguage, UserRole } from '../users.constants';
 
 @ApiSchema({ name: 'UsersModuleCreateUser' })
 export class CreateUserDto {
@@ -93,6 +93,17 @@ export class CreateUserDto {
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
 	@ValidateIf((_, value) => value !== null)
 	role?: UserRole;
+
+	@ApiPropertyOptional({
+		description: 'Preferred language',
+		enum: UserLanguage,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(UserLanguage, { message: '[{"field":"language","reason":"Language must be one of the valid languages."}]' })
+	@ValidateIf((_, value) => value !== null)
+	language?: UserLanguage | null;
 }
 
 @ApiSchema({ name: 'UsersModuleReqCreateUser' })

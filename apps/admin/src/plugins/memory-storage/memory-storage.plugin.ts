@@ -11,7 +11,7 @@ import {
 	type IPluginsSchemas,
 } from '../../modules/config';
 
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { MEMORY_STORAGE_PLUGIN_NAME } from './memory-storage.constants';
 import { MemoryStorageConfigSchema, MemoryStorageConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -22,7 +22,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { memoryStoragePlugin: translations });
 

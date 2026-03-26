@@ -15,7 +15,7 @@ import {
 } from '../../common';
 
 import { DEVICES_MODULE_EVENT_PREFIX, DEVICES_MODULE_NAME, EventType } from './devices.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerChannelsControlsStore } from './store/channels.controls.store';
 import { registerChannelsPropertiesStore } from './store/channels.properties.store';
@@ -41,7 +41,7 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { devicesModule: translations });
 

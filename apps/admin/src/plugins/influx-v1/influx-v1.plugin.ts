@@ -13,7 +13,7 @@ import {
 
 import { InfluxV1ConfigForm } from './components/components';
 import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
-import enUS from './locales/en-US.json';
+import { locales } from './locales';
 import { InfluxV1ConfigEditFormSchema } from './schemas/config.schemas';
 import { InfluxV1ConfigSchema, InfluxV1ConfigUpdateReqSchema } from './store/config.store.schemas';
 
@@ -23,7 +23,7 @@ export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { influxV1Plugin: translations });
 
