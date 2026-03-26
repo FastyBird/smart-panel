@@ -881,6 +881,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_display_settings_screen_saver_description => 'Zobrazit spořič při nečinnosti.';
 
   @override
+  String get settings_display_settings_screen_power_off_title => 'Screen Power Off';
+
+  @override
+  String get settings_display_settings_screen_power_off_description => 'Turn off the display when screen is locked.';
+
+  @override
   String get settings_display_settings_unit_overrides_section => 'Přepsání jednotek';
 
   @override

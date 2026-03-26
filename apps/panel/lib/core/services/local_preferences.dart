@@ -7,15 +7,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Caches UI preferences (language, dark mode) locally so the app
 /// can apply them immediately on startup — before the backend config loads.
-class LocalPreferencesService {
+class LocalPreferencesService extends ChangeNotifier {
   static const _languageKey = 'ui_language';
   static const _darkModeKey = 'ui_dark_mode';
+  static const _screenPowerOffKey = 'ui_screen_power_off';
 
   final FlutterSecureStorage? _securedStorage;
   final SecureStorageFallback? _securedStorageFallback;
 
   Language _language = Language.english;
   bool _darkMode = false;
+  bool _screenPowerOff = false;
   bool _loaded = false;
 
   LocalPreferencesService({
@@ -26,6 +28,7 @@ class LocalPreferencesService {
 
   Language get language => _language;
   bool get darkMode => _darkMode;
+  bool get screenPowerOff => _screenPowerOff;
   bool get isLoaded => _loaded;
 
   /// Load cached preferences from local storage.
@@ -42,6 +45,12 @@ class LocalPreferencesService {
 
       if (darkModeValue != null) {
         _darkMode = darkModeValue == 'true';
+      }
+
+      final screenPowerOffValue = await _read(key: _screenPowerOffKey);
+
+      if (screenPowerOffValue != null) {
+        _screenPowerOff = screenPowerOffValue == 'true';
       }
 
       _loaded = true;
@@ -65,6 +74,8 @@ class LocalPreferencesService {
     _language = language;
 
     await _write(key: _languageKey, value: language.value);
+
+    notifyListeners();
   }
 
   /// Persist the current dark mode selection.
@@ -74,25 +85,43 @@ class LocalPreferencesService {
     _darkMode = darkMode;
 
     await _write(key: _darkModeKey, value: darkMode.toString());
+
+    notifyListeners();
+  }
+
+  /// Persist the screen power off preference.
+  Future<void> setScreenPowerOff(bool enabled) async {
+    if (_screenPowerOff == enabled) return;
+
+    _screenPowerOff = enabled;
+
+    await _write(key: _screenPowerOffKey, value: enabled.toString());
+
+    notifyListeners();
   }
 
   /// Clear all cached preferences (used during factory reset).
   Future<void> clearAll() async {
     _language = Language.english;
     _darkMode = false;
+    _screenPowerOff = false;
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         await _securedStorage?.delete(key: _languageKey);
         await _securedStorage?.delete(key: _darkModeKey);
+        await _securedStorage?.delete(key: _screenPowerOffKey);
       } else {
         await _securedStorageFallback?.delete(key: _languageKey);
         await _securedStorageFallback?.delete(key: _darkModeKey);
+        await _securedStorageFallback?.delete(key: _screenPowerOffKey);
       }
 
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] All preferences cleared');
       }
+
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] Failed to clear: $e');

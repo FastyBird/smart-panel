@@ -106,6 +106,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_syncStateWithRepository);
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
+    _localPrefs.addListener(_onLocalPrefsChanged);
 
     // Wire security status to overlay controller
     _onSecurityStatusChanged();
@@ -218,6 +219,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
+    _localPrefs.removeListener(_onLocalPrefsChanged);
     _securityStatusRepository.removeListener(_onSecurityStatusChanged);
     _socketService.removeConnectionListener(_onSocketConnectionChanged);
     _socketService.removeErrorTypeListener(_onSocketErrorType);
@@ -266,6 +268,19 @@ class _AppBodyState extends State<AppBody> {
     _inactivityOverlayProvider.updateConfig(
       screenLockDuration: _displayRepository.screenLockDuration,
       hasScreenSaver: _displayRepository.hasScreenSaver,
+      screenPowerOff: _localPrefs.screenPowerOff,
+    );
+  }
+
+  /// Propagate local-preference changes (e.g. screenPowerOff toggled in
+  /// settings) to the inactivity overlay without re-entering
+  /// [_syncStateWithRepository], which itself writes back to
+  /// [_localPrefs] and would cause a duplicate cycle.
+  void _onLocalPrefsChanged() {
+    _inactivityOverlayProvider.updateConfig(
+      screenLockDuration: _displayRepository.screenLockDuration,
+      hasScreenSaver: _displayRepository.hasScreenSaver,
+      screenPowerOff: _localPrefs.screenPowerOff,
     );
   }
 

@@ -1114,6 +1114,14 @@
   "@settings_display_settings_screen_saver_description": {
     "description": "Description explaining the screen saver setting."
   },
+  "settings_display_settings_screen_power_off_title": "Screen Power Off",
+  "@settings_display_settings_screen_power_off_title": {
+    "description": "Label for enabling physical screen power off when idle."
+  },
+  "settings_display_settings_screen_power_off_description": "Turn off the display when screen is locked.",
+  "@settings_display_settings_screen_power_off_description": {
+    "description": "Description explaining the screen power off setting."
+  },
   "settings_display_settings_unit_overrides_section": "Unit Overrides",
   "@settings_display_settings_unit_overrides_section": {
     "description": "Section heading for display-level unit override settings."
