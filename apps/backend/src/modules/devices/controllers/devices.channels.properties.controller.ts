@@ -52,6 +52,7 @@ import {
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
+import { PropertyCommandService } from '../services/property-command.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
@@ -65,6 +66,7 @@ export class DevicesChannelsPropertiesController {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly propertyTimeseriesService: PropertyTimeseriesService,
+		private readonly propertyCommandService: PropertyCommandService,
 	) {}
 
 	@ApiOperation({
@@ -408,6 +410,24 @@ export class DevicesChannelsPropertiesController {
 			this.logger.debug(
 				`Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
 			);
+
+			// If value was provided, send command to the physical device (fire-and-forget)
+			const commandValue = (updateDto.data as Record<string, unknown>).value;
+
+			if (typeof commandValue !== 'undefined' && commandValue !== null) {
+				this.propertyCommandService
+					.processApiPropertyCommand(
+						device.id,
+						channel.id,
+						updatedProperty.id,
+						commandValue as string | number | boolean,
+					)
+					.catch((err: Error) => {
+						this.logger.error(
+							`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`,
+						);
+					});
+			}
 
 			const response = new ChannelPropertyResponseModel();
 

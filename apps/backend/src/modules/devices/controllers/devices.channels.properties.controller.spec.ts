@@ -28,6 +28,7 @@ import { ChannelsPropertiesTypeMapperService } from '../services/channels.proper
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
+import { PropertyCommandService } from '../services/property-command.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 import { DevicesChannelsPropertiesController } from './devices.channels.properties.controller';
@@ -137,6 +138,12 @@ describe('DevicesChannelsPropertiesController', () => {
 					provide: PropertyTimeseriesService,
 					useValue: {
 						queryTimeseries: jest.fn(),
+					},
+				},
+				{
+					provide: PropertyCommandService,
+					useValue: {
+						processApiPropertyCommand: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 			],
