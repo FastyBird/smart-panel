@@ -160,7 +160,16 @@ class ScreenPowerService {
 
 			// Save current brightness for restore (even if 0)
 			final current = await brightnessFile.readAsString();
-			_savedBacklightBrightness = int.tryParse(current.trim()) ?? 0;
+			final parsedBrightness = int.tryParse(current.trim());
+
+			if (parsedBrightness == null) {
+				if (kDebugMode) {
+					debugPrint('$_tag Could not parse backlight brightness: "$current"');
+				}
+				return false;
+			}
+
+			_savedBacklightBrightness = parsedBrightness;
 			_backlightPath = path;
 
 			// Write '0' to brightness file (quote path for shell safety)
