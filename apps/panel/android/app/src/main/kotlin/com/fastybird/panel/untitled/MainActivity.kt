@@ -111,9 +111,13 @@ class MainActivity : FlutterActivity() {
 		return try {
 			val window = window ?: return false
 			val params = window.attributes
+			val brightness = if (percent <= 0) 0.01f else percent / 100.0f
 
-			// Map 0-100 to 0.01-1.0 (avoid 0.0 which turns off the screen)
-			params.screenBrightness = if (percent <= 0) 0.01f else percent / 100.0f
+			// Keep savedBrightness in sync so that setScreenOn restores the
+			// correct value instead of a stale one from before this call.
+			savedBrightness = brightness
+
+			params.screenBrightness = brightness
 			window.attributes = params
 
 			true

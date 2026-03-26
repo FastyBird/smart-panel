@@ -21,6 +21,10 @@ class DisplaysModuleService {
 
   bool _isLoading = true;
 
+  /// Guards against concurrent hardware change operations from rapid
+  /// socket events. Each new call waits for the previous to finish.
+  Future<void> _pendingHardwareChange = Future.value();
+
   DisplaysModuleService({
     required ApiClient apiClient,
     required SocketService socketService,
@@ -292,14 +296,16 @@ class DisplaysModuleService {
         }
       }
 
-      // Apply hardware changes when settings are updated remotely
-      _applyHardwareChanges(
-        previousBrightness: previousBrightness,
-        previousSpeaker: previousSpeaker,
-        previousSpeakerVolume: previousSpeakerVolume,
-        previousMicrophone: previousMicrophone,
-        previousMicrophoneVolume: previousMicrophoneVolume,
-        updatedDisplay: updatedDisplay,
+      // Serialize hardware changes so rapid socket events don't interleave
+      _pendingHardwareChange = _pendingHardwareChange.then((_) =>
+        _applyHardwareChanges(
+          previousBrightness: previousBrightness,
+          previousSpeaker: previousSpeaker,
+          previousSpeakerVolume: previousSpeakerVolume,
+          previousMicrophone: previousMicrophone,
+          previousMicrophoneVolume: previousMicrophoneVolume,
+          updatedDisplay: updatedDisplay,
+        ),
       );
 
       // Log other setting changes for debugging
