@@ -247,6 +247,8 @@
   "settings_display_settings_screen_lock_description": "Automatische Sperre bei Inaktivität.",
   "settings_display_settings_screen_saver_title": "Bildschirmschoner",
   "settings_display_settings_screen_saver_description": "Bildschirmschoner bei Inaktivität anzeigen.",
+  "settings_display_settings_screen_power_off_title": "Screen Power Off",
+  "settings_display_settings_screen_power_off_description": "Turn off the display when screen is locked.",
   "settings_display_settings_unit_overrides_section": "Einheitenüberschreibungen",
   "settings_display_settings_temperature_unit_title": "Temperatureinheit",
   "settings_display_settings_temperature_unit_description": "System-Temperatureinheit für dieses Display überschreiben.",

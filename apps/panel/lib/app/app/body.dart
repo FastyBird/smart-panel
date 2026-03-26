@@ -266,6 +266,7 @@ class _AppBodyState extends State<AppBody> {
     _inactivityOverlayProvider.updateConfig(
       screenLockDuration: _displayRepository.screenLockDuration,
       hasScreenSaver: _displayRepository.hasScreenSaver,
+      screenPowerOff: _localPrefs.screenPowerOff,
     );
   }
 

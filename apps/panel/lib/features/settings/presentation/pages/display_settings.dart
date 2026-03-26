@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
@@ -28,6 +29,7 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	final DisplayRepository _repository = locator<DisplayRepository>();
+	final LocalPreferencesService _localPrefs = locator<LocalPreferencesService>();
 
 	late bool _isDarkMode;
 
@@ -38,6 +40,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	late int _screenLockDuration;
 
 	late bool _hasScreenSaver;
+
+	late bool _screenPowerOff;
 
 	// Unit override state (null = system default)
 	TemperatureUnit? _temperatureUnit;
@@ -70,6 +74,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			_brightness = _repository.brightness;
 			_screenLockDuration = _repository.screenLockDuration;
 			_hasScreenSaver = _repository.hasScreenSaver;
+			_screenPowerOff = _localPrefs.screenPowerOff;
 			_temperatureUnit = _repository.temperatureUnit;
 			_windSpeedUnit = _repository.windSpeedUnit;
 			_pressureUnit = _repository.pressureUnit;
@@ -155,6 +160,18 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				trailing: SettingsToggle(
 					value: _hasScreenSaver,
 					onChanged: (v) => _handleScreenSaverChange(context, v),
+				),
+			),
+			// Screen Power Off
+			SettingsCard(
+				icon: MdiIcons.monitorOff,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_screen_power_off_title,
+				description: localizations.settings_display_settings_screen_power_off_description,
+				trailing: SettingsToggle(
+					value: _screenPowerOff,
+					onChanged: (v) => _handleScreenPowerOffChange(v),
 				),
 			),
 		];
@@ -599,6 +616,16 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				}
 			},
 		);
+	}
+
+	void _handleScreenPowerOffChange(bool state) {
+		HapticFeedback.lightImpact();
+
+		setState(() {
+			_screenPowerOff = !_screenPowerOff;
+		});
+
+		_localPrefs.setScreenPowerOff(_screenPowerOff);
 	}
 
 	Future<void> _handleScreenSaverChange(

@@ -892,6 +892,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_display_settings_screen_saver_description => 'Pokaż wygaszacz ekranu podczas bezczynności.';
 
   @override
+  String get settings_display_settings_screen_power_off_title => 'Screen Power Off';
+
+  @override
+  String get settings_display_settings_screen_power_off_description => 'Turn off the display when screen is locked.';
+
+  @override
   String get settings_display_settings_unit_overrides_section => 'Nadpisanie jednostek';
 
   @override

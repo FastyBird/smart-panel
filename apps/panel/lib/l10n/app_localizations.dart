@@ -1621,6 +1621,18 @@ abstract class AppLocalizations {
   /// **'Show screen saver when idle.'**
   String get settings_display_settings_screen_saver_description;
 
+  /// Label for enabling physical screen power off when idle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Power Off'**
+  String get settings_display_settings_screen_power_off_title;
+
+  /// Description explaining the screen power off setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off the display when screen is locked.'**
+  String get settings_display_settings_screen_power_off_description;
+
   /// Section heading for display-level unit override settings.
   ///
   /// In en, this message translates to:

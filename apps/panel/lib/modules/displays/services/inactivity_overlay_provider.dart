@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/core/services/screen_power.dart';
 import 'package:fastybird_smart_panel/modules/displays/presentation/lock.dart';
 import 'package:fastybird_smart_panel/modules/displays/presentation/screen_saver.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
@@ -12,8 +13,12 @@ class InactivityOverlayIds {
 
 /// Manages an inactivity timer and shows a lock screen or screen saver
 /// via the [OverlayManager] when the user is idle.
+///
+/// When [screenPowerOff] is enabled, the physical display is powered off
+/// when the lock screen activates and powered back on when dismissed.
 class InactivityOverlayProvider {
   final OverlayManager _overlayManager;
+  final ScreenPowerService _screenPowerService;
 
   bool _isInitialized = false;
   Timer? _inactivityTimer;
@@ -21,10 +26,13 @@ class InactivityOverlayProvider {
 
   int _screenLockDuration = 30;
   bool _hasScreenSaver = true;
+  bool _screenPowerOff = false;
 
   InactivityOverlayProvider({
     required OverlayManager overlayManager,
-  }) : _overlayManager = overlayManager;
+    ScreenPowerService? screenPowerService,
+  })  : _overlayManager = overlayManager,
+        _screenPowerService = screenPowerService ?? ScreenPowerService();
 
   /// Initialize by registering the overlay entry and starting the timer.
   void init() {
@@ -59,9 +67,13 @@ class InactivityOverlayProvider {
   void updateConfig({
     required int screenLockDuration,
     required bool hasScreenSaver,
+    bool? screenPowerOff,
   }) {
     _screenLockDuration = screenLockDuration;
     _hasScreenSaver = hasScreenSaver;
+    if (screenPowerOff != null) {
+      _screenPowerOff = screenPowerOff;
+    }
     resetTimer();
   }
 
@@ -96,16 +108,24 @@ class InactivityOverlayProvider {
         return const LockScreen();
       },
     );
+
+    // Power off the screen if enabled and not showing screen saver
+    if (_screenPowerOff && !_hasScreenSaver) {
+      _screenPowerService.screenOff();
+    }
   }
 
   /// Detect when the inactivity overlay is dismissed by the user
-  /// (active → inactive transition) and restart the timer.
+  /// (active -> inactive transition) and restart the timer.
   void _onOverlayChanged() {
     final entry = _overlayManager.getEntry(InactivityOverlayIds.inactivity);
     final isActive = entry?.isActive ?? false;
 
     if (_wasActive && !isActive) {
-      // Overlay was just dismissed — restart timer
+      // Overlay was just dismissed — power on screen and restart timer
+      if (_screenPowerService.isScreenOff) {
+        _screenPowerService.screenOn();
+      }
       resetTimer();
     }
 

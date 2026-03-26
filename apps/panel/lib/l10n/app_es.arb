@@ -247,6 +247,8 @@
   "settings_display_settings_screen_lock_description": "Bloqueo automático tras inactividad.",
   "settings_display_settings_screen_saver_title": "Salvapantallas",
   "settings_display_settings_screen_saver_description": "Mostrar salvapantallas en reposo.",
+  "settings_display_settings_screen_power_off_title": "Screen Power Off",
+  "settings_display_settings_screen_power_off_description": "Turn off the display when screen is locked.",
   "settings_display_settings_unit_overrides_section": "Anulación de unidades",
   "settings_display_settings_temperature_unit_title": "Unidad de temperatura",
   "settings_display_settings_temperature_unit_description": "Anular la unidad de temperatura del sistema para esta pantalla.",
