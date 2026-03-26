@@ -825,10 +825,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_language_settings_time_format_description => 'Formato de 12 o 24 horas.';
 
   @override
-  String get settings_language_settings_number_format_title => 'Number Format';
+  String get settings_language_settings_number_format_title => 'Formato de números';
 
   @override
-  String get settings_language_settings_number_format_description => 'How numbers are displayed (thousands and decimal separators).';
+  String get settings_language_settings_number_format_description => 'Cómo se muestran los números (separadores de miles y decimales).';
 
   @override
   String get number_format_comma_dot => '1,234.56';

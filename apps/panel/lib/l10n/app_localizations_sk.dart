@@ -836,10 +836,10 @@ class AppLocalizationsSk extends AppLocalizations {
   String get settings_language_settings_time_format_description => '12-hodinový alebo 24-hodinový formát.';
 
   @override
-  String get settings_language_settings_number_format_title => 'Number Format';
+  String get settings_language_settings_number_format_title => 'Formát čísel';
 
   @override
-  String get settings_language_settings_number_format_description => 'How numbers are displayed (thousands and decimal separators).';
+  String get settings_language_settings_number_format_description => 'Ako sa zobrazujú čísla (oddeľovače tisícov a desatinných miest).';
 
   @override
   String get number_format_comma_dot => '1,234.56';
