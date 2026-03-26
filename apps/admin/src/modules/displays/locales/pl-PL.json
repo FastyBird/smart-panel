@@ -1,1 +1,477 @@
-{}
+{
+	"title": "Wyświetlacze",
+	"description": "Zarządzaj urządzeniami wyświetlaczy",
+	"headings": {
+		"list": "Wyświetlacze",
+		"adjustFilters": "Filtruj wyświetlacze",
+		"removeDisplay": "Usuń wyświetlacz",
+		"removeBulkDisplays": "Usuń wyświetlacze",
+		"discard": "Odrzuć zmiany",
+		"aboutDisplayConfiguration": "Konfiguracja wyświetlacza"
+	},
+	"subHeadings": {
+		"list": "Zarządzaj podłączonymi urządzeniami wyświetlaczy",
+		"adjustFilters": "Dostosuj ustawienia filtrów"
+	},
+	"breadcrumbs": {
+		"displays": {
+			"list": "wyświetlacze",
+			"detail": "wyświetlacz: {display}",
+			"edit": "edytuj wyświetlacz",
+			"tokens": "tokeny dostępu"
+		}
+	},
+	"meta": {
+		"displays": {
+			"list": {
+				"title": "Lista wyświetlaczy"
+			},
+			"edit": {
+				"title": "Edytuj wyświetlacz: {display}"
+			},
+			"detail": {
+				"title": "Wyświetlacz: {display}"
+			},
+			"tokens": {
+				"title": "Tokeny dostępu: {display}"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Nazwa",
+			"role": "Rola",
+			"macAddress": "Adres MAC",
+			"version": "Wersja",
+			"resolution": "Rozdzielczość",
+			"layout": "Układ",
+			"audio": "Audio",
+			"state": {
+				"title": "Stan"
+			},
+			"currentIpAddress": "Bieżący IP",
+			"local": "Lokalny",
+			"status": "Status"
+		},
+		"tooltips": {
+			"speakerSupported": "Obsługa głośnika",
+			"microphoneSupported": "Obsługa mikrofonu"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Szukaj wyświetlaczy..."
+		},
+		"config": {
+			"deploymentMode": {
+				"title": "Tryb bramy",
+				"description": "Tryb bramy rejestracji wyświetlaczy",
+				"placeholder": "Wybierz tryb bramy",
+				"validation": {
+					"required": "Tryb bramy jest wymagany"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Czas dołączania",
+				"description": "Czas w milisekundach, przez który dołączanie pozostaje aktywne",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "Czas dołączania jest wymagany",
+					"min": "Czas dołączania musi wynosić co najmniej 1000ms"
+				}
+			}
+		},
+		"displays": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID wyświetlacza"
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Wprowadź nazwę wyświetlacza",
+				"validation": {
+					"maxLength": "Nazwa musi mieć mniej niż 100 znaków"
+				}
+			},
+			"role": {
+				"title": "Rola wyświetlacza",
+				"description": "Przeznaczenie tego wyświetlacza w konfiguracji inteligentnego domu",
+				"options": {
+					"room": "Pokój (sterowanie jednym pokojem)",
+					"master": "Główny (przegląd całego domu)",
+					"entry": "Wejście (tryby domu i bezpieczeństwo)"
+				},
+				"comingSoon": "Wkrótce"
+			},
+			"unitSize": {
+				"title": "Rozmiar jednostki",
+				"unit": "px",
+				"validation": {
+					"min": "Rozmiar jednostki musi wynosić co najmniej 1"
+				}
+			},
+			"rows": {
+				"title": "Wiersze",
+				"validation": {
+					"min": "Wiersze muszą wynosić co najmniej 1"
+				}
+			},
+			"cols": {
+				"title": "Kolumny",
+				"validation": {
+					"min": "Kolumny muszą wynosić co najmniej 1"
+				}
+			},
+			"brightness": {
+				"title": "Jasność",
+				"validation": {
+					"range": "Jasność musi wynosić od 0 do 100"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Czas blokady ekranu",
+				"options": {
+					"15s": "15 sekund",
+					"30s": "30 sekund",
+					"1min": "1 minuta",
+					"2min": "2 minuty",
+					"5min": "5 minut",
+					"10min": "10 minut",
+					"30min": "30 minut",
+					"never": "Nigdy"
+				}
+			},
+			"darkMode": {
+				"title": "Tryb ciemny"
+			},
+			"screenSaver": {
+				"title": "Wygaszacz ekranu"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Głośnik (wyjście audio)"
+				},
+				"microphone": {
+					"title": "Mikrofon (wejście audio)"
+				}
+			},
+			"speaker": {
+				"title": "Głośnik włączony"
+			},
+			"speakerVolume": {
+				"title": "Głośność głośnika",
+				"validation": {
+					"range": "Głośność musi wynosić od 0 do 100"
+				}
+			},
+			"microphone": {
+				"title": "Mikrofon włączony"
+			},
+			"microphoneVolume": {
+				"title": "Głośność mikrofonu",
+				"validation": {
+					"range": "Głośność musi wynosić od 0 do 100"
+				}
+			},
+			"homeMode": {
+				"title": "Tryb strony głównej",
+				"description": "Jak strona główna jest określana przy uruchomieniu wyświetlacza",
+				"options": {
+					"autoSpace": "Automatyczny",
+					"explicit": "Jawny"
+				}
+			},
+			"homePageId": {
+				"title": "Strona główna",
+				"placeholder": "Wybierz stronę główną",
+				"description": "Strona wyświetlana przy uruchomieniu wyświetlacza (używana tylko gdy tryb strony głównej jest Jawny)",
+				"validation": {
+					"required": "Strona główna jest wymagana gdy tryb strony głównej jest Jawny"
+				}
+			},
+			"roomId": {
+				"title": "Przypisany pokój",
+				"placeholder": "Wybierz pokój",
+				"description": "Pokój, którym steruje ten wyświetlacz. Wymagany dla wyświetlaczy z rolą Pokój.",
+				"validation": {
+					"required": "Przypisanie pokoju jest wymagane dla wyświetlaczy z rolą Pokój"
+				}
+			},
+			"numberFormat": {
+				"title": "Format liczb",
+				"placeholder": "Domyślny systemowy",
+				"values": {
+					"commaDot": "1,234.56 (przecinek / kropka)",
+					"dotComma": "1.234,56 (kropka / przecinek)",
+					"spaceComma": "1 234,56 (spacja / przecinek)",
+					"none": "1234.56 (bez grupowania)"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Jednostka temperatury",
+				"placeholder": "Domyślna systemowa",
+				"values": {
+					"celsius": "Celsjusz (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Jednostka prędkości wiatru",
+				"placeholder": "Domyślna systemowa",
+				"values": {
+					"ms": "Metry na sekundę (m/s)",
+					"kmh": "Kilometry na godzinę (km/h)",
+					"mph": "Mile na godzinę (mph)",
+					"knots": "Węzły (kn)"
+				}
+			},
+			"pressureUnit": {
+				"title": "Jednostka ciśnienia",
+				"placeholder": "Domyślna systemowa",
+				"values": {
+					"hpa": "Hektopaskal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Cale słupa rtęci (inHg)",
+					"mmhg": "Milimetry słupa rtęci (mmHg)"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Jednostka opadów",
+				"placeholder": "Domyślna systemowa",
+				"values": {
+					"mm": "Milimetry (mm)",
+					"inches": "Cale (in)"
+				}
+			},
+			"distanceUnit": {
+				"title": "Jednostka odległości",
+				"placeholder": "Domyślna systemowa",
+				"values": {
+					"km": "Kilometry (km)",
+					"miles": "Mile (mi)",
+					"meters": "Metry (m)",
+					"feet": "Stopy (ft)"
+				}
+			},
+			"weatherLocationId": {
+				"title": "Lokalizacja pogody",
+				"placeholder": "Domyślna systemowa (lokalizacja główna)",
+				"description": "Nadpisz lokalizację pogody dla tego wyświetlacza. Pozostaw puste, aby użyć głównej lokalizacji z konfiguracji pogody."
+			}
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Tryb ciemny",
+			"values": {
+				"enabled": "Włączony",
+				"disabled": "Wyłączony",
+				"all": "Wszystkie"
+			}
+		},
+		"screenSaver": {
+			"title": "Wygaszacz ekranu",
+			"values": {
+				"enabled": "Włączony",
+				"disabled": "Wyłączony",
+				"all": "Wszystkie"
+			}
+		},
+		"state": {
+			"title": "Stan"
+		},
+		"states": {
+			"title": "Stan"
+		}
+	},
+	"states": {
+		"connected": "Połączony",
+		"disconnected": "Rozłączony",
+		"lost": "Utracony",
+		"unknown": "Nieznany"
+	},
+	"roles": {
+		"room": "Pokój",
+		"master": "Główny",
+		"entry": "Wejście"
+	},
+	"texts": {
+		"loadingDisplays": "Ładowanie wyświetlaczy...",
+		"loadingDisplay": "Ładowanie wyświetlacza...",
+		"noDisplays": "Nie zarejestrowano jeszcze żadnych wyświetlaczy",
+		"noFilteredDisplays": "Żadne wyświetlacze nie pasują do kryteriów filtra",
+		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+		"aboutDisplayConfiguration": "Skonfiguruj tryb wdrożenia i ustawienia rejestracji wyświetlaczy. Tryb wdrożenia określa, jak backend i panel są zorganizowane, a czas dołączania kontroluje, jak długo nowe wyświetlacze mogą się rejestrować w sieci."
+	},
+	"buttons": {
+		"detail": {
+			"title": "Szczegóły"
+		},
+		"adjust": {
+			"title": "Filtruj"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		},
+		"reset": {
+			"title": "Resetuj filtry"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"cancel": {
+			"title": "Anuluj"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"discard": {
+			"title": "Odrzuć"
+		},
+		"permitJoin": {
+			"title": "Zezwól na dołączanie",
+			"disable": "Wyłącz dołączanie ({time})"
+		},
+		"back": {
+			"title": "Wróć"
+		}
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "Ogólne"
+			},
+			"layout": {
+				"title": "Układ",
+				"badge": "Zaawansowane",
+				"description": "Zaawansowane ustawienia kontrolujące ile kafelków jest wyświetlanych na ekranie i jak są ułożone w siatce."
+			},
+			"appearance": {
+				"title": "Wygląd"
+			},
+			"homePage": {
+				"title": "Strona główna",
+				"autoRoomHint": "W <strong>trybie automatycznym</strong> wyświetlacz otwiera domyślny widok systemu na podstawie swojej roli i przypisania."
+			},
+			"weather": {
+				"title": "Lokalizacja pogody",
+				"description": "Nadpisz lokalizację pogody dla tego wyświetlacza. Gdy nie jest ustawiona, zostanie użyta główna lokalizacja z konfiguracji pogody."
+			},
+			"units": {
+				"title": "Nadpisania jednostek",
+				"description": "Nadpisz systemowe jednostki miar dla tego wyświetlacza. Pozostaw puste, aby użyć domyślnych ustawień systemowych."
+			},
+			"audio": {
+				"title": "Audio",
+				"badge": "Zaawansowane"
+			}
+		}
+	},
+	"detail": {
+		"title": "Szczegóły wyświetlacza",
+		"info": {
+			"title": "Informacje o wyświetlaczu",
+			"role": "Rola",
+			"macAddress": "Adres MAC",
+			"version": "Wersja",
+			"build": "Kompilacja",
+			"resolution": "Rozdzielczość",
+			"pixelRatio": "Współczynnik pikseli",
+			"gridSize": "Rozmiar siatki",
+			"registeredFromIp": "IP rejestracji",
+			"currentIpAddress": "Bieżący IP",
+			"status": "Stan połączenia"
+		},
+		"settings": {
+			"title": "Ustawienia wyświetlacza",
+			"gridSize": "Rozmiar siatki",
+			"darkMode": "Tryb ciemny",
+			"brightness": "Jasność",
+			"screenLockDuration": "Czas blokady ekranu",
+			"screenSaver": "Wygaszacz ekranu",
+			"speakerEnabled": "Głośnik włączony",
+			"speakerVolume": "Głośność głośnika",
+			"microphoneEnabled": "Mikrofon włączony",
+			"microphoneVolume": "Głośność mikrofonu"
+		},
+		"peripherals": {
+			"title": "Urządzenia peryferyjne",
+			"audioOutput": "Wyjście audio",
+			"audioOutputVolume": "Głośność wyjścia audio",
+			"audioInput": "Wejście audio",
+			"audioInputVolume": "Głośność wejścia audio"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Głośnik (wyjście audio)"
+			},
+			"microphone": {
+				"title": "Mikrofon (wejście audio)"
+			}
+		},
+		"tokens": {
+			"title": "Tokeny dostępu",
+			"subtitle": "Zarządzaj tokenami",
+			"description": "Zarządzaj tokenami dostępu tego wyświetlacza. Każdy wyświetlacz powinien mieć najwyżej jeden aktywny token.",
+			"noTokens": "Brak aktywnych tokenów",
+			"revokeConfirm": "Czy na pewno chcesz unieważnić token dostępu? Wyświetlacz będzie musiał się ponownie zarejestrować.",
+			"revoked": "Token pomyślnie unieważniony"
+		},
+		"spaceContext": {
+			"title": "Kontekst przestrzeni",
+			"role": "Rola wyświetlacza",
+			"homeMode": "Tryb strony głównej",
+			"assignedRoom": "Przypisany pokój",
+			"notAssigned": "Nie przypisano",
+			"initialView": "Widok początkowy",
+			"systemViews": "Widoki systemowe",
+			"selectedPage": "Wybrana strona",
+			"hint": "Główne widoki tego wyświetlacza są generowane automatycznie na podstawie jego roli i przypisanej przestrzeni.",
+			"homeModes": {
+				"auto_space": "Automatyczny",
+				"explicit": "Jawny"
+			},
+			"initialViews": {
+				"roomOverview": "Przegląd pokoju",
+				"houseOverview": "Przegląd domu",
+				"entryOverview": "Przegląd wejścia"
+			},
+			"views": {
+				"overview": "Przegląd",
+				"lights": "Oświetlenie",
+				"climate": "Klimat"
+			}
+		}
+	},
+	"messages": {
+		"notFound": "Wyświetlacz nie znaleziony",
+		"loadError": "Nie udało się wczytać wyświetlaczy",
+		"confirmRemove": "Czy na pewno chcesz usunąć wyświetlacz \"{name}\"? Tej operacji nie można cofnąć.",
+		"confirmBulkRemove": "Czy na pewno chcesz usunąć {count} wyświetlaczy? Tej operacji nie można cofnąć.",
+		"removed": "Wyświetlacz pomyślnie usunięty",
+		"bulkRemoved": "Usunięto {count} wyświetlaczy",
+		"bulkRemoveFailed": "Nie udało się usunąć {count} wyświetlaczy",
+		"edited": "Wyświetlacz {display} został zaktualizowany",
+		"notEdited": "Wyświetlacz {display} nie został zaktualizowany",
+		"deletedWhileEditing": "Ten wyświetlacz został usunięty i nie jest już dostępny.",
+		"permitJoinActivated": "Dołączanie pomyślnie aktywowane",
+		"permitJoinDeactivated": "Dołączanie pomyślnie dezaktywowane",
+		"permitJoinError": "Nie udało się aktywować dołączania",
+		"permitJoinDeactivateError": "Nie udało się dezaktywować dołączania",
+		"config": {
+			"edited": "Konfiguracja wyświetlaczy została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji wyświetlaczy"
+		}
+	},
+	"actions": {
+		"revokeToken": "Unieważnij token",
+		"manageTokens": "Zarządzaj tokenami"
+	}
+}

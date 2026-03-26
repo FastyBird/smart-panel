@@ -60,6 +60,7 @@ describe('SettingsProfileForm', (): void => {
 					draft: false,
 					isHidden: false,
 					role: UsersModuleUserRole.user,
+					language: null,
 					createdAt: new Date(),
 					updatedAt: null,
 				},

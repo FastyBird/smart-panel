@@ -212,5 +212,5 @@ export const UserResSchema = z.object({
 	role: z.nativeEnum(UsersModuleUserRole),
 	language: z.string().nullable().optional(),
 	created_at: z.string().date(),
-	updated_at: z.string().date().nullable(),
+	updated_at: z.string().date().nullable().optional(),
 });

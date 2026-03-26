@@ -12,7 +12,7 @@ import type {
 	AuthModuleRegisterOperation,
 	UsersModuleUpdateUserOperation,
 } from '../../../openapi.constants';
-import { type IUser, transformUserResponse, USERS_MODULE_PREFIX } from '../../users';
+import { type IUser, type IUserRes, transformUserResponse, USERS_MODULE_PREFIX } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';
 
@@ -162,7 +162,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/profile`);
 
 				if (typeof responseData !== 'undefined') {
-					profile.value = transformUserResponse(responseData.data);
+					profile.value = transformUserResponse(responseData.data as IUserRes);
 
 					return profile.value;
 				}
@@ -281,7 +281,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			if (typeof responseData !== 'undefined') {
 				// Update the local profile with the response
-				profile.value = transformUserResponse(responseData.data);
+				profile.value = transformUserResponse(responseData.data as IUserRes);
 
 				return true;
 			}

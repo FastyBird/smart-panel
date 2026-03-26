@@ -5,18 +5,21 @@ import type { Pinia } from 'pinia';
 
 import { UsersModuleUserRole } from './openapi.constants';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AppI18n = I18n<any, any, any, string, boolean>;
+
 export type IExtensionOptions = IModuleOptions & IPluginOptions;
 
 export interface IModuleOptions {
 	router: Router;
 	store: Pinia;
-	i18n: I18n;
+	i18n: AppI18n;
 }
 
 export interface IPluginOptions {
 	router: Router;
 	store: Pinia;
-	i18n: I18n;
+	i18n: AppI18n;
 }
 
 export interface IAppUser {

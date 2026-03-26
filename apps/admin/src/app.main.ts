@@ -99,7 +99,7 @@ app.use(i18n);
 // Apply stored or browser-detected locale
 const storedLocale = getStoredLocale();
 const initialLocale = storedLocale ?? detectBrowserLocale();
-i18n.global.locale.value = initialLocale;
+(i18n.global.locale as unknown as { value: string }).value = initialLocale;
 document.documentElement.setAttribute('lang', initialLocale.split('-')[0]);
 
 app.use(createMetaManager());

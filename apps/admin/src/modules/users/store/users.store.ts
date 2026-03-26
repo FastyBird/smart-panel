@@ -127,7 +127,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			});
 
 			if (typeof responseData !== 'undefined') {
-				const user = transformUserResponse(responseData.data);
+				const user = transformUserResponse(responseData.data as IUserRes);
 
 				data.value[user.id] = user;
 
@@ -159,7 +159,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			if (typeof responseData !== 'undefined') {
 				data.value = Object.fromEntries(
 					responseData.data.map((user) => {
-						const transformedUser = transformUserResponse(user);
+						const transformedUser = transformUserResponse(user as IUserRes);
 
 						return [transformedUser.id, transformedUser];
 					})
@@ -226,12 +226,12 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 					response,
 				} = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`, {
 					body: {
-						data: transformUserCreateRequest({ ...parsedNewUser.data, ...{ id: payload.id, password } }),
+						data: transformUserCreateRequest({ ...parsedNewUser.data, ...{ id: payload.id, password } }) as never,
 					},
 				});
 
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const user = transformUserResponse(responseData.data);
+					const user = transformUserResponse(responseData.data as IUserRes);
 
 					data.value[user.id] = user;
 
@@ -303,12 +303,12 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 						},
 					},
 					body: {
-						data: transformUserUpdateRequest(parsedEditedUser.data),
+						data: transformUserUpdateRequest(parsedEditedUser.data) as never,
 					},
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const user = transformUserResponse(responseData.data);
+					const user = transformUserResponse(responseData.data as IUserRes);
 
 					data.value[user.id] = user;
 
@@ -363,12 +363,12 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				response,
 			} = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`, {
 				body: {
-					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }),
+					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }) as never,
 				},
 			});
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const user = transformUserResponse(responseData.data);
+				const user = transformUserResponse(responseData.data as IUserRes);
 
 				data.value[user.id] = user;
 

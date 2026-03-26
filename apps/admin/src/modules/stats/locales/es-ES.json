@@ -1,1 +1,114 @@
-{}
+{
+	"meta": {
+		"stats": {
+			"title": "Resumen de la aplicación"
+		}
+	},
+	"breadcrumbs": {
+		"stats": "resumen"
+	},
+	"headings": {
+		"stats": "Resumen de la aplicación",
+		"systemInformation": "Información del sistema",
+		"applicationOverview": "Smart Panel",
+		"quickLinks": "Accesos rápidos",
+		"cpu": "CPU",
+		"memory": "Memoria",
+		"uptime": "Tiempo activo",
+		"logs": "Registros",
+		"dashboard": "Páginas del Smart Panel",
+		"devices": "Dispositivos conectados",
+		"devicesCommunication": "Actualizaciones de dispositivos hoy",
+		"spaces": "Espacios del Smart Panel"
+	},
+	"subHeadings": {
+		"stats": "Estadísticas del sistema del panel inteligente"
+	},
+	"fields": {
+		"systemInformation": {
+			"timezone": {
+				"title": "Zona horaria"
+			},
+			"operatingSystem": {
+				"title": "SO"
+			},
+			"hostname": {
+				"title": "Nombre de host"
+			},
+			"ipv4": {
+				"title": "IPv4"
+			},
+			"ipv6": {
+				"title": "IPv6"
+			},
+			"configPath": {
+				"title": "Ruta de configuración",
+				"tooltip": "Ruta del archivo de configuración:"
+			}
+		},
+		"applicationOverview": {
+			"version": {
+				"title": "Versión"
+			},
+			"apip95": {
+				"title": "API p95 (5m)",
+				"tooltip": "Tiempo de respuesta API en el percentil 95 (últimos 5 minutos). Muestra la velocidad del 95% de las solicitudes API."
+			},
+			"webSocket": {
+				"title": "WebSocket",
+				"tooltip": "Disp. 5m: {wsAvailability5m} (actualizado {last})",
+				"state": {
+					"connected": "Conectado",
+					"disconnected": "Desconectado"
+				}
+			}
+		},
+		"cpu": {
+			"temperature": {
+				"title": "Temp {temperature} {unit}"
+			}
+		},
+		"memory": {
+			"total": {
+				"title": "de {total} {unit}"
+			}
+		},
+		"uptime": {
+			"process": {
+				"title": "Proceso {uptime}"
+			}
+		},
+		"spaces": {
+			"rooms": "{count} habitaciones",
+			"zones": "{count} zonas"
+		}
+	},
+	"texts": {
+		"updated": "Actualizado {time}",
+		"noLogs": "No se han registrado registros de la aplicación.",
+		"noFilteredLogs": "No se encontraron registros de la aplicación que coincidan con los criterios de filtro activos"
+	},
+	"buttons": {
+		"copy": {
+			"title": "Copiar"
+		},
+		"spaces": {
+			"title": "Espacios"
+		},
+		"pages": {
+			"title": "Páginas"
+		},
+		"devices": {
+			"title": "Dispositivos"
+		},
+		"config": {
+			"title": "Configuración"
+		},
+		"docs": {
+			"title": "Docs"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		}
+	}
+}

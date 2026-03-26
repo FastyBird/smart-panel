@@ -1,1 +1,247 @@
-{}
+{
+	"headings": {
+		"weather": "Clima",
+		"aboutPrimaryLocation": "Ubicación principal",
+		"locations": "Ubicaciones meteorológicas",
+		"locationDetail": "{location}",
+		"forecast": "Pronóstico",
+		"hourlyForecast": "Pronóstico por horas",
+		"addLocation": "Añadir ubicación",
+		"editLocation": "Editar ubicación",
+		"deleteLocation": "Eliminar ubicación",
+		"bulkDeleteLocations": "Eliminar ubicaciones",
+		"discard": "Descartar cambios",
+		"selectProvider": "Seleccionar un proveedor meteorológico",
+		"unsupportedProvider": "Proveedor no compatible",
+		"adjustFilters": "Ajustar filtros"
+	},
+	"subHeadings": {
+		"locations": "Gestionar ubicaciones de datos meteorológicos",
+		"locationDetail": "Información meteorológica de {location}",
+		"addLocation": "Añadir una nueva ubicación meteorológica",
+		"editLocation": "Editar detalles de la ubicación",
+		"adjustFilters": "Personalizar filtros de la lista de ubicaciones"
+	},
+	"breadcrumbs": {
+		"locations": "ubicaciones",
+		"locationDetail": "ubicación: {location}",
+		"addLocation": "añadir ubicación",
+		"editLocation": "editar ubicación"
+	},
+	"messages": {
+		"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
+		"requestError": "Ocurrió un error al cargar los datos",
+		"config": {
+			"edited": "La configuración meteorológica se ha actualizado correctamente",
+			"notEdited": "Error al actualizar la configuración meteorológica"
+		},
+		"locations": {
+			"created": "La ubicación \"{location}\" ha sido creada",
+			"notCreated": "Error al crear la ubicación \"{location}\"",
+			"updated": "La ubicación \"{location}\" ha sido actualizada",
+			"notUpdated": "Error al actualizar la ubicación \"{location}\"",
+			"deleted": "La ubicación ha sido eliminada",
+			"notDeleted": "Error al eliminar la ubicación",
+			"deleteCanceled": "La eliminación de la ubicación \"{location}\" fue cancelada",
+			"confirmBulkDelete": "¿Estás seguro de que deseas eliminar {count} ubicación(es)?",
+			"bulkDeleted": "{count} ubicación(es) han sido eliminadas",
+			"bulkDeleteFailed": "Error al eliminar {count} ubicación(es)",
+			"bulkDeleteCanceled": "La eliminación masiva de ubicaciones fue cancelada",
+			"noLocations": "No hay ubicaciones configuradas. Añade una ubicación para obtener datos meteorológicos.",
+			"notFound": "Ubicación no encontrada",
+			"confirmDeleteLocation": "¿Estás seguro de que deseas eliminar la ubicación \"{name}\"?",
+			"deletedWhileEditing": "La ubicación fue eliminada. Redirigiendo..."
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Añadir"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"cancel": {
+			"title": "Cancelar"
+		},
+		"discard": {
+			"title": "Descartar"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"reset": {
+			"title": "Restablecer filtros"
+		},
+		"detail": {
+			"title": "Detalle"
+		},
+		"retry": {
+			"title": "Reintentar"
+		},
+		"back": {
+			"title": "Volver"
+		}
+	},
+	"fields": {
+		"locations": {
+			"search": {
+				"placeholder": "Buscar ubicaciones..."
+			},
+			"provider": {
+				"title": "Proveedor meteorológico",
+				"placeholder": "Elige un proveedor de datos meteorológicos"
+			},
+			"name": {
+				"title": "Nombre de la ubicación",
+				"placeholder": "ej., Casa, Oficina, Casa de playa",
+				"validation": {
+					"required": "El nombre de la ubicación es obligatorio"
+				}
+			}
+		},
+		"config": {
+			"primaryLocation": {
+				"title": "Ubicación principal",
+				"description": "La ubicación predeterminada que se muestra en los widgets meteorológicos",
+				"placeholder": "Seleccionar ubicación principal"
+			}
+		}
+	},
+	"texts": {
+		"aboutPrimaryLocation": "Selecciona la ubicación principal para mostrar en los widgets meteorológicos. Las ubicaciones se pueden gestionar en la sección de Ubicaciones. Los datos meteorológicos se obtendrán para todas las ubicaciones configuradas.",
+		"selectProvider": "Elige un proveedor de datos meteorológicos para añadir una nueva ubicación. Los diferentes proveedores pueden ofrecer diferentes opciones de configuración.",
+		"unsupportedProvider": "El proveedor seleccionado \"{provider}\" no está soportado actualmente. Por favor selecciona un proveedor diferente.",
+		"weatherError": "No se puede cargar el clima",
+		"weatherErrorDescription": "No se pudieron cargar los datos meteorológicos para esta ubicación. Por favor verifica tu configuración de API e inténtalo de nuevo.",
+		"locationDetail": {
+			"provider": "Proveedor",
+			"temperature": "Temperatura",
+			"feelsLike": "Sensación térmica",
+			"conditions": "Condiciones",
+			"humidity": "Humedad",
+			"wind": "Viento",
+			"pressure": "Presión"
+		},
+		"misc": {
+			"loadingLocations": "Cargando ubicaciones...",
+			"noLocations": "Aún no hay ubicaciones configuradas",
+			"noFilteredLocations": "Ninguna ubicación coincide con los criterios de filtro"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": {
+				"title": "Proveedor meteorológico"
+			},
+			"primary": {
+				"title": "Estado de principal",
+				"values": {
+					"all": "Todas",
+					"primary": "Principal",
+					"secondary": "Secundaria"
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Nombre"
+			},
+			"weather": {
+				"title": "Clima",
+				"failed": "Error",
+				"error": "Error al cargar datos meteorológicos. Por favor verifica tu configuración de API."
+			},
+			"type": {
+				"title": "Proveedor"
+			},
+			"primary": {
+				"title": "Principal",
+				"values": {
+					"yes": "Sí",
+					"no": "No"
+				}
+			}
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": {
+				"title": "Ubicaciones meteorológicas"
+			},
+			"detail": {
+				"title": "Detalle de ubicación meteorológica"
+			},
+			"add": {
+				"title": "Añadir ubicación meteorológica"
+			},
+			"edit": {
+				"title": "Editar ubicación meteorológica"
+			}
+		}
+	},
+	"conditions": {
+		"thunderstormWithLightRain": "Tormenta con lluvia ligera",
+		"thunderstormWithRain": "Tormenta con lluvia",
+		"thunderstormWithHeavyRain": "Tormenta con lluvia intensa",
+		"lightThunderstorm": "Tormenta ligera",
+		"thunderstorm": "Tormenta",
+		"heavyThunderstorm": "Tormenta intensa",
+		"raggedThunderstorm": "Tormenta irregular",
+		"thunderstormWithLightDrizzle": "Tormenta con llovizna ligera",
+		"thunderstormWithDrizzle": "Tormenta con llovizna",
+		"thunderstormWithHeavyDrizzle": "Tormenta con llovizna intensa",
+		"lightIntensityDrizzle": "Llovizna de intensidad ligera",
+		"drizzle": "Llovizna",
+		"heavyIntensityDrizzle": "Llovizna de intensidad fuerte",
+		"lightIntensityDrizzleRain": "Lluvia con llovizna ligera",
+		"drizzleRain": "Lluvia con llovizna",
+		"heavyIntensityDrizzleRain": "Lluvia con llovizna intensa",
+		"showerRainAndDrizzle": "Chaparrón con llovizna",
+		"heavyShowerRainAndDrizzle": "Chaparrón intenso con llovizna",
+		"showerDrizzle": "Llovizna intermitente",
+		"lightRain": "Lluvia ligera",
+		"moderateRain": "Lluvia moderada",
+		"heavyIntensityRain": "Lluvia de intensidad fuerte",
+		"veryHeavyRain": "Lluvia muy intensa",
+		"extremeRain": "Lluvia extrema",
+		"freezingRain": "Lluvia helada",
+		"lightIntensityShowerRain": "Chaparrón ligero",
+		"showerRain": "Chaparrón",
+		"heavyIntensityShowerRain": "Chaparrón intenso",
+		"raggedShowerRain": "Chaparrón irregular",
+		"lightSnow": "Nieve ligera",
+		"snow": "Nieve",
+		"heavySnow": "Nieve intensa",
+		"sleet": "Aguanieve",
+		"lightShowerSleet": "Aguanieve ligera intermitente",
+		"showerSleet": "Aguanieve intermitente",
+		"lightRainAndSnow": "Lluvia ligera con nieve",
+		"rainAndSnow": "Lluvia con nieve",
+		"lightShowerSnow": "Nevada ligera intermitente",
+		"showerSnow": "Nevada intermitente",
+		"heavyShowerSnow": "Nevada intensa intermitente",
+		"mist": "Neblina",
+		"smoke": "Humo",
+		"haze": "Bruma",
+		"fog": "Niebla",
+		"sand": "Arena",
+		"dust": "Polvo",
+		"volcanicAsh": "Ceniza volcánica",
+		"squalls": "Ráfagas",
+		"tornado": "Tornado",
+		"clearSky": "Cielo despejado",
+		"fewClouds": "Pocas nubes",
+		"scatteredClouds": "Nubes dispersas",
+		"brokenClouds": "Nubosidad parcial",
+		"overcastClouds": "Cielo cubierto",
+		"unknown": "Desconocido"
+	}
+}

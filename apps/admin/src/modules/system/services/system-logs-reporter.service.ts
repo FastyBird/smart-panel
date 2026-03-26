@@ -1,12 +1,11 @@
 import { type App, type InjectionKey, type Ref, inject as _inject, hasInjectionContext } from 'vue';
-import type { I18n } from 'vue-i18n';
 
 import type { Store } from 'pinia';
 
 import type { ConsolaInstance, ConsolaReporter, LogObject } from 'consola';
 
 import type { IAccountManager } from '../../../common';
-import type { MessageSchema } from '../../../locales';
+import type { AppI18n } from '../../../app.types';
 import { SystemModuleLogEntryType } from '../../../openapi.constants';
 import type { IAddLogEntry, ILogsEntriesStoreActions, ILogsEntriesStoreState } from '../store/logs-entries.store.types';
 
@@ -66,7 +65,7 @@ export class SystemLogsReporterService {
 	constructor(
 		private readonly logger: ConsolaInstance,
 		private readonly store: LogsStore,
-		private readonly i18n: I18n<{ 'en-US': MessageSchema }>,
+		private readonly i18n: AppI18n,
 		private readonly accountManager?: IAccountManager
 	) {}
 

@@ -45,6 +45,7 @@ describe('UsernameEditForm', (): void => {
 		lastName: 'User',
 		email: 'admin@example.com',
 		role: UsersModuleUserRole.admin,
+		language: null,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),

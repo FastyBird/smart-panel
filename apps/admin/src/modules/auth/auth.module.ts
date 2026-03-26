@@ -262,7 +262,7 @@ export default {
 					const locale = LOCALE_LANGUAGE_MAP[profile.language];
 
 					if (locale) {
-						options.i18n.global.locale.value = locale as string;
+						(options.i18n.global.locale as unknown as { value: string }).value = locale;
 						storeLocale(locale);
 						document.documentElement.setAttribute('lang', profile.language);
 					}

@@ -69,6 +69,7 @@ describe('useUserEditForm', (): void => {
 			firstName: 'John',
 			lastName: 'Doe',
 			role: UsersModuleUserRole.user,
+			language: null,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),

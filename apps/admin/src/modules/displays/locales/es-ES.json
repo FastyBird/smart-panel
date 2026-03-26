@@ -1,1 +1,477 @@
-{}
+{
+	"title": "Pantallas",
+	"description": "Gestiona tus dispositivos de pantalla",
+	"headings": {
+		"list": "Pantallas",
+		"adjustFilters": "Filtrar pantallas",
+		"removeDisplay": "Eliminar pantalla",
+		"removeBulkDisplays": "Eliminar pantallas",
+		"discard": "Descartar cambios",
+		"aboutDisplayConfiguration": "Configuración de pantalla"
+	},
+	"subHeadings": {
+		"list": "Gestiona tus dispositivos de pantalla conectados",
+		"adjustFilters": "Ajustar configuración de filtros"
+	},
+	"breadcrumbs": {
+		"displays": {
+			"list": "pantallas",
+			"detail": "pantalla: {display}",
+			"edit": "editar pantalla",
+			"tokens": "tokens de acceso"
+		}
+	},
+	"meta": {
+		"displays": {
+			"list": {
+				"title": "Listar pantallas"
+			},
+			"edit": {
+				"title": "Editar pantalla: {display}"
+			},
+			"detail": {
+				"title": "Pantalla: {display}"
+			},
+			"tokens": {
+				"title": "Tokens de acceso: {display}"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Nombre",
+			"role": "Rol",
+			"macAddress": "Dirección MAC",
+			"version": "Versión",
+			"resolution": "Resolución",
+			"layout": "Diseño",
+			"audio": "Audio",
+			"state": {
+				"title": "Estado"
+			},
+			"currentIpAddress": "IP actual",
+			"local": "Local",
+			"status": "Estado"
+		},
+		"tooltips": {
+			"speakerSupported": "Altavoz compatible",
+			"microphoneSupported": "Micrófono compatible"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Buscar pantallas..."
+		},
+		"config": {
+			"deploymentMode": {
+				"title": "Modo de pasarela",
+				"description": "Modo de pasarela para el registro de pantallas",
+				"placeholder": "Seleccionar modo de pasarela",
+				"validation": {
+					"required": "El modo de pasarela es obligatorio"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Duración de permiso de unión",
+				"description": "Duración en milisegundos durante la cual el permiso de unión permanece activo",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "La duración del permiso de unión es obligatoria",
+					"min": "La duración del permiso de unión debe ser de al menos 1000ms"
+				}
+			}
+		},
+		"displays": {
+			"id": {
+				"title": "Identificador interno",
+				"placeholder": "ID de pantalla"
+			},
+			"name": {
+				"title": "Nombre",
+				"placeholder": "Introduce el nombre de la pantalla",
+				"validation": {
+					"maxLength": "El nombre debe tener menos de 100 caracteres"
+				}
+			},
+			"role": {
+				"title": "Rol de la pantalla",
+				"description": "El propósito de esta pantalla en tu configuración de hogar inteligente",
+				"options": {
+					"room": "Habitación (Control de una sola habitación)",
+					"master": "Principal (Vista general de toda la casa)",
+					"entry": "Entrada (Modos de la casa y seguridad)"
+				},
+				"comingSoon": "Pronto"
+			},
+			"unitSize": {
+				"title": "Tamaño de unidad",
+				"unit": "px",
+				"validation": {
+					"min": "El tamaño de unidad debe ser de al menos 1"
+				}
+			},
+			"rows": {
+				"title": "Filas",
+				"validation": {
+					"min": "Las filas deben ser de al menos 1"
+				}
+			},
+			"cols": {
+				"title": "Columnas",
+				"validation": {
+					"min": "Las columnas deben ser de al menos 1"
+				}
+			},
+			"brightness": {
+				"title": "Brillo",
+				"validation": {
+					"range": "El brillo debe estar entre 0 y 100"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Duración del bloqueo de pantalla",
+				"options": {
+					"15s": "15 segundos",
+					"30s": "30 segundos",
+					"1min": "1 minuto",
+					"2min": "2 minutos",
+					"5min": "5 minutos",
+					"10min": "10 minutos",
+					"30min": "30 minutos",
+					"never": "Nunca"
+				}
+			},
+			"darkMode": {
+				"title": "Modo oscuro"
+			},
+			"screenSaver": {
+				"title": "Salvapantallas"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Altavoz (salida de audio)"
+				},
+				"microphone": {
+					"title": "Micrófono (entrada de audio)"
+				}
+			},
+			"speaker": {
+				"title": "Altavoz activado"
+			},
+			"speakerVolume": {
+				"title": "Volumen del altavoz",
+				"validation": {
+					"range": "El volumen debe estar entre 0 y 100"
+				}
+			},
+			"microphone": {
+				"title": "Micrófono activado"
+			},
+			"microphoneVolume": {
+				"title": "Volumen del micrófono",
+				"validation": {
+					"range": "El volumen debe estar entre 0 y 100"
+				}
+			},
+			"homeMode": {
+				"title": "Modo de página de inicio",
+				"description": "Cómo se determina la página de inicio cuando se inicia la pantalla",
+				"options": {
+					"autoSpace": "Automático",
+					"explicit": "Explícito"
+				}
+			},
+			"homePageId": {
+				"title": "Página de inicio",
+				"placeholder": "Seleccionar página de inicio",
+				"description": "La página que se muestra cuando se inicia la pantalla (solo se usa cuando el modo de página de inicio es Explícito)",
+				"validation": {
+					"required": "La página de inicio es obligatoria cuando el modo de página de inicio es Explícito"
+				}
+			},
+			"roomId": {
+				"title": "Habitación asignada",
+				"placeholder": "Seleccionar una habitación",
+				"description": "La habitación que controla esta pantalla. Obligatorio para pantallas con rol de Habitación.",
+				"validation": {
+					"required": "La asignación de habitación es obligatoria para pantallas con rol de Habitación"
+				}
+			},
+			"numberFormat": {
+				"title": "Formato de números",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"commaDot": "1,234.56 (coma / punto)",
+					"dotComma": "1.234,56 (punto / coma)",
+					"spaceComma": "1 234,56 (espacio / coma)",
+					"none": "1234.56 (sin agrupación)"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Unidad de temperatura",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Unidad de velocidad del viento",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"ms": "Metros por segundo (m/s)",
+					"kmh": "Kilómetros por hora (km/h)",
+					"mph": "Millas por hora (mph)",
+					"knots": "Nudos (kn)"
+				}
+			},
+			"pressureUnit": {
+				"title": "Unidad de presión",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"hpa": "Hectopascal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Pulgadas de mercurio (inHg)",
+					"mmhg": "Milímetros de mercurio (mmHg)"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Unidad de precipitación",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"mm": "Milímetros (mm)",
+					"inches": "Pulgadas (in)"
+				}
+			},
+			"distanceUnit": {
+				"title": "Unidad de distancia",
+				"placeholder": "Predeterminado del sistema",
+				"values": {
+					"km": "Kilómetros (km)",
+					"miles": "Millas (mi)",
+					"meters": "Metros (m)",
+					"feet": "Pies (ft)"
+				}
+			},
+			"weatherLocationId": {
+				"title": "Ubicación meteorológica",
+				"placeholder": "Predeterminado del sistema (ubicación principal)",
+				"description": "Anula la ubicación meteorológica para esta pantalla. Dejar vacío para usar la ubicación principal de la configuración meteorológica."
+			}
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Modo oscuro",
+			"values": {
+				"enabled": "Activado",
+				"disabled": "Desactivado",
+				"all": "Todos"
+			}
+		},
+		"screenSaver": {
+			"title": "Salvapantallas",
+			"values": {
+				"enabled": "Activado",
+				"disabled": "Desactivado",
+				"all": "Todos"
+			}
+		},
+		"state": {
+			"title": "Estado"
+		},
+		"states": {
+			"title": "Estado"
+		}
+	},
+	"states": {
+		"connected": "Conectado",
+		"disconnected": "Desconectado",
+		"lost": "Perdido",
+		"unknown": "Desconocido"
+	},
+	"roles": {
+		"room": "Habitación",
+		"master": "Principal",
+		"entry": "Entrada"
+	},
+	"texts": {
+		"loadingDisplays": "Cargando pantallas...",
+		"loadingDisplay": "Cargando pantalla...",
+		"noDisplays": "Aún no hay pantallas registradas",
+		"noFilteredDisplays": "Ninguna pantalla coincide con los criterios de filtro",
+		"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
+		"aboutDisplayConfiguration": "Configura el modo de despliegue y los ajustes de registro de pantallas. El modo de despliegue determina cómo se organizan el backend y el panel, mientras que la duración del permiso de unión controla cuánto tiempo las nuevas pantallas pueden registrarse en la red."
+	},
+	"buttons": {
+		"detail": {
+			"title": "Detalle"
+		},
+		"adjust": {
+			"title": "Filtrar"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		},
+		"reset": {
+			"title": "Restablecer filtros"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"cancel": {
+			"title": "Cancelar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"discard": {
+			"title": "Descartar"
+		},
+		"permitJoin": {
+			"title": "Permitir unión",
+			"disable": "Desactivar unión ({time})"
+		},
+		"back": {
+			"title": "Volver"
+		}
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "General"
+			},
+			"layout": {
+				"title": "Diseño",
+				"badge": "Avanzado",
+				"description": "Configuraciones avanzadas que controlan cuántos mosaicos se muestran en la pantalla y cómo se organizan en la cuadrícula."
+			},
+			"appearance": {
+				"title": "Apariencia"
+			},
+			"homePage": {
+				"title": "Página de inicio",
+				"autoRoomHint": "En <strong>modo Automático</strong>, la pantalla abre la vista predeterminada del sistema según su rol y asignación."
+			},
+			"weather": {
+				"title": "Ubicación meteorológica",
+				"description": "Anula la ubicación meteorológica para esta pantalla. Cuando no se establece, se usará la ubicación principal de la configuración meteorológica."
+			},
+			"units": {
+				"title": "Anulaciones de unidades",
+				"description": "Anula las unidades de medida de todo el sistema para esta pantalla. Dejar vacío para usar el valor predeterminado del sistema."
+			},
+			"audio": {
+				"title": "Audio",
+				"badge": "Avanzado"
+			}
+		}
+	},
+	"detail": {
+		"title": "Detalle de pantalla",
+		"info": {
+			"title": "Información de la pantalla",
+			"role": "Rol",
+			"macAddress": "Dirección MAC",
+			"version": "Versión",
+			"build": "Compilación",
+			"resolution": "Resolución",
+			"pixelRatio": "Proporción de píxeles",
+			"gridSize": "Tamaño de cuadrícula",
+			"registeredFromIp": "IP de registro",
+			"currentIpAddress": "IP actual",
+			"status": "Estado de conexión"
+		},
+		"settings": {
+			"title": "Configuración de pantalla",
+			"gridSize": "Tamaño de cuadrícula",
+			"darkMode": "Modo oscuro",
+			"brightness": "Brillo",
+			"screenLockDuration": "Duración del bloqueo de pantalla",
+			"screenSaver": "Salvapantallas",
+			"speakerEnabled": "Altavoz activado",
+			"speakerVolume": "Volumen del altavoz",
+			"microphoneEnabled": "Micrófono activado",
+			"microphoneVolume": "Volumen del micrófono"
+		},
+		"peripherals": {
+			"title": "Periféricos",
+			"audioOutput": "Salida de audio",
+			"audioOutputVolume": "Volumen de salida de audio",
+			"audioInput": "Entrada de audio",
+			"audioInputVolume": "Volumen de entrada de audio"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Altavoz (salida de audio)"
+			},
+			"microphone": {
+				"title": "Micrófono (entrada de audio)"
+			}
+		},
+		"tokens": {
+			"title": "Tokens de acceso",
+			"subtitle": "Gestionar tokens",
+			"description": "Gestiona los tokens de acceso para esta pantalla. Cada pantalla debe tener como máximo un token activo.",
+			"noTokens": "Sin tokens activos",
+			"revokeConfirm": "¿Estás seguro de que deseas revocar el token de acceso? La pantalla necesitará volver a registrarse.",
+			"revoked": "Token revocado correctamente"
+		},
+		"spaceContext": {
+			"title": "Contexto del espacio",
+			"role": "Rol de la pantalla",
+			"homeMode": "Modo de página de inicio",
+			"assignedRoom": "Habitación asignada",
+			"notAssigned": "No asignada",
+			"initialView": "Vista inicial",
+			"systemViews": "Vistas del sistema",
+			"selectedPage": "Página seleccionada",
+			"hint": "Las vistas principales de esta pantalla se generan automáticamente según su rol y espacio asignado.",
+			"homeModes": {
+				"auto_space": "Automático",
+				"explicit": "Explícito"
+			},
+			"initialViews": {
+				"roomOverview": "Vista general de habitación",
+				"houseOverview": "Vista general de la casa",
+				"entryOverview": "Vista general de entrada"
+			},
+			"views": {
+				"overview": "Vista general",
+				"lights": "Luces",
+				"climate": "Climatización"
+			}
+		}
+	},
+	"messages": {
+		"notFound": "Pantalla no encontrada",
+		"loadError": "Error al cargar las pantallas",
+		"confirmRemove": "¿Estás seguro de que deseas eliminar la pantalla \"{name}\"? Esta acción no se puede deshacer.",
+		"confirmBulkRemove": "¿Estás seguro de que deseas eliminar {count} pantalla(s)? Esta acción no se puede deshacer.",
+		"removed": "Pantalla eliminada correctamente",
+		"bulkRemoved": "{count} pantalla(s) han sido eliminadas",
+		"bulkRemoveFailed": "Error al eliminar {count} pantalla(s)",
+		"edited": "La pantalla {display} ha sido actualizada",
+		"notEdited": "La pantalla {display} no fue actualizada",
+		"deletedWhileEditing": "Esta pantalla fue eliminada y ya no está disponible.",
+		"permitJoinActivated": "Permiso de unión activado correctamente",
+		"permitJoinDeactivated": "Permiso de unión desactivado correctamente",
+		"permitJoinError": "Error al activar el permiso de unión",
+		"permitJoinDeactivateError": "Error al desactivar el permiso de unión",
+		"config": {
+			"edited": "La configuración de pantallas se ha actualizado correctamente",
+			"notEdited": "Error al actualizar la configuración de pantallas"
+		}
+	},
+	"actions": {
+		"revokeToken": "Revocar token",
+		"manageTokens": "Gestionar tokens"
+	}
+}

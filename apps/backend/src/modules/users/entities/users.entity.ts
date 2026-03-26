@@ -101,7 +101,6 @@ export class UserEntity extends BaseEntity {
 		description: 'Preferred language of the user.',
 		enum: UserLanguage,
 		nullable: true,
-		default: null,
 	})
 	@Expose()
 	@IsOptional()

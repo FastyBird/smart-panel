@@ -1,1 +1,459 @@
-{}
+{
+	"meta": {
+		"system": {
+			"system": {
+				"title": "System"
+			},
+			"systemInfo": {
+				"title": "Informacje o systemie"
+			}
+		},
+		"systemLogs": {
+			"list": {
+				"title": "Logi aplikacji"
+			},
+			"detail": {
+				"title": "Szczegóły logu"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"system": {
+			"system": "system",
+			"systemInfo": "informacje"
+		},
+		"systemLogs": {
+			"list": "logi aplikacji",
+			"detail": "szczegóły logu"
+		}
+	},
+	"headings": {
+		"system": {
+			"system": "System",
+			"about": "O aplikacji"
+		},
+		"update": {
+			"title": "Aktualizacje oprogramowania",
+			"confirmTitle": "Zainstaluj aktualizację"
+		},
+		"manage": {
+			"manageSystem": "Zarządzaj systemem",
+			"restart": "Uruchom ponownie",
+			"powerOff": "Wyłącz zasilanie",
+			"factoryReset": "Przywróć ustawienia fabryczne",
+			"poweredOff": "Zasilanie wyłączone",
+			"rebooting": "Ponowne uruchamianie",
+			"systemLogs": "Logi aplikacji"
+		},
+		"systemLogs": {
+			"list": "Logi aplikacji",
+			"detail": "Informacje o logu",
+			"adjustFilters": "Filtruj logi"
+		},
+		"aboutLanguageSettings": "Język i jednostki",
+		"aboutSystemSettings": "Ustawienia systemu",
+		"aboutHouseModeSettings": "Tryb domu"
+	},
+	"subHeadings": {
+		"system": "Informacje o stanie systemu smart panelu",
+		"poweredOff": "Smart Panel został pomyślnie wyłączony",
+		"systemLogs": {
+			"list": "Podgląd wszystkich logów aplikacji",
+			"detail": "Podgląd szczegółów wpisu logu",
+			"edit": "Podgląd szczegółów wpisu logu",
+			"adjustFilters": "Dostosuj filtry logów"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja systemu została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji systemu"
+		},
+		"manage": {
+			"confirmRestart": "Czy na pewno chcesz ponownie uruchomić urządzenie? Ta operacja tymczasowo przerwie działanie.",
+			"confirmPowerOff": "Czy na pewno chcesz wyłączyć urządzenie? Będzie trzeba je ręcznie włączyć ponownie.",
+			"confirmFactoryReset": "Czy na pewno chcesz wymazać wszystkie dane i przywrócić urządzenie do ustawień fabrycznych? Tej operacji nie można cofnąć.",
+			"confirmRestartGateway": "Czy na pewno chcesz ponownie uruchomić bramę? Podłączone wyświetlacze tymczasowo stracą łączność do czasu ponownego uruchomienia bramy.",
+			"confirmPowerOffGateway": "Czy na pewno chcesz wyłączyć bramę? Wszystkie podłączone wyświetlacze stracą łączność. Bramę trzeba będzie ręcznie włączyć ponownie.",
+			"confirmFactoryResetGateway": "Czy na pewno chcesz przywrócić ustawienia fabryczne bramy? Spowoduje to wymazanie wszystkich danych bramy i reset wszystkich podłączonych wyświetlaczy. Tej operacji nie można cofnąć.",
+			"waitingToBoot": "Oczekiwanie na uruchomienie panelu...",
+			"panelBackOnline": "Smart Panel jest ponownie online.",
+			"rebootTakesTooLong": "Ponowne uruchamianie trwa dłużej niż oczekiwano. Sprawdź panel ręcznie.",
+			"rebootFailed": "Nie udało się ponownie uruchomić Smart Panel. Spróbuj ponownie lub sprawdź urządzenie ręcznie.",
+			"powerOffFailed": "Nie udało się wyłączyć Smart Panel. Spróbuj ponownie lub sprawdź urządzenie ręcznie.",
+			"factoryResetSuccess": "Wszystkie dane zostały wyczyszczone. Zacznijmy od nowa — zaloguj się, aby rozpocząć.",
+			"factoryResetFailed": "Nie udało się przywrócić ustawień fabrycznych Smart Panel. Spróbuj ponownie lub sprawdź urządzenie ręcznie."
+		},
+		"misc": {
+			"requestError": "Coś poszło nie tak, spróbuj ponownie później."
+		},
+		"update": {
+			"confirmInstall": "Czy na pewno chcesz zaktualizować do wersji {version}?",
+			"majorUpdateWarning": "To jest aktualizacja do wersji głównej {version}. Aktualizacje główne mogą zawierać zmiany powodujące niezgodność. Czy na pewno chcesz kontynuować?",
+			"confirmTitle": "Zainstaluj aktualizację",
+			"updateStarted": "Proces aktualizacji został rozpoczęty. System uruchomi się ponownie automatycznie.",
+			"updateComplete": "Aktualizacja zakończona pomyślnie!",
+			"updateFailed": "Aktualizacja nie powiodła się. Sprawdź logi systemowe, aby uzyskać szczegóły.",
+			"checkFailed": "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później.",
+			"installFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie później."
+		}
+	},
+	"texts": {
+		"system": {
+			"loadingSystemInfo": "Ładowanie informacji o systemie...",
+			"about": "FastyBird Smart Panel to aplikacja automatyzacji domu, która umożliwia bezproblemową integrację z inteligentnymi urządzeniami, oferując zaawansowane możliwości sterowania i monitorowania."
+		},
+		"manage": {
+			"rebootDevice": "Uruchom ponownie urządzenie, aby zastosować zmiany lub rozwiązać problemy.",
+			"rebootGateway": "Uruchom ponownie bramę, aby zastosować zmiany lub rozwiązać problemy. Podłączone wyświetlacze tymczasowo stracą łączność.",
+			"powerOffDevice": "Całkowicie wyłącz urządzenie.",
+			"powerOffGateway": "Całkowicie wyłącz bramę. Podłączone wyświetlacze stracą łączność.",
+			"factoryResetDevice": "Przywróć urządzenie do oryginalnych ustawień fabrycznych.",
+			"factoryResetGateway": "Wymaż wszystkie dane bramy i przywróć ustawienia fabryczne wszystkich podłączonych wyświetlaczy.",
+			"rebootInProcess": "Smart Panel jest ponownie uruchamiany...",
+			"powerOffInProcess": "Smart Panel jest wyłączany...",
+			"factoryResetInProcess": "Smart Panel jest resetowany do stanu fabrycznego...",
+			"factoryResetWaiting": "Oczekiwanie na ponowne uruchomienie Smart Panel po resecie fabrycznym...",
+			"factoryResetTimeout": "Reset fabryczny trwa dłużej niż oczekiwano. Sprawdź urządzenie ręcznie.",
+			"poweredOff": "Możesz zamknąć to okno — nie są wymagane żadne dalsze działania.",
+			"systemLogs": "Podgląd i diagnostyka logów aplikacji."
+		},
+		"update": {
+			"available": "Dostępna aktualizacja",
+			"upToDate": "Twój system jest aktualny.",
+			"checking": "Sprawdzanie aktualizacji...",
+			"installing": "Instalowanie aktualizacji...",
+			"waitingForRestart": "Usługa jest restartowana, proszę czekać...",
+			"noVersionInfo": "Nie udało się pobrać informacji o wersji."
+		},
+		"systemLogs": {
+			"loadingLogs": "Ładowanie logów aplikacji...",
+			"noLogs": "Nie zarejestrowano żadnych logów aplikacji.",
+			"noFilteredLogs": "Nie znaleziono logów aplikacji pasujących do aktywnych kryteriów filtra",
+			"noMessage": "Ten wpis logu nie zawiera dodatkowej wiadomości",
+			"noMoreEntries": "Brak więcej wpisów w logach"
+		},
+		"aboutLanguageSettings": "Skonfiguruj język interfejsu, strefę czasową, format czasu i jednostki miar Smart Panel. Te ustawienia wpływają na sposób wyświetlania dat, godzin, temperatur i miar w całym systemie.",
+		"aboutSystemSettings": "Zarządzaj ogólnosystemową konfiguracją logowania. Wybierz, które poziomy ważności logów mają być monitorowane i wyświetlane w logach aplikacji.",
+		"aboutHouseModeSettings": "Ustaw bieżący tryb domu, aby kontrolować zachowanie Smart Panel i podłączonych urządzeń. Tryb Dom to normalna obecność, tryb Poza domem gdy nikogo nie ma, a tryb Noc na czas snu."
+	},
+	"fields": {
+		"config": {
+			"language": {
+				"title": "Język",
+				"description": "Język aplikacji",
+				"placeholder": "Wybierz język",
+				"values": {
+					"english": "Angielski",
+					"czech": "Czeski",
+					"german": "Niemiecki",
+					"spanish": "Hiszpański",
+					"polish": "Polski",
+					"slovak": "Słowacki"
+				},
+				"validation": {
+					"required": "Język jest wymagany"
+				}
+			},
+			"timezone": {
+				"title": "Strefa czasowa",
+				"description": "Strefa czasowa systemu",
+				"placeholder": "Wybierz strefę czasową",
+				"validation": {
+					"required": "Strefa czasowa jest wymagana"
+				}
+			},
+			"timeFormat": {
+				"title": "Format czasu",
+				"description": "Format wyświetlania czasu",
+				"placeholder": "Wybierz format czasu",
+				"values": {
+					"hour12": "12-godzinny",
+					"hour24": "24-godzinny"
+				},
+				"validation": {
+					"required": "Format czasu jest wymagany"
+				}
+			},
+			"numberFormat": {
+				"title": "Format liczb",
+				"description": "Format wyświetlania liczb dla separatorów tysięcy i dziesiętnych",
+				"placeholder": "Wybierz format liczb",
+				"values": {
+					"commaDot": "1,234.56 (przecinek / kropka)",
+					"dotComma": "1.234,56 (kropka / przecinek)",
+					"spaceComma": "1 234,56 (spacja / przecinek)",
+					"none": "1234.56 (bez grupowania)"
+				},
+				"validation": {
+					"required": "Format liczb jest wymagany"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Jednostka temperatury",
+				"description": "Jednostka wyświetlania temperatury",
+				"placeholder": "Wybierz jednostkę temperatury",
+				"values": {
+					"celsius": "Celsjusz (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				},
+				"validation": {
+					"required": "Jednostka temperatury jest wymagana"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Jednostka prędkości wiatru",
+				"description": "Jednostka wyświetlania prędkości wiatru",
+				"placeholder": "Wybierz jednostkę prędkości wiatru",
+				"values": {
+					"ms": "Metry na sekundę (m/s)",
+					"kmh": "Kilometry na godzinę (km/h)",
+					"mph": "Mile na godzinę (mph)",
+					"knots": "Węzły (kn)"
+				},
+				"validation": {
+					"required": "Jednostka prędkości wiatru jest wymagana"
+				}
+			},
+			"pressureUnit": {
+				"title": "Jednostka ciśnienia",
+				"description": "Jednostka wyświetlania ciśnienia",
+				"placeholder": "Wybierz jednostkę ciśnienia",
+				"values": {
+					"hpa": "Hektopaskal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Cale słupa rtęci (inHg)",
+					"mmhg": "Milimetry słupa rtęci (mmHg)"
+				},
+				"validation": {
+					"required": "Jednostka ciśnienia jest wymagana"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Jednostka opadów",
+				"description": "Jednostka wyświetlania opadów",
+				"placeholder": "Wybierz jednostkę opadów",
+				"values": {
+					"mm": "Milimetry (mm)",
+					"inches": "Cale (in)"
+				},
+				"validation": {
+					"required": "Jednostka opadów jest wymagana"
+				}
+			},
+			"distanceUnit": {
+				"title": "Jednostka odległości",
+				"description": "Jednostka wyświetlania odległości",
+				"placeholder": "Wybierz jednostkę odległości",
+				"values": {
+					"km": "Kilometry (km)",
+					"miles": "Mile (mi)",
+					"meters": "Metry (m)",
+					"feet": "Stopy (ft)"
+				},
+				"validation": {
+					"required": "Jednostka odległości jest wymagana"
+				}
+			},
+			"logLevels": {
+				"title": "Poziomy logowania",
+				"description": "Włączone poziomy logowania",
+				"placeholder": "Wybierz, które poziomy logowania mają być monitorowane",
+				"values": {
+					"silent": "Cichy",
+					"verbose": "Szczegółowy",
+					"debug": "Debug",
+					"trace": "Trace",
+					"log": "Log",
+					"info": "Info",
+					"success": "Sukces",
+					"warn": "Ostrzeżenie",
+					"error": "Błąd",
+					"fail": "Niepowodzenie",
+					"fatal": "Krytyczny"
+				},
+				"validation": {
+					"required": "Należy wybrać co najmniej jeden poziom logowania",
+					"min": "Należy wybrać co najmniej jeden poziom logowania"
+				}
+			},
+			"houseMode": {
+				"title": "Tryb domu",
+				"description": "Bieżące ustawienie trybu domu",
+				"placeholder": "Wybierz tryb domu",
+				"values": {
+					"home": "Dom",
+					"away": "Poza domem",
+					"night": "Noc"
+				},
+				"validation": {
+					"required": "Tryb domu jest wymagany"
+				}
+			}
+		},
+		"systemLogs": {
+			"search": {
+				"title": "Szukaj",
+				"placeholder": "Szukaj w logach..."
+			},
+			"timestamp": {
+				"title": "Znacznik czasu"
+			},
+			"ingestedAt": {
+				"title": "Pobrano o"
+			},
+			"source": {
+				"title": "Źródło"
+			},
+			"level": {
+				"title": "Poziom"
+			},
+			"message": {
+				"title": "Wiadomość",
+				"noMessage": "Brak wiadomości"
+			},
+			"tag": {
+				"title": "Tag"
+			},
+			"user": {
+				"title": "Użytkownik"
+			},
+			"appVersion": {
+				"title": "Wersja aplikacji"
+			},
+			"url": {
+				"title": "URL"
+			},
+			"userAgent": {
+				"title": "Przeglądarka"
+			},
+			"locale": {
+				"title": "Lokalizacja"
+			},
+			"args": {
+				"title": "Argumenty"
+			},
+			"rawJson": {
+				"title": "Surowy JSON"
+			}
+		}
+	},
+	"filters": {
+		"systemLogs": {
+			"levels": {
+				"title": "Filtruj według poziomu logu"
+			},
+			"sources": {
+				"title": "Filtruj według źródła logu"
+			},
+			"tag": {
+				"title": "Filtruj według tagu",
+				"placeholder": "Szukaj po tagu..."
+			}
+		}
+	},
+	"buttons": {
+		"about": {
+			"title": "O aplikacji"
+		},
+		"manage": {
+			"title": "Zarządzaj systemem"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"reset": {
+			"title": "Resetuj"
+		},
+		"edit": {
+			"title": "Edytuj"
+		},
+		"discard": {
+			"title": "Odrzuć"
+		},
+		"cancel": {
+			"title": "Anuluj"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"copyJson": {
+			"title": "Kopiuj JSON"
+		},
+		"liveTail": {
+			"title": "Podgląd na żywo"
+		},
+		"paused": {
+			"title": "Wstrzymany"
+		},
+		"loadMore": {
+			"title": "Załaduj więcej"
+		},
+		"update": {
+			"checkForUpdates": "Sprawdź aktualizacje",
+			"installUpdate": "Zainstaluj aktualizację"
+		}
+	},
+	"labels": {
+		"update": {
+			"currentVersion": "Bieżąca wersja",
+			"latestVersion": "Najnowsza wersja",
+			"lastChecked": "Ostatnio sprawdzono",
+			"updateStatus": "Status",
+			"actions": "Akcje"
+		}
+	},
+	"systemInfo": {
+		"cpuLoad": "Obciążenie CPU",
+		"memoryUsage": "Użycie pamięci",
+		"cpuTemperature": "Temperatura CPU",
+		"gpuTemperature": "Temperatura GPU",
+		"osPlatform": "Platforma",
+		"osDistro": "Dystrybucja",
+		"osRelease": "Wersja",
+		"uptime": "Czas pracy systemu",
+		"networkInterface": "Interfejs sieciowy",
+		"ip4Address": "Adres IP",
+		"ip6Address": "Adres IPv6",
+		"macAddress": "Adres MAC",
+		"undervoltage": "Wykryto obniżone napięcie",
+		"frequencyCapping": "Ograniczenie częstotliwości",
+		"throttling": "Aktywne dławienie CPU",
+		"softTempLimit": "Osiągnięto miękki limit temperatury"
+	},
+	"states": {
+		"ok": "Wszystko w porządku",
+		"error": "Wykryto problem"
+	},
+	"levels": {
+		"silent": "Cichy",
+		"fatal": "Krytyczny",
+		"error": "Błąd",
+		"warn": "Ostrzeżenie",
+		"log": "Log",
+		"info": "Info",
+		"success": "Sukces",
+		"fail": "Niepowodzenie",
+		"ready": "Gotowy",
+		"start": "Start",
+		"box": "Box",
+		"debug": "Debug",
+		"trace": "Trace",
+		"verbose": "Szczegółowy"
+	},
+	"sources": {
+		"admin": "Aplikacja administratora",
+		"display": "Aplikacja wyświetlacza",
+		"backend": "Backend aplikacji",
+		"other": "Inne"
+	}
+}
