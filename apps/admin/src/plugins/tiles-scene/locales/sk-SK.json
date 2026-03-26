@@ -1,1 +1,14 @@
-{}
+{
+	"preview": {
+		"defaultName": "Scéna"
+	},
+	"fields": {
+		"scene": {
+			"title": "Scéna",
+			"placeholder": "Vyberte scénu",
+			"validation": {
+				"required": "Prosím vyberte scénu"
+			}
+		}
+	}
+}

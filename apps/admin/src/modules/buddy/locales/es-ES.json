@@ -1,1 +1,196 @@
-{}
+{
+	"headings": {
+		"settings": "Buddy",
+		"chat": "Chat de Buddy",
+		"chats": "Chats",
+		"aboutBuddy": "Configuración del Buddy IA"
+	},
+	"subHeadings": {
+		"settings": "Configurar los ajustes del asistente Buddy IA",
+		"chat": "Chatea con tu asistente Buddy IA"
+	},
+	"messages": {
+		"loadError": "Error al cargar la configuración de Buddy",
+		"config": {
+			"edited": "La configuración de Buddy se ha actualizado correctamente",
+			"notEdited": "Error al actualizar la configuración de Buddy"
+		},
+		"errors": {
+			"unexpectedError": "Se produjo un error inesperado",
+			"loadConversations": "Error al cargar las conversaciones",
+			"createConversation": "Error al crear la conversación",
+			"loadMessages": "Error al cargar los mensajes",
+			"providerUnavailable": "El proveedor de IA no está disponible temporalmente. Por favor, inténtalo de nuevo más tarde.",
+			"sendMessage": "Error al enviar el mensaje",
+			"deleteConversation": "Error al eliminar la conversación",
+			"audioPlayback": "Error al reproducir el audio",
+			"loadPersonality": "Error al cargar la personalidad",
+			"savePersonality": "Error al guardar la personalidad"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Guardar"
+		},
+		"back": {
+			"title": "Atrás"
+		},
+		"retry": {
+			"title": "Reintentar"
+		},
+		"newChat": {
+			"title": "Nuevo chat"
+		},
+		"delete": {
+			"title": "Eliminar"
+		},
+		"cancel": {
+			"title": "Cancelar"
+		},
+		"configure": {
+			"title": "Configurar proveedor"
+		},
+		"goToSettings": {
+			"title": "Ir a configuración"
+		},
+		"setupWizard": {
+			"title": "Asistente de configuración"
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Activar módulo"
+			},
+			"name": {
+				"title": "Nombre del Buddy",
+				"placeholder": "Ingresa el nombre del Buddy"
+			},
+			"provider": {
+				"title": "Plugin de proveedor de IA",
+				"placeholder": "Selecciona un plugin de proveedor de IA",
+				"notConfigured": "no configurado",
+				"tags": {
+					"ruleBasedOnly": "solo basado en reglas"
+				},
+				"options": {
+					"none": "Ninguno"
+				}
+			},
+			"voiceEnabled": {
+				"title": "Interfaz de voz",
+				"description": "Activa el reconocimiento de voz y la síntesis de voz para interactuar con el asistente manos libres"
+			},
+			"sttPlugin": {
+				"title": "Proveedor de reconocimiento de voz (Speech-to-Text)",
+				"placeholder": "Selecciona un proveedor de reconocimiento de voz",
+				"notConfigured": "no configurado",
+				"options": {
+					"none": "Ninguno"
+				},
+				"tags": {
+					"disabled": "desactivado"
+				}
+			},
+			"ttsPlugin": {
+				"title": "Proveedor de síntesis de voz (Text-to-Speech)",
+				"placeholder": "Selecciona un proveedor de síntesis de voz",
+				"notConfigured": "no configurado",
+				"options": {
+					"none": "Ninguno"
+				},
+				"tags": {
+					"disabled": "desactivado"
+				}
+			},
+			"personality": {
+				"title": "Personalidad",
+				"description": "Define el tono, estilo y personalidad del Buddy. Este texto se incluye en el prompt del sistema de IA.",
+				"placeholder": "Eres un asistente útil para el hogar inteligente. Sé conciso, amigable y práctico.\nCéntrate en sugerencias prácticas. Usa un lenguaje sencillo."
+			}
+		},
+		"message": {
+			"placeholder": "Escribe un mensaje..."
+		}
+	},
+	"texts": {
+		"loadingConfig": "Cargando configuración de Buddy...",
+		"loadingConversations": "Cargando conversaciones...",
+		"aboutBuddy": "Configura el asistente Buddy IA que observa tus acciones, aprende tus patrones y sugiere automatizaciones. Selecciona un plugin de proveedor de IA para habilitar la funcionalidad de chat. Los ajustes específicos del proveedor (clave API, modelo) se configuran en la página de configuración del plugin. Sin un proveedor, las sugerencias basadas en reglas seguirán funcionando.",
+		"emptyChat": "Selecciona o crea una conversación para comenzar a chatear",
+		"startConversation": "¡Pregúntame lo que quieras sobre tu hogar!",
+		"thinking": "Pensando...",
+		"newConversation": "Nueva conversación",
+		"confirmDelete": "¿Eliminar esta conversación?",
+		"providerNotConfigured": "Proveedor de IA no configurado",
+		"providerNotConfiguredHint": "Configura un plugin de proveedor de IA para comenzar a chatear con tu Buddy.",
+		"noProviderSelected": "No se ha seleccionado un proveedor de IA",
+		"noProviderSelectedHint": "Selecciona y configura un proveedor de IA para comenzar. Usa el asistente de configuración para una configuración guiada.",
+		"providerNotEnabled": "El proveedor {name} no está activado",
+		"providerNotEnabledHint": "Actívalo en la configuración del plugin.",
+		"providerMissingConfig": "El proveedor {name} necesita configuración",
+		"providerMissingConfigHint": "Configura la clave API requerida o la conexión OAuth.",
+		"availableProviders": "Proveedores disponibles",
+		"configured": "Configurado",
+		"notConfigured": "No configurado",
+		"justNow": "ahora mismo",
+		"minutesAgo": "hace {n}m",
+		"hoursAgo": "hace {n}h",
+		"daysAgo": "hace {n}d",
+		"noSpace": "Sin espacio",
+		"noActiveConversation": "Ninguna conversación seleccionada",
+		"providersFetchFailed": "Error al cargar los proveedores disponibles. La lista de proveedores puede estar incompleta.",
+		"sttProvidersFetchFailed": "Error al cargar los proveedores de reconocimiento de voz disponibles. La lista de proveedores puede estar incompleta.",
+		"ttsProvidersFetchFailed": "Error al cargar los proveedores de síntesis de voz disponibles. La lista de proveedores puede estar incompleta.",
+		"moduleDisabled": "El módulo Buddy está desactivado",
+		"moduleDisabledHint": "El módulo Buddy IA está actualmente desactivado. Actívalo en la configuración del sistema para usar el chat y las sugerencias."
+	},
+	"wizard": {
+		"title": "Asistente de configuración de Buddy",
+		"steps": {
+			"provider": "Proveedor de IA",
+			"voice": "Voz",
+			"messaging": "Mensajería",
+			"done": "Listo"
+		},
+		"providerDescription": "Elige un proveedor de IA para potenciar las capacidades de chat de tu Buddy. Cada proveedor requiere su propia clave API o credenciales.",
+		"voiceDescription": "Opcionalmente configura las capacidades de voz. Text-to-Speech permite al Buddy leer las respuestas en voz alta. Speech-to-Text habilita la entrada de voz.",
+		"messagingDescription": "Opcionalmente conecta plataformas de mensajería para chatear con tu Buddy de forma remota a través de Telegram, Discord, WhatsApp u otros servicios.",
+		"noProvidersAvailable": "No hay plugins de proveedores de IA instalados. Instala un plugin de proveedor (ej. Claude, OpenAI, Ollama) para habilitar el chat con IA.",
+		"configureProvider": "Configurar {name}",
+		"configured": "Configurado",
+		"needsSetup": "Necesita configuración",
+		"disabled": "Desactivado",
+		"configRequired": "Configuración requerida",
+		"configSaved": "Configuración guardada correctamente",
+		"saveError": "Error al guardar la configuración",
+		"doneTitle": "Configuración completa",
+		"doneDescription": "Tu Buddy está listo para usar. Siempre puedes cambiar estos ajustes más tarde en la página de configuración.",
+		"summaryLlm": "Proveedor de IA: {name}",
+		"summaryLlmSkipped": "Proveedor de IA no seleccionado",
+		"summaryVoice": "Voz: {summary}",
+		"summaryVoiceSkipped": "Voz omitida",
+		"summaryMessaging": "Mensajería: {name}",
+		"summaryMessagingSkipped": "Mensajería omitida",
+		"notSelected": "No seleccionado",
+		"skipped": "Omitido",
+		"ttsHeading": "Text-to-Speech (TTS)",
+		"sttHeading": "Speech-to-Text (STT)",
+		"buttons": {
+			"back": "Atrás",
+			"next": "Siguiente",
+			"skip": "Omitir",
+			"configure": "Configurar",
+			"saveConfig": "Guardar configuración",
+			"startChatting": "Comenzar a chatear"
+		}
+	},
+	"meta": {
+		"settings": {
+			"title": "Configuración de Buddy"
+		},
+		"chat": {
+			"title": "Chat de Buddy"
+		}
+	}
+}

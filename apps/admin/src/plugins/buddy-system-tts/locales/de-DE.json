@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "System-TTS-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"engine": {
+				"title": "Engine",
+				"placeholder": "piper oder espeak (automatisch erkannt wenn leer)",
+				"description": "Zu verwendende TTS-Engine. Leer lassen für automatische Erkennung (bevorzugt piper, fällt auf espeak zurück)"
+			},
+			"voice": {
+				"title": "Stimme",
+				"placeholder": "Stimmenname oder -code (optional)",
+				"description": "Piper-Modellname oder espeak-Stimmencode. Leer lassen für die Standardstimme"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "System-TTS-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der System-TTS-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Konfigurieren Sie die lokale Text-to-Speech-Engine. Kein API-Schlüssel erforderlich. Verwendet piper (neuronales TTS) oder espeak (einfaches TTS), die auf dem System installiert sind."
+	}
+}

@@ -1,1 +1,196 @@
-{}
+{
+	"headings": {
+		"settings": "Buddy",
+		"chat": "Buddy Chat",
+		"chats": "Konverzace",
+		"aboutBuddy": "Konfigurace AI Buddy"
+	},
+	"subHeadings": {
+		"settings": "Konfigurace nastavení AI buddy asistenta",
+		"chat": "Chatujte se svým AI buddy asistentem"
+	},
+	"messages": {
+		"loadError": "Nepodařilo se načíst konfiguraci buddy",
+		"config": {
+			"edited": "Konfigurace buddy byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci buddy"
+		},
+		"errors": {
+			"unexpectedError": "Došlo k neočekávané chybě",
+			"loadConversations": "Nepodařilo se načíst konverzace",
+			"createConversation": "Nepodařilo se vytvořit konverzaci",
+			"loadMessages": "Nepodařilo se načíst zprávy",
+			"providerUnavailable": "AI poskytovatel je dočasně nedostupný. Zkuste to prosím později.",
+			"sendMessage": "Nepodařilo se odeslat zprávu",
+			"deleteConversation": "Nepodařilo se smazat konverzaci",
+			"audioPlayback": "Nepodařilo se přehrát zvuk",
+			"loadPersonality": "Nepodařilo se načíst osobnost",
+			"savePersonality": "Nepodařilo se uložit osobnost"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Uložit"
+		},
+		"back": {
+			"title": "Zpět"
+		},
+		"retry": {
+			"title": "Opakovat"
+		},
+		"newChat": {
+			"title": "Nový chat"
+		},
+		"delete": {
+			"title": "Smazat"
+		},
+		"cancel": {
+			"title": "Zrušit"
+		},
+		"configure": {
+			"title": "Konfigurovat poskytovatele"
+		},
+		"goToSettings": {
+			"title": "Přejít do nastavení"
+		},
+		"setupWizard": {
+			"title": "Průvodce nastavením"
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolit modul"
+			},
+			"name": {
+				"title": "Jméno buddy",
+				"placeholder": "Zadejte jméno buddy"
+			},
+			"provider": {
+				"title": "Plugin AI poskytovatele",
+				"placeholder": "Vyberte plugin AI poskytovatele",
+				"notConfigured": "nenakonfigurováno",
+				"tags": {
+					"ruleBasedOnly": "pouze na základě pravidel"
+				},
+				"options": {
+					"none": "Žádný"
+				}
+			},
+			"voiceEnabled": {
+				"title": "Hlasové rozhraní",
+				"description": "Povolte rozpoznávání řeči a hlasovou syntézu pro hands-free interakci s asistentem"
+			},
+			"sttPlugin": {
+				"title": "Poskytovatel rozpoznávání řeči (Speech-to-Text)",
+				"placeholder": "Vyberte poskytovatele rozpoznávání řeči",
+				"notConfigured": "nenakonfigurováno",
+				"options": {
+					"none": "Žádný"
+				},
+				"tags": {
+					"disabled": "zakázáno"
+				}
+			},
+			"ttsPlugin": {
+				"title": "Poskytovatel hlasové syntézy (Text-to-Speech)",
+				"placeholder": "Vyberte poskytovatele hlasové syntézy",
+				"notConfigured": "nenakonfigurováno",
+				"options": {
+					"none": "Žádný"
+				},
+				"tags": {
+					"disabled": "zakázáno"
+				}
+			},
+			"personality": {
+				"title": "Osobnost",
+				"description": "Definujte tón, styl a osobnost buddy. Tento text je zahrnut v systémovém promptu AI.",
+				"placeholder": "Jsi nápomocný asistent chytré domácnosti. Buď stručný, přátelský a praktický.\nZaměř se na realizovatelné návrhy. Používej jednoduchý jazyk."
+			}
+		},
+		"message": {
+			"placeholder": "Napište zprávu..."
+		}
+	},
+	"texts": {
+		"loadingConfig": "Načítání konfigurace buddy...",
+		"loadingConversations": "Načítání konverzací...",
+		"aboutBuddy": "Nakonfigurujte AI buddy asistenta, který sleduje vaše akce, učí se vaše vzorce a navrhuje automatizace. Vyberte plugin AI poskytovatele pro povolení chatovací funkce. Nastavení specifická pro poskytovatele (API klíč, model) se konfigurují na stránce nastavení pluginu. Bez poskytovatele budou nadále fungovat návrhy založené na pravidlech.",
+		"emptyChat": "Vyberte nebo vytvořte konverzaci pro zahájení chatu",
+		"startConversation": "Zeptejte se mě na cokoli ohledně vaší domácnosti!",
+		"thinking": "Přemýšlím...",
+		"newConversation": "Nová konverzace",
+		"confirmDelete": "Smazat tuto konverzaci?",
+		"providerNotConfigured": "AI poskytovatel není nakonfigurován",
+		"providerNotConfiguredHint": "Nakonfigurujte plugin AI poskytovatele pro zahájení chatu s vaším buddy.",
+		"noProviderSelected": "Není vybrán žádný AI poskytovatel",
+		"noProviderSelectedHint": "Vyberte a nakonfigurujte AI poskytovatele pro začátek. Použijte Průvodce nastavením pro řízenou konfiguraci.",
+		"providerNotEnabled": "Poskytovatel {name} není povolen",
+		"providerNotEnabledHint": "Povolte ho v konfiguraci pluginu.",
+		"providerMissingConfig": "Poskytovatel {name} vyžaduje konfiguraci",
+		"providerMissingConfigHint": "Nastavte požadovaný API klíč nebo OAuth připojení.",
+		"availableProviders": "Dostupní poskytovatelé",
+		"configured": "Nakonfigurováno",
+		"notConfigured": "Nenakonfigurováno",
+		"justNow": "právě teď",
+		"minutesAgo": "před {n}m",
+		"hoursAgo": "před {n}h",
+		"daysAgo": "před {n}d",
+		"noSpace": "Žádný prostor",
+		"noActiveConversation": "Není vybrána žádná konverzace",
+		"providersFetchFailed": "Nepodařilo se načíst dostupné poskytovatele. Seznam poskytovatelů může být neúplný.",
+		"sttProvidersFetchFailed": "Nepodařilo se načíst dostupné poskytovatele rozpoznávání řeči. Seznam poskytovatelů může být neúplný.",
+		"ttsProvidersFetchFailed": "Nepodařilo se načíst dostupné poskytovatele hlasové syntézy. Seznam poskytovatelů může být neúplný.",
+		"moduleDisabled": "Modul Buddy je zakázán",
+		"moduleDisabledHint": "Modul AI buddy je aktuálně zakázán. Povolte ho v konfiguraci systému pro použití chatu a návrhů."
+	},
+	"wizard": {
+		"title": "Průvodce nastavením Buddy",
+		"steps": {
+			"provider": "AI poskytovatel",
+			"voice": "Hlas",
+			"messaging": "Zprávy",
+			"done": "Hotovo"
+		},
+		"providerDescription": "Vyberte AI poskytovatele pro napájení chatovacích schopností vašeho buddy. Každý poskytovatel vyžaduje vlastní API klíč nebo přihlašovací údaje.",
+		"voiceDescription": "Volitelně nakonfigurujte hlasové schopnosti. Text-to-Speech umožňuje buddy číst odpovědi nahlas. Speech-to-Text umožňuje hlasový vstup.",
+		"messagingDescription": "Volitelně připojte chatovací platformy pro vzdálenou komunikaci s buddy přes Telegram, Discord, WhatsApp nebo jiné služby.",
+		"noProvidersAvailable": "Nejsou nainstalovány žádné pluginy AI poskytovatelů. Nainstalujte plugin poskytovatele (např. Claude, OpenAI, Ollama) pro povolení AI chatu.",
+		"configureProvider": "Konfigurovat {name}",
+		"configured": "Nakonfigurováno",
+		"needsSetup": "Vyžaduje nastavení",
+		"disabled": "Zakázáno",
+		"configRequired": "Vyžadována konfigurace",
+		"configSaved": "Konfigurace úspěšně uložena",
+		"saveError": "Nepodařilo se uložit konfiguraci",
+		"doneTitle": "Nastavení dokončeno",
+		"doneDescription": "Váš buddy je připraven k použití. Tato nastavení můžete kdykoli změnit na stránce konfigurace.",
+		"summaryLlm": "AI poskytovatel: {name}",
+		"summaryLlmSkipped": "AI poskytovatel nebyl vybrán",
+		"summaryVoice": "Hlas: {summary}",
+		"summaryVoiceSkipped": "Hlas přeskočen",
+		"summaryMessaging": "Zprávy: {name}",
+		"summaryMessagingSkipped": "Zprávy přeskočeny",
+		"notSelected": "Nevybráno",
+		"skipped": "Přeskočeno",
+		"ttsHeading": "Text-to-Speech (TTS)",
+		"sttHeading": "Speech-to-Text (STT)",
+		"buttons": {
+			"back": "Zpět",
+			"next": "Další",
+			"skip": "Přeskočit",
+			"configure": "Konfigurovat",
+			"saveConfig": "Uložit konfiguraci",
+			"startChatting": "Začít chatovat"
+		}
+	},
+	"meta": {
+		"settings": {
+			"title": "Nastavení Buddy"
+		},
+		"chat": {
+			"title": "Buddy Chat"
+		}
+	}
+}

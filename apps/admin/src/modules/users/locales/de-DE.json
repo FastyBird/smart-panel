@@ -1,1 +1,197 @@
-{}
+{
+  "meta": {
+    "users": {
+      "list": {
+        "title": "Benutzer auflisten"
+      },
+      "edit": {
+        "title": "Benutzer bearbeiten: {user}"
+      },
+      "add": {
+        "title": "Benutzer hinzufügen"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "users": "Benutzer",
+    "addUser": "Benutzer hinzufügen",
+    "editUser": "Benutzer bearbeiten"
+  },
+  "headings": {
+    "users": "Benutzer",
+    "addUser": "Benutzer hinzufügen",
+    "editUser": "Benutzer bearbeiten",
+    "remove": "Benutzer entfernen?",
+    "removeBulk": "Benutzer entfernen?",
+    "discard": "Änderungen verwerfen?",
+    "changeUsername": "Benutzernamen ändern",
+    "changePassword": "Passwort ändern"
+  },
+  "subHeadings": {
+    "users": "Smart Panel Benutzerkonten verwalten",
+    "addUser": "Neuen Smart Panel Benutzer hinzufügen"
+  },
+  "messages": {
+    "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut.",
+    "created": "Neuer Benutzer erfolgreich hinzugefügt.",
+    "notCreated": "Etwas ist schiefgelaufen. Der Benutzer konnte nicht erstellt werden.",
+    "edited": "Änderungen gespeichert! Der Benutzer: {user} wurde aktualisiert.",
+    "notEdited": "Etwas ist schiefgelaufen. Die Benutzeraktualisierung war nicht erfolgreich.",
+    "notFound": "Der gesuchte Benutzer existiert nicht oder wurde entfernt.",
+    "removed": "Der Benutzer: {user} wurde erfolgreich entfernt.",
+    "removeCanceled": "Entfernung von Benutzer: {user} wurde abgebrochen.",
+    "notRemoved": "Etwas ist schiefgelaufen, der Benutzer: {user} wurde nicht entfernt.",
+    "deletedWhileEditing": "Dieser Benutzer wurde gelöscht und ist nicht mehr verfügbar.",
+    "usernameEdited": "Benutzername wurde erfolgreich aktualisiert.",
+    "usernameNotEdited": "Aktualisierung des Benutzernamens fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "passwordEdited": "Benutzerpasswort wurde erfolgreich aktualisiert.",
+    "passwordNotEdited": "Änderung des Benutzerpassworts fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "bulkRemoved": "{count} Benutzer wurden entfernt.",
+    "bulkRemoveFailed": "Entfernung von {count} Benutzern fehlgeschlagen.",
+    "bulkRemoveCanceled": "Massenentfernung von Benutzern wurde abgebrochen."
+  },
+  "texts": {
+    "confirmRemove": "Sind Sie sicher, dass Sie den Benutzer: {user} entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+    "confirmBulkRemove": "Sind Sie sicher, dass Sie {count} Benutzer entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "misc": {
+      "noUsers": "Sie haben noch keine Benutzer konfiguriert",
+      "noFilteredUsers": "Keine Benutzer gefunden, die den aktiven Filterkriterien entsprechen",
+      "loadingUsers": "Benutzer werden geladen...",
+      "loadingUser": "Benutzer wird geladen...",
+      "confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+    }
+  },
+  "fields": {
+    "search": {
+      "placeholder": "Benutzer suchen..."
+    },
+    "role": {
+      "title": "Benutzerrolle",
+      "placeholder": "Rolle auswählen",
+      "validation": {
+        "required": "Bitte wählen Sie eine Benutzerrolle"
+      },
+      "options": {
+        "user": "Benutzer",
+        "admin": "Administrator",
+        "owner": "Besitzer"
+      }
+    },
+    "username": {
+      "title": "Benutzername",
+      "validation": {
+        "required": "Bitte geben Sie Ihren Benutzernamen ein"
+      }
+    },
+    "newUsername": {
+      "title": "Neuer Benutzername",
+      "validation": {
+        "required": "Bitte geben Sie den neuen Benutzernamen ein"
+      }
+    },
+    "password": {
+      "title": "Passwort",
+      "validation": {
+        "required": "Bitte geben Sie Ihr Passwort ein"
+      }
+    },
+    "repeatPassword": {
+      "title": "Passwort bestätigen",
+      "validation": {
+        "required": "Bitte bestätigen Sie Ihr neues Passwort",
+        "different": "Passwörter stimmen nicht überein"
+      }
+    },
+    "newPassword": {
+      "title": "Neues Passwort",
+      "validation": {
+        "required": "Bitte geben Sie ein neues Passwort ein"
+      }
+    },
+    "newRepeatPassword": {
+      "title": "Passwort bestätigen",
+      "validation": {
+        "required": "Bitte bestätigen Sie das neue Passwort",
+        "different": "Passwörter stimmen nicht überein"
+      }
+    },
+    "email": {
+      "title": "E-Mail",
+      "placeholder": "z.B. max{'@'}mustermann.de",
+      "validation": {
+        "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein"
+      }
+    },
+    "firstName": {
+      "title": "Vorname",
+      "placeholder": "z.B. Max"
+    },
+    "lastName": {
+      "title": "Nachname",
+      "placeholder": "z.B. Mustermann"
+    }
+  },
+  "table": {
+    "columns": {
+      "username": {
+        "title": "Benutzername"
+      },
+      "firstName": {
+        "title": "Vorname"
+      },
+      "lastName": {
+        "title": "Nachname"
+      },
+      "email": {
+        "title": "E-Mail"
+      },
+      "role": {
+        "title": "Rolle"
+      }
+    }
+  },
+  "role": {
+    "user": "Benutzer",
+    "admin": "Administrator",
+    "owner": "Besitzer",
+    "display": "Display"
+  },
+  "buttons": {
+    "add": {
+      "title": "Hinzufügen"
+    },
+    "edit": {
+      "title": "Bearbeiten"
+    },
+    "detail": {
+      "title": "Details"
+    },
+    "discard": {
+      "title": "Verwerfen"
+    },
+    "cancel": {
+      "title": "Abbrechen"
+    },
+    "close": {
+      "title": "Schließen"
+    },
+    "save": {
+      "title": "Speichern"
+    },
+    "change": {
+      "title": "Ändern"
+    },
+    "remove": {
+      "title": "Entfernen"
+    },
+    "resetFilters": {
+      "title": "Filter zurücksetzen"
+    },
+    "yes": {
+      "title": "Ja"
+    },
+    "no": {
+      "title": "Nein"
+    }
+  }
+}

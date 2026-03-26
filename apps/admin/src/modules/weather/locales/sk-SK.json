@@ -1,1 +1,193 @@
-{}
+{
+	"headings": {
+		"weather": "Počasie",
+		"aboutPrimaryLocation": "Primárna poloha",
+		"locations": "Polohy počasia",
+		"locationDetail": "{location}",
+		"forecast": "Predpoveď",
+		"hourlyForecast": "Hodinová predpoveď",
+		"addLocation": "Pridať polohu",
+		"editLocation": "Upraviť polohu",
+		"deleteLocation": "Odstrániť polohu",
+		"bulkDeleteLocations": "Odstrániť polohy",
+		"discard": "Zahodiť zmeny",
+		"selectProvider": "Vyberte poskytovateľa počasia",
+		"unsupportedProvider": "Nepodporovaný poskytovateľ",
+		"adjustFilters": "Upraviť filtre"
+	},
+	"subHeadings": {
+		"locations": "Spravujte polohy údajov o počasí",
+		"locationDetail": "Informácie o počasí pre {location}",
+		"addLocation": "Pridať novú polohu počasia",
+		"editLocation": "Upraviť detaily polohy",
+		"adjustFilters": "Prispôsobiť filtre zoznamu polôh"
+	},
+	"breadcrumbs": {
+		"locations": "polohy",
+		"locationDetail": "poloha: {location}",
+		"addLocation": "pridať polohu",
+		"editLocation": "upraviť polohu"
+	},
+	"messages": {
+		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+		"requestError": "Pri načítavaní dát sa vyskytla chyba",
+		"config": {
+			"edited": "Konfigurácia počasia bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu počasia"
+		},
+		"locations": {
+			"created": "Poloha \"{location}\" bola vytvorená",
+			"notCreated": "Nepodarilo sa vytvoriť polohu \"{location}\"",
+			"updated": "Poloha \"{location}\" bola aktualizovaná",
+			"notUpdated": "Nepodarilo sa aktualizovať polohu \"{location}\"",
+			"deleted": "Poloha bola odstránená",
+			"notDeleted": "Nepodarilo sa odstrániť polohu",
+			"deleteCanceled": "Odstránenie polohy \"{location}\" bolo zrušené",
+			"confirmBulkDelete": "Naozaj chcete odstrániť {count} polôh?",
+			"bulkDeleted": "{count} polôh bolo odstránených",
+			"bulkDeleteFailed": "Nepodarilo sa odstrániť {count} polôh",
+			"bulkDeleteCanceled": "Hromadné odstránenie polôh bolo zrušené",
+			"noLocations": "Žiadne polohy nie sú nakonfigurované. Pridajte polohu na získanie údajov o počasí.",
+			"notFound": "Poloha nebola nájdená",
+			"confirmDeleteLocation": "Naozaj chcete odstrániť polohu \"{name}\"?",
+			"deletedWhileEditing": "Poloha bola odstránená. Presmerovanie..."
+		}
+	},
+	"buttons": {
+		"add": { "title": "Pridať" },
+		"save": { "title": "Uložiť" },
+		"cancel": { "title": "Zrušiť" },
+		"discard": { "title": "Zahodiť" },
+		"resetFilters": { "title": "Resetovať filtre" },
+		"yes": { "title": "Áno" },
+		"no": { "title": "Nie" },
+		"reset": { "title": "Resetovať filtre" },
+		"detail": { "title": "Detail" },
+		"retry": { "title": "Skúsiť znova" },
+		"back": { "title": "Späť" }
+	},
+	"fields": {
+		"locations": {
+			"search": { "placeholder": "Vyhľadať polohy..." },
+			"provider": {
+				"title": "Poskytovateľ počasia",
+				"placeholder": "Vyberte poskytovateľa údajov o počasí"
+			},
+			"name": {
+				"title": "Názov polohy",
+				"placeholder": "napr. Domov, Kancelária, Chata",
+				"validation": { "required": "Názov polohy je povinný" }
+			}
+		},
+		"config": {
+			"primaryLocation": {
+				"title": "Primárna poloha",
+				"description": "Predvolená poloha zobrazená vo widgetoch počasia",
+				"placeholder": "Vyberte primárnu polohu"
+			}
+		}
+	},
+	"texts": {
+		"aboutPrimaryLocation": "Vyberte primárnu polohu na zobrazenie vo widgetoch počasia. Polohy je možné spravovať v sekcii Polohy. Údaje o počasí budú získavané pre všetky nakonfigurované polohy.",
+		"selectProvider": "Vyberte poskytovateľa údajov o počasí na pridanie novej polohy. Rôzni poskytovatelia môžu ponúkať rôzne konfiguračné možnosti.",
+		"unsupportedProvider": "Vybraný poskytovateľ \"{provider}\" nie je momentálne podporovaný. Prosím vyberte iného poskytovateľa.",
+		"weatherError": "Nepodarilo sa načítať počasie",
+		"weatherErrorDescription": "Údaje o počasí sa nepodarilo načítať pre túto polohu. Skontrolujte konfiguráciu API a skúste to znova.",
+		"locationDetail": {
+			"provider": "Poskytovateľ",
+			"temperature": "Teplota",
+			"feelsLike": "Pocitová teplota",
+			"conditions": "Podmienky",
+			"humidity": "Vlhkosť",
+			"wind": "Vietor",
+			"pressure": "Tlak"
+		},
+		"misc": {
+			"loadingLocations": "Načítavanie polôh...",
+			"noLocations": "Zatiaľ nie sú nakonfigurované žiadne polohy",
+			"noFilteredLocations": "Žiadne polohy nezodpovedajú vašim filtrom"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": { "title": "Poskytovateľ počasia" },
+			"primary": {
+				"title": "Stav primárnej polohy",
+				"values": { "all": "Všetky", "primary": "Primárna", "secondary": "Sekundárna" }
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": { "title": "Názov" },
+			"weather": { "title": "Počasie", "failed": "Zlyhanie", "error": "Nepodarilo sa načítať údaje o počasí. Skontrolujte konfiguráciu API." },
+			"type": { "title": "Poskytovateľ" },
+			"primary": { "title": "Primárna", "values": { "yes": "Áno", "no": "Nie" } }
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": { "title": "Polohy počasia" },
+			"detail": { "title": "Detail polohy počasia" },
+			"add": { "title": "Pridať polohu počasia" },
+			"edit": { "title": "Upraviť polohu počasia" }
+		}
+	},
+	"conditions": {
+		"thunderstormWithLightRain": "Búrka s miernym dažďom",
+		"thunderstormWithRain": "Búrka s dažďom",
+		"thunderstormWithHeavyRain": "Búrka so silným dažďom",
+		"lightThunderstorm": "Mierna búrka",
+		"thunderstorm": "Búrka",
+		"heavyThunderstorm": "Silná búrka",
+		"raggedThunderstorm": "Nepravidelná búrka",
+		"thunderstormWithLightDrizzle": "Búrka s miernym mrholením",
+		"thunderstormWithDrizzle": "Búrka s mrholením",
+		"thunderstormWithHeavyDrizzle": "Búrka so silným mrholením",
+		"lightIntensityDrizzle": "Mierne mrholenie",
+		"drizzle": "Mrholenie",
+		"heavyIntensityDrizzle": "Silné mrholenie",
+		"lightIntensityDrizzleRain": "Mierny mrholivý dážď",
+		"drizzleRain": "Mrholivý dážď",
+		"heavyIntensityDrizzleRain": "Silný mrholivý dážď",
+		"showerRainAndDrizzle": "Prehánky s mrholením",
+		"heavyShowerRainAndDrizzle": "Silné prehánky s mrholením",
+		"showerDrizzle": "Mrholivé prehánky",
+		"lightRain": "Mierny dážď",
+		"moderateRain": "Stredný dážď",
+		"heavyIntensityRain": "Silný dážď",
+		"veryHeavyRain": "Veľmi silný dážď",
+		"extremeRain": "Extrémny dážď",
+		"freezingRain": "Mrznúci dážď",
+		"lightIntensityShowerRain": "Mierne prehánky",
+		"showerRain": "Prehánky",
+		"heavyIntensityShowerRain": "Silné prehánky",
+		"raggedShowerRain": "Nepravidelné prehánky",
+		"lightSnow": "Mierny sneh",
+		"snow": "Sneh",
+		"heavySnow": "Silný sneh",
+		"sleet": "Čľapkanica",
+		"lightShowerSleet": "Mierne prehánky čľapkanice",
+		"showerSleet": "Prehánky čľapkanice",
+		"lightRainAndSnow": "Mierny dážď so snehom",
+		"rainAndSnow": "Dážď so snehom",
+		"lightShowerSnow": "Mierne snehové prehánky",
+		"showerSnow": "Snehové prehánky",
+		"heavyShowerSnow": "Silné snehové prehánky",
+		"mist": "Hmla",
+		"smoke": "Dym",
+		"haze": "Opar",
+		"fog": "Hustá hmla",
+		"sand": "Piesok",
+		"dust": "Prach",
+		"volcanicAsh": "Sopečný popol",
+		"squalls": "Búrlivý vietor",
+		"tornado": "Tornádo",
+		"clearSky": "Jasná obloha",
+		"fewClouds": "Málo oblakov",
+		"scatteredClouds": "Roztrúsené oblaky",
+		"brokenClouds": "Oblačno s premenou",
+		"overcastClouds": "Zamračené",
+		"unknown": "Neznáme"
+	}
+}

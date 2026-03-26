@@ -1,1 +1,121 @@
-{}
+{
+  "meta": {
+    "pages": {
+      "editTile": {
+        "title": "Seitenkachel bearbeiten"
+      },
+      "addTile": {
+        "title": "Seitenkachel hinzufügen"
+      },
+      "editDataSource": {
+        "title": "Seitendatenquelle bearbeiten"
+      },
+      "addDataSource": {
+        "title": "Seitendatenquelle hinzufügen"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "configure": "Seite: {page}",
+      "addTile": "Seitenkachel hinzufügen",
+      "editTile": "Seitenkachel bearbeiten",
+      "addDataSource": "Seitendatenquelle hinzufügen",
+      "editDataSource": "Seitendatenquelle bearbeiten"
+    }
+  },
+  "headings": {
+    "pages": {
+      "addTile": "Seitenkachel hinzufügen",
+      "editTile": "Seitenkachel bearbeiten",
+      "addDataSource": "Seitendatenquelle hinzufügen",
+      "editDataSource": "Seitendatenquelle bearbeiten"
+    },
+    "configure": {
+      "draft": "Entwurf",
+      "display": "Anzeige",
+      "quickAddTile": "Kachel schnell hinzufügen"
+    },
+    "misc": {
+      "discard": "Änderungen verwerfen?",
+      "tip": "Tipp"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "addTile": "Neue Smart Panel Seitenkachel hinzufügen",
+      "editTile": "Smart Panel Seitenkachel bearbeiten",
+      "addDataSource": "Neue Smart Panel Seitendatenquelle hinzufügen",
+      "editDataSource": "Smart Panel Seitendatenquelle bearbeiten"
+    }
+  },
+  "messages": {
+    "tiles": {
+      "deletedWhileEditing": "Diese Kachel wurde gelöscht und ist nicht mehr verfügbar."
+    },
+    "dataSources": {
+      "deletedWhileEditing": "Diese Datenquelle wurde gelöscht und ist nicht mehr verfügbar."
+    },
+    "misc": {
+      "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut."
+    }
+  },
+  "texts": {
+    "misc": {
+      "confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+      "gridLayoutTip": "Sie können einstellen, wie viele Kacheln auf die Seite passen — legen Sie Zeilen und Spalten fest oder wählen Sie eine Kachelgröße."
+    },
+    "tiles": {
+      "loadingTile": "Kachel wird geladen..."
+    },
+    "dataSources": {
+      "loadingDataSource": "Datenquelle wird geladen..."
+    }
+  },
+  "buttons": {
+    "discard": {
+      "title": "Verwerfen"
+    },
+    "close": {
+      "title": "Schließen"
+    },
+    "add": {
+      "title": "Hinzufügen"
+    },
+    "save": {
+      "title": "Speichern"
+    },
+    "update": {
+      "title": "Aktualisieren"
+    },
+    "yes": {
+      "title": "Ja"
+    },
+    "no": {
+      "title": "Nein"
+    },
+    "manageElements": {
+      "title": "Elemente verwalten"
+    },
+    "addPageTile": {
+      "title": "Seitenkachel hinzufügen"
+    },
+    "addPageDataSource": {
+      "title": "Seitendatenquelle hinzufügen"
+    }
+  },
+  "fields": {
+    "rows": {
+      "title": "Zeilen",
+      "placeholder": "Zeilenanzahl"
+    },
+    "cols": {
+      "title": "Spalten",
+      "placeholder": "Spaltenanzahl"
+    },
+    "tileSize": {
+      "title": "Kachelgröße",
+      "placeholder": "Kachelgröße"
+    }
+  }
+}

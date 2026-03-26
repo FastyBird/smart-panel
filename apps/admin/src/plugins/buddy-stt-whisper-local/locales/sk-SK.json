@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "Nastavenia lokálneho Whisper"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "base",
+				"description": "Veľkosť modelu Whisper: tiny, base, small, medium alebo large"
+			},
+			"language": {
+				"title": "Nápoveda jazyka",
+				"placeholder": "napr. en, de, cs (voliteľné)",
+				"description": "Kód jazyka ISO 639-1 na zlepšenie presnosti prepisu"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia lokálneho Whisper boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia lokálneho Whisper"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Nakonfigurujte lokálny Whisper speech-to-text. Nie je potrebný API kľúč. Príkaz whisper musí byť nainštalovaný a dostupný v systémovom PATH."
+	}
+}

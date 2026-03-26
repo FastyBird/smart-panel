@@ -1,1 +1,21 @@
-{}
+{
+	"preview": {
+		"day": {
+			"temperature": "22°C",
+			"condition": "Sonnig"
+		},
+		"forecast": {
+			"mon": "Mo",
+			"tue": "Di",
+			"wed": "Mi",
+			"thu": "Do"
+		}
+	},
+	"fields": {
+		"locationId": {
+			"title": "Wetterstandort",
+			"placeholder": "Standort auswählen",
+			"description": "Wählen Sie einen Wetterstandort zur Anzeige. Wenn nicht festgelegt, wird der primäre Standort aus den Wettereinstellungen verwendet."
+		}
+	}
+}

@@ -1,1 +1,121 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editTile": {
+				"title": "Upraviť dlaždicu stránky"
+			},
+			"addTile": {
+				"title": "Pridať dlaždicu stránky"
+			},
+			"editDataSource": {
+				"title": "Upraviť zdroj dát stránky"
+			},
+			"addDataSource": {
+				"title": "Pridať zdroj dát stránky"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "stránka: {page}",
+			"addTile": "pridať dlaždicu stránky",
+			"editTile": "upraviť dlaždicu stránky",
+			"addDataSource": "pridať zdroj dát stránky",
+			"editDataSource": "upraviť zdroj dát stránky"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addTile": "Pridať dlaždicu stránky",
+			"editTile": "Upraviť dlaždicu stránky",
+			"addDataSource": "Pridať zdroj dát stránky",
+			"editDataSource": "Upraviť zdroj dát stránky"
+		},
+		"configure": {
+			"draft": "Návrh",
+			"display": "Displej",
+			"quickAddTile": "Rýchle pridanie dlaždice"
+		},
+		"misc": {
+			"discard": "Zahodiť zmeny?",
+			"tip": "Tip"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addTile": "Pridať novú dlaždicu stránky smart panelu",
+			"editTile": "Upraviť dlaždicu stránky smart panelu",
+			"addDataSource": "Pridať nový zdroj dát stránky smart panelu",
+			"editDataSource": "Upraviť zdroj dát stránky smart panelu"
+		}
+	},
+	"messages": {
+		"tiles": {
+			"deletedWhileEditing": "Táto dlaždica bola odstránená a už nie je dostupná."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Tento zdroj dát bol odstránený a už nie je dostupný."
+		},
+		"misc": {
+			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr."
+		}
+	},
+	"texts": {
+		"misc": {
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+			"gridLayoutTip": "Môžete zmeniť, koľko dlaždíc sa zmestí na stránku — nastavte Riadky a Stĺpce alebo zvoľte veľkosť Dlaždice."
+		},
+		"tiles": {
+			"loadingTile": "Načítavanie dlaždice..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Načítavanie zdroja dát..."
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"add": {
+			"title": "Pridať"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"update": {
+			"title": "Aktualizovať"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"manageElements": {
+			"title": "Spravovať elementy"
+		},
+		"addPageTile": {
+			"title": "Pridať dlaždicu stránky"
+		},
+		"addPageDataSource": {
+			"title": "Pridať zdroj dát stránky"
+		}
+	},
+	"fields": {
+		"rows": {
+			"title": "Riadky",
+			"placeholder": "Počet riadkov"
+		},
+		"cols": {
+			"title": "Stĺpce",
+			"placeholder": "Počet stĺpcov"
+		},
+		"tileSize": {
+			"title": "Veľkosť dlaždice",
+			"placeholder": "Veľkosť dlaždice"
+		}
+	}
+}

@@ -1,1 +1,250 @@
-{}
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Geräte-ID"
+      },
+      "identifier": {
+        "title": "Systembezeichner",
+        "placeholder": "Geräte-Systembezeichner"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Gerätekategorie",
+        "description": "Über Kategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Gerätekategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Gerätename",
+        "validation": {
+          "required": "Bitte geben Sie den Gerätenamen ein"
+        }
+      },
+      "description": {
+        "title": "Beschreibung",
+        "placeholder": "Gerätebeschreibung"
+      },
+      "enabled": {
+        "title": "Aktiviert",
+        "placeholder": "Gerät aktivieren oder deaktivieren"
+      },
+      "haDeviceId": {
+        "title": "Home Assistant-Gerät",
+        "placeholder": "Gerät aus der Home Assistant-Instanz auswählen",
+        "validation": {
+          "required": "Bitte wählen Sie ein Home Assistant-Gerät"
+        }
+      },
+      "manufacturer": {
+        "title": "Hersteller"
+      },
+      "model": {
+        "title": "Modell"
+      },
+      "entities": {
+        "title": "Entitäten"
+      },
+      "domain": {
+        "title": "Domäne"
+      },
+      "type": {
+        "title": "Typ"
+      }
+    },
+    "channelsProperties": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Kanaleigenschafts-ID"
+      },
+      "channel": {
+        "title": "Kanal",
+        "placeholder": "Kanal auswählen",
+        "validation": {
+          "required": "Bitte wählen Sie einen Kanaleigenschafts-Kanal"
+        }
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Kanaleigenschafts-Kategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Kanaleigenschafts-Kategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Kanaleigenschafts-Name"
+      },
+      "dataType": {
+        "validation": {
+          "required": "Bitte wählen Sie einen Datentyp"
+        }
+      },
+      "permissions": {
+        "validation": {
+          "required": "Bitte wählen Sie Berechtigungen"
+        }
+      },
+      "haEntityId": {
+        "title": "Home Assistant Geräteentität",
+        "placeholder": "Home Assistant Geräteentität auswählen",
+        "validation": {
+          "required": "Bitte wählen Sie eine Home Assistant Geräteentität"
+        }
+      },
+      "haAttribute": {
+        "title": "Home Assistant Entitätsattribut",
+        "placeholder": "Home Assistant Entitätsattribut auswählen",
+        "validation": {
+          "required": "Bitte wählen Sie ein Home Assistant Entitätsattribut"
+        }
+      }
+    },
+    "mapping": {
+      "totalEntities": "Entitäten gesamt",
+      "mapped": "Zugeordnet",
+      "partial": "Teilweise",
+      "unmapped": "Nicht zugeordnet",
+      "skipped": "Übersprungen",
+      "incompatible": "Inkompatibel",
+      "excluded": "Ausgeschlossen",
+      "suggestedCategory": "Vorgeschlagene Kategorie",
+      "suggestedChannel": {
+        "title": "Vorgeschlagener Kanal",
+        "validation": {
+          "required": "Bitte wählen Sie eine Kanalkategorie für diese Entität"
+        }
+      },
+      "properties": "Eigenschaften",
+      "unmappedAttributes": "Nicht zugeordnete Attribute",
+      "missingRequiredProperties": "Fehlende erforderliche Eigenschaften",
+      "incompatibleChannel": "Kanal wird für diese Gerätekategorie nicht unterstützt",
+      "virtualTypes": {
+        "static": "Statisch",
+        "derived": "Auto",
+        "command": "Befehl",
+        "virtual": "Virtuell"
+      },
+      "validation": {
+        "valid": "Gerätekonfiguration ist gültig",
+        "invalid": "Gerätekonfiguration hat Probleme",
+        "missingChannels": "Fehlende erforderliche Kanäle",
+        "missingProperties": "Fehlende erforderliche Eigenschaften",
+        "autoFilled": "Automatisch mit virtuellen Eigenschaften ausgefüllt",
+        "unknownChannels": "Kanäle für diesen Gerätetyp nicht erlaubt",
+        "duplicateChannels": "Doppelte Kanäle (sollten eindeutig sein)",
+        "constraintViolations": "Konfigurationsbeschränkungsverletzungen"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "apiKey": {
+        "title": "API-Schlüssel",
+        "placeholder": "Geben Sie Ihren langlebigen Home Assistant-Zugriffstoken ein",
+        "validation": {
+          "required": "Bitte geben Sie den API-Schlüssel ein"
+        }
+      },
+      "hostname": {
+        "title": "Hostname",
+        "placeholder": "Geben Sie den Home Assistant-Hostname ein (z.B. homeassistant.local:8123)",
+        "validation": {
+          "required": "Bitte geben Sie den Hostname ein"
+        }
+      }
+    }
+  },
+  "headings": {
+    "aboutConnectionSettings": "Home Assistant-Verbindung",
+    "device": {
+      "deviceSelection": "Gerät auswählen",
+      "deviceInformation": "Geräteinformationen",
+      "categorySelection": "Gerätekategorie",
+      "mappingPreview": "Zuordnungsvorschau",
+      "mappingCustomization": "Zuordnungsanpassung",
+      "deviceConfiguration": "Gerätekonfiguration"
+    },
+    "mapping": {
+      "entityMappings": "Entitätszuordnungen",
+      "warnings": "Zuordnungswarnungen ({count})",
+      "errors": "Fehler",
+      "summary": "Zuordnungszusammenfassung",
+      "debugData": "Debug-Daten"
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Änderungen gespeichert! Die Home Assistant Plugin-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Home Assistant Plugin-Konfiguration war nicht erfolgreich."
+    },
+    "devices": {
+      "created": "Neues Home Assistant-Gerät erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Das Home Assistant-Gerät konnte nicht erstellt werden.",
+      "exists": "Gerät ist bereits im System übernommen.",
+      "alreadyAdopted": "Dieses Gerät ist bereits übernommen",
+      "alreadyAdoptedDescription": "Fortfahren wird das Gerät mit der neuen Konfiguration erneut übernehmen. Das bestehende Gerät wird aktualisiert.",
+      "noDiscoveredDevices": "Keine Home Assistant-Geräte verfügbar. Stellen Sie sicher, dass Ihre Home Assistant-Instanz verbunden ist und Geräte erkannt werden."
+    },
+    "mapping": {
+      "previewLoading": "Zuordnungsvorschau wird geladen...",
+      "previewError": "Zuordnungsvorschau konnte nicht geladen werden",
+      "adoptionSuccess": "Gerät {device} erfolgreich übernommen",
+      "adoptionError": "Geräteübernahme fehlgeschlagen",
+      "readyToAdopt": "Gerät ist bereit zur Übernahme",
+      "notReadyToAdopt": "Gerät hat fehlende erforderliche Zuordnungen",
+      "noPreview": "Keine Zuordnungsvorschau verfügbar",
+      "selectDeviceFirst": "Bitte wählen Sie in Schritt 1 ein Gerät aus, um eine Zuordnungsvorschau zu generieren",
+      "invalidSuggestedCategory": "Die vorgeschlagene Kategorie wird nicht unterstützt. Bitte wählen Sie eine gültige Kategorie.",
+      "missingChannelCategory": "Die folgenden Entitäten sind aktiviert, aber es fehlt eine Kanalkategorie: {entities}. Bitte wählen Sie eine Kanalkategorie für jede aktivierte Entität, bevor Sie fortfahren.",
+      "debugDescription": "Kopieren Sie diese Daten und teilen Sie sie mit Entwicklern, um Zuordnungsprobleme zu diagnostizieren oder benutzerdefinierte Zuordnungen anzufordern.",
+      "debugCopied": "Debug-Daten in die Zwischenablage kopiert",
+      "debugCopyFailed": "Kopieren der Debug-Daten in die Zwischenablage fehlgeschlagen"
+    },
+    "categorySelection": {
+      "description": "Basierend auf den Entitäten des Geräts wurde eine Kategorie vorgeschlagen. Bitte überprüfen und wählen Sie die richtige Kategorie für dieses Gerät. Die Zuordnungsvorschau wird basierend auf Ihrer Auswahl aktualisiert."
+    },
+    "discovery": {
+      "fetchFailed": "Abrufen der erkannten Instanzen fehlgeschlagen",
+      "refreshFailed": "Aktualisieren der erkannten Instanzen fehlgeschlagen"
+    }
+  },
+  "buttons": {
+    "loadPreview": "Vorschau laden",
+    "updatePreview": "Vorschau aktualisieren",
+    "adoptDevice": "Gerät übernehmen",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "skip": "Überspringen",
+    "use": "Verwenden",
+    "applyChanges": "Änderungen anwenden",
+    "refreshDiscovery": "Erkennung aktualisieren",
+    "debug": "Debug",
+    "copyToClipboard": "In Zwischenablage kopieren",
+    "close": "Schließen"
+  },
+  "labels": {
+    "suggested": "Vorgeschlagen"
+  },
+  "misc": {
+    "options": {
+      "entities": {
+        "noEntity": "Nicht mit Geräteentität verbunden"
+      },
+      "attributes": {
+        "noAttribute": "Nicht mit Entitätsattribut verbunden",
+        "mainState": "Hauptstatusattribut der Entität"
+      }
+    }
+  },
+  "texts": {
+    "aboutConnectionSettings": "Konfigurieren Sie die Verbindung zu Ihrer Home Assistant-Instanz. Wenn aktiviert, werden Geräte aus Home Assistant im Smart Panel verfügbar. Sie benötigen einen langlebigen Zugriffstoken von Home Assistant und den Hostname oder die IP-Adresse Ihrer Instanz.",
+    "mapping": {
+      "customizationDescription": "Sie können die Zuordnung anpassen, indem Sie Kanalkategorien für Entitäten ändern oder Entitäten aktivieren/deaktivieren. Standardmäßig sind alle Entitäten mit einer vorgeschlagenen Kanalkategorie aktiviert. Klicken Sie auf 'Weiter', um mit der ausgewählten Konfiguration fortzufahren."
+    }
+  }
+}

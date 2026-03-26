@@ -1,1 +1,114 @@
-{}
+{
+	"meta": {
+		"stats": {
+			"title": "Przegląd aplikacji"
+		}
+	},
+	"breadcrumbs": {
+		"stats": "przegląd"
+	},
+	"headings": {
+		"stats": "Przegląd aplikacji",
+		"systemInformation": "Informacje o systemie",
+		"applicationOverview": "Smart Panel",
+		"quickLinks": "Szybkie łącza",
+		"cpu": "CPU",
+		"memory": "Pamięć",
+		"uptime": "Czas pracy",
+		"logs": "Logi",
+		"dashboard": "Strony Smart Panel",
+		"devices": "Podłączone urządzenia",
+		"devicesCommunication": "Aktualizacje urządzeń dzisiaj",
+		"spaces": "Przestrzenie Smart Panel"
+	},
+	"subHeadings": {
+		"stats": "Statystyki systemu smart panelu"
+	},
+	"fields": {
+		"systemInformation": {
+			"timezone": {
+				"title": "Strefa czasowa"
+			},
+			"operatingSystem": {
+				"title": "System operacyjny"
+			},
+			"hostname": {
+				"title": "Nazwa hosta"
+			},
+			"ipv4": {
+				"title": "IPv4"
+			},
+			"ipv6": {
+				"title": "IPv6"
+			},
+			"configPath": {
+				"title": "Ścieżka konfiguracji",
+				"tooltip": "Ścieżka pliku konfiguracji:"
+			}
+		},
+		"applicationOverview": {
+			"version": {
+				"title": "Wersja"
+			},
+			"apip95": {
+				"title": "API p95 (5m)",
+				"tooltip": "95. percentyl czasu odpowiedzi API (ostatnie 5 minut). Pokazuje, jak szybko obsługiwanych jest 95% żądań API."
+			},
+			"webSocket": {
+				"title": "WebSocket",
+				"tooltip": "Dostępność 5m: {wsAvailability5m} (zaktualizowano {last})",
+				"state": {
+					"connected": "Połączony",
+					"disconnected": "Rozłączony"
+				}
+			}
+		},
+		"cpu": {
+			"temperature": {
+				"title": "Temp. {temperature} {unit}"
+			}
+		},
+		"memory": {
+			"total": {
+				"title": "z {total} {unit}"
+			}
+		},
+		"uptime": {
+			"process": {
+				"title": "Proces {uptime}"
+			}
+		},
+		"spaces": {
+			"rooms": "{count} pokoi",
+			"zones": "{count} stref"
+		}
+	},
+	"texts": {
+		"updated": "Zaktualizowano {time}",
+		"noLogs": "Nie zarejestrowano żadnych logów aplikacji.",
+		"noFilteredLogs": "Nie znaleziono logów aplikacji pasujących do aktywnych kryteriów filtra"
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopiuj"
+		},
+		"spaces": {
+			"title": "Przestrzenie"
+		},
+		"pages": {
+			"title": "Strony"
+		},
+		"devices": {
+			"title": "Urządzenia"
+		},
+		"config": {
+			"title": "Konfiguracja"
+		},
+		"docs": {
+			"title": "Dokumentacja"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		}
+	}
+}

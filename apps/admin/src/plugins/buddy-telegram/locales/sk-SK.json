@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutTelegramSettings": "Nastavenia Telegram bota"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"botToken": {
+				"title": "Token bota",
+				"placeholder": "Zadajte token svojho Telegram bota",
+				"description": "Získajte token bota od {'@'}BotFather na Telegrame"
+			},
+			"allowedUserIds": {
+				"title": "Povolené ID používateľov",
+				"placeholder": "napr. 123456789,987654321",
+				"description": "Čiarkami oddelené ID Telegram používateľov, ktorí môžu interagovať s botom. Ponechajte prázdne na povolenie všetkých používateľov."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Telegram bota boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Telegram bota"
+		}
+	},
+	"texts": {
+		"aboutTelegramSettings": "Nakonfigurujte integráciu Telegram bota. Vytvorte bota cez {'@'}BotFather na Telegrame na získanie tokenu bota, potom voliteľne obmedzíte prístup na konkrétne ID používateľov."
+	}
+}

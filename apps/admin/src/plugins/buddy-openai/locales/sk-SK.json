@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia API OpenAI"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj API kľúč OpenAI",
+				"description": "Získajte svoj API kľúč z platform.openai.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "napr. gpt-4o, gpt-4o-mini",
+				"description": "Model OpenAI použitý na generovanie odpovedí"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia OpenAI boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia OpenAI"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia API OpenAI. Na používanie modelov OpenAI ako poskytovateľa LLM buddy potrebujete platný API kľúč."
+	}
+}

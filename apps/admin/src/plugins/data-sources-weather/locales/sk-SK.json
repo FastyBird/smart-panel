@@ -1,1 +1,41 @@
-{}
+{
+	"fields": {
+		"locationId": {
+			"title": "Poloha počasia",
+			"placeholder": "Vyberte polohu",
+			"description": "Vyberte polohu počasia na zobrazenie. Ak nie je nastavená, použije sa primárna poloha z nastavení počasia."
+		},
+		"field": {
+			"title": "Dátové pole",
+			"placeholder": "Vyberte pole",
+			"validation": {
+				"required": "Prosím vyberte dátové pole"
+			}
+		},
+		"dayOffset": {
+			"title": "Posun dňa",
+			"placeholder": "Počet dní od dnes",
+			"validation": {
+				"required": "Prosím zadajte posun dňa",
+				"min": "Posun dňa musí byť aspoň 0",
+				"max": "Posun dňa musí byť maximálne 7"
+			}
+		},
+		"icon": {
+			"title": "Vlastná ikona",
+			"placeholder": "mdi:thermometer"
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Teplota",
+		"temperature_min": "Minimálna teplota",
+		"temperature_max": "Maximálna teplota",
+		"feels_like": "Pocitová teplota",
+		"humidity": "Vlhkosť",
+		"pressure": "Tlak",
+		"weather_icon": "Ikona počasia",
+		"weather_main": "Stav počasia",
+		"weather_description": "Popis počasia",
+		"wind_speed": "Rýchlosť vetra"
+	}
+}

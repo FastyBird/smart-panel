@@ -1,1 +1,82 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia OpenWeatherMap One Call API 3.0"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj API kľúč OpenWeatherMap One Call",
+				"description": "Vyžaduje platené predplatné OpenWeatherMap One Call API 3.0"
+			},
+			"unit": {
+				"title": "Jednotka teploty",
+				"placeholder": "Vyberte jednotku teploty",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Názov",
+				"description": "Priateľský názov pre túto polohu",
+				"placeholder": "napr. Domov, Kancelária, Chata",
+				"validation": {
+					"required": "Názov je povinný"
+				}
+			},
+			"citySearch": {
+				"title": "Vyhľadať mesto",
+				"placeholder": "Začnite písať na vyhľadanie mesta...",
+				"description": "Vyhľadajte mesto a automaticky vyplníme súradnice"
+			},
+			"latitude": {
+				"title": "Zemepisná šírka",
+				"placeholder": "napr. 51.5074",
+				"validation": {
+					"required": "Zemepisná šírka je povinná",
+					"range": "Zemepisná šírka musí byť medzi -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Zemepisná dĺžka",
+				"placeholder": "napr. -0.1278",
+				"validation": {
+					"required": "Zemepisná dĺžka je povinná",
+					"range": "Zemepisná dĺžka musí byť medzi -180 a 180"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja poloha"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia OpenWeatherMap One Call boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia OpenWeatherMap One Call"
+		},
+		"locations": {
+			"created": "Poloha \"{location}\" bola vytvorená",
+			"notCreated": "Nepodarilo sa vytvoriť polohu \"{location}\"",
+			"edited": "Poloha \"{location}\" bola aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať polohu \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokácia nie je podporovaná vaším prehliadačom",
+		"geolocationDenied": "Prístup k polohe bol zamietnutý. Prosím povoľte oprávnenia polohy.",
+		"geolocationUnavailable": "Informácie o polohe nie sú dostupné",
+		"geolocationTimeout": "Požiadavka na získanie polohy vypršala",
+		"geolocationError": "Pri získavaní vašej polohy sa vyskytla chyba"
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia OpenWeatherMap One Call API 3.0. Toto API vyžaduje platené predplatné a poskytuje podrobnejšie údaje o počasí vrátane výstrah.",
+		"orEnterManually": "Alebo zadajte polohu manuálne"
+	}
+}

@@ -1,1 +1,41 @@
-{}
+{
+	"headings": {
+		"connection": "InfluxDB-Verbindung",
+		"authentication": "Authentifizierung (Optional)"
+	},
+	"messages": {
+		"config": {
+			"edited": "InfluxDB-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der InfluxDB-Konfiguration fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"about": "Konfigurieren Sie die InfluxDB v1-Verbindung für die Zeitreihendatenspeicherung."
+	},
+	"fields": {
+		"config": {
+			"host": {
+				"title": "Host",
+				"placeholder": "127.0.0.1",
+				"validation": {
+					"required": "Host ist erforderlich"
+				}
+			},
+			"database": {
+				"title": "Datenbank",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Datenbankname ist erforderlich"
+				}
+			},
+			"username": {
+				"title": "Benutzername",
+				"placeholder": "Leer lassen, wenn nicht erforderlich"
+			},
+			"password": {
+				"title": "Passwort",
+				"placeholder": "Leer lassen, wenn nicht erforderlich"
+			}
+		}
+	}
+}

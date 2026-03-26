@@ -1,1 +1,410 @@
-{}
+{
+  "meta": {
+    "pages": {
+      "list": {
+        "title": "Lista stron"
+      },
+      "edit": {
+        "title": "Edytuj stronę: {page}"
+      },
+      "add": {
+        "title": "Dodaj stronę"
+      },
+      "detail": {
+        "title": "Strona: {page}"
+      },
+      "editDataSource": {
+        "title": "Edytuj źródło danych strony"
+      },
+      "addDataSource": {
+        "title": "Dodaj źródło danych strony"
+      }
+    },
+    "tiles": {
+      "edit": {
+        "title": "Edytuj kafelek"
+      },
+      "detail": {
+        "title": "Szczegóły kafelka"
+      },
+      "editDataSource": {
+        "title": "Edytuj źródło danych kafelka"
+      },
+      "addDataSource": {
+        "title": "Dodaj źródło danych kafelka"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "list": "strony",
+      "add": "dodaj stronę",
+      "edit": "edytuj stronę",
+      "detail": "strona: {page}",
+      "addDataSource": "dodaj źródło danych strony",
+      "editDataSource": "edytuj źródło danych strony"
+    },
+    "tiles": {
+      "edit": "edytuj kafelek",
+      "detail": "szczegóły kafelka",
+      "addDataSource": "dodaj źródło danych kafelka",
+      "editDataSource": "edytuj źródło danych kafelka"
+    }
+  },
+  "headings": {
+    "pages": {
+      "list": "Strony",
+      "add": "Dodaj stronę",
+      "edit": "Edytuj stronę",
+      "detail": "Strona: {page}",
+      "remove": "Usunąć stronę?",
+      "bulkRemove": "Usunąć strony?",
+      "selectPlugin": "Wymagana wtyczka strony",
+      "adjustFilters": "Filtruj strony",
+      "addDataSource": "Dodaj źródło danych strony",
+      "editDataSource": "Edytuj źródło danych strony"
+    },
+    "tiles": {
+      "add": "Dodaj kafelek",
+      "edit": "Edytuj kafelek",
+      "detail": "Szczegóły kafelka",
+      "remove": "Usunąć kafelek?",
+      "selectPlugin": "Wymagana wtyczka kafelka",
+      "adjustFilters": "Filtruj kafelki",
+      "addDataSource": "Dodaj źródło danych kafelka",
+      "editDataSource": "Edytuj źródło danych kafelka"
+    },
+    "dataSources": {
+      "add": "Dodaj źródło danych",
+      "edit": "Edytuj źródło danych",
+      "remove": "Usunąć źródło danych?",
+      "selectPlugin": "Wymagana wtyczka źródła danych",
+      "adjustFilters": "Filtruj źródła danych"
+    },
+    "misc": {
+      "discard": "Odrzucić zmiany?"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "list": "Zarządzaj stronami smart panelu",
+      "add": "Dodaj nową stronę smart panelu",
+      "edit": "Edytuj stronę smart panelu",
+      "detail": "Zarządzaj stroną smart panelu",
+      "adjustFilters": "Dostosuj filtry wyświetlania",
+      "addDataSource": "Dodaj nowe źródło danych strony smart panelu",
+      "editDataSource": "Edytuj źródło danych strony smart panelu"
+    },
+    "tiles": {
+      "add": "Dodaj nowy kafelek smart panelu",
+      "edit": "Edytuj kafelek smart panelu",
+      "detail": "Zarządzaj kafelkiem smart panelu",
+      "adjustFilters": "Dostosuj filtry wyświetlania",
+      "addDataSource": "Dodaj nowe źródło danych kafelka smart panelu",
+      "editDataSource": "Edytuj źródło danych kafelka smart panelu"
+    },
+    "dataSources": {
+      "add": "Dodaj nowe źródło danych smart panelu",
+      "edit": "Edytuj źródło danych smart panelu",
+      "detail": "Zarządzaj źródłem danych smart panelu",
+      "adjustFilters": "Dostosuj filtry wyświetlania"
+    }
+  },
+  "messages": {
+    "pages": {
+      "notFound": "Strona, której szukasz, nie istnieje lub mogła zostać usunięta.",
+      "confirmRemove": "Czy na pewno chcesz usunąć stronę: {page}? Tej operacji nie można cofnąć.",
+      "created": "Nowa strona została pomyślnie dodana.",
+      "notCreated": "Coś poszło nie tak. Nie udało się utworzyć strony.",
+      "edited": "Zmiany zapisane! Strona: {page} została zaktualizowana.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja strony nie powiodła się.",
+      "removed": "Strona: {page} została pomyślnie usunięta.",
+      "removeCanceled": "Usunięcie strony: {page} zostało anulowane.",
+      "notRemoved": "Coś poszło nie tak i strona: {page} nie została usunięta.",
+      "noDetailAllowed": "Tego typu strony nie można otworzyć, ponieważ nie ma widoku szczegółowego.",
+      "deletedWhileEditing": "Ta strona została usunięta i nie jest już dostępna.",
+      "bulkRemoved": "{count} stron zostało pomyślnie usuniętych.",
+      "bulkRemoveFailed": "Nie udało się usunąć {count} stron.",
+      "bulkRemoveCanceled": "Masowe usuwanie stron zostało anulowane."
+    },
+    "tiles": {
+      "notFound": "Kafelek, którego szukasz, nie istnieje lub mógł zostać usunięty.",
+      "confirmRemove": "Czy na pewno chcesz usunąć kafelek? Tej operacji nie można cofnąć.",
+      "created": "Nowy kafelek został pomyślnie dodany.",
+      "notCreated": "Coś poszło nie tak. Nie udało się utworzyć kafelka.",
+      "edited": "Zmiany zapisane! Kafelek został zaktualizowany.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja kafelka nie powiodła się.",
+      "removed": "Kafelek został pomyślnie usunięty.",
+      "removeCanceled": "Usuwanie kafelka zostało anulowane.",
+      "notRemoved": "Coś poszło nie tak i kafelek nie został usunięty.",
+      "deletedWhileEditing": "Ten kafelek został usunięty i nie jest już dostępny."
+    },
+    "dataSources": {
+      "notFound": "Źródło danych, którego szukasz, nie istnieje lub mogło zostać usunięte.",
+      "confirmRemove": "Czy na pewno chcesz usunąć źródło danych? Tej operacji nie można cofnąć.",
+      "created": "Nowe źródło danych zostało pomyślnie dodane.",
+      "notCreated": "Coś poszło nie tak. Nie udało się utworzyć źródła danych.",
+      "edited": "Zmiany zapisane! Źródło danych zostało zaktualizowane.",
+      "notEdited": "Coś poszło nie tak. Aktualizacja źródła danych nie powiodła się.",
+      "removed": "Źródło danych zostało pomyślnie usunięte.",
+      "removeCanceled": "Usuwanie źródła danych zostało anulowane.",
+      "notRemoved": "Coś poszło nie tak i źródło danych nie zostało usunięte.",
+      "deletedWhileEditing": "To źródło danych zostało usunięte i nie jest już dostępne."
+    },
+    "misc": {
+      "requestError": "Coś poszło nie tak, spróbuj ponownie później."
+    }
+  },
+  "texts": {
+    "pages": {
+      "noPages": "Nie masz skonfigurowanych żadnych stron",
+      "noFilteredPages": "Nie znaleziono stron pasujących do aktywnych kryteriów filtra",
+      "loadingPages": "Ładowanie stron...",
+      "loadingPage": "Ładowanie strony...",
+      "confirmRemove": "Czy na pewno chcesz usunąć stronę: {page}? Tej operacji nie można cofnąć.",
+      "confirmBulkRemove": "Czy na pewno chcesz usunąć {count} stron? Tej operacji nie można cofnąć.",
+      "selectPlugin": "Aby utworzyć nową stronę, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonych typów stron.",
+      "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek stron.",
+      "noDisplays": "Nie sparowano jeszcze żadnych wyświetlaczy."
+    },
+    "tiles": {
+      "noTiles": "Nie masz skonfigurowanych żadnych kafelków",
+      "noFilteredTiles": "Nie znaleziono kafelków pasujących do aktywnych kryteriów filtra",
+      "loadingTiles": "Ładowanie kafelków...",
+      "loadingTile": "Ładowanie kafelka...",
+      "confirmRemove": "Czy na pewno chcesz usunąć kafelek? Tej operacji nie można cofnąć.",
+      "selectPlugin": "Aby utworzyć nowe kafelki, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonych typów kafelków.",
+      "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek kafelków.",
+      "plugin": "Wtyczka",
+      "dataSources": "Źródła danych",
+      "dataSourcesCount": "Brak skonfigurowanych źródeł danych | Jedno skonfigurowane źródło danych | {count} skonfigurowanych źródeł danych",
+      "row": "Pozycja wiersza",
+      "col": "Pozycja kolumny",
+      "size": "Rozmiar",
+      "visibility": "Widoczność",
+      "hidden": "Kafelek jest ukryty",
+      "visible": "Kafelek jest widoczny"
+    },
+    "dataSources": {
+      "noDataSources": "Nie masz skonfigurowanych żadnych źródeł danych",
+      "noFilteredDataSources": "Nie znaleziono źródeł danych pasujących do aktywnych kryteriów filtra",
+      "loadingDataSources": "Ładowanie źródeł danych...",
+      "loadingDataSource": "Ładowanie źródła danych...",
+      "confirmRemove": "Czy na pewno chcesz usunąć źródło danych? Tej operacji nie można cofnąć.",
+      "selectPlugin": "Aby utworzyć nowe źródło danych, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonych typów źródeł danych.",
+      "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek źródeł danych."
+    },
+    "misc": {
+      "confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+    }
+  },
+  "fields": {
+    "pages": {
+      "search": {
+        "placeholder": "Szukaj stron..."
+      },
+      "plugin": {
+        "title": "Wtyczka strony",
+        "placeholder": "Wybierz wtyczkę strony"
+      },
+      "id": {
+        "title": "Identyfikator wewnętrzny",
+        "placeholder": "ID strony"
+      },
+      "title": {
+        "title": "Tytuł",
+        "placeholder": "Tytuł strony",
+        "validation": {
+          "required": "Proszę podać tytuł strony"
+        }
+      },
+      "icon": {
+        "title": "Ikona",
+        "placeholder": "Ikona strony"
+      },
+      "order": {
+        "title": "Kolejność",
+        "placeholder": "Pozycja strony"
+      },
+      "showTopBar": {
+        "title": "Pokaż górny pasek",
+        "placeholder": "Pokaż górny pasek strony"
+      },
+      "displays": {
+        "title": "Wyświetlacze",
+        "placeholder": "Wybierz wyświetlacze (pozostaw puste dla wszystkich wyświetlaczy)",
+        "description": "Wybierz konkretne wyświetlacze dla tej strony. Pozostaw puste, aby była widoczna na wszystkich wyświetlaczach."
+      }
+    },
+    "tiles": {
+      "search": {
+        "placeholder": "Szukaj kafelków..."
+      },
+      "plugin": {
+        "title": "Wtyczka kafelka",
+        "placeholder": "Wybierz wtyczkę kafelka"
+      },
+      "id": {
+        "title": "Identyfikator wewnętrzny",
+        "placeholder": "ID kafelka"
+      },
+      "row": {
+        "title": "Pozycja wiersza",
+        "placeholder": "Numer wiersza 1-n",
+        "validation": {
+          "required": "Proszę podać wiersz kafelka"
+        }
+      },
+      "col": {
+        "title": "Pozycja kolumny",
+        "placeholder": "Numer kolumny 1-n",
+        "validation": {
+          "required": "Proszę podać kolumnę kafelka"
+        }
+      },
+      "rowSpan": {
+        "title": "Rozpiętość wierszy",
+        "placeholder": "Rozmiar kafelka w wierszach"
+      },
+      "colSpan": {
+        "title": "Rozpiętość kolumn",
+        "placeholder": "Rozmiar kafelka w kolumnach"
+      },
+      "hidden": {
+        "title": "Ukryty",
+        "placeholder": "Ukryj kafelek w aplikacji wyświetlacza"
+      }
+    },
+    "dataSources": {
+      "search": {
+        "placeholder": "Szukaj źródeł danych..."
+      },
+      "plugin": {
+        "title": "Wtyczka źródła danych",
+        "placeholder": "Wybierz wtyczkę źródła danych"
+      },
+      "id": {
+        "title": "Identyfikator wewnętrzny",
+        "placeholder": "ID źródła danych"
+      }
+    }
+  },
+  "table": {
+    "pages": {
+      "columns": {
+        "title": {
+          "title": "Tytuł"
+        },
+        "type": {
+          "title": "Typ"
+        },
+        "display": {
+          "title": "Wyświetlacze",
+          "all": "Wszystkie wyświetlacze"
+        },
+        "order": {
+          "title": "Kolejność"
+        },
+        "showTopBar": {
+          "title": "Pokaż górny pasek"
+        }
+      }
+    },
+    "tiles": {
+      "columns": {
+        "type": {
+          "title": "Typ"
+        },
+        "row": {
+          "title": "Wiersz"
+        },
+        "col": {
+          "title": "Kolumna"
+        },
+        "rowSpan": {
+          "title": "Rozpiętość wierszy"
+        },
+        "colSpan": {
+          "title": "Rozpiętość kolumn"
+        },
+        "hidden": {
+          "title": "Ukryty"
+        }
+      }
+    },
+    "dataSources": {
+      "columns": {
+        "type": {
+          "title": "Typ"
+        }
+      }
+    }
+  },
+  "filters": {
+    "pages": {
+      "types": {
+        "title": "Filtruj według typu strony"
+      },
+      "displays": {
+        "title": "Filtruj według wyświetlacza strony"
+      }
+    },
+    "tiles": {
+      "types": {
+        "title": "Filtruj według typu kafelka"
+      }
+    },
+    "dataSources": {
+      "types": {
+        "title": "Filtruj według typu źródła danych"
+      }
+    }
+  },
+  "buttons": {
+    "add": {
+      "title": "Dodaj"
+    },
+    "edit": {
+      "title": "Edytuj"
+    },
+    "detail": {
+      "title": "Szczegóły"
+    },
+    "configure": {
+      "title": "Skonfiguruj"
+    },
+    "discard": {
+      "title": "Odrzuć"
+    },
+    "cancel": {
+      "title": "Anuluj"
+    },
+    "close": {
+      "title": "Zamknij"
+    },
+    "save": {
+      "title": "Zapisz"
+    },
+    "change": {
+      "title": "Zmień"
+    },
+    "remove": {
+      "title": "Usuń"
+    },
+    "resetFilters": {
+      "title": "Resetuj filtry"
+    },
+    "yes": {
+      "title": "Tak"
+    },
+    "no": {
+      "title": "Nie"
+    },
+    "reset": {
+      "title": "Resetuj"
+    },
+    "addDataSource": {
+      "title": "Dodaj źródło danych"
+    }
+  }
+}

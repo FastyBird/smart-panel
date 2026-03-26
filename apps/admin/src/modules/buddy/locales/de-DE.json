@@ -1,1 +1,196 @@
-{}
+{
+	"headings": {
+		"settings": "Buddy",
+		"chat": "Buddy-Chat",
+		"chats": "Chats",
+		"aboutBuddy": "KI-Buddy-Konfiguration"
+	},
+	"subHeadings": {
+		"settings": "KI-Buddy-Assistenten-Einstellungen konfigurieren",
+		"chat": "Mit Ihrem KI-Buddy-Assistenten chatten"
+	},
+	"messages": {
+		"loadError": "Buddy-Konfiguration konnte nicht geladen werden",
+		"config": {
+			"edited": "Buddy-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der Buddy-Konfiguration fehlgeschlagen"
+		},
+		"errors": {
+			"unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
+			"loadConversations": "Konversationen konnten nicht geladen werden",
+			"createConversation": "Konversation konnte nicht erstellt werden",
+			"loadMessages": "Nachrichten konnten nicht geladen werden",
+			"providerUnavailable": "Der KI-Anbieter ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
+			"sendMessage": "Nachricht konnte nicht gesendet werden",
+			"deleteConversation": "Konversation konnte nicht gelöscht werden",
+			"audioPlayback": "Audiowiedergabe fehlgeschlagen",
+			"loadPersonality": "Persönlichkeit konnte nicht geladen werden",
+			"savePersonality": "Persönlichkeit konnte nicht gespeichert werden"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Speichern"
+		},
+		"back": {
+			"title": "Zurück"
+		},
+		"retry": {
+			"title": "Wiederholen"
+		},
+		"newChat": {
+			"title": "Neuer Chat"
+		},
+		"delete": {
+			"title": "Löschen"
+		},
+		"cancel": {
+			"title": "Abbrechen"
+		},
+		"configure": {
+			"title": "Anbieter konfigurieren"
+		},
+		"goToSettings": {
+			"title": "Zu Einstellungen"
+		},
+		"setupWizard": {
+			"title": "Einrichtungsassistent"
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Modul aktivieren"
+			},
+			"name": {
+				"title": "Buddy-Name",
+				"placeholder": "Buddy-Namen eingeben"
+			},
+			"provider": {
+				"title": "KI-Anbieter-Plugin",
+				"placeholder": "KI-Anbieter-Plugin auswählen",
+				"notConfigured": "nicht konfiguriert",
+				"tags": {
+					"ruleBasedOnly": "nur regelbasiert"
+				},
+				"options": {
+					"none": "Keiner"
+				}
+			},
+			"voiceEnabled": {
+				"title": "Sprachschnittstelle",
+				"description": "Spracherkennung und Sprachsynthese für freihändige Interaktion mit dem Assistenten aktivieren"
+			},
+			"sttPlugin": {
+				"title": "Spracherkennungsanbieter (Speech-to-Text)",
+				"placeholder": "Spracherkennungsanbieter auswählen",
+				"notConfigured": "nicht konfiguriert",
+				"options": {
+					"none": "Keiner"
+				},
+				"tags": {
+					"disabled": "deaktiviert"
+				}
+			},
+			"ttsPlugin": {
+				"title": "Sprachsynthesenanbieter (Text-to-Speech)",
+				"placeholder": "Sprachsynthesenanbieter auswählen",
+				"notConfigured": "nicht konfiguriert",
+				"options": {
+					"none": "Keiner"
+				},
+				"tags": {
+					"disabled": "deaktiviert"
+				}
+			},
+			"personality": {
+				"title": "Persönlichkeit",
+				"description": "Definieren Sie Ton, Stil und Persönlichkeit des Buddys. Dieser Text wird in den KI-Systemprompt eingefügt.",
+				"placeholder": "Du bist ein hilfreicher Smart-Home-Assistent. Sei prägnant, freundlich und praktisch.\nKonzentriere dich auf umsetzbare Vorschläge. Verwende einfache Sprache."
+			}
+		},
+		"message": {
+			"placeholder": "Nachricht eingeben..."
+		}
+	},
+	"texts": {
+		"loadingConfig": "Buddy-Konfiguration wird geladen...",
+		"loadingConversations": "Konversationen werden geladen...",
+		"aboutBuddy": "Konfigurieren Sie den KI-Buddy-Assistenten, der Ihre Aktionen beobachtet, Ihre Muster lernt und Automatisierungen vorschlägt. Wählen Sie ein KI-Anbieter-Plugin, um die Chat-Funktionalität zu aktivieren. Anbieterspezifische Einstellungen (API-Schlüssel, Modell) werden auf der Einstellungsseite des jeweiligen Plugins konfiguriert. Ohne Anbieter funktionieren regelbasierte Vorschläge weiterhin.",
+		"emptyChat": "Wählen Sie eine Konversation aus oder erstellen Sie eine neue, um zu chatten",
+		"startConversation": "Fragen Sie mich alles über Ihr Zuhause!",
+		"thinking": "Denkt nach...",
+		"newConversation": "Neue Konversation",
+		"confirmDelete": "Diese Konversation löschen?",
+		"providerNotConfigured": "KI-Anbieter nicht konfiguriert",
+		"providerNotConfiguredHint": "Konfigurieren Sie ein KI-Anbieter-Plugin, um mit Ihrem Buddy zu chatten.",
+		"noProviderSelected": "Kein KI-Anbieter ausgewählt",
+		"noProviderSelectedHint": "Wählen und konfigurieren Sie einen KI-Anbieter, um zu beginnen. Verwenden Sie den Einrichtungsassistenten für eine geführte Konfiguration.",
+		"providerNotEnabled": "Der Anbieter {name} ist nicht aktiviert",
+		"providerNotEnabledHint": "Aktivieren Sie ihn in der Plugin-Konfiguration.",
+		"providerMissingConfig": "Der Anbieter {name} muss konfiguriert werden",
+		"providerMissingConfigHint": "Richten Sie den erforderlichen API-Schlüssel oder die OAuth-Verbindung ein.",
+		"availableProviders": "Verfügbare Anbieter",
+		"configured": "Konfiguriert",
+		"notConfigured": "Nicht konfiguriert",
+		"justNow": "gerade eben",
+		"minutesAgo": "vor {n}m",
+		"hoursAgo": "vor {n}h",
+		"daysAgo": "vor {n}T",
+		"noSpace": "Kein Raum",
+		"noActiveConversation": "Keine Konversation ausgewählt",
+		"providersFetchFailed": "Verfügbare Anbieter konnten nicht geladen werden. Die Anbieterliste ist möglicherweise unvollständig.",
+		"sttProvidersFetchFailed": "Verfügbare Spracherkennungsanbieter konnten nicht geladen werden. Die Anbieterliste ist möglicherweise unvollständig.",
+		"ttsProvidersFetchFailed": "Verfügbare Sprachsyntheseanbieter konnten nicht geladen werden. Die Anbieterliste ist möglicherweise unvollständig.",
+		"moduleDisabled": "Buddy-Modul ist deaktiviert",
+		"moduleDisabledHint": "Das KI-Buddy-Modul ist derzeit deaktiviert. Aktivieren Sie es in der Systemkonfiguration, um Chat und Vorschläge zu nutzen."
+	},
+	"wizard": {
+		"title": "Buddy-Einrichtungsassistent",
+		"steps": {
+			"provider": "KI-Anbieter",
+			"voice": "Sprache",
+			"messaging": "Messaging",
+			"done": "Fertig"
+		},
+		"providerDescription": "Wählen Sie einen KI-Anbieter für die Chat-Funktionen Ihres Buddys. Jeder Anbieter benötigt eigene API-Schlüssel oder Anmeldedaten.",
+		"voiceDescription": "Konfigurieren Sie optional Sprachfunktionen. Text-to-Speech lässt den Buddy Antworten vorlesen. Speech-to-Text ermöglicht Spracheingabe.",
+		"messagingDescription": "Verbinden Sie optional Messaging-Plattformen, um von unterwegs per Telegram, Discord, WhatsApp oder anderen Diensten mit Ihrem Buddy zu chatten.",
+		"noProvidersAvailable": "Keine KI-Anbieter-Plugins installiert. Installieren Sie ein Anbieter-Plugin (z.B. Claude, OpenAI, Ollama), um den KI-Chat zu aktivieren.",
+		"configureProvider": "{name} konfigurieren",
+		"configured": "Konfiguriert",
+		"needsSetup": "Einrichtung erforderlich",
+		"disabled": "Deaktiviert",
+		"configRequired": "Konfiguration erforderlich",
+		"configSaved": "Konfiguration erfolgreich gespeichert",
+		"saveError": "Konfiguration konnte nicht gespeichert werden",
+		"doneTitle": "Einrichtung abgeschlossen",
+		"doneDescription": "Ihr Buddy ist einsatzbereit. Sie können diese Einstellungen jederzeit auf der Konfigurationsseite ändern.",
+		"summaryLlm": "KI-Anbieter: {name}",
+		"summaryLlmSkipped": "KI-Anbieter nicht ausgewählt",
+		"summaryVoice": "Sprache: {summary}",
+		"summaryVoiceSkipped": "Sprache übersprungen",
+		"summaryMessaging": "Messaging: {name}",
+		"summaryMessagingSkipped": "Messaging übersprungen",
+		"notSelected": "Nicht ausgewählt",
+		"skipped": "Übersprungen",
+		"ttsHeading": "Text-to-Speech (TTS)",
+		"sttHeading": "Speech-to-Text (STT)",
+		"buttons": {
+			"back": "Zurück",
+			"next": "Weiter",
+			"skip": "Überspringen",
+			"configure": "Konfigurieren",
+			"saveConfig": "Konfiguration speichern",
+			"startChatting": "Chat starten"
+		}
+	},
+	"meta": {
+		"settings": {
+			"title": "Buddy-Einstellungen"
+		},
+		"chat": {
+			"title": "Buddy-Chat"
+		}
+	}
+}

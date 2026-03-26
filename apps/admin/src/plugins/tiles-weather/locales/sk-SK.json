@@ -1,1 +1,21 @@
-{}
+{
+	"preview": {
+		"day": {
+			"temperature": "22°C",
+			"condition": "Slnečno"
+		},
+		"forecast": {
+			"mon": "Po",
+			"tue": "Ut",
+			"wed": "St",
+			"thu": "Št"
+		}
+	},
+	"fields": {
+		"locationId": {
+			"title": "Poloha počasia",
+			"placeholder": "Vyberte polohu",
+			"description": "Vyberte polohu počasia na zobrazenie. Ak nie je nastavená, použije sa primárna poloha z nastavení počasia."
+		}
+	}
+}

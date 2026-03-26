@@ -1,1 +1,193 @@
-{}
+{
+	"wizard": {
+		"title": "Smart Panel Einrichtung",
+		"steps": {
+			"welcome": "Willkommen",
+			"account": "Konto",
+			"location": "Standort",
+			"spaces": "Räume",
+			"integrations": "Integrationen",
+			"complete": "Abgeschlossen"
+		},
+		"buttons": {
+			"getStarted": "Loslegen",
+			"next": "Weiter",
+			"back": "Zurück",
+			"skip": "Überspringen",
+			"finishSetup": "Einrichtung abschließen"
+		}
+	},
+	"welcome": {
+		"title": "Willkommen bei Smart Panel",
+		"description": "Lassen Sie uns Ihr Smart Home einrichten. Dieser Assistent führt Sie durch die Erstkonfiguration.",
+		"steps": {
+			"account": "Konto erstellen",
+			"accountDescription": "Richten Sie Ihr Administratorkonto ein",
+			"location": "Standort festlegen",
+			"locationDescription": "Konfigurieren Sie Ihren Standort für Wetterdaten",
+			"spaces": "Räume erstellen",
+			"spacesDescription": "Fügen Sie Räume und Bereiche hinzu, um Ihre Geräte zu organisieren",
+			"integrations": "Integrationen aktivieren",
+			"integrationsDescription": "Verbinden Sie Ihre Smart-Home-Plattformen",
+			"finish": "Starten",
+			"finishDescription": "Ihr Smart Panel ist einsatzbereit"
+		}
+	},
+	"account": {
+		"description": "Erstellen Sie Ihr Administratorkonto. Dieses wird der Besitzer des Smart Panels sein.",
+		"created": "Konto erfolgreich erstellt! Sie sind jetzt angemeldet.",
+		"fields": {
+			"firstName": "Vorname",
+			"lastName": "Nachname",
+			"email": "E-Mail",
+			"username": "Benutzername",
+			"password": "Passwort"
+		},
+		"placeholders": {
+			"firstName": "Geben Sie Ihren Vornamen ein",
+			"lastName": "Geben Sie Ihren Nachnamen ein",
+			"email": "Geben Sie Ihre E-Mail-Adresse ein",
+			"username": "Wählen Sie einen Benutzernamen",
+			"password": "Wählen Sie ein Passwort"
+		},
+		"validation": {
+			"firstNameRequired": "Vorname ist erforderlich",
+			"lastNameRequired": "Nachname ist erforderlich",
+			"emailRequired": "E-Mail ist erforderlich",
+			"emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+			"usernameRequired": "Benutzername ist erforderlich",
+			"passwordRequired": "Passwort ist erforderlich"
+		},
+		"messages": {
+			"created": "Ihr Konto wurde erstellt und Sie sind jetzt angemeldet.",
+			"error": "Kontoerstellung fehlgeschlagen. Bitte versuchen Sie es erneut."
+		}
+	},
+	"location": {
+		"description": "Legen Sie Ihren Standort für Wetterinformationen und andere standortbasierte Funktionen fest. Sie können diesen Schritt überspringen und später konfigurieren.",
+		"fields": {
+			"citySearch": "Stadt suchen",
+			"latitude": "Breitengrad",
+			"longitude": "Längengrad"
+		},
+		"placeholders": {
+			"citySearch": "Geben Sie einen Stadtnamen ein...",
+			"latitude": "z.B. 50.0755",
+			"longitude": "z.B. 14.4378"
+		},
+		"buttons": {
+			"myLocation": "Mein Standort"
+		},
+		"orEnterManually": "Oder Koordinaten manuell eingeben",
+		"hint": "Sie können Ihren Standort später in den Wetter-Einstellungen konfigurieren.",
+		"messages": {
+			"error": "Standort konnte nicht gespeichert werden.",
+			"geolocationNotSupported": "Geolokalisierung wird von Ihrem Browser nicht unterstützt.",
+			"geolocationDenied": "Standortzugriff wurde verweigert. Bitte erlauben Sie den Standortzugriff in Ihren Browser-Einstellungen.",
+			"geolocationUnavailable": "Standortinformationen sind derzeit nicht verfügbar.",
+			"geolocationTimeout": "Standortanfrage hat das Zeitlimit überschritten. Bitte versuchen Sie es erneut.",
+			"geolocationError": "Beim Abrufen Ihres Standorts ist ein Fehler aufgetreten."
+		}
+	},
+	"spaces": {
+		"description": "Erstellen Sie Räume und Bereiche, um Ihre Geräte zu organisieren. Sie können später weitere Räume hinzufügen.",
+		"quickAdd": "Häufige Räume schnell hinzufügen",
+		"orAddCustom": "Oder benutzerdefinierten Raum hinzufügen",
+		"fields": {
+			"name": "Raumname"
+		},
+		"placeholders": {
+			"name": "z.B. Hauptschlafzimmer"
+		},
+		"buttons": {
+			"add": "Hinzufügen"
+		},
+		"roomsToCreate": "Zu erstellende Räume ({count})",
+		"categories": {
+			"livingRoom": "Wohnzimmer",
+			"bedroom": "Schlafzimmer",
+			"kitchen": "Küche",
+			"bathroom": "Badezimmer",
+			"toilet": "Toilette",
+			"office": "Büro",
+			"hallway": "Flur",
+			"entryway": "Eingangsbereich",
+			"garage": "Garage",
+			"diningRoom": "Esszimmer",
+			"laundry": "Waschküche",
+			"nursery": "Kinderzimmer",
+			"guestRoom": "Gästezimmer",
+			"storage": "Abstellraum",
+			"workshop": "Werkstatt"
+		},
+		"devices": {
+			"title": "Geräte Räumen zuweisen",
+			"count": "Geräte",
+			"unassigned": "Nicht zugewiesene Geräte ({count})",
+			"assigned": "Zugewiesene Geräte ({count})",
+			"selected": "{count} ausgewählt",
+			"assignTo": "Raum zuweisen...",
+			"assign": "Zuweisen",
+			"clearSelection": "Löschen",
+			"selectSpace": "Raum auswählen..."
+		},
+		"hint": "Sie können Räume später in den Raum-Einstellungen hinzufügen, umbenennen oder neu organisieren.",
+		"messages": {
+			"error": "Räume konnten nicht erstellt werden.",
+			"assignmentError": "Geräte konnten den Räumen nicht zugewiesen werden."
+		}
+	},
+	"integrations": {
+		"description": "Aktivieren Sie Geräteintegrationen, um Ihre Smart-Home-Plattformen zu verbinden. Aktivieren Sie die gewünschten und konfigurieren Sie deren Verbindungseinstellungen.",
+		"noPlugins": "Keine Geräteintegrationen verfügbar.",
+		"hint": "Sie können Integrationen später in den Erweiterungseinstellungen aktivieren oder deaktivieren.",
+		"searching": "Suche nach Geräten...",
+		"devicesFound": "{count} Gerät gefunden | {count} Gerät gefunden | {count} Geräte gefunden",
+		"noDevicesYet": "Noch keine Geräte gefunden - konfigurieren Sie die Verbindung, um Geräte zu entdecken",
+		"noDevicesFound": "Noch keine Geräte gefunden",
+		"enabled": "Integration aktiviert",
+		"configure": "Konfigurieren",
+		"configRequired": "Konfiguration erforderlich zum Verbinden",
+		"setupNow": "Jetzt einrichten",
+		"stopScan": "Stoppen",
+		"summary": "{count} Integration aktiviert | {count} Integration aktiviert | {count} Integrationen aktiviert",
+		"totalDevices": "{count} Gerät gefunden | {count} Gerät gefunden | {count} Geräte gefunden",
+		"configDialog": {
+			"title": "{name} konfigurieren",
+			"noConfig": "Für diese Integration sind keine Konfigurationsoptionen verfügbar.",
+			"buttons": {
+				"cancel": "Abbrechen",
+				"validate": "Validieren",
+				"save": "Speichern"
+			},
+			"messages": {
+				"saved": "Konfiguration erfolgreich gespeichert.",
+				"validationSuccess": "Konfiguration ist gültig.",
+				"validationFailed": "Konfigurationsvalidierung fehlgeschlagen.",
+				"validationError": "Konfiguration konnte nicht validiert werden."
+			}
+		},
+		"messages": {
+			"error": "Integrationen konnten nicht aktualisiert werden."
+		}
+	},
+	"complete": {
+		"title": "Alles fertig!",
+		"description": "Ihr Smart Panel ist konfiguriert und einsatzbereit. Sie können jetzt Geräte hinzufügen, Räume erstellen und Ihr Dashboard anpassen.",
+		"summary": {
+			"accountCreated": "Administratorkonto erstellt",
+			"locationConfigured": "Wetterstandort konfiguriert",
+			"locationSkipped": "Wetterstandort übersprungen (kann später konfiguriert werden)",
+			"spacesCreated": "{count} Raum/Räume werden erstellt | {count} Raum wird erstellt | {count} Räume werden erstellt",
+			"spacesSkipped": "Keine Räume hinzugefügt (können später erstellt werden)",
+			"devicesAssigned": "{count} Gerät(e) Räumen zugewiesen | {count} Gerät einem Raum zugewiesen | {count} Geräte Räumen zugewiesen",
+			"devicesSkipped": "Keine Geräte Räumen zugewiesen",
+			"integrationsEnabled": "{count} Integration(en) aktiviert | {count} Integration aktiviert | {count} Integrationen aktiviert",
+			"integrationsSkipped": "Keine Integrationen aktiviert (können später konfiguriert werden)"
+		},
+		"messages": {
+			"finished": "Einrichtung abgeschlossen! Willkommen bei Smart Panel.",
+			"error": "Einrichtung konnte nicht abgeschlossen werden."
+		}
+	}
+}

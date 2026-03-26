@@ -1,1 +1,197 @@
-{}
+{
+  "meta": {
+    "users": {
+      "list": {
+        "title": "Lista użytkowników"
+      },
+      "edit": {
+        "title": "Edytuj użytkownika: {user}"
+      },
+      "add": {
+        "title": "Dodaj użytkownika"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "users": "użytkownicy",
+    "addUser": "dodaj użytkownika",
+    "editUser": "edytuj użytkownika"
+  },
+  "headings": {
+    "users": "Użytkownicy",
+    "addUser": "Dodaj użytkownika",
+    "editUser": "Edytuj użytkownika",
+    "remove": "Usunąć użytkownika?",
+    "removeBulk": "Usunąć użytkowników?",
+    "discard": "Odrzucić zmiany?",
+    "changeUsername": "Zmień nazwę użytkownika",
+    "changePassword": "Zmień hasło"
+  },
+  "subHeadings": {
+    "users": "Zarządzaj kontami użytkowników smart panelu",
+    "addUser": "Dodaj nowego użytkownika smart panelu"
+  },
+  "messages": {
+    "requestError": "Coś poszło nie tak, spróbuj ponownie później.",
+    "created": "Nowy użytkownik został pomyślnie dodany.",
+    "notCreated": "Coś poszło nie tak. Nie udało się utworzyć użytkownika.",
+    "edited": "Zmiany zapisane! Użytkownik: {user} został zaktualizowany.",
+    "notEdited": "Coś poszło nie tak. Aktualizacja użytkownika nie powiodła się.",
+    "notFound": "Użytkownik, którego szukasz, nie istnieje lub mógł zostać usunięty.",
+    "removed": "Użytkownik: {user} został pomyślnie usunięty.",
+    "removeCanceled": "Usunięcie użytkownika: {user} zostało anulowane.",
+    "notRemoved": "Coś poszło nie tak i użytkownik: {user} nie został usunięty.",
+    "deletedWhileEditing": "Ten użytkownik został usunięty i nie jest już dostępny.",
+    "usernameEdited": "Nazwa użytkownika została pomyślnie zaktualizowana.",
+    "usernameNotEdited": "Nie udało się zaktualizować nazwy użytkownika. Spróbuj ponownie.",
+    "passwordEdited": "Hasło użytkownika zostało pomyślnie zaktualizowane.",
+    "passwordNotEdited": "Nie udało się zmienić hasła użytkownika. Spróbuj ponownie.",
+    "bulkRemoved": "Usunięto {count} użytkowników.",
+    "bulkRemoveFailed": "Nie udało się usunąć {count} użytkowników.",
+    "bulkRemoveCanceled": "Masowe usuwanie użytkowników zostało anulowane."
+  },
+  "texts": {
+    "confirmRemove": "Czy na pewno chcesz usunąć użytkownika: {user}? Tej operacji nie można cofnąć.",
+    "confirmBulkRemove": "Czy na pewno chcesz usunąć {count} użytkowników? Tej operacji nie można cofnąć.",
+    "misc": {
+      "noUsers": "Nie masz skonfigurowanych żadnych użytkowników",
+      "noFilteredUsers": "Nie znaleziono użytkowników pasujących do aktywnych kryteriów filtra",
+      "loadingUsers": "Ładowanie użytkowników...",
+      "loadingUser": "Ładowanie użytkownika...",
+      "confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+    }
+  },
+  "fields": {
+    "search": {
+      "placeholder": "Szukaj użytkowników..."
+    },
+    "role": {
+      "title": "Rola użytkownika",
+      "placeholder": "Wybierz rolę",
+      "validation": {
+        "required": "Proszę wybrać rolę użytkownika"
+      },
+      "options": {
+        "user": "Użytkownik",
+        "admin": "Administrator",
+        "owner": "Właściciel"
+      }
+    },
+    "username": {
+      "title": "Nazwa użytkownika",
+      "validation": {
+        "required": "Proszę podać nazwę użytkownika"
+      }
+    },
+    "newUsername": {
+      "title": "Nowa nazwa użytkownika",
+      "validation": {
+        "required": "Proszę podać nową nazwę użytkownika"
+      }
+    },
+    "password": {
+      "title": "Hasło",
+      "validation": {
+        "required": "Proszę podać hasło"
+      }
+    },
+    "repeatPassword": {
+      "title": "Potwierdź hasło",
+      "validation": {
+        "required": "Proszę potwierdzić nowe hasło",
+        "different": "Hasła nie są identyczne"
+      }
+    },
+    "newPassword": {
+      "title": "Nowe hasło",
+      "validation": {
+        "required": "Proszę podać nowe hasło"
+      }
+    },
+    "newRepeatPassword": {
+      "title": "Potwierdź hasło",
+      "validation": {
+        "required": "Proszę potwierdzić nowe hasło",
+        "different": "Hasła nie są identyczne"
+      }
+    },
+    "email": {
+      "title": "E-mail",
+      "placeholder": "np. jan{'@'}kowalski.pl",
+      "validation": {
+        "email": "Proszę podać prawidłowy adres e-mail"
+      }
+    },
+    "firstName": {
+      "title": "Imię",
+      "placeholder": "np. Jan"
+    },
+    "lastName": {
+      "title": "Nazwisko",
+      "placeholder": "np. Kowalski"
+    }
+  },
+  "table": {
+    "columns": {
+      "username": {
+        "title": "Nazwa użytkownika"
+      },
+      "firstName": {
+        "title": "Imię"
+      },
+      "lastName": {
+        "title": "Nazwisko"
+      },
+      "email": {
+        "title": "E-mail"
+      },
+      "role": {
+        "title": "Rola"
+      }
+    }
+  },
+  "role": {
+    "user": "Użytkownik",
+    "admin": "Administrator",
+    "owner": "Właściciel",
+    "display": "Wyświetlacz"
+  },
+  "buttons": {
+    "add": {
+      "title": "Dodaj"
+    },
+    "edit": {
+      "title": "Edytuj"
+    },
+    "detail": {
+      "title": "Szczegóły"
+    },
+    "discard": {
+      "title": "Odrzuć"
+    },
+    "cancel": {
+      "title": "Anuluj"
+    },
+    "close": {
+      "title": "Zamknij"
+    },
+    "save": {
+      "title": "Zapisz"
+    },
+    "change": {
+      "title": "Zmień"
+    },
+    "remove": {
+      "title": "Usuń"
+    },
+    "resetFilters": {
+      "title": "Resetuj filtry"
+    },
+    "yes": {
+      "title": "Tak"
+    },
+    "no": {
+      "title": "Nie"
+    }
+  }
+}

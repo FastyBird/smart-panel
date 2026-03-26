@@ -1,1 +1,163 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Karte bearbeiten"
+			},
+			"addCard": {
+				"title": "Karte hinzufügen"
+			},
+			"editTile": {
+				"title": "Kartenkachel bearbeiten"
+			},
+			"addTile": {
+				"title": "Kartenkachel hinzufügen"
+			},
+			"editDataSource": {
+				"title": "Seitendatenquelle bearbeiten"
+			},
+			"addDataSource": {
+				"title": "Seitendatenquelle hinzufügen"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "Seite: {page}",
+			"addCard": "Karte hinzufügen",
+			"editCard": "Karte bearbeiten",
+			"addTile": "Kartenkachel hinzufügen",
+			"editTile": "Kartenkachel bearbeiten",
+			"addDataSource": "Seitendatenquelle hinzufügen",
+			"editDataSource": "Seitendatenquelle bearbeiten"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Karte hinzufügen",
+			"editCard": "Karte bearbeiten",
+			"addTile": "Kartenkachel hinzufügen",
+			"editTile": "Kartenkachel bearbeiten",
+			"addDataSource": "Seitendatenquelle hinzufügen",
+			"editDataSource": "Seitendatenquelle bearbeiten"
+		},
+		"cards": {
+			"remove": "Karte entfernen"
+		},
+		"configure": {
+			"display": "Anzeige",
+			"cards": "Karten"
+		},
+		"misc": {
+			"discard": "Änderungen verwerfen?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Neue Karte zu dieser Seite hinzufügen",
+			"editCard": "Karteneigenschaften bearbeiten",
+			"addTile": "Neue Kachel zu dieser Karte hinzufügen",
+			"editTile": "Kartenkachel bearbeiten",
+			"addDataSource": "Neue Seitendatenquelle hinzufügen",
+			"editDataSource": "Seitendatenquelle bearbeiten"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Karte {card} wurde erfolgreich entfernt.",
+			"notFound": "Karte {card} wurde nicht gefunden.",
+			"notRemoved": "Karte {card} konnte nicht entfernt werden.",
+			"removeCanceled": "Entfernung von Karte {card} wurde abgebrochen.",
+			"deletedWhileEditing": "Diese Karte wurde gelöscht und ist nicht mehr verfügbar."
+		},
+		"tiles": {
+			"deletedWhileEditing": "Diese Kachel wurde gelöscht und ist nicht mehr verfügbar."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Diese Datenquelle wurde gelöscht und ist nicht mehr verfügbar."
+		},
+		"misc": {
+			"requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Sind Sie sicher, dass Sie Karte {card} entfernen möchten?",
+			"noCards": "Dieser Seite wurden noch keine Karten hinzugefügt.",
+			"noTiles": "Keine Kacheln in dieser Karte. Klicken Sie auf +, um eine hinzuzufügen.",
+			"tilesCount": "Kacheln",
+			"loadingCard": "Karte wird geladen..."
+		},
+		"tiles": {
+			"loadingTile": "Kachel wird geladen..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Datenquelle wird geladen..."
+		},
+		"misc": {
+			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Verwerfen"
+		},
+		"close": {
+			"title": "Schließen"
+		},
+		"add": {
+			"title": "Hinzufügen"
+		},
+		"save": {
+			"title": "Speichern"
+		},
+		"update": {
+			"title": "Aktualisieren"
+		},
+		"yes": {
+			"title": "Ja"
+		},
+		"no": {
+			"title": "Nein"
+		},
+		"manageElements": {
+			"title": "Elemente verwalten"
+		},
+		"addCard": {
+			"title": "Karte hinzufügen"
+		},
+		"addPageDataSource": {
+			"title": "Seitendatenquelle hinzufügen"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Bezeichner"
+			},
+			"title": {
+				"title": "Titel",
+				"placeholder": "Kartentitel eingeben",
+				"validation": {
+					"required": "Bitte geben Sie einen Kartentitel ein"
+				}
+			},
+			"icon": {
+				"title": "Symbol",
+				"placeholder": "Symbol auswählen"
+			},
+			"order": {
+				"title": "Reihenfolge",
+				"placeholder": "Anzeigereihenfolge"
+			},
+			"rows": {
+				"title": "Zeilen",
+				"placeholder": "Anzahl der Zeilen"
+			},
+			"cols": {
+				"title": "Spalten",
+				"placeholder": "Anzahl der Spalten"
+			}
+		}
+	}
+}

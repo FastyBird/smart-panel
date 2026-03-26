@@ -1,1 +1,255 @@
-{}
+{
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "Erweiterungen auflisten"
+			},
+			"detail": {
+				"title": "Erweiterung: {extension}"
+			}
+		}
+	},
+	"headings": {
+		"list": "Erweiterungen",
+		"detail": "Erweiterungsdetails",
+		"adjustFilters": "Filter anpassen",
+		"bulkEnable": "Erweiterungen aktivieren",
+		"bulkDisable": "Erweiterungen deaktivieren"
+	},
+	"subHeadings": {
+		"list": "Anwendungsmodule und -plugins verwalten",
+		"detail": "Erweiterungsinformationen und -konfiguration anzeigen",
+		"adjustFilters": "Erweiterungen nach verschiedenen Kriterien filtern"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "Erweiterungen",
+			"detail": "Erweiterung: {extension}"
+		}
+	},
+	"tabs": {
+		"all": "Alle Erweiterungen",
+		"modules": "Module",
+		"plugins": "Plugins",
+		"services": "Dienste"
+	},
+	"labels": {
+		"module": "Modul",
+		"plugin": "Plugin",
+		"core": "Kern",
+		"addon": "Erweiterung",
+		"enabled": "Aktiviert",
+		"disabled": "Deaktiviert",
+		"version": "Version",
+		"author": "Autor",
+		"type": "Typ",
+		"kind": "Art",
+		"source": "Quelle",
+		"status": "Status",
+		"configuration": "Konfiguration",
+		"description": "Beschreibung",
+		"details": "Details",
+		"links": "Links",
+		"readme": "Über",
+		"documentation": "Dokumentation",
+		"logs": "Protokolle",
+		"live": "Live"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Erweiterungen suchen..."
+		}
+	},
+	"filters": {
+		"kind": {
+			"title": "Art"
+		},
+		"enabled": {
+			"title": "Status"
+		},
+		"type": {
+			"title": "Typ"
+		}
+	},
+	"states": {
+		"all": "Alle"
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Name"
+			},
+			"type": {
+				"title": "Typ"
+			},
+			"kind": {
+				"title": "Art"
+			},
+			"version": {
+				"title": "Version"
+			},
+			"core": {
+				"title": "Kern"
+			},
+			"enabled": {
+				"title": "Aktiviert"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Erweiterungen werden geladen...",
+		"noExtensions": "Keine Erweiterungen installiert",
+		"noFilteredExtensions": "Keine Erweiterungen entsprechen Ihren aktuellen Filtern",
+		"logs": {
+			"noLogs": "Keine Protokolle verfügbar",
+			"noLogsDescription": "Diese Erweiterung hat noch keine Protokolleinträge erzeugt",
+			"noFilteredLogs": "Keine Protokolle entsprechen Ihren aktuellen Filtern",
+			"noMessage": "Keine Nachricht",
+			"noMoreEntries": "Keine weiteren Protokolleinträge",
+			"allLevels": "Alle Stufen",
+			"timeRange": {
+				"all": "Gesamte Zeit",
+				"1h": "Letzte 1 Stunde",
+				"6h": "Letzte 6 Stunden",
+				"24h": "Letzte 24 Stunden",
+				"7d": "Letzte 7 Tage"
+			}
+		}
+	},
+	"buttons": {
+		"actions": "Aktionen",
+		"documentation": "Doku",
+		"repository": "Repository",
+		"issues": "Probleme",
+		"enable": "Aktivieren",
+		"disable": "Deaktivieren",
+		"remove": "Entfernen",
+		"configure": "Konfigurieren",
+		"viewDetails": "Details anzeigen",
+		"refresh": "Aktualisieren",
+		"loadMore": "Mehr laden",
+		"detail": {
+			"title": "Details"
+		},
+		"reset": {
+			"title": "Filter zurücksetzen"
+		},
+		"resetFilters": {
+			"title": "Filter zurücksetzen"
+		},
+		"yes": "Ja",
+		"no": "Nein"
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Kernerweiterungen können nicht entfernt werden",
+		"coreModuleCannotBeDisabled": "Kernmodule können nicht deaktiviert werden",
+		"removeNotSupported": "Entfernung von Erweiterungen wird noch nicht unterstützt",
+		"cannotToggleEnabled": "Diese Erweiterung kann nicht aktiviert/deaktiviert werden",
+		"openConfiguration": "Erweiterungskonfiguration öffnen"
+	},
+	"messages": {
+		"noExtensions": "Keine Erweiterungen gefunden",
+		"noDescription": "Keine Beschreibung verfügbar",
+		"extensionEnabled": "Erweiterung wurde aktiviert",
+		"extensionDisabled": "Erweiterung wurde deaktiviert",
+		"updateError": "Aktualisierung der Erweiterung fehlgeschlagen",
+		"coreExtensionError": "Kernerweiterungen können nicht geändert werden",
+		"notConfigurableError": "Diese Erweiterung unterstützt kein Aktivieren/Deaktivieren",
+		"loadError": "Erweiterungen konnten nicht geladen werden",
+		"noMatchingExtensions": "Keine Erweiterungen entsprechen Ihren Filtern",
+		"confirmBulkEnable": "Sind Sie sicher, dass Sie {count} Erweiterung(en) aktivieren möchten?",
+		"confirmBulkDisable": "Sind Sie sicher, dass Sie {count} Erweiterung(en) deaktivieren möchten?",
+		"bulkEnabled": "{count} Erweiterung(en) wurden aktiviert",
+		"bulkDisabled": "{count} Erweiterung(en) wurden deaktiviert",
+		"bulkEnableFailed": "Aktivierung von {count} Erweiterung(en) fehlgeschlagen",
+		"bulkDisableFailed": "Deaktivierung von {count} Erweiterung(en) fehlgeschlagen",
+		"bulkEnableCanceled": "Massenaktivierung wurde abgebrochen",
+		"bulkDisableCanceled": "Massendeaktivierung wurde abgebrochen",
+		"noExtensionsToEnable": "Keine Erweiterungen zum Aktivieren (alle ausgewählten sind bereits aktiviert oder können nicht umgeschaltet werden)",
+		"noExtensionsToDisable": "Keine Erweiterungen zum Deaktivieren (alle ausgewählten sind bereits deaktiviert oder können nicht umgeschaltet werden)"
+	},
+	"actions": {
+		"labels": {
+			"tab": "Aktionen",
+			"category": {
+				"general": "Allgemein",
+				"simulation": "Simulation",
+				"data": "Daten",
+				"diagnostics": "Diagnose",
+				"maintenance": "Wartung"
+			},
+			"required": "Erforderlich",
+			"dangerous": "Gefährlich",
+			"comingSoon": "Demnächst"
+		},
+		"buttons": {
+			"run": "Ausführen",
+			"confirm": "Bestätigen",
+			"cancel": "Abbrechen"
+		},
+		"messages": {
+			"success": "Aktion erfolgreich abgeschlossen",
+			"error": "Aktion fehlgeschlagen",
+			"confirmDangerous": "Diese Aktion kann erhebliche Auswirkungen haben. Sind Sie sicher, dass Sie fortfahren möchten?",
+			"noActions": "Keine Aktionen für diese Erweiterung verfügbar",
+			"interactiveNotAvailable": "Interaktive Aktionen werden in einem zukünftigen Update verfügbar sein",
+			"loading": "Aktionen werden geladen..."
+		}
+	},
+	"services": {
+		"headings": {
+			"list": "Plugin-Dienste",
+			"subHeading": "Plugin-Dienste überwachen und steuern"
+		},
+		"labels": {
+			"pluginName": "Plugin",
+			"serviceId": "Dienst",
+			"state": "Status",
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert",
+			"healthy": "Gesund",
+			"unhealthy": "Fehlerhaft",
+			"uptime": "Betriebszeit",
+			"startCount": "Starts",
+			"lastStarted": "Zuletzt gestartet",
+			"lastStopped": "Zuletzt gestoppt",
+			"lastError": "Letzter Fehler"
+		},
+		"states": {
+			"stopped": "Gestoppt",
+			"starting": "Startet",
+			"started": "Aktiv",
+			"stopping": "Stoppt",
+			"error": "Fehler"
+		},
+		"buttons": {
+			"start": "Starten",
+			"stop": "Stoppen",
+			"restart": "Neustarten",
+			"refresh": "Aktualisieren"
+		},
+		"messages": {
+			"started": "Dienst wurde gestartet",
+			"serviceStarting": "Dienst wird gestartet — es kann einen Moment dauern, bis er vollständig bereit ist",
+			"stopped": "Dienst wurde gestoppt",
+			"restarted": "Dienst wurde neu gestartet",
+			"startError": "Dienst konnte nicht gestartet werden",
+			"stopError": "Dienst konnte nicht gestoppt werden",
+			"restartError": "Dienst konnte nicht neu gestartet werden",
+			"loadError": "Dienste konnten nicht geladen werden",
+			"noServices": "Keine Dienste verfügbar"
+		},
+		"tooltips": {
+			"disabledPlugin": "Plugin ist deaktiviert",
+			"transitioning": "Dienst wechselt den Zustand",
+			"startService": "Diesen Dienst starten",
+			"stopService": "Diesen Dienst stoppen",
+			"restartService": "Diesen Dienst neu starten"
+		},
+		"texts": {
+			"loadingServices": "Dienste werden geladen...",
+			"noServices": "Keine verwalteten Dienste gefunden",
+			"pluginDisabled": "Plugin deaktiviert"
+		}
+	}
+}

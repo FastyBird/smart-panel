@@ -1,1 +1,247 @@
-{}
+{
+	"headings": {
+		"weather": "Wetter",
+		"aboutPrimaryLocation": "Primärer Standort",
+		"locations": "Wetterstandorte",
+		"locationDetail": "{location}",
+		"forecast": "Vorhersage",
+		"hourlyForecast": "Stundenvorhersage",
+		"addLocation": "Standort hinzufügen",
+		"editLocation": "Standort bearbeiten",
+		"deleteLocation": "Standort löschen",
+		"bulkDeleteLocations": "Standorte löschen",
+		"discard": "Änderungen verwerfen",
+		"selectProvider": "Wetteranbieter auswählen",
+		"unsupportedProvider": "Nicht unterstützter Anbieter",
+		"adjustFilters": "Filter anpassen"
+	},
+	"subHeadings": {
+		"locations": "Wetterdaten-Standorte verwalten",
+		"locationDetail": "Wetterinformationen für {location}",
+		"addLocation": "Neuen Wetterstandort hinzufügen",
+		"editLocation": "Standortdetails bearbeiten",
+		"adjustFilters": "Standortlistenfilter anpassen"
+	},
+	"breadcrumbs": {
+		"locations": "Standorte",
+		"locationDetail": "Standort: {location}",
+		"addLocation": "Standort hinzufügen",
+		"editLocation": "Standort bearbeiten"
+	},
+	"messages": {
+		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+		"requestError": "Beim Laden der Daten ist ein Fehler aufgetreten",
+		"config": {
+			"edited": "Wetterkonfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der Wetterkonfiguration fehlgeschlagen"
+		},
+		"locations": {
+			"created": "Standort \"{location}\" wurde erstellt",
+			"notCreated": "Standort \"{location}\" konnte nicht erstellt werden",
+			"updated": "Standort \"{location}\" wurde aktualisiert",
+			"notUpdated": "Standort \"{location}\" konnte nicht aktualisiert werden",
+			"deleted": "Standort wurde gelöscht",
+			"notDeleted": "Standort konnte nicht gelöscht werden",
+			"deleteCanceled": "Löschung von Standort \"{location}\" wurde abgebrochen",
+			"confirmBulkDelete": "Sind Sie sicher, dass Sie {count} Standort(e) löschen möchten?",
+			"bulkDeleted": "{count} Standort(e) wurden gelöscht",
+			"bulkDeleteFailed": "Löschen von {count} Standort(en) fehlgeschlagen",
+			"bulkDeleteCanceled": "Massenlöschung von Standorten wurde abgebrochen",
+			"noLocations": "Keine Standorte konfiguriert. Fügen Sie einen Standort hinzu, um Wetterdaten zu erhalten.",
+			"notFound": "Standort nicht gefunden",
+			"confirmDeleteLocation": "Sind Sie sicher, dass Sie den Standort \"{name}\" löschen möchten?",
+			"deletedWhileEditing": "Der Standort wurde gelöscht. Weiterleitung..."
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Hinzufügen"
+		},
+		"save": {
+			"title": "Speichern"
+		},
+		"cancel": {
+			"title": "Abbrechen"
+		},
+		"discard": {
+			"title": "Verwerfen"
+		},
+		"resetFilters": {
+			"title": "Filter zurücksetzen"
+		},
+		"yes": {
+			"title": "Ja"
+		},
+		"no": {
+			"title": "Nein"
+		},
+		"reset": {
+			"title": "Filter zurücksetzen"
+		},
+		"detail": {
+			"title": "Details"
+		},
+		"retry": {
+			"title": "Wiederholen"
+		},
+		"back": {
+			"title": "Zurück"
+		}
+	},
+	"fields": {
+		"locations": {
+			"search": {
+				"placeholder": "Standorte suchen..."
+			},
+			"provider": {
+				"title": "Wetteranbieter",
+				"placeholder": "Wetterdatenanbieter auswählen"
+			},
+			"name": {
+				"title": "Standortname",
+				"placeholder": "z.B. Zuhause, Büro, Ferienhaus",
+				"validation": {
+					"required": "Standortname ist erforderlich"
+				}
+			}
+		},
+		"config": {
+			"primaryLocation": {
+				"title": "Primärer Standort",
+				"description": "Der Standardstandort, der in Wetteranzeigen angezeigt wird",
+				"placeholder": "Primären Standort auswählen"
+			}
+		}
+	},
+	"texts": {
+		"aboutPrimaryLocation": "Wählen Sie den primären Standort für die Anzeige in Wetter-Widgets. Standorte können im Standort-Bereich verwaltet werden. Wetterdaten werden für alle konfigurierten Standorte abgerufen.",
+		"selectProvider": "Wählen Sie einen Wetterdatenanbieter, um einen neuen Standort hinzuzufügen. Verschiedene Anbieter bieten möglicherweise unterschiedliche Konfigurationsoptionen.",
+		"unsupportedProvider": "Der ausgewählte Anbieter \"{provider}\" wird derzeit nicht unterstützt. Bitte wählen Sie einen anderen Anbieter.",
+		"weatherError": "Wetter konnte nicht geladen werden",
+		"weatherErrorDescription": "Wetterdaten konnten für diesen Standort nicht geladen werden. Bitte überprüfen Sie Ihre API-Konfiguration und versuchen Sie es erneut.",
+		"locationDetail": {
+			"provider": "Anbieter",
+			"temperature": "Temperatur",
+			"feelsLike": "Gefühlt wie",
+			"conditions": "Bedingungen",
+			"humidity": "Luftfeuchtigkeit",
+			"wind": "Wind",
+			"pressure": "Luftdruck"
+		},
+		"misc": {
+			"loadingLocations": "Standorte werden geladen...",
+			"noLocations": "Noch keine Standorte konfiguriert",
+			"noFilteredLocations": "Keine Standorte entsprechen Ihren Filterkriterien"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": {
+				"title": "Wetteranbieter"
+			},
+			"primary": {
+				"title": "Primärstatus",
+				"values": {
+					"all": "Alle",
+					"primary": "Primär",
+					"secondary": "Sekundär"
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Name"
+			},
+			"weather": {
+				"title": "Wetter",
+				"failed": "Fehlgeschlagen",
+				"error": "Wetterdaten konnten nicht geladen werden. Bitte überprüfen Sie Ihre API-Konfiguration."
+			},
+			"type": {
+				"title": "Anbieter"
+			},
+			"primary": {
+				"title": "Primär",
+				"values": {
+					"yes": "Ja",
+					"no": "Nein"
+				}
+			}
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": {
+				"title": "Wetterstandorte"
+			},
+			"detail": {
+				"title": "Wetterstandort-Details"
+			},
+			"add": {
+				"title": "Wetterstandort hinzufügen"
+			},
+			"edit": {
+				"title": "Wetterstandort bearbeiten"
+			}
+		}
+	},
+	"conditions": {
+		"thunderstormWithLightRain": "Gewitter mit leichtem Regen",
+		"thunderstormWithRain": "Gewitter mit Regen",
+		"thunderstormWithHeavyRain": "Gewitter mit starkem Regen",
+		"lightThunderstorm": "Leichtes Gewitter",
+		"thunderstorm": "Gewitter",
+		"heavyThunderstorm": "Starkes Gewitter",
+		"raggedThunderstorm": "Unbeständiges Gewitter",
+		"thunderstormWithLightDrizzle": "Gewitter mit leichtem Nieselregen",
+		"thunderstormWithDrizzle": "Gewitter mit Nieselregen",
+		"thunderstormWithHeavyDrizzle": "Gewitter mit starkem Nieselregen",
+		"lightIntensityDrizzle": "Leichter Nieselregen",
+		"drizzle": "Nieselregen",
+		"heavyIntensityDrizzle": "Starker Nieselregen",
+		"lightIntensityDrizzleRain": "Leichter Niesel-Regen",
+		"drizzleRain": "Niesel-Regen",
+		"heavyIntensityDrizzleRain": "Starker Niesel-Regen",
+		"showerRainAndDrizzle": "Schauerregen mit Nieselregen",
+		"heavyShowerRainAndDrizzle": "Starker Schauerregen mit Nieselregen",
+		"showerDrizzle": "Nieselschauer",
+		"lightRain": "Leichter Regen",
+		"moderateRain": "Mäßiger Regen",
+		"heavyIntensityRain": "Starker Regen",
+		"veryHeavyRain": "Sehr starker Regen",
+		"extremeRain": "Extremer Regen",
+		"freezingRain": "Gefrierender Regen",
+		"lightIntensityShowerRain": "Leichter Schauerregen",
+		"showerRain": "Schauerregen",
+		"heavyIntensityShowerRain": "Starker Schauerregen",
+		"raggedShowerRain": "Unbeständiger Schauerregen",
+		"lightSnow": "Leichter Schneefall",
+		"snow": "Schnee",
+		"heavySnow": "Starker Schneefall",
+		"sleet": "Schneeregen",
+		"lightShowerSleet": "Leichter Schneeregenschauer",
+		"showerSleet": "Schneeregenschauer",
+		"lightRainAndSnow": "Leichter Regen und Schnee",
+		"rainAndSnow": "Regen und Schnee",
+		"lightShowerSnow": "Leichter Schneeschauer",
+		"showerSnow": "Schneeschauer",
+		"heavyShowerSnow": "Starker Schneeschauer",
+		"mist": "Dunst",
+		"smoke": "Rauch",
+		"haze": "Diesig",
+		"fog": "Nebel",
+		"sand": "Sand",
+		"dust": "Staub",
+		"volcanicAsh": "Vulkanasche",
+		"squalls": "Böen",
+		"tornado": "Tornado",
+		"clearSky": "Klarer Himmel",
+		"fewClouds": "Wenige Wolken",
+		"scatteredClouds": "Vereinzelte Wolken",
+		"brokenClouds": "Aufgelockerte Bewölkung",
+		"overcastClouds": "Bedeckt",
+		"unknown": "Unbekannt"
+	}
+}

@@ -1,1 +1,193 @@
-{}
+{
+	"wizard": {
+		"title": "Konfiguracja Smart Panel",
+		"steps": {
+			"welcome": "Witamy",
+			"account": "Konto",
+			"location": "Lokalizacja",
+			"spaces": "Przestrzenie",
+			"integrations": "Integracje",
+			"complete": "Zakończenie"
+		},
+		"buttons": {
+			"getStarted": "Rozpocznij",
+			"next": "Dalej",
+			"back": "Wstecz",
+			"skip": "Pomiń",
+			"finishSetup": "Zakończ konfigurację"
+		}
+	},
+	"welcome": {
+		"title": "Witamy w Smart Panel",
+		"description": "Skonfigurujmy Twój inteligentny dom. Ten kreator przeprowadzi Cię przez początkową konfigurację.",
+		"steps": {
+			"account": "Utwórz konto",
+			"accountDescription": "Skonfiguruj konto administratora",
+			"location": "Ustaw lokalizację",
+			"locationDescription": "Skonfiguruj lokalizację dla danych pogodowych",
+			"spaces": "Utwórz przestrzenie",
+			"spacesDescription": "Dodaj pokoje i strefy, aby uporządkować urządzenia",
+			"integrations": "Włącz integracje",
+			"integrationsDescription": "Połącz platformy inteligentnego domu",
+			"finish": "Zacznij korzystać",
+			"finishDescription": "Twój smart panel jest gotowy do użycia"
+		}
+	},
+	"account": {
+		"description": "Utwórz konto administratora. To będzie właściciel smart panelu.",
+		"created": "Konto zostało pomyślnie utworzone! Jesteś teraz zalogowany.",
+		"fields": {
+			"firstName": "Imię",
+			"lastName": "Nazwisko",
+			"email": "E-mail",
+			"username": "Nazwa użytkownika",
+			"password": "Hasło"
+		},
+		"placeholders": {
+			"firstName": "Wprowadź swoje imię",
+			"lastName": "Wprowadź swoje nazwisko",
+			"email": "Wprowadź adres e-mail",
+			"username": "Wybierz nazwę użytkownika",
+			"password": "Wybierz hasło"
+		},
+		"validation": {
+			"firstNameRequired": "Imię jest wymagane",
+			"lastNameRequired": "Nazwisko jest wymagane",
+			"emailRequired": "E-mail jest wymagany",
+			"emailInvalid": "Proszę podać prawidłowy adres e-mail",
+			"usernameRequired": "Nazwa użytkownika jest wymagana",
+			"passwordRequired": "Hasło jest wymagane"
+		},
+		"messages": {
+			"created": "Twoje konto zostało utworzone i jesteś teraz zalogowany.",
+			"error": "Nie udało się utworzyć konta. Spróbuj ponownie."
+		}
+	},
+	"location": {
+		"description": "Ustaw lokalizację dla informacji pogodowych i innych funkcji opartych na lokalizacji. Możesz pominąć ten krok i skonfigurować go później.",
+		"fields": {
+			"citySearch": "Wyszukaj miasto",
+			"latitude": "Szerokość geograficzna",
+			"longitude": "Długość geograficzna"
+		},
+		"placeholders": {
+			"citySearch": "Wpisz nazwę miasta, aby wyszukać...",
+			"latitude": "np. 52.2297",
+			"longitude": "np. 21.0122"
+		},
+		"buttons": {
+			"myLocation": "Moja lokalizacja"
+		},
+		"orEnterManually": "Lub wprowadź współrzędne ręcznie",
+		"hint": "Lokalizację możesz skonfigurować później w ustawieniach pogody.",
+		"messages": {
+			"error": "Nie udało się zapisać lokalizacji.",
+			"geolocationNotSupported": "Geolokalizacja nie jest obsługiwana przez Twoją przeglądarkę.",
+			"geolocationDenied": "Dostęp do lokalizacji został odmówiony. Proszę zezwolić na dostęp do lokalizacji w ustawieniach przeglądarki.",
+			"geolocationUnavailable": "Informacje o lokalizacji są obecnie niedostępne.",
+			"geolocationTimeout": "Żądanie lokalizacji przekroczyło limit czasu. Spróbuj ponownie.",
+			"geolocationError": "Wystąpił błąd podczas pobierania lokalizacji."
+		}
+	},
+	"spaces": {
+		"description": "Utwórz pokoje i strefy, aby uporządkować urządzenia. Więcej przestrzeni możesz dodać później.",
+		"quickAdd": "Szybkie dodawanie typowych pokoi",
+		"orAddCustom": "Lub dodaj niestandardowy pokój",
+		"fields": {
+			"name": "Nazwa pokoju"
+		},
+		"placeholders": {
+			"name": "np. Sypialnia główna"
+		},
+		"buttons": {
+			"add": "Dodaj"
+		},
+		"roomsToCreate": "Pokoje do utworzenia ({count})",
+		"categories": {
+			"livingRoom": "Salon",
+			"bedroom": "Sypialnia",
+			"kitchen": "Kuchnia",
+			"bathroom": "Łazienka",
+			"toilet": "Toaleta",
+			"office": "Biuro",
+			"hallway": "Korytarz",
+			"entryway": "Przedsionek",
+			"garage": "Garaż",
+			"diningRoom": "Jadalnia",
+			"laundry": "Pralnia",
+			"nursery": "Pokój dziecięcy",
+			"guestRoom": "Pokój gościnny",
+			"storage": "Magazyn",
+			"workshop": "Warsztat"
+		},
+		"devices": {
+			"title": "Przypisz urządzenia do pokoi",
+			"count": "urządzenia",
+			"unassigned": "Nieprzypisane urządzenia ({count})",
+			"assigned": "Przypisane urządzenia ({count})",
+			"selected": "{count} zaznaczonych",
+			"assignTo": "Przypisz do pokoju...",
+			"assign": "Przypisz",
+			"clearSelection": "Wyczyść",
+			"selectSpace": "Wybierz pokój..."
+		},
+		"hint": "Przestrzenie możesz dodawać, zmieniać nazwy lub reorganizować później w ustawieniach przestrzeni.",
+		"messages": {
+			"error": "Nie udało się utworzyć przestrzeni.",
+			"assignmentError": "Nie udało się przypisać urządzeń do przestrzeni."
+		}
+	},
+	"integrations": {
+		"description": "Włącz integracje urządzeń, aby połączyć platformy inteligentnego domu. Włącz te, których używasz, i skonfiguruj ustawienia połączenia.",
+		"noPlugins": "Brak dostępnych integracji urządzeń.",
+		"hint": "Integracje możesz włączać lub wyłączać później w ustawieniach rozszerzeń.",
+		"searching": "Wyszukiwanie urządzeń...",
+		"devicesFound": "Znaleziono {count} urządzenie | Znaleziono {count} urządzenie | Znaleziono {count} urządzeń",
+		"noDevicesYet": "Nie znaleziono jeszcze urządzeń — skonfiguruj połączenie, aby wykryć urządzenia",
+		"noDevicesFound": "Nie znaleziono jeszcze urządzeń",
+		"enabled": "Integracja włączona",
+		"configure": "Skonfiguruj",
+		"configRequired": "Wymagana konfiguracja połączenia",
+		"setupNow": "Skonfiguruj teraz",
+		"stopScan": "Zatrzymaj",
+		"summary": "Włączono {count} integrację | Włączono {count} integrację | Włączono {count} integracji",
+		"totalDevices": "Znaleziono {count} urządzenie | Znaleziono {count} urządzenie | Znaleziono {count} urządzeń",
+		"configDialog": {
+			"title": "Skonfiguruj {name}",
+			"noConfig": "Brak opcji konfiguracji dla tej integracji.",
+			"buttons": {
+				"cancel": "Anuluj",
+				"validate": "Sprawdź",
+				"save": "Zapisz"
+			},
+			"messages": {
+				"saved": "Konfiguracja została pomyślnie zapisana.",
+				"validationSuccess": "Konfiguracja jest prawidłowa.",
+				"validationFailed": "Walidacja konfiguracji nie powiodła się.",
+				"validationError": "Nie udało się sprawdzić konfiguracji."
+			}
+		},
+		"messages": {
+			"error": "Nie udało się zaktualizować integracji."
+		}
+	},
+	"complete": {
+		"title": "Wszystko gotowe!",
+		"description": "Twój Smart Panel jest skonfigurowany i gotowy do użycia. Możesz teraz zacząć dodawać urządzenia, tworzyć przestrzenie i dostosowywać pulpit.",
+		"summary": {
+			"accountCreated": "Konto administratora zostało utworzone",
+			"locationConfigured": "Lokalizacja pogody skonfigurowana",
+			"locationSkipped": "Lokalizacja pogody pominięta (można skonfigurować później)",
+			"spacesCreated": "Zostanie utworzonych {count} pokoi | Zostanie utworzony {count} pokój | Zostanie utworzonych {count} pokoi",
+			"spacesSkipped": "Nie dodano pokoi (można utworzyć później)",
+			"devicesAssigned": "Przypisano {count} urządzeń do pokoi | Przypisano {count} urządzenie do pokoju | Przypisano {count} urządzeń do pokoi",
+			"devicesSkipped": "Nie przypisano urządzeń do pokoi",
+			"integrationsEnabled": "Włączono {count} integracji | Włączono {count} integrację | Włączono {count} integracji",
+			"integrationsSkipped": "Nie włączono integracji (można skonfigurować później)"
+		},
+		"messages": {
+			"finished": "Konfiguracja zakończona! Witamy w Smart Panel.",
+			"error": "Nie udało się zakończyć wstępnej konfiguracji."
+		}
+	}
+}

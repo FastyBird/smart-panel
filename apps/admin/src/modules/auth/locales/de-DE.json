@@ -1,1 +1,135 @@
-{}
+{
+  "meta": {
+    "sign": {
+      "in": {
+        "title": "Anmelden"
+      },
+      "up": {
+        "title": "Registrieren"
+      }
+    },
+    "lock": {
+      "screen": {
+        "title": "Bildschirmsperre"
+      }
+    },
+    "profile": {
+      "general": {
+        "title": "Allgemein"
+      },
+      "security": {
+        "title": "Sicherheit"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "homepage": "Startseite",
+    "profile": "Profil",
+    "general": "Allgemein",
+    "security": "Sicherheit"
+  },
+  "headings": {
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "lockScreen": "Bildschirm gesperrt",
+    "profileGeneral": "Allgemeine Einstellungen",
+    "profileSecurity": "Sicherheitseinstellungen",
+    "yourProfile": "Ihr Profil"
+  },
+  "messages": {
+    "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut.",
+    "invalidPassword": "Das eingegebene Passwort ist falsch.",
+    "profileEdited": "Ihr Profil wurde erfolgreich aktualisiert.",
+    "profileNotEdited": "Ihr Profil konnte nicht bearbeitet werden.",
+    "passwordEdited": "Ihr Passwort wurde erfolgreich aktualisiert.",
+    "passwordNotEdited": "Ihr Passwort konnte nicht geändert werden."
+  },
+  "texts": {
+    "processing": "Anfrage wird verarbeitet..."
+  },
+  "tabs": {
+    "general": "Allgemein",
+    "security": "Sicherheit"
+  },
+  "fields": {
+    "username": {
+      "title": "Benutzername",
+      "validation": {
+        "required": "Bitte geben Sie Ihren Benutzernamen ein"
+      }
+    },
+    "password": {
+      "title": "Passwort",
+      "validation": {
+        "required": "Bitte geben Sie Ihr Passwort ein"
+      }
+    },
+    "email": {
+      "title": "E-Mail",
+      "placeholder": "z.B. max{'@'}mustermann.de",
+      "validation": {
+        "required": "Bitte geben Sie Ihre E-Mail-Adresse ein",
+        "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein"
+      }
+    },
+    "firstName": {
+      "title": "Vorname",
+      "placeholder": "z.B. Max",
+      "validation": {
+        "required": "Bitte geben Sie den Vornamen ein"
+      }
+    },
+    "lastName": {
+      "title": "Nachname",
+      "placeholder": "z.B. Mustermann",
+      "validation": {
+        "required": "Bitte geben Sie den Nachnamen ein"
+      }
+    },
+    "currentPassword": {
+      "title": "Aktuelles Passwort",
+      "help": "Ihr aktuelles Passwort",
+      "validation": {
+        "required": "Bitte geben Sie Ihr aktuelles Passwort ein"
+      }
+    },
+    "newPassword": {
+      "title": "Neues Passwort",
+      "help": "Ihr neues Passwort",
+      "validation": {
+        "required": "Bitte geben Sie Ihr neues Passwort ein"
+      }
+    },
+    "repeatPassword": {
+      "title": "Neues Passwort wiederholen",
+      "help": "Bestätigen Sie Ihr neues Passwort",
+      "validation": {
+        "required": "Bitte wiederholen Sie Ihr neues Passwort",
+        "different": "Die eingegebenen neuen Passwörter stimmen nicht überein"
+      }
+    }
+  },
+  "buttons": {
+    "signIn": {
+      "title": "Anmelden"
+    },
+    "signUp": {
+      "title": "Registrieren"
+    },
+    "unlock": {
+      "title": "Entsperren"
+    },
+    "signOut": {
+      "title": "Abmelden"
+    },
+    "backToSignIn": {
+      "title": "Zurück zur Anmeldung"
+    },
+    "save": {
+      "title": "Speichern"
+    },
+    "close": {
+      "title": "Schließen"
+    }
+  }
+}

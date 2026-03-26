@@ -1,1 +1,32 @@
-{}
+{
+	"headings": {
+		"aboutServiceAdvertisement": "Dienstankündigungs-Einstellungen"
+	},
+	"messages": {
+		"config": {
+			"edited": "mDNS-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der mDNS-Konfiguration fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutServiceAdvertisement": "Konfigurieren Sie, wie sich das Smart Panel über mDNS (Multicast DNS) im lokalen Netzwerk ankündigt. Dies ermöglicht die automatische Erkennung durch Geräte und Clients, ohne die IP-Adresse kennen zu müssen."
+	},
+	"fields": {
+		"config": {
+			"serviceName": {
+				"title": "Dienstname",
+				"placeholder": "FastyBird Smart Panel",
+				"validation": {
+					"required": "Dienstname ist erforderlich"
+				}
+			},
+			"serviceType": {
+				"title": "Diensttyp",
+				"placeholder": "fastybird-panel",
+				"validation": {
+					"required": "Diensttyp ist erforderlich"
+				}
+			}
+		}
+	}
+}

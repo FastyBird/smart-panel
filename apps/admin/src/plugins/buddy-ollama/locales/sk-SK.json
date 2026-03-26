@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia Ollama"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "napr. llama3, mistral, codellama",
+				"description": "Model Ollama použitý na generovanie odpovedí"
+			},
+			"baseUrl": {
+				"title": "Základná URL",
+				"placeholder": "napr. http://localhost:11434",
+				"description": "URL vašej lokálnej inštancie Ollama"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Ollama boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Ollama"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia vašej lokálnej inštancie Ollama. Ollama beží lokálne a nevyžaduje API kľúč. Uistite sa, že Ollama beží a je dostupná na nakonfigurovanej URL."
+	}
+}

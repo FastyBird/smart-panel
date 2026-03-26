@@ -1,1 +1,42 @@
-{}
+{
+	"application": {
+		"menu": {
+			"root": "FastyBird SmartPanel",
+			"user": "Użytkownik"
+		},
+		"userMenu": {
+			"profileGeneralSettings": "Ogólne ustawienia profilu",
+			"profileSecuritySettings": "Ustawienia bezpieczeństwa profilu",
+			"lockScreen": "Zablokuj ekran",
+			"signOut": "Wyloguj się"
+		},
+		"headings": {
+			"loadingFailed": "Wystąpił błąd",
+			"notFound": "Strona nie znaleziona",
+			"home": "Administracja"
+		},
+		"messages": {
+			"notFound": "Strona, której szukasz, nie istnieje lub mogła zostać przeniesiona."
+		},
+		"subHeadings": {
+			"home": "Administracja wyświetlacza Smart Panel"
+		},
+		"breadcrumbs": {
+			"homepage": "strona główna"
+		},
+		"value": {
+			"notAvailable": "N/D"
+		},
+		"buttons": {
+			"home": {
+				"title": "Strona główna"
+			}
+		},
+		"bulkActions": {
+			"selected": "{count} zaznaczonych",
+			"delete": "Usuń",
+			"enable": "Włącz",
+			"disable": "Wyłącz"
+		}
+	}
+}

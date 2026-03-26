@@ -1,1 +1,42 @@
-{}
+{
+	"application": {
+		"menu": {
+			"root": "FastyBird SmartPanel",
+			"user": "Benutzer"
+		},
+		"userMenu": {
+			"profileGeneralSettings": "Allgemeine Profileinstellungen",
+			"profileSecuritySettings": "Profil-Sicherheitseinstellungen",
+			"lockScreen": "Bildschirm sperren",
+			"signOut": "Abmelden"
+		},
+		"headings": {
+			"loadingFailed": "Ein Fehler ist aufgetreten",
+			"notFound": "Seite nicht gefunden",
+			"home": "Administration"
+		},
+		"messages": {
+			"notFound": "Die gesuchte Seite existiert nicht oder wurde verschoben."
+		},
+		"subHeadings": {
+			"home": "Smart Panel Display-Verwaltung"
+		},
+		"breadcrumbs": {
+			"homepage": "Startseite"
+		},
+		"value": {
+			"notAvailable": "N/V"
+		},
+		"buttons": {
+			"home": {
+				"title": "Startseite"
+			}
+		},
+		"bulkActions": {
+			"selected": "{count} ausgewählt",
+			"delete": "Löschen",
+			"enable": "Aktivieren",
+			"disable": "Deaktivieren"
+		}
+	}
+}

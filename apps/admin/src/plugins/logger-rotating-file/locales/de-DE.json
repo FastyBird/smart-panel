@@ -1,1 +1,49 @@
-{}
+{
+  "headings": {
+    "aboutFileLoggingSettings": "Dateiprotokollierungs-Einstellungen"
+  },
+  "fields": {
+    "config": {
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "dir": {
+        "title": "Protokollverzeichnis",
+        "placeholder": "Absoluter oder relativer Pfad, z.B. /var/log/smart-panel",
+        "validation": {
+          "nonEmpty": "Protokollverzeichnis darf nicht leer sein."
+        }
+      },
+      "retentionDays": {
+        "title": "Aufbewahrung (Tage)",
+        "placeholder": "Wie viele Tage Protokolldateien aufbewahrt werden sollen (z.B. 7)",
+        "validation": {
+          "min": "Aufbewahrungstage müssen mindestens 1 sein."
+        }
+      },
+      "cleanupCron": {
+        "title": "Bereinigungszeitplan (Cron)",
+        "placeholder": "Cron-Ausdruck, z.B. 15 3 * * * (täglich um 03:15)",
+        "validation": {
+          "invalid": "Bitte geben Sie einen gültigen Cron-Ausdruck ein (z.B. 15 3 * * *)."
+        }
+      },
+      "filePrefix": {
+        "title": "Dateipräfix",
+        "placeholder": "Dateinamen-Präfix, z.B. smart-panel",
+        "validation": {
+          "pattern": "Nur Buchstaben, Zahlen, Punkt, Unterstrich und Bindestrich sind erlaubt."
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Änderungen gespeichert! Die Konfiguration des Rotating-File-Logger-Plugins wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Rotating-File-Logger-Plugin-Konfiguration war nicht erfolgreich."
+    }
+  },
+  "texts": {
+    "aboutFileLoggingSettings": "Konfigurieren Sie die dateibasierte Protokollpersistenz mit täglicher Rotation und automatischer Bereinigung. Wenn aktiviert, werden Protokolle in Dateien für langfristige Aufbewahrung und Offline-Analyse gespeichert. Dateien werden automatisch täglich rotiert und basierend auf den Aufbewahrungseinstellungen bereinigt."
+  }
+}

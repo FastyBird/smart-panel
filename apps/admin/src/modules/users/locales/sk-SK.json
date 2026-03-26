@@ -1,1 +1,197 @@
-{}
+{
+	"meta": {
+		"users": {
+			"list": {
+				"title": "Zoznam používateľov"
+			},
+			"edit": {
+				"title": "Upraviť používateľa: {user}"
+			},
+			"add": {
+				"title": "Pridať používateľa"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"users": "používatelia",
+		"addUser": "pridať používateľa",
+		"editUser": "upraviť používateľa"
+	},
+	"headings": {
+		"users": "Používatelia",
+		"addUser": "Pridať používateľa",
+		"editUser": "Upraviť používateľa",
+		"remove": "Odstrániť používateľa?",
+		"removeBulk": "Odstrániť používateľov?",
+		"discard": "Zahodiť zmeny?",
+		"changeUsername": "Zmeniť používateľské meno",
+		"changePassword": "Zmeniť heslo"
+	},
+	"subHeadings": {
+		"users": "Spravujte používateľské účty smart panelu",
+		"addUser": "Pridať nového používateľa smart panelu"
+	},
+	"messages": {
+		"requestError": "Niečo sa pokazilo, skúste to prosím neskôr.",
+		"created": "Nový používateľ bol úspešne pridaný.",
+		"notCreated": "Niečo sa pokazilo. Nepodarilo sa vytvoriť používateľa.",
+		"edited": "Zmeny uložené! Používateľ: {user} bol aktualizovaný.",
+		"notEdited": "Niečo sa pokazilo. Aktualizácia používateľa nebola úspešná.",
+		"notFound": "Používateľ, ktorého hľadáte, neexistuje alebo bol odstránený.",
+		"removed": "Používateľ: {user} bol úspešne odstránený.",
+		"removeCanceled": "Odstránenie používateľa: {user} bolo zrušené.",
+		"notRemoved": "Niečo sa pokazilo a používateľ: {user} nebol odstránený.",
+		"deletedWhileEditing": "Tento používateľ bol odstránený a už nie je dostupný.",
+		"usernameEdited": "Používateľské meno bolo úspešne aktualizované.",
+		"usernameNotEdited": "Nepodarilo sa aktualizovať používateľské meno. Skúste to prosím znova.",
+		"passwordEdited": "Heslo používateľa bolo úspešne aktualizované.",
+		"passwordNotEdited": "Nepodarilo sa aktualizovať heslo používateľa. Skúste to prosím znova.",
+		"bulkRemoved": "{count} používateľov bolo odstránených.",
+		"bulkRemoveFailed": "Nepodarilo sa odstrániť {count} používateľov.",
+		"bulkRemoveCanceled": "Hromadné odstránenie používateľov bolo zrušené."
+	},
+	"texts": {
+		"confirmRemove": "Naozaj chcete odstrániť používateľa: {user}? Toto sa nedá vrátiť.",
+		"confirmBulkRemove": "Naozaj chcete odstrániť {count} používateľov? Túto akciu nie je možné vrátiť.",
+		"misc": {
+			"noUsers": "Nemáte nakonfigurovaného žiadneho používateľa",
+			"noFilteredUsers": "Neboli nájdení žiadni používatelia zodpovedajúci aktívnym filtrom",
+			"loadingUsers": "Načítavanie používateľov...",
+			"loadingUser": "Načítavanie používateľa...",
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Vyhľadať používateľov..."
+		},
+		"role": {
+			"title": "Rola používateľa",
+			"placeholder": "Vyberte rolu",
+			"validation": {
+				"required": "Prosím vyberte rolu používateľa"
+			},
+			"options": {
+				"user": "Používateľ",
+				"admin": "Administrátor",
+				"owner": "Vlastník"
+			}
+		},
+		"username": {
+			"title": "Používateľské meno",
+			"validation": {
+				"required": "Prosím vyplňte svoje používateľské meno"
+			}
+		},
+		"newUsername": {
+			"title": "Nové používateľské meno",
+			"validation": {
+				"required": "Prosím vyplňte nové používateľské meno"
+			}
+		},
+		"password": {
+			"title": "Heslo",
+			"validation": {
+				"required": "Prosím vyplňte svoje heslo"
+			}
+		},
+		"repeatPassword": {
+			"title": "Potvrdiť heslo",
+			"validation": {
+				"required": "Prosím potvrďte svoje nové heslo",
+				"different": "Heslá sa nezhodujú"
+			}
+		},
+		"newPassword": {
+			"title": "Nové heslo",
+			"validation": {
+				"required": "Prosím vyplňte nové heslo"
+			}
+		},
+		"newRepeatPassword": {
+			"title": "Potvrdiť heslo",
+			"validation": {
+				"required": "Prosím potvrďte nové heslo",
+				"different": "Heslá sa nezhodujú"
+			}
+		},
+		"email": {
+			"title": "Email",
+			"placeholder": "napr. jan{'@'}novak.sk",
+			"validation": {
+				"email": "Prosím zadajte platnú emailovú adresu"
+			}
+		},
+		"firstName": {
+			"title": "Meno",
+			"placeholder": "napr. Ján"
+		},
+		"lastName": {
+			"title": "Priezvisko",
+			"placeholder": "napr. Novák"
+		}
+	},
+	"table": {
+		"columns": {
+			"username": {
+				"title": "Používateľské meno"
+			},
+			"firstName": {
+				"title": "Meno"
+			},
+			"lastName": {
+				"title": "Priezvisko"
+			},
+			"email": {
+				"title": "Email"
+			},
+			"role": {
+				"title": "Rola"
+			}
+		}
+	},
+	"role": {
+		"user": "Používateľ",
+		"admin": "Administrátor",
+		"owner": "Vlastník",
+		"display": "Displej"
+	},
+	"buttons": {
+		"add": {
+			"title": "Pridať"
+		},
+		"edit": {
+			"title": "Upraviť"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"cancel": {
+			"title": "Zrušiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"change": {
+			"title": "Zmeniť"
+		},
+		"remove": {
+			"title": "Odstrániť"
+		},
+		"resetFilters": {
+			"title": "Resetovať filtre"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		}
+	}
+}

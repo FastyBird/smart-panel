@@ -1,1 +1,33 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Claude Setup-Token-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"accessToken": {
+				"title": "Setup-Token",
+				"placeholder": "Fügen Sie hier Ihren Setup-Token ein",
+				"howTo": "Ausführen",
+				"howToSuffix": "in Ihrem Terminal und fügen Sie den generierten Token hier ein.",
+				"machineNote": "Der Befehl kann auf jedem Computer mit installierter Claude CLI ausgeführt werden — es muss nicht derselbe Computer sein, auf dem das Smart Panel Backend läuft."
+			},
+			"model": {
+				"title": "Modell",
+				"placeholder": "z.B. claude-sonnet-4-20250514",
+				"description": "Das Claude-Modell, das für die Generierung von Antworten verwendet wird"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Claude Setup-Token-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Claude Setup-Token-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre Anthropic Claude-Verbindung mit einem Setup-Token. Der Setup-Token authentifiziert das Smart Panel bei Ihrem Claude-Abonnement — kein API-Schlüssel erforderlich."
+	}
+}

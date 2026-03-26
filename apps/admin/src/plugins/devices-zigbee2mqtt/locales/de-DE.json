@@ -1,1 +1,253 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin-Status",
+		"aboutMqtt": "MQTT-Verbindung",
+		"advancedMqttSettings": "Erweiterte MQTT-Einstellungen",
+		"aboutTls": "TLS/SSL-Konfiguration",
+		"aboutDiscovery": "Geräteerkennung",
+		"steps": {
+			"selectDevice": "Gerät auswählen",
+			"selectCategory": "Gerätekategorie",
+			"mappingPreview": "Zuordnungsvorschau",
+			"customizeMapping": "Zuordnung anpassen",
+			"deviceConfiguration": "Gerätekonfiguration"
+		},
+		"mapping": {
+			"summary": "Zuordnungszusammenfassung",
+			"warnings": "Zuordnungswarnungen ({count})",
+			"exposeMappings": "Expose-Zuordnungen",
+			"customization": "Zuordnungsanpassung"
+		},
+		"device": {
+			"deviceSelection": "Gerät auswählen",
+			"categorySelection": "Gerätekategorie",
+			"mappingPreview": "Zuordnungsvorschau",
+			"mappingCustomization": "Zuordnung anpassen",
+			"deviceConfiguration": "Gerätekonfiguration",
+			"deviceInfo": "Geräteinformationen"
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Aktivieren oder deaktivieren Sie das Zigbee2MQTT-Plugin. Wenn deaktiviert, werden keine Zigbee-Geräte überwacht oder gesteuert.",
+		"aboutMqtt": "Konfigurieren Sie die Verbindung zu Ihrem MQTT-Broker, über den Zigbee2MQTT Gerätedaten veröffentlicht.",
+		"aboutTls": "Konfigurieren Sie TLS/SSL-Einstellungen für sichere MQTT-Verbindungen. Aktivieren Sie TLS, wenn Ihr Broker verschlüsselte Verbindungen erfordert.",
+		"aboutDiscovery": "Konfigurieren Sie, wie Geräte von der Zigbee2MQTT-Bridge erkannt und hinzugefügt werden.",
+		"steps": {
+			"selectDevice": "Wählen Sie ein Zigbee-Gerät zur Übernahme aus der Liste der erkannten Geräte.",
+			"selectCategory": "Wählen Sie die Gerätekategorie. Die vorgeschlagene Kategorie basiert auf den Exposes des Geräts.",
+			"mappingPreview": "Überprüfen Sie, wie die Exposes des Geräts auf Smart Panel-Kanäle und -Eigenschaften zugeordnet werden.",
+			"customizeMapping": "Passen Sie an, welche Exposes einbezogen werden, und ändern Sie bei Bedarf die Kanalkategorien.",
+			"deviceConfiguration": "Konfigurieren Sie Gerätename, Beschreibung und andere Einstellungen."
+		},
+		"noDiscoveredDevices": "Keine erkannten Geräte verfügbar. Stellen Sie sicher, dass Zigbee2MQTT läuft und Geräte gekoppelt sind.",
+		"loadingDevices": "Erkannte Geräte werden geladen...",
+		"loadingPreview": "Zuordnungsvorschau wird geladen...",
+		"mapping": {
+			"customizationDescription": "Schalten Sie ein, welche Exposes einbezogen werden, und passen Sie Kanalkategorien an. Deaktivierte Exposes werden nicht erstellt."
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"mqtt": {
+				"host": {
+					"title": "MQTT-Broker-Host",
+					"placeholder": "z.B. localhost oder 192.168.1.100",
+					"validation": {
+						"required": "MQTT-Broker-Host ist erforderlich"
+					}
+				},
+				"port": {
+					"title": "Port",
+					"validation": {
+						"required": "Port ist erforderlich",
+						"range": "Port muss zwischen 1 und 65535 liegen"
+					}
+				},
+				"username": {
+					"title": "Benutzername",
+					"placeholder": "MQTT-Benutzername (optional)"
+				},
+				"password": {
+					"title": "Passwort",
+					"placeholder": "MQTT-Passwort (optional)"
+				},
+				"baseTopic": {
+					"title": "Basis-Topic",
+					"placeholder": "z.B. zigbee2mqtt",
+					"validation": {
+						"required": "Basis-Topic ist erforderlich"
+					}
+				},
+				"clientId": {
+					"title": "Client-ID",
+					"placeholder": "Automatisch generiert wenn leer"
+				},
+				"cleanSession": {
+					"title": "Saubere Sitzung"
+				},
+				"keepalive": {
+					"title": "Keepalive (s)",
+					"validation": {
+						"number": "Muss eine Zahl >= 10 sein"
+					}
+				},
+				"connectTimeout": {
+					"title": "Zeitlimit (ms)",
+					"validation": {
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Wiederverbindung (ms)",
+					"validation": {
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				}
+			},
+			"tls": {
+				"enabled": {
+					"title": "TLS aktivieren"
+				},
+				"rejectUnauthorized": {
+					"title": "Nicht autorisierte Zertifikate ablehnen"
+				},
+				"ca": {
+					"title": "CA-Zertifikat",
+					"placeholder": "CA-Zertifikatinhalt oder -pfad einfügen"
+				},
+				"cert": {
+					"title": "Client-Zertifikat",
+					"placeholder": "Client-Zertifikatinhalt oder -pfad einfügen"
+				},
+				"key": {
+					"title": "Privater Client-Schlüssel",
+					"placeholder": "Privaten Client-Schlüsselinhalt oder -pfad einfügen"
+				}
+			},
+			"discovery": {
+				"autoAdd": {
+					"title": "Erkannte Geräte automatisch hinzufügen"
+				},
+				"syncOnStartup": {
+					"title": "Geräte beim Start synchronisieren"
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Geräte-ID",
+				"placeholder": "Geräte-ID"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Gerätename",
+				"validation": {
+					"required": "Bitte geben Sie den Gerätenamen ein"
+				}
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Gerätekategorie",
+				"validation": {
+					"required": "Bitte wählen Sie eine Gerätekategorie"
+				}
+			},
+			"description": {
+				"title": "Beschreibung",
+				"placeholder": "Gerätebeschreibung"
+			},
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"ieeeAddress": {
+				"title": "IEEE-Adresse",
+				"placeholder": "Gerät auswählen",
+				"validation": {
+					"required": "Bitte wählen Sie ein Gerät"
+				}
+			},
+			"friendlyName": {
+				"title": "Anzeigename"
+			},
+			"manufacturer": {
+				"title": "Hersteller"
+			},
+			"model": {
+				"title": "Modell"
+			},
+			"zigbee2mqttDeviceId": {
+				"title": "Verbundenes Zigbee2MQTT-Gerät",
+				"placeholder": "Verbundenes Gerät auswählen"
+			}
+		},
+		"mapping": {
+			"mapped": "Zugeordnet",
+			"partial": "Teilweise",
+			"unmapped": "Nicht zugeordnet",
+			"skipped": "Übersprungen",
+			"excluded": "Ausgeschlossen",
+			"totalExposes": "Exposes gesamt",
+			"deviceName": "Gerätename",
+			"suggestedCategory": "Vorgeschlagene Kategorie",
+			"suggestedChannel": {
+				"title": "Vorgeschlagener Kanal",
+				"validation": {
+					"required": "Bitte wählen Sie eine Kanalkategorie"
+				}
+			},
+			"properties": "Eigenschaften",
+			"missingRequiredProperties": "Fehlende erforderliche Eigenschaften",
+			"exposeEnabled": "Aktiviert",
+			"channelCategory": "Kanalkategorie",
+			"noChannelSuggested": "Kein Kanal vorgeschlagen"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zigbee2MQTT-Plugin-Konfiguration wurde aktualisiert",
+			"notEdited": "Aktualisierung der Zigbee2MQTT-Plugin-Konfiguration fehlgeschlagen"
+		},
+		"devices": {
+			"created": "Zigbee2MQTT-Gerät '{device}' wurde erstellt",
+			"notCreated": "Erstellung des Zigbee2MQTT-Geräts '{device}' fehlgeschlagen",
+			"edited": "Zigbee2MQTT-Gerät '{device}' wurde aktualisiert",
+			"notEdited": "Aktualisierung des Zigbee2MQTT-Geräts '{device}' fehlgeschlagen",
+			"adopted": "Gerät '{device}' wurde erfolgreich übernommen",
+			"notAdopted": "Übernahme des Geräts '{device}' fehlgeschlagen",
+			"noDiscoveredDevices": "Keine erkannten Geräte verfügbar. Stellen Sie sicher, dass Zigbee2MQTT läuft und Geräte gekoppelt sind.",
+			"deviceOffline": "Dieses Gerät ist derzeit offline",
+			"alreadyAdopted": "Dieses Gerät ist bereits übernommen",
+			"alreadyAdoptedDescription": "Fortfahren wird das Gerät mit der neuen Konfiguration erneut übernehmen. Das bestehende Gerät wird aktualisiert."
+		},
+		"discoveredDevices": {
+			"loadFailed": "Erkannte Geräte konnten nicht geladen werden",
+			"mappingPreviewFailed": "Zuordnungsvorschau konnte nicht geladen werden"
+		},
+		"mapping": {
+			"previewError": "Zuordnungsvorschau konnte nicht geladen werden",
+			"previewLoading": "Zuordnungsvorschau wird geladen...",
+			"missingChannelCategory": "Bitte wählen Sie eine Kanalkategorie für: {exposes}",
+			"notReadyToAdopt": "Gerät ist nicht bereit zur Übernahme. Bitte überprüfen und beheben Sie alle Warnungen.",
+			"readyToAdopt": "Gerät ist bereit zur Übernahme",
+			"noPreview": "Keine Zuordnungsvorschau verfügbar",
+			"selectDeviceFirst": "Bitte wählen Sie zuerst ein Gerät aus, um die Zuordnungsvorschau zu sehen",
+			"adoptionSuccess": "Gerät '{device}' wurde erfolgreich übernommen"
+		},
+		"categorySelection": {
+			"description": "Wählen Sie die Gerätekategorie. Die vorgeschlagene Kategorie basiert auf den Fähigkeiten des Geräts."
+		}
+	},
+	"labels": {
+		"suggested": "Vorgeschlagen"
+	},
+	"buttons": {
+		"next": "Weiter",
+		"previous": "Zurück",
+		"adoptDevice": "Gerät übernehmen",
+		"refresh": "Aktualisieren",
+		"use": "Verwenden"
+	}
+}

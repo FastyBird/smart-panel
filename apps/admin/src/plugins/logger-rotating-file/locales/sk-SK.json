@@ -1,1 +1,49 @@
-{}
+{
+	"headings": {
+		"aboutFileLoggingSettings": "Nastavenia logovania do súborov"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"dir": {
+				"title": "Adresár logov",
+				"placeholder": "Absolútna alebo relatívna cesta, napr. /var/log/smart-panel",
+				"validation": {
+					"nonEmpty": "Adresár logov nesmie byť prázdny."
+				}
+			},
+			"retentionDays": {
+				"title": "Uchovávanie (dní)",
+				"placeholder": "Koľko dní uchovávať súbory logov (napr. 7)",
+				"validation": {
+					"min": "Počet dní uchovávania musí byť aspoň 1."
+				}
+			},
+			"cleanupCron": {
+				"title": "Plán čistenia (cron)",
+				"placeholder": "Cron výraz, napr. 15 3 * * * (denne o 03:15)",
+				"validation": {
+					"invalid": "Prosím zadajte platný cron výraz (napr. 15 3 * * *)."
+				}
+			},
+			"filePrefix": {
+				"title": "Prefix súboru",
+				"placeholder": "Prefix názvu súboru, napr. smart-panel",
+				"validation": {
+					"pattern": "Povolené sú iba písmená, čísla, bodka, podčiarkovník a pomlčka."
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmeny uložené! Konfigurácia pluginu Rotating File Logger bola aktualizovaná.",
+			"notEdited": "Niečo sa pokazilo. Aktualizácia konfigurácie pluginu Rotating File Logger nebola úspešná."
+		}
+	},
+	"texts": {
+		"aboutFileLoggingSettings": "Nakonfigurujte perzistenciu logov do súborov s dennou rotáciou a automatickým čistením. Keď je povolené, logy sa ukladajú do súborov na dlhodobé uchovávanie a offline analýzu. Súbory sa automaticky rotujú denne a čistia podľa nastavení uchovávania."
+	}
+}

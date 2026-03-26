@@ -1,1 +1,217 @@
-{}
+{
+	"scenes": {
+		"headings": {
+			"list": "Szenen",
+			"add": "Szene hinzufügen",
+			"edit": "Szene bearbeiten",
+			"delete": "Szene löschen",
+			"discard": "Änderungen verwerfen",
+			"adjustFilters": "Filter anpassen",
+			"bulkRemove": "Szenen löschen",
+			"bulkEnable": "Szenen aktivieren",
+			"bulkDisable": "Szenen deaktivieren"
+		},
+		"subHeadings": {
+			"list": "Automatisierungsszenen für Ihr Smart Home verwalten",
+			"adjustFilters": "Szenen nach verschiedenen Kriterien filtern"
+		},
+		"breadcrumbs": {
+			"scenes": "Szenen"
+		},
+		"filters": {
+			"allSpaces": "Alle Räume",
+			"enabled": {
+				"title": "Status",
+				"values": {
+					"enabled": "Aktiviert",
+					"disabled": "Deaktiviert",
+					"all": "Alle"
+				}
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorien auswählen"
+			},
+			"space": {
+				"title": "Raum",
+				"placeholder": "Alle Räume"
+			}
+		},
+		"fields": {
+			"name": "Name",
+			"category": "Kategorie",
+			"space": "Raum",
+			"enabled": "Aktiviert",
+			"actions": "Aktionen",
+			"unknownSpace": "Unbekannter Raum",
+			"wholeHome": "Ganzes Haus",
+			"lastTriggered": "Zuletzt ausgelöst",
+			"neverTriggered": "Nie",
+			"search": {
+				"placeholder": "Szenen suchen..."
+			},
+			"config": {
+				"executionTimeoutMs": {
+					"title": "Ausführungszeitlimit (ms)",
+					"alertTitle": "Ausführungszeitlimit",
+					"hint": "Maximale Zeit für eine Szenenausführung, bevor sie als fehlgeschlagen gilt. Bei Erreichen des Zeitlimits können verbleibende Aktionen je nach Fehlerbehandlung abgebrochen werden.",
+					"validation": {
+						"range": "Ausführungszeitlimit muss zwischen 1000 und 300000 ms liegen"
+					}
+				},
+				"maxConcurrentExecutions": {
+					"title": "Max. gleichzeitige Ausführungen",
+					"alertTitle": "Max. gleichzeitige Ausführungen",
+					"hint": "Begrenzt, wie viele Szenenausführungen gleichzeitig laufen können. Hilft, Überlastung zu vermeiden, wenn Szenen wiederholt oder parallel ausgelöst werden.",
+					"validation": {
+						"range": "Max. gleichzeitige Ausführungen müssen zwischen 1 und 100 liegen"
+					}
+				},
+				"continueOnActionFailure": {
+					"title": "Bei Aktionsfehler fortfahren",
+					"alertTitle": "Bei Aktionsfehler fortfahren",
+					"hint": "Wenn aktiviert, führt die Szene verbleibende Aktionen auch dann aus, wenn eine Aktion fehlschlägt. Wenn deaktiviert, stoppt die Szene sofort beim ersten Fehler."
+				}
+			}
+		},
+		"texts": {
+			"loadingScenes": "Szenen werden geladen...",
+			"noScenes": "Sie haben noch keine Szenen konfiguriert",
+			"noFilteredScenes": "Keine Szenen entsprechen Ihren Filtern",
+			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+			"confirmBulkRemove": "Sind Sie sicher, dass Sie {count} ausgewählte Szene(n) löschen möchten?",
+			"confirmBulkEnable": "Sind Sie sicher, dass Sie {count} ausgewählte Szene(n) aktivieren möchten?",
+			"confirmBulkDisable": "Sind Sie sicher, dass Sie {count} ausgewählte Szene(n) deaktivieren möchten?",
+			"actionsCount": "Keine Aktionen | {count} Aktion | {count} Aktionen",
+			"lastTriggered": "Zuletzt ausgelöst",
+			"order": "#"
+		},
+		"edit": {
+			"sections": {
+				"general": {
+					"title": "Allgemein",
+					"hint": "<strong>Szenen sind manuelle Voreinstellungen</strong>, die mehrere Geräteaktionen gleichzeitig anwenden. Sie laufen nie automatisch ab und haben keine Bedingungen."
+				},
+				"actions": {
+					"title": "Aktionen",
+					"emptyTitle": "Noch keine Aktionen hinzugefügt",
+					"emptyDescription": "Fügen Sie eine oder mehrere Geräteaktionen hinzu, die ausgeführt werden, wenn diese Szene aktiviert wird.",
+					"helperText": "Sie können Lichter, Schalter, Klimageräte und mehr steuern."
+				}
+			}
+		},
+		"form": {
+			"space": "Raum",
+			"selectSpace": "Ganzes Haus",
+			"spaceGroups": {
+				"rooms": "Räume",
+				"zones": "Zonen"
+			},
+			"name": "Szenenname",
+			"namePlaceholder": "Szenennamen eingeben",
+			"nameRequired": "Szenenname ist erforderlich",
+			"category": "Kategorie",
+			"categoryRequired": "Kategorie ist erforderlich",
+			"description": "Beschreibung",
+			"descriptionPlaceholder": "Optionale Beschreibung für diese Szene",
+			"actionsSection": "Szenenaktionen",
+			"noActions": "Keine Aktionen definiert. Fügen Sie Aktionen hinzu, um Geräte zu steuern, wenn diese Szene ausgelöst wird.",
+			"actionsRequired": "Mindestens eine Aktion ist erforderlich",
+			"actionNumber": "Aktion {number}",
+			"device": "Gerät",
+			"selectDevice": "Gerät auswählen",
+			"deviceRequired": "Gerät ist erforderlich",
+			"actionDeviceRequired": "Aktion {number}: Gerät ist erforderlich",
+			"channel": "Kanal",
+			"selectChannel": "Kanal auswählen",
+			"actionChannelRequired": "Aktion {number}: Kanal ist erforderlich",
+			"property": "Eigenschaft",
+			"selectProperty": "Eigenschaft auswählen",
+			"propertyRequired": "Eigenschaft ist erforderlich",
+			"actionPropertyRequired": "Aktion {number}: Eigenschaft ist erforderlich",
+			"value": "Wert",
+			"valuePlaceholder": "Wert eingeben",
+			"valueRequired": "Wert ist erforderlich",
+			"actionValueRequired": "Aktion {number}: Wert ist erforderlich",
+			"addAction": "Aktion hinzufügen",
+			"editAction": "Aktion bearbeiten"
+		},
+		"buttons": {
+			"add": {
+				"title": "Szene hinzufügen"
+			},
+			"delete": {
+				"title": "Löschen"
+			},
+			"cancel": {
+				"title": "Abbrechen"
+			},
+			"save": {
+				"title": "Speichern"
+			},
+			"yes": {
+				"title": "Ja"
+			},
+			"no": {
+				"title": "Nein"
+			},
+			"close": {
+				"title": "Schließen"
+			},
+			"discard": {
+				"title": "Verwerfen"
+			},
+			"backToList": {
+				"title": "Zurück zur Liste"
+			},
+			"resetFilters": {
+				"title": "Filter zurücksetzen"
+			}
+		},
+		"messages": {
+			"config": {
+				"edited": "Szenenmodul-Konfiguration erfolgreich aktualisiert",
+				"notEdited": "Aktualisierung der Szenenmodul-Konfiguration fehlgeschlagen"
+			},
+			"triggered": "Szene \"{name}\" erfolgreich ausgelöst",
+			"triggerFailed": "Auslösen der Szene fehlgeschlagen",
+			"confirmDelete": "Sind Sie sicher, dass Sie die Szene \"{name}\" löschen möchten?",
+			"deleted": "Szene erfolgreich gelöscht",
+			"deleteFailed": "Löschen der Szene fehlgeschlagen",
+			"created": "Szene erfolgreich erstellt",
+			"createFailed": "Erstellen der Szene fehlgeschlagen",
+			"edited": "Szene \"{scene}\" erfolgreich aktualisiert",
+			"editFailed": "Aktualisierung der Szene \"{scene}\" fehlgeschlagen",
+			"notFound": "Szene nicht gefunden",
+			"duplicateAction": "Eine Aktion für diese Eigenschaft existiert bereits in dieser Szene",
+			"addFormPlaceholder": "Szenen-Hinzufügen-Formular wird hier implementiert",
+			"editFormPlaceholder": "Szenen-Bearbeiten-Formular wird hier implementiert",
+			"requestError": "Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten",
+			"bulkRemoved": "{count} Szene(n) erfolgreich gelöscht",
+			"bulkRemoveFailed": "Löschen von {count} Szene(n) fehlgeschlagen",
+			"bulkEnabled": "{count} Szene(n) erfolgreich aktiviert",
+			"bulkEnableFailed": "Aktivieren von {count} Szene(n) fehlgeschlagen",
+			"bulkEnableCanceled": "Aktivierungsvorgang abgebrochen",
+			"bulkDisabled": "{count} Szene(n) erfolgreich deaktiviert",
+			"bulkDisableFailed": "Deaktivieren von {count} Szene(n) fehlgeschlagen",
+			"bulkDisableCanceled": "Deaktivierungsvorgang abgebrochen"
+		},
+		"categories": {
+			"generic": "Allgemein",
+			"lighting": "Beleuchtung",
+			"climate": "Klima",
+			"media": "Medien",
+			"work": "Arbeit",
+			"relax": "Entspannung",
+			"night": "Nacht",
+			"morning": "Morgen",
+			"party": "Party",
+			"movie": "Film",
+			"away": "Abwesend",
+			"home": "Zuhause",
+			"security": "Sicherheit",
+			"energy": "Energie",
+			"custom": "Benutzerdefiniert"
+		}
+	}
+}

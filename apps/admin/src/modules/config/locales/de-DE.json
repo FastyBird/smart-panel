@@ -1,1 +1,311 @@
-{}
+{
+  "meta": {
+    "config": {
+      "title": "Konfiguration"
+    },
+    "configAudio": {
+      "title": "Audio-Konfiguration"
+    },
+    "configDisplay": {
+      "title": "Display-Konfiguration"
+    },
+    "configLanguage": {
+      "title": "Sprachkonfiguration"
+    },
+    "configWeather": {
+      "title": "Wetter-Konfiguration"
+    },
+    "configSystem": {
+      "title": "System-Konfiguration"
+    },
+    "configPlugins": {
+      "title": "Plugin-Konfiguration"
+    },
+    "configModules": {
+      "title": "Modul-Konfiguration"
+    },
+    "configModuleEdit": {
+      "title": "Modul bearbeiten: {module}"
+    },
+    "configPluginEdit": {
+      "title": "Plugin bearbeiten: {plugin}"
+    }
+  },
+  "breadcrumbs": {
+    "config": "Konfiguration",
+    "configAudio": "Audio-Konfiguration",
+    "configDisplay": "Display-Konfiguration",
+    "configLanguage": "Sprachkonfiguration",
+    "configWeather": "Wetter-Konfiguration",
+    "configSystem": "System-Konfiguration",
+    "configPlugins": "Plugin-Konfiguration",
+    "configModules": "Modul-Konfiguration"
+  },
+  "messages": {
+    "loadError": "Konfiguration konnte nicht geladen werden",
+    "configAudio": {
+      "edited": "Änderungen gespeichert! Die Audio-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Audio-Konfiguration war nicht erfolgreich."
+    },
+    "configDisplay": {
+      "edited": "Änderungen gespeichert! Die Display-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Display-Konfiguration war nicht erfolgreich."
+    },
+    "configLanguage": {
+      "edited": "Änderungen gespeichert! Die Sprachkonfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Sprachkonfiguration war nicht erfolgreich."
+    },
+    "configWeather": {
+      "edited": "Änderungen gespeichert! Die Wetter-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Wetter-Konfiguration war nicht erfolgreich."
+    },
+    "configSystem": {
+      "edited": "Änderungen gespeichert! Die System-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der System-Konfiguration war nicht erfolgreich."
+    },
+    "configPlugin": {
+      "edited": "Änderungen gespeichert! Die Plugin-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Plugin-Konfiguration war nicht erfolgreich."
+    },
+    "configModule": {
+      "edited": "Änderungen gespeichert! Die Modul-Konfiguration wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung der Modul-Konfiguration war nicht erfolgreich."
+    },
+    "moduleConfigNotFound": {
+      "title": "Modul-Konfiguration nicht gefunden",
+      "message": "Die Konfiguration für das Modul \"{module}\" konnte nicht geladen werden. Bitte überprüfen Sie, ob das Modul ordnungsgemäß installiert und konfiguriert ist."
+    },
+    "moduleNotFound": {
+      "title": "Modul nicht gefunden",
+      "message": "Modul \"{module}\" wurde im System nicht gefunden. Bitte überprüfen Sie, ob das Modul installiert und aktiviert ist."
+    },
+    "moduleElementNotFound": {
+      "title": "Modul-Element nicht registriert",
+      "message": "Das Konfigurationselement für das Modul \"{module}\" ist nicht registriert. Dieses Modul unterstützt möglicherweise keine Konfigurationsbearbeitung."
+    },
+    "moduleComponentsNotFound": {
+      "message": "Das Modul \"{module}\" verfügt über keine Konfigurationskomponenten."
+    },
+    "moduleFormNotFound": {
+      "title": "Konfigurationsformular nicht verfügbar",
+      "message": "Die Konfigurationsformularkomponente für das Modul \"{module}\" ist nicht verfügbar. Dieses Modul unterstützt möglicherweise keine Konfigurationsbearbeitung über die Benutzeroberfläche."
+    },
+    "pluginConfigNotFound": {
+      "title": "Plugin-Konfiguration nicht gefunden",
+      "message": "Die Konfiguration für das Plugin \"{plugin}\" konnte nicht geladen werden. Bitte überprüfen Sie, ob das Plugin ordnungsgemäß installiert und konfiguriert ist."
+    },
+    "pluginNotFound": {
+      "title": "Plugin nicht gefunden",
+      "message": "Plugin \"{plugin}\" wurde im System nicht gefunden. Bitte überprüfen Sie, ob das Plugin installiert und aktiviert ist."
+    },
+    "pluginElementNotFound": {
+      "title": "Plugin-Element nicht registriert",
+      "message": "Das Konfigurationselement für das Plugin \"{plugin}\" ist nicht registriert. Dieses Plugin unterstützt möglicherweise keine Konfigurationsbearbeitung."
+    },
+    "pluginComponentsNotFound": {
+      "message": "Das Plugin \"{plugin}\" verfügt über keine Konfigurationskomponenten."
+    },
+    "pluginFormNotFound": {
+      "title": "Konfigurationsformular nicht verfügbar",
+      "message": "Die Konfigurationsformularkomponente für das Plugin \"{plugin}\" ist nicht verfügbar. Dieses Plugin unterstützt möglicherweise keine Konfigurationsbearbeitung über die Benutzeroberfläche."
+    }
+  },
+  "headings": {
+    "config": "Konfiguration",
+    "misc": {
+      "discard": "Änderungen verwerfen"
+    }
+  },
+  "subHeadings": {
+    "config": "Smart Panel Konfiguration",
+    "configModule": "Modul-Konfiguration",
+    "configPlugin": "Plugin-Konfiguration"
+  },
+  "tabs": {
+    "configAudio": "Audio-Konfig.",
+    "configDisplay": "Display-Konfig.",
+    "configLanguage": "Sprach-Konfig.",
+    "configWeather": "Wetter-Konfig.",
+    "configSystem": "System-Konfig.",
+    "configPlugins": "Plugin-Konfig.",
+    "configModules": "Modul-Konfig."
+  },
+  "texts": {
+    "loadingAudioConfig": "Audio-Konfiguration wird geladen...",
+    "loadingDisplayConfig": "Display-Konfiguration wird geladen...",
+    "loadingLanguageConfig": "Sprachkonfiguration wird geladen...",
+    "loadingWeatherConfig": "Wetter-Konfiguration wird geladen...",
+    "loadingSystemConfig": "System-Konfiguration wird geladen...",
+    "loadingPluginConfig": "Plugin-Konfiguration wird geladen...",
+    "loadingModuleConfig": "Modul-Konfiguration wird geladen...",
+    "misc": {
+      "confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+    }
+  },
+  "fields": {
+    "speaker": {
+      "title": "Lautsprecher",
+      "placeholder": "Lautsprecher aktivieren oder deaktivieren",
+      "values": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
+      }
+    },
+    "speakerVolume": {
+      "title": "Lautsprecherlautstärke"
+    },
+    "microphone": {
+      "title": "Mikrofon",
+      "placeholder": "Mikrofon aktivieren oder deaktivieren",
+      "values": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
+      }
+    },
+    "microphoneVolume": {
+      "title": "Mikrofonlautstärke"
+    },
+    "darkMode": {
+      "title": "Designmodus",
+      "placeholder": "Wählen Sie zwischen hellem und dunklem Modus",
+      "values": {
+        "dark": "Dunkel",
+        "light": "Hell"
+      }
+    },
+    "brightness": {
+      "title": "Helligkeit"
+    },
+    "screenLockDuration": {
+      "title": "Bildschirmsperre",
+      "placeholder": "Verzögerung der Bildschirmsperre festlegen",
+      "values": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
+      }
+    },
+    "screenSaver": {
+      "title": "Bildschirmschoner",
+      "placeholder": "Bildschirmschoner aktivieren oder deaktivieren",
+      "values": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
+      }
+    },
+    "language": {
+      "title": "Sprache",
+      "placeholder": "Wählen Sie Ihre bevorzugte Sprache"
+    },
+    "timezone": {
+      "title": "Zeitzone",
+      "placeholder": "Wählen Sie Ihre Zeitzone"
+    },
+    "timeFormat": {
+      "title": "Zeitformat",
+      "placeholder": "Wählen Sie Ihr bevorzugtes Zeitformat"
+    },
+    "locationType": {
+      "title": "Wetter-Standorttyp",
+      "placeholder": "Wählen Sie, wie das Wetter geladen wird"
+    },
+    "coordinates": {
+      "title": "Standortkoordinaten"
+    },
+    "latitude": {
+      "title": "Breitengrad",
+      "placeholder": "Breitengrad"
+    },
+    "longitude": {
+      "title": "Längengrad",
+      "placeholder": "Längengrad"
+    },
+    "cityName": {
+      "title": "Stadtname",
+      "placeholder": "Stadtname eingeben, optional mit Bundesland und Ländercode"
+    },
+    "cityId": {
+      "title": "Stadt-ID",
+      "placeholder": "Von OpenWeather unterstützte Städte auswählen"
+    },
+    "zipCode": {
+      "title": "Postleitzahl",
+      "placeholder": "Nach PLZ suchen, optional mit Ländercode"
+    },
+    "unit": {
+      "title": "Temperatureinheit",
+      "placeholder": "Temperatureinheit auswählen"
+    },
+    "openWeatherApiKey": {
+      "title": "Open Weather API-Schlüssel",
+      "placeholder": "Ihr Open Weather Service API-Schlüssel für den Zugriff auf Wetterdaten"
+    },
+    "logLevels": {
+      "title": "Protokollstufen",
+      "placeholder": "Wählen Sie, welche Protokollstufen überwacht werden sollen"
+    }
+  },
+  "buttons": {
+    "save": {
+      "title": "Speichern"
+    },
+    "myLocation": {
+      "title": "Mein Standort"
+    },
+    "discard": {
+      "title": "Verwerfen"
+    },
+    "close": {
+      "title": "Schließen"
+    },
+    "retry": {
+      "title": "Wiederholen"
+    },
+    "yes": {
+      "title": "Ja"
+    },
+    "no": {
+      "title": "Nein"
+    }
+  },
+  "languages": {
+    "en_US": "Englisch",
+    "cs_CZ": "Tschechisch"
+  },
+  "timeFormats": {
+    "12h": "12-Stunden-Format",
+    "24h": "24-Stunden-Format"
+  },
+  "locationTypes": {
+    "lat_lon": "Breiten- & Längengrad-Koordinaten",
+    "city_name": "Stadtname",
+    "city_id": "OpenWeather Stadt-ID",
+    "zip_code": "Postleitzahl"
+  },
+  "weatherUnits": {
+    "celsius": "Celsius",
+    "fahrenheit": "Fahrenheit"
+  },
+  "screenLockDurations": {
+    "15s": "15s",
+    "30s": "30s",
+    "60s": "1min",
+    "120s": "2min",
+    "300s": "5min",
+    "600s": "10min",
+    "1800s": "30min",
+    "0s": "Nie"
+  },
+  "logLevels": {
+    "silent": "Stumm",
+    "verbose": "Ausführlich",
+    "debug": "Debug",
+    "trace": "Trace",
+    "log": "Log",
+    "info": "Info",
+    "success": "Erfolg",
+    "warn": "Warnung",
+    "error": "Fehler",
+    "fail": "Fehlgeschlagen",
+    "fatal": "Fatal"
+  }
+}

@@ -1,1 +1,114 @@
-{}
+{
+	"meta": {
+		"stats": {
+			"title": "Přehled aplikace"
+		}
+	},
+	"breadcrumbs": {
+		"stats": "přehled"
+	},
+	"headings": {
+		"stats": "Přehled aplikace",
+		"systemInformation": "Systémové informace",
+		"applicationOverview": "Smart Panel",
+		"quickLinks": "Rychlé odkazy",
+		"cpu": "CPU",
+		"memory": "Paměť",
+		"uptime": "Doba běhu",
+		"logs": "Logy",
+		"dashboard": "Stránky Smart Panelu",
+		"devices": "Připojená zařízení",
+		"devicesCommunication": "Aktualizace zařízení dnes",
+		"spaces": "Prostory Smart Panelu"
+	},
+	"subHeadings": {
+		"stats": "Systémové statistiky Smart panelu"
+	},
+	"fields": {
+		"systemInformation": {
+			"timezone": {
+				"title": "Časové pásmo"
+			},
+			"operatingSystem": {
+				"title": "OS"
+			},
+			"hostname": {
+				"title": "Hostname"
+			},
+			"ipv4": {
+				"title": "IPv4"
+			},
+			"ipv6": {
+				"title": "IPv6"
+			},
+			"configPath": {
+				"title": "Cesta ke konfiguraci",
+				"tooltip": "Cesta ke konfiguračnímu souboru:"
+			}
+		},
+		"applicationOverview": {
+			"version": {
+				"title": "Verze"
+			},
+			"apip95": {
+				"title": "API p95 (5m)",
+				"tooltip": "95. percentil doby odezvy API (posledních 5 minut). Ukazuje, jak rychle je zpracováno 95 % API požadavků."
+			},
+			"webSocket": {
+				"title": "WebSocket",
+				"tooltip": "Dostupnost 5m: {wsAvailability5m} (aktualizováno {last})",
+				"state": {
+					"connected": "Připojeno",
+					"disconnected": "Odpojeno"
+				}
+			}
+		},
+		"cpu": {
+			"temperature": {
+				"title": "Teplota {temperature} {unit}"
+			}
+		},
+		"memory": {
+			"total": {
+				"title": "z {total} {unit}"
+			}
+		},
+		"uptime": {
+			"process": {
+				"title": "Proces {uptime}"
+			}
+		},
+		"spaces": {
+			"rooms": "{count} místností",
+			"zones": "{count} zón"
+		}
+	},
+	"texts": {
+		"updated": "Aktualizováno {time}",
+		"noLogs": "Nebyly zaznamenány žádné aplikační logy.",
+		"noFilteredLogs": "Nebyly nalezeny žádné aplikační logy odpovídající aktivním kritériím filtru"
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopírovat"
+		},
+		"spaces": {
+			"title": "Prostory"
+		},
+		"pages": {
+			"title": "Stránky"
+		},
+		"devices": {
+			"title": "Zařízení"
+		},
+		"config": {
+			"title": "Konfigurace"
+		},
+		"docs": {
+			"title": "Dokumentace"
+		},
+		"resetFilters": {
+			"title": "Resetovat filtry"
+		}
+	}
+}

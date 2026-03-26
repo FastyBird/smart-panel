@@ -1,1 +1,129 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia API OpenWeatherMap"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj API kľúč OpenWeatherMap",
+				"description": "Získajte svoj bezplatný API kľúč z openweathermap.org",
+				"validation": {
+					"required": "Prosím zadajte svoj API kľúč"
+				}
+			},
+			"unit": {
+				"title": "Jednotka teploty",
+				"placeholder": "Vyberte jednotku teploty",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Názov",
+				"description": "Priateľský názov pre túto polohu",
+				"placeholder": "napr. Domov, Kancelária, Chata",
+				"validation": {
+					"required": "Názov je povinný"
+				}
+			},
+			"citySearch": {
+				"title": "Vyhľadať mesto",
+				"placeholder": "Začnite písať na vyhľadanie mesta...",
+				"description": "Vyhľadajte mesto a automaticky vyplníme súradnice"
+			},
+			"locationType": {
+				"title": "Typ polohy",
+				"placeholder": "Vyberte spôsob identifikácie polohy",
+				"values": {
+					"latLon": "GPS súradnice",
+					"cityName": "Názov mesta",
+					"cityId": "ID mesta",
+					"zipCode": "PSČ"
+				},
+				"validation": {
+					"required": "Typ polohy je povinný"
+				}
+			},
+			"coordinates": {
+				"title": "Súradnice"
+			},
+			"latitude": {
+				"title": "Zemepisná šírka",
+				"placeholder": "napr. 51.5074",
+				"validation": {
+					"required": "Zemepisná šírka je povinná",
+					"range": "Zemepisná šírka musí byť medzi -90 a 90"
+				}
+			},
+			"longitude": {
+				"title": "Zemepisná dĺžka",
+				"placeholder": "napr. -0.1278",
+				"validation": {
+					"required": "Zemepisná dĺžka je povinná",
+					"range": "Zemepisná dĺžka musí byť medzi -180 a 180"
+				}
+			},
+			"map": {
+				"title": "Poloha na mape"
+			},
+			"cityName": {
+				"title": "Názov mesta",
+				"placeholder": "napr. Bratislava",
+				"validation": {
+					"required": "Názov mesta je povinný"
+				}
+			},
+			"countryCode": {
+				"title": "Kód krajiny",
+				"placeholder": "napr. SK"
+			},
+			"cityId": {
+				"title": "ID mesta",
+				"placeholder": "napr. 2643743",
+				"description": "ID mesta OpenWeatherMap (nájdete ho na openweathermap.org)",
+				"validation": {
+					"required": "ID mesta je povinné"
+				}
+			},
+			"zipCode": {
+				"title": "PSČ",
+				"placeholder": "napr. 81101",
+				"validation": {
+					"required": "PSČ je povinné"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "Moja poloha"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia OpenWeatherMap boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia OpenWeatherMap"
+		},
+		"locations": {
+			"created": "Poloha \"{location}\" bola vytvorená",
+			"notCreated": "Nepodarilo sa vytvoriť polohu \"{location}\"",
+			"edited": "Poloha \"{location}\" bola aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať polohu \"{location}\""
+		},
+		"geolocationNotSupported": "Geolokácia nie je podporovaná vaším prehliadačom",
+		"geolocationDenied": "Prístup k polohe bol zamietnutý. Prosím povoľte oprávnenia polohy.",
+		"geolocationUnavailable": "Informácie o polohe nie sú dostupné",
+		"geolocationTimeout": "Požiadavka na získanie polohy vypršala",
+		"geolocationError": "Pri získavaní vašej polohy sa vyskytla chyba"
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia API OpenWeatherMap. Na získavanie údajov o počasí potrebujete platný API kľúč. Vyberte preferovanú jednotku teploty pre zobrazenie počasia."
+	}
+}

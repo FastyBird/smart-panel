@@ -1,1 +1,72 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin-Status",
+		"aboutPolling": "Sensor-Abfrage"
+	},
+	"texts": {
+		"aboutPluginStatus": "Aktivieren oder deaktivieren Sie das reTerminal-Plugin. Wenn deaktiviert, werden keine reTerminal-Hardwareperipheriegeräte überwacht oder gesteuert.",
+		"aboutPolling": "Konfigurieren Sie, wie oft das Plugin Hardware-Sensoren (Licht, Beschleunigungsmesser, Temperatur) nach aktualisierten Messwerten abfragt."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Plugin aktivieren"
+			},
+			"polling": {
+				"interval": {
+					"title": "Abfrageintervall (ms)",
+					"validation": {
+						"required": "Abfrageintervall ist erforderlich",
+						"number": "Muss eine Zahl >= 1000 sein"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Geräte-ID",
+				"placeholder": "Geräte-ID"
+			},
+			"name": {
+				"title": "Gerätename",
+				"placeholder": "Gerätenamen eingeben",
+				"validation": {
+					"required": "Gerätename ist erforderlich"
+				}
+			},
+			"category": {
+				"title": "Gerätekategorie",
+				"placeholder": "Kategorie auswählen",
+				"validation": {
+					"required": "Gerätekategorie ist erforderlich"
+				}
+			},
+			"description": {
+				"title": "Beschreibung",
+				"placeholder": "Gerätebeschreibung eingeben (optional)"
+			},
+			"variant": {
+				"title": "Hardware-Variante",
+				"placeholder": "Hardware-Variante auswählen",
+				"validation": {
+					"required": "Hardware-Variante ist erforderlich"
+				}
+			},
+			"enabled": {
+				"title": "Aktiviert"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "reTerminal-Plugin-Konfiguration wurde aktualisiert",
+			"notEdited": "Aktualisierung der reTerminal-Plugin-Konfiguration fehlgeschlagen"
+		},
+		"devices": {
+			"created": "reTerminal-Gerät '{device}' wurde erstellt",
+			"notCreated": "Erstellung des reTerminal-Geräts '{device}' fehlgeschlagen",
+			"edited": "reTerminal-Gerät '{device}' wurde aktualisiert",
+			"notEdited": "Aktualisierung des reTerminal-Geräts '{device}' fehlgeschlagen"
+		}
+	}
+}

@@ -1,1 +1,29 @@
-{}
+{
+  "fields": {
+    "device": {
+      "title": "Gerät",
+      "placeholder": "Datenquellen-Gerät",
+      "validation": {
+        "required": "Bitte wählen Sie ein Datenquellen-Gerät"
+      }
+    },
+    "channel": {
+      "title": "Kanal",
+      "placeholder": "Datenquellen-Kanal",
+      "validation": {
+        "required": "Bitte wählen Sie einen Datenquellen-Kanal"
+      }
+    },
+    "property": {
+      "title": "Eigenschaft",
+      "placeholder": "Datenquellen-Eigenschaft",
+      "validation": {
+        "required": "Bitte wählen Sie eine Datenquellen-Eigenschaft"
+      }
+    },
+    "icon": {
+      "title": "Symbol",
+      "placeholder": "Datenquellen-Symbol"
+    }
+  }
+}

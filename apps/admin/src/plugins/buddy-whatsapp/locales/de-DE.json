@@ -1,1 +1,35 @@
-{}
+{
+	"headings": {
+		"aboutWhatsappSettings": "WhatsApp-Bot-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"allowedPhoneNumbers": {
+				"title": "Erlaubte Telefonnummern",
+				"placeholder": "z.B. 1234567890,9876543210",
+				"description": "Kommagetrennte Telefonnummern, die mit dem Bot interagieren dürfen (mit oder ohne '+'-Präfix). Leer lassen, um alle Nummern zuzulassen."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "WhatsApp-Bot-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der WhatsApp-Bot-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Verbinden Sie eine dedizierte WhatsApp-Nummer für den Bot. Verwenden Sie eine zweite SIM, eSIM oder virtuelle Nummer — installieren Sie WhatsApp (oder WhatsApp Business) mit dieser Nummer und scannen Sie den QR-Code unten. Benutzer können dann die Bot-Nummer von ihrem persönlichen WhatsApp aus anschreiben.",
+		"status": {
+			"disconnected": "Nicht verbunden. Aktivieren Sie das Plugin und warten Sie auf den QR-Code.",
+			"connecting": "Verbindung mit WhatsApp wird hergestellt...",
+			"qrReady": "Öffnen Sie WhatsApp auf dem Telefon des Bots (die dedizierte Nummer) und scannen Sie diesen QR-Code über Einstellungen > Verknüpfte Geräte > Gerät verknüpfen.",
+			"connected": "WhatsApp-Bot ist verbunden und aktiv. Benutzer können die Nummer des Bots anschreiben, um zu chatten."
+		}
+	},
+	"buttons": {
+		"logout": "Trennen & neu koppeln"
+	}
+}

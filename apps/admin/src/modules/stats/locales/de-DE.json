@@ -1,1 +1,114 @@
-{}
+{
+	"meta": {
+		"stats": {
+			"title": "Anwendungsübersicht"
+		}
+	},
+	"breadcrumbs": {
+		"stats": "Übersicht"
+	},
+	"headings": {
+		"stats": "Anwendungsübersicht",
+		"systemInformation": "Systeminformationen",
+		"applicationOverview": "Smart Panel",
+		"quickLinks": "Schnellzugriff",
+		"cpu": "CPU",
+		"memory": "Speicher",
+		"uptime": "Betriebszeit",
+		"logs": "Protokolle",
+		"dashboard": "Smart Panel Seiten",
+		"devices": "Verbundene Geräte",
+		"devicesCommunication": "Geräteaktualisierungen heute",
+		"spaces": "Smart Panel Räume"
+	},
+	"subHeadings": {
+		"stats": "Smart Panel Systemstatistiken"
+	},
+	"fields": {
+		"systemInformation": {
+			"timezone": {
+				"title": "Zeitzone"
+			},
+			"operatingSystem": {
+				"title": "Betriebssystem"
+			},
+			"hostname": {
+				"title": "Hostname"
+			},
+			"ipv4": {
+				"title": "IPv4"
+			},
+			"ipv6": {
+				"title": "IPv6"
+			},
+			"configPath": {
+				"title": "Konfigurationspfad",
+				"tooltip": "Konfigurationsdateipfad:"
+			}
+		},
+		"applicationOverview": {
+			"version": {
+				"title": "Version"
+			},
+			"apip95": {
+				"title": "API p95 (5m)",
+				"tooltip": "95. Perzentil der API-Antwortzeit (letzte 5 Minuten). Zeigt, wie schnell 95 % der API-Anfragen bearbeitet werden."
+			},
+			"webSocket": {
+				"title": "WebSocket",
+				"tooltip": "Verfügb. 5m: {wsAvailability5m} (aktualisiert {last})",
+				"state": {
+					"connected": "Verbunden",
+					"disconnected": "Getrennt"
+				}
+			}
+		},
+		"cpu": {
+			"temperature": {
+				"title": "Temp {temperature} {unit}"
+			}
+		},
+		"memory": {
+			"total": {
+				"title": "von {total} {unit}"
+			}
+		},
+		"uptime": {
+			"process": {
+				"title": "Prozess {uptime}"
+			}
+		},
+		"spaces": {
+			"rooms": "{count} Räume",
+			"zones": "{count} Zonen"
+		}
+	},
+	"texts": {
+		"updated": "Aktualisiert {time}",
+		"noLogs": "Es wurden keine Anwendungsprotokolle aufgezeichnet.",
+		"noFilteredLogs": "Keine Anwendungsprotokolle gefunden, die den aktiven Filterkriterien entsprechen"
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopieren"
+		},
+		"spaces": {
+			"title": "Räume"
+		},
+		"pages": {
+			"title": "Seiten"
+		},
+		"devices": {
+			"title": "Geräte"
+		},
+		"config": {
+			"title": "Konfiguration"
+		},
+		"docs": {
+			"title": "Doku"
+		},
+		"resetFilters": {
+			"title": "Filter zurücksetzen"
+		}
+	}
+}

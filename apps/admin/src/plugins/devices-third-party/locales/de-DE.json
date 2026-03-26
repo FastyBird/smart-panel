@@ -1,1 +1,43 @@
-{}
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Geräte-ID"
+      },
+      "identifier": {
+        "title": "Systembezeichner",
+        "placeholder": "Geräte-Systembezeichner"
+      },
+      "category": {
+        "title": "Kategorie",
+        "placeholder": "Gerätekategorie",
+        "validation": {
+          "required": "Bitte wählen Sie eine Gerätekategorie"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Gerätename",
+        "validation": {
+          "required": "Bitte geben Sie den Gerätenamen ein"
+        }
+      },
+      "description": {
+        "title": "Beschreibung",
+        "placeholder": "Gerätebeschreibung"
+      },
+      "enabled": {
+        "title": "Aktiviert"
+      },
+      "serviceAddress": {
+        "title": "Dienstadresse",
+        "placeholder": "http://device-address.local",
+        "validation": {
+          "required": "Bitte geben Sie die Geräte-Dienstadresse ein",
+          "url": "Bitte geben Sie eine gültige URL-Adresse ein"
+        }
+      }
+    }
+  }
+}

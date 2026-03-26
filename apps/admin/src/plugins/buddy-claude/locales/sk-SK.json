@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavenia API Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"apiKey": {
+				"title": "API kľúč",
+				"placeholder": "Zadajte svoj API kľúč Anthropic",
+				"description": "Získajte svoj API kľúč z console.anthropic.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "napr. claude-sonnet-4-20250514",
+				"description": "Model Claude použitý na generovanie odpovedí"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Claude boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavenia API Anthropic Claude. Na používanie modelov Claude ako poskytovateľa LLM buddy potrebujete platný API kľúč."
+	}
+}

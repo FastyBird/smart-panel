@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Voice.ai API-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"apiKey": {
+				"title": "API-Schlüssel",
+				"placeholder": "Geben Sie Ihren Voice.ai API-Schlüssel ein",
+				"description": "Holen Sie sich Ihren API-Schlüssel aus Ihrem Voice.ai-Dashboard"
+			},
+			"voiceId": {
+				"title": "Stimmen-ID",
+				"placeholder": "Geben Sie eine Voice.ai Stimmen-ID ein",
+				"description": "Die Voice.ai Stimmen-ID für die Sprachsynthese. Verwenden Sie die Voice.ai API, um verfügbare Stimmen aufzulisten"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Voice.ai-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Voice.ai-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Konfigurieren Sie Ihre Voice.ai API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel und eine Stimmen-ID, um Voice.ai als Buddy-TTS-Anbieter zu verwenden."
+	}
+}

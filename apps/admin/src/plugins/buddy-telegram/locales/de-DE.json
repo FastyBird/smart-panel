@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutTelegramSettings": "Telegram-Bot-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"botToken": {
+				"title": "Bot-Token",
+				"placeholder": "Geben Sie Ihren Telegram-Bot-Token ein",
+				"description": "Holen Sie sich Ihren Bot-Token von {'@'}BotFather auf Telegram"
+			},
+			"allowedUserIds": {
+				"title": "Erlaubte Benutzer-IDs",
+				"placeholder": "z.B. 123456789,987654321",
+				"description": "Kommagetrennte Telegram-Benutzer-IDs, die mit dem Bot interagieren dürfen. Leer lassen, um allen Benutzern den Zugriff zu erlauben."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Telegram-Bot-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Telegram-Bot-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutTelegramSettings": "Konfigurieren Sie Ihre Telegram-Bot-Integration. Erstellen Sie einen Bot über {'@'}BotFather auf Telegram, um einen Bot-Token zu erhalten, und beschränken Sie optional den Zugriff auf bestimmte Benutzer-IDs."
+	}
+}

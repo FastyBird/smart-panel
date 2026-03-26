@@ -1,1 +1,477 @@
-{}
+{
+	"title": "Displeje",
+	"description": "Spravujte svoje displeje",
+	"headings": {
+		"list": "Displeje",
+		"adjustFilters": "Filtrovať displeje",
+		"removeDisplay": "Odstrániť displej",
+		"removeBulkDisplays": "Odstrániť displeje",
+		"discard": "Zahodiť zmeny",
+		"aboutDisplayConfiguration": "Konfigurácia displeja"
+	},
+	"subHeadings": {
+		"list": "Spravujte pripojené displeje",
+		"adjustFilters": "Upraviť nastavenia filtrov"
+	},
+	"breadcrumbs": {
+		"displays": {
+			"list": "displeje",
+			"detail": "displej: {display}",
+			"edit": "upraviť displej",
+			"tokens": "prístupové tokeny"
+		}
+	},
+	"meta": {
+		"displays": {
+			"list": {
+				"title": "Zoznam displejov"
+			},
+			"edit": {
+				"title": "Upraviť displej: {display}"
+			},
+			"detail": {
+				"title": "Displej: {display}"
+			},
+			"tokens": {
+				"title": "Prístupové tokeny: {display}"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Názov",
+			"role": "Rola",
+			"macAddress": "MAC adresa",
+			"version": "Verzia",
+			"resolution": "Rozlíšenie",
+			"layout": "Rozloženie",
+			"audio": "Zvuk",
+			"state": {
+				"title": "Stav"
+			},
+			"currentIpAddress": "Aktuálna IP",
+			"local": "Lokálny",
+			"status": "Stav"
+		},
+		"tooltips": {
+			"speakerSupported": "Reproduktor podporovaný",
+			"microphoneSupported": "Mikrofón podporovaný"
+		}
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Vyhľadať displeje..."
+		},
+		"config": {
+			"deploymentMode": {
+				"title": "Režim brány",
+				"description": "Režim brány pre registráciu displejov",
+				"placeholder": "Vyberte režim brány",
+				"validation": {
+					"required": "Režim brány je povinný"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Trvanie povolenia pripojenia",
+				"description": "Trvanie v milisekundách, počas ktorého zostáva povolenie pripojenia aktívne",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "Trvanie povolenia pripojenia je povinné",
+					"min": "Trvanie povolenia pripojenia musí byť aspoň 1000ms"
+				}
+			}
+		},
+		"displays": {
+			"id": {
+				"title": "Interný identifikátor",
+				"placeholder": "ID displeja"
+			},
+			"name": {
+				"title": "Názov",
+				"placeholder": "Zadajte názov displeja",
+				"validation": {
+					"maxLength": "Názov musí mať menej ako 100 znakov"
+				}
+			},
+			"role": {
+				"title": "Rola displeja",
+				"description": "Účel tohto displeja vo vašom zariadení inteligentnej domácnosti",
+				"options": {
+					"room": "Miestnosť (Ovládanie jednej miestnosti)",
+					"master": "Hlavný (Prehľad celého domu)",
+					"entry": "Vstup (Režimy domu a bezpečnosť)"
+				},
+				"comingSoon": "Čoskoro"
+			},
+			"unitSize": {
+				"title": "Veľkosť jednotky",
+				"unit": "px",
+				"validation": {
+					"min": "Veľkosť jednotky musí byť aspoň 1"
+				}
+			},
+			"rows": {
+				"title": "Riadky",
+				"validation": {
+					"min": "Riadky musia byť aspoň 1"
+				}
+			},
+			"cols": {
+				"title": "Stĺpce",
+				"validation": {
+					"min": "Stĺpce musia byť aspoň 1"
+				}
+			},
+			"brightness": {
+				"title": "Jas",
+				"validation": {
+					"range": "Jas musí byť medzi 0 a 100"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Trvanie uzamknutia obrazovky",
+				"options": {
+					"15s": "15 sekúnd",
+					"30s": "30 sekúnd",
+					"1min": "1 minúta",
+					"2min": "2 minúty",
+					"5min": "5 minút",
+					"10min": "10 minút",
+					"30min": "30 minút",
+					"never": "Nikdy"
+				}
+			},
+			"darkMode": {
+				"title": "Tmavý režim"
+			},
+			"screenSaver": {
+				"title": "Šetrič obrazovky"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Reproduktor (zvukový výstup)"
+				},
+				"microphone": {
+					"title": "Mikrofón (zvukový vstup)"
+				}
+			},
+			"speaker": {
+				"title": "Reproduktor povolený"
+			},
+			"speakerVolume": {
+				"title": "Hlasitosť reproduktora",
+				"validation": {
+					"range": "Hlasitosť musí byť medzi 0 a 100"
+				}
+			},
+			"microphone": {
+				"title": "Mikrofón povolený"
+			},
+			"microphoneVolume": {
+				"title": "Hlasitosť mikrofónu",
+				"validation": {
+					"range": "Hlasitosť musí byť medzi 0 a 100"
+				}
+			},
+			"homeMode": {
+				"title": "Režim domovskej stránky",
+				"description": "Ako sa určuje domovská stránka pri spustení displeja",
+				"options": {
+					"autoSpace": "Automaticky",
+					"explicit": "Explicitne"
+				}
+			},
+			"homePageId": {
+				"title": "Domovská stránka",
+				"placeholder": "Vyberte domovskú stránku",
+				"description": "Stránka zobrazená pri spustení displeja (použije sa iba keď je režim domovskej stránky Explicitný)",
+				"validation": {
+					"required": "Domovská stránka je povinná keď je režim domovskej stránky Explicitný"
+				}
+			},
+			"roomId": {
+				"title": "Priradená miestnosť",
+				"placeholder": "Vyberte miestnosť",
+				"description": "Miestnosť, ktorú tento displej ovláda. Vyžadované pre displeje s rolou Miestnosť.",
+				"validation": {
+					"required": "Priradenie miestnosti je povinné pre displeje s rolou Miestnosť"
+				}
+			},
+			"numberFormat": {
+				"title": "Formát čísiel",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"commaDot": "1,234.56 (čiarka / bodka)",
+					"dotComma": "1.234,56 (bodka / čiarka)",
+					"spaceComma": "1 234,56 (medzera / čiarka)",
+					"none": "1234.56 (bez skupín)"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Jednotka teploty",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Jednotka rýchlosti vetra",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"ms": "Metre za sekundu (m/s)",
+					"kmh": "Kilometre za hodinu (km/h)",
+					"mph": "Míle za hodinu (mph)",
+					"knots": "Uzly (kn)"
+				}
+			},
+			"pressureUnit": {
+				"title": "Jednotka tlaku",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"hpa": "Hektopascal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Palce ortuťového stĺpca (inHg)",
+					"mmhg": "Milimetre ortuťového stĺpca (mmHg)"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Jednotka zrážok",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"mm": "Milimetre (mm)",
+					"inches": "Palce (in)"
+				}
+			},
+			"distanceUnit": {
+				"title": "Jednotka vzdialenosti",
+				"placeholder": "Predvolené systémové",
+				"values": {
+					"km": "Kilometre (km)",
+					"miles": "Míle (mi)",
+					"meters": "Metre (m)",
+					"feet": "Stopy (ft)"
+				}
+			},
+			"weatherLocationId": {
+				"title": "Poloha počasia",
+				"placeholder": "Predvolené systémové (primárna poloha)",
+				"description": "Prepísať polohu počasia pre tento displej. Ponechajte prázdne na použitie primárnej polohy z konfigurácie počasia."
+			}
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Tmavý režim",
+			"values": {
+				"enabled": "Povolený",
+				"disabled": "Zakázaný",
+				"all": "Všetky"
+			}
+		},
+		"screenSaver": {
+			"title": "Šetrič obrazovky",
+			"values": {
+				"enabled": "Povolený",
+				"disabled": "Zakázaný",
+				"all": "Všetky"
+			}
+		},
+		"state": {
+			"title": "Stav"
+		},
+		"states": {
+			"title": "Stav"
+		}
+	},
+	"states": {
+		"connected": "Pripojený",
+		"disconnected": "Odpojený",
+		"lost": "Stratený",
+		"unknown": "Neznámy"
+	},
+	"roles": {
+		"room": "Miestnosť",
+		"master": "Hlavný",
+		"entry": "Vstup"
+	},
+	"texts": {
+		"loadingDisplays": "Načítavanie displejov...",
+		"loadingDisplay": "Načítavanie displeja...",
+		"noDisplays": "Zatiaľ nie sú zaregistrované žiadne displeje",
+		"noFilteredDisplays": "Žiadne displeje nezodpovedajú vašim filtrom",
+		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+		"aboutDisplayConfiguration": "Nakonfigurujte režim nasadenia a nastavenia registrácie displejov. Režim nasadenia určuje, ako sú organizované backend a panel, zatiaľ čo trvanie povolenia pripojenia ovláda, ako dlho sa môžu nové displeje registrovať na sieti."
+	},
+	"buttons": {
+		"detail": {
+			"title": "Detail"
+		},
+		"adjust": {
+			"title": "Filter"
+		},
+		"resetFilters": {
+			"title": "Resetovať filtre"
+		},
+		"reset": {
+			"title": "Resetovať filtre"
+		},
+		"yes": {
+			"title": "Áno"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"save": {
+			"title": "Uložiť"
+		},
+		"cancel": {
+			"title": "Zrušiť"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"discard": {
+			"title": "Zahodiť"
+		},
+		"permitJoin": {
+			"title": "Povoliť pripojenie",
+			"disable": "Zakázať pripojenie ({time})"
+		},
+		"back": {
+			"title": "Späť"
+		}
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "Všeobecné"
+			},
+			"layout": {
+				"title": "Rozloženie",
+				"badge": "Pokročilé",
+				"description": "Pokročilé nastavenia ovládajúce, koľko dlaždíc sa zobrazí na obrazovke a ako sú usporiadané v mriežke."
+			},
+			"appearance": {
+				"title": "Vzhľad"
+			},
+			"homePage": {
+				"title": "Domovská stránka",
+				"autoRoomHint": "V <strong>automatickom režime</strong> displej otvorí predvolené systémové zobrazenie na základe svojej roly a priradenia."
+			},
+			"weather": {
+				"title": "Poloha počasia",
+				"description": "Prepísať polohu počasia pre tento displej. Ak nie je nastavená, použije sa primárna poloha z konfigurácie počasia."
+			},
+			"units": {
+				"title": "Prepísanie jednotiek",
+				"description": "Prepísať celosystémové merné jednotky pre tento displej. Ponechajte prázdne na použitie systémového predvoleného nastavenia."
+			},
+			"audio": {
+				"title": "Zvuk",
+				"badge": "Pokročilé"
+			}
+		}
+	},
+	"detail": {
+		"title": "Detail displeja",
+		"info": {
+			"title": "Informácie o displeji",
+			"role": "Rola",
+			"macAddress": "MAC adresa",
+			"version": "Verzia",
+			"build": "Zostavenie",
+			"resolution": "Rozlíšenie",
+			"pixelRatio": "Pomer pixelov",
+			"gridSize": "Veľkosť mriežky",
+			"registeredFromIp": "Registrovaná IP",
+			"currentIpAddress": "Aktuálna IP",
+			"status": "Stav pripojenia"
+		},
+		"settings": {
+			"title": "Nastavenia displeja",
+			"gridSize": "Veľkosť mriežky",
+			"darkMode": "Tmavý režim",
+			"brightness": "Jas",
+			"screenLockDuration": "Trvanie uzamknutia obrazovky",
+			"screenSaver": "Šetrič obrazovky",
+			"speakerEnabled": "Reproduktor povolený",
+			"speakerVolume": "Hlasitosť reproduktora",
+			"microphoneEnabled": "Mikrofón povolený",
+			"microphoneVolume": "Hlasitosť mikrofónu"
+		},
+		"peripherals": {
+			"title": "Periférie",
+			"audioOutput": "Zvukový výstup",
+			"audioOutputVolume": "Hlasitosť zvukového výstupu",
+			"audioInput": "Zvukový vstup",
+			"audioInputVolume": "Hlasitosť zvukového vstupu"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Reproduktor (zvukový výstup)"
+			},
+			"microphone": {
+				"title": "Mikrofón (zvukový vstup)"
+			}
+		},
+		"tokens": {
+			"title": "Prístupové tokeny",
+			"subtitle": "Spravovať tokeny",
+			"description": "Spravujte prístupové tokeny pre tento displej. Každý displej by mal mať maximálne jeden aktívny token.",
+			"noTokens": "Žiadne aktívne tokeny",
+			"revokeConfirm": "Naozaj chcete odobrať prístupový token? Displej sa bude musieť znovu zaregistrovať.",
+			"revoked": "Token bol úspešne odobratý"
+		},
+		"spaceContext": {
+			"title": "Kontext priestoru",
+			"role": "Rola displeja",
+			"homeMode": "Režim domovskej stránky",
+			"assignedRoom": "Priradená miestnosť",
+			"notAssigned": "Nepriradená",
+			"initialView": "Počiatočné zobrazenie",
+			"systemViews": "Systémové zobrazenia",
+			"selectedPage": "Vybraná stránka",
+			"hint": "Hlavné zobrazenia tohto displeja sú generované automaticky na základe jeho roly a priradeného priestoru.",
+			"homeModes": {
+				"auto_space": "Automaticky",
+				"explicit": "Explicitne"
+			},
+			"initialViews": {
+				"roomOverview": "Prehľad miestnosti",
+				"houseOverview": "Prehľad domu",
+				"entryOverview": "Prehľad vstupu"
+			},
+			"views": {
+				"overview": "Prehľad",
+				"lights": "Svetlá",
+				"climate": "Klíma"
+			}
+		}
+	},
+	"messages": {
+		"notFound": "Displej nebol nájdený",
+		"loadError": "Nepodarilo sa načítať displeje",
+		"confirmRemove": "Naozaj chcete odstrániť displej \"{name}\"? Túto akciu nie je možné vrátiť.",
+		"confirmBulkRemove": "Naozaj chcete odstrániť {count} displejov? Túto akciu nie je možné vrátiť.",
+		"removed": "Displej bol úspešne odstránený",
+		"bulkRemoved": "{count} displejov bolo odstránených",
+		"bulkRemoveFailed": "Nepodarilo sa odstrániť {count} displejov",
+		"edited": "Displej {display} bol aktualizovaný",
+		"notEdited": "Displej {display} nebol aktualizovaný",
+		"deletedWhileEditing": "Tento displej bol odstránený a už nie je dostupný.",
+		"permitJoinActivated": "Povolenie pripojenia bolo úspešne aktivované",
+		"permitJoinDeactivated": "Povolenie pripojenia bolo úspešne deaktivované",
+		"permitJoinError": "Nepodarilo sa aktivovať povolenie pripojenia",
+		"permitJoinDeactivateError": "Nepodarilo sa deaktivovať povolenie pripojenia",
+		"config": {
+			"edited": "Konfigurácia displejov bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu displejov"
+		}
+	},
+	"actions": {
+		"revokeToken": "Odobrať token",
+		"manageTokens": "Spravovať tokeny"
+	}
+}

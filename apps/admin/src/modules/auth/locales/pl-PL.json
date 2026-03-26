@@ -1,1 +1,135 @@
-{}
+{
+  "meta": {
+    "sign": {
+      "in": {
+        "title": "Logowanie"
+      },
+      "up": {
+        "title": "Rejestracja"
+      }
+    },
+    "lock": {
+      "screen": {
+        "title": "Zablokowany ekran"
+      }
+    },
+    "profile": {
+      "general": {
+        "title": "Ogólne"
+      },
+      "security": {
+        "title": "Bezpieczeństwo"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "homepage": "strona główna",
+    "profile": "profil",
+    "general": "ogólne",
+    "security": "bezpieczeństwo"
+  },
+  "headings": {
+    "signIn": "Logowanie",
+    "signUp": "Rejestracja",
+    "lockScreen": "Ekran zablokowany",
+    "profileGeneral": "Ustawienia ogólne",
+    "profileSecurity": "Ustawienia bezpieczeństwa",
+    "yourProfile": "Twój profil"
+  },
+  "messages": {
+    "requestError": "Coś poszło nie tak, spróbuj ponownie później.",
+    "invalidPassword": "Wprowadzone hasło jest nieprawidłowe.",
+    "profileEdited": "Twój profil został pomyślnie zaktualizowany.",
+    "profileNotEdited": "Nie udało się edytować Twojego profilu.",
+    "passwordEdited": "Twoje hasło zostało pomyślnie zaktualizowane.",
+    "passwordNotEdited": "Nie udało się zmienić Twojego hasła."
+  },
+  "texts": {
+    "processing": "Przetwarzanie żądania..."
+  },
+  "tabs": {
+    "general": "Ogólne",
+    "security": "Bezpieczeństwo"
+  },
+  "fields": {
+    "username": {
+      "title": "Nazwa użytkownika",
+      "validation": {
+        "required": "Proszę podać nazwę użytkownika"
+      }
+    },
+    "password": {
+      "title": "Hasło",
+      "validation": {
+        "required": "Proszę podać hasło"
+      }
+    },
+    "email": {
+      "title": "E-mail",
+      "placeholder": "np. jan{'@'}kowalski.pl",
+      "validation": {
+        "required": "Proszę podać adres e-mail",
+        "email": "Proszę podać prawidłowy adres e-mail"
+      }
+    },
+    "firstName": {
+      "title": "Imię",
+      "placeholder": "np. Jan",
+      "validation": {
+        "required": "Proszę podać imię"
+      }
+    },
+    "lastName": {
+      "title": "Nazwisko",
+      "placeholder": "np. Kowalski",
+      "validation": {
+        "required": "Proszę podać nazwisko"
+      }
+    },
+    "currentPassword": {
+      "title": "Obecne hasło",
+      "help": "Twoje aktualne hasło",
+      "validation": {
+        "required": "Proszę podać obecne hasło"
+      }
+    },
+    "newPassword": {
+      "title": "Nowe hasło",
+      "help": "Twoje nowe hasło",
+      "validation": {
+        "required": "Proszę podać nowe hasło"
+      }
+    },
+    "repeatPassword": {
+      "title": "Powtórz nowe hasło",
+      "help": "Potwierdź nowe hasło",
+      "validation": {
+        "required": "Proszę powtórzyć nowe hasło",
+        "different": "Wprowadzone nowe hasła nie są identyczne"
+      }
+    }
+  },
+  "buttons": {
+    "signIn": {
+      "title": "Zaloguj się"
+    },
+    "signUp": {
+      "title": "Zarejestruj się"
+    },
+    "unlock": {
+      "title": "Odblokuj"
+    },
+    "signOut": {
+      "title": "Wyloguj się"
+    },
+    "backToSignIn": {
+      "title": "Powrót do logowania"
+    },
+    "save": {
+      "title": "Zapisz"
+    },
+    "close": {
+      "title": "Zamknij"
+    }
+  }
+}

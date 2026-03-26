@@ -1,1 +1,12 @@
-{}
+{
+  "fields": {
+    "device": {
+      "title": "Gerät",
+      "placeholder": "Seitengerät",
+      "description": "Über Gerät",
+      "validation": {
+        "required": "Bitte wählen Sie ein Seitengerät"
+      }
+    }
+  }
+}

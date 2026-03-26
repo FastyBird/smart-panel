@@ -1,1 +1,410 @@
-{}
+{
+  "meta": {
+    "pages": {
+      "list": {
+        "title": "Seiten auflisten"
+      },
+      "edit": {
+        "title": "Seite bearbeiten: {page}"
+      },
+      "add": {
+        "title": "Seite hinzufügen"
+      },
+      "detail": {
+        "title": "Seite: {page}"
+      },
+      "editDataSource": {
+        "title": "Seitendatenquelle bearbeiten"
+      },
+      "addDataSource": {
+        "title": "Seitendatenquelle hinzufügen"
+      }
+    },
+    "tiles": {
+      "edit": {
+        "title": "Kachel bearbeiten"
+      },
+      "detail": {
+        "title": "Kacheldetails"
+      },
+      "editDataSource": {
+        "title": "Kacheldatenquelle bearbeiten"
+      },
+      "addDataSource": {
+        "title": "Kacheldatenquelle hinzufügen"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "list": "Seiten",
+      "add": "Seite hinzufügen",
+      "edit": "Seite bearbeiten",
+      "detail": "Seite: {page}",
+      "addDataSource": "Seitendatenquelle hinzufügen",
+      "editDataSource": "Seitendatenquelle bearbeiten"
+    },
+    "tiles": {
+      "edit": "Kachel bearbeiten",
+      "detail": "Kacheldetails",
+      "addDataSource": "Kacheldatenquelle hinzufügen",
+      "editDataSource": "Kacheldatenquelle bearbeiten"
+    }
+  },
+  "headings": {
+    "pages": {
+      "list": "Seiten",
+      "add": "Seite hinzufügen",
+      "edit": "Seite bearbeiten",
+      "detail": "Seite: {page}",
+      "remove": "Seite entfernen?",
+      "bulkRemove": "Seiten entfernen?",
+      "selectPlugin": "Seiten-Plugin erforderlich",
+      "adjustFilters": "Seiten filtern",
+      "addDataSource": "Seitendatenquelle hinzufügen",
+      "editDataSource": "Seitendatenquelle bearbeiten"
+    },
+    "tiles": {
+      "add": "Kachel hinzufügen",
+      "edit": "Kachel bearbeiten",
+      "detail": "Kacheldetails",
+      "remove": "Kachel entfernen?",
+      "selectPlugin": "Kachel-Plugin erforderlich",
+      "adjustFilters": "Kacheln filtern",
+      "addDataSource": "Kacheldatenquelle hinzufügen",
+      "editDataSource": "Kacheldatenquelle bearbeiten"
+    },
+    "dataSources": {
+      "add": "Datenquelle hinzufügen",
+      "edit": "Datenquelle bearbeiten",
+      "remove": "Datenquelle entfernen?",
+      "selectPlugin": "Datenquellen-Plugin erforderlich",
+      "adjustFilters": "Datenquellen filtern"
+    },
+    "misc": {
+      "discard": "Änderungen verwerfen?"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "list": "Smart Panel Seiten verwalten",
+      "add": "Neue Smart Panel Seite hinzufügen",
+      "edit": "Smart Panel Seite bearbeiten",
+      "detail": "Smart Panel Seite verwalten",
+      "adjustFilters": "Anzeigefilter anpassen",
+      "addDataSource": "Neue Smart Panel Seitendatenquelle hinzufügen",
+      "editDataSource": "Smart Panel Seitendatenquelle bearbeiten"
+    },
+    "tiles": {
+      "add": "Neue Smart Panel Kachel hinzufügen",
+      "edit": "Smart Panel Kachel bearbeiten",
+      "detail": "Smart Panel Kachel verwalten",
+      "adjustFilters": "Anzeigefilter anpassen",
+      "addDataSource": "Neue Smart Panel Kacheldatenquelle hinzufügen",
+      "editDataSource": "Smart Panel Kacheldatenquelle bearbeiten"
+    },
+    "dataSources": {
+      "add": "Neue Smart Panel Datenquelle hinzufügen",
+      "edit": "Smart Panel Datenquelle bearbeiten",
+      "detail": "Smart Panel Datenquelle verwalten",
+      "adjustFilters": "Anzeigefilter anpassen"
+    }
+  },
+  "messages": {
+    "pages": {
+      "notFound": "Die gesuchte Seite existiert nicht oder wurde entfernt.",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Seite: {page} entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "created": "Neue Seite erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Die Seite konnte nicht erstellt werden.",
+      "edited": "Änderungen gespeichert! Die Seite: {page} wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Seitenaktualisierung war nicht erfolgreich.",
+      "removed": "Die Seite: {page} wurde erfolgreich entfernt.",
+      "removeCanceled": "Entfernung von Seite: {page} wurde abgebrochen.",
+      "notRemoved": "Etwas ist schiefgelaufen, die Seite: {page} wurde nicht entfernt.",
+      "noDetailAllowed": "Dieser Seitentyp kann nicht geöffnet werden, da er keine Detailansicht hat.",
+      "deletedWhileEditing": "Diese Seite wurde gelöscht und ist nicht mehr verfügbar.",
+      "bulkRemoved": "{count} Seiten wurden erfolgreich entfernt.",
+      "bulkRemoveFailed": "Entfernung von {count} Seiten fehlgeschlagen.",
+      "bulkRemoveCanceled": "Massenentfernung von Seiten wurde abgebrochen."
+    },
+    "tiles": {
+      "notFound": "Die gesuchte Kachel existiert nicht oder wurde entfernt.",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Kachel entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "created": "Neue Kachel erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Die Kachel konnte nicht erstellt werden.",
+      "edited": "Änderungen gespeichert! Die Kachel wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Kachelaktualisierung war nicht erfolgreich.",
+      "removed": "Die Kachel wurde erfolgreich entfernt.",
+      "removeCanceled": "Kachelentfernung wurde abgebrochen.",
+      "notRemoved": "Etwas ist schiefgelaufen, die Kachel wurde nicht entfernt.",
+      "deletedWhileEditing": "Diese Kachel wurde gelöscht und ist nicht mehr verfügbar."
+    },
+    "dataSources": {
+      "notFound": "Die gesuchte Datenquelle existiert nicht oder wurde entfernt.",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Datenquelle entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "created": "Neue Datenquelle erfolgreich hinzugefügt.",
+      "notCreated": "Etwas ist schiefgelaufen. Die Datenquelle konnte nicht erstellt werden.",
+      "edited": "Änderungen gespeichert! Die Datenquelle wurde aktualisiert.",
+      "notEdited": "Etwas ist schiefgelaufen. Die Datenquellenaktualisierung war nicht erfolgreich.",
+      "removed": "Die Datenquelle wurde erfolgreich entfernt.",
+      "removeCanceled": "Datenquellenentfernung wurde abgebrochen.",
+      "notRemoved": "Etwas ist schiefgelaufen, die Datenquelle wurde nicht entfernt.",
+      "deletedWhileEditing": "Diese Datenquelle wurde gelöscht und ist nicht mehr verfügbar."
+    },
+    "misc": {
+      "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut."
+    }
+  },
+  "texts": {
+    "pages": {
+      "noPages": "Sie haben noch keine Seiten konfiguriert",
+      "noFilteredPages": "Keine Seiten gefunden, die den aktiven Filterkriterien entsprechen",
+      "loadingPages": "Seiten werden geladen...",
+      "loadingPage": "Seite wird geladen...",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Seite: {page} entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "confirmBulkRemove": "Sind Sie sicher, dass Sie {count} Seiten entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "selectPlugin": "Um eine neue Seite zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Seitentypen.",
+      "noPlugins": "Es wurden noch keine Seiten-Plugins konfiguriert.",
+      "noDisplays": "Es wurden noch keine Displays gekoppelt."
+    },
+    "tiles": {
+      "noTiles": "Sie haben noch keine Kacheln konfiguriert",
+      "noFilteredTiles": "Keine Kacheln gefunden, die den aktiven Filterkriterien entsprechen",
+      "loadingTiles": "Kacheln werden geladen...",
+      "loadingTile": "Kachel wird geladen...",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Kachel entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "selectPlugin": "Um neue Kacheln zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Kacheltypen.",
+      "noPlugins": "Es wurden noch keine Kachel-Plugins konfiguriert.",
+      "plugin": "Plugin",
+      "dataSources": "Datenquellen",
+      "dataSourcesCount": "Keine Datenquellen konfiguriert | Eine Datenquelle konfiguriert | {count} Datenquellen konfiguriert",
+      "row": "Zeilenposition",
+      "col": "Spaltenposition",
+      "size": "Größe",
+      "visibility": "Sichtbarkeit",
+      "hidden": "Kachel ist verborgen",
+      "visible": "Kachel ist sichtbar"
+    },
+    "dataSources": {
+      "noDataSources": "Sie haben noch keine Datenquellen konfiguriert",
+      "noFilteredDataSources": "Keine Datenquellen gefunden, die den aktiven Filterkriterien entsprechen",
+      "loadingDataSources": "Datenquellen werden geladen...",
+      "loadingDataSource": "Datenquelle wird geladen...",
+      "confirmRemove": "Sind Sie sicher, dass Sie die Datenquelle entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "selectPlugin": "Um eine neue Datenquelle zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Datenquellentypen.",
+      "noPlugins": "Es wurden noch keine Datenquellen-Plugins konfiguriert."
+    },
+    "misc": {
+      "confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+    }
+  },
+  "fields": {
+    "pages": {
+      "search": {
+        "placeholder": "Seiten suchen..."
+      },
+      "plugin": {
+        "title": "Seiten-Plugin",
+        "placeholder": "Seiten-Plugin auswählen"
+      },
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Seiten-ID"
+      },
+      "title": {
+        "title": "Titel",
+        "placeholder": "Seitentitel",
+        "validation": {
+          "required": "Bitte geben Sie den Seitentitel ein"
+        }
+      },
+      "icon": {
+        "title": "Symbol",
+        "placeholder": "Seitensymbol"
+      },
+      "order": {
+        "title": "Reihenfolge",
+        "placeholder": "Seitenposition"
+      },
+      "showTopBar": {
+        "title": "Obere Leiste anzeigen",
+        "placeholder": "Obere Leiste der Seite anzeigen"
+      },
+      "displays": {
+        "title": "Displays",
+        "placeholder": "Displays auswählen (leer lassen für alle Displays)",
+        "description": "Wählen Sie bestimmte Displays für diese Seite. Leer lassen, um sie auf allen Displays sichtbar zu machen."
+      }
+    },
+    "tiles": {
+      "search": {
+        "placeholder": "Kacheln suchen..."
+      },
+      "plugin": {
+        "title": "Kachel-Plugin",
+        "placeholder": "Kachel-Plugin auswählen"
+      },
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Kachel-ID"
+      },
+      "row": {
+        "title": "Zeilenposition",
+        "placeholder": "Zeilennummer 1-n",
+        "validation": {
+          "required": "Bitte geben Sie die Kachelzeile ein"
+        }
+      },
+      "col": {
+        "title": "Spaltenposition",
+        "placeholder": "Spaltennummer 1-n",
+        "validation": {
+          "required": "Bitte geben Sie die Kachelspalte ein"
+        }
+      },
+      "rowSpan": {
+        "title": "Zeilenspanne",
+        "placeholder": "Zeilengröße der Kachel"
+      },
+      "colSpan": {
+        "title": "Spaltenspanne",
+        "placeholder": "Spaltengröße der Kachel"
+      },
+      "hidden": {
+        "title": "Verborgen",
+        "placeholder": "Kachel in der Anzeigeanwendung unsichtbar machen"
+      }
+    },
+    "dataSources": {
+      "search": {
+        "placeholder": "Datenquellen suchen..."
+      },
+      "plugin": {
+        "title": "Datenquellen-Plugin",
+        "placeholder": "Datenquellen-Plugin auswählen"
+      },
+      "id": {
+        "title": "Interner Bezeichner",
+        "placeholder": "Datenquellen-ID"
+      }
+    }
+  },
+  "table": {
+    "pages": {
+      "columns": {
+        "title": {
+          "title": "Titel"
+        },
+        "type": {
+          "title": "Typ"
+        },
+        "display": {
+          "title": "Displays",
+          "all": "Alle Displays"
+        },
+        "order": {
+          "title": "Reihenfolge"
+        },
+        "showTopBar": {
+          "title": "Obere Leiste anzeigen"
+        }
+      }
+    },
+    "tiles": {
+      "columns": {
+        "type": {
+          "title": "Typ"
+        },
+        "row": {
+          "title": "Zeile"
+        },
+        "col": {
+          "title": "Spalte"
+        },
+        "rowSpan": {
+          "title": "Zeilenspanne"
+        },
+        "colSpan": {
+          "title": "Spaltenspanne"
+        },
+        "hidden": {
+          "title": "Verborgen"
+        }
+      }
+    },
+    "dataSources": {
+      "columns": {
+        "type": {
+          "title": "Typ"
+        }
+      }
+    }
+  },
+  "filters": {
+    "pages": {
+      "types": {
+        "title": "Nach Seitentyp filtern"
+      },
+      "displays": {
+        "title": "Nach Seiten-Display filtern"
+      }
+    },
+    "tiles": {
+      "types": {
+        "title": "Nach Kacheltyp filtern"
+      }
+    },
+    "dataSources": {
+      "types": {
+        "title": "Nach Datenquellentyp filtern"
+      }
+    }
+  },
+  "buttons": {
+    "add": {
+      "title": "Hinzufügen"
+    },
+    "edit": {
+      "title": "Bearbeiten"
+    },
+    "detail": {
+      "title": "Details"
+    },
+    "configure": {
+      "title": "Konfigurieren"
+    },
+    "discard": {
+      "title": "Verwerfen"
+    },
+    "cancel": {
+      "title": "Abbrechen"
+    },
+    "close": {
+      "title": "Schließen"
+    },
+    "save": {
+      "title": "Speichern"
+    },
+    "change": {
+      "title": "Ändern"
+    },
+    "remove": {
+      "title": "Entfernen"
+    },
+    "resetFilters": {
+      "title": "Filter zurücksetzen"
+    },
+    "yes": {
+      "title": "Ja"
+    },
+    "no": {
+      "title": "Nein"
+    },
+    "reset": {
+      "title": "Zurücksetzen"
+    },
+    "addDataSource": {
+      "title": "Datenquelle hinzufügen"
+    }
+  }
+}

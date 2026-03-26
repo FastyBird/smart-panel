@@ -1,1 +1,311 @@
-{}
+{
+  "meta": {
+    "config": {
+      "title": "Konfigurace"
+    },
+    "configAudio": {
+      "title": "Konfigurace zvuku"
+    },
+    "configDisplay": {
+      "title": "Konfigurace displeje"
+    },
+    "configLanguage": {
+      "title": "Konfigurace jazyka"
+    },
+    "configWeather": {
+      "title": "Konfigurace počasí"
+    },
+    "configSystem": {
+      "title": "Konfigurace systému"
+    },
+    "configPlugins": {
+      "title": "Konfigurace pluginů"
+    },
+    "configModules": {
+      "title": "Konfigurace modulů"
+    },
+    "configModuleEdit": {
+      "title": "Upravit modul: {module}"
+    },
+    "configPluginEdit": {
+      "title": "Upravit plugin: {plugin}"
+    }
+  },
+  "breadcrumbs": {
+    "config": "konfigurace",
+    "configAudio": "konfigurace zvuku",
+    "configDisplay": "konfigurace displeje",
+    "configLanguage": "konfigurace jazyka",
+    "configWeather": "konfigurace počasí",
+    "configSystem": "konfigurace systému",
+    "configPlugins": "konfigurace pluginů",
+    "configModules": "konfigurace modulů"
+  },
+  "messages": {
+    "loadError": "Nepodařilo se načíst konfiguraci",
+    "configAudio": {
+      "edited": "Změny uloženy! Konfigurace zvuku byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace zvuku nebyla úspěšná."
+    },
+    "configDisplay": {
+      "edited": "Změny uloženy! Konfigurace displeje byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace displeje nebyla úspěšná."
+    },
+    "configLanguage": {
+      "edited": "Změny uloženy! Konfigurace jazyka byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace jazyka nebyla úspěšná."
+    },
+    "configWeather": {
+      "edited": "Změny uloženy! Konfigurace počasí byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace počasí nebyla úspěšná."
+    },
+    "configSystem": {
+      "edited": "Změny uloženy! Konfigurace systému byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace systému nebyla úspěšná."
+    },
+    "configPlugin": {
+      "edited": "Změny uloženy! Konfigurace pluginu byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace pluginu nebyla úspěšná."
+    },
+    "configModule": {
+      "edited": "Změny uloženy! Konfigurace modulu byla aktualizována.",
+      "notEdited": "Něco se pokazilo. Aktualizace konfigurace modulu nebyla úspěšná."
+    },
+    "moduleConfigNotFound": {
+      "title": "Konfigurace modulu nenalezena",
+      "message": "Konfigurace modulu \"{module}\" nemohla být načtena. Zkontrolujte prosím, zda je modul správně nainstalován a nakonfigurován."
+    },
+    "moduleNotFound": {
+      "title": "Modul nenalezen",
+      "message": "Modul \"{module}\" nebyl v systému nalezen. Ověřte prosím, že je modul nainstalován a povolen."
+    },
+    "moduleElementNotFound": {
+      "title": "Prvek modulu není registrován",
+      "message": "Konfigurační prvek modulu \"{module}\" není registrován. Tento modul nemusí podporovat úpravu konfigurace."
+    },
+    "moduleComponentsNotFound": {
+      "message": "Modul \"{module}\" nemá k dispozici žádné konfigurační komponenty."
+    },
+    "moduleFormNotFound": {
+      "title": "Konfigurační formulář není dostupný",
+      "message": "Komponenta konfiguračního formuláře modulu \"{module}\" není dostupná. Tento modul nemusí podporovat úpravu konfigurace prostřednictvím uživatelského rozhraní."
+    },
+    "pluginConfigNotFound": {
+      "title": "Konfigurace pluginu nenalezena",
+      "message": "Konfigurace pluginu \"{plugin}\" nemohla být načtena. Zkontrolujte prosím, zda je plugin správně nainstalován a nakonfigurován."
+    },
+    "pluginNotFound": {
+      "title": "Plugin nenalezen",
+      "message": "Plugin \"{plugin}\" nebyl v systému nalezen. Ověřte prosím, že je plugin nainstalován a povolen."
+    },
+    "pluginElementNotFound": {
+      "title": "Prvek pluginu není registrován",
+      "message": "Konfigurační prvek pluginu \"{plugin}\" není registrován. Tento plugin nemusí podporovat úpravu konfigurace."
+    },
+    "pluginComponentsNotFound": {
+      "message": "Plugin \"{plugin}\" nemá k dispozici žádné konfigurační komponenty."
+    },
+    "pluginFormNotFound": {
+      "title": "Konfigurační formulář není dostupný",
+      "message": "Komponenta konfiguračního formuláře pluginu \"{plugin}\" není dostupná. Tento plugin nemusí podporovat úpravu konfigurace prostřednictvím uživatelského rozhraní."
+    }
+  },
+  "headings": {
+    "config": "Konfigurace",
+    "misc": {
+      "discard": "Zahodit změny"
+    }
+  },
+  "subHeadings": {
+    "config": "Konfigurace Smart panelu",
+    "configModule": "Konfigurace modulu",
+    "configPlugin": "Konfigurace pluginu"
+  },
+  "tabs": {
+    "configAudio": "Konfigurace zvuku",
+    "configDisplay": "Konfigurace displeje",
+    "configLanguage": "Konfigurace jazyka",
+    "configWeather": "Konfigurace počasí",
+    "configSystem": "Konfigurace systému",
+    "configPlugins": "Konfigurace pluginů",
+    "configModules": "Konfigurace modulů"
+  },
+  "texts": {
+    "loadingAudioConfig": "Načítání konfigurace zvuku...",
+    "loadingDisplayConfig": "Načítání konfigurace displeje...",
+    "loadingLanguageConfig": "Načítání konfigurace jazyka...",
+    "loadingWeatherConfig": "Načítání konfigurace počasí...",
+    "loadingSystemConfig": "Načítání konfigurace systému...",
+    "loadingPluginConfig": "Načítání konfigurace pluginu...",
+    "loadingModuleConfig": "Načítání konfigurace modulu...",
+    "misc": {
+      "confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+    }
+  },
+  "fields": {
+    "speaker": {
+      "title": "Reproduktor",
+      "placeholder": "Povolit nebo zakázat reproduktor",
+      "values": {
+        "enabled": "Povoleno",
+        "disabled": "Zakázáno"
+      }
+    },
+    "speakerVolume": {
+      "title": "Hlasitost reproduktoru"
+    },
+    "microphone": {
+      "title": "Mikrofon",
+      "placeholder": "Povolit nebo zakázat mikrofon",
+      "values": {
+        "enabled": "Povoleno",
+        "disabled": "Zakázáno"
+      }
+    },
+    "microphoneVolume": {
+      "title": "Hlasitost mikrofonu"
+    },
+    "darkMode": {
+      "title": "Režim vzhledu",
+      "placeholder": "Zvolte mezi světlým a tmavým režimem",
+      "values": {
+        "dark": "Tmavý",
+        "light": "Světlý"
+      }
+    },
+    "brightness": {
+      "title": "Jas"
+    },
+    "screenLockDuration": {
+      "title": "Zámek obrazovky",
+      "placeholder": "Nastavte prodlevu zámku obrazovky",
+      "values": {
+        "enabled": "Povoleno",
+        "disabled": "Zakázáno"
+      }
+    },
+    "screenSaver": {
+      "title": "Spořič obrazovky",
+      "placeholder": "Povolit nebo zakázat spořič obrazovky",
+      "values": {
+        "enabled": "Povoleno",
+        "disabled": "Zakázáno"
+      }
+    },
+    "language": {
+      "title": "Jazyk",
+      "placeholder": "Vyberte preferovaný jazyk"
+    },
+    "timezone": {
+      "title": "Časové pásmo",
+      "placeholder": "Vyberte své časové pásmo"
+    },
+    "timeFormat": {
+      "title": "Formát času",
+      "placeholder": "Vyberte preferovaný formát času"
+    },
+    "locationType": {
+      "title": "Typ lokace počasí",
+      "placeholder": "Vyberte způsob načítání počasí"
+    },
+    "coordinates": {
+      "title": "Souřadnice lokace"
+    },
+    "latitude": {
+      "title": "Zeměpisná šířka",
+      "placeholder": "Zeměpisná šířka"
+    },
+    "longitude": {
+      "title": "Zeměpisná délka",
+      "placeholder": "Zeměpisná délka"
+    },
+    "cityName": {
+      "title": "Název města",
+      "placeholder": "Zadejte název města, případně stát a kód země"
+    },
+    "cityId": {
+      "title": "ID města",
+      "placeholder": "Vyberte z podporovaných měst OpenWeather"
+    },
+    "zipCode": {
+      "title": "PSČ",
+      "placeholder": "Vyhledávání podle PSČ, případně kód země"
+    },
+    "unit": {
+      "title": "Jednotka teploty",
+      "placeholder": "Vyberte jednotku teploty"
+    },
+    "openWeatherApiKey": {
+      "title": "API klíč Open Weather",
+      "placeholder": "Váš API klíč služby Open Weather pro přístup k údajům o počasí"
+    },
+    "logLevels": {
+      "title": "Úrovně logování",
+      "placeholder": "Vyberte, které úrovně logování mají být sledovány"
+    }
+  },
+  "buttons": {
+    "save": {
+      "title": "Uložit"
+    },
+    "myLocation": {
+      "title": "Moje poloha"
+    },
+    "discard": {
+      "title": "Zahodit"
+    },
+    "close": {
+      "title": "Zavřít"
+    },
+    "retry": {
+      "title": "Opakovat"
+    },
+    "yes": {
+      "title": "Ano"
+    },
+    "no": {
+      "title": "Ne"
+    }
+  },
+  "languages": {
+    "en_US": "English",
+    "cs_CZ": "Česky"
+  },
+  "timeFormats": {
+    "12h": "12hodinový formát",
+    "24h": "24hodinový formát"
+  },
+  "locationTypes": {
+    "lat_lon": "Souřadnice",
+    "city_name": "Název města",
+    "city_id": "ID města OpenWeather",
+    "zip_code": "PSČ"
+  },
+  "weatherUnits": {
+    "celsius": "Celsius",
+    "fahrenheit": "Fahrenheit"
+  },
+  "screenLockDurations": {
+    "15s": "15s",
+    "30s": "30s",
+    "60s": "1min",
+    "120s": "2min",
+    "300s": "5min",
+    "600s": "10min",
+    "1800s": "30min",
+    "0s": "Nikdy"
+  },
+  "logLevels": {
+    "silent": "Tichý",
+    "verbose": "Podrobný",
+    "debug": "Debug",
+    "trace": "Trace",
+    "log": "Log",
+    "info": "Info",
+    "success": "Úspěch",
+    "warn": "Varování",
+    "error": "Chyba",
+    "fail": "Selhání",
+    "fatal": "Fatální"
+  }
+}

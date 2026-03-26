@@ -1,1 +1,135 @@
-{}
+{
+  "meta": {
+    "sign": {
+      "in": {
+        "title": "Iniciar sesión"
+      },
+      "up": {
+        "title": "Registrarse"
+      }
+    },
+    "lock": {
+      "screen": {
+        "title": "Pantalla bloqueada"
+      }
+    },
+    "profile": {
+      "general": {
+        "title": "General"
+      },
+      "security": {
+        "title": "Seguridad"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "homepage": "inicio",
+    "profile": "perfil",
+    "general": "general",
+    "security": "seguridad"
+  },
+  "headings": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "lockScreen": "Pantalla bloqueada",
+    "profileGeneral": "Configuración general",
+    "profileSecurity": "Configuración de seguridad",
+    "yourProfile": "Tu perfil"
+  },
+  "messages": {
+    "requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde.",
+    "invalidPassword": "La contraseña que ingresaste es incorrecta.",
+    "profileEdited": "Tu perfil ha sido actualizado correctamente.",
+    "profileNotEdited": "No se pudo editar tu perfil.",
+    "passwordEdited": "Tu contraseña ha sido actualizada correctamente.",
+    "passwordNotEdited": "No se pudo cambiar tu contraseña."
+  },
+  "texts": {
+    "processing": "Procesando solicitud..."
+  },
+  "tabs": {
+    "general": "General",
+    "security": "Seguridad"
+  },
+  "fields": {
+    "username": {
+      "title": "Nombre de usuario",
+      "validation": {
+        "required": "Por favor ingresa tu nombre de usuario"
+      }
+    },
+    "password": {
+      "title": "Contraseña",
+      "validation": {
+        "required": "Por favor ingresa tu contraseña"
+      }
+    },
+    "email": {
+      "title": "Correo electrónico",
+      "placeholder": "ej. juan{'@'}ejemplo.com",
+      "validation": {
+        "required": "Por favor ingresa tu dirección de correo electrónico",
+        "email": "Por favor proporciona una dirección de correo electrónico válida"
+      }
+    },
+    "firstName": {
+      "title": "Nombre",
+      "placeholder": "ej. Juan",
+      "validation": {
+        "required": "Por favor ingresa el nombre"
+      }
+    },
+    "lastName": {
+      "title": "Apellido",
+      "placeholder": "ej. García",
+      "validation": {
+        "required": "Por favor ingresa el apellido"
+      }
+    },
+    "currentPassword": {
+      "title": "Contraseña actual",
+      "help": "Tu contraseña actual",
+      "validation": {
+        "required": "Por favor ingresa tu contraseña actual"
+      }
+    },
+    "newPassword": {
+      "title": "Nueva contraseña",
+      "help": "Tu nueva contraseña",
+      "validation": {
+        "required": "Por favor ingresa tu nueva contraseña"
+      }
+    },
+    "repeatPassword": {
+      "title": "Repetir nueva contraseña",
+      "help": "Confirma tu nueva contraseña",
+      "validation": {
+        "required": "Por favor repite tu nueva contraseña",
+        "different": "Las nuevas contraseñas ingresadas no coinciden"
+      }
+    }
+  },
+  "buttons": {
+    "signIn": {
+      "title": "Iniciar sesión"
+    },
+    "signUp": {
+      "title": "Registrarse"
+    },
+    "unlock": {
+      "title": "Desbloquear"
+    },
+    "signOut": {
+      "title": "Cerrar sesión"
+    },
+    "backToSignIn": {
+      "title": "Volver a iniciar sesión"
+    },
+    "save": {
+      "title": "Guardar"
+    },
+    "close": {
+      "title": "Cerrar"
+    }
+  }
+}
