@@ -1,1 +1,72 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutPolling": "Odpytywanie czujników"
+	},
+	"texts": {
+		"aboutPluginStatus": "Włącz lub wyłącz wtyczkę reTerminal. Po wyłączeniu żadne peryferia sprzętowe reTerminal nie będą monitorowane ani sterowane.",
+		"aboutPolling": "Skonfiguruj, jak często wtyczka odpytuje czujniki sprzętowe (światło, akcelerometr, temperatura) o zaktualizowane odczyty."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włącz wtyczkę"
+			},
+			"polling": {
+				"interval": {
+					"title": "Interwał odpytywania (ms)",
+					"validation": {
+						"required": "Interwał odpytywania jest wymagany",
+						"number": "Musi być liczbą >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID urządzenia",
+				"placeholder": "ID urządzenia"
+			},
+			"name": {
+				"title": "Nazwa urządzenia",
+				"placeholder": "Wprowadź nazwę urządzenia",
+				"validation": {
+					"required": "Nazwa urządzenia jest wymagana"
+				}
+			},
+			"category": {
+				"title": "Kategoria urządzenia",
+				"placeholder": "Wybierz kategorię",
+				"validation": {
+					"required": "Kategoria urządzenia jest wymagana"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Wprowadź opis urządzenia (opcjonalnie)"
+			},
+			"variant": {
+				"title": "Wariant sprzętowy",
+				"placeholder": "Wybierz wariant sprzętowy",
+				"validation": {
+					"required": "Wariant sprzętowy jest wymagany"
+				}
+			},
+			"enabled": {
+				"title": "Włączone"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja wtyczki reTerminal została zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji wtyczki reTerminal"
+		},
+		"devices": {
+			"created": "Urządzenie reTerminal '{device}' zostało utworzone",
+			"notCreated": "Nie udało się utworzyć urządzenia reTerminal '{device}'",
+			"edited": "Urządzenie reTerminal '{device}' zostało zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować urządzenia reTerminal '{device}'"
+		}
+	}
+}

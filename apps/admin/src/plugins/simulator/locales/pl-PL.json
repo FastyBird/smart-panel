@@ -1,1 +1,97 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutSimulation": "Zachowanie symulacji",
+		"aboutEnvironment": "Ustawienia środowiska"
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID urządzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urządzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urządzenia",
+				"validation": {
+					"required": "Wybierz kategorię urządzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urządzenia",
+				"validation": {
+					"required": "Wprowadź nazwę urządzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urządzenia"
+			},
+			"enabled": {
+				"title": "Włączone"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"updateOnStart": {
+				"title": "Symuluj przy starcie usługi"
+			},
+			"simulationInterval": {
+				"title": "Interwał automatycznej symulacji (ms)",
+				"placeholder": "Ustaw 0, aby wyłączyć automatyczne aktualizacje",
+				"validation": {
+					"required": "Ustaw interwał symulacji",
+					"number": "Interwał symulacji musi być między 0 a 3 600 000"
+				}
+			},
+			"latitude": {
+				"title": "Szerokość geograficzna",
+				"placeholder": "Szerokość geograficzna używana do symulacji opartych na środowisku",
+				"validation": {
+					"required": "Ustaw szerokość geograficzną",
+					"number": "Szerokość geograficzna musi być między -90 a 90"
+				}
+			},
+			"smoothTransitions": {
+				"title": "Płynne przejścia wartości"
+			},
+			"connectionStateOnStart": {
+				"title": "Początkowy stan połączenia",
+				"placeholder": "Wybierz stan połączenia ustawiany przy starcie",
+				"validation": {
+					"required": "Wybierz początkowy stan połączenia"
+				},
+				"options": {
+					"connected": "Połączony",
+					"disconnected": "Rozłączony",
+					"init": "Inicjalizacja",
+					"ready": "Gotowy",
+					"running": "Uruchomiony",
+					"sleeping": "Uśpiony",
+					"stopped": "Zatrzymany",
+					"lost": "Utracony",
+					"alert": "Alert",
+					"unknown": "Nieznany"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmiany zapisane! Konfiguracja symulatora urządzeń została zaktualizowana.",
+			"notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji symulatora urządzeń nie powiodła się."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Włącz lub wyłącz integrację symulatora urządzeń, aby symulowane urządzenia były dostępne w Smart Panel.",
+		"aboutSimulation": "Skonfiguruj sposób automatycznej aktualizacji wartości przez symulator. Możesz uruchomić jednorazowy przebieg przy starcie usługi lub uruchomić cykliczną pętlę aktualizacji.",
+		"aboutEnvironment": "Ustaw parametry środowiskowe używane przez symulator do generowania realistycznych wartości. W obliczeniach używana jest tylko szerokość geograficzna; długość geograficzna jest ignorowana."
+	}
+}

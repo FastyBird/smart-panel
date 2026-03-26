@@ -1,1 +1,250 @@
-{}
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID urządzenia"
+			},
+			"identifier": {
+				"title": "Identyfikator systemowy",
+				"placeholder": "Identyfikator systemowy urządzenia"
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urządzenia",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Wybierz kategorię urządzenia"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urządzenia",
+				"validation": {
+					"required": "Wprowadź nazwę urządzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urządzenia"
+			},
+			"enabled": {
+				"title": "Włączone",
+				"placeholder": "Włącz lub wyłącz urządzenie"
+			},
+			"haDeviceId": {
+				"title": "Urządzenie Home Assistant",
+				"placeholder": "Wybierz urządzenie z instancji Home Assistant",
+				"validation": {
+					"required": "Wybierz urządzenie Home Assistant"
+				}
+			},
+			"manufacturer": {
+				"title": "Producent"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"entities": {
+				"title": "Encje"
+			},
+			"domain": {
+				"title": "Domena"
+			},
+			"type": {
+				"title": "Typ"
+			}
+		},
+		"channelsProperties": {
+			"id": {
+				"title": "Identyfikator wewnętrzny",
+				"placeholder": "ID właściwości kanału"
+			},
+			"channel": {
+				"title": "Kanał",
+				"placeholder": "Wybierz kanał",
+				"validation": {
+					"required": "Wybierz kanał właściwości kanału"
+				}
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria właściwości kanału",
+				"validation": {
+					"required": "Wybierz kategorię właściwości kanału"
+				}
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa właściwości kanału"
+			},
+			"dataType": {
+				"validation": {
+					"required": "Wybierz typ danych"
+				}
+			},
+			"permissions": {
+				"validation": {
+					"required": "Wybierz uprawnienia"
+				}
+			},
+			"haEntityId": {
+				"title": "Encja urządzenia Home Assistant",
+				"placeholder": "Wybierz encję urządzenia Home Assistant",
+				"validation": {
+					"required": "Wybierz encję urządzenia Home Assistant"
+				}
+			},
+			"haAttribute": {
+				"title": "Atrybut encji Home Assistant",
+				"placeholder": "Wybierz atrybut encji Home Assistant",
+				"validation": {
+					"required": "Wybierz atrybut encji Home Assistant"
+				}
+			}
+		},
+		"mapping": {
+			"totalEntities": "Łączna liczba encji",
+			"mapped": "Zmapowane",
+			"partial": "Częściowe",
+			"unmapped": "Niezmapowane",
+			"skipped": "Pominięte",
+			"incompatible": "Niekompatybilne",
+			"excluded": "Wykluczone",
+			"suggestedCategory": "Sugerowana kategoria",
+			"suggestedChannel": {
+				"title": "Sugerowany kanał",
+				"validation": {
+					"required": "Wybierz kategorię kanału dla tej encji"
+				}
+			},
+			"properties": "Właściwości",
+			"unmappedAttributes": "Niezmapowane atrybuty",
+			"missingRequiredProperties": "Brakujące wymagane właściwości",
+			"incompatibleChannel": "Kanał nie jest obsługiwany dla tej kategorii urządzenia",
+			"virtualTypes": {
+				"static": "Statyczny",
+				"derived": "Auto",
+				"command": "Polecenie",
+				"virtual": "Wirtualny"
+			},
+			"validation": {
+				"valid": "Konfiguracja urządzenia jest prawidłowa",
+				"invalid": "Konfiguracja urządzenia ma problemy",
+				"missingChannels": "Brakujące wymagane kanały",
+				"missingProperties": "Brakujące wymagane właściwości",
+				"autoFilled": "Automatycznie uzupełnione wirtualnymi właściwościami",
+				"unknownChannels": "Kanały niedozwolone dla tego typu urządzenia",
+				"duplicateChannels": "Zduplikowane kanały (powinny być unikalne)",
+				"constraintViolations": "Naruszenia ograniczeń konfiguracji"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"apiKey": {
+				"title": "Klucz API",
+				"placeholder": "Wprowadź swój długotrwały token dostępu Home Assistant",
+				"validation": {
+					"required": "Wprowadź klucz API"
+				}
+			},
+			"hostname": {
+				"title": "Nazwa hosta",
+				"placeholder": "Wprowadź nazwę hosta Home Assistant (np. homeassistant.local:8123)",
+				"validation": {
+					"required": "Wprowadź nazwę hosta"
+				}
+			}
+		}
+	},
+	"headings": {
+		"aboutConnectionSettings": "Połączenie Home Assistant",
+		"device": {
+			"deviceSelection": "Wybierz urządzenie",
+			"deviceInformation": "Informacje o urządzeniu",
+			"categorySelection": "Kategoria urządzenia",
+			"mappingPreview": "Podgląd mapowania",
+			"mappingCustomization": "Dostosowanie mapowania",
+			"deviceConfiguration": "Konfiguracja urządzenia"
+		},
+		"mapping": {
+			"entityMappings": "Mapowania encji",
+			"warnings": "Ostrzeżenia mapowania ({count})",
+			"errors": "Błędy",
+			"summary": "Podsumowanie mapowania",
+			"debugData": "Dane debugowania"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Home Assistant została zaktualizowana.",
+			"notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wtyczki Home Assistant nie powiodła się."
+		},
+		"devices": {
+			"created": "Nowe urządzenie Home Assistant zostało dodane pomyślnie.",
+			"notCreated": "Coś poszło nie tak. Nie udało się utworzyć urządzenia Home Assistant.",
+			"exists": "Urządzenie jest już adoptowane w systemie.",
+			"alreadyAdopted": "To urządzenie jest już adoptowane",
+			"alreadyAdoptedDescription": "Kontynuowanie spowoduje ponowne adoptowanie urządzenia z nową konfiguracją. Istniejące urządzenie zostanie zaktualizowane.",
+			"noDiscoveredDevices": "Brak dostępnych urządzeń Home Assistant. Upewnij się, że Twoja instancja Home Assistant jest połączona i urządzenia są wykryte."
+		},
+		"mapping": {
+			"previewLoading": "Ładowanie podglądu mapowania...",
+			"previewError": "Nie udało się załadować podglądu mapowania",
+			"adoptionSuccess": "Urządzenie {device} zostało pomyślnie adoptowane",
+			"adoptionError": "Nie udało się adoptować urządzenia",
+			"readyToAdopt": "Urządzenie jest gotowe do adoptowania",
+			"notReadyToAdopt": "Urządzenie ma brakujące wymagane mapowania",
+			"noPreview": "Brak dostępnego podglądu mapowania",
+			"selectDeviceFirst": "Wybierz urządzenie w kroku 1, aby wygenerować podgląd mapowania",
+			"invalidSuggestedCategory": "Sugerowana kategoria nie jest obsługiwana. Wybierz prawidłową kategorię.",
+			"missingChannelCategory": "Następujące encje są włączone, ale brakuje im kategorii kanału: {entities}. Wybierz kategorię kanału dla każdej włączonej encji przed kontynuowaniem.",
+			"debugDescription": "Skopiuj te dane i udostępnij deweloperom, aby pomóc w diagnozowaniu problemów z mapowaniem lub żądaniu niestandardowych mapowań.",
+			"debugCopied": "Dane debugowania skopiowane do schowka",
+			"debugCopyFailed": "Nie udało się skopiować danych debugowania do schowka"
+		},
+		"categorySelection": {
+			"description": "Na podstawie encji urządzenia zasugerowano kategorię. Sprawdź i wybierz prawidłową kategorię dla tego urządzenia. Podgląd mapowania zostanie zaktualizowany na podstawie Twojego wyboru."
+		},
+		"discovery": {
+			"fetchFailed": "Nie udało się pobrać wykrytych instancji",
+			"refreshFailed": "Nie udało się odświeżyć wykrytych instancji"
+		}
+	},
+	"buttons": {
+		"loadPreview": "Załaduj podgląd",
+		"updatePreview": "Zaktualizuj podgląd",
+		"adoptDevice": "Adoptuj urządzenie",
+		"next": "Dalej",
+		"previous": "Wstecz",
+		"skip": "Pomiń",
+		"use": "Użyj",
+		"applyChanges": "Zastosuj zmiany",
+		"refreshDiscovery": "Odśwież wykrywanie",
+		"debug": "Debug",
+		"copyToClipboard": "Kopiuj do schowka",
+		"close": "Zamknij"
+	},
+	"labels": {
+		"suggested": "Sugerowane"
+	},
+	"misc": {
+		"options": {
+			"entities": {
+				"noEntity": "Niepodłączona do encji urządzenia"
+			},
+			"attributes": {
+				"noAttribute": "Niepodłączony do atrybutu encji",
+				"mainState": "Główny atrybut stanu encji"
+			}
+		}
+	},
+	"texts": {
+		"aboutConnectionSettings": "Skonfiguruj połączenie z instancją Home Assistant. Po włączeniu urządzenia z Home Assistant będą dostępne w Smart Panel. Będziesz potrzebować długotrwałego tokenu dostępu z Home Assistant oraz nazwy hosta lub adresu IP Twojej instancji.",
+		"mapping": {
+			"customizationDescription": "Możesz dostosować mapowanie, zmieniając kategorie kanałów dla encji lub włączając/wyłączając encje. Domyślnie wszystkie encje z sugerowaną kategorią kanału są włączone. Kliknij 'Dalej', aby kontynuować z wybraną konfiguracją."
+		}
+	}
+}

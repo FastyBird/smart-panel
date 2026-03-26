@@ -34,7 +34,7 @@ import {
 import { provideLogger } from './common';
 import CommonModule from './common/common.module';
 import i18n from './locales';
-import { detectBrowserLocale, getStoredLocale } from './common/composables/useLanguage';
+import { applyLocale, detectBrowserLocale, getStoredLocale } from './common/composables/useLanguage';
 import { AuthModule } from './modules/auth';
 import { BuddyModule } from './modules/buddy';
 import { ConfigModule } from './modules/config';
@@ -100,7 +100,7 @@ app.use(i18n);
 const storedLocale = getStoredLocale();
 const initialLocale = storedLocale ?? detectBrowserLocale();
 (i18n.global.locale as unknown as { value: string }).value = initialLocale;
-document.documentElement.setAttribute('lang', initialLocale.split('-')[0]);
+applyLocale(initialLocale);
 
 app.use(createMetaManager());
 app.use(metaPlugin);

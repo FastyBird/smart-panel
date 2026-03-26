@@ -1,1 +1,163 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Edytuj kartę"
+			},
+			"addCard": {
+				"title": "Dodaj kartę"
+			},
+			"editTile": {
+				"title": "Edytuj kafelek karty"
+			},
+			"addTile": {
+				"title": "Dodaj kafelek karty"
+			},
+			"editDataSource": {
+				"title": "Edytuj źródło danych strony"
+			},
+			"addDataSource": {
+				"title": "Dodaj źródło danych strony"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "strona: {page}",
+			"addCard": "dodaj kartę",
+			"editCard": "edytuj kartę",
+			"addTile": "dodaj kafelek karty",
+			"editTile": "edytuj kafelek karty",
+			"addDataSource": "dodaj źródło danych strony",
+			"editDataSource": "edytuj źródło danych strony"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Dodaj kartę",
+			"editCard": "Edytuj kartę",
+			"addTile": "Dodaj kafelek karty",
+			"editTile": "Edytuj kafelek karty",
+			"addDataSource": "Dodaj źródło danych strony",
+			"editDataSource": "Edytuj źródło danych strony"
+		},
+		"cards": {
+			"remove": "Usuń kartę"
+		},
+		"configure": {
+			"display": "Wyświetlanie",
+			"cards": "Karty"
+		},
+		"misc": {
+			"discard": "Odrzucić zmiany?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Dodaj nową kartę do tej strony",
+			"editCard": "Edytuj właściwości karty",
+			"addTile": "Dodaj nowy kafelek do tej karty",
+			"editTile": "Edytuj kafelek karty",
+			"addDataSource": "Dodaj nowe źródło danych strony",
+			"editDataSource": "Edytuj źródło danych strony"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Karta {card} została pomyślnie usunięta.",
+			"notFound": "Karta {card} nie została znaleziona.",
+			"notRemoved": "Nie udało się usunąć karty {card}.",
+			"removeCanceled": "Usuwanie karty {card} zostało anulowane.",
+			"deletedWhileEditing": "Ta karta została usunięta i nie jest już dostępna."
+		},
+		"tiles": {
+			"deletedWhileEditing": "Ten kafelek został usunięty i nie jest już dostępny."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "To źródło danych zostało usunięte i nie jest już dostępne."
+		},
+		"misc": {
+			"requestError": "Coś poszło nie tak, spróbuj ponownie później."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Czy na pewno chcesz usunąć kartę {card}?",
+			"noCards": "Do tej strony nie dodano jeszcze żadnych kart.",
+			"noTiles": "Brak kafelków w tej karcie. Kliknij +, aby dodać jeden.",
+			"tilesCount": "kafelki",
+			"loadingCard": "Ładowanie karty..."
+		},
+		"tiles": {
+			"loadingTile": "Ładowanie kafelka..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Ładowanie źródła danych..."
+		},
+		"misc": {
+			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Odrzuć"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"add": {
+			"title": "Dodaj"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"update": {
+			"title": "Zaktualizuj"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"manageElements": {
+			"title": "Zarządzaj elementami"
+		},
+		"addCard": {
+			"title": "Dodaj kartę"
+		},
+		"addPageDataSource": {
+			"title": "Dodaj źródło danych strony"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Identyfikator"
+			},
+			"title": {
+				"title": "Tytuł",
+				"placeholder": "Wprowadź tytuł karty",
+				"validation": {
+					"required": "Wprowadź tytuł karty"
+				}
+			},
+			"icon": {
+				"title": "Ikona",
+				"placeholder": "Wybierz ikonę"
+			},
+			"order": {
+				"title": "Kolejność",
+				"placeholder": "Kolejność wyświetlania"
+			},
+			"rows": {
+				"title": "Wiersze",
+				"placeholder": "Liczba wierszy"
+			},
+			"cols": {
+				"title": "Kolumny",
+				"placeholder": "Liczba kolumn"
+			}
+		}
+	}
+}

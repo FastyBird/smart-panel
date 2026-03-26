@@ -4,8 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { type AppLocale, LOCALE_LANGUAGE_MAP, SUPPORTED_LOCALES } from '../../locales';
 
 import type { IUseLanguage } from './types';
+import { injectEventBus } from '../services/event-bus';
 
 const LANGUAGE_STORAGE_KEY = 'fb-language';
+
+export const LANGUAGE_CHANGED_EVENT = 'languageChanged';
 
 export const detectBrowserLocale = (): AppLocale => {
 	const browserLanguages = navigator.languages ?? [navigator.language];
@@ -35,8 +38,21 @@ export const storeLocale = (locale: AppLocale): void => {
 	localStorage.setItem(LANGUAGE_STORAGE_KEY, locale);
 };
 
+export const applyLocale = (locale: AppLocale): void => {
+	storeLocale(locale);
+	document.documentElement.setAttribute('lang', locale.split('-')[0]);
+};
+
 export const useLanguage = (): IUseLanguage => {
 	const { locale } = useI18n();
+
+	let eventBus: ReturnType<typeof injectEventBus> | null = null;
+
+	try {
+		eventBus = injectEventBus();
+	} catch {
+		// Event bus may not be available in tests
+	}
 
 	const currentLocale: WritableComputedRef<AppLocale> = computed<AppLocale>({
 		get: (): AppLocale => {
@@ -44,8 +60,8 @@ export const useLanguage = (): IUseLanguage => {
 		},
 		set: (value: AppLocale): void => {
 			locale.value = value;
-			storeLocale(value);
-			document.documentElement.setAttribute('lang', value.split('-')[0]);
+			applyLocale(value);
+			eventBus?.emit(LANGUAGE_CHANGED_EVENT, value);
 		},
 	});
 

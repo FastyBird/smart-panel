@@ -49,14 +49,6 @@ vi.mock('../services/account-manager', () => ({
 	}),
 }));
 
-vi.mock('../services/store', () => ({
-	injectStoresManager: vi.fn().mockReturnValue({
-		getStore: vi.fn().mockReturnValue({
-			edit: vi.fn(),
-		}),
-	}),
-}));
-
 describe('AppTopBar.vue', () => {
 	let wrapper: ReturnType<typeof mount>;
 

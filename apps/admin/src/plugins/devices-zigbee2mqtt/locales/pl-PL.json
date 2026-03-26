@@ -1,1 +1,253 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Status wtyczki",
+		"aboutMqtt": "Połączenie MQTT",
+		"advancedMqttSettings": "Zaawansowane ustawienia MQTT",
+		"aboutTls": "Konfiguracja TLS/SSL",
+		"aboutDiscovery": "Wykrywanie urządzeń",
+		"steps": {
+			"selectDevice": "Wybierz urządzenie",
+			"selectCategory": "Kategoria urządzenia",
+			"mappingPreview": "Podgląd mapowania",
+			"customizeMapping": "Dostosuj mapowanie",
+			"deviceConfiguration": "Konfiguracja urządzenia"
+		},
+		"mapping": {
+			"summary": "Podsumowanie mapowania",
+			"warnings": "Ostrzeżenia mapowania ({count})",
+			"exposeMappings": "Mapowania expose",
+			"customization": "Dostosowanie mapowania"
+		},
+		"device": {
+			"deviceSelection": "Wybierz urządzenie",
+			"categorySelection": "Kategoria urządzenia",
+			"mappingPreview": "Podgląd mapowania",
+			"mappingCustomization": "Dostosuj mapowanie",
+			"deviceConfiguration": "Konfiguracja urządzenia",
+			"deviceInfo": "Informacje o urządzeniu"
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Włącz lub wyłącz wtyczkę Zigbee2MQTT. Po wyłączeniu żadne urządzenia Zigbee nie będą monitorowane ani sterowane.",
+		"aboutMqtt": "Skonfiguruj połączenie z brokerem MQTT, na którym Zigbee2MQTT publikuje dane urządzeń.",
+		"aboutTls": "Skonfiguruj ustawienia TLS/SSL dla bezpiecznych połączeń MQTT. Włącz TLS, jeśli Twój broker wymaga szyfrowanych połączeń.",
+		"aboutDiscovery": "Skonfiguruj sposób wykrywania i dodawania urządzeń z mostu Zigbee2MQTT.",
+		"steps": {
+			"selectDevice": "Wybierz urządzenie Zigbee do adoptowania z listy wykrytych urządzeń.",
+			"selectCategory": "Wybierz kategorię urządzenia. Sugerowana kategoria jest oparta na expose urządzenia.",
+			"mappingPreview": "Sprawdź, jak expose urządzenia zostaną mapowane na kanały i właściwości Smart Panel.",
+			"customizeMapping": "Dostosuj, które expose uwzględnić i dostosuj kategorie kanałów w razie potrzeby.",
+			"deviceConfiguration": "Skonfiguruj nazwę urządzenia, opis i inne ustawienia."
+		},
+		"noDiscoveredDevices": "Brak dostępnych wykrytych urządzeń. Upewnij się, że Zigbee2MQTT jest uruchomiony i urządzenia są sparowane.",
+		"loadingDevices": "Ładowanie wykrytych urządzeń...",
+		"loadingPreview": "Ładowanie podglądu mapowania...",
+		"mapping": {
+			"customizationDescription": "Przełączaj, które expose uwzględnić i dostosuj kategorie kanałów. Wyłączone expose nie zostaną utworzone."
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"mqtt": {
+				"host": {
+					"title": "Host brokera MQTT",
+					"placeholder": "np. localhost lub 192.168.1.100",
+					"validation": {
+						"required": "Host brokera MQTT jest wymagany"
+					}
+				},
+				"port": {
+					"title": "Port",
+					"validation": {
+						"required": "Port jest wymagany",
+						"range": "Port musi być między 1 a 65535"
+					}
+				},
+				"username": {
+					"title": "Nazwa użytkownika",
+					"placeholder": "Nazwa użytkownika MQTT (opcjonalnie)"
+				},
+				"password": {
+					"title": "Hasło",
+					"placeholder": "Hasło MQTT (opcjonalnie)"
+				},
+				"baseTopic": {
+					"title": "Bazowy temat",
+					"placeholder": "np. zigbee2mqtt",
+					"validation": {
+						"required": "Bazowy temat jest wymagany"
+					}
+				},
+				"clientId": {
+					"title": "Client ID",
+					"placeholder": "Generowany automatycznie, jeśli puste"
+				},
+				"cleanSession": {
+					"title": "Czysta sesja"
+				},
+				"keepalive": {
+					"title": "Keepalive (s)",
+					"validation": {
+						"number": "Musi być liczbą >= 10"
+					}
+				},
+				"connectTimeout": {
+					"title": "Limit czasu (ms)",
+					"validation": {
+						"number": "Musi być liczbą >= 1000"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Ponowne połączenie (ms)",
+					"validation": {
+						"number": "Musi być liczbą >= 1000"
+					}
+				}
+			},
+			"tls": {
+				"enabled": {
+					"title": "Włącz TLS"
+				},
+				"rejectUnauthorized": {
+					"title": "Odrzucaj nieautoryzowane certyfikaty"
+				},
+				"ca": {
+					"title": "Certyfikat CA",
+					"placeholder": "Wklej zawartość certyfikatu CA lub ścieżkę"
+				},
+				"cert": {
+					"title": "Certyfikat klienta",
+					"placeholder": "Wklej zawartość certyfikatu klienta lub ścieżkę"
+				},
+				"key": {
+					"title": "Klucz prywatny klienta",
+					"placeholder": "Wklej zawartość klucza prywatnego klienta lub ścieżkę"
+				}
+			},
+			"discovery": {
+				"autoAdd": {
+					"title": "Automatyczne dodawanie wykrytych urządzeń"
+				},
+				"syncOnStartup": {
+					"title": "Synchronizuj urządzenia przy starcie"
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID urządzenia",
+				"placeholder": "ID urządzenia"
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Nazwa urządzenia",
+				"validation": {
+					"required": "Wprowadź nazwę urządzenia"
+				}
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Kategoria urządzenia",
+				"validation": {
+					"required": "Wybierz kategorię urządzenia"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opis urządzenia"
+			},
+			"enabled": {
+				"title": "Włączone"
+			},
+			"ieeeAddress": {
+				"title": "Adres IEEE",
+				"placeholder": "Wybierz urządzenie",
+				"validation": {
+					"required": "Wybierz urządzenie"
+				}
+			},
+			"friendlyName": {
+				"title": "Przyjazna nazwa"
+			},
+			"manufacturer": {
+				"title": "Producent"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"zigbee2mqttDeviceId": {
+				"title": "Podłączone urządzenie Zigbee2MQTT",
+				"placeholder": "Wybierz podłączone urządzenie"
+			}
+		},
+		"mapping": {
+			"mapped": "Zmapowane",
+			"partial": "Częściowe",
+			"unmapped": "Niezmapowane",
+			"skipped": "Pominięte",
+			"excluded": "Wykluczone",
+			"totalExposes": "Łączna liczba expose",
+			"deviceName": "Nazwa urządzenia",
+			"suggestedCategory": "Sugerowana kategoria",
+			"suggestedChannel": {
+				"title": "Sugerowany kanał",
+				"validation": {
+					"required": "Wybierz kategorię kanału"
+				}
+			},
+			"properties": "Właściwości",
+			"missingRequiredProperties": "Brakujące wymagane właściwości",
+			"exposeEnabled": "Włączone",
+			"channelCategory": "Kategoria kanału",
+			"noChannelSuggested": "Brak sugerowanego kanału"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfiguracja wtyczki Zigbee2MQTT została zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji wtyczki Zigbee2MQTT"
+		},
+		"devices": {
+			"created": "Urządzenie Zigbee2MQTT '{device}' zostało utworzone",
+			"notCreated": "Nie udało się utworzyć urządzenia Zigbee2MQTT '{device}'",
+			"edited": "Urządzenie Zigbee2MQTT '{device}' zostało zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować urządzenia Zigbee2MQTT '{device}'",
+			"adopted": "Urządzenie '{device}' zostało pomyślnie adoptowane",
+			"notAdopted": "Nie udało się adoptować urządzenia '{device}'",
+			"noDiscoveredDevices": "Brak dostępnych wykrytych urządzeń. Upewnij się, że Zigbee2MQTT jest uruchomiony i urządzenia są sparowane.",
+			"deviceOffline": "To urządzenie jest obecnie offline",
+			"alreadyAdopted": "To urządzenie jest już adoptowane",
+			"alreadyAdoptedDescription": "Kontynuowanie spowoduje ponowne adoptowanie urządzenia z nową konfiguracją. Istniejące urządzenie zostanie zaktualizowane."
+		},
+		"discoveredDevices": {
+			"loadFailed": "Nie udało się załadować wykrytych urządzeń",
+			"mappingPreviewFailed": "Nie udało się załadować podglądu mapowania"
+		},
+		"mapping": {
+			"previewError": "Nie udało się załadować podglądu mapowania",
+			"previewLoading": "Ładowanie podglądu mapowania...",
+			"missingChannelCategory": "Wybierz kategorię kanału dla: {exposes}",
+			"notReadyToAdopt": "Urządzenie nie jest gotowe do adoptowania. Sprawdź i napraw ewentualne ostrzeżenia.",
+			"readyToAdopt": "Urządzenie jest gotowe do adoptowania",
+			"noPreview": "Brak dostępnego podglądu mapowania",
+			"selectDeviceFirst": "Najpierw wybierz urządzenie, aby zobaczyć podgląd mapowania",
+			"adoptionSuccess": "Urządzenie '{device}' zostało pomyślnie adoptowane"
+		},
+		"categorySelection": {
+			"description": "Wybierz kategorię urządzenia. Sugerowana kategoria jest oparta na możliwościach urządzenia."
+		}
+	},
+	"labels": {
+		"suggested": "Sugerowane"
+	},
+	"buttons": {
+		"next": "Dalej",
+		"previous": "Wstecz",
+		"adoptDevice": "Adoptuj urządzenie",
+		"refresh": "Odśwież",
+		"use": "Użyj"
+	}
+}

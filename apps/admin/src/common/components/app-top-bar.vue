@@ -21,7 +21,7 @@
 		<div class="flex flex-row items-center gap-5">
 			<update-notification-badge />
 
-			<language-switcher @change="onLanguageChange" />
+			<language-switcher />
 
 			<div @click.stop="onSwitchTheme">
 				<el-switch
@@ -105,12 +105,9 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import type { AppLocale } from '../../locales';
-import { sessionStoreKey } from '../../modules/auth/store/keys';
 import { UpdateNotificationBadge } from '../../modules/system/components/components';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
-import { injectStoresManager } from '../services/store';
 
 import LanguageSwitcher from './language-switcher.vue';
 
@@ -136,7 +133,6 @@ const ns = useNamespace('app-top-bar');
 const { isDark, toggleDark } = useDarkMode();
 
 const accountManager = injectAccountManager();
-const storesManager = injectStoresManager();
 
 const darkMode = ref<boolean>(isDark.value);
 
@@ -183,29 +179,6 @@ const onSwitchTheme = (event: MouseEvent): void => {
 			}
 		);
 	});
-};
-
-const onLanguageChange = (locale: AppLocale): void => {
-	const profile = accountManager?.details.value;
-
-	if (profile) {
-		try {
-			const sessionStore = storesManager.getStore(sessionStoreKey);
-
-			sessionStore
-				.edit({
-					id: profile.id,
-					data: {
-						language: locale.split('-')[0],
-					},
-				})
-				.catch(() => {
-					// Silently fail - the locale is already applied locally
-				});
-		} catch {
-			// getStore may throw if stores manager is not ready
-		}
-	}
 };
 
 const onToggleMenu = (): void => {

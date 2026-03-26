@@ -9,6 +9,7 @@ import {
 	type IModule,
 	type ModuleInjectionKey,
 	injectBackendClient,
+	injectEventBus,
 	injectLogger,
 	injectModulesManager,
 	injectRouterGuard,
@@ -18,8 +19,9 @@ import {
 } from '../../common';
 import type { IUser } from '../users';
 
+import type { AppLocale } from '../../locales';
 import { LOCALE_LANGUAGE_MAP } from '../../locales';
-import { storeLocale } from '../../common/composables/useLanguage';
+import { applyLocale, LANGUAGE_CHANGED_EVENT } from '../../common/composables/useLanguage';
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
 import { locales } from './locales';
 import {
@@ -263,13 +265,32 @@ export default {
 
 					if (locale) {
 						(options.i18n.global.locale as unknown as { value: string }).value = locale;
-						storeLocale(locale);
-						document.documentElement.setAttribute('lang', profile.language);
+						applyLocale(locale);
 					}
 				}
 			},
 			{ immediate: true },
 		);
+
+		// Persist language preference to backend when user changes it via the UI
+		const eventBus = injectEventBus(app);
+
+		eventBus.on(LANGUAGE_CHANGED_EVENT, (locale: unknown) => {
+			const profile = sessionStore.profile;
+
+			if (profile && typeof locale === 'string') {
+				sessionStore
+					.edit({
+						id: profile.id,
+						data: {
+							language: (locale as AppLocale).split('-')[0],
+						},
+					})
+					.catch(() => {
+						// Silently fail - the locale is already applied locally
+					});
+			}
+		});
 
 		routerGuard.register((_appUser: IAppUser | undefined, route: RouteRecordRaw) => {
 			return lockedGuard(accountManager, route);

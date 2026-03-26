@@ -1,1 +1,121 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editTile": {
+				"title": "Edytuj kafelek strony"
+			},
+			"addTile": {
+				"title": "Dodaj kafelek strony"
+			},
+			"editDataSource": {
+				"title": "Edytuj źródło danych strony"
+			},
+			"addDataSource": {
+				"title": "Dodaj źródło danych strony"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "strona: {page}",
+			"addTile": "dodaj kafelek strony",
+			"editTile": "edytuj kafelek strony",
+			"addDataSource": "dodaj źródło danych strony",
+			"editDataSource": "edytuj źródło danych strony"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addTile": "Dodaj kafelek strony",
+			"editTile": "Edytuj kafelek strony",
+			"addDataSource": "Dodaj źródło danych strony",
+			"editDataSource": "Edytuj źródło danych strony"
+		},
+		"configure": {
+			"draft": "Wersja robocza",
+			"display": "Wyświetlanie",
+			"quickAddTile": "Szybkie dodawanie kafelka"
+		},
+		"misc": {
+			"discard": "Odrzucić zmiany?",
+			"tip": "Wskazówka"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addTile": "Dodaj nowy kafelek strony Smart Panel",
+			"editTile": "Edytuj kafelek strony Smart Panel",
+			"addDataSource": "Dodaj nowe źródło danych strony Smart Panel",
+			"editDataSource": "Edytuj źródło danych strony Smart Panel"
+		}
+	},
+	"messages": {
+		"tiles": {
+			"deletedWhileEditing": "Ten kafelek został usunięty i nie jest już dostępny."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "To źródło danych zostało usunięte i nie jest już dostępne."
+		},
+		"misc": {
+			"requestError": "Coś poszło nie tak, spróbuj ponownie później."
+		}
+	},
+	"texts": {
+		"misc": {
+			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+			"gridLayoutTip": "Możesz zmienić, ile kafelków mieści się na stronie — ustaw Wiersze i Kolumny lub wybierz Rozmiar kafelka."
+		},
+		"tiles": {
+			"loadingTile": "Ładowanie kafelka..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Ładowanie źródła danych..."
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Odrzuć"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"add": {
+			"title": "Dodaj"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"update": {
+			"title": "Zaktualizuj"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"manageElements": {
+			"title": "Zarządzaj elementami"
+		},
+		"addPageTile": {
+			"title": "Dodaj kafelek strony"
+		},
+		"addPageDataSource": {
+			"title": "Dodaj źródło danych strony"
+		}
+	},
+	"fields": {
+		"rows": {
+			"title": "Wiersze",
+			"placeholder": "Liczba wierszy"
+		},
+		"cols": {
+			"title": "Kolumny",
+			"placeholder": "Liczba kolumn"
+		},
+		"tileSize": {
+			"title": "Rozmiar kafelka",
+			"placeholder": "Rozmiar kafelka"
+		}
+	}
+}
