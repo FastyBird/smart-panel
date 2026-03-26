@@ -299,9 +299,7 @@ export class PropertyCommandService {
 		}
 
 		if (!this.validateValueType(property.dataType, value)) {
-			this.logger.warn(
-				`[API Command] Invalid value type for property id=${property.id} expected=${property.dataType}`,
-			);
+			this.logger.warn(`[API Command] Invalid value type for property id=${property.id} expected=${property.dataType}`);
 			return;
 		}
 

@@ -387,16 +387,9 @@ export class ChannelsPropertiesController {
 
 				if (deviceId) {
 					this.propertyCommandService
-						.processApiPropertyCommand(
-							deviceId,
-							channel.id,
-							updatedProperty.id,
-							updateDto.data.value,
-						)
+						.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, updateDto.data.value)
 						.catch((err: Error) => {
-							this.logger.error(
-								`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`,
-							);
+							this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
 						});
 				}
 			}
