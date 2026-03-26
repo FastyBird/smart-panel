@@ -348,7 +348,7 @@ export class DevicesChannelsPropertiesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: { data: object },
+		@Body() updateDto: { data: UpdateChannelPropertyDto },
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(
 			`Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
@@ -412,15 +412,13 @@ export class DevicesChannelsPropertiesController {
 			);
 
 			// If value was provided, send command to the physical device (fire-and-forget)
-			const commandValue = (updateDto.data as Record<string, unknown>).value;
-
-			if (typeof commandValue !== 'undefined' && commandValue !== null) {
+			if (typeof updateDto.data.value !== 'undefined' && updateDto.data.value !== null) {
 				this.propertyCommandService
 					.processApiPropertyCommand(
 						device.id,
 						channel.id,
 						updatedProperty.id,
-						commandValue as string | number | boolean,
+						updateDto.data.value,
 					)
 					.catch((err: Error) => {
 						this.logger.error(
