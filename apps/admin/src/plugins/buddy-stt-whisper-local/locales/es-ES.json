@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "Configuraci\u00f3n de Whisper local"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"model": {
+				"title": "Modelo",
+				"placeholder": "base",
+				"description": "Tama\u00f1o del modelo Whisper: tiny, base, small, medium o large"
+			},
+			"language": {
+				"title": "Indicaci\u00f3n de idioma",
+				"placeholder": "p. ej., en, de, cs (opcional)",
+				"description": "C\u00f3digo de idioma ISO 639-1 para mejorar la precisi\u00f3n de la transcripci\u00f3n"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de Whisper local ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de Whisper local"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Configure la conversi\u00f3n de voz a texto con Whisper local. No se requiere clave API. El comando whisper debe estar instalado y disponible en el PATH del sistema."
+	}
+}
