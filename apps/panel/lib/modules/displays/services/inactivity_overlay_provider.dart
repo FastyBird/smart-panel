@@ -55,11 +55,21 @@ class InactivityOverlayProvider {
   }
 
   /// Clean up timer, listeners, and unregister overlay.
+  ///
+  /// Restores screen power if a power-off was in progress, since the
+  /// listener teardown below would otherwise prevent [_onOverlayChanged]
+  /// from ever calling [screenOn].
   void dispose() {
     if (!_isInitialized) return;
     _isInitialized = false;
 
     _inactivityTimer?.cancel();
+
+    if (_screenPowerOffRequested) {
+      _screenPowerOffRequested = false;
+      _screenPowerService.screenOn();
+    }
+
     _overlayManager.removeListener(_onOverlayChanged);
     _overlayManager.unregister(InactivityOverlayIds.inactivity);
   }
