@@ -8,8 +8,7 @@ ConditionPathExists=/sys/devices/platform/lis3lv02d/position
 [Service]
 Type=simple
 EnvironmentFile=-/etc/smart-panel/display
-ExecStartPre=/bin/sh -c '[ "${FB_AUTO_ROTATE:-0}" = "1" ] || exit 1'
-ExecStart=/bin/bash /opt/smart-panel/scripts/smart-panel-auto-rotate.sh
+ExecStart=/bin/bash /opt/smart-panel/scripts/smart-panel-auto-rotate.sh daemon
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

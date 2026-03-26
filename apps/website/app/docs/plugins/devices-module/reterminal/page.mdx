@@ -90,23 +90,22 @@ The reTerminal CM4 includes a built-in accelerometer (LIS3DHTR) that can detect 
 
 ### Enabling Auto-Rotate
 
-Edit the display configuration file:
-
 ```bash
-sudo nano /etc/smart-panel/display
+sudo smart-panel-auto-rotate enable
 ```
 
-Set `FB_AUTO_ROTATE=1`:
+This updates the configuration and starts the daemon automatically.
+
+To disable it:
 
 ```bash
-FB_AUTO_ROTATE=1
+sudo smart-panel-auto-rotate disable
 ```
 
-Then enable and start the service:
+To check the current status:
 
 ```bash
-sudo systemctl enable smart-panel-auto-rotate.service
-sudo systemctl start smart-panel-auto-rotate.service
+smart-panel-auto-rotate status
 ```
 
 ### Configuration Options
@@ -144,8 +143,8 @@ journalctl -u smart-panel-auto-rotate -f
 
 If the service fails to start, verify:
 - The accelerometer is accessible: `cat /sys/devices/platform/lis3lv02d/position`
-- `FB_AUTO_ROTATE=1` is set in `/etc/smart-panel/display`
 - The display service is running: `systemctl status smart-panel-display`
+- Check status with: `smart-panel-auto-rotate status`
 
 ---
 
