@@ -1,1 +1,250 @@
-{}
+{
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interní identifikátor",
+				"placeholder": "ID zařízení"
+			},
+			"identifier": {
+				"title": "Systémový identifikátor",
+				"placeholder": "Systémový identifikátor zařízení"
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie zařízení",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Vyberte prosím kategorii zařízení"
+				}
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název zařízení"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zařízení"
+			},
+			"enabled": {
+				"title": "Povoleno",
+				"placeholder": "Povolit nebo zakázat zařízení"
+			},
+			"haDeviceId": {
+				"title": "Zařízení Home Assistant",
+				"placeholder": "Vyberte zařízení z instance Home Assistant",
+				"validation": {
+					"required": "Vyberte prosím zařízení Home Assistant"
+				}
+			},
+			"manufacturer": {
+				"title": "Výrobce"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"entities": {
+				"title": "Entity"
+			},
+			"domain": {
+				"title": "Doména"
+			},
+			"type": {
+				"title": "Typ"
+			}
+		},
+		"channelsProperties": {
+			"id": {
+				"title": "Interní identifikátor",
+				"placeholder": "ID vlastnosti kanálu"
+			},
+			"channel": {
+				"title": "Kanál",
+				"placeholder": "Vyberte kanál",
+				"validation": {
+					"required": "Vyberte prosím kanál vlastnosti kanálu"
+				}
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie vlastnosti kanálu",
+				"validation": {
+					"required": "Vyberte prosím kategorii vlastnosti kanálu"
+				}
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název vlastnosti kanálu"
+			},
+			"dataType": {
+				"validation": {
+					"required": "Vyberte prosím datový typ"
+				}
+			},
+			"permissions": {
+				"validation": {
+					"required": "Vyberte prosím oprávnění"
+				}
+			},
+			"haEntityId": {
+				"title": "Entita zařízení Home Assistant",
+				"placeholder": "Vyberte entitu zařízení Home Assistant",
+				"validation": {
+					"required": "Vyberte prosím entitu zařízení Home Assistant"
+				}
+			},
+			"haAttribute": {
+				"title": "Atribut entity Home Assistant",
+				"placeholder": "Vyberte atribut entity Home Assistant",
+				"validation": {
+					"required": "Vyberte prosím atribut entity Home Assistant"
+				}
+			}
+		},
+		"mapping": {
+			"totalEntities": "Celkem entit",
+			"mapped": "Mapováno",
+			"partial": "Částečně",
+			"unmapped": "Nemapováno",
+			"skipped": "Přeskočeno",
+			"incompatible": "Nekompatibilní",
+			"excluded": "Vyloučeno",
+			"suggestedCategory": "Navrhovaná kategorie",
+			"suggestedChannel": {
+				"title": "Navrhovaný kanál",
+				"validation": {
+					"required": "Vyberte prosím kategorii kanálu pro tuto entitu"
+				}
+			},
+			"properties": "Vlastnosti",
+			"unmappedAttributes": "Nemapované atributy",
+			"missingRequiredProperties": "Chybějící povinné vlastnosti",
+			"incompatibleChannel": "Kanál není podporován pro tuto kategorii zařízení",
+			"virtualTypes": {
+				"static": "Statický",
+				"derived": "Automatický",
+				"command": "Příkaz",
+				"virtual": "Virtuální"
+			},
+			"validation": {
+				"valid": "Konfigurace zařízení je platná",
+				"invalid": "Konfigurace zařízení má problémy",
+				"missingChannels": "Chybějící povinné kanály",
+				"missingProperties": "Chybějící povinné vlastnosti",
+				"autoFilled": "Automaticky doplněno virtuálními vlastnostmi",
+				"unknownChannels": "Kanály nepovolené pro tento typ zařízení",
+				"duplicateChannels": "Duplicitní kanály (měly by být unikátní)",
+				"constraintViolations": "Porušení omezení konfigurace"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"apiKey": {
+				"title": "API klíč",
+				"placeholder": "Zadejte svůj dlouhodobý přístupový token Home Assistant",
+				"validation": {
+					"required": "Vyplňte prosím API klíč"
+				}
+			},
+			"hostname": {
+				"title": "Název hostitele",
+				"placeholder": "Zadejte název hostitele Home Assistant (např. homeassistant.local:8123)",
+				"validation": {
+					"required": "Vyplňte prosím název hostitele"
+				}
+			}
+		}
+	},
+	"headings": {
+		"aboutConnectionSettings": "Připojení Home Assistant",
+		"device": {
+			"deviceSelection": "Vybrat zařízení",
+			"deviceInformation": "Informace o zařízení",
+			"categorySelection": "Kategorie zařízení",
+			"mappingPreview": "Náhled mapování",
+			"mappingCustomization": "Přizpůsobení mapování",
+			"deviceConfiguration": "Konfigurace zařízení"
+		},
+		"mapping": {
+			"entityMappings": "Mapování entit",
+			"warnings": "Varování mapování ({count})",
+			"errors": "Chyby",
+			"summary": "Souhrn mapování",
+			"debugData": "Ladicí data"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Změny uloženy! Konfigurace pluginu Home Assistant byla aktualizována.",
+			"notEdited": "Něco se pokazilo. Aktualizace konfigurace pluginu Home Assistant nebyla úspěšná."
+		},
+		"devices": {
+			"created": "Nové zařízení Home Assistant bylo úspěšně přidáno.",
+			"notCreated": "Něco se pokazilo. Nepodařilo se vytvořit zařízení Home Assistant.",
+			"exists": "Zařízení je již adoptováno v systému.",
+			"alreadyAdopted": "Toto zařízení je již adoptováno",
+			"alreadyAdoptedDescription": "Pokračování znovu adoptuje zařízení s novou konfigurací. Stávající zařízení bude aktualizováno.",
+			"noDiscoveredDevices": "Žádná zařízení Home Assistant nejsou k dispozici. Ujistěte se, že vaše instance Home Assistant je připojena a zařízení jsou vyhledána."
+		},
+		"mapping": {
+			"previewLoading": "Načítání náhledu mapování...",
+			"previewError": "Nepodařilo se načíst náhled mapování",
+			"adoptionSuccess": "Zařízení {device} bylo úspěšně adoptováno",
+			"adoptionError": "Nepodařilo se adoptovat zařízení",
+			"readyToAdopt": "Zařízení je připraveno k adopci",
+			"notReadyToAdopt": "Zařízení má chybějící povinná mapování",
+			"noPreview": "Žádný náhled mapování není k dispozici",
+			"selectDeviceFirst": "Vyberte prosím zařízení v kroku 1 pro vygenerování náhledu mapování",
+			"invalidSuggestedCategory": "Navrhovaná kategorie není podporována. Vyberte prosím platnou kategorii.",
+			"missingChannelCategory": "Následující entity jsou povoleny, ale chybí jim kategorie kanálu: {entities}. Vyberte prosím kategorii kanálu pro každou povolenou entitu před pokračováním.",
+			"debugDescription": "Zkopírujte tato data a sdílejte je s vývojáři pro pomoc s diagnostikou problémů mapování nebo požadavkem na vlastní mapování.",
+			"debugCopied": "Ladicí data zkopírována do schránky",
+			"debugCopyFailed": "Nepodařilo se zkopírovat ladicí data do schránky"
+		},
+		"categorySelection": {
+			"description": "Na základě entit zařízení byla navržena kategorie. Zkontrolujte prosím a vyberte správnou kategorii pro toto zařízení. Náhled mapování bude aktualizován na základě vašeho výběru."
+		},
+		"discovery": {
+			"fetchFailed": "Nepodařilo se načíst nalezené instance",
+			"refreshFailed": "Nepodařilo se obnovit nalezené instance"
+		}
+	},
+	"buttons": {
+		"loadPreview": "Načíst náhled",
+		"updatePreview": "Aktualizovat náhled",
+		"adoptDevice": "Adoptovat zařízení",
+		"next": "Další",
+		"previous": "Předchozí",
+		"skip": "Přeskočit",
+		"use": "Použít",
+		"applyChanges": "Aplikovat změny",
+		"refreshDiscovery": "Obnovit vyhledávání",
+		"debug": "Ladění",
+		"copyToClipboard": "Kopírovat do schránky",
+		"close": "Zavřít"
+	},
+	"labels": {
+		"suggested": "Navrhováno"
+	},
+	"misc": {
+		"options": {
+			"entities": {
+				"noEntity": "Nepřipojeno k entitě zařízení"
+			},
+			"attributes": {
+				"noAttribute": "Nepřipojeno k atributu entity",
+				"mainState": "Hlavní stavový atribut entity"
+			}
+		}
+	},
+	"texts": {
+		"aboutConnectionSettings": "Nakonfigurujte připojení k vaší instanci Home Assistant. Pokud je povoleno, zařízení z Home Assistant budou dostupná ve Smart Panelu. Budete potřebovat dlouhodobý přístupový token z Home Assistant a název hostitele nebo IP adresu vaší instance.",
+		"mapping": {
+			"customizationDescription": "Můžete přizpůsobit mapování změnou kategorií kanálů pro entity nebo povolením/zakázáním entit. Ve výchozím nastavení jsou všechny entity s navrženou kategorií kanálu povoleny. Klikněte na 'Další' pro pokračování s vybranou konfigurací."
+		}
+	}
+}

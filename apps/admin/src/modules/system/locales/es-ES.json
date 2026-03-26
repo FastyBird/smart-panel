@@ -1,1 +1,459 @@
-{}
+{
+	"meta": {
+		"system": {
+			"system": {
+				"title": "Sistema"
+			},
+			"systemInfo": {
+				"title": "Información del sistema"
+			}
+		},
+		"systemLogs": {
+			"list": {
+				"title": "Registros de la aplicación"
+			},
+			"detail": {
+				"title": "Detalle del registro"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"system": {
+			"system": "sistema",
+			"systemInfo": "información"
+		},
+		"systemLogs": {
+			"list": "registros de la aplicación",
+			"detail": "detalle del registro"
+		}
+	},
+	"headings": {
+		"system": {
+			"system": "Sistema",
+			"about": "Acerca de la aplicación"
+		},
+		"update": {
+			"title": "Actualizaciones de software",
+			"confirmTitle": "Instalar actualización"
+		},
+		"manage": {
+			"manageSystem": "Administrar sistema",
+			"restart": "Reiniciar",
+			"powerOff": "Apagar",
+			"factoryReset": "Restablecimiento de fábrica",
+			"poweredOff": "Apagado completado",
+			"rebooting": "Reiniciando",
+			"systemLogs": "Registros de la aplicación"
+		},
+		"systemLogs": {
+			"list": "Registros de la aplicación",
+			"detail": "Información del registro",
+			"adjustFilters": "Filtrar registros"
+		},
+		"aboutLanguageSettings": "Idioma y unidades",
+		"aboutSystemSettings": "Configuración del sistema",
+		"aboutHouseModeSettings": "Modo de la casa"
+	},
+	"subHeadings": {
+		"system": "Información del estado del sistema del panel inteligente",
+		"poweredOff": "El panel inteligente se ha apagado correctamente",
+		"systemLogs": {
+			"list": "Vista previa de todos los registros de la aplicación",
+			"detail": "Vista previa de los detalles del registro",
+			"edit": "Vista previa de los detalles del registro",
+			"adjustFilters": "Ajustar filtros de registros"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración del sistema se ha actualizado correctamente",
+			"notEdited": "No se pudo actualizar la configuración del sistema"
+		},
+		"manage": {
+			"confirmRestart": "¿Estás seguro de que deseas reiniciar el dispositivo? Esta acción interrumpirá temporalmente su funcionamiento.",
+			"confirmPowerOff": "¿Estás seguro de que deseas apagar el dispositivo? Será necesario encenderlo manualmente de nuevo.",
+			"confirmFactoryReset": "¿Estás seguro de que deseas borrar todos los datos y restaurar el dispositivo a su configuración de fábrica? Esta acción es irreversible.",
+			"confirmRestartGateway": "¿Estás seguro de que deseas reiniciar la pasarela? Las pantallas conectadas perderán temporalmente la conectividad hasta que la pasarela vuelva a estar en línea.",
+			"confirmPowerOffGateway": "¿Estás seguro de que deseas apagar la pasarela? Todas las pantallas conectadas perderán la conectividad. La pasarela deberá encenderse manualmente de nuevo.",
+			"confirmFactoryResetGateway": "¿Estás seguro de que deseas restablecer la pasarela a su configuración de fábrica? Esto borrará todos los datos de la pasarela y restablecerá todas las pantallas conectadas. Esta acción es irreversible.",
+			"waitingToBoot": "Esperando a que el panel se inicie...",
+			"panelBackOnline": "El panel inteligente está de nuevo en línea.",
+			"rebootTakesTooLong": "El reinicio está tardando más de lo esperado. Por favor, verifica el panel manualmente.",
+			"rebootFailed": "No se pudo reiniciar el panel inteligente. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente.",
+			"powerOffFailed": "No se pudo apagar el panel inteligente. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente.",
+			"factoryResetSuccess": "Todos los datos han sido borrados. Comencemos de nuevo: inicia sesión para comenzar.",
+			"factoryResetFailed": "No se pudo restablecer el panel inteligente a su configuración de fábrica. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente."
+		},
+		"misc": {
+			"requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde."
+		},
+		"update": {
+			"confirmInstall": "¿Estás seguro de que deseas actualizar a la versión {version}?",
+			"majorUpdateWarning": "Esta es una actualización de versión mayor a {version}. Las actualizaciones mayores pueden contener cambios incompatibles. ¿Estás seguro de que deseas continuar?",
+			"confirmTitle": "Instalar actualización",
+			"updateStarted": "El proceso de actualización ha comenzado. El sistema se reiniciará automáticamente.",
+			"updateComplete": "¡Actualización completada correctamente!",
+			"updateFailed": "La actualización falló. Por favor, revisa los registros del sistema para más detalles.",
+			"checkFailed": "No se pudo verificar si hay actualizaciones. Por favor, inténtalo de nuevo más tarde.",
+			"installFailed": "No se pudo iniciar la actualización. Por favor, inténtalo de nuevo más tarde."
+		}
+	},
+	"texts": {
+		"system": {
+			"loadingSystemInfo": "Cargando información del sistema...",
+			"about": "FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con tus dispositivos inteligentes, ofreciendo capacidades mejoradas de control y monitorización."
+		},
+		"manage": {
+			"rebootDevice": "Reinicia el dispositivo para aplicar cambios o resolver problemas.",
+			"rebootGateway": "Reinicia la pasarela para aplicar cambios o resolver problemas. Las pantallas conectadas perderán temporalmente la conectividad.",
+			"powerOffDevice": "Apaga el dispositivo completamente.",
+			"powerOffGateway": "Apaga la pasarela completamente. Las pantallas conectadas perderán la conectividad.",
+			"factoryResetDevice": "Restaura el dispositivo a su configuración original de fábrica.",
+			"factoryResetGateway": "Borra todos los datos de la pasarela y restablece todas las pantallas conectadas a la configuración de fábrica.",
+			"rebootInProcess": "El panel inteligente se está reiniciando...",
+			"powerOffInProcess": "El panel inteligente se está apagando...",
+			"factoryResetInProcess": "El panel inteligente se está restableciendo a su estado de fábrica...",
+			"factoryResetWaiting": "Esperando a que el panel inteligente se reinicie después del restablecimiento de fábrica...",
+			"factoryResetTimeout": "El restablecimiento de fábrica está tardando más de lo esperado. Por favor, verifica el dispositivo manualmente.",
+			"poweredOff": "Puedes cerrar esta ventana — no se requiere ninguna acción adicional.",
+			"systemLogs": "Vista previa y diagnóstico de los registros de la aplicación."
+		},
+		"update": {
+			"available": "Actualización disponible",
+			"upToDate": "Tu sistema está actualizado.",
+			"checking": "Verificando actualizaciones...",
+			"installing": "Instalando actualización...",
+			"waitingForRestart": "El servicio se está reiniciando, por favor espera...",
+			"noVersionInfo": "No se pudo obtener la información de la versión."
+		},
+		"systemLogs": {
+			"loadingLogs": "Cargando registros de la aplicación...",
+			"noLogs": "No se han registrado registros de la aplicación.",
+			"noFilteredLogs": "No se encontraron registros de la aplicación que coincidan con los criterios de filtro activos",
+			"noMessage": "Esta entrada de registro no tiene mensaje adicional",
+			"noMoreEntries": "No hay más entradas de registro"
+		},
+		"aboutLanguageSettings": "Configura el idioma de la interfaz, la zona horaria, el formato de hora y las unidades de medida del panel inteligente. Estos ajustes afectan cómo se muestran las fechas, horas, temperaturas y medidas en todo el sistema.",
+		"aboutSystemSettings": "Administra la configuración de registros a nivel de sistema. Selecciona qué niveles de severidad de registro monitorear y mostrar en los registros de la aplicación.",
+		"aboutHouseModeSettings": "Establece el modo actual de la casa para controlar cómo se comportan el panel inteligente y los dispositivos conectados. El modo Casa es para ocupación normal, el modo Ausente es para cuando no hay nadie en casa, y el modo Noche es para las horas de sueño."
+	},
+	"fields": {
+		"config": {
+			"language": {
+				"title": "Idioma",
+				"description": "Idioma de la aplicación",
+				"placeholder": "Seleccionar idioma",
+				"values": {
+					"english": "Inglés",
+					"czech": "Checo",
+					"german": "Alemán",
+					"spanish": "Español",
+					"polish": "Polaco",
+					"slovak": "Eslovaco"
+				},
+				"validation": {
+					"required": "El idioma es obligatorio"
+				}
+			},
+			"timezone": {
+				"title": "Zona horaria",
+				"description": "Zona horaria del sistema",
+				"placeholder": "Seleccionar zona horaria",
+				"validation": {
+					"required": "La zona horaria es obligatoria"
+				}
+			},
+			"timeFormat": {
+				"title": "Formato de hora",
+				"description": "Formato de visualización de la hora",
+				"placeholder": "Seleccionar formato de hora",
+				"values": {
+					"hour12": "12 horas",
+					"hour24": "24 horas"
+				},
+				"validation": {
+					"required": "El formato de hora es obligatorio"
+				}
+			},
+			"numberFormat": {
+				"title": "Formato de números",
+				"description": "Formato de visualización de números para separadores de miles y decimales",
+				"placeholder": "Seleccionar formato de números",
+				"values": {
+					"commaDot": "1,234.56 (coma / punto)",
+					"dotComma": "1.234,56 (punto / coma)",
+					"spaceComma": "1 234,56 (espacio / coma)",
+					"none": "1234.56 (sin agrupación)"
+				},
+				"validation": {
+					"required": "El formato de números es obligatorio"
+				}
+			},
+			"temperatureUnit": {
+				"title": "Unidad de temperatura",
+				"description": "Unidad de visualización de temperatura",
+				"placeholder": "Seleccionar unidad de temperatura",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				},
+				"validation": {
+					"required": "La unidad de temperatura es obligatoria"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Unidad de velocidad del viento",
+				"description": "Unidad de visualización de velocidad del viento",
+				"placeholder": "Seleccionar unidad de velocidad del viento",
+				"values": {
+					"ms": "Metros por segundo (m/s)",
+					"kmh": "Kilómetros por hora (km/h)",
+					"mph": "Millas por hora (mph)",
+					"knots": "Nudos (kn)"
+				},
+				"validation": {
+					"required": "La unidad de velocidad del viento es obligatoria"
+				}
+			},
+			"pressureUnit": {
+				"title": "Unidad de presión",
+				"description": "Unidad de visualización de presión",
+				"placeholder": "Seleccionar unidad de presión",
+				"values": {
+					"hpa": "Hectopascal (hPa)",
+					"mbar": "Milibar (mbar)",
+					"inhg": "Pulgadas de mercurio (inHg)",
+					"mmhg": "Milímetros de mercurio (mmHg)"
+				},
+				"validation": {
+					"required": "La unidad de presión es obligatoria"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Unidad de precipitación",
+				"description": "Unidad de visualización de precipitación",
+				"placeholder": "Seleccionar unidad de precipitación",
+				"values": {
+					"mm": "Milímetros (mm)",
+					"inches": "Pulgadas (in)"
+				},
+				"validation": {
+					"required": "La unidad de precipitación es obligatoria"
+				}
+			},
+			"distanceUnit": {
+				"title": "Unidad de distancia",
+				"description": "Unidad de visualización de distancia",
+				"placeholder": "Seleccionar unidad de distancia",
+				"values": {
+					"km": "Kilómetros (km)",
+					"miles": "Millas (mi)",
+					"meters": "Metros (m)",
+					"feet": "Pies (ft)"
+				},
+				"validation": {
+					"required": "La unidad de distancia es obligatoria"
+				}
+			},
+			"logLevels": {
+				"title": "Niveles de registro",
+				"description": "Niveles de registro habilitados",
+				"placeholder": "Selecciona qué niveles de registro deben ser monitoreados",
+				"values": {
+					"silent": "Silencioso",
+					"verbose": "Detallado",
+					"debug": "Depuración",
+					"trace": "Rastreo",
+					"log": "Registro",
+					"info": "Información",
+					"success": "Éxito",
+					"warn": "Advertencia",
+					"error": "Error",
+					"fail": "Fallo",
+					"fatal": "Fatal"
+				},
+				"validation": {
+					"required": "Se debe seleccionar al menos un nivel de registro",
+					"min": "Se debe seleccionar al menos un nivel de registro"
+				}
+			},
+			"houseMode": {
+				"title": "Modo de la casa",
+				"description": "Configuración actual del modo de la casa",
+				"placeholder": "Seleccionar modo de la casa",
+				"values": {
+					"home": "Casa",
+					"away": "Ausente",
+					"night": "Noche"
+				},
+				"validation": {
+					"required": "El modo de la casa es obligatorio"
+				}
+			}
+		},
+		"systemLogs": {
+			"search": {
+				"title": "Buscar",
+				"placeholder": "Buscar registros..."
+			},
+			"timestamp": {
+				"title": "Marca de tiempo"
+			},
+			"ingestedAt": {
+				"title": "Ingresado el"
+			},
+			"source": {
+				"title": "Origen"
+			},
+			"level": {
+				"title": "Nivel"
+			},
+			"message": {
+				"title": "Mensaje",
+				"noMessage": "Sin mensaje"
+			},
+			"tag": {
+				"title": "Etiqueta"
+			},
+			"user": {
+				"title": "Usuario"
+			},
+			"appVersion": {
+				"title": "Versión de la aplicación"
+			},
+			"url": {
+				"title": "URL"
+			},
+			"userAgent": {
+				"title": "Agente de usuario"
+			},
+			"locale": {
+				"title": "Idioma regional"
+			},
+			"args": {
+				"title": "Argumentos"
+			},
+			"rawJson": {
+				"title": "JSON sin procesar"
+			}
+		}
+	},
+	"filters": {
+		"systemLogs": {
+			"levels": {
+				"title": "Filtrar por nivel de registro"
+			},
+			"sources": {
+				"title": "Filtrar por origen del registro"
+			},
+			"tag": {
+				"title": "Filtrar por etiqueta",
+				"placeholder": "Buscar por etiqueta..."
+			}
+		}
+	},
+	"buttons": {
+		"about": {
+			"title": "Acerca de la aplicación"
+		},
+		"manage": {
+			"title": "Administrar sistema"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"reset": {
+			"title": "Restablecer"
+		},
+		"edit": {
+			"title": "Editar"
+		},
+		"discard": {
+			"title": "Descartar"
+		},
+		"cancel": {
+			"title": "Cancelar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"copyJson": {
+			"title": "Copiar JSON"
+		},
+		"liveTail": {
+			"title": "Seguimiento en vivo"
+		},
+		"paused": {
+			"title": "Pausado"
+		},
+		"loadMore": {
+			"title": "Cargar más"
+		},
+		"update": {
+			"checkForUpdates": "Buscar actualizaciones",
+			"installUpdate": "Instalar actualización"
+		}
+	},
+	"labels": {
+		"update": {
+			"currentVersion": "Versión actual",
+			"latestVersion": "Última versión",
+			"lastChecked": "Última verificación",
+			"updateStatus": "Estado",
+			"actions": "Acciones"
+		}
+	},
+	"systemInfo": {
+		"cpuLoad": "Carga de CPU",
+		"memoryUsage": "Uso de memoria",
+		"cpuTemperature": "Temperatura de CPU",
+		"gpuTemperature": "Temperatura de GPU",
+		"osPlatform": "Plataforma",
+		"osDistro": "Distribución",
+		"osRelease": "Versión",
+		"uptime": "Tiempo de actividad del sistema",
+		"networkInterface": "Interfaz de red",
+		"ip4Address": "Dirección IP",
+		"ip6Address": "Dirección IPv6",
+		"macAddress": "Dirección MAC",
+		"undervoltage": "Bajo voltaje detectado",
+		"frequencyCapping": "Frecuencia limitada",
+		"throttling": "Limitación de CPU activa",
+		"softTempLimit": "Límite suave de temperatura alcanzado"
+	},
+	"states": {
+		"ok": "Todo correcto",
+		"error": "Problema detectado"
+	},
+	"levels": {
+		"silent": "Silencioso",
+		"fatal": "Fatal",
+		"error": "Error",
+		"warn": "Advertencia",
+		"log": "Registro",
+		"info": "Información",
+		"success": "Éxito",
+		"fail": "Fallo",
+		"ready": "Listo",
+		"start": "Inicio",
+		"box": "Caja",
+		"debug": "Depuración",
+		"trace": "Rastreo",
+		"verbose": "Detallado"
+	},
+	"sources": {
+		"admin": "Aplicación de administración",
+		"display": "Aplicación de pantalla",
+		"backend": "Backend de la aplicación",
+		"other": "Otro"
+	}
+}

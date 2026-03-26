@@ -1,95 +1,95 @@
 {
 	"headings": {
 		"aboutPluginStatus": "Status wtyczki",
-		"aboutMdns": "Ustawienia mDNS",
+		"aboutMdns": "Ustawienia MDNS",
 		"aboutWebsockets": "Ustawienia WebSocket",
 		"device": {
-			"deviceConnection": "Połączenie z urządzeniem",
-			"information": "Informacje o urządzeniu",
-			"supported": "Gratulacje! Urządzenie jest obsługiwane",
-			"notSupported": "Niestety, Twoje urządzenie nie jest obsługiwane",
+			"deviceConnection": "Polaczenie urzadzenia",
+			"information": "Informacje o urzadzeniu",
+			"supported": "Gratulacje! Urzadzenie jest obslugiwane",
+			"notSupported": "Przepraszamy, Twoje urzadzenie nie jest obslugiwane",
 			"model": "Model",
-			"firmware": "Oprogramowanie"
+			"firmware": "Firmware"
 		}
 	},
 	"fields": {
 		"devices": {
 			"id": {
-				"title": "Identyfikator wewnętrzny",
-				"placeholder": "ID urządzenia"
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID urzadzenia"
 			},
 			"category": {
 				"title": "Kategoria",
-				"placeholder": "Kategoria urządzenia",
+				"placeholder": "Kategoria urzadzenia",
 				"description": "O kategorii",
 				"validation": {
-					"required": "Wybierz kategorię urządzenia"
+					"required": "Prosze wybrac kategorie urzadzenia"
 				}
 			},
 			"name": {
 				"title": "Nazwa",
-				"placeholder": "Nazwa urządzenia",
+				"placeholder": "Nazwa urzadzenia",
 				"validation": {
-					"required": "Wprowadź nazwę urządzenia"
+					"required": "Prosze podac nazwe urzadzenia"
 				}
 			},
 			"description": {
 				"title": "Opis",
-				"placeholder": "Opis urządzenia"
+				"placeholder": "Opis urzadzenia"
 			},
 			"enabled": {
-				"title": "Włączone",
-				"placeholder": "Włącz lub wyłącz urządzenie"
+				"title": "Wlaczony",
+				"placeholder": "Wlacz lub wylacz urzadzenie"
 			},
 			"password": {
-				"title": "Hasło administratora",
-				"placeholder": "Podaj hasło urządzenia, jeśli jest chronione"
+				"title": "Haslo administratora",
+				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
 			},
 			"hostname": {
-				"title": "Nazwa hosta urządzenia",
-				"placeholder": "Nazwa sieciowa lub adres IP urządzenia",
+				"title": "Nazwa hosta urzadzenia",
+				"placeholder": "Nazwa sieciowa lub adres IP urzadzenia",
 				"validation": {
-					"required": "Wprowadź nazwę hosta lub adres IP urządzenia"
+					"required": "Prosze podac nazwe hosta lub adres IP urzadzenia"
 				}
 			}
 		},
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"mdns": {
 				"enabled": {
-					"title": "Wykrywanie włączone"
+					"title": "Wykrywanie wlaczone"
 				},
 				"interface": {
 					"title": "Interfejs",
-					"placeholder": "Interfejs sieciowy do użycia. Jeśli nie zostanie określony, zostaną użyte wszystkie dostępne interfejsy."
+					"placeholder": "Interfejs sieciowy do uzycia. Jesli nie podano, zostaną uzyty wszystkie dostepne interfejsy."
 				}
 			},
 			"websockets": {
 				"requestTimeout": {
-					"title": "Limit czasu żądania",
-					"placeholder": "Czas w sekundach oczekiwania na odpowiedź przed przerwaniem żądania.",
+					"title": "Limit czasu zadania",
+					"placeholder": "Czas w sekundach oczekiwania na odpowiedz przed przerwaniem zadania.",
 					"validation": {
-						"required": "Wprowadź limit czasu żądania",
-						"number": "Limit czasu żądania musi być liczbą"
+						"required": "Prosze podac limit czasu zadania",
+						"number": "Limit czasu zadania musi byc liczba"
 					}
 				},
 				"pingInterval": {
-					"title": "Interwał ping",
-					"placeholder": "Interwał w sekundach, w którym wysyłane są żądania ping w celu weryfikacji otwartego połączenia. Ustaw 0, aby wyłączyć.",
+					"title": "Interwal ping",
+					"placeholder": "Interwal w sekundach, w jakim wykonywane sa zadania ping w celu weryfikacji polaczenia. Ustaw 0, aby wylaczyc.",
 					"validation": {
-						"required": "Wprowadź interwał ping",
-						"number": "Interwał ping musi być liczbą"
+						"required": "Prosze podac interwal ping",
+						"number": "Interwal ping musi byc liczba"
 					}
 				},
 				"reconnectInterval": {
-					"title": "Interwał ponownego połączenia",
-					"placeholder": "Interwał w sekundach, w którym podejmowana jest próba połączenia po zamknięciu gniazda.",
+					"title": "Interwal ponownego polaczenia",
+					"placeholder": "Interwal w sekundach, w jakim podejmowana jest proba polaczenia po zamknieciu gniazda.",
 					"validation": {
-						"required": "Wprowadź interwał ponownego połączenia",
-						"number": "Interwał ponownego połączenia musi być liczbą",
-						"array": "Interwał ponownego połączenia musi być tablicą liczb"
+						"required": "Prosze podac interwal ponownego polaczenia",
+						"number": "Interwal ponownego polaczenia musi byc liczba",
+						"array": "Interwal ponownego polaczenia musi byc tablica liczb"
 					}
 				}
 			}
@@ -97,23 +97,23 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "Zmiany zapisane! Konfiguracja wtyczki Shelly Next Generation została zaktualizowana.",
-			"notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wtyczki Shelly Next Generation nie powiodła się."
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Shelly Next Generation zostala zaktualizowana.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja konfiguracji wtyczki Shelly Next Generation nie powiodla sie."
 		},
 		"devices": {
-			"exists": "Urządzenie o podanej nazwie hosta i haśle jest już zarejestrowane w systemie.",
-			"created": "Nowe urządzenie Shelly Next-Generation zostało dodane pomyślnie.",
-			"notCreated": "Coś poszło nie tak. Nie udało się utworzyć urządzenia Shelly Next-Generation.",
-			"notChecked": "Coś poszło nie tak. Nie udało się załadować informacji o urządzeniu. Sprawdź nazwę hosta lub hasło urządzenia.",
-			"edited": "Zmiany zapisane! Urządzenie Shelly Next-Generation: {device} zostało zaktualizowane.",
-			"notEdited": "Coś poszło nie tak. Aktualizacja urządzenia Shelly Next-Generation nie powiodła się.",
-			"failedLoadSupportedDevices": "Coś poszło nie tak. Nie udało się załadować obsługiwanych urządzeń wtyczki."
+			"exists": "Urzadzenie z podana nazwa hosta i haslem jest juz zarejestrowane w systemie.",
+			"created": "Nowe urzadzenie Shelly Next-Generation zostalo pomyslnie dodane.",
+			"notCreated": "Cos poszlo nie tak. Nie udalo sie utworzyc urzadzenia Shelly Next-Generation.",
+			"notChecked": "Cos poszlo nie tak. Informacje o urzadzeniu nie mogly zostac zaladowane. Sprawdz nazwe hosta lub haslo urzadzenia.",
+			"edited": "Zmiany zapisane! Urzadzenie Shelly Next-Generation: {device} zostalo zaktualizowane.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja urzadzenia Shelly Next-Generation nie powiodla sie.",
+			"failedLoadSupportedDevices": "Cos poszlo nie tak. Obslugiwane urzadzenia wtyczki nie mogly zostac zaladowane."
 		}
 	},
 	"texts": {
-		"aboutPluginStatus": "Włącz lub wyłącz integrację urządzeń Shelly Next Generation. Po włączeniu urządzenia Shelly mogą być wykrywane i sterowane przez Smart Panel.",
-		"aboutMdns": "Skonfiguruj sposób wykrywania urządzeń Shelly w sieci lokalnej za pomocą Multicast DNS (mDNS). Umożliwia to automatyczne wykrywanie bez konieczności ręcznego wprowadzania adresów IP.",
-		"aboutWebsockets": "Zarządzaj parametrami połączenia WebSocket dla urządzeń Shelly. Te ustawienia kontrolują stabilność komunikacji, obsługę żądań i zachowanie ponownego połączenia."
+		"aboutPluginStatus": "Wlacz lub wylacz integracje urzadzen Shelly Next Generation. Po wlaczeniu urzadzenia Shelly moga byc wykrywane i sterowane przez Smart Panel.",
+		"aboutMdns": "Skonfiguruj, jak wtyczka wykrywa urzadzenia Shelly w sieci lokalnej za pomoca Multicast DNS (mDNS). Umozliwia to automatyczne wykrywanie bez koniecznosci recznego wprowadzania adresow IP.",
+		"aboutWebsockets": "Zarzadzaj parametrami polaczenia WebSocket dla urzadzen Shelly. Te ustawienia kontroluja stabilnosc komunikacji, obsluge zadan i zachowanie ponownego polaczenia."
 	},
 	"buttons": {
 		"next": {

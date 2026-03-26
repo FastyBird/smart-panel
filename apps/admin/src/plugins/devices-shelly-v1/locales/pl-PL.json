@@ -2,85 +2,85 @@
 	"headings": {
 		"aboutPluginStatus": "Status wtyczki",
 		"aboutDiscovery": "Ustawienia wykrywania",
-		"aboutTimeouts": "Ustawienia limitów czasu",
+		"aboutTimeouts": "Ustawienia limitow czasu",
 		"device": {
-			"deviceConnection": "Połączenie z urządzeniem",
-			"information": "Informacje o urządzeniu",
-			"supported": "Gratulacje! Urządzenie jest obsługiwane",
-			"notSupported": "Niestety, Twoje urządzenie nie jest obsługiwane",
+			"deviceConnection": "Polaczenie urzadzenia",
+			"information": "Informacje o urzadzeniu",
+			"supported": "Gratulacje! Urzadzenie jest obslugiwane",
+			"notSupported": "Przepraszamy, Twoje urzadzenie nie jest obslugiwane",
 			"model": "Model",
-			"firmware": "Oprogramowanie"
+			"firmware": "Firmware"
 		}
 	},
 	"fields": {
 		"devices": {
 			"id": {
-				"title": "Identyfikator wewnętrzny",
-				"placeholder": "ID urządzenia"
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID urzadzenia"
 			},
 			"category": {
 				"title": "Kategoria",
-				"placeholder": "Kategoria urządzenia",
+				"placeholder": "Kategoria urzadzenia",
 				"description": "O kategorii",
 				"validation": {
-					"required": "Wybierz kategorię urządzenia"
+					"required": "Prosze wybrac kategorie urzadzenia"
 				}
 			},
 			"name": {
 				"title": "Nazwa",
-				"placeholder": "Nazwa urządzenia",
+				"placeholder": "Nazwa urzadzenia",
 				"validation": {
-					"required": "Wprowadź nazwę urządzenia"
+					"required": "Prosze podac nazwe urzadzenia"
 				}
 			},
 			"description": {
 				"title": "Opis",
-				"placeholder": "Opis urządzenia"
+				"placeholder": "Opis urzadzenia"
 			},
 			"enabled": {
-				"title": "Włączone",
-				"placeholder": "Włącz lub wyłącz urządzenie"
+				"title": "Wlaczony",
+				"placeholder": "Wlacz lub wylacz urzadzenie"
 			},
 			"password": {
-				"title": "Hasło administratora",
-				"placeholder": "Podaj hasło urządzenia, jeśli jest chronione"
+				"title": "Haslo administratora",
+				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
 			},
 			"hostname": {
-				"title": "Nazwa hosta urządzenia",
-				"placeholder": "Nazwa sieciowa lub adres IP urządzenia",
+				"title": "Nazwa hosta urzadzenia",
+				"placeholder": "Nazwa sieciowa lub adres IP urzadzenia",
 				"validation": {
-					"required": "Wprowadź nazwę hosta lub adres IP urządzenia"
+					"required": "Prosze podac nazwe hosta lub adres IP urzadzenia"
 				}
 			}
 		},
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"discovery": {
 				"enabled": {
-					"title": "Wykrywanie włączone"
+					"title": "Wykrywanie wlaczone"
 				},
 				"interface": {
 					"title": "Interfejs",
-					"placeholder": "Interfejs sieciowy do użycia. Jeśli nie zostanie określony, zostaną użyte wszystkie dostępne interfejsy."
+					"placeholder": "Interfejs sieciowy do uzycia. Jesli nie podano, wszystkie dostepne interfejsy zostana uzyte."
 				}
 			},
 			"timeouts": {
 				"requestTimeout": {
-					"title": "Limit czasu żądania",
-					"placeholder": "Czas w sekundach oczekiwania na odpowiedź przed przerwaniem żądania.",
+					"title": "Limit czasu zadania",
+					"placeholder": "Czas w sekundach oczekiwania na odpowiedz przed przerwaniem zadania.",
 					"validation": {
-						"required": "Wprowadź limit czasu żądania",
-						"number": "Limit czasu żądania musi być dodatnią liczbą całkowitą"
+						"required": "Prosze podac limit czasu zadania",
+						"number": "Limit czasu zadania musi byc dodatnia liczba calkowita"
 					}
 				},
 				"staleTimeout": {
-					"title": "Limit czasu nieaktywności",
-					"placeholder": "Czas w sekundach, po którym urządzenie jest uznawane za offline, jeśli nie otrzymano aktualizacji statusu.",
+					"title": "Limit czasu przestarzalosci",
+					"placeholder": "Czas w sekundach, po jakim urzadzenie jest uznawane za offline, jesli nie otrzymano aktualizacji stanu.",
 					"validation": {
-						"required": "Wprowadź limit czasu nieaktywności",
-						"number": "Limit czasu nieaktywności musi być dodatnią liczbą całkowitą"
+						"required": "Prosze podac limit czasu przestarzalosci",
+						"number": "Limit czasu przestarzalosci musi byc dodatnia liczba calkowita"
 					}
 				}
 			}
@@ -88,25 +88,25 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "Zmiany zapisane! Konfiguracja wtyczki Shelly Gen 1 została zaktualizowana.",
-			"notEdited": "Coś poszło nie tak. Aktualizacja konfiguracji wtyczki Shelly Gen 1 nie powiodła się."
+			"edited": "Zmiany zapisane! Konfiguracja wtyczki Shelly Gen 1 zostala zaktualizowana.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja konfiguracji wtyczki Shelly Gen 1 nie powiodla sie."
 		},
 		"devices": {
-			"exists": "Urządzenie o podanej nazwie hosta i haśle jest już zarejestrowane w systemie.",
-			"created": "Nowe urządzenie Shelly Gen 1 zostało dodane pomyślnie.",
-			"notCreated": "Coś poszło nie tak. Nie udało się utworzyć urządzenia Shelly Gen 1.",
-			"notChecked": "Coś poszło nie tak. Nie udało się załadować informacji o urządzeniu. Sprawdź nazwę hosta lub hasło urządzenia.",
-			"notReachable": "Urządzenie jest nieosiągalne. Sprawdź nazwę hosta lub adres IP.",
-			"invalidPassword": "Nieprawidłowe hasło. Sprawdź hasło urządzenia.",
-			"edited": "Zmiany zapisane! Urządzenie Shelly Gen 1: {device} zostało zaktualizowane.",
-			"notEdited": "Coś poszło nie tak. Aktualizacja urządzenia Shelly Gen 1 nie powiodła się.",
-			"failedLoadSupportedDevices": "Coś poszło nie tak. Nie udało się załadować obsługiwanych urządzeń wtyczki."
+			"exists": "Urzadzenie z podana nazwa hosta i haslem jest juz zarejestrowane w systemie.",
+			"created": "Nowe urzadzenie Shelly Gen 1 zostalo pomyslnie dodane.",
+			"notCreated": "Cos poszlo nie tak. Nie udalo sie utworzyc urzadzenia Shelly Gen 1.",
+			"notChecked": "Cos poszlo nie tak. Informacje o urzadzeniu nie mogly zostac zaladowane. Sprawdz nazwe hosta lub haslo urzadzenia.",
+			"notReachable": "Urzadzenie jest nieosiagalne. Sprawdz nazwe hosta lub adres IP.",
+			"invalidPassword": "Nieprawidlowe haslo. Sprawdz haslo urzadzenia.",
+			"edited": "Zmiany zapisane! Urzadzenie Shelly Gen 1: {device} zostalo zaktualizowane.",
+			"notEdited": "Cos poszlo nie tak. Aktualizacja urzadzenia Shelly Gen 1 nie powiodla sie.",
+			"failedLoadSupportedDevices": "Cos poszlo nie tak. Obslugiwane urzadzenia wtyczki nie mogly zostac zaladowane."
 		}
 	},
 	"texts": {
-		"aboutPluginStatus": "Włącz lub wyłącz integrację urządzeń Shelly Gen 1. Po włączeniu urządzenia Shelly mogą być wykrywane i sterowane przez Smart Panel.",
-		"aboutDiscovery": "Skonfiguruj sposób wykrywania urządzeń Shelly Gen 1 w sieci lokalnej za pomocą Multicast DNS (mDNS). Umożliwia to automatyczne wykrywanie bez konieczności ręcznego wprowadzania adresów IP.",
-		"aboutTimeouts": "Skonfiguruj ustawienia limitów czasu dla komunikacji HTTP z urządzeniami Shelly Gen 1. Te ustawienia kontrolują obsługę żądań i monitorowanie stanu urządzeń."
+		"aboutPluginStatus": "Wlacz lub wylacz integracje urzadzen Shelly Gen 1. Po wlaczeniu urzadzenia Shelly moga byc wykrywane i sterowane przez Smart Panel.",
+		"aboutDiscovery": "Skonfiguruj, jak wtyczka wykrywa urzadzenia Shelly Gen 1 w sieci lokalnej za pomoca Multicast DNS (mDNS).",
+		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1."
 	},
 	"buttons": {
 		"next": {

@@ -1,1 +1,253 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutMqtt": "MQTT připojení",
+		"advancedMqttSettings": "Pokročilé nastavení MQTT",
+		"aboutTls": "Konfigurace TLS/SSL",
+		"aboutDiscovery": "Vyhledávání zařízení",
+		"steps": {
+			"selectDevice": "Vybrat zařízení",
+			"selectCategory": "Kategorie zařízení",
+			"mappingPreview": "Náhled mapování",
+			"customizeMapping": "Přizpůsobit mapování",
+			"deviceConfiguration": "Konfigurace zařízení"
+		},
+		"mapping": {
+			"summary": "Souhrn mapování",
+			"warnings": "Varování mapování ({count})",
+			"exposeMappings": "Mapování expozic",
+			"customization": "Přizpůsobení mapování"
+		},
+		"device": {
+			"deviceSelection": "Vybrat zařízení",
+			"categorySelection": "Kategorie zařízení",
+			"mappingPreview": "Náhled mapování",
+			"mappingCustomization": "Přizpůsobit mapování",
+			"deviceConfiguration": "Konfigurace zařízení",
+			"deviceInfo": "Informace o zařízení"
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte plugin Zigbee2MQTT. Pokud je zakázán, žádná Zigbee zařízení nebudou monitorována ani ovládána.",
+		"aboutMqtt": "Nakonfigurujte připojení k vašemu MQTT brokeru, kde Zigbee2MQTT publikuje data zařízení.",
+		"aboutTls": "Nakonfigurujte nastavení TLS/SSL pro zabezpečená MQTT připojení. Povolte TLS, pokud váš broker vyžaduje šifrovaná připojení.",
+		"aboutDiscovery": "Nakonfigurujte, jak jsou zařízení vyhledávána a přidávána z bridge Zigbee2MQTT.",
+		"steps": {
+			"selectDevice": "Vyberte Zigbee zařízení k adopci ze seznamu nalezených zařízení.",
+			"selectCategory": "Vyberte kategorii zařízení. Navrhovaná kategorie je založena na expozicích zařízení.",
+			"mappingPreview": "Zkontrolujte, jak budou expozice zařízení mapovány na kanály a vlastnosti Smart Panelu.",
+			"customizeMapping": "Přizpůsobte, které expozice zahrnout, a upravte kategorie kanálů podle potřeby.",
+			"deviceConfiguration": "Nakonfigurujte název zařízení, popis a další nastavení."
+		},
+		"noDiscoveredDevices": "Žádná nalezená zařízení nejsou k dispozici. Ujistěte se, že Zigbee2MQTT běží a zařízení jsou spárována.",
+		"loadingDevices": "Načítání nalezených zařízení...",
+		"loadingPreview": "Načítání náhledu mapování...",
+		"mapping": {
+			"customizationDescription": "Přepněte, které expozice zahrnout, a přizpůsobte kategorie kanálů. Zakázané expozice nebudou vytvořeny."
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"mqtt": {
+				"host": {
+					"title": "Hostitel MQTT brokeru",
+					"placeholder": "např. localhost nebo 192.168.1.100",
+					"validation": {
+						"required": "Hostitel MQTT brokeru je povinný"
+					}
+				},
+				"port": {
+					"title": "Port",
+					"validation": {
+						"required": "Port je povinný",
+						"range": "Port musí být mezi 1 a 65535"
+					}
+				},
+				"username": {
+					"title": "Uživatelské jméno",
+					"placeholder": "Uživatelské jméno MQTT (volitelné)"
+				},
+				"password": {
+					"title": "Heslo",
+					"placeholder": "Heslo MQTT (volitelné)"
+				},
+				"baseTopic": {
+					"title": "Základní téma",
+					"placeholder": "např. zigbee2mqtt",
+					"validation": {
+						"required": "Základní téma je povinné"
+					}
+				},
+				"clientId": {
+					"title": "ID klienta",
+					"placeholder": "Automaticky generováno pokud prázdné"
+				},
+				"cleanSession": {
+					"title": "Čistá relace"
+				},
+				"keepalive": {
+					"title": "Keepalive (s)",
+					"validation": {
+						"number": "Musí být číslo >= 10"
+					}
+				},
+				"connectTimeout": {
+					"title": "Časový limit (ms)",
+					"validation": {
+						"number": "Musí být číslo >= 1000"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Opětovné připojení (ms)",
+					"validation": {
+						"number": "Musí být číslo >= 1000"
+					}
+				}
+			},
+			"tls": {
+				"enabled": {
+					"title": "Povolit TLS"
+				},
+				"rejectUnauthorized": {
+					"title": "Odmítnout neautorizované certifikáty"
+				},
+				"ca": {
+					"title": "CA certifikát",
+					"placeholder": "Vložte obsah CA certifikátu nebo cestu"
+				},
+				"cert": {
+					"title": "Klientský certifikát",
+					"placeholder": "Vložte obsah klientského certifikátu nebo cestu"
+				},
+				"key": {
+					"title": "Soukromý klíč klienta",
+					"placeholder": "Vložte obsah soukromého klíče klienta nebo cestu"
+				}
+			},
+			"discovery": {
+				"autoAdd": {
+					"title": "Automaticky přidávat nalezená zařízení"
+				},
+				"syncOnStartup": {
+					"title": "Synchronizovat zařízení při spuštění"
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID zařízení",
+				"placeholder": "ID zařízení"
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název zařízení"
+				}
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie zařízení",
+				"validation": {
+					"required": "Vyberte prosím kategorii zařízení"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zařízení"
+			},
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"ieeeAddress": {
+				"title": "IEEE adresa",
+				"placeholder": "Vyberte zařízení",
+				"validation": {
+					"required": "Vyberte prosím zařízení"
+				}
+			},
+			"friendlyName": {
+				"title": "Přátelský název"
+			},
+			"manufacturer": {
+				"title": "Výrobce"
+			},
+			"model": {
+				"title": "Model"
+			},
+			"zigbee2mqttDeviceId": {
+				"title": "Připojené zařízení Zigbee2MQTT",
+				"placeholder": "Vyberte připojené zařízení"
+			}
+		},
+		"mapping": {
+			"mapped": "Mapováno",
+			"partial": "Částečně",
+			"unmapped": "Nemapováno",
+			"skipped": "Přeskočeno",
+			"excluded": "Vyloučeno",
+			"totalExposes": "Celkem expozic",
+			"deviceName": "Název zařízení",
+			"suggestedCategory": "Navrhovaná kategorie",
+			"suggestedChannel": {
+				"title": "Navrhovaný kanál",
+				"validation": {
+					"required": "Vyberte prosím kategorii kanálu"
+				}
+			},
+			"properties": "Vlastnosti",
+			"missingRequiredProperties": "Chybějící povinné vlastnosti",
+			"exposeEnabled": "Povoleno",
+			"channelCategory": "Kategorie kanálu",
+			"noChannelSuggested": "Žádný kanál navrhnut"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurace pluginu Zigbee2MQTT byla aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci pluginu Zigbee2MQTT"
+		},
+		"devices": {
+			"created": "Zařízení Zigbee2MQTT '{device}' bylo vytvořeno",
+			"notCreated": "Nepodařilo se vytvořit zařízení Zigbee2MQTT '{device}'",
+			"edited": "Zařízení Zigbee2MQTT '{device}' bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat zařízení Zigbee2MQTT '{device}'",
+			"adopted": "Zařízení '{device}' bylo úspěšně adoptováno",
+			"notAdopted": "Nepodařilo se adoptovat zařízení '{device}'",
+			"noDiscoveredDevices": "Žádná nalezená zařízení nejsou k dispozici. Ujistěte se, že Zigbee2MQTT běží a zařízení jsou spárována.",
+			"deviceOffline": "Toto zařízení je momentálně offline",
+			"alreadyAdopted": "Toto zařízení je již adoptováno",
+			"alreadyAdoptedDescription": "Pokračování znovu adoptuje zařízení s novou konfigurací. Stávající zařízení bude aktualizováno."
+		},
+		"discoveredDevices": {
+			"loadFailed": "Nepodařilo se načíst nalezená zařízení",
+			"mappingPreviewFailed": "Nepodařilo se načíst náhled mapování"
+		},
+		"mapping": {
+			"previewError": "Nepodařilo se načíst náhled mapování",
+			"previewLoading": "Načítání náhledu mapování...",
+			"missingChannelCategory": "Vyberte prosím kategorii kanálu pro: {exposes}",
+			"notReadyToAdopt": "Zařízení není připraveno k adopci. Zkontrolujte a opravte prosím všechna varování.",
+			"readyToAdopt": "Zařízení je připraveno k adopci",
+			"noPreview": "Žádný náhled mapování není k dispozici",
+			"selectDeviceFirst": "Nejprve prosím vyberte zařízení pro zobrazení náhledu mapování",
+			"adoptionSuccess": "Zařízení '{device}' bylo úspěšně adoptováno"
+		},
+		"categorySelection": {
+			"description": "Vyberte kategorii zařízení. Navrhovaná kategorie je založena na schopnostech zařízení."
+		}
+	},
+	"labels": {
+		"suggested": "Navrhováno"
+	},
+	"buttons": {
+		"next": "Další",
+		"previous": "Předchozí",
+		"adoptDevice": "Adoptovat zařízení",
+		"refresh": "Obnovit",
+		"use": "Použít"
+	}
+}

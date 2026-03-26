@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavení Voice.ai API"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"apiKey": {
+				"title": "API klíč",
+				"placeholder": "Zadejte svůj Voice.ai API klíč",
+				"description": "Získejte svůj API klíč z panelu Voice.ai"
+			},
+			"voiceId": {
+				"title": "ID hlasu",
+				"placeholder": "Zadejte ID hlasu Voice.ai",
+				"description": "ID hlasu Voice.ai používaného pro syntézu řeči. Použijte Voice.ai API pro zobrazení dostupných hlasů"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení Voice.ai bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení Voice.ai"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte nastavení Voice.ai API. Pro použití Voice.ai jako poskytovatele TTS potřebujete platný API klíč a ID hlasu."
+	}
+}

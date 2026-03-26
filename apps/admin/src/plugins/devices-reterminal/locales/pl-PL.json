@@ -1,72 +1,72 @@
 {
 	"headings": {
 		"aboutPluginStatus": "Status wtyczki",
-		"aboutPolling": "Odpytywanie czujników"
+		"aboutPolling": "Odpytywanie czujnikow"
 	},
 	"texts": {
-		"aboutPluginStatus": "Włącz lub wyłącz wtyczkę reTerminal. Po wyłączeniu żadne peryferia sprzętowe reTerminal nie będą monitorowane ani sterowane.",
-		"aboutPolling": "Skonfiguruj, jak często wtyczka odpytuje czujniki sprzętowe (światło, akcelerometr, temperatura) o zaktualizowane odczyty."
+		"aboutPluginStatus": "Wlacz lub wylacz wtyczke reTerminal. Po wylaczeniu zadne peryferia sprzetowe reTerminal nie beda monitorowane ani sterowane.",
+		"aboutPolling": "Skonfiguruj, jak czesto wtyczka odpytuje czujniki sprzetowe (swiatlo, akcelerometr, temperatura) w celu uzyskania zaktualizowanych odczytow."
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włącz wtyczkę"
+				"title": "Wlacz wtyczke"
 			},
 			"polling": {
 				"interval": {
-					"title": "Interwał odpytywania (ms)",
+					"title": "Interwal odpytywania (ms)",
 					"validation": {
-						"required": "Interwał odpytywania jest wymagany",
-						"number": "Musi być liczbą >= 1000"
+						"required": "Interwal odpytywania jest wymagany",
+						"number": "Musi byc liczba >= 1000"
 					}
 				}
 			}
 		},
 		"devices": {
 			"id": {
-				"title": "ID urządzenia",
-				"placeholder": "ID urządzenia"
+				"title": "ID urzadzenia",
+				"placeholder": "ID urzadzenia"
 			},
 			"name": {
-				"title": "Nazwa urządzenia",
-				"placeholder": "Wprowadź nazwę urządzenia",
+				"title": "Nazwa urzadzenia",
+				"placeholder": "Wprowadz nazwe urzadzenia",
 				"validation": {
-					"required": "Nazwa urządzenia jest wymagana"
+					"required": "Nazwa urzadzenia jest wymagana"
 				}
 			},
 			"category": {
-				"title": "Kategoria urządzenia",
-				"placeholder": "Wybierz kategorię",
+				"title": "Kategoria urzadzenia",
+				"placeholder": "Wybierz kategorie",
 				"validation": {
-					"required": "Kategoria urządzenia jest wymagana"
+					"required": "Kategoria urzadzenia jest wymagana"
 				}
 			},
 			"description": {
 				"title": "Opis",
-				"placeholder": "Wprowadź opis urządzenia (opcjonalnie)"
+				"placeholder": "Wprowadz opis urzadzenia (opcjonalnie)"
 			},
 			"variant": {
-				"title": "Wariant sprzętowy",
-				"placeholder": "Wybierz wariant sprzętowy",
+				"title": "Wariant sprzetowy",
+				"placeholder": "Wybierz wariant sprzetowy",
 				"validation": {
-					"required": "Wariant sprzętowy jest wymagany"
+					"required": "Wariant sprzetowy jest wymagany"
 				}
 			},
 			"enabled": {
-				"title": "Włączone"
+				"title": "Wlaczony"
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Konfiguracja wtyczki reTerminal została zaktualizowana",
-			"notEdited": "Nie udało się zaktualizować konfiguracji wtyczki reTerminal"
+			"edited": "Konfiguracja wtyczki reTerminal zostala zaktualizowana",
+			"notEdited": "Nie udalo sie zaktualizowac konfiguracji wtyczki reTerminal"
 		},
 		"devices": {
-			"created": "Urządzenie reTerminal '{device}' zostało utworzone",
-			"notCreated": "Nie udało się utworzyć urządzenia reTerminal '{device}'",
-			"edited": "Urządzenie reTerminal '{device}' zostało zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować urządzenia reTerminal '{device}'"
+			"created": "Urzadzenie reTerminal '{device}' zostalo utworzone",
+			"notCreated": "Nie udalo sie utworzyc urzadzenia reTerminal '{device}'",
+			"edited": "Urzadzenie reTerminal '{device}' zostalo zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac urzadzenia reTerminal '{device}'"
 		}
 	}
 }

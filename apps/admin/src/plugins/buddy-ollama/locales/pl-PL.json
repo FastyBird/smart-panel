@@ -5,27 +5,27 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"model": {
 				"title": "Model",
 				"placeholder": "np. llama3, mistral, codellama",
-				"description": "Model Ollama używany do generowania odpowiedzi"
+				"description": "Model Ollama uzywany do generowania odpowiedzi"
 			},
 			"baseUrl": {
 				"title": "Bazowy URL",
 				"placeholder": "np. http://localhost:11434",
-				"description": "URL Twojej lokalnej instancji Ollama"
+				"description": "URL lokalnej instancji Ollama"
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia Ollama zostały zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować ustawień Ollama"
+			"edited": "Ustawienia Ollama zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien Ollama"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Skonfiguruj ustawienia lokalnej instancji Ollama. Ollama działa lokalnie i nie wymaga klucza API. Upewnij się, że Ollama jest uruchomiona i dostępna pod skonfigurowanym URL."
+		"aboutApiSettings": "Skonfiguruj ustawienia lokalnej instancji Ollama. Ollama dziala lokalnie i nie wymaga klucza API. Upewnij sie, ze Ollama jest uruchomiona i dostepna pod skonfigurowanym URL."
 	}
 }

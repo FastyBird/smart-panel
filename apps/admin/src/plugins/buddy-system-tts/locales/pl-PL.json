@@ -5,27 +5,27 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"engine": {
 				"title": "Silnik",
-				"placeholder": "piper lub espeak (automatyczne wykrycie, jeśli puste)",
-				"description": "Silnik TTS do użycia. Pozostaw puste, aby wykryć automatycznie (preferuje piper, zastępczo espeak)"
+				"placeholder": "piper lub espeak (automatyczne wykrywanie jesli puste)",
+				"description": "Silnik TTS do uzycia. Pozostaw puste dla automatycznego wykrywania (preferuje piper, zapasowy espeak)"
 			},
 			"voice": {
-				"title": "Głos",
-				"placeholder": "Nazwa głosu lub kod (opcjonalnie)",
-				"description": "Nazwa modelu piper lub kod głosu espeak. Pozostaw puste dla domyślnego głosu"
+				"title": "Glos",
+				"placeholder": "Nazwa glosu lub kod (opcjonalnie)",
+				"description": "Nazwa modelu piper lub kod glosu espeak. Pozostaw puste dla domyslnego glosu"
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia systemowego TTS zostały zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować ustawień systemowego TTS"
+			"edited": "Ustawienia systemowego TTS zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien systemowego TTS"
 		}
 	},
 	"texts": {
-		"aboutSettings": "Skonfiguruj lokalny silnik zamiany tekstu na mowę. Nie jest wymagany klucz API. Używa piper (neuronowy TTS) lub espeak (podstawowy TTS) zainstalowany w systemie."
+		"aboutSettings": "Skonfiguruj lokalny silnik text-to-speech. Klucz API nie jest wymagany. Uzywa piper (neuronowy TTS) lub espeak (podstawowy TTS) zainstalowany w systemie."
 	}
 }

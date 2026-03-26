@@ -6,65 +6,65 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"clientId": {
-				"title": "Client ID",
-				"placeholder": "Wprowadź swój OAuth client ID",
-				"description": "OAuth client ID dla API OpenAI Codex"
+				"title": "ID klienta",
+				"placeholder": "Wprowadz ID klienta OAuth",
+				"description": "ID klienta OAuth dla API OpenAI Codex"
 			},
 			"clientSecret": {
-				"title": "Client secret",
-				"placeholder": "Wprowadź swój OAuth client secret"
+				"title": "Sekret klienta",
+				"placeholder": "Wprowadz sekret klienta OAuth"
 			},
 			"accessToken": {
-				"title": "Token dostępu",
-				"placeholder": "Wprowadź swój token dostępu"
+				"title": "Token dostepu",
+				"placeholder": "Wprowadz token dostepu"
 			},
 			"refreshToken": {
-				"title": "Token odświeżania",
-				"placeholder": "Wprowadź swój token odświeżania"
+				"title": "Token odswiezania",
+				"placeholder": "Wprowadz token odswiezania"
 			},
 			"model": {
 				"title": "Model",
 				"placeholder": "np. codex-mini",
-				"description": "Model OpenAI Codex używany do generowania odpowiedzi"
+				"description": "Model OpenAI Codex uzywany do generowania odpowiedzi"
 			},
 			"callbackUrl": {
-				"placeholder": "Wklej tutaj adres URL przekierowania..."
+				"placeholder": "Wklej URL przekierowania tutaj..."
 			}
 		}
 	},
 	"buttons": {
 		"getUrl": "Pobierz URL autoryzacji",
 		"copyUrl": "Kopiuj",
-		"openUrl": "Otwórz w przeglądarce",
-		"exchange": "Wymień token",
+		"openUrl": "Otworz w przegladarce",
+		"exchange": "Wymien token",
 		"exchanging": "Wymiana...",
-		"disconnect": "Rozłącz"
+		"disconnect": "Rozlacz"
 	},
 	"statuses": {
-		"connected": "Połączony",
-		"notConnected": "Niepołączony"
+		"connected": "Polaczony",
+		"notConnected": "Nie polaczony"
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia OpenAI Codex zostały zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować ustawień OpenAI Codex"
+			"edited": "Ustawienia OpenAI Codex zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien OpenAI Codex"
 		},
 		"oauth": {
 			"urlCopied": "URL skopiowany do schowka",
-			"missingClientId": "Wprowadź Client ID przed rozpoczęciem procesu OAuth",
-			"authorizeError": "Nie udało się uzyskać URL autoryzacji",
-			"exchangeSuccess": "Wymiana tokenu zakończona pomyślnie",
-			"exchangeError": "Wymiana tokenu nie powiodła się"
+			"missingClientId": "Prosze wprowadzic ID klienta przed rozpoczeciem procesu OAuth",
+			"authorizeError": "Nie udalo sie pobrac URL autoryzacji",
+			"exchangeSuccess": "Wymiana tokenu udana",
+			"exchangeError": "Wymiana tokenu nie powiodla sie"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Skonfiguruj ustawienia OAuth OpenAI Codex. Kliknij \"Pobierz URL autoryzacji\", aby rozpocząć proces OAuth, lub rozwiń Ustawienia zaawansowane, aby ręcznie wprowadzić tokeny.",
-		"oauthStep1": "Kliknij \"Pobierz URL autoryzacji\" powyżej",
-		"oauthStep2": "Otwórz URL w przeglądarce i dokonaj autoryzacji",
-		"oauthStep3": "Skopiuj URL przekierowania z przeglądarki po autoryzacji",
-		"oauthStep4": "Wklej go poniżej i kliknij \"Wymień token\""
+		"aboutApiSettings": "Skonfiguruj ustawienia OAuth OpenAI Codex. Kliknij \"Pobierz URL autoryzacji\", aby rozpoczac proces OAuth, lub rozwin Ustawienia zaawansowane, aby wprowadzic tokeny recznie.",
+		"oauthStep1": "Kliknij \"Pobierz URL autoryzacji\" powyzej",
+		"oauthStep2": "Otworz URL w przegladarce i autoryzuj",
+		"oauthStep3": "Skopiuj URL przekierowania z przegladarki po autoryzacji",
+		"oauthStep4": "Wklej go ponizej i kliknij \"Wymien token\""
 	}
 }

@@ -5,7 +5,7 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"model": {
 				"title": "Model",
@@ -13,19 +13,19 @@
 				"description": "Rozmiar modelu Whisper: tiny, base, small, medium lub large"
 			},
 			"language": {
-				"title": "Wskazówka językowa",
-				"placeholder": "np. en, de, cs (opcjonalnie)",
-				"description": "Kod języka ISO 639-1 dla poprawy dokładności transkrypcji"
+				"title": "Wskazowka jezyka",
+				"placeholder": "np. en, de, pl (opcjonalnie)",
+				"description": "Kod jezyka ISO 639-1 dla poprawy dokladnosci transkrypcji"
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia lokalnego Whisper zostały zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować ustawień lokalnego Whisper"
+			"edited": "Ustawienia lokalnego Whisper zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien lokalnego Whisper"
 		}
 	},
 	"texts": {
-		"aboutSettings": "Skonfiguruj lokalną zamianę mowy na tekst Whisper. Nie jest wymagany klucz API. Polecenie whisper musi być zainstalowane i dostępne w systemowej ścieżce PATH."
+		"aboutSettings": "Skonfiguruj lokalny Whisper speech-to-text. Klucz API nie jest wymagany. Polecenie whisper musi byc zainstalowane i dostepne w systemowym PATH."
 	}
 }

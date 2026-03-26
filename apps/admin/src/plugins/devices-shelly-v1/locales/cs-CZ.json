@@ -1,1 +1,116 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutDiscovery": "Nastavení vyhledávání",
+		"aboutTimeouts": "Nastavení časových limitů",
+		"device": {
+			"deviceConnection": "Připojení zařízení",
+			"information": "Informace o zařízení",
+			"supported": "Gratulujeme! Zařízení je podporováno",
+			"notSupported": "Je nám líto, vaše zařízení není podporováno",
+			"model": "Model",
+			"firmware": "Firmware"
+		}
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Interní identifikátor",
+				"placeholder": "ID zařízení"
+			},
+			"category": {
+				"title": "Kategorie",
+				"placeholder": "Kategorie zařízení",
+				"description": "O kategorii",
+				"validation": {
+					"required": "Vyberte prosím kategorii zařízení"
+				}
+			},
+			"name": {
+				"title": "Název",
+				"placeholder": "Název zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název zařízení"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Popis zařízení"
+			},
+			"enabled": {
+				"title": "Povoleno",
+				"placeholder": "Povolit nebo zakázat zařízení"
+			},
+			"password": {
+				"title": "Heslo administrátora",
+				"placeholder": "Zadejte heslo zařízení, pokud je chráněno"
+			},
+			"hostname": {
+				"title": "Název hostitele zařízení",
+				"placeholder": "Síťový název nebo IP adresa zařízení",
+				"validation": {
+					"required": "Vyplňte prosím název hostitele nebo IP adresu zařízení"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"discovery": {
+				"enabled": {
+					"title": "Vyhledávání povoleno"
+				},
+				"interface": {
+					"title": "Rozhraní",
+					"placeholder": "Síťové rozhraní k použití. Pokud není zadáno, budou použita všechna dostupná rozhraní."
+				}
+			},
+			"timeouts": {
+				"requestTimeout": {
+					"title": "Časový limit požadavku",
+					"placeholder": "Čas v sekundách pro čekání na odpověď před přerušením požadavku.",
+					"validation": {
+						"required": "Vyplňte prosím časový limit požadavku",
+						"number": "Časový limit požadavku musí být kladné celé číslo"
+					}
+				},
+				"staleTimeout": {
+					"title": "Časový limit zastarání",
+					"placeholder": "Čas v sekundách, po kterém je zařízení považováno za offline, pokud není přijata aktualizace stavu.",
+					"validation": {
+						"required": "Vyplňte prosím časový limit zastarání",
+						"number": "Časový limit zastarání musí být kladné celé číslo"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Změny uloženy! Konfigurace pluginu Shelly Gen 1 byla aktualizována.",
+			"notEdited": "Něco se pokazilo. Aktualizace konfigurace pluginu Shelly Gen 1 nebyla úspěšná."
+		},
+		"devices": {
+			"exists": "Zařízení se zadaným názvem hostitele a heslem je již registrováno v systému.",
+			"created": "Nové zařízení Shelly Gen 1 bylo úspěšně přidáno.",
+			"notCreated": "Něco se pokazilo. Nepodařilo se vytvořit zařízení Shelly Gen 1.",
+			"notChecked": "Něco se pokazilo. Nepodařilo se načíst informace o zařízení. Zkontrolujte název hostitele nebo heslo zařízení.",
+			"notReachable": "Zařízení není dostupné. Zkontrolujte prosím název hostitele nebo IP adresu.",
+			"invalidPassword": "Neplatné heslo. Zkontrolujte prosím heslo zařízení.",
+			"edited": "Změny uloženy! Zařízení Shelly Gen 1: {device} bylo aktualizováno.",
+			"notEdited": "Něco se pokazilo. Aktualizace zařízení Shelly Gen 1 nebyla úspěšná.",
+			"failedLoadSupportedDevices": "Něco se pokazilo. Nepodařilo se načíst podporovaná zařízení pluginu."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte integraci zařízení Shelly Gen 1. Pokud je povolena, zařízení Shelly mohou být vyhledána a ovládána prostřednictvím Smart Panelu.",
+		"aboutDiscovery": "Nakonfigurujte, jak plugin vyhledává zařízení Shelly Gen 1 ve vaší lokální síti pomocí Multicast DNS (mDNS). To umožňuje automatickou detekci bez nutnosti ručního zadávání IP adres.",
+		"aboutTimeouts": "Nakonfigurujte nastavení časových limitů pro HTTP komunikaci se zařízeními Shelly Gen 1. Tato nastavení řídí zpracování požadavků a monitorování stavu zařízení."
+	},
+	"buttons": {
+		"next": {
+			"title": "Další"
+		}
+	}
+}

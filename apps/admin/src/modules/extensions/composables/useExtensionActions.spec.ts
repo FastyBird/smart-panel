@@ -21,6 +21,7 @@ const mockFlashMessage = {
 };
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: vi.fn(() => ({
 		t: (key: string) => key,
 	})),

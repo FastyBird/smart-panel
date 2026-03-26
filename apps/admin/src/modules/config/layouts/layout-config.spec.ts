@@ -14,6 +14,7 @@ import LayoutConfig from './layout-config.vue';
 type LayoutConfigInstance = ComponentPublicInstance<{ activeTab: string }>;
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

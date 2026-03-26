@@ -1,1 +1,121 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editTile": {
+				"title": "Upravit dlaždici stránky"
+			},
+			"addTile": {
+				"title": "Přidat dlaždici stránky"
+			},
+			"editDataSource": {
+				"title": "Upravit zdroj dat stránky"
+			},
+			"addDataSource": {
+				"title": "Přidat zdroj dat stránky"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "stránka: {page}",
+			"addTile": "přidat dlaždici stránky",
+			"editTile": "upravit dlaždici stránky",
+			"addDataSource": "přidat zdroj dat stránky",
+			"editDataSource": "upravit zdroj dat stránky"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addTile": "Přidat dlaždici stránky",
+			"editTile": "Upravit dlaždici stránky",
+			"addDataSource": "Přidat zdroj dat stránky",
+			"editDataSource": "Upravit zdroj dat stránky"
+		},
+		"configure": {
+			"draft": "Koncept",
+			"display": "Displej",
+			"quickAddTile": "Rychle přidat dlaždici"
+		},
+		"misc": {
+			"discard": "Zahodit změny?",
+			"tip": "Tip"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addTile": "Přidat novou dlaždici stránky smart panelu",
+			"editTile": "Upravit dlaždici stránky smart panelu",
+			"addDataSource": "Přidat nový zdroj dat stránky smart panelu",
+			"editDataSource": "Upravit zdroj dat stránky smart panelu"
+		}
+	},
+	"messages": {
+		"tiles": {
+			"deletedWhileEditing": "Tato dlaždice byla smazána a již není k dispozici."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Tento zdroj dat byl smazán a již není k dispozici."
+		},
+		"misc": {
+			"requestError": "Něco se pokazilo, zkuste to prosím znovu později."
+		}
+	},
+	"texts": {
+		"misc": {
+			"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
+			"gridLayoutTip": "Můžete změnit, kolik dlaždic se vejde na stránku — nastavte Řádky a Sloupce nebo zvolte Velikost dlaždice."
+		},
+		"tiles": {
+			"loadingTile": "Načítání dlaždice..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Načítání zdroje dat..."
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Zahodit"
+		},
+		"close": {
+			"title": "Zavřít"
+		},
+		"add": {
+			"title": "Přidat"
+		},
+		"save": {
+			"title": "Uložit"
+		},
+		"update": {
+			"title": "Aktualizovat"
+		},
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"manageElements": {
+			"title": "Spravovat prvky"
+		},
+		"addPageTile": {
+			"title": "Přidat dlaždici stránky"
+		},
+		"addPageDataSource": {
+			"title": "Přidat zdroj dat stránky"
+		}
+	},
+	"fields": {
+		"rows": {
+			"title": "Řádky",
+			"placeholder": "Počet řádků"
+		},
+		"cols": {
+			"title": "Sloupce",
+			"placeholder": "Počet sloupců"
+		},
+		"tileSize": {
+			"title": "Velikost dlaždice",
+			"placeholder": "Velikost dlaždice"
+		}
+	}
+}

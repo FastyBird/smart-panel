@@ -1,1 +1,16 @@
-{}
+{
+	"preview": {
+		"defaultName": "Zařízení",
+		"statusOnline": "Online",
+		"statusOffline": "Offline"
+	},
+	"fields": {
+		"device": {
+			"title": "Zařízení",
+			"placeholder": "Zařízení dlaždice",
+			"validation": {
+				"required": "Vyberte prosím zařízení dlaždice"
+			}
+		}
+	}
+}

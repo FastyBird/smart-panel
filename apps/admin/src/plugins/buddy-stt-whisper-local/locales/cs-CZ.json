@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "Nastavení lokálního Whisper"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "base",
+				"description": "Velikost modelu Whisper: tiny, base, small, medium nebo large"
+			},
+			"language": {
+				"title": "Nápověda jazyka",
+				"placeholder": "např. en, de, cs (volitelné)",
+				"description": "Kód jazyka ISO 639-1 pro zlepšení přesnosti přepisu"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení lokálního Whisper bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení lokálního Whisper"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Nakonfigurujte lokální Whisper pro převod řeči na text. Není vyžadován API klíč. Příkaz whisper musí být nainstalován a dostupný v systémové PATH."
+	}
+}

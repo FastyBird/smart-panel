@@ -12,6 +12,7 @@ import { type IUseBreakpoints, useBreakpoints } from '../../../common';
 import LayoutMaintenance from './layout-maintenance.vue';
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

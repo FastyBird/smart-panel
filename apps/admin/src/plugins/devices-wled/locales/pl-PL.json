@@ -2,94 +2,94 @@
 	"headings": {
 		"aboutPluginStatus": "Status wtyczki",
 		"aboutMdns": "Wykrywanie mDNS",
-		"aboutWebsocket": "Połączenie WebSocket",
-		"aboutPolling": "Odpytywanie urządzeń",
-		"aboutTimeouts": "Konfiguracja limitów czasu"
+		"aboutWebsocket": "Polaczenie WebSocket",
+		"aboutPolling": "Odpytywanie urzadzen",
+		"aboutTimeouts": "Konfiguracja limitow czasu"
 	},
 	"texts": {
-		"aboutPluginStatus": "Włącz lub wyłącz wtyczkę WLED. Po wyłączeniu żadne urządzenia WLED nie będą monitorowane ani sterowane.",
-		"aboutMdns": "Wykrywanie mDNS umożliwia automatyczne wykrywanie urządzeń WLED w Twojej sieci.",
-		"aboutWebsocket": "WebSocket zapewnia aktualizacje w czasie rzeczywistym z urządzeń WLED dla szybszej synchronizacji stanu.",
-		"aboutPolling": "Skonfiguruj, jak często wtyczka odpytuje urządzenia o aktualizacje stanu, gdy WebSocket nie jest dostępny.",
-		"aboutTimeouts": "Skonfiguruj limity czasu połączenia i poleceń dla komunikacji z urządzeniami WLED."
+		"aboutPluginStatus": "Wlacz lub wylacz wtyczke WLED. Po wylaczeniu zadne urzadzenia WLED nie beda monitorowane ani sterowane.",
+		"aboutMdns": "Wykrywanie mDNS umozliwia automatyczne wykrywanie urzadzen WLED w sieci.",
+		"aboutWebsocket": "WebSocket zapewnia aktualizacje w czasie rzeczywistym z urzadzen WLED dla szybszej synchronizacji stanu.",
+		"aboutPolling": "Skonfiguruj, jak czesto wtyczka odpytuje urzadzenia o aktualizacje stanu, gdy WebSocket nie jest dostepny.",
+		"aboutTimeouts": "Skonfiguruj limity czasu polaczenia i komend dla komunikacji z urzadzeniami WLED."
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włącz wtyczkę"
+				"title": "Wlacz wtyczke"
 			},
 			"mdns": {
 				"enabled": {
-					"title": "Włącz wykrywanie mDNS"
+					"title": "Wlacz wykrywanie mDNS"
 				},
 				"interface": {
 					"title": "Interfejs sieciowy",
-					"placeholder": "Pozostaw puste dla domyślnego"
+					"placeholder": "Pozostaw puste dla domyslnego"
 				},
 				"autoAdd": {
-					"title": "Automatyczne dodawanie wykrytych urządzeń"
+					"title": "Automatyczne dodawanie wykrytych urzadzen"
 				}
 			},
 			"websocket": {
 				"enabled": {
-					"title": "Włącz WebSocket"
+					"title": "Wlacz WebSocket"
 				},
 				"reconnectInterval": {
-					"title": "Interwał ponownego połączenia (ms)",
+					"title": "Interwal ponownego polaczenia (ms)",
 					"validation": {
-						"required": "Interwał ponownego połączenia jest wymagany",
-						"number": "Musi być liczbą >= 1000"
+						"required": "Interwal ponownego polaczenia jest wymagany",
+						"number": "Musi byc liczba >= 1000"
 					}
 				}
 			},
 			"polling": {
 				"interval": {
-					"title": "Interwał odpytywania (ms)",
+					"title": "Interwal odpytywania (ms)",
 					"validation": {
-						"required": "Interwał odpytywania jest wymagany",
-						"number": "Musi być liczbą >= 1000"
+						"required": "Interwal odpytywania jest wymagany",
+						"number": "Musi byc liczba >= 1000"
 					}
 				}
 			},
 			"timeouts": {
 				"connectionTimeout": {
-					"title": "Limit czasu połączenia (ms)",
+					"title": "Limit czasu polaczenia (ms)",
 					"validation": {
-						"required": "Limit czasu połączenia jest wymagany",
-						"number": "Musi być liczbą >= 1000"
+						"required": "Limit czasu polaczenia jest wymagany",
+						"number": "Musi byc liczba >= 1000"
 					}
 				},
 				"commandDebounce": {
-					"title": "Opóźnienie poleceń (ms)",
+					"title": "Opoznienie komendy (ms)",
 					"validation": {
-						"required": "Opóźnienie poleceń jest wymagane",
-						"number": "Musi być liczbą >= 0"
+						"required": "Opoznienie komendy jest wymagane",
+						"number": "Musi byc liczba >= 0"
 					}
 				}
 			}
 		},
 		"devices": {
 			"id": {
-				"title": "ID urządzenia",
-				"placeholder": "ID urządzenia"
+				"title": "ID urzadzenia",
+				"placeholder": "ID urzadzenia"
 			},
 			"name": {
-				"title": "Nazwa urządzenia",
-				"placeholder": "Wprowadź nazwę urządzenia",
+				"title": "Nazwa urzadzenia",
+				"placeholder": "Wprowadz nazwe urzadzenia",
 				"validation": {
-					"required": "Nazwa urządzenia jest wymagana"
+					"required": "Nazwa urzadzenia jest wymagana"
 				}
 			},
 			"category": {
-				"title": "Kategoria urządzenia",
-				"placeholder": "Wybierz kategorię",
+				"title": "Kategoria urzadzenia",
+				"placeholder": "Wybierz kategorie",
 				"validation": {
-					"required": "Kategoria urządzenia jest wymagana"
+					"required": "Kategoria urzadzenia jest wymagana"
 				}
 			},
 			"description": {
 				"title": "Opis",
-				"placeholder": "Wprowadź opis urządzenia (opcjonalnie)"
+				"placeholder": "Wprowadz opis urzadzenia (opcjonalnie)"
 			},
 			"hostname": {
 				"title": "Nazwa hosta lub adres IP",
@@ -99,20 +99,20 @@
 				}
 			},
 			"enabled": {
-				"title": "Włączone"
+				"title": "Wlaczony"
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Konfiguracja wtyczki WLED została zaktualizowana",
-			"notEdited": "Nie udało się zaktualizować konfiguracji wtyczki WLED"
+			"edited": "Konfiguracja wtyczki WLED zostala zaktualizowana",
+			"notEdited": "Nie udalo sie zaktualizowac konfiguracji wtyczki WLED"
 		},
 		"devices": {
-			"created": "Urządzenie WLED '{device}' zostało utworzone",
-			"notCreated": "Nie udało się utworzyć urządzenia WLED '{device}'",
-			"edited": "Urządzenie WLED '{device}' zostało zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować urządzenia WLED '{device}'"
+			"created": "Urzadzenie WLED '{device}' zostalo utworzone",
+			"notCreated": "Nie udalo sie utworzyc urzadzenia WLED '{device}'",
+			"edited": "Urzadzenie WLED '{device}' zostalo zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac urzadzenia WLED '{device}'"
 		}
 	}
 }

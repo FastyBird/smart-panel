@@ -1,1 +1,21 @@
-{}
+{
+	"preview": {
+		"day": {
+			"temperature": "22°C",
+			"condition": "Slunečno"
+		},
+		"forecast": {
+			"mon": "Po",
+			"tue": "Út",
+			"wed": "St",
+			"thu": "Čt"
+		}
+	},
+	"fields": {
+		"locationId": {
+			"title": "Meteorologická lokace",
+			"placeholder": "Vyberte lokaci",
+			"description": "Vyberte meteorologickou lokaci k zobrazení. Pokud není nastavena, bude použita primární lokace z nastavení počasí."
+		}
+	}
+}

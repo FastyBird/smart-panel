@@ -37,6 +37,7 @@ vi.mock('element-plus', async () => {
 });
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: vi.fn((key, params) => `${key}${params?.user ? ' ' + params?.user : ''}`),
 	}),

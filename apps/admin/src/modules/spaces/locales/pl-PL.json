@@ -1,1 +1,798 @@
-{}
+{
+	"title": "Przestrzenie",
+	"description": "Zarzadzaj przestrzeniami (pokoje i strefy)",
+	"headings": {
+		"list": "Przestrzenie",
+		"spaces": "Przestrzenie",
+		"detail": "Szczegoly przestrzeni",
+		"add": "Dodaj przestrzen",
+		"edit": "Edytuj przestrzen",
+		"removeSpace": "Usun przestrzen",
+		"bulkRemoveSpace": "Usun przestrzenie",
+		"discard": "Odrzuc zmiany",
+		"adjustFilters": "Filtruj przestrzenie"
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "Ogolne"
+			},
+			"organization": {
+				"title": "Organizacja",
+				"hint": "Przypisz ten pokoj do strefy (np. \"Parter\", \"Pietro\"), aby pogrupowac powiazane pokoje."
+			},
+			"devicesDisplays": {
+				"title": "Urzadzenia i wyswietlacze",
+				"titleDevicesOnly": "Urzadzenia",
+				"summary": "Do tej przestrzeni jest przypisanych {devices} urzadzen i {displays} wyswietlaczy.",
+				"summaryDevicesOnly": "Do tej przestrzeni jest przypisanych {devices} urzadzen.",
+				"manageDevices": "Zarzadzaj urzadzeniami",
+				"manageDisplays": "Zarzadzaj wyswietlaczami"
+			},
+			"statusWidgets": {
+				"title": "Widzety statusu",
+				"hint": "Skonfiguruj widzety wyswietlane w obszarze statusu przestrzeni na panelu."
+			},
+			"smartOverrides": {
+				"title": "Inteligentne nadpisania",
+				"badge": "Zaawansowane",
+				"hint": "Opcjonalne ustawienia poprawiajace inteligentne zachowanie i sterowanie oparte na intencjach.",
+				"lightingRoles": "Role oswietlenia",
+				"climateRoles": "Role klimatu",
+				"coversRoles": "Role oslon",
+				"sensorRoles": "Role czujnikow",
+				"smartSuggestions": "Inteligentne sugestie"
+			}
+		}
+	},
+	"subHeadings": {
+		"list": "Organizuj urzadzenia i wyswietlacze wedlug pokoi lub stref",
+		"adjustFilters": "Dostosuj filtry wyswietlania",
+		"add": "Dodaj nowa przestrzen",
+		"detail": "Zarzadzaj przestrzenia: {space}",
+		"onboarding": "Kreator konfiguracji przestrzeni, urzadzen i wyswietlaczy"
+	},
+	"breadcrumbs": {
+		"spaces": {
+			"list": "przestrzenie",
+			"detail": "przestrzen: {space}",
+			"edit": "edytuj przestrzen",
+			"add": "dodaj przestrzen",
+			"onboarding": "kreator konfiguracji"
+		}
+	},
+	"meta": {
+		"spaces": {
+			"list": {
+				"title": "Lista przestrzeni"
+			},
+			"edit": {
+				"title": "Edytuj przestrzen: {space}"
+			},
+			"add": {
+				"title": "Dodaj przestrzen"
+			},
+			"detail": {
+				"title": "Przestrzen: {space}"
+			},
+			"onboarding": {
+				"title": "Kreator konfiguracji przestrzeni"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Nazwa",
+			"type": "Typ",
+			"category": "Kategoria",
+			"description": "Opis",
+			"order": "Kolejnosc",
+			"devices": "Urzadzenia",
+			"displays": "Wyswietlacze",
+			"actions": "Akcje"
+		},
+		"empty": "Nie znaleziono przestrzeni. Utworz pierwsza przestrzen, aby rozpoczac."
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Szukaj przestrzeni..."
+		},
+		"spaces": {
+			"id": {
+				"title": "Identyfikator wewnetrzny",
+				"placeholder": "ID przestrzeni"
+			},
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Wprowadz nazwe przestrzeni (np. Salon)",
+				"validation": {
+					"required": "Nazwa jest wymagana",
+					"maxLength": "Nazwa musi miec mniej niz 100 znakow"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opcjonalny opis przestrzeni"
+			},
+			"type": {
+				"title": "Typ",
+				"options": {
+					"room": "Pokoj",
+					"zone": "Strefa"
+				},
+				"validation": {
+					"required": "Typ jest wymagany"
+				}
+			},
+			"category": {
+				"title": "Kategoria",
+				"placeholder": "Wybierz kategorie",
+				"hint": "Wybor kategorii automatycznie zasugeruje ikone i opis dla tej przestrzeni. Dostepne kategorie zaleza od tego, czy jest to pokoj czy strefa.",
+				"validation": {
+					"requiredForZone": "Kategoria jest wymagana dla stref"
+				},
+				"groups": {
+					"floors": "Pietra",
+					"outdoor": "Tereny zewnetrzne",
+					"other": "Inne"
+				},
+				"options": {
+					"living_room": "Salon",
+					"bedroom": "Sypialnia",
+					"bathroom": "Lazienka",
+					"toilet": "Toaleta",
+					"kitchen": "Kuchnia",
+					"dining_room": "Jadalnia",
+					"office": "Biuro",
+					"entryway": "Przedsionek",
+					"garage": "Garaz",
+					"hallway": "Korytarz",
+					"laundry": "Pralnia",
+					"utility_room": "Pomieszczenie gospodarcze",
+					"storage": "Magazyn",
+					"closet": "Garderoba",
+					"pantry": "Spizarnia",
+					"nursery": "Pokoj dzieciecy",
+					"guest_room": "Pokoj goscinny",
+					"gym": "Silownia",
+					"media_room": "Pokoj multimedialny",
+					"workshop": "Warsztat",
+					"other": "Inne",
+					"floor_ground": "Parter",
+					"floor_first": "Pierwsze pietro",
+					"floor_second": "Drugie pietro",
+					"floor_basement": "Piwnica",
+					"floor_attic": "Poddasze",
+					"outdoor_front_yard": "Ogrod frontowy",
+					"outdoor_backyard": "Ogrod tylny",
+					"outdoor_driveway": "Podjazd",
+					"outdoor_garden": "Ogrod",
+					"outdoor_terrace": "Taras",
+					"outdoor_balcony": "Balkon",
+					"outdoor_walkway": "Chodnik",
+					"security_perimeter": "Strefa bezpieczenstwa",
+					"utility": "Gospodarcza",
+					"zone_other": "Inne"
+				}
+			},
+			"icon": {
+				"title": "Ikona",
+				"placeholder": "mdi:home (nazwa ikony Iconify)"
+			},
+			"displayOrder": {
+				"title": "Kolejnosc wyswietlania",
+				"placeholder": "Kolejnosc na listach"
+			},
+			"parentZone": {
+				"title": "Strefa nadrzedna",
+				"placeholder": "Wybierz strefe nadrzedna (opcjonalnie)",
+				"hint": "Mozesz uporzadkowac ten pokoj, przypisujac go do strefy, np. 'Parter' lub 'Pietro'. Pomaga to grupowac powiazane pokoje."
+			},
+			"lightingRoles": {
+				"title": "Role oswietlenia",
+				"description": "Przypisz role do oswietlenia, aby pomoc panelowi zrozumiec, jak kazde swiatlo jest typowo uzywane (Praca, Relaks, Noc)",
+				"noLights": "Nie znaleziono oswietlenia w tej przestrzeni",
+				"role": {
+					"title": "Rola",
+					"placeholder": "Wybierz role"
+				},
+				"applyDefaults": "Zastosuj domyslne",
+				"applyDefaultsHint": "Ustawia pierwsze swiatlo jako Glowne, pozostale jako Ambientowe"
+			},
+			"climateRoles": {
+				"title": "Role klimatu",
+				"description": "Przypisz role do urzadzen klimatycznych, aby pomoc panelowi zrozumiec, jak kazde urzadzenie steruje temperatura i jakoscia powietrza",
+				"noDevices": "Nie znaleziono urzadzen klimatycznych w tej przestrzeni",
+				"role": {
+					"title": "Rola",
+					"placeholder": "Wybierz role"
+				},
+				"applyDefaults": "Zastosuj domyslne",
+				"applyDefaultsHint": "Automatycznie przypisuje role na podstawie typu urzadzenia"
+			},
+			"coversRoles": {
+				"title": "Role oslon",
+				"description": "Przypisz role do oslon okiennych, aby pomoc panelowi zrozumiec, jak kazda oslona jest uzywana (glowna, zaciemniajaca, przezroczysta)",
+				"noCovers": "Nie znaleziono oslon okiennych w tej przestrzeni",
+				"role": {
+					"title": "Rola",
+					"placeholder": "Wybierz role"
+				},
+				"applyDefaults": "Zastosuj domyslne",
+				"applyDefaultsHint": "Ustawia pierwsza oslone jako Glowna, pozostale na podstawie typu"
+			},
+			"sensorRoles": {
+				"title": "Role czujnikow",
+				"description": "Przypisz role do kanalow czujnikow, aby panel mogl grupowac odczyty srodowiskowe, bezpieczenstwa, jakosci powietrza i energii.",
+				"noSensors": "Nie znaleziono czujnikow w tej przestrzeni",
+				"channel": {
+					"title": "Kanal"
+				},
+				"role": {
+					"title": "Rola",
+					"placeholder": "Wybierz role"
+				},
+				"applyDefaults": "Zastosuj domyslne",
+				"applyDefaultsHint": "Automatycznie przypisuje role na podstawie kategorii kanalu czujnika"
+			},
+			"suggestions": {
+				"title": "Inteligentne sugestie"
+			},
+			"suggestionsEnabled": {
+				"title": "Wlacz sugestie",
+				"hint": "Po wlaczeniu panel bedzie wyswietlac nieinwazyjne sugestie oswietleniowe na podstawie pory dnia i biezacego stanu."
+			},
+			"statusWidgets": {
+				"energy": {
+					"title": "Energia",
+					"range": {
+						"title": "Zakres",
+						"options": {
+							"today": "Dzisiaj",
+							"week": "Tydzien",
+							"month": "Miesiac"
+						}
+					},
+					"showProduction": {
+						"title": "Pokaz produkcje"
+					}
+				}
+			}
+		}
+	},
+	"lightingRoles": {
+		"main": "Glowne",
+		"task": "Zadaniowe",
+		"ambient": "Ambientowe",
+		"accent": "Akcentowe",
+		"night": "Nocne",
+		"other": "Inne",
+		"hidden": "Ukryte",
+		"unassigned": "Nieprzypisane",
+		"descriptions": {
+			"main": "Glowne oswietlenie przestrzeni.",
+			"task": "Skupione oswietlenie do konkretnych czynnosci.",
+			"ambient": "Miekkie oswietlenie tla.",
+			"accent": "Oswietlenie dekoracyjne.",
+			"night": "Oswietlenie o niskim natezeniu do nocnej nawigacji.",
+			"other": "Oswietlenie niepasujace do standardowych kategorii.",
+			"hidden": "Ukryte swiatla sa wykluczone z interfejsu panelu."
+		}
+	},
+	"climateRoles": {
+		"heating_only": "Tylko ogrzewanie",
+		"cooling_only": "Tylko chlodzenie",
+		"auto": "Automatyczny",
+		"auxiliary": "Pomocniczy",
+		"sensor": "Czujnik",
+		"hidden": "Ukryty",
+		"unassigned": "Nieprzypisany",
+		"descriptions": {
+			"heating_only": "Urzadzenie uzywane tylko do ogrzewania.",
+			"cooling_only": "Urzadzenie uzywane tylko do chlodzenia.",
+			"auto": "Urzadzenie moze byc uzywane do ogrzewania i chlodzenia automatycznie.",
+			"auxiliary": "Pomocnicze urzadzenia klimatyczne.",
+			"sensor": "Czujnik klimatu dostarczajacy odczyty dla przestrzeni.",
+			"hidden": "Ukryte urzadzenia sa wykluczone z interfejsu klimatu."
+		}
+	},
+	"sensorRoles": {
+		"environment": "Srodowisko",
+		"safety": "Bezpieczenstwo",
+		"security": "Ochrona",
+		"air_quality": "Jakosc powietrza",
+		"energy": "Energia",
+		"other": "Inne",
+		"hidden": "Ukryty",
+		"descriptions": {
+			"environment": "Czujniki srodowiskowe.",
+			"safety": "Czujniki bezpieczenstwa.",
+			"security": "Czujniki ochrony i obecnosci.",
+			"air_quality": "Czujniki jakosci powietrza.",
+			"energy": "Czujniki monitorowania energii.",
+			"other": "Czujniki niepasujace do kategorii.",
+			"hidden": "Ukryte czujniki sa wykluczone z interfejsu."
+		},
+		"categories": {
+			"temperature": "Temperatura",
+			"humidity": "Wilgotnosc",
+			"pressure": "Cisnienie",
+			"illuminance": "Natezenie oswietlenia",
+			"smoke": "Dym",
+			"gas": "Gaz",
+			"carbon_monoxide": "Tlenek wegla",
+			"carbon_dioxide": "Dwutlenek wegla",
+			"leak": "Wyciek",
+			"motion": "Ruch",
+			"occupancy": "Obecnosc",
+			"contact": "Kontakt",
+			"air_quality": "Jakosc powietrza",
+			"air_particulate": "Czastki w powietrzu",
+			"nitrogen_dioxide": "Dwutlenek azotu",
+			"ozone": "Ozon",
+			"sulphur_dioxide": "Dwutlenek siarki",
+			"volatile_organic_compounds": "Lotne zwiazki organiczne",
+			"electrical_energy": "Energia",
+			"electrical_generation": "Generacja",
+			"electrical_power": "Moc",
+			"battery": "Bateria"
+		}
+	},
+	"coversRoles": {
+		"primary": "Glowna",
+		"blackout": "Zaciemniajaca",
+		"sheer": "Przezroczysta",
+		"outdoor": "Zewnetrzna",
+		"hidden": "Ukryta",
+		"unassigned": "Nieprzypisana",
+		"descriptions": {
+			"primary": "Glowna oslona okienna przestrzeni.",
+			"blackout": "Oslony blokujace swiatlo.",
+			"sheer": "Polprzezroczyste oslony.",
+			"outdoor": "Zewnetrzne oslony.",
+			"hidden": "Ukryte oslony sa wykluczone z interfejsu panelu."
+		}
+	},
+	"filters": {
+		"type": {
+			"title": "Typ",
+			"all": "Wszystkie"
+		}
+	},
+	"texts": {
+		"loadingSpaces": "Ladowanie przestrzeni...",
+		"loadingSpace": "Ladowanie przestrzeni...",
+		"noSpaces": "Nie masz skonfigurowanych zadnych przestrzeni",
+		"noFilteredSpaces": "Zadne przestrzenie nie pasuja do kryteriow filtra",
+		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucic?"
+	},
+	"dialogs": {
+		"lightingRoles": {
+			"title": "Edytuj role oswietlenia"
+		},
+		"climateRoles": {
+			"title": "Edytuj role klimatu"
+		},
+		"coversRoles": {
+			"title": "Edytuj role oslon"
+		},
+		"sensorRoles": {
+			"title": "Edytuj role czujnikow"
+		},
+		"mediaActivities": {
+			"title": "Edytuj aktywnosci mediow"
+		}
+	},
+	"buttons": {
+		"add": {
+			"title": "Dodaj"
+		},
+		"done": {
+			"title": "Gotowe"
+		},
+		"detail": {
+			"title": "Szczegoly"
+		},
+		"adjust": {
+			"title": "Filtruj"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
+		},
+		"reset": {
+			"title": "Resetuj"
+		},
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"save": {
+			"title": "Zapisz"
+		},
+		"cancel": {
+			"title": "Anuluj"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"discard": {
+			"title": "Odrzuc"
+		},
+		"edit": {
+			"title": "Edytuj"
+		},
+		"delete": {
+			"title": "Usun"
+		},
+		"previous": {
+			"title": "Poprzedni"
+		},
+		"next": {
+			"title": "Nastepny"
+		},
+		"finish": {
+			"title": "Zakoncz"
+		},
+		"onboarding": {
+			"title": "Kreator konfiguracji"
+		},
+		"viewAll": {
+			"title": "Pokaz wszystko"
+		},
+		"back": {
+			"title": "Wroc"
+		}
+	},
+	"detail": {
+		"title": "Szczegoly przestrzeni",
+		"lightingRoles": {
+			"title": "Role oswietlenia",
+			"lightsAssigned": "Przypisane oswietlenie",
+			"noRolesAssigned": "Nie przypisano jeszcze zadnych rol"
+		},
+		"climateRoles": {
+			"title": "Role klimatu",
+			"devicesAssigned": "Przypisane urzadzenia",
+			"noRolesAssigned": "Nie przypisano jeszcze zadnych rol"
+		},
+		"coversRoles": {
+			"title": "Role oslon",
+			"coversAssigned": "Przypisane oslony",
+			"noRolesAssigned": "Nie przypisano jeszcze zadnych rol"
+		},
+		"sensorRoles": {
+			"title": "Role czujnikow",
+			"sensorsAssigned": "Przypisane czujniki",
+			"noRolesAssigned": "Nie przypisano jeszcze zadnych rol"
+		},
+		"mediaActivities": {
+			"title": "Aktywnosci mediow",
+			"noActivities": "Nie skonfigurowano jeszcze zadnych aktywnosci"
+		},
+		"info": {
+			"title": "Informacje o przestrzeni",
+			"name": "Nazwa",
+			"description": "Opis",
+			"type": "Typ",
+			"icon": "Ikona",
+			"displayOrder": "Kolejnosc wyswietlania"
+		},
+		"devices": {
+			"title": "Urzadzenia",
+			"add": "Dodaj urzadzenie",
+			"empty": "Do tej przestrzeni nie przypisano zadnych urzadzen",
+			"loading": "Ladowanie urzadzen...",
+			"remove": "Usun",
+			"removeHeading": "Usun urzadzenie z przestrzeni",
+			"reassign": "Przypisz ponownie",
+			"assign": "Przypisz",
+			"selectDevice": "Wybierz urzadzenia do dodania",
+			"confirmRemove": "Usunac urzadzenie \"{name}\" z tej przestrzeni?",
+			"selectRoom": "Wybierz pokoj dla urzadzenia",
+			"noAvailable": "Brak dostepnych urzadzen do dodania",
+			"removed": "Urzadzenie \"{name}\" zostalo usuniete z tej przestrzeni.",
+			"removeCanceled": "Usuwanie urzadzenia zostalo anulowane."
+		},
+		"parentZone": {
+			"title": "Pietro",
+			"none": "Nie przypisano pietra",
+			"select": "Wybierz pietro"
+		},
+		"displays": {
+			"title": "Wyswietlacze",
+			"add": "Dodaj wyswietlacz",
+			"empty": "Do tej przestrzeni nie przypisano zadnych wyswietlaczy",
+			"loading": "Ladowanie wyswietlaczy...",
+			"remove": "Usun",
+			"removeHeading": "Usun wyswietlacz z przestrzeni",
+			"reassign": "Przypisz ponownie",
+			"assign": "Przypisz",
+			"selectDisplay": "Wybierz wyswietlacz do dodania",
+			"confirmRemove": "Usunac wyswietlacz \"{name}\" z tej przestrzeni?",
+			"selectRoom": "Wybierz pokoj dla tego wyswietlacza",
+			"noAvailable": "Brak dostepnych wyswietlaczy do dodania",
+			"removed": "Wyswietlacz \"{name}\" zostal usuniety z tej przestrzeni.",
+			"removeCanceled": "Usuwanie wyswietlacza zostalo anulowane."
+		},
+		"media": {
+			"activities": "Aktywnosci mediow"
+		},
+		"scenes": {
+			"title": "Sceny",
+			"add": "Dodaj scene",
+			"empty": "Do tej przestrzeni nie przypisano zadnych scen",
+			"loading": "Ladowanie scen...",
+			"name": "Nazwa sceny",
+			"category": "Kategoria",
+			"status": "Status",
+			"enabled": "Wlaczona",
+			"disabled": "Wylaczona",
+			"remove": "Usun",
+			"removeHeading": "Usun scene z przestrzeni",
+			"reassign": "Przypisz ponownie",
+			"reassigned": "Scena \"{name}\" zostala pomyslnie przypisana ponownie.",
+			"assign": "Przypisz",
+			"selectScene": "Wybierz scene do dodania",
+			"selectSpace": "Wybierz przestrzen dla sceny",
+			"searchPlaceholder": "Szukaj scen...",
+			"confirmRemove": "Usunac scene \"{name}\" z tej przestrzeni?",
+			"assignedSpace": "Przypisana przestrzen",
+			"noAvailable": "Brak dostepnych scen do dodania",
+			"noFilteredScenes": "Zadne sceny nie pasuja do wyszukiwania",
+			"assigned": "Scena \"{name}\" zostala przypisana do tej przestrzeni.",
+			"removed": "Scena \"{name}\" zostala usunieta z tej przestrzeni.",
+			"removeCanceled": "Usuwanie sceny zostalo anulowane."
+		}
+	},
+	"media": {
+		"endpointTypes": {
+			"display": "Display",
+			"audio_output": "Audio Output",
+			"source": "Source",
+			"remote_target": "Remote Target"
+		},
+		"capabilities": {
+			"power": "Power",
+			"input": "Input",
+			"volume": "Volume",
+			"playback": "Playback",
+			"track": "Track",
+			"remote": "Remote",
+			"mute": "Mute"
+		},
+		"activityLabels": {
+			"watch": "Watch",
+			"listen": "Listen",
+			"gaming": "Gaming",
+			"background": "Background",
+			"off": "Off"
+		},
+		"activities": {
+			"loading": "Loading media configuration...",
+			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
+			"applyDefaults": "Apply defaults",
+			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
+			"defaultsApplied": "Default bindings have been applied.",
+			"defaultsFailed": "Failed to apply default bindings.",
+			"selectPrompt": "Select an activity from the list to configure its bindings.",
+			"selectEndpoint": "Select endpoint...",
+			"save": "Save",
+			"reset": "Reset",
+			"saveError": "Failed to save binding",
+			"savedSuccessfully": "Binding saved successfully.",
+			"slots": {
+				"display": "Display",
+				"audio": "Audio output",
+				"source": "Source",
+				"remote": "Remote target"
+			},
+			"overrides": {
+				"displayInput": "Display input preset",
+				"displayInputPlaceholder": "e.g. HDMI1, Apps",
+				"audioInput": "Audio input preset",
+				"audioInputPlaceholder": "e.g. HDMI1, ARC",
+				"sourceInput": "Source input preset",
+				"sourceInputPlaceholder": "e.g. HDMI1, Apps",
+				"audioVolume": "Audio volume preset"
+			},
+			"mediaInputSources": {
+				"hdmi1": "HDMI 1",
+				"hdmi2": "HDMI 2",
+				"hdmi3": "HDMI 3",
+				"hdmi4": "HDMI 4",
+				"hdmi5": "HDMI 5",
+				"hdmi6": "HDMI 6",
+				"arc": "ARC",
+				"earc": "eARC",
+				"tv": "TV",
+				"cable": "Cable",
+				"satellite": "Satellite",
+				"antenna": "Antenna",
+				"av1": "AV 1",
+				"av2": "AV 2",
+				"component": "Component",
+				"vga": "VGA",
+				"dvi": "DVI",
+				"usb": "USB",
+				"bluetooth": "Bluetooth",
+				"wifi": "Wi-Fi",
+				"airplay": "AirPlay",
+				"cast": "Chromecast",
+				"dlna": "DLNA",
+				"miracast": "Miracast",
+				"app_netflix": "Netflix",
+				"app_youtube": "YouTube",
+				"app_spotify": "Spotify",
+				"app_prime_video": "Prime Video",
+				"app_disney_plus": "Disney+",
+				"app_hbo_max": "HBO Max",
+				"app_apple_tv": "Apple TV",
+				"app_plex": "Plex",
+				"app_kodi": "Kodi",
+				"other": "Other"
+			},
+			"status": {
+				"configured": "Configured",
+				"incomplete": "Incomplete",
+				"unconfigured": "Not set"
+			},
+			"run": "Run",
+			"deactivate": "Deactivate",
+			"refreshStatus": "Refresh status",
+			"rerun": "Re-run",
+			"copyDebugJson": "Copy debug JSON",
+			"copiedToClipboard": "Debug JSON copied to clipboard.",
+			"activateSuccess": "Activity activated successfully.",
+			"activateFailed": "Failed to activate activity.",
+			"deactivateSuccess": "Activity deactivated.",
+			"deactivateFailed": "Failed to deactivate activity.",
+			"fetchFailed": "Failed to refresh activity status.",
+			"preview": "Preview",
+			"previewFailed": "Failed to preview activity.",
+			"previewDialog": {
+				"title": "Execution Plan Preview",
+				"resolvedDevices": "Resolved devices",
+				"executionPlan": "Execution plan",
+				"step": "#",
+				"action": "Action",
+				"device": "Device",
+				"critical": "Critical",
+				"criticalYes": "Critical",
+				"criticalNo": "Optional",
+				"warnings": "Warnings & skipped steps",
+				"noSteps": "No execution steps in plan.",
+				"close": "Close"
+			},
+			"activePanel": {
+				"title": "Active State",
+				"currentActivity": "Current activity",
+				"none": "None",
+				"state": "State",
+				"activatedAt": "Activated at",
+				"updatedAt": "Updated at",
+				"resolvedDevices": "Resolved devices",
+				"display": "Display",
+				"audio": "Audio",
+				"source": "Source",
+				"remote": "Remote"
+			},
+			"failures": {
+				"title": "Failures",
+				"total": "Total steps",
+				"succeeded": "Succeeded",
+				"failed": "Failed",
+				"stepIndex": "Step",
+				"device": "Device",
+				"property": "Property",
+				"reason": "Reason"
+			},
+			"activationState": {
+				"activating": "Activating",
+				"active": "Active",
+				"failed": "Failed",
+				"deactivated": "Deactivated"
+			}
+		}
+	},
+	"messages": {
+		"notFound": "Przestrzen nie znaleziona",
+		"loadError": "Nie udalo sie wczytac przestrzeni",
+		"notLoaded": "Nie udalo sie wczytac przestrzeni. Sprobuj ponownie pozniej.",
+		"confirmRemove": "Czy na pewno chcesz usunac przestrzen \"{name}\"? Tej operacji nie mozna cofnac.",
+		"confirmDelete": "Czy na pewno chcesz usunac te przestrzen?",
+		"created": "Nowa przestrzen zostala pomyslnie dodana.",
+		"notCreated": "Cos poszlo nie tak. Nie udalo sie utworzyc przestrzeni.",
+		"edited": "Zmiany zapisane! Przestrzen: {space} zostala zaktualizowana.",
+		"notEdited": "Cos poszlo nie tak. Aktualizacja przestrzeni nie powiodla sie.",
+		"removed": "Przestrzen: {space} zostala pomyslnie usunieta.",
+		"removeCanceled": "Usuniecie przestrzeni: {space} zostalo anulowane.",
+		"deletedWhileEditing": "Ta przestrzen zostala usunieta i nie jest juz dostepna.",
+		"createError": "Nie udalo sie utworzyc przestrzeni. Sprobuj ponownie.",
+		"saveError": "Nie udalo sie zapisac zmian. Sprobuj ponownie.",
+		"confirmBulkRemove": "Czy na pewno chcesz usunac {count} przestrzeni? Tej operacji nie mozna cofnac.",
+		"bulkRemoved": "Pomyslnie usunieto {count} przestrzeni.",
+		"bulkRemoveFailed": "Nie udalo sie usunac {count} przestrzeni.",
+		"bulkRemoveCanceled": "Masowe usuwanie przestrzeni zostalo anulowane."
+	},
+	"misc": {
+		"types": {
+			"room": "Pokoj",
+			"zone": "Strefa"
+		}
+	},
+	"onboarding": {
+		"title": "Kreator konfiguracji przestrzeni",
+		"devices": "urzadzenia",
+		"displays": "wyswietlacze",
+		"selectSpace": "Wybierz przestrzen",
+		"selectZones": "Wybierz strefy...",
+		"deviceName": "Nazwa urzadzenia",
+		"displayName": "Nazwa wyswietlacza",
+		"assignedSpace": "Przypisana przestrzen",
+		"spaceName": "Nazwa przestrzeni",
+		"zones": "Strefy (opcjonalnie)",
+		"advanced": "Zaawansowane",
+		"basic": "Podstawowe",
+		"steps": {
+			"spaces": {
+				"title": "Utworz przestrzenie",
+				"description": "Przestrzenie pomagaja organizowac urzadzenia i wyswietlacze wedlug pokoi lub stref.",
+				"alertTitle": "Przestrzenie reprezentuja pokoje lub strefy w Twoim domu",
+				"alertDescription": "Zasugerowalismy kilka przestrzeni na podstawie nazw Twoich urzadzen.",
+				"proposed": "Proponowane przestrzenie",
+				"custom": "Niestandardowe przestrzenie",
+				"existing": "Istniejace przestrzenie",
+				"matchedExisting": "Uzywanie istniejacych przestrzeni",
+				"usingExisting": "Uzywanie istniejacej",
+				"matchedWith": "Zostanie uzyta: {name}",
+				"addManual": "Dodaj niestandardowa przestrzen",
+				"placeholder": "Wprowadz nazwe przestrzeni (np. Salon)",
+				"noProposals": "Nie udalo sie wykryc przestrzeni z nazw urzadzen. Dodaj przestrzenie recznie ponizej.",
+				"duplicateWarning": "Przestrzen podobna do \"{name}\" juz istnieje.",
+				"convertedToMatch": "Ta przestrzen pasuje do istniejacej przestrzeni.",
+				"multipleMatchedWith": "{count} wykrytych przestrzeni uzyje istniejacej przestrzeni '{name}'",
+				"existingTag": "Istniejaca"
+			},
+			"displays": {
+				"title": "Przypisz wyswietlacze",
+				"description": "Przypisz kazdy wyswietlacz do przestrzeni.",
+				"alertTitle": "Wybierz domyslna przestrzen dla kazdego wyswietlacza",
+				"alertDescription": "To ustawia tylko poczatkowy widok.",
+				"noDisplays": "Nie zarejestrowano jeszcze zadnych wyswietlaczy."
+			},
+			"devices": {
+				"title": "Przypisz urzadzenia",
+				"description": "Przypisz urzadzenia do przestrzeni.",
+				"alertTitle": "Polacz urzadzenia z pokojami",
+				"alertDescription": "Niektore urzadzenia zostaly wstepnie wypelnione na podstawie ich nazw.",
+				"noDevices": "Nie znaleziono urzadzen."
+			},
+			"summary": {
+				"title": "Podsumowanie",
+				"description": "Przejrzyj konfiguracje przed zastosowaniem zmian.",
+				"alertTitle": "Podsumowanie konfiguracji",
+				"alertDescription": "Nadal mozesz wrocic i dostosowac cokolwiek przed zakonczeniem."
+			}
+		},
+		"summary": {
+			"overview": "Podsumowanie",
+			"totalSpaces": "Laczna liczba przestrzeni",
+			"assignedDevices": "Przypisane urzadzenia",
+			"unassignedDevices": "Nieprzypisane urzadzenia",
+			"assignedDisplays": "Przypisane wyswietlacze",
+			"unassignedDisplays": "Nieprzypisane wyswietlacze",
+			"bySpace": "Przypisania wedlug przestrzeni",
+			"unassignedDevicesTitle": "Nieprzypisane urzadzenia",
+			"unassignedDisplaysTitle": "Nieprzypisane wyswietlacze",
+			"noDevices": "Brak urzadzen",
+			"clickToAssignDevices": "Kliknij, aby przypisac urzadzenia",
+			"clickToAssignDisplays": "Kliknij, aby przypisac wyswietlacze"
+		},
+		"messages": {
+			"spacesCreated": "Pomyslnie utworzono {count} przestrzeni",
+			"completed": "Konfiguracja zakonczona! {devices} urzadzen, {displays} wyswietlaczy i {zones} przypisan stref."
+		}
+	}
+}

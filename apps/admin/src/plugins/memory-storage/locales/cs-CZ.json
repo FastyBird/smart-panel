@@ -1,1 +1,8 @@
-{}
+{
+	"messages": {
+		"config": {
+			"edited": "Konfigurace úložiště v paměti byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci úložiště v paměti"
+		}
+	}
+}

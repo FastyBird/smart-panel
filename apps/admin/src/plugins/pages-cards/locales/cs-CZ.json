@@ -1,1 +1,163 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Upravit kartu"
+			},
+			"addCard": {
+				"title": "Přidat kartu"
+			},
+			"editTile": {
+				"title": "Upravit dlaždici karty"
+			},
+			"addTile": {
+				"title": "Přidat dlaždici karty"
+			},
+			"editDataSource": {
+				"title": "Upravit zdroj dat stránky"
+			},
+			"addDataSource": {
+				"title": "Přidat zdroj dat stránky"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "stránka: {page}",
+			"addCard": "přidat kartu",
+			"editCard": "upravit kartu",
+			"addTile": "přidat dlaždici karty",
+			"editTile": "upravit dlaždici karty",
+			"addDataSource": "přidat zdroj dat stránky",
+			"editDataSource": "upravit zdroj dat stránky"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Přidat kartu",
+			"editCard": "Upravit kartu",
+			"addTile": "Přidat dlaždici karty",
+			"editTile": "Upravit dlaždici karty",
+			"addDataSource": "Přidat zdroj dat stránky",
+			"editDataSource": "Upravit zdroj dat stránky"
+		},
+		"cards": {
+			"remove": "Odebrat kartu"
+		},
+		"configure": {
+			"display": "Displej",
+			"cards": "Karty"
+		},
+		"misc": {
+			"discard": "Zahodit změny?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Přidat novou kartu na tuto stránku",
+			"editCard": "Upravit vlastnosti karty",
+			"addTile": "Přidat novou dlaždici na tuto kartu",
+			"editTile": "Upravit dlaždici karty",
+			"addDataSource": "Přidat nový zdroj dat stránky",
+			"editDataSource": "Upravit zdroj dat stránky"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Karta {card} byla úspěšně odebrána.",
+			"notFound": "Karta {card} nebyla nalezena.",
+			"notRemoved": "Kartu {card} se nepodařilo odebrat.",
+			"removeCanceled": "Odebrání karty {card} bylo zrušeno.",
+			"deletedWhileEditing": "Tato karta byla smazána a již není k dispozici."
+		},
+		"tiles": {
+			"deletedWhileEditing": "Tato dlaždice byla smazána a již není k dispozici."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "Tento zdroj dat byl smazán a již není k dispozici."
+		},
+		"misc": {
+			"requestError": "Něco se pokazilo, zkuste to prosím znovu později."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Opravdu chcete odebrat kartu {card}?",
+			"noCards": "Na tuto stránku zatím nebyly přidány žádné karty.",
+			"noTiles": "V této kartě nejsou žádné dlaždice. Klikněte na + pro přidání.",
+			"tilesCount": "dlaždice",
+			"loadingCard": "Načítání karty..."
+		},
+		"tiles": {
+			"loadingTile": "Načítání dlaždice..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Načítání zdroje dat..."
+		},
+		"misc": {
+			"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Zahodit"
+		},
+		"close": {
+			"title": "Zavřít"
+		},
+		"add": {
+			"title": "Přidat"
+		},
+		"save": {
+			"title": "Uložit"
+		},
+		"update": {
+			"title": "Aktualizovat"
+		},
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"manageElements": {
+			"title": "Spravovat prvky"
+		},
+		"addCard": {
+			"title": "Přidat kartu"
+		},
+		"addPageDataSource": {
+			"title": "Přidat zdroj dat stránky"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Identifikátor"
+			},
+			"title": {
+				"title": "Název",
+				"placeholder": "Zadejte název karty",
+				"validation": {
+					"required": "Zadejte prosím název karty"
+				}
+			},
+			"icon": {
+				"title": "Ikona",
+				"placeholder": "Vyberte ikonu"
+			},
+			"order": {
+				"title": "Pořadí",
+				"placeholder": "Pořadí zobrazení"
+			},
+			"rows": {
+				"title": "Řádky",
+				"placeholder": "Počet řádků"
+			},
+			"cols": {
+				"title": "Sloupce",
+				"placeholder": "Počet sloupců"
+			}
+		}
+	}
+}

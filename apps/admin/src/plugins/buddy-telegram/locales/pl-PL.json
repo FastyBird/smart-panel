@@ -5,27 +5,27 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włączony"
+				"title": "Wlaczony"
 			},
 			"botToken": {
 				"title": "Token bota",
-				"placeholder": "Wprowadź token bota Telegram",
-				"description": "Uzyskaj token bota od {'@'}BotFather na Telegramie"
+				"placeholder": "Wprowadz token bota Telegram",
+				"description": "Pobierz token bota od {'@'}BotFather na Telegramie"
 			},
 			"allowedUserIds": {
-				"title": "Dozwolone ID użytkowników",
+				"title": "Dozwolone ID uzytkownikow",
 				"placeholder": "np. 123456789,987654321",
-				"description": "Oddzielone przecinkami ID użytkowników Telegram uprawnionych do interakcji z botem. Pozostaw puste, aby zezwolić wszystkim użytkownikom."
+				"description": "Rozdzielone przecinkami ID uzytkownikow Telegram uprawnionych do interakcji z botem. Pozostaw puste, aby zezwolic wszystkim uzytkownikom."
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia bota Telegram zostały zaktualizowane",
-			"notEdited": "Nie udało się zaktualizować ustawień bota Telegram"
+			"edited": "Ustawienia bota Telegram zostaly zaktualizowane",
+			"notEdited": "Nie udalo sie zaktualizowac ustawien bota Telegram"
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Skonfiguruj integrację z botem Telegram. Utwórz bota za pomocą {'@'}BotFather na Telegramie, aby uzyskać token bota, a następnie opcjonalnie ogranicz dostęp do określonych ID użytkowników."
+		"aboutTelegramSettings": "Skonfiguruj integracje z botem Telegram. Utworz bota przez {'@'}BotFather na Telegramie, aby uzyskac token bota, a nastepnie opcjonalnie ogranicz dostep do konkretnych ID uzytkownikow."
 	}
 }

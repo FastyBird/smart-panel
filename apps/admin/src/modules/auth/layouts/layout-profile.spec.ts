@@ -14,6 +14,7 @@ import LayoutProfile from './layout-profile.vue';
 type LayoutProfileInstance = ComponentPublicInstance<{ activeTab: string; remoteFormSubmit: boolean }>;
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

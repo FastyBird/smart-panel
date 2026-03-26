@@ -1,1 +1,33 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "Nastavení tokenu pro nastavení Claude"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"accessToken": {
+				"title": "Token pro nastavení",
+				"placeholder": "Vložte svůj token pro nastavení zde",
+				"howTo": "Spusťte",
+				"howToSuffix": "ve svém terminálu a vložte vygenerovaný token sem.",
+				"machineNote": "Příkaz lze spustit na jakémkoli počítači s nainstalovaným Claude CLI — nemusí to být stejný počítač, na kterém běží backend Smart Panelu."
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "např. claude-sonnet-4-20250514",
+				"description": "Model Claude používaný pro generování odpovědí"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení tokenu pro nastavení Claude bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení tokenu pro nastavení Claude"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Nakonfigurujte připojení k Anthropic Claude pomocí tokenu pro nastavení. Token pro nastavení autentizuje Smart Panel s vaším předplatným Claude — není vyžadován API klíč."
+	}
+}

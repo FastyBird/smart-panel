@@ -1,1 +1,118 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Stav pluginu",
+		"aboutMdns": "Vyhledávání mDNS",
+		"aboutWebsocket": "WebSocket připojení",
+		"aboutPolling": "Dotazování zařízení",
+		"aboutTimeouts": "Konfigurace časových limitů"
+	},
+	"texts": {
+		"aboutPluginStatus": "Povolte nebo zakažte plugin WLED. Pokud je zakázán, žádná zařízení WLED nebudou monitorována ani ovládána.",
+		"aboutMdns": "Vyhledávání mDNS umožňuje automatickou detekci zařízení WLED ve vaší síti.",
+		"aboutWebsocket": "WebSocket poskytuje aktualizace v reálném čase z vašich zařízení WLED pro rychlejší synchronizaci stavu.",
+		"aboutPolling": "Nakonfigurujte, jak často plugin dotazuje zařízení na aktualizace stavu, když WebSocket není k dispozici.",
+		"aboutTimeouts": "Nakonfigurujte časové limity připojení a příkazů pro komunikaci se zařízeními WLED."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolit plugin"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Povolit vyhledávání mDNS"
+				},
+				"interface": {
+					"title": "Síťové rozhraní",
+					"placeholder": "Ponechte prázdné pro výchozí"
+				},
+				"autoAdd": {
+					"title": "Automaticky přidávat nalezená zařízení"
+				}
+			},
+			"websocket": {
+				"enabled": {
+					"title": "Povolit WebSocket"
+				},
+				"reconnectInterval": {
+					"title": "Interval opětovného připojení (ms)",
+					"validation": {
+						"required": "Interval opětovného připojení je povinný",
+						"number": "Musí být číslo >= 1000"
+					}
+				}
+			},
+			"polling": {
+				"interval": {
+					"title": "Interval dotazování (ms)",
+					"validation": {
+						"required": "Interval dotazování je povinný",
+						"number": "Musí být číslo >= 1000"
+					}
+				}
+			},
+			"timeouts": {
+				"connectionTimeout": {
+					"title": "Časový limit připojení (ms)",
+					"validation": {
+						"required": "Časový limit připojení je povinný",
+						"number": "Musí být číslo >= 1000"
+					}
+				},
+				"commandDebounce": {
+					"title": "Debounce příkazů (ms)",
+					"validation": {
+						"required": "Debounce příkazů je povinný",
+						"number": "Musí být číslo >= 0"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "ID zařízení",
+				"placeholder": "ID zařízení"
+			},
+			"name": {
+				"title": "Název zařízení",
+				"placeholder": "Zadejte název zařízení",
+				"validation": {
+					"required": "Název zařízení je povinný"
+				}
+			},
+			"category": {
+				"title": "Kategorie zařízení",
+				"placeholder": "Vyberte kategorii",
+				"validation": {
+					"required": "Kategorie zařízení je povinná"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Zadejte popis zařízení (volitelné)"
+			},
+			"hostname": {
+				"title": "Název hostitele nebo IP adresa",
+				"placeholder": "např. 192.168.1.100 nebo wled-device.local",
+				"validation": {
+					"required": "Název hostitele nebo IP adresa je povinná"
+				}
+			},
+			"enabled": {
+				"title": "Povoleno"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurace pluginu WLED byla aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci pluginu WLED"
+		},
+		"devices": {
+			"created": "Zařízení WLED '{device}' bylo vytvořeno",
+			"notCreated": "Nepodařilo se vytvořit zařízení WLED '{device}'",
+			"edited": "Zařízení WLED '{device}' bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat zařízení WLED '{device}'"
+		}
+	}
+}

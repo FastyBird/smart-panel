@@ -1,29 +1,29 @@
 {
 	"fields": {
 		"device": {
-			"title": "Urządzenie",
-			"placeholder": "Urządzenie źródła danych",
+			"title": "Urzadzenie",
+			"placeholder": "Urzadzenie zrodla danych",
 			"validation": {
-				"required": "Wybierz urządzenie źródła danych"
+				"required": "Prosze wybrac urzadzenie zrodla danych"
 			}
 		},
 		"channel": {
-			"title": "Kanał",
-			"placeholder": "Kanał źródła danych",
+			"title": "Kanal",
+			"placeholder": "Kanal zrodla danych",
 			"validation": {
-				"required": "Wybierz kanał źródła danych"
+				"required": "Prosze wybrac kanal zrodla danych"
 			}
 		},
 		"property": {
-			"title": "Właściwość",
-			"placeholder": "Właściwość źródła danych",
+			"title": "Wlasciwosc",
+			"placeholder": "Wlasciwosc zrodla danych",
 			"validation": {
-				"required": "Wybierz właściwość źródła danych"
+				"required": "Prosze wybrac wlasciwosc zrodla danych"
 			}
 		},
 		"icon": {
 			"title": "Ikona",
-			"placeholder": "Ikona źródła danych"
+			"placeholder": "Ikona zrodla danych"
 		}
 	}
 }
