@@ -69,7 +69,7 @@ sudo journalctl -u smart-panel-display -b --no-pager -n 50
 If you can't reach `http://smart-panel.local:3000` in your browser:
 
 1. **Check the backend is running**: `sudo systemctl status smart-panel`
-2. **Try the IP address directly**: Find it with `hostname -I` on the Pi, then visit `http://<ip>:3000`
+2. **Try the IP address directly**: Find it with `hostname -I` on the device, then visit `http://<ip>:3000`
 3. **Check firewall rules**: Ensure port 3000 is open — `sudo ufw status` (if UFW is active)
 4. **Verify mDNS**: `.local` domains require mDNS support. See the [Network Requirements](/docs/get-started/network-requirements) page
 
