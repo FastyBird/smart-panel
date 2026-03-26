@@ -121,12 +121,16 @@ class InactivityOverlayProvider {
     );
 
     // Power off the screen if enabled and not showing screen saver.
-    // Set the flag synchronously before the async call so that
-    // _onOverlayChanged can detect the intent even if the platform
-    // call hasn't completed yet.
+    // Only proceed if the overlay actually activated — if show() silently
+    // failed (e.g. entry was unregistered), powering off with no dismissable
+    // overlay would leave the screen permanently dark.
     if (_screenPowerOff && !_hasScreenSaver) {
-      _screenPowerOffRequested = true;
-      _screenPowerService.screenOff();
+      final isActive = _overlayManager.isActive(InactivityOverlayIds.inactivity);
+
+      if (isActive) {
+        _screenPowerOffRequested = true;
+        _screenPowerService.screenOff();
+      }
     }
   }
 
