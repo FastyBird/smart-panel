@@ -24,6 +24,10 @@ cp "${STAGE_DIR}/files/smart-panel-display.service" "${ROOTFS_DIR}/tmp/smart-pan
 cp "${STAGE_DIR}/files/display" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/build-flutter-pi.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
+# Copy auto-rotate files (optional accelerometer-based screen rotation)
+cp "${STAGE_DIR}/files/smart-panel-auto-rotate.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+cp "${STAGE_DIR}/files/smart-panel-auto-rotate.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+
 # Copy Plymouth boot splash theme
 cp -r "${STAGE_DIR}/files/plymouth" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
