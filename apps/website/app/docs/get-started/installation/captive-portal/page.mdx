@@ -1,4 +1,4 @@
-import { Callout, Steps } from 'nextra/components'
+import { Callout, Steps, Tabs } from 'nextra/components'
 
 # WiFi Setup (Captive Portal)
 
@@ -32,25 +32,57 @@ any phone or laptop — no SSH, keyboard, or Ethernet cable required.
 
 	The hotspot uses WPA2 encryption.
 
+	![Connect to the SmartPanel hotspot](/images/captive_portal/01_captive_connect_ap.jpeg)
+
 	## Configure WiFi
 
 	A setup page opens automatically through captive portal detection (works on iOS, Android, Windows, and macOS).
-	The page shows:
 
-	- **Available WiFi networks** with signal strength indicators
-	- **Password** field for the selected network
-	- **Country code** dropdown (required for regulatory compliance)
-	- **Hostname** (optional — defaults to `smart-panel`)
-	- **Timezone** (optional)
+	<Tabs items={['Mobile', 'Desktop']}>
+		<Tabs.Tab>
+			Select your WiFi network from the list:
+
+			![Select WiFi network](/images/captive_portal/02_captive_select_wifi.jpeg)
+
+			Fill in your WiFi password, country code, and optionally set a hostname and timezone.
+			Then click **Save & Connect**:
+
+			![Configure device settings](/images/captive_portal/03_captive_device_configuration.jpeg)
+		</Tabs.Tab>
+
+		<Tabs.Tab>
+			Select your WiFi network from the list:
+
+			![Select WiFi network](/images/captive_portal/06_captive_desktop_select_wifi.png)
+
+			Fill in your WiFi password, country code, and optionally set a hostname and timezone.
+			Then click **Save & Connect**:
+
+			![Configure device settings](/images/captive_portal/07_captive_desktop_device_configuration.png)
+		</Tabs.Tab>
+	</Tabs>
 
 	## Save and connect
 
-	Click **Save & Connect**. The device joins the selected WiFi network, the setup hotspot disappears,
-	and Smart Panel becomes accessible at:
+	The device connects to the selected WiFi network. This may take up to 30 seconds.
 
-	```
-	http://<hostname>.local:3000
-	```
+	<Tabs items={['Mobile', 'Desktop']}>
+		<Tabs.Tab>
+			![Connecting to WiFi](/images/captive_portal/04_captive_connecting.jpeg)
+
+			Once connected, the portal shows the address where Smart Panel is accessible:
+
+			![Connected successfully](/images/captive_portal/05_captive_connected.jpeg)
+		</Tabs.Tab>
+
+		<Tabs.Tab>
+			Once connected, the portal shows the address where Smart Panel is accessible:
+
+			![Connected successfully](/images/captive_portal/08_captive_desktop_connected.png)
+		</Tabs.Tab>
+	</Tabs>
+
+	Reconnect your phone or computer to your home WiFi and open the displayed URL.
 </Steps>
 
 <Callout type="tip">
