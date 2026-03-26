@@ -38,9 +38,13 @@ export const storeLocale = (locale: AppLocale): void => {
 	localStorage.setItem(LANGUAGE_STORAGE_KEY, locale);
 };
 
+export const setHtmlLang = (locale: AppLocale): void => {
+	document.documentElement.setAttribute('lang', locale.split('-')[0]);
+};
+
 export const applyLocale = (locale: AppLocale): void => {
 	storeLocale(locale);
-	document.documentElement.setAttribute('lang', locale.split('-')[0]);
+	setHtmlLang(locale);
 };
 
 export const useLanguage = (): IUseLanguage => {

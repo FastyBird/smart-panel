@@ -1,1 +1,16 @@
-{}
+{
+	"preview": {
+		"defaultName": "Dispositivo",
+		"statusOnline": "En l\u00ednea",
+		"statusOffline": "Desconectado"
+	},
+	"fields": {
+		"device": {
+			"title": "Dispositivo",
+			"placeholder": "Dispositivo del mosaico",
+			"validation": {
+				"required": "Por favor, seleccione un dispositivo para el mosaico"
+			}
+		}
+	}
+}

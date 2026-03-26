@@ -294,11 +294,12 @@ export default {
 						},
 					})
 					.catch(() => {
-						// Revert localStorage to server value so a reload stays consistent
+						// Revert i18n locale, localStorage, and lang attr to server value
 						if (profile.language) {
 							const serverLocale = LOCALE_LANGUAGE_MAP[profile.language];
 
 							if (serverLocale) {
+								(options.i18n.global.locale as unknown as { value: string }).value = serverLocale;
 								applyLocale(serverLocale);
 							}
 						}
