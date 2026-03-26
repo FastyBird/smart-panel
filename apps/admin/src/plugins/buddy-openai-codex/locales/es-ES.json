@@ -1,1 +1,70 @@
-{}
+{
+	"headings": {
+		"aboutApiSettings": "OpenAI Codex settings",
+		"advancedSettings": "Advanced settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Activado"
+			},
+			"clientId": {
+				"title": "Client ID",
+				"placeholder": "Enter your OAuth client ID",
+				"description": "The OAuth client ID for OpenAI Codex API"
+			},
+			"clientSecret": {
+				"title": "Client secret",
+				"placeholder": "Enter your OAuth client secret"
+			},
+			"accessToken": {
+				"title": "Access token",
+				"placeholder": "Enter your access token"
+			},
+			"refreshToken": {
+				"title": "Refresh token",
+				"placeholder": "Enter your refresh token"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., codex-mini",
+				"description": "The OpenAI Codex model to use for generating responses"
+			},
+			"callbackUrl": {
+				"placeholder": "Paste the redirect URL here..."
+			}
+		}
+	},
+	"buttons": {
+		"getUrl": "Get Authorization URL",
+		"copyUrl": "Copy",
+		"openUrl": "Open in Browser",
+		"exchange": "Exchange Token",
+		"exchanging": "Exchanging...",
+		"disconnect": "Disconnect"
+	},
+	"statuses": {
+		"connected": "Connected",
+		"notConnected": "Not connected"
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenAI Codex settings have been updated",
+			"notEdited": "Failed to update OpenAI Codex settings"
+		},
+		"oauth": {
+			"urlCopied": "URL copied to clipboard",
+			"missingClientId": "Please enter a Client ID before starting the OAuth flow",
+			"authorizeError": "Failed to get authorization URL",
+			"exchangeSuccess": "Token exchange successful",
+			"exchangeError": "Token exchange failed"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Get Authorization URL\" to start the OAuth flow, or expand Advanced Settings to enter tokens manually.",
+		"oauthStep1": "Click \"Get Authorization URL\" above",
+		"oauthStep2": "Open the URL in your browser and authorize",
+		"oauthStep3": "Copy the redirect URL from your browser after authorization",
+		"oauthStep4": "Paste it below and click \"Exchange Token\""
+	}
+}

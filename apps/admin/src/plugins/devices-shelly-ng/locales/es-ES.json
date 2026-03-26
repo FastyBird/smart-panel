@@ -1,1 +1,123 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin Status",
+		"aboutMdns": "MDNS settings",
+		"aboutWebsockets": "Websockets settings",
+		"device": {
+			"deviceConnection": "Device connection",
+			"information": "Device information",
+			"supported": "Congrats! Device is supported",
+			"notSupported": "We are sorry, you device is not supported",
+			"model": "Model",
+			"firmware": "Firmware"
+		}
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Device id"
+			},
+			"category": {
+				"title": "Categoría",
+				"placeholder": "Device category",
+				"description": "About category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"name": {
+				"title": "Nombre",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Activado",
+				"placeholder": "Enable or disable device"
+			},
+			"password": {
+				"title": "Admin password",
+				"placeholder": "Provide device password if device is protected"
+			},
+			"hostname": {
+				"title": "Device hostname",
+				"placeholder": "Device network name or IP address",
+				"validation": {
+					"required": "Please fill in device hostname or IP address"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Activado"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Discovery enabled"
+				},
+				"interface": {
+					"title": "Interface",
+					"placeholder": "The network interface to use. If none is specified, all available interfaces will be used."
+				}
+			},
+			"websockets": {
+				"requestTimeout": {
+					"title": "Request timeout",
+					"placeholder": "The time, in seconds, to wait for a response before a request is aborted.",
+					"validation": {
+						"required": "Please fill in request timeout",
+						"number": "Request timeout must be a number"
+					}
+				},
+				"pingInterval": {
+					"title": "Ping interval",
+					"placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable.",
+					"validation": {
+						"required": "Please fill in ping interval",
+						"number": "Ping interval must be a number"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Reconnect interval",
+					"placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed.",
+					"validation": {
+						"required": "Please fill in reconnect interval",
+						"number": "Reconnect interval must be a number",
+						"array": "Reconnect interval must be an array of numbers"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Changes saved! The Shelly Next Generation plugin config has been updated.",
+			"notEdited": "Something went wrong. Shelly Next Generation plugin config update was not successful."
+		},
+		"devices": {
+			"exists": "Device with provided hostname and password is already registered in system.",
+			"created": "New Shelly Next-Generation device added successfully.",
+			"notCreated": "Something went wrong. Unable to create the Shelly Next-Generation device.",
+			"notChecked": "Something went wrong. Device information could not be loaded. Check the device hostname or password.",
+			"edited": "Changes saved! The Shelly Next-Generation device: {device} has been updated.",
+			"notEdited": "Something went wrong. Shelly Next-Generation device update was not successful.",
+			"failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the Shelly Next Generation device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
+		"aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
+		"aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior."
+	},
+	"buttons": {
+		"next": {
+			"title": "Next"
+		}
+	}
+}

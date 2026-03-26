@@ -1,1 +1,121 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editTile": {
+				"title": "Edit page tile"
+			},
+			"addTile": {
+				"title": "Add page tile"
+			},
+			"editDataSource": {
+				"title": "Edit page data source"
+			},
+			"addDataSource": {
+				"title": "Add page data source"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "page: {page}",
+			"addTile": "add page tile",
+			"editTile": "edit page tile",
+			"addDataSource": "add page data source",
+			"editDataSource": "edit page data source"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addTile": "Add page tile",
+			"editTile": "Edit page tile",
+			"addDataSource": "Add page data source",
+			"editDataSource": "Edit page data source"
+		},
+		"configure": {
+			"draft": "Draft",
+			"display": "Display",
+			"quickAddTile": "Quick add tile"
+		},
+		"misc": {
+			"discard": "Discard changes?",
+			"tip": "Tip"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addTile": "Add new smart panel page tile",
+			"editTile": "Edit smart panel page tile",
+			"addDataSource": "Add new smart panel page data source",
+			"editDataSource": "Edit smart panel page data source"
+		}
+	},
+	"messages": {
+		"tiles": {
+			"deletedWhileEditing": "This tile was deleted and is no longer available."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "This data source was deleted and is no longer available."
+		},
+		"misc": {
+			"requestError": "Something went wrong, please try again later."
+		}
+	},
+	"texts": {
+		"misc": {
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+			"gridLayoutTip": "You can change how many tiles fit on the page — set Rows and Columns or choose a Tile size."
+		},
+		"tiles": {
+			"loadingTile": "Loading tile..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Loading data source..."
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Descartar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"add": {
+			"title": "Añadir"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"update": {
+			"title": "Update"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"manageElements": {
+			"title": "Manage elements"
+		},
+		"addPageTile": {
+			"title": "Add page tile"
+		},
+		"addPageDataSource": {
+			"title": "Add page data source"
+		}
+	},
+	"fields": {
+		"rows": {
+			"title": "Rows",
+			"placeholder": "Rows count"
+		},
+		"cols": {
+			"title": "Cols",
+			"placeholder": "Cols count"
+		},
+		"tileSize": {
+			"title": "Tile size",
+			"placeholder": "Tile size"
+		}
+	}
+}

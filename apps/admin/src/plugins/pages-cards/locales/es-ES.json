@@ -1,1 +1,163 @@
-{}
+{
+	"meta": {
+		"pages": {
+			"editCard": {
+				"title": "Edit card"
+			},
+			"addCard": {
+				"title": "Add card"
+			},
+			"editTile": {
+				"title": "Edit card tile"
+			},
+			"addTile": {
+				"title": "Add card tile"
+			},
+			"editDataSource": {
+				"title": "Edit page data source"
+			},
+			"addDataSource": {
+				"title": "Add page data source"
+			}
+		}
+	},
+	"breadcrumbs": {
+		"pages": {
+			"configure": "page: {page}",
+			"addCard": "add card",
+			"editCard": "edit card",
+			"addTile": "add card tile",
+			"editTile": "edit card tile",
+			"addDataSource": "add page data source",
+			"editDataSource": "edit page data source"
+		}
+	},
+	"headings": {
+		"pages": {
+			"addCard": "Add card",
+			"editCard": "Edit card",
+			"addTile": "Add card tile",
+			"editTile": "Edit card tile",
+			"addDataSource": "Add page data source",
+			"editDataSource": "Edit page data source"
+		},
+		"cards": {
+			"remove": "Remove card"
+		},
+		"configure": {
+			"display": "Display",
+			"cards": "Cards"
+		},
+		"misc": {
+			"discard": "Discard changes?"
+		}
+	},
+	"subHeadings": {
+		"pages": {
+			"addCard": "Add new card to this page",
+			"editCard": "Edit card properties",
+			"addTile": "Add new tile to this card",
+			"editTile": "Edit card tile",
+			"addDataSource": "Add new page data source",
+			"editDataSource": "Edit page data source"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Card {card} was successfully removed.",
+			"notFound": "Card {card} was not found.",
+			"notRemoved": "Card {card} couldn't be removed.",
+			"removeCanceled": "Card {card} removal was canceled.",
+			"deletedWhileEditing": "This card was deleted and is no longer available."
+		},
+		"tiles": {
+			"deletedWhileEditing": "This tile was deleted and is no longer available."
+		},
+		"dataSources": {
+			"deletedWhileEditing": "This data source was deleted and is no longer available."
+		},
+		"misc": {
+			"requestError": "Something went wrong, please try again later."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Are you sure you want to remove card {card}?",
+			"noCards": "No cards have been added to this page yet.",
+			"noTiles": "No tiles in this card. Click + to add one.",
+			"tilesCount": "tiles",
+			"loadingCard": "Loading card..."
+		},
+		"tiles": {
+			"loadingTile": "Loading tile..."
+		},
+		"dataSources": {
+			"loadingDataSource": "Loading data source..."
+		},
+		"misc": {
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+		}
+	},
+	"buttons": {
+		"discard": {
+			"title": "Descartar"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"add": {
+			"title": "Añadir"
+		},
+		"save": {
+			"title": "Guardar"
+		},
+		"update": {
+			"title": "Update"
+		},
+		"yes": {
+			"title": "Sí"
+		},
+		"no": {
+			"title": "No"
+		},
+		"manageElements": {
+			"title": "Manage elements"
+		},
+		"addCard": {
+			"title": "Add card"
+		},
+		"addPageDataSource": {
+			"title": "Add page data source"
+		}
+	},
+	"fields": {
+		"cards": {
+			"id": {
+				"title": "Identifier"
+			},
+			"title": {
+				"title": "Title",
+				"placeholder": "Enter card title",
+				"validation": {
+					"required": "Please enter a card title"
+				}
+			},
+			"icon": {
+				"title": "Icon",
+				"placeholder": "Select an icon"
+			},
+			"order": {
+				"title": "Order",
+				"placeholder": "Display order"
+			},
+			"rows": {
+				"title": "Rows",
+				"placeholder": "Number of rows"
+			},
+			"cols": {
+				"title": "Columns",
+				"placeholder": "Number of columns"
+			}
+		}
+	}
+}

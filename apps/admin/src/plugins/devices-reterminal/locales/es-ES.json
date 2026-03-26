@@ -1,1 +1,72 @@
-{}
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin Status",
+		"aboutPolling": "Sensor Polling"
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the reTerminal plugin. When disabled, no reTerminal hardware peripherals will be monitored or controlled.",
+		"aboutPolling": "Configure how often the plugin polls hardware sensors (light, accelerometer, temperature) for updated readings."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enable Plugin"
+			},
+			"polling": {
+				"interval": {
+					"title": "Polling Interval (ms)",
+					"validation": {
+						"required": "Polling interval is required",
+						"number": "Must be a number >= 1000"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Device ID",
+				"placeholder": "Device ID"
+			},
+			"name": {
+				"title": "Device Name",
+				"placeholder": "Enter device name",
+				"validation": {
+					"required": "Device name is required"
+				}
+			},
+			"category": {
+				"title": "Device Category",
+				"placeholder": "Select category",
+				"validation": {
+					"required": "Device category is required"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Enter device description (optional)"
+			},
+			"variant": {
+				"title": "Hardware Variant",
+				"placeholder": "Select hardware variant",
+				"validation": {
+					"required": "Hardware variant is required"
+				}
+			},
+			"enabled": {
+				"title": "Activado"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "reTerminal plugin configuration has been updated",
+			"notEdited": "Failed to update reTerminal plugin configuration"
+		},
+		"devices": {
+			"created": "reTerminal device '{device}' has been created",
+			"notCreated": "Failed to create reTerminal device '{device}'",
+			"edited": "reTerminal device '{device}' has been updated",
+			"notEdited": "Failed to update reTerminal device '{device}'"
+		}
+	}
+}
