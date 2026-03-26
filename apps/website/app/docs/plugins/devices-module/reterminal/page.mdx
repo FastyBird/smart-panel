@@ -74,4 +74,78 @@ You can enable or disable the reTerminal plugin in the Admin App:
 
 ---
 
+## Auto-Rotate (Experimental)
+
+The reTerminal CM4 includes a built-in accelerometer (LIS3DHTR) that can detect screen orientation. Smart Panel ships with an optional **auto-rotate daemon** that monitors the accelerometer and automatically rotates the display when the device orientation changes.
+
+<Callout type="warning">
+	Auto-rotate requires restarting the flutter-pi display process on each rotation, which causes a brief screen reload (~1-2 seconds). This feature is **disabled by default** and must be explicitly enabled.
+</Callout>
+
+### How It Works
+
+1. The daemon polls the accelerometer at `/sys/devices/platform/lis3lv02d/position`
+2. When a stable orientation change is detected (after debounce), it updates `FB_DISPLAY_ROTATION` in `/etc/smart-panel/display`
+3. The `smart-panel-display` service is restarted with the new rotation value
+
+### Enabling Auto-Rotate
+
+```bash
+sudo smart-panel-auto-rotate enable
+```
+
+This updates the configuration and starts the daemon automatically.
+
+To disable it:
+
+```bash
+sudo smart-panel-auto-rotate disable
+```
+
+To check the current status:
+
+```bash
+smart-panel-auto-rotate status
+```
+
+### Configuration Options
+
+All tunables are set in `/etc/smart-panel/display`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_AUTO_ROTATE` | `0` | Enable (`1`) or disable (`0`) auto-rotation |
+| `FB_AUTO_ROTATE_POLL_INTERVAL` | `1` | Accelerometer polling interval in seconds |
+| `FB_AUTO_ROTATE_DEBOUNCE` | `3` | Consecutive identical readings required before rotating |
+| `FB_AUTO_ROTATE_THRESHOLD` | `400` | Minimum tilt in milligravity to detect a valid orientation |
+
+### Orientation Mapping
+
+| Physical Orientation | Rotation |
+|---------------------|----------|
+| Landscape (default, USB ports down) | 0° |
+| Portrait (rotated left) | 90° |
+| Landscape inverted (USB ports up) | 180° |
+| Portrait inverted (rotated right) | 270° |
+| Flat (face up / face down) | Unchanged |
+
+<Callout type="info">
+	Auto-rotate is only available on the **reTerminal CM4**. The reTerminal DM does not have an accelerometer.
+</Callout>
+
+### Troubleshooting
+
+Check the daemon logs:
+
+```bash
+journalctl -u smart-panel-auto-rotate -f
+```
+
+If the service fails to start, verify:
+- The accelerometer is accessible: `cat /sys/devices/platform/lis3lv02d/position`
+- The display service is running: `systemctl status smart-panel-display`
+- Check status with: `smart-panel-auto-rotate status`
+
+---
+
 The reTerminal plugin provides **seamless hardware integration** for SeeedStudio reTerminal devices — turning the Smart Panel into a fully-aware embedded controller with direct access to onboard peripherals.

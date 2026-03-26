@@ -120,6 +120,16 @@ if [ "${HAS_DISPLAY}" = true ]; then
 	cp /tmp/smart-panel-config/smart-panel-discovery.py "${DISPLAY_DIR}/discovery-service.py"
 	cp /tmp/smart-panel-config/smart-panel-discovery.service /etc/systemd/system/
 
+	# Install auto-rotate daemon (disabled by default, user enables via CLI)
+	SCRIPTS_DIR="/opt/smart-panel/scripts"
+	mkdir -p "${SCRIPTS_DIR}"
+	cp /tmp/smart-panel-config/smart-panel-auto-rotate.sh "${SCRIPTS_DIR}/smart-panel-auto-rotate.sh"
+	chmod +x "${SCRIPTS_DIR}/smart-panel-auto-rotate.sh"
+	cp /tmp/smart-panel-config/smart-panel-auto-rotate.service /etc/systemd/system/
+
+	# Install CLI wrapper so users can run: smart-panel-auto-rotate enable|disable|status
+	ln -sf "${SCRIPTS_DIR}/smart-panel-auto-rotate.sh" /usr/local/bin/smart-panel-auto-rotate
+
 	# Enable display and discovery services
 	systemctl enable smart-panel-display.service
 	systemctl enable smart-panel-discovery.service

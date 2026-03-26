@@ -1,0 +1,19 @@
+[Unit]
+Description=Smart Panel Auto-Rotate (reTerminal accelerometer)
+Documentation=https://smart-panel.fastybird.com
+After=smart-panel-display.service
+Wants=smart-panel-display.service
+ConditionPathExists=/sys/devices/platform/lis3lv02d/position
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/smart-panel/display
+ExecStart=/bin/bash /opt/smart-panel/scripts/smart-panel-auto-rotate.sh daemon
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel-auto-rotate
+
+[Install]
+WantedBy=multi-user.target
