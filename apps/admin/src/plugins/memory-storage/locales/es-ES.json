@@ -1,1 +1,8 @@
-{}
+{
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n del almacenamiento en memoria ha sido actualizada correctamente",
+			"notEdited": "Error al actualizar la configuraci\u00f3n del almacenamiento en memoria"
+		}
+	}
+}

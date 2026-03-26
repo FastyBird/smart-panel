@@ -1,1 +1,41 @@
-{}
+{
+	"fields": {
+		"locationId": {
+			"title": "Ubicaci\u00f3n meteorol\u00f3gica",
+			"placeholder": "Seleccione una ubicaci\u00f3n",
+			"description": "Seleccione una ubicaci\u00f3n meteorol\u00f3gica para mostrar. Si no se establece, se utilizar\u00e1 la ubicaci\u00f3n principal de la configuraci\u00f3n meteorol\u00f3gica."
+		},
+		"field": {
+			"title": "Campo de datos",
+			"placeholder": "Seleccione un campo",
+			"validation": {
+				"required": "Por favor, seleccione un campo de datos"
+			}
+		},
+		"dayOffset": {
+			"title": "Desplazamiento de d\u00edas",
+			"placeholder": "D\u00edas desde hoy",
+			"validation": {
+				"required": "Por favor, introduzca un desplazamiento de d\u00edas",
+				"min": "El desplazamiento de d\u00edas debe ser al menos 0",
+				"max": "El desplazamiento de d\u00edas debe ser como m\u00e1ximo 7"
+			}
+		},
+		"icon": {
+			"title": "Icono personalizado",
+			"placeholder": "mdi:thermometer"
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Temperatura",
+		"temperature_min": "Temperatura m\u00ednima",
+		"temperature_max": "Temperatura m\u00e1xima",
+		"feels_like": "Sensaci\u00f3n t\u00e9rmica",
+		"humidity": "Humedad",
+		"pressure": "Presi\u00f3n",
+		"weather_icon": "Icono del clima",
+		"weather_main": "Condici\u00f3n clim\u00e1tica",
+		"weather_description": "Descripci\u00f3n del clima",
+		"wind_speed": "Velocidad del viento"
+	}
+}

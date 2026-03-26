@@ -1,1 +1,14 @@
-{}
+{
+	"preview": {
+		"defaultName": "Escena"
+	},
+	"fields": {
+		"scene": {
+			"title": "Escena",
+			"placeholder": "Seleccionar escena",
+			"validation": {
+				"required": "Por favor, seleccione una escena"
+			}
+		}
+	}
+}

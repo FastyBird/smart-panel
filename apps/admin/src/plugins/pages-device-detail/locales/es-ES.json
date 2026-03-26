@@ -1,1 +1,12 @@
-{}
+{
+	"fields": {
+		"device": {
+			"title": "Dispositivo",
+			"placeholder": "Dispositivo de la p\u00e1gina",
+			"description": "Acerca del dispositivo",
+			"validation": {
+				"required": "Por favor, seleccione un dispositivo para la p\u00e1gina"
+			}
+		}
+	}
+}

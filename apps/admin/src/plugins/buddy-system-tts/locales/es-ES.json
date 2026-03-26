@@ -1,1 +1,31 @@
-{}
+{
+	"headings": {
+		"aboutSettings": "Configuraci\u00f3n de TTS del sistema"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"engine": {
+				"title": "Motor",
+				"placeholder": "piper o espeak (autodetectado si est\u00e1 vac\u00edo)",
+				"description": "Motor TTS a utilizar. D\u00e9jelo vac\u00edo para autodetecci\u00f3n (prefiere piper, recurre a espeak)"
+			},
+			"voice": {
+				"title": "Voz",
+				"placeholder": "Nombre o c\u00f3digo de voz (opcional)",
+				"description": "Nombre del modelo de piper o c\u00f3digo de voz de espeak. D\u00e9jelo vac\u00edo para la voz predeterminada"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuraci\u00f3n de TTS del sistema ha sido actualizada",
+			"notEdited": "Error al actualizar la configuraci\u00f3n de TTS del sistema"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Configure el motor local de texto a voz. No se requiere clave API. Utiliza piper (TTS neuronal) o espeak (TTS b\u00e1sico) instalado en el sistema."
+	}
+}
