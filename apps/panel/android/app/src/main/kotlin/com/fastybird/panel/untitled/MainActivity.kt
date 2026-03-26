@@ -158,12 +158,12 @@ class MainActivity : FlutterActivity() {
 	}
 
 	private fun setMicrophoneVolume(percent: Int): Boolean {
+		// Android has no public API to set microphone input gain level.
+		// We use isMicrophoneMute for on/off, and treat volume as a
+		// mute threshold: 0% = mute, >0% = unmute.
 		return try {
 			val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-			val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
-			val volume = (percent * maxVolume / 100).coerceIn(0, maxVolume)
-
-			audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, volume, 0)
+			audioManager.isMicrophoneMute = (percent <= 0)
 
 			true
 		} catch (e: Exception) {

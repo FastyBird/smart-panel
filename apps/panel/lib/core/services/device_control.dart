@@ -172,8 +172,10 @@ class DeviceControlService {
 				}
 			}
 
-			// Map 0-100% to 0-maxBrightness
-			final value = (percent * _maxBrightness! / 100).round();
+			// Map 0-100% to 1-maxBrightness (minimum 1 to avoid turning off the backlight
+			// completely, which would leave the user unable to interact with the UI)
+			final raw = (percent * _maxBrightness! / 100).round();
+			final value = raw < 1 ? 1 : raw;
 			final quotedPath = _backlightPath!.replaceAll("'", r"'\''");
 
 			final result = await Process.run(

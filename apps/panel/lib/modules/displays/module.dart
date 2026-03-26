@@ -374,20 +374,24 @@ class DisplaysModuleService {
         deviceControl.setBrightness(updatedDisplay.brightness);
       }
 
-      if (previousSpeaker != updatedDisplay.speaker) {
-        deviceControl.setSpeakerMute(!updatedDisplay.speaker);
+      if (updatedDisplay.audioOutputSupported) {
+        if (previousSpeaker != updatedDisplay.speaker) {
+          deviceControl.setSpeakerMute(!updatedDisplay.speaker);
+        }
+
+        if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
+          deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
+        }
       }
 
-      if (previousSpeakerVolume != updatedDisplay.speakerVolume) {
-        deviceControl.setSpeakerVolume(updatedDisplay.speakerVolume);
-      }
+      if (updatedDisplay.audioInputSupported) {
+        if (previousMicrophone != updatedDisplay.microphone) {
+          deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
+        }
 
-      if (previousMicrophone != updatedDisplay.microphone) {
-        deviceControl.setMicrophoneMute(!updatedDisplay.microphone);
-      }
-
-      if (previousMicrophoneVolume != updatedDisplay.microphoneVolume) {
-        deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
+        if (previousMicrophoneVolume != updatedDisplay.microphoneVolume) {
+          deviceControl.setMicrophoneVolume(updatedDisplay.microphoneVolume);
+        }
       }
     } catch (e) {
       if (kDebugMode) {
