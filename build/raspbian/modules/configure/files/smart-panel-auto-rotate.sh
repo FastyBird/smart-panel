@@ -176,13 +176,26 @@ cmd_status() {
 
 cmd_daemon() {
 	# ── Pre-flight checks ───────────────────────────────────────────
-	if [ ! -f "$ACCEL_PATH" ]; then
-		log_err "Accelerometer not found at $ACCEL_PATH — is this a reTerminal CM4?"
+	# Source the config to pick up FB_AUTO_ROTATE (may also be set via
+	# the systemd EnvironmentFile, but we read it ourselves so the
+	# daemon works correctly when launched manually too).
+	if [ -f "$DISPLAY_CONFIG" ]; then
+		set -a
+		# shellcheck source=/dev/null
+		. "$DISPLAY_CONFIG"
+		set +a
+	else
+		log_err "Display config not found at $DISPLAY_CONFIG"
 		exit 1
 	fi
 
-	if [ ! -f "$DISPLAY_CONFIG" ]; then
-		log_err "Display config not found at $DISPLAY_CONFIG"
+	if [ "${FB_AUTO_ROTATE:-0}" != "1" ]; then
+		log_err "Auto-rotate is disabled (FB_AUTO_ROTATE=${FB_AUTO_ROTATE:-0}). Enable it with: smart-panel-auto-rotate enable"
+		exit 1
+	fi
+
+	if [ ! -f "$ACCEL_PATH" ]; then
+		log_err "Accelerometer not found at $ACCEL_PATH — is this a reTerminal CM4?"
 		exit 1
 	fi
 
