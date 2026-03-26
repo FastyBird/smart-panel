@@ -833,6 +833,9 @@ class AppSpacings {
   static double scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  static double unscale(double value) =>
+      _screenService.unscale(value, density: _visualDensityService.density);
+
   static double get pXxs =>
       _screenService.scale(1.0, density: _visualDensityService.density);
 

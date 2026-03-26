@@ -1670,6 +1670,7 @@ class _RoomDomainCard extends StatelessWidget {
 													final action = cardInfo.actions[i];
 													final useIcon = action.label == null || (isCompact && _compactIconActions.contains(action.type));
 													final onPressed = action.disabled ? null : () => onQuickAction?.call(action.type);
+													final buttonMinHeight = AppSpacings.unscale(AppSpacings.pMd + (isCompact ? AppFontSize.extraSmall : AppFontSize.small) + AppSpacings.pMd);
 													if (useIcon) {
 														return OutlinedButton(
 															onPressed: onPressed,
@@ -1678,7 +1679,7 @@ class _RoomDomainCard extends StatelessWidget {
 																	horizontal: AppSpacings.pMd,
 																	vertical: AppSpacings.pMd,
 																),
-																minimumSize: Size.zero,
+																minimumSize: Size(0, buttonMinHeight),
 																tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 															),
 															child: Icon(
@@ -1695,7 +1696,7 @@ class _RoomDomainCard extends StatelessWidget {
 																horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
 																vertical: AppSpacings.pMd,
 															),
-															minimumSize: Size.zero,
+															minimumSize: Size(0, buttonMinHeight),
 															tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 														),
 														child: Text(
