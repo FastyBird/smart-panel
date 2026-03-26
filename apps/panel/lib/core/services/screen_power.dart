@@ -24,8 +24,11 @@ class ScreenPowerService {
 
 	/// Turn the screen off (display power save).
 	///
-	/// Safe to call multiple times — the platform calls are idempotent.
+	/// No-op if the screen is already off, to avoid overwriting the saved
+	/// brightness with the dimmed value.
 	Future<bool> screenOff() async {
+		if (_isScreenOff) return true;
+
 		try {
 			bool success = false;
 
