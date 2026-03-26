@@ -34,6 +34,7 @@ export class OpenMeteoProvider implements IWeatherProvider {
 	);
 
 	private readonly cache = new Map<string, CachedWeatherData>();
+	private readonly pending = new Map<string, Promise<CachedWeatherData | null>>();
 	private readonly CACHE_TTL_MS = 60_000; // 1 minute
 	private readonly CACHE_MAX_SIZE = 100;
 
@@ -103,6 +104,14 @@ export class OpenMeteoProvider implements IWeatherProvider {
 			return cached;
 		}
 
+		// If a fetch is already in-flight for this location, reuse the same promise
+		// to avoid duplicate API calls from concurrent callers (e.g. Promise.all)
+		const inflight = this.pending.get(cacheKey);
+
+		if (inflight !== undefined) {
+			return inflight;
+		}
+
 		// Remove expired entry if present
 		if (cached) {
 			this.cache.delete(cacheKey);
@@ -110,24 +119,38 @@ export class OpenMeteoProvider implements IWeatherProvider {
 
 		this.logger.debug(`[WEATHER] Fetching weather data for location id=${location.id}`);
 
-		const result = await this.httpService.fetchWeatherData(location);
+		const fetchPromise = this.doFetch(location, cacheKey);
 
-		if (result) {
-			this.evictExpiredEntries(now);
+		this.pending.set(cacheKey, fetchPromise);
 
-			const entry: CachedWeatherData = {
-				...result,
-				timestamp: now,
-			};
+		return fetchPromise;
+	}
 
-			this.cache.set(cacheKey, entry);
+	private async doFetch(location: OpenMeteoLocationEntity, cacheKey: string): Promise<CachedWeatherData | null> {
+		try {
+			const result = await this.httpService.fetchWeatherData(location);
 
-			this.logger.debug(`[WEATHER] Successfully fetched and cached weather data for location id=${location.id}`);
+			if (result) {
+				const now = Date.now();
 
-			return entry;
+				this.evictExpiredEntries(now);
+
+				const entry: CachedWeatherData = {
+					...result,
+					timestamp: now,
+				};
+
+				this.cache.set(cacheKey, entry);
+
+				this.logger.debug(`[WEATHER] Successfully fetched and cached weather data for location id=${location.id}`);
+
+				return entry;
+			}
+
+			return null;
+		} finally {
+			this.pending.delete(cacheKey);
 		}
-
-		return null;
 	}
 
 	private evictExpiredEntries(now: number): void {
