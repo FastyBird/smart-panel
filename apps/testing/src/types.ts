@@ -2,27 +2,14 @@
 
 export interface TestPlanYaml {
 	version: number;
-	devices: DeviceDefinition[];
 	integrations: IntegrationDefinition[];
 	phases: PhaseDefinition[];
-}
-
-export interface DeviceDefinition {
-	id: string;
-	name: string;
-	roles: Role[];
-	display: DisplayInfo | null;
-}
-
-export interface DisplayInfo {
-	resolution: string;
-	size: string;
-	ppi: number;
 }
 
 export interface IntegrationDefinition {
 	id: string;
 	name: string;
+	section: string;
 }
 
 export interface PhaseDefinition {
@@ -42,12 +29,44 @@ export interface TestDefinition {
 
 export type Role = 'backend' | 'panel' | 'all-in-one';
 
+// ── Device type catalog ──
+
+export type DeviceTypeId = 'rpi-zero-2w' | 'rpi-3' | 'rpi-4' | 'rpi-5' | 'generic-linux' | 'android';
+
+export interface DeviceTypePreset {
+	id: DeviceTypeId;
+	name: string;
+	memoryOptions: string[];
+	allowsBackend: boolean;
+	displayAlways: boolean; // android = always has display
+}
+
+export type DeviceMode = 'all-in-one' | 'panel' | 'backend';
+
+export interface DisplayConfig {
+	resolution: string;
+	screenSize: string;
+	orientation: 'landscape' | 'portrait';
+}
+
+export interface DynamicDeviceEntry {
+	uid: string;
+	type: DeviceTypeId;
+	label: string;
+	memory: string;
+	mode: DeviceMode;
+	display: DisplayConfig | null;
+}
+
 // ── Session types ──
 
 export interface DeviceConfiguration {
-	id: string; // e.g., "rpi-zero-2--panel"
+	id: string;
 	deviceId: string;
 	role: Role;
+	label: string;
+	memory: string;
+	display: DisplayConfig | null;
 }
 
 export interface TestSession {
@@ -70,6 +89,14 @@ export interface TestResult {
 export type Status = 'pending' | 'pass' | 'fail' | 'skip';
 
 export type Orientation = 'landscape' | 'portrait' | 'single';
+
+// ── Shared labels ──
+
+export const ROLE_LABELS: Record<Role, string> = {
+	'all-in-one': 'All-in-One',
+	panel: 'Display Only',
+	backend: 'Server Only',
+};
 
 // ── UI state types ──
 

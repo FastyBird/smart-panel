@@ -7,6 +7,7 @@ import type {
 	TestDefinition,
 	TestSession,
 } from './types';
+import { ROLE_LABELS } from './types';
 
 // ── Result key builders ──
 
@@ -146,13 +147,25 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 	let md = `# Release Testing Report — ${session.version}\n`;
 	md += `**Tester:** ${session.tester} | **Date:** ${date} | **Verdict:** ${verdict.ready ? 'READY' : 'NOT READY'}\n\n`;
 
+	// Device list
+	md += `## Devices Under Test\n`;
+	for (const config of session.configurations) {
+		const roleName = ROLE_LABELS[config.role] ?? config.role;
+		const parts = [`**${config.label || config.id}**`, roleName];
+		if (config.memory) parts.push(config.memory);
+		if (config.display) parts.push(`${config.display.resolution}, ${config.display.screenSize}`);
+		md += `- ${parts.join(' · ')}\n`;
+	}
+	md += `\n`;
+
 	// Summary table
 	md += `## Summary\n`;
 	md += `| Config | Pass | Fail | Skip | Pending |\n`;
 	md += `|--------|------|------|------|--------|\n`;
 	for (const config of session.configurations) {
 		const counts = countResults(session.results, config.id);
-		md += `| ${config.id} | ${counts.pass} | ${counts.fail} | ${counts.skip} | ${counts.pending} |\n`;
+		const label = config.label || config.id;
+		md += `| ${label} | ${counts.pass} | ${counts.fail} | ${counts.skip} | ${counts.pending} |\n`;
 	}
 
 	// Blockers

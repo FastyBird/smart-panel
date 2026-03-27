@@ -1,56 +1,33 @@
-version: 1
-
-devices:
-  - id: rpi-5
-    name: Raspberry Pi 5
-    roles: [backend]
-    display: null
-
-  - id: rpi-zero-2-waveshare
-    name: RPi Zero 2W + Waveshare 7"
-    roles: [panel, all-in-one]
-    display:
-      resolution: "1024x600"
-      size: '7"'
-      ppi: 170
-
-  - id: android-8
-    name: Android 8" Display
-    roles: [panel]
-    display:
-      resolution: "1280x800"
-      size: '8"'
-      ppi: 189
-
-  - id: reterminal-cm4
-    name: Seeed reTerminal CM4 5"
-    roles: [panel, all-in-one]
-    display:
-      resolution: "1280x720"
-      size: '5"'
-      ppi: 294
+version: 2
 
 integrations:
   - id: shelly
     name: Shelly Devices
+    section: Devices
 
   - id: zigbee2mqtt
     name: Zigbee2MQTT
+    section: Devices
 
   - id: wled
     name: WLED
+    section: Devices
 
   - id: home-assistant
     name: Home Assistant
+    section: Devices
 
   - id: openai
     name: OpenAI
+    section: Buddy
 
   - id: elevenlabs
     name: ElevenLabs
+    section: Buddy
 
   - id: anthropic
     name: Anthropic (Claude)
+    section: Buddy
 
 phases:
   - id: smoke
@@ -201,13 +178,13 @@ phases:
         orientations: true
 
       - id: p1.5
-        name: High DPI display (reTerminal 294 PPI)
-        criteria: All UI elements have touch targets large enough; text is sharp and readable at 294 PPI
+        name: High DPI display
+        criteria: All UI elements have touch targets large enough; text is sharp and readable at high PPI
         roles: [panel, all-in-one]
         orientations: true
 
       - id: p1.6
-        name: Low resolution display (Waveshare 1024x600)
+        name: Low resolution display
         criteria: Nothing cropped on dashboard and detail views; scroll works where needed
         roles: [panel, all-in-one]
         orientations: true
