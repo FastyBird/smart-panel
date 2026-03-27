@@ -312,8 +312,15 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  /// Initialize the app with a specific backend URL, storing it on success.
-  Future<void> _initializeAppWithUrl(String backendUrl) async {
+  /// Shared initialization wrapper: stops the retry timer, shows the loader,
+  /// loads cached UI preferences, runs [initialize], and handles errors.
+  ///
+  /// [initialize] receives the resolved result and the retry URL to use on
+  /// failure. It must call the appropriate startup-manager method and map
+  /// the [InitializationResult] to the right app state.
+  Future<void> _runInitialization(
+    Future<void> Function() initialize,
+  ) async {
     _stopBackendRetry();
     _appState.value = AppState.loading;
     _errorInfo = null;
@@ -328,10 +335,25 @@ class _MyAppState extends State<MyApp> {
     });
 
     try {
-      final result = await _startupManager.initializeWithUrl(backendUrl);
+      await initialize();
 
       /// Ensure loader is shown for at least 500ms
       await Future.delayed(const Duration(milliseconds: 500));
+    } catch (error) {
+      debugPrint(error.toString());
+
+      /// Ensure loader is shown even in case of an error
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      _errorInfo = AppErrorException(error.toString());
+      _appState.value = AppState.error;
+    }
+  }
+
+  /// Initialize the app with a specific backend URL, storing it on success.
+  Future<void> _initializeAppWithUrl(String backendUrl) async {
+    await _runInitialization(() async {
+      final result = await _startupManager.initializeWithUrl(backendUrl);
 
       switch (result) {
         case InitializationResult.success:
@@ -354,40 +376,18 @@ class _MyAppState extends State<MyApp> {
           _appState.value = AppState.error;
           break;
       }
-    } catch (error) {
-      debugPrint(error.toString());
-
-      /// Ensure loader is shown even in case of an error
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _errorInfo = AppErrorException(error.toString());
-      _appState.value = AppState.error;
-    }
+    });
   }
 
   Future<void> _initializeApp() async {
-    _stopBackendRetry();
-    _appState.value = AppState.loading;
-    _errorInfo = null;
-
-    // Load cached UI preferences (language, dark mode) before anything else
-    // so the first frame uses the correct locale and theme
-    final prefs = locator<LocalPreferencesService>();
-    await prefs.load();
-    setState(() {
-      _cachedLanguage = prefs.language;
-      _cachedDarkMode = prefs.darkMode;
-    });
-
     // Resolve the effective URL before tryInitialize so we can pass it to
     // _maybeStartBackendRetry synchronously on failure.
-    final effectiveUrl = await _startupManager.getEffectiveBackendUrl();
+    String? effectiveUrl;
 
-    try {
+    await _runInitialization(() async {
+      effectiveUrl = await _startupManager.getEffectiveBackendUrl();
+
       final result = await _startupManager.tryInitialize();
-
-      /// Ensure loader is shown for at least 500ms
-      await Future.delayed(const Duration(milliseconds: 500));
 
       switch (result) {
         case InitializationResult.success:
@@ -409,18 +409,11 @@ class _MyAppState extends State<MyApp> {
           _appState.value = AppState.error;
           break;
       }
-    } catch (error) {
-      debugPrint(error.toString());
-
-      /// Ensure loader is shown even in case of an error
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _errorInfo = AppErrorException(error.toString());
-      _appState.value = AppState.error;
-    }
+    });
   }
 
   Future<void> _onBackendSelected(DiscoveredBackend backend) async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
 
     try {
@@ -455,6 +448,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _onManualUrlEntered(String url) async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
 
     // Normalize URL - ensure it has protocol and API path
