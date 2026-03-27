@@ -59,7 +59,8 @@ function slugify(label: string): string {
 	return label
 		.trim()
 		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-');
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
 }
 
 function createEmptyDevice(): DynamicDeviceEntry {
@@ -206,14 +207,20 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 
 	const getDeviceErrors = (device: DynamicDeviceEntry): string[] => {
 		const errors: string[] = [];
-		if (!device.label.trim()) errors.push('Name is required');
-		// Check for duplicate slugs (same slug + same mode = config ID collision)
-		if (device.label.trim()) {
+		if (!device.label.trim()) {
+			errors.push('Name is required');
+		} else {
 			const slug = slugify(device.label);
-			const hasDupeId = devices.some(
-				(d) => d.uid !== device.uid && slugify(d.label) === slug && d.mode === device.mode,
-			);
-			if (hasDupeId) errors.push('Duplicate config (same name slug and mode)');
+			if (!slug) {
+				// Label has no Latin alphanumeric characters (e.g. emoji, CJK)
+				errors.push('Name must contain at least one letter or digit (a-z, 0-9)');
+			} else {
+				// Check for duplicate slugs (same slug + same mode = config ID collision)
+				const hasDupeId = devices.some(
+					(d) => d.uid !== device.uid && slugify(d.label) === slug && d.mode === device.mode,
+				);
+				if (hasDupeId) errors.push('Duplicate config (same name slug and mode)');
+			}
 		}
 		if (needsDisplay(device.mode)) {
 			if (!device.display) {
