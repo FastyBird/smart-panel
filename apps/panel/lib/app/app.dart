@@ -137,6 +137,9 @@ class _MyAppState extends State<MyApp> {
   /// The backend URL being retried in the background.
   String? _retryBackendUrl;
 
+  /// Guard flag to prevent overlapping [_onRetryTick] executions.
+  bool _retryInProgress = false;
+
   @override
   void initState() {
     super.initState();
@@ -168,6 +171,10 @@ class _MyAppState extends State<MyApp> {
     if (kDebugMode) {
       debugPrint('[APP] Resetting to discovery state');
     }
+
+    // Stop any running retry timer immediately — before yielding to the
+    // event loop — so stale ticks cannot race with the reset.
+    _stopBackendRetry();
 
     // If a compile-time backend URL is configured (AIO mode), try it
     // directly instead of showing the discovery screen.
@@ -244,10 +251,16 @@ class _MyAppState extends State<MyApp> {
     _backendRetryTimer?.cancel();
     _backendRetryTimer = null;
     _retryBackendUrl = null;
+    _retryInProgress = false;
   }
 
   /// Called on each retry tick - pings the backend and re-initializes if reachable.
   Future<void> _onRetryTick() async {
+    // Prevent overlapping ticks — the ping timeout (up to 6s) can exceed
+    // the timer interval (5s), so a new tick may fire while the previous
+    // one is still in-flight.
+    if (_retryInProgress) return;
+
     final url = _retryBackendUrl;
 
     if (url == null) return;
@@ -262,20 +275,28 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    if (kDebugMode) {
-      debugPrint('[APP] Background retry: pinging $url');
+    _retryInProgress = true;
+
+    try {
+      if (kDebugMode) {
+        debugPrint('[APP] Background retry: pinging $url');
+      }
+
+      final reachable = await StartupManagerService.pingUrl(url);
+
+      if (!reachable) return;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[APP] Background retry: backend is online, re-initializing',
+        );
+      }
+
+      _stopBackendRetry();
+      await _initializeApp();
+    } finally {
+      _retryInProgress = false;
     }
-
-    final reachable = await StartupManagerService.pingUrl(url);
-
-    if (!reachable) return;
-
-    if (kDebugMode) {
-      debugPrint('[APP] Background retry: backend is online, re-initializing');
-    }
-
-    _stopBackendRetry();
-    await _initializeApp();
   }
 
   /// If a backend URL is available, start background retry polling.
