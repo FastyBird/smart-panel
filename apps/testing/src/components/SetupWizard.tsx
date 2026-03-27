@@ -197,7 +197,6 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 				deviceId: d.type,
 				role: d.mode,
 				label: d.label.trim(),
-				deviceType: d.type,
 				memory: d.memory,
 				display: d.display,
 			}));

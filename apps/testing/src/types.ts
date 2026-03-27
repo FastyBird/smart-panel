@@ -65,7 +65,6 @@ export interface DeviceConfiguration {
 	deviceId: string;
 	role: Role;
 	label: string;
-	deviceType: DeviceTypeId;
 	memory: string;
 	display: DisplayConfig | null;
 }
