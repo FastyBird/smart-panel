@@ -188,7 +188,6 @@ class _MyAppState extends State<MyApp> {
     }
 
     _appState.value = AppState.discovery;
-    _maybeStartBackendRetry();
   }
 
   /// Check if room selection is needed and transition to the appropriate state
@@ -284,6 +283,10 @@ class _MyAppState extends State<MyApp> {
 
       final reachable = await StartupManagerService.pingUrl(url);
 
+      // After the async ping, verify the retry was not cancelled externally
+      // (e.g. by _resetToDiscovery or a user action) while we were waiting.
+      if (_backendRetryTimer == null) return;
+
       if (!reachable) return;
 
       if (kDebugMode) {
@@ -293,18 +296,72 @@ class _MyAppState extends State<MyApp> {
       }
 
       _stopBackendRetry();
-      await _initializeApp();
+
+      // Initialize with the specific URL that was pinged, not whatever
+      // getEffectiveBackendUrl() might return (which could be different).
+      await _initializeAppWithUrl(url);
     } finally {
       _retryInProgress = false;
     }
   }
 
   /// If a backend URL is available, start background retry polling.
-  Future<void> _maybeStartBackendRetry() async {
-    final url = await _startupManager.getEffectiveBackendUrl();
-
+  void _maybeStartBackendRetry(String? url) {
     if (url != null) {
       _startBackendRetry(url);
+    }
+  }
+
+  /// Initialize the app with a specific backend URL, storing it on success.
+  Future<void> _initializeAppWithUrl(String backendUrl) async {
+    _stopBackendRetry();
+    _appState.value = AppState.loading;
+    _errorInfo = null;
+
+    // Load cached UI preferences (language, dark mode) before anything else
+    // so the first frame uses the correct locale and theme
+    final prefs = locator<LocalPreferencesService>();
+    await prefs.load();
+    setState(() {
+      _cachedLanguage = prefs.language;
+      _cachedDarkMode = prefs.darkMode;
+    });
+
+    try {
+      final result = await _startupManager.initializeWithUrl(backendUrl);
+
+      /// Ensure loader is shown for at least 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      switch (result) {
+        case InitializationResult.success:
+          await _startupManager.storeBackendUrl(backendUrl);
+          _transitionToReadyOrRoomSelection();
+          break;
+
+        case InitializationResult.needsDiscovery:
+          _appState.value = AppState.discovery;
+          _maybeStartBackendRetry(backendUrl);
+          break;
+
+        case InitializationResult.connectionFailed:
+          _errorInfo = const AppErrorConnectionFailedStored();
+          _appState.value = AppState.connectionFailed;
+          _maybeStartBackendRetry(backendUrl);
+          break;
+
+        case InitializationResult.error:
+          _appState.value = AppState.error;
+          break;
+      }
+    } catch (error) {
+      debugPrint(error.toString());
+
+      /// Ensure loader is shown even in case of an error
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      _errorInfo = AppErrorException(error.toString());
+      _appState.value = AppState.error;
     }
   }
 
@@ -322,6 +379,10 @@ class _MyAppState extends State<MyApp> {
       _cachedDarkMode = prefs.darkMode;
     });
 
+    // Resolve the effective URL before tryInitialize so we can pass it to
+    // _maybeStartBackendRetry synchronously on failure.
+    final effectiveUrl = await _startupManager.getEffectiveBackendUrl();
+
     try {
       final result = await _startupManager.tryInitialize();
 
@@ -335,13 +396,13 @@ class _MyAppState extends State<MyApp> {
 
         case InitializationResult.needsDiscovery:
           _appState.value = AppState.discovery;
-          _maybeStartBackendRetry();
+          _maybeStartBackendRetry(effectiveUrl);
           break;
 
         case InitializationResult.connectionFailed:
           _errorInfo = const AppErrorConnectionFailedStored();
           _appState.value = AppState.connectionFailed;
-          _maybeStartBackendRetry();
+          _maybeStartBackendRetry(effectiveUrl);
           break;
 
         case InitializationResult.error:
