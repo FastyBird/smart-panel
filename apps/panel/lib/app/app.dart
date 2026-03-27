@@ -129,6 +129,17 @@ class _MyAppState extends State<MyApp> {
 
   StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
 
+  /// Background timer for auto-retrying backend connection.
+  /// Active when the app is in [connectionFailed] or [discovery] state
+  /// and a backend URL is known (e.g. from environment variables in AIO mode).
+  Timer? _backendRetryTimer;
+
+  /// The backend URL being retried in the background.
+  String? _retryBackendUrl;
+
+  /// Guard flag to prevent overlapping [_onRetryTick] executions.
+  bool _retryInProgress = false;
+
   @override
   void initState() {
     super.initState();
@@ -160,6 +171,10 @@ class _MyAppState extends State<MyApp> {
     if (kDebugMode) {
       debugPrint('[APP] Resetting to discovery state');
     }
+
+    // Stop any running retry timer immediately — before yielding to the
+    // event loop — so stale ticks cannot race with the reset.
+    _stopBackendRetry();
 
     // If a compile-time backend URL is configured (AIO mode), try it
     // directly instead of showing the discovery screen.
@@ -212,7 +227,103 @@ class _MyAppState extends State<MyApp> {
     _appState.value = AppState.ready;
   }
 
-  Future<void> _initializeApp() async {
+  /// Start a background timer that periodically pings the backend URL.
+  /// When the backend responds, automatically re-trigger initialization.
+  void _startBackendRetry(String backendUrl) {
+    _stopBackendRetry();
+    _retryBackendUrl = backendUrl;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[APP] Starting background backend retry for: $backendUrl',
+      );
+    }
+
+    _backendRetryTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _onRetryTick(),
+    );
+  }
+
+  /// Stop the background retry timer.
+  void _stopBackendRetry() {
+    _backendRetryTimer?.cancel();
+    _backendRetryTimer = null;
+    _retryBackendUrl = null;
+    _retryInProgress = false;
+  }
+
+  /// Called on each retry tick - pings the backend and re-initializes if reachable.
+  Future<void> _onRetryTick() async {
+    // Prevent overlapping ticks — the ping timeout (up to 6s) can exceed
+    // the timer interval (5s), so a new tick may fire while the previous
+    // one is still in-flight.
+    if (_retryInProgress) return;
+
+    final url = _retryBackendUrl;
+
+    if (url == null) return;
+
+    // Only retry while in connectionFailed or discovery state
+    final currentState = _appState.value;
+
+    if (currentState != AppState.connectionFailed &&
+        currentState != AppState.discovery) {
+      _stopBackendRetry();
+
+      return;
+    }
+
+    _retryInProgress = true;
+
+    try {
+      if (kDebugMode) {
+        debugPrint('[APP] Background retry: pinging $url');
+      }
+
+      final reachable = await StartupManagerService.pingUrl(url);
+
+      // After the async ping, verify the retry was not cancelled or restarted
+      // with a different URL while we were waiting. A null timer means outright
+      // cancellation; a changed URL means a new retry was started for a
+      // different backend and this tick is stale.
+      if (_backendRetryTimer == null || _retryBackendUrl != url) return;
+
+      if (!reachable) return;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[APP] Background retry: backend is online, re-initializing',
+        );
+      }
+
+      _stopBackendRetry();
+
+      // Initialize with the specific URL that was pinged, not whatever
+      // getEffectiveBackendUrl() might return (which could be different).
+      await _initializeAppWithUrl(url);
+    } finally {
+      _retryInProgress = false;
+    }
+  }
+
+  /// If a backend URL is available, start background retry polling.
+  void _maybeStartBackendRetry(String? url) {
+    if (url != null) {
+      _startBackendRetry(url);
+    }
+  }
+
+  /// Shared initialization wrapper: stops the retry timer, shows the loader,
+  /// loads cached UI preferences, runs [initialize], and handles errors.
+  ///
+  /// [initialize] receives the resolved result and the retry URL to use on
+  /// failure. It must call the appropriate startup-manager method and map
+  /// the [InitializationResult] to the right app state.
+  Future<void> _runInitialization(
+    Future<void> Function() initialize,
+  ) async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
     _errorInfo = null;
 
@@ -226,6 +337,58 @@ class _MyAppState extends State<MyApp> {
     });
 
     try {
+      await initialize();
+    } catch (error) {
+      debugPrint(error.toString());
+
+      /// Ensure loader is shown even in case of an error
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      _errorInfo = AppErrorException(error.toString());
+      _appState.value = AppState.error;
+    }
+  }
+
+  /// Initialize the app with a specific backend URL, storing it on success.
+  Future<void> _initializeAppWithUrl(String backendUrl) async {
+    await _runInitialization(() async {
+      final result = await _startupManager.initializeWithUrl(backendUrl);
+
+      /// Ensure loader is shown for at least 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      switch (result) {
+        case InitializationResult.success:
+          await _startupManager.storeBackendUrl(backendUrl);
+          _transitionToReadyOrRoomSelection();
+          break;
+
+        case InitializationResult.needsDiscovery:
+          _appState.value = AppState.discovery;
+          _maybeStartBackendRetry(backendUrl);
+          break;
+
+        case InitializationResult.connectionFailed:
+          _errorInfo = const AppErrorConnectionFailedStored();
+          _appState.value = AppState.connectionFailed;
+          _maybeStartBackendRetry(backendUrl);
+          break;
+
+        case InitializationResult.error:
+          _appState.value = AppState.error;
+          break;
+      }
+    });
+  }
+
+  Future<void> _initializeApp() async {
+    // Resolve the effective URL before tryInitialize so we can pass it to
+    // _maybeStartBackendRetry synchronously on failure.
+    String? effectiveUrl;
+
+    await _runInitialization(() async {
+      effectiveUrl = await _startupManager.getEffectiveBackendUrl();
+
       final result = await _startupManager.tryInitialize();
 
       /// Ensure loader is shown for at least 500ms
@@ -238,29 +401,24 @@ class _MyAppState extends State<MyApp> {
 
         case InitializationResult.needsDiscovery:
           _appState.value = AppState.discovery;
+          _maybeStartBackendRetry(effectiveUrl);
           break;
 
         case InitializationResult.connectionFailed:
           _errorInfo = const AppErrorConnectionFailedStored();
           _appState.value = AppState.connectionFailed;
+          _maybeStartBackendRetry(effectiveUrl);
           break;
 
         case InitializationResult.error:
           _appState.value = AppState.error;
           break;
       }
-    } catch (error) {
-      debugPrint(error.toString());
-
-      /// Ensure loader is shown even in case of an error
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _errorInfo = AppErrorException(error.toString());
-      _appState.value = AppState.error;
-    }
+    });
   }
 
   Future<void> _onBackendSelected(DiscoveredBackend backend) async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
 
     try {
@@ -278,6 +436,7 @@ class _MyAppState extends State<MyApp> {
             backend.name, backend.displayAddress,
           );
           _appState.value = AppState.connectionFailed;
+          _startBackendRetry(backend.baseUrl);
           break;
 
         case InitializationResult.needsDiscovery:
@@ -294,6 +453,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _onManualUrlEntered(String url) async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
 
     // Normalize URL - ensure it has protocol and API path
@@ -339,6 +499,7 @@ class _MyAppState extends State<MyApp> {
         case InitializationResult.connectionFailed:
           _errorInfo = AppErrorConnectionFailedUrl(url);
           _appState.value = AppState.connectionFailed;
+          _startBackendRetry(normalizedUrl);
           break;
 
         case InitializationResult.needsDiscovery:
@@ -360,6 +521,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    _stopBackendRetry();
     _resetEventSubscription?.cancel();
     _appState.dispose();
     super.dispose();
