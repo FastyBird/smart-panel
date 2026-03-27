@@ -1,6 +1,12 @@
 import type { TestPlanYaml, TestSession } from '../types';
 import { computeReadiness, countResults, exportAsJson, exportAsMarkdown } from '../utils';
 
+const ROLE_LABEL: Record<string, string> = {
+	'all-in-one': 'All-in-One',
+	panel: 'Display Only',
+	backend: 'Server Only',
+};
+
 interface ResultsSummaryProps {
 	session: TestSession;
 	testPlan: TestPlanYaml;
@@ -11,26 +17,33 @@ interface ResultsSummaryProps {
 export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSummaryProps) {
 	const verdict = computeReadiness(session, testPlan.phases);
 
-	// Collect smoke, P0 and P1 failures (blockers)
 	const blockers = Object.entries(session.results).filter(([key, result]) => {
 		if (result.status !== 'fail') return false;
 		const testId = key.split('::')[1] ?? '';
 		return testId.startsWith('smoke.') || testId.startsWith('p0.') || testId.startsWith('p1.');
 	});
 
-	// Collect P4 failures and skips (known limitations)
 	const limitations = Object.entries(session.results).filter(([key, result]) => {
 		const testId = key.split('::')[1] ?? '';
 		return testId.startsWith('p4.') && (result.status === 'fail' || result.status === 'skip');
 	});
 
-	// Find test name by test ID
 	const getTestName = (testId: string): string => {
 		for (const phase of testPlan.phases) {
 			const found = phase.tests.find((t) => t.id === testId);
 			if (found) return found.name;
 		}
 		return testId;
+	};
+
+	const getConfigLabel = (configId: string): string => {
+		const config = session.configurations.find((c) => c.id === configId);
+		if (!config) return configId.replace('--', ' — ');
+		const role = ROLE_LABEL[config.role] ?? config.role;
+		const parts = [config.label, role];
+		if (config.display) parts.push(config.display.resolution);
+		if (config.memory) parts.push(config.memory);
+		return parts.join(' · ');
 	};
 
 	return (
@@ -106,7 +119,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 											className="border-b border-panel-border last:border-0"
 										>
 											<td className="py-2 pr-4 text-panel-text">
-												{config.id.replace('--', ' — ')}
+												{getConfigLabel(config.id)}
 												<span className="ml-2 text-panel-dim">({pctDone}%)</span>
 											</td>
 											<td className="py-2 px-3 text-right text-panel-muted">{counts.total}</td>
@@ -154,7 +167,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 											<span className="text-panel-muted text-xs">{testName}</span>
 										</div>
 										<div className="text-xs text-panel-dim mt-1">
-											Config: <span className="text-panel-muted font-mono">{configId.replace('--', ' — ')}</span>
+											Config: <span className="text-panel-muted font-mono">{getConfigLabel(configId)}</span>
 										</div>
 										{result.notes && <div className="text-xs text-status-skip mt-1 italic">{result.notes}</div>}
 									</div>
@@ -205,7 +218,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 												{orientLabel}
 											</span>
 											<span className="text-xs text-panel-muted ml-2">{testName}</span>
-											<span className="text-xs text-panel-subtle ml-2">({configId.replace('--', ' — ')})</span>
+											<span className="text-xs text-panel-subtle ml-2">({getConfigLabel(configId)})</span>
 											{result.notes && <div className="text-xs text-panel-dim italic mt-0.5">{result.notes}</div>}
 										</div>
 									</div>

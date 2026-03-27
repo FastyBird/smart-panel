@@ -22,8 +22,8 @@ export function useTestPlan(): UseTestPlanResult {
 			})
 			.then((text) => {
 				const parsed = yaml.load(text) as TestPlanYaml;
-				if (!parsed.version || !parsed.phases) {
-					throw new Error('Invalid test plan: missing version or phases');
+				if (!parsed.version || !parsed.phases || !parsed.integrations) {
+					throw new Error('Invalid test plan: missing version, integrations, or phases');
 				}
 				setTestPlan(parsed);
 			})

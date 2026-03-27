@@ -3,6 +3,7 @@ import type {
 	Orientation,
 	PhaseDefinition,
 	ReadinessVerdict,
+	Role,
 	Status,
 	TestDefinition,
 	TestSession,
@@ -129,6 +130,12 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 
 // ── Export ──
 
+const ROLE_NAMES: Record<Role, string> = {
+	'all-in-one': 'All-in-One',
+	panel: 'Display Only',
+	backend: 'Server Only',
+};
+
 export function exportAsJson(session: TestSession): void {
 	const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -146,13 +153,25 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 	let md = `# Release Testing Report — ${session.version}\n`;
 	md += `**Tester:** ${session.tester} | **Date:** ${date} | **Verdict:** ${verdict.ready ? 'READY' : 'NOT READY'}\n\n`;
 
+	// Device list
+	md += `## Devices Under Test\n`;
+	for (const config of session.configurations) {
+		const roleName = ROLE_NAMES[config.role] ?? config.role;
+		const parts = [`**${config.label}**`, roleName];
+		if (config.memory) parts.push(config.memory);
+		if (config.display) parts.push(`${config.display.resolution}, ${config.display.screenSize}`);
+		md += `- ${parts.join(' · ')}\n`;
+	}
+	md += `\n`;
+
 	// Summary table
 	md += `## Summary\n`;
 	md += `| Config | Pass | Fail | Skip | Pending |\n`;
 	md += `|--------|------|------|------|--------|\n`;
 	for (const config of session.configurations) {
 		const counts = countResults(session.results, config.id);
-		md += `| ${config.id} | ${counts.pass} | ${counts.fail} | ${counts.skip} | ${counts.pending} |\n`;
+		const label = config.label || config.id;
+		md += `| ${label} | ${counts.pass} | ${counts.fail} | ${counts.skip} | ${counts.pending} |\n`;
 	}
 
 	// Blockers
