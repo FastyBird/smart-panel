@@ -1294,19 +1294,23 @@ class StartupManagerService {
     }
   }
 
-  /// Ping a backend URL directly using a lightweight HTTP GET to the health endpoint.
-  /// This does not require the full API client to be initialized.
+  /// Ping a backend URL using the generated [ApiClient] health endpoint.
+  /// Creates a temporary Dio + ApiClient instance with short timeouts
+  /// so it can be called before the main API client is initialized.
   static Future<bool> pingUrl(String backendUrl) async {
     try {
       final dio = Dio(
         BaseOptions(
+          baseUrl: backendUrl,
           connectTimeout: const Duration(seconds: 3),
           receiveTimeout: const Duration(seconds: 3),
         ),
       );
-      final response = await dio.get('$backendUrl/system/health');
+      final client = ApiClient(dio);
+      final response =
+          await client.systemModule.getSystemModuleSystemHealth();
 
-      return response.statusCode == 200;
+      return response.response.statusCode == 200;
     } catch (_) {
       return false;
     }
