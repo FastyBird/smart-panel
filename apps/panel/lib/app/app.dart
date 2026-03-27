@@ -283,9 +283,11 @@ class _MyAppState extends State<MyApp> {
 
       final reachable = await StartupManagerService.pingUrl(url);
 
-      // After the async ping, verify the retry was not cancelled externally
-      // (e.g. by _resetToDiscovery or a user action) while we were waiting.
-      if (_backendRetryTimer == null) return;
+      // After the async ping, verify the retry was not cancelled or restarted
+      // with a different URL while we were waiting. A null timer means outright
+      // cancellation; a changed URL means a new retry was started for a
+      // different backend and this tick is stale.
+      if (_backendRetryTimer == null || _retryBackendUrl != url) return;
 
       if (!reachable) return;
 
