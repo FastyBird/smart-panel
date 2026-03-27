@@ -129,6 +129,14 @@ class _MyAppState extends State<MyApp> {
 
   StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
 
+  /// Background timer for auto-retrying backend connection.
+  /// Active when the app is in [connectionFailed] or [discovery] state
+  /// and a backend URL is known (e.g. from environment variables in AIO mode).
+  Timer? _backendRetryTimer;
+
+  /// The backend URL being retried in the background.
+  String? _retryBackendUrl;
+
   @override
   void initState() {
     super.initState();
@@ -173,6 +181,7 @@ class _MyAppState extends State<MyApp> {
     }
 
     _appState.value = AppState.discovery;
+    _maybeStartBackendRetry();
   }
 
   /// Check if room selection is needed and transition to the appropriate state
@@ -212,7 +221,74 @@ class _MyAppState extends State<MyApp> {
     _appState.value = AppState.ready;
   }
 
+  /// Start a background timer that periodically pings the backend URL.
+  /// When the backend responds, automatically re-trigger initialization.
+  void _startBackendRetry(String backendUrl) {
+    _stopBackendRetry();
+    _retryBackendUrl = backendUrl;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[APP] Starting background backend retry for: $backendUrl',
+      );
+    }
+
+    _backendRetryTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _onRetryTick(),
+    );
+  }
+
+  /// Stop the background retry timer.
+  void _stopBackendRetry() {
+    _backendRetryTimer?.cancel();
+    _backendRetryTimer = null;
+    _retryBackendUrl = null;
+  }
+
+  /// Called on each retry tick - pings the backend and re-initializes if reachable.
+  Future<void> _onRetryTick() async {
+    final url = _retryBackendUrl;
+
+    if (url == null) return;
+
+    // Only retry while in connectionFailed or discovery state
+    final currentState = _appState.value;
+
+    if (currentState != AppState.connectionFailed &&
+        currentState != AppState.discovery) {
+      _stopBackendRetry();
+
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[APP] Background retry: pinging $url');
+    }
+
+    final reachable = await StartupManagerService.pingUrl(url);
+
+    if (!reachable) return;
+
+    if (kDebugMode) {
+      debugPrint('[APP] Background retry: backend is online, re-initializing');
+    }
+
+    _stopBackendRetry();
+    await _initializeApp();
+  }
+
+  /// If a backend URL is available, start background retry polling.
+  Future<void> _maybeStartBackendRetry() async {
+    final url = await _startupManager.getEffectiveBackendUrl();
+
+    if (url != null) {
+      _startBackendRetry(url);
+    }
+  }
+
   Future<void> _initializeApp() async {
+    _stopBackendRetry();
     _appState.value = AppState.loading;
     _errorInfo = null;
 
@@ -238,11 +314,13 @@ class _MyAppState extends State<MyApp> {
 
         case InitializationResult.needsDiscovery:
           _appState.value = AppState.discovery;
+          _maybeStartBackendRetry();
           break;
 
         case InitializationResult.connectionFailed:
           _errorInfo = const AppErrorConnectionFailedStored();
           _appState.value = AppState.connectionFailed;
+          _maybeStartBackendRetry();
           break;
 
         case InitializationResult.error:
@@ -278,6 +356,7 @@ class _MyAppState extends State<MyApp> {
             backend.name, backend.displayAddress,
           );
           _appState.value = AppState.connectionFailed;
+          _startBackendRetry(backend.baseUrl);
           break;
 
         case InitializationResult.needsDiscovery:
@@ -339,6 +418,7 @@ class _MyAppState extends State<MyApp> {
         case InitializationResult.connectionFailed:
           _errorInfo = AppErrorConnectionFailedUrl(url);
           _appState.value = AppState.connectionFailed;
+          _startBackendRetry(normalizedUrl);
           break;
 
         case InitializationResult.needsDiscovery:
@@ -360,6 +440,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    _stopBackendRetry();
     _resetEventSubscription?.cancel();
     _appState.dispose();
     super.dispose();

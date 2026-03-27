@@ -310,8 +310,9 @@ class StartupManagerService {
       // Clean up registered modules on failure
       _unregisterModulesIfNeeded();
 
-      // Clear stored URL on connection failure to allow rediscovery
-      await _clearStoredBackendUrl();
+      // Keep the stored URL so the app can retry automatically when the
+      // backend comes back online (e.g. after a reboot on AIO setups).
+      // The URL is only cleared on an explicit reset-to-discovery action.
 
       return InitializationResult.connectionFailed;
     }
@@ -1288,6 +1289,24 @@ class StartupManagerService {
           await _apiClient.systemModule.getSystemModuleSystemHealth();
 
       return systemInfoResponse.response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Ping a backend URL directly using a lightweight HTTP GET to the health endpoint.
+  /// This does not require the full API client to be initialized.
+  static Future<bool> pingUrl(String backendUrl) async {
+    try {
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+      final response = await dio.get('$backendUrl/system/health');
+
+      return response.statusCode == 200;
     } catch (_) {
       return false;
     }
