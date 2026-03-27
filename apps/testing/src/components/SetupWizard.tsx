@@ -78,6 +78,7 @@ function createEmptyDevice(): DynamicDeviceEntry {
 }
 
 function getAvailableModes(preset: DeviceTypePreset): DeviceMode[] {
+	if (preset.displayAlways && preset.allowsBackend) return ['all-in-one', 'panel'];
 	if (preset.displayAlways) return ['panel'];
 	if (!preset.allowsBackend) return ['panel'];
 	return ['all-in-one', 'panel', 'backend'];
@@ -215,9 +216,13 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 			);
 			if (hasDupeId) errors.push('Duplicate config (same name slug and mode)');
 		}
-		if (needsDisplay(device.mode) && device.display) {
-			if (!device.display.resolution.trim()) errors.push('Resolution required');
-			if (!device.display.screenSize.trim()) errors.push('Screen size required');
+		if (needsDisplay(device.mode)) {
+			if (!device.display) {
+				errors.push('Display configuration required for this mode');
+			} else {
+				if (!device.display.resolution.trim()) errors.push('Resolution required');
+				if (!device.display.screenSize.trim()) errors.push('Screen size required');
+			}
 		}
 		return errors;
 	};
