@@ -91,6 +91,14 @@ export type Status = 'pending' | 'pass' | 'fail' | 'skip';
 
 export type Orientation = 'landscape' | 'portrait' | 'single';
 
+// ── Shared labels ──
+
+export const ROLE_LABELS: Record<Role, string> = {
+	'all-in-one': 'All-in-One',
+	panel: 'Display Only',
+	backend: 'Server Only',
+};
+
 // ── UI state types ──
 
 export type Screen = 'setup' | 'execution' | 'results';

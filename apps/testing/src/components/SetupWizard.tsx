@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type {
-	DeviceConfiguration,
-	DeviceMode,
-	DeviceTypeId,
-	DeviceTypePreset,
-	DisplayConfig,
-	DynamicDeviceEntry,
-	IntegrationDefinition,
-	TestPlanYaml,
-	TestSession,
+import {
+	type DeviceConfiguration,
+	type DeviceMode,
+	type DeviceTypeId,
+	type DeviceTypePreset,
+	type DisplayConfig,
+	type DynamicDeviceEntry,
+	type IntegrationDefinition,
+	ROLE_LABELS,
+	type TestPlanYaml,
+	type TestSession,
 } from '../types';
 import { buildConfigId, buildResultKey, getTestsForConfig } from '../utils';
 
@@ -42,11 +43,8 @@ const DEVICE_TYPES: DeviceTypePreset[] = [
 	{ id: 'android', name: 'Android Display', memoryOptions: [], allowsBackend: false, displayAlways: true },
 ];
 
-const MODE_LABELS: Record<DeviceMode, string> = {
-	'all-in-one': 'All-in-One',
-	panel: 'Display Only',
-	backend: 'Server Only',
-};
+// Re-use shared role labels as mode labels (DeviceMode maps 1:1 to Role)
+const MODE_LABELS = ROLE_LABELS;
 
 const MODE_DESCRIPTIONS: Record<DeviceMode, string> = {
 	'all-in-one': 'Backend + Display on same device',
@@ -56,6 +54,13 @@ const MODE_DESCRIPTIONS: Record<DeviceMode, string> = {
 
 const COMMON_RESOLUTIONS = ['800x480', '1024x600', '1280x720', '1280x800', '1920x1080', '2560x1440'];
 const COMMON_SCREEN_SIZES = ['3.5"', '5"', '7"', '8"', '10.1"', '13.3"', '15.6"'];
+
+function slugify(label: string): string {
+	return label
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-');
+}
 
 function createEmptyDevice(): DynamicDeviceEntry {
 	return {
@@ -187,13 +192,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 		return devices
 			.filter((d) => d.label.trim())
 			.map((d) => ({
-				id: buildConfigId(
-					d.label
-						.trim()
-						.toLowerCase()
-						.replace(/[^a-z0-9]+/g, '-'),
-					d.mode,
-				),
+				id: buildConfigId(slugify(d.label), d.mode),
 				deviceId: d.type,
 				role: d.mode,
 				label: d.label.trim(),
@@ -208,11 +207,14 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 	const getDeviceErrors = (device: DynamicDeviceEntry): string[] => {
 		const errors: string[] = [];
 		if (!device.label.trim()) errors.push('Name is required');
-		// Check for duplicate labels
-		const dupes = devices.filter(
-			(d) => d.uid !== device.uid && d.label.trim().toLowerCase() === device.label.trim().toLowerCase(),
-		);
-		if (device.label.trim() && dupes.length > 0) errors.push('Duplicate name');
+		// Check for duplicate slugs (same slug + same mode = config ID collision)
+		if (device.label.trim()) {
+			const slug = slugify(device.label);
+			const hasDupeId = devices.some(
+				(d) => d.uid !== device.uid && slugify(d.label) === slug && d.mode === device.mode,
+			);
+			if (hasDupeId) errors.push('Duplicate config (same name slug and mode)');
+		}
 		if (needsDisplay(device.mode) && device.display) {
 			if (!device.display.resolution.trim()) errors.push('Resolution required');
 			if (!device.display.screenSize.trim()) errors.push('Screen size required');

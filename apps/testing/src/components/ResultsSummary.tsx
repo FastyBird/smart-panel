@@ -1,11 +1,6 @@
+import { ROLE_LABELS } from '../types';
 import type { TestPlanYaml, TestSession } from '../types';
 import { computeReadiness, countResults, exportAsJson, exportAsMarkdown } from '../utils';
-
-const ROLE_LABEL: Record<string, string> = {
-	'all-in-one': 'All-in-One',
-	panel: 'Display Only',
-	backend: 'Server Only',
-};
 
 interface ResultsSummaryProps {
 	session: TestSession;
@@ -39,7 +34,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 	const getConfigLabel = (configId: string): string => {
 		const config = session.configurations.find((c) => c.id === configId);
 		if (!config) return configId.replace('--', ' — ');
-		const role = ROLE_LABEL[config.role] ?? config.role;
+		const role = ROLE_LABELS[config.role] ?? config.role;
 		const parts = [config.label, role];
 		if (config.display) parts.push(config.display.resolution);
 		if (config.memory) parts.push(config.memory);

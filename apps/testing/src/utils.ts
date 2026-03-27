@@ -3,11 +3,11 @@ import type {
 	Orientation,
 	PhaseDefinition,
 	ReadinessVerdict,
-	Role,
 	Status,
 	TestDefinition,
 	TestSession,
 } from './types';
+import { ROLE_LABELS } from './types';
 
 // ── Result key builders ──
 
@@ -130,12 +130,6 @@ export function computeReadiness(session: TestSession, phases: PhaseDefinition[]
 
 // ── Export ──
 
-const ROLE_NAMES: Record<Role, string> = {
-	'all-in-one': 'All-in-One',
-	panel: 'Display Only',
-	backend: 'Server Only',
-};
-
 export function exportAsJson(session: TestSession): void {
 	const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -156,7 +150,7 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 	// Device list
 	md += `## Devices Under Test\n`;
 	for (const config of session.configurations) {
-		const roleName = ROLE_NAMES[config.role] ?? config.role;
+		const roleName = ROLE_LABELS[config.role] ?? config.role;
 		const parts = [`**${config.label}**`, roleName];
 		if (config.memory) parts.push(config.memory);
 		if (config.display) parts.push(`${config.display.resolution}, ${config.display.screenSize}`);
