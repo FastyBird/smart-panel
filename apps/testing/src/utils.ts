@@ -151,7 +151,7 @@ export function exportAsMarkdown(session: TestSession, phases: PhaseDefinition[]
 	md += `## Devices Under Test\n`;
 	for (const config of session.configurations) {
 		const roleName = ROLE_LABELS[config.role] ?? config.role;
-		const parts = [`**${config.label}**`, roleName];
+		const parts = [`**${config.label || config.id}**`, roleName];
 		if (config.memory) parts.push(config.memory);
 		if (config.display) parts.push(`${config.display.resolution}, ${config.display.screenSize}`);
 		md += `- ${parts.join(' · ')}\n`;

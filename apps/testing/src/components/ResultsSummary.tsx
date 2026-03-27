@@ -35,7 +35,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 		const config = session.configurations.find((c) => c.id === configId);
 		if (!config) return configId.replace('--', ' — ');
 		const role = ROLE_LABELS[config.role] ?? config.role;
-		const parts = [config.label, role];
+		const parts = [config.label || config.id, role];
 		if (config.display) parts.push(config.display.resolution);
 		if (config.memory) parts.push(config.memory);
 		return parts.join(' · ');
