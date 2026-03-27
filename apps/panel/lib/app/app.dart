@@ -338,9 +338,6 @@ class _MyAppState extends State<MyApp> {
 
     try {
       await initialize();
-
-      /// Ensure loader is shown for at least 500ms
-      await Future.delayed(const Duration(milliseconds: 500));
     } catch (error) {
       debugPrint(error.toString());
 
@@ -356,6 +353,9 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initializeAppWithUrl(String backendUrl) async {
     await _runInitialization(() async {
       final result = await _startupManager.initializeWithUrl(backendUrl);
+
+      /// Ensure loader is shown for at least 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
 
       switch (result) {
         case InitializationResult.success:
@@ -390,6 +390,9 @@ class _MyAppState extends State<MyApp> {
       effectiveUrl = await _startupManager.getEffectiveBackendUrl();
 
       final result = await _startupManager.tryInitialize();
+
+      /// Ensure loader is shown for at least 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
 
       switch (result) {
         case InitializationResult.success:
