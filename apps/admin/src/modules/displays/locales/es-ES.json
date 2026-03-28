@@ -151,6 +151,9 @@
 			"screenSaver": {
 				"title": "Salvapantallas"
 			},
+			"screenPowerOff": {
+				"title": "Apagar pantalla"
+			},
 			"audio": {
 				"speaker": {
 					"title": "Altavoz (salida de audio)"
@@ -399,6 +402,7 @@
 			"brightness": "Brillo",
 			"screenLockDuration": "Duración del bloqueo de pantalla",
 			"screenSaver": "Salvapantallas",
+			"screenPowerOff": "Apagar pantalla",
 			"speakerEnabled": "Altavoz activado",
 			"speakerVolume": "Volumen del altavoz",
 			"microphoneEnabled": "Micrófono activado",

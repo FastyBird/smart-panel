@@ -248,6 +248,17 @@
 					</el-form-item>
 
 					<el-form-item
+						:label="t('displaysModule.fields.displays.screenPowerOff.title')"
+						:prop="['screenPowerOff']"
+						label-position="left"
+					>
+						<el-switch
+							v-model="model.screenPowerOff"
+							name="screenPowerOff"
+						/>
+					</el-form-item>
+
+					<el-form-item
 						:label="t('displaysModule.fields.displays.screenLockDuration.title')"
 						:prop="['screenLockDuration']"
 					>

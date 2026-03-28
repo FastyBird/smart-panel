@@ -151,6 +151,9 @@
 			"screenSaver": {
 				"title": "Wygaszacz ekranu"
 			},
+			"screenPowerOff": {
+				"title": "Wyłączenie ekranu"
+			},
 			"audio": {
 				"speaker": {
 					"title": "Głośnik (wyjście audio)"
@@ -399,6 +402,7 @@
 			"brightness": "Jasność",
 			"screenLockDuration": "Czas blokady ekranu",
 			"screenSaver": "Wygaszacz ekranu",
+			"screenPowerOff": "Wyłączenie ekranu",
 			"speakerEnabled": "Głośnik włączony",
 			"speakerVolume": "Głośność głośnika",
 			"microphoneEnabled": "Mikrofon włączony",

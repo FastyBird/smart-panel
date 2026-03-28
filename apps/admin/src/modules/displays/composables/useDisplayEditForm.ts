@@ -52,6 +52,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		screenLockDuration: display.screenLockDuration,
 		darkMode: display.darkMode,
 		screenSaver: display.screenSaver,
+		screenPowerOff: display.screenPowerOff,
 		// Audio settings
 		speaker: display.speaker,
 		speakerVolume: display.speakerVolume,
@@ -105,6 +106,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				screenLockDuration: number;
 				darkMode: boolean;
 				screenSaver: boolean;
+				screenPowerOff: boolean;
 				speaker?: boolean;
 				speakerVolume?: number;
 				microphone?: boolean;
@@ -130,6 +132,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				screenLockDuration: model.screenLockDuration,
 				darkMode: model.darkMode,
 				screenSaver: model.screenSaver,
+				screenPowerOff: model.screenPowerOff,
 				homeMode: model.homeMode,
 				// Home page: clear if not explicit mode
 				homePageId: model.homeMode === 'explicit' ? model.homePageId : null,

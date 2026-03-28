@@ -151,6 +151,9 @@
 			"screenSaver": {
 				"title": "Bildschirmschoner"
 			},
+			"screenPowerOff": {
+				"title": "Bildschirm ausschalten"
+			},
 			"audio": {
 				"speaker": {
 					"title": "Lautsprecher (Audioausgang)"
@@ -399,6 +402,7 @@
 			"brightness": "Helligkeit",
 			"screenLockDuration": "Bildschirmsperrdauer",
 			"screenSaver": "Bildschirmschoner",
+			"screenPowerOff": "Bildschirm ausschalten",
 			"speakerEnabled": "Lautsprecher aktiviert",
 			"speakerVolume": "Lautsprecherlautstärke",
 			"microphoneEnabled": "Mikrofon aktiviert",

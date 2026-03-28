@@ -21,6 +21,7 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		brightness: response.brightness ?? 100,
 		screenLockDuration: response.screen_lock_duration ?? 30,
 		screenSaver: response.screen_saver ?? true,
+		screenPowerOff: response.screen_power_off ?? false,
 		// Audio capabilities
 		audioOutputSupported: response.audio_output_supported ?? false,
 		audioInputSupported: response.audio_input_supported ?? false,
@@ -90,6 +91,7 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 		brightness: display.brightness,
 		screen_lock_duration: display.screenLockDuration,
 		screen_saver: display.screenSaver,
+		screen_power_off: display.screenPowerOff,
 	};
 
 	// Only include audio settings if they are defined (i.e., display supports audio)

@@ -197,24 +197,20 @@ export class DisplaysService {
 	 */
 	private async validateRoleRoomCombination(role: DisplayRole, roomId: string | null | undefined): Promise<void> {
 		if (role === DisplayRole.ROOM) {
-			// Room role requires a roomId
-			if (!roomId) {
-				throw new DisplaysValidationException(
-					'Display with role "room" requires a room assignment. Please select a room.',
-				);
-			}
+			// Room role allows null roomId (unassigned state) but validates if provided
+			if (roomId) {
+				// Validate the room exists and is of type 'room'
+				const space = await this.spaceRepository.findOne({ where: { id: roomId } });
 
-			// Validate the room exists and is of type 'room'
-			const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+				if (!space) {
+					throw new DisplaysValidationException('The specified room does not exist.');
+				}
 
-			if (!space) {
-				throw new DisplaysValidationException('The specified room does not exist.');
-			}
-
-			if (space.type !== SpaceType.ROOM) {
-				throw new DisplaysValidationException(
-					'Display with role "room" can only be assigned to a space of type "room", not a zone.',
-				);
+				if (space.type !== SpaceType.ROOM) {
+					throw new DisplaysValidationException(
+						'Display with role "room" can only be assigned to a space of type "room", not a zone.',
+					);
+				}
 			}
 		} else {
 			// Master/Entry roles must not have a roomId

@@ -151,6 +151,9 @@
 			"screenSaver": {
 				"title": "Screen saver"
 			},
+			"screenPowerOff": {
+				"title": "Screen power off"
+			},
 			"audio": {
 				"speaker": {
 					"title": "Speaker (audio output)"
@@ -399,6 +402,7 @@
 			"brightness": "Brightness",
 			"screenLockDuration": "Screen lock duration",
 			"screenSaver": "Screen saver",
+			"screenPowerOff": "Screen power off",
 			"speakerEnabled": "Speaker enabled",
 			"speakerVolume": "Speaker volume",
 			"microphoneEnabled": "Microphone enabled",

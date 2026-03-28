@@ -35,7 +35,7 @@ export const ForecastWeatherTileSchema = TileSchema.extend({
 export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile & { parent: { type: string; id: string } }> = TileCreateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
-		location_id: z.string().uuid().optional(),
+		location_id: z.string().uuid().optional().nullable(),
 	})
 );
 
@@ -43,7 +43,7 @@ export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeathe
 	TileCreateReqSchema.and(
 		z.object({
 			type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
-			location_id: z.string().uuid().optional(),
+			location_id: z.string().uuid().optional().nullable(),
 		})
 	);
 

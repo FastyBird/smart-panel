@@ -178,6 +178,18 @@ export class UpdateDisplayDto {
 	screen_saver?: boolean;
 
 	@ApiPropertyOptional({
+		name: 'screen_power_off',
+		description: 'Turn off the display when screen is locked',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"screen_power_off","reason":"Screen power off must be a boolean."}]' })
+	screen_power_off?: boolean;
+
+	@ApiPropertyOptional({
 		description: 'Display friendly name',
 		type: 'string',
 		nullable: true,

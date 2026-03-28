@@ -35,6 +35,7 @@ export const DisplaySchema = z.object({
 	brightness: z.number().min(0).max(100).default(100),
 	screenLockDuration: z.number().default(30),
 	screenSaver: z.boolean().default(true),
+	screenPowerOff: z.boolean().default(false),
 	// Audio capabilities
 	audioOutputSupported: z.boolean().default(false),
 	audioInputSupported: z.boolean().default(false),
@@ -109,6 +110,7 @@ export const DisplaysSetActionPayloadSchema = z.object({
 		brightness: z.number().min(0).max(100).optional(),
 		screenLockDuration: z.number().optional(),
 		screenSaver: z.boolean().optional(),
+		screenPowerOff: z.boolean().optional(),
 		// Audio capabilities
 		audioOutputSupported: z.boolean().optional(),
 		audioInputSupported: z.boolean().optional(),
@@ -165,6 +167,7 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		brightness: z.number().min(0).max(100).optional(),
 		screenLockDuration: z.number().optional(),
 		screenSaver: z.boolean().optional(),
+		screenPowerOff: z.boolean().optional(),
 		// Audio settings (only if supported)
 		speaker: z.boolean().optional(),
 		speakerVolume: z.number().min(0).max(100).optional(),
@@ -224,6 +227,7 @@ export const DisplayUpdateReqSchema = z.object({
 	brightness: z.number().min(0).max(100).optional(),
 	screen_lock_duration: z.number().optional(),
 	screen_saver: z.boolean().optional(),
+	screen_power_off: z.boolean().optional(),
 	// Audio settings
 	speaker: z.boolean().optional(),
 	speaker_volume: z.number().min(0).max(100).optional(),
@@ -262,6 +266,7 @@ export const DisplayResSchema = z.object({
 	brightness: z.number(),
 	screen_lock_duration: z.number(),
 	screen_saver: z.boolean(),
+	screen_power_off: z.boolean(),
 	// Audio capabilities
 	audio_output_supported: z.boolean(),
 	audio_input_supported: z.boolean(),

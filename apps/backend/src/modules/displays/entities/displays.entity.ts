@@ -217,6 +217,22 @@ export class DisplayEntity extends BaseEntity {
 	@Column({ type: 'boolean', default: true })
 	screenSaver: boolean;
 
+	@ApiProperty({
+		name: 'screen_power_off',
+		description: 'Turn off the display when screen is locked',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'screen_power_off' })
+	@IsBoolean()
+	@Transform(
+		({ obj }: { obj: { screen_power_off?: boolean; screenPowerOff?: boolean } }) =>
+			obj.screen_power_off ?? obj.screenPowerOff,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'boolean', default: false })
+	screenPowerOff: boolean;
+
 	// === Display Name and Settings ===
 
 	@ApiPropertyOptional({

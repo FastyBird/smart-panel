@@ -424,7 +424,7 @@
 		"osDistro": "Distribúcia",
 		"osRelease": "Verzia",
 		"uptime": "Doba behu systému",
-		"networkInterface": "Sieťové rozhranie",
+		"networkInterface": "Rozhranie",
 		"ip4Address": "IP adresa",
 		"ip6Address": "IPv6 adresa",
 		"macAddress": "MAC adresa",
