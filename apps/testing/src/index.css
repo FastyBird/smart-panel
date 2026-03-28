@@ -52,16 +52,16 @@ body {
 }
 
 /* Element Plus-like input focus */
-input:focus,
+input[type='text']:focus,
 select:focus {
-	border-color: var(--color-primary) !important;
+	border-color: var(--color-primary);
 	outline: none;
 	box-shadow: 0 0 0 1px rgba(217, 35, 15, 0.2);
 }
 
 /* Element Plus-like button transitions */
 button {
-	transition: all 0.1s;
+	transition: color 0.1s, background-color 0.1s, border-color 0.1s;
 }
 
 /* Checkbox accent color */
