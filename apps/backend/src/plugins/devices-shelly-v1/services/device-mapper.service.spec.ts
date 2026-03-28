@@ -357,7 +357,7 @@ describe('DeviceMapperService', () => {
 			expect(redPropertyCall?.[1]).toMatchObject({
 				identifier: 'red',
 				category: PropertyCategory.COLOR_RED,
-				data_type: DataTypeType.UINT,
+				data_type: DataTypeType.UCHAR,
 				format: [0, 255],
 			});
 
@@ -411,7 +411,7 @@ describe('DeviceMapperService', () => {
 			expect(brightnessPropertyCall?.[1]).toMatchObject({
 				identifier: 'brightness',
 				category: PropertyCategory.BRIGHTNESS,
-				data_type: DataTypeType.UINT,
+				data_type: DataTypeType.UCHAR,
 				format: [0, 100],
 			});
 

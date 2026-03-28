@@ -276,10 +276,17 @@ export class ShellyNgService implements IManagedPluginService {
 				this.shellies.registerDiscoverer(discoverer);
 
 				discoverer.on('error', (error: Error): void => {
-					this.logger.error('An error occurred in the mDNS device discovery service', {
-						message: error.message,
-						stack: error.stack,
-					});
+					// Malformed mDNS packets from other devices on the network are expected noise
+					if (/bad label|cannot decode/i.test(error.message)) {
+						this.logger.warn('Received malformed mDNS packet (non-Shelly device on network)', {
+							message: error.message,
+						});
+					} else {
+						this.logger.error('An error occurred in the mDNS device discovery service', {
+							message: error.message,
+							stack: error.stack,
+						});
+					}
 				});
 
 				try {
@@ -383,11 +390,19 @@ export class ShellyNgService implements IManagedPluginService {
 				} catch (err) {
 					const error = err as Error;
 
-					this.logger.error(`Failed to process discovered device=${device.id}`, {
-						resource: device.id,
-						message: error.message,
-						stack: error.stack,
-					});
+					// Network errors during discovery are transient — device may be temporarily unreachable
+					if (/network error|fetch failed|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH/i.test(error.message)) {
+						this.logger.warn(`Discovered device=${device.id} is unreachable, will retry on next discovery`, {
+							resource: device.id,
+							message: error.message,
+						});
+					} else {
+						this.logger.error(`Failed to process discovered device=${device.id}`, {
+							resource: device.id,
+							message: error.message,
+							stack: error.stack,
+						});
+					}
 				}
 			}
 		} finally {

@@ -102,27 +102,53 @@ export class RaspberryPlatform extends Platform {
 	}
 
 	async getThrottleStatus() {
+		const strategies = ['sudo /usr/bin/vcgencmd get_throttled', 'vcgencmd get_throttled'];
+
+		for (const command of strategies) {
+			try {
+				const { stdout } = await execAsync(command);
+				const match = stdout.match(/throttled=(0x[0-9A-Fa-f]+)/);
+
+				if (match) {
+					const status = parseInt(match[1], 16);
+
+					return this.validateDto(ThrottleStatusDto, {
+						undervoltage: !!(status & 0x1),
+						frequencyCapping: !!(status & 0x2),
+						throttling: !!(status & 0x4),
+						softTempLimit: !!(status & 0x8),
+					});
+				}
+			} catch {
+				// Try next strategy
+			}
+		}
+
+		// Fallback: read from sysfs (available on some Pi models)
 		try {
-			const { stdout } = await execAsync('sudo /usr/bin/vcgencmd get_throttled');
-			const match = stdout.match(/throttled=(0x[0-9A-Fa-f]+)/);
+			const data = await fs.readFile('/sys/devices/platform/soc/soc:firmware/get_throttled', 'utf-8');
+			const status = parseInt(data.trim(), 16);
 
-			if (match) {
-				const status = parseInt(match[1], 16);
-
-				const rawData = {
+			if (!isNaN(status)) {
+				return this.validateDto(ThrottleStatusDto, {
 					undervoltage: !!(status & 0x1),
 					frequencyCapping: !!(status & 0x2),
 					throttling: !!(status & 0x4),
 					softTempLimit: !!(status & 0x8),
-				};
-
-				return this.validateDto(ThrottleStatusDto, rawData);
+				});
 			}
 		} catch {
-			throw new PlatformException('Reading throttle status failed');
+			// sysfs not available
 		}
 
-		throw new PlatformException('Failed to read throttle status');
+		this.logger.warn('[THROTTLE] Could not read throttle status, returning defaults');
+
+		return this.validateDto(ThrottleStatusDto, {
+			undervoltage: false,
+			frequencyCapping: false,
+			throttling: false,
+			softTempLimit: false,
+		});
 	}
 
 	async getTemperature() {
