@@ -482,16 +482,12 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 											{availableModes.length === 1 ? (
 												<div className="bg-info-bg border border-panel-border rounded px-3 text-sm text-panel-muted h-8 leading-8 overflow-hidden">
 													{MODE_LABELS[availableModes[0]]}
-													<span className="text-panel-dim text-xs ml-2">
-														— {MODE_DESCRIPTIONS[availableModes[0]]}
-													</span>
+													<span className="text-panel-dim text-xs ml-2">— {MODE_DESCRIPTIONS[availableModes[0]]}</span>
 												</div>
 											) : (
 												<select
 													value={device.mode}
-													onChange={(e) =>
-														updateDevice(device.uid, { mode: e.target.value as DeviceMode })
-													}
+													onChange={(e) => updateDevice(device.uid, { mode: e.target.value as DeviceMode })}
 													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 												>
 													{availableModes.map((mode) => (
@@ -521,9 +517,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														list={`resolutions-${device.uid}`}
 														placeholder="e.g. 1024x600"
 														value={device.display.resolution}
-														onChange={(e) =>
-															updateDeviceDisplay(device.uid, { resolution: e.target.value })
-														}
+														onChange={(e) => updateDeviceDisplay(device.uid, { resolution: e.target.value })}
 														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.resolution.trim()
 																? 'border-status-fail'
@@ -548,9 +542,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														list={`screensizes-${device.uid}`}
 														placeholder='e.g. 7"'
 														value={device.display.screenSize}
-														onChange={(e) =>
-															updateDeviceDisplay(device.uid, { screenSize: e.target.value })
-														}
+														onChange={(e) => updateDeviceDisplay(device.uid, { screenSize: e.target.value })}
 														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.screenSize.trim()
 																? 'border-status-fail'
@@ -612,17 +604,15 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-6">
 					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">Integrations</h2>
 					<p className="text-xs text-panel-dim mb-4">
-						Select the integrations available in your test environment. Tests requiring unselected integrations will
-						be hidden.
+						Select the integrations available in your test environment. Tests requiring unselected integrations will be
+						hidden.
 					</p>
 					{Object.entries(integrationsBySection).map(([section, integrations]) => (
 						<div
 							key={section}
 							className="mb-4 last:mb-0"
 						>
-							<h3 className="text-[11px] font-semibold text-panel-dim uppercase tracking-wider mb-2">
-								{section}
-							</h3>
+							<h3 className="text-[11px] font-semibold text-panel-dim uppercase tracking-wider mb-2">{section}</h3>
 							<div className="grid grid-cols-2 gap-2">
 								{integrations.map((integration) => (
 									<label

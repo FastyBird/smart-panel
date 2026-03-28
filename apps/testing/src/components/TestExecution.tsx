@@ -192,9 +192,7 @@ export function TestExecution({
 										onStatusChange={(orientation, status) =>
 											updateResult(activeConfig.id, test.id, orientation, status)
 										}
-										onNotesChange={(orientation, notes) =>
-											updateNotes(activeConfig.id, test.id, orientation, notes)
-										}
+										onNotesChange={(orientation, notes) => updateNotes(activeConfig.id, test.id, orientation, notes)}
 									/>
 								);
 							})}

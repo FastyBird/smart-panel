@@ -108,10 +108,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 							<tbody>
 								{session.configurations.map((config) => {
 									const counts = countResults(session.results, config.id);
-									const pctDone =
-										counts.total > 0
-											? Math.round(((counts.pass + counts.fail + counts.skip) / counts.total) * 100)
-											: 0;
+									const pctDone = counts.total > 0 ? Math.round(((counts.pass + counts.fail + counts.skip) / counts.total) * 100) : 0;
 									return (
 										<tr
 											key={config.id}
@@ -220,9 +217,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 											</span>
 											<span className="text-xs text-panel-muted ml-2">{testName}</span>
 											<span className="text-xs text-panel-subtle ml-2">({getConfigLabel(configId)})</span>
-											{result.notes && (
-												<div className="text-xs text-panel-dim italic mt-0.5">{result.notes}</div>
-											)}
+											{result.notes && <div className="text-xs text-panel-dim italic mt-0.5">{result.notes}</div>}
 										</div>
 									</div>
 								);

@@ -44,8 +44,7 @@ export function TestRow({
 					className="flex-1 text-left text-[12px] text-panel-muted hover:text-primary cursor-pointer truncate"
 					title={criteria}
 				>
-					{name}{' '}
-					<span className="text-panel-subtle text-[10px]">{expanded ? '▲' : '▼'}</span>
+					{name} <span className="text-panel-subtle text-[10px]">{expanded ? '▲' : '▼'}</span>
 				</button>
 
 				{orientations ? (
