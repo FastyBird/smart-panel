@@ -44,31 +44,33 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 	return (
 		<div className="min-h-screen bg-panel-bg text-panel-text flex flex-col">
 			{/* Top Bar */}
-			<div className="bg-panel-surface border-b border-panel-border px-4 py-3 flex items-center gap-3 shrink-0">
+			<div className="bg-primary px-4 py-3 flex items-center gap-3 shrink-0 shadow-md">
 				<button
 					onClick={onBack}
-					className="text-xs font-mono text-panel-dim hover:text-panel-text cursor-pointer"
+					className="text-xs text-white/80 hover:text-white cursor-pointer"
 				>
 					← Back to Testing
 				</button>
 				<div className="flex-1" />
-				<span className="text-sm font-mono text-panel-muted">{session.version}</span>
-				<span className="text-panel-border text-xs">|</span>
-				<span className="text-xs text-panel-dim">{session.tester}</span>
+				<span className="text-sm font-semibold text-white">{session.version}</span>
+				<span className="text-white/30 text-xs">|</span>
+				<span className="text-xs text-white/80">{session.tester}</span>
 			</div>
 
 			<div className="flex-1 overflow-y-auto px-4 py-6 max-w-4xl mx-auto w-full">
 				{/* Readiness Verdict Banner */}
 				<div
-					className={`rounded-lg p-6 mb-6 border ${
-						verdict.ready ? 'bg-status-pass-bg border-status-pass' : 'bg-status-fail-bg border-status-fail'
+					className={`rounded border p-6 mb-6 ${
+						verdict.ready
+							? 'bg-status-pass-bg border-status-pass-border'
+							: 'bg-status-fail-bg border-status-fail-border'
 					}`}
 				>
 					<div className="flex items-center gap-3">
-						<span className={`text-3xl font-mono font-bold ${verdict.ready ? 'text-status-pass' : 'text-status-fail'}`}>
+						<span className={`text-3xl font-bold ${verdict.ready ? 'text-status-pass' : 'text-status-fail'}`}>
 							{verdict.ready ? 'READY' : 'NOT READY'}
 						</span>
-						<span className="text-panel-muted text-sm">for release</span>
+						<span className="text-panel-dim text-sm">for release</span>
 					</div>
 					{!verdict.ready && verdict.reasons.length > 0 && (
 						<ul className="mt-3 space-y-1">
@@ -83,45 +85,45 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 							))}
 						</ul>
 					)}
-					{verdict.ready && <p className="mt-2 text-xs text-status-pass opacity-80">All release criteria met.</p>}
+					{verdict.ready && <p className="mt-2 text-xs text-status-pass">All release criteria met.</p>}
 				</div>
 
 				{/* Per-Config Summary Table */}
-				<section className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-4">
-					<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider mb-4">
+				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-4">
+					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">
 						Per-Configuration Summary
 					</h2>
 					<div className="overflow-x-auto">
-						<table className="w-full text-xs font-mono">
+						<table className="w-full text-xs">
 							<thead>
 								<tr className="text-panel-dim border-b border-panel-border">
-									<th className="text-left pb-2 pr-4">Configuration</th>
-									<th className="text-right pb-2 px-3">Total</th>
-									<th className="text-right pb-2 px-3 text-status-pass">Pass</th>
-									<th className="text-right pb-2 px-3 text-status-fail">Fail</th>
-									<th className="text-right pb-2 px-3 text-status-skip">Skip</th>
-									<th className="text-right pb-2 pl-3 text-panel-dim">Pending</th>
+									<th className="text-left pb-2 pr-4 font-semibold">Configuration</th>
+									<th className="text-right pb-2 px-3 font-semibold">Total</th>
+									<th className="text-right pb-2 px-3 font-semibold text-status-pass">Pass</th>
+									<th className="text-right pb-2 px-3 font-semibold text-status-fail">Fail</th>
+									<th className="text-right pb-2 px-3 font-semibold text-status-skip">Skip</th>
+									<th className="text-right pb-2 pl-3 font-semibold text-panel-dim">Pending</th>
 								</tr>
 							</thead>
 							<tbody>
 								{session.configurations.map((config) => {
 									const counts = countResults(session.results, config.id);
-									const pctDone =
-										counts.total > 0 ? Math.round(((counts.pass + counts.fail + counts.skip) / counts.total) * 100) : 0;
+									const done = counts.pass + counts.fail + counts.skip;
+									const pctDone = counts.total > 0 ? Math.round((done / counts.total) * 100) : 0;
 									return (
 										<tr
 											key={config.id}
-											className="border-b border-panel-border last:border-0"
+											className="border-b border-panel-border last:border-0 hover:bg-panel-bg"
 										>
-											<td className="py-2 pr-4 text-panel-text">
+											<td className="py-2.5 pr-4 text-panel-text">
 												{getConfigLabel(config.id)}
 												<span className="ml-2 text-panel-dim">({pctDone}%)</span>
 											</td>
-											<td className="py-2 px-3 text-right text-panel-muted">{counts.total}</td>
-											<td className="py-2 px-3 text-right text-status-pass">{counts.pass}</td>
-											<td className="py-2 px-3 text-right text-status-fail">{counts.fail}</td>
-											<td className="py-2 px-3 text-right text-status-skip">{counts.skip}</td>
-											<td className="py-2 pl-3 text-right text-panel-dim">{counts.pending}</td>
+											<td className="py-2.5 px-3 text-right text-panel-muted">{counts.total}</td>
+											<td className="py-2.5 px-3 text-right text-status-pass">{counts.pass}</td>
+											<td className="py-2.5 px-3 text-right text-status-fail">{counts.fail}</td>
+											<td className="py-2.5 px-3 text-right text-status-skip">{counts.skip}</td>
+											<td className="py-2.5 pl-3 text-right text-panel-dim">{counts.pending}</td>
 										</tr>
 									);
 								})}
@@ -131,11 +133,13 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 				</section>
 
 				{/* Blocker List */}
-				<section className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-4">
-					<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider mb-4">
+				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-4">
+					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">
 						Blockers
 						{blockers.length > 0 && (
-							<span className="ml-2 px-1.5 py-0.5 bg-status-fail-bg text-status-fail rounded">{blockers.length}</span>
+							<span className="ml-2 px-1.5 py-0.5 bg-status-fail-bg text-status-fail border border-status-fail-border rounded text-[10px]">
+								{blockers.length}
+							</span>
 						)}
 					</h2>
 					{blockers.length === 0 ? (
@@ -152,7 +156,7 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 								return (
 									<div
 										key={key}
-										className="border border-status-fail-bg rounded px-3 py-2 bg-panel-bg"
+										className="border border-status-fail-border rounded px-3 py-2 bg-status-fail-bg"
 									>
 										<div className="flex items-start gap-2">
 											<span className="text-status-fail text-xs font-mono shrink-0">
@@ -173,11 +177,11 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 				</section>
 
 				{/* Known Limitations (P4 failures + skips) */}
-				<section className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-6">
-					<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider mb-4">
+				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-6">
+					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">
 						Known Limitations (P4)
 						{limitations.length > 0 && (
-							<span className="ml-2 px-1.5 py-0.5 bg-status-skip-bg text-status-skip rounded">
+							<span className="ml-2 px-1.5 py-0.5 bg-status-skip-bg text-status-skip border border-status-skip-border rounded text-[10px]">
 								{limitations.length}
 							</span>
 						)}
@@ -196,13 +200,13 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 								return (
 									<div
 										key={key}
-										className="flex items-start gap-3 py-1"
+										className="flex items-start gap-3 py-1.5"
 									>
 										<span
-											className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+											className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 border ${
 												result.status === 'fail'
-													? 'bg-status-fail-bg text-status-fail'
-													: 'bg-status-skip-bg text-status-skip'
+													? 'bg-status-fail-bg text-status-fail border-status-fail-border'
+													: 'bg-status-skip-bg text-status-skip border-status-skip-border'
 											}`}
 										>
 											{result.status.toUpperCase()}
@@ -228,20 +232,20 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 					<div className="flex gap-3">
 						<button
 							onClick={() => exportAsJson(session)}
-							className="px-4 py-2 rounded text-sm font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-muted cursor-pointer"
+							className="px-4 py-2 rounded text-sm border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-dim cursor-pointer bg-panel-surface"
 						>
 							Export JSON
 						</button>
 						<button
 							onClick={() => exportAsMarkdown(session, testPlan.phases)}
-							className="px-4 py-2 rounded text-sm font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-muted cursor-pointer"
+							className="px-4 py-2 rounded text-sm border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-dim cursor-pointer bg-panel-surface"
 						>
 							Export Markdown
 						</button>
 					</div>
 					<button
 						onClick={onReset}
-						className="px-4 py-2 rounded text-sm font-mono border border-status-fail-bg text-status-fail hover:bg-status-fail-bg cursor-pointer"
+						className="px-4 py-2 rounded text-sm border border-status-fail-border text-status-fail hover:bg-status-fail-bg cursor-pointer bg-panel-surface"
 					>
 						Reset Session
 					</button>

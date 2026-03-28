@@ -110,21 +110,21 @@ export function TestExecution({
 
 	return (
 		<div className="min-h-screen bg-panel-bg text-panel-text flex flex-col">
-			{/* Top Bar */}
-			<div className="bg-panel-surface border-b border-panel-border px-4 py-2 flex items-center gap-4 shrink-0">
+			{/* Top Bar - styled like Element Plus header */}
+			<div className="bg-primary px-4 py-2 flex items-center gap-4 shrink-0 shadow-md">
 				{/* Session info */}
 				<div className="flex items-center gap-3 min-w-0">
-					<span className="text-sm font-mono text-blue-400 whitespace-nowrap">{session.version}</span>
-					<span className="text-panel-border">|</span>
-					<span className="text-xs text-panel-dim whitespace-nowrap">{session.tester}</span>
+					<span className="text-sm font-semibold text-white whitespace-nowrap">{session.version}</span>
+					<span className="text-white/40">|</span>
+					<span className="text-xs text-white/80 whitespace-nowrap">{session.tester}</span>
 				</div>
 
 				{/* Global counts */}
 				<div className="flex items-center gap-3 text-[11px] font-mono ml-2">
-					<span className="text-status-pass">{globalCounts.pass} pass</span>
-					<span className="text-status-fail">{globalCounts.fail} fail</span>
-					<span className="text-status-skip">{globalCounts.skip} skip</span>
-					<span className="text-panel-dim">{globalCounts.pending} pending</span>
+					<span className="text-green-200">{globalCounts.pass} pass</span>
+					<span className="text-red-200">{globalCounts.fail} fail</span>
+					<span className="text-amber-200">{globalCounts.skip} skip</span>
+					<span className="text-white/50">{globalCounts.pending} pending</span>
 				</div>
 
 				{/* Spacer */}
@@ -134,19 +134,19 @@ export function TestExecution({
 				<div className="flex items-center gap-2 shrink-0">
 					<button
 						onClick={onViewResults}
-						className="px-3 py-1 rounded text-xs font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-muted cursor-pointer"
+						className="px-3 py-1 rounded text-xs bg-white/15 text-white hover:bg-white/25 cursor-pointer border border-white/20"
 					>
 						Results
 					</button>
 					<button
 						onClick={onExportJson}
-						className="px-3 py-1 rounded text-xs font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-muted cursor-pointer"
+						className="px-3 py-1 rounded text-xs bg-white/15 text-white hover:bg-white/25 cursor-pointer border border-white/20"
 					>
 						JSON
 					</button>
 					<button
 						onClick={onExportMarkdown}
-						className="px-3 py-1 rounded text-xs font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-panel-muted cursor-pointer"
+						className="px-3 py-1 rounded text-xs bg-white/15 text-white hover:bg-white/25 cursor-pointer border border-white/20"
 					>
 						Markdown
 					</button>
@@ -170,31 +170,35 @@ export function TestExecution({
 			/>
 
 			{/* Test List */}
-			<div className="flex-1 overflow-y-auto px-4 py-2">
-				{visibleTests.length === 0 ? (
-					<div className="flex items-center justify-center h-32">
-						<p className="text-sm text-panel-dim">No tests applicable for this configuration</p>
-					</div>
-				) : (
-					<div>
-						{visibleTests.map((test) => {
-							if (!activeConfig) return null;
-							const results = getTestResults(activeConfig.id, test.id);
-							return (
-								<TestRow
-									key={test.id}
-									testId={test.id}
-									name={test.name}
-									criteria={test.criteria}
-									orientations={test.orientations}
-									results={results}
-									onStatusChange={(orientation, status) => updateResult(activeConfig.id, test.id, orientation, status)}
-									onNotesChange={(orientation, notes) => updateNotes(activeConfig.id, test.id, orientation, notes)}
-								/>
-							);
-						})}
-					</div>
-				)}
+			<div className="flex-1 overflow-y-auto">
+				<div className="max-w-5xl mx-auto px-4 py-2">
+					{visibleTests.length === 0 ? (
+						<div className="flex items-center justify-center h-32">
+							<p className="text-sm text-panel-dim">No tests applicable for this configuration</p>
+						</div>
+					) : (
+						<div className="bg-panel-surface border border-panel-border rounded">
+							{visibleTests.map((test) => {
+								if (!activeConfig) return null;
+								const results = getTestResults(activeConfig.id, test.id);
+								return (
+									<TestRow
+										key={test.id}
+										testId={test.id}
+										name={test.name}
+										criteria={test.criteria}
+										orientations={test.orientations}
+										results={results}
+										onStatusChange={(orientation, status) =>
+											updateResult(activeConfig.id, test.id, orientation, status)
+										}
+										onNotesChange={(orientation, notes) => updateNotes(activeConfig.id, test.id, orientation, notes)}
+									/>
+								);
+							})}
+						</div>
+					)}
+				</div>
 			</div>
 
 			{/* Bottom Progress Bar */}

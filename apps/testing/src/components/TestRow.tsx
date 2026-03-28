@@ -36,15 +36,15 @@ export function TestRow({
 	const shouldShowNotes = showNotes || hasFailure;
 
 	return (
-		<div className="border-b border-panel-surface">
-			<div className="flex items-center py-1.5 gap-2">
-				<span className="text-panel-subtle w-[42px] text-[11px] font-mono">{testId}</span>
+		<div className="border-b border-panel-border last:border-b-0">
+			<div className="flex items-center py-2 gap-2">
+				<span className="text-panel-dim w-[42px] text-[11px] font-mono">{testId}</span>
 				<button
 					onClick={() => setExpanded(!expanded)}
-					className="flex-1 text-left text-[12px] text-panel-muted hover:text-panel-text cursor-pointer truncate"
+					className="flex-1 text-left text-[12px] text-panel-muted hover:text-primary cursor-pointer truncate"
 					title={criteria}
 				>
-					{name} {expanded ? '▲' : '▼'}
+					{name} <span className="text-panel-subtle text-[10px]">{expanded ? '▲' : '▼'}</span>
 				</button>
 
 				{orientations ? (
@@ -69,7 +69,7 @@ export function TestRow({
 
 				<button
 					onClick={() => setShowNotes(!showNotes)}
-					className={`w-4 text-center text-[10px] cursor-pointer ${hasNotes ? 'text-status-skip' : 'text-panel-border'}`}
+					className={`w-4 text-center text-[10px] cursor-pointer ${hasNotes ? 'text-status-skip' : 'text-panel-subtle hover:text-panel-dim'}`}
 					title={hasNotes ? 'Has notes' : 'Add note'}
 				>
 					✎
@@ -77,7 +77,7 @@ export function TestRow({
 			</div>
 
 			{expanded && (
-				<div className="pl-[50px] pb-2 text-[11px] text-panel-dim border-l-2 border-panel-border ml-[18px]">
+				<div className="pl-[50px] pb-2 text-[11px] text-panel-dim border-l-2 border-primary-lighter ml-[18px]">
 					Pass criteria: {criteria}
 				</div>
 			)}
@@ -92,7 +92,7 @@ export function TestRow({
 									placeholder="Landscape notes..."
 									value={results.landscape.notes}
 									onChange={(e) => onNotesChange('landscape', e.target.value)}
-									className="w-full bg-panel-bg border border-panel-border rounded px-2 py-1 text-[11px] text-status-skip placeholder:text-panel-subtle"
+									className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 								/>
 							) : null}
 							{results.portrait.status === 'fail' || showNotes ? (
@@ -101,7 +101,7 @@ export function TestRow({
 									placeholder="Portrait notes..."
 									value={results.portrait.notes}
 									onChange={(e) => onNotesChange('portrait', e.target.value)}
-									className="w-full bg-panel-bg border border-panel-border rounded px-2 py-1 text-[11px] text-status-skip placeholder:text-panel-subtle"
+									className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 								/>
 							) : null}
 						</div>
@@ -111,7 +111,7 @@ export function TestRow({
 							placeholder="Notes..."
 							value={results.single.notes}
 							onChange={(e) => onNotesChange('single', e.target.value)}
-							className="w-full bg-panel-bg border border-panel-border rounded px-2 py-1 text-[11px] text-status-skip placeholder:text-panel-subtle"
+							className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 						/>
 					)}
 				</div>

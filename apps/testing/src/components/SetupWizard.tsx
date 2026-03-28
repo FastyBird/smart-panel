@@ -317,13 +317,13 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 			<div className="w-full max-w-2xl">
 				{/* Header */}
 				<div className="mb-8">
-					<h1 className="text-2xl font-mono text-panel-text mb-1">Smart Panel — Dev Testing</h1>
+					<h1 className="text-2xl font-semibold text-panel-text mb-1">Smart Panel — Dev Testing</h1>
 					<p className="text-sm text-panel-dim">Configure your hardware setup to begin testing</p>
 				</div>
 
 				{/* Session Info */}
-				<section className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-4">
-					<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider mb-4">Session Info</h2>
+				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-4">
+					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">Session Info</h2>
 					<div className="grid grid-cols-2 gap-4">
 						<div>
 							<label className="block text-xs text-panel-dim mb-1.5">
@@ -335,7 +335,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 								placeholder="e.g. v1.0.0"
 								value={version}
 								onChange={(e) => setVersion(e.target.value)}
-								className={`w-full bg-panel-bg border rounded px-3 py-2 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500 ${
+								className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 									submitted && !version.trim() ? 'border-status-fail' : 'border-panel-border'
 								}`}
 							/>
@@ -351,7 +351,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 								placeholder="e.g. Adam"
 								value={tester}
 								onChange={(e) => setTester(e.target.value)}
-								className={`w-full bg-panel-bg border rounded px-3 py-2 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500 ${
+								className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 									submitted && !tester.trim() ? 'border-status-fail' : 'border-panel-border'
 								}`}
 							/>
@@ -363,16 +363,16 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 				{/* Dynamic Device List */}
 				<section
 					ref={devicesRef}
-					className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-4"
+					className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-4"
 				>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider">
+						<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider">
 							Devices <span className="text-status-fail">*</span>
 						</h2>
 						<button
 							type="button"
 							onClick={addDevice}
-							className="px-3 py-1 rounded text-xs font-mono border border-panel-border text-panel-muted hover:text-panel-text hover:border-blue-500 cursor-pointer transition-colors"
+							className="px-3 py-1.5 rounded text-xs border border-panel-border text-panel-muted hover:text-primary hover:border-primary cursor-pointer"
 						>
 							+ Add Device
 						</button>
@@ -397,16 +397,16 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 							return (
 								<div
 									key={device.uid}
-									className={`border rounded-lg p-4 ${errors.length > 0 ? 'border-status-fail' : 'border-panel-border'}`}
+									className={`border rounded p-4 ${errors.length > 0 ? 'border-status-fail bg-status-fail-bg' : 'border-panel-border bg-panel-bg'}`}
 								>
 									{/* Device header */}
 									<div className="flex items-center justify-between mb-3">
-										<span className="text-xs font-mono text-panel-dim">Device #{index + 1}</span>
+										<span className="text-xs font-semibold text-panel-dim">Device #{index + 1}</span>
 										{devices.length > 1 && (
 											<button
 												type="button"
 												onClick={() => removeDevice(device.uid)}
-												className="text-xs text-panel-dim hover:text-status-fail cursor-pointer transition-colors"
+												className="text-xs text-panel-dim hover:text-status-fail cursor-pointer"
 											>
 												Remove
 											</button>
@@ -424,7 +424,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 												placeholder="e.g. Office Panel, Kitchen RPi"
 												value={device.label}
 												onChange={(e) => updateDevice(device.uid, { label: e.target.value })}
-												className={`w-full bg-panel-bg border rounded px-3 py-1.5 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500 ${
+												className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 													submitted && !device.label.trim() ? 'border-status-fail' : 'border-panel-border'
 												}`}
 											/>
@@ -434,7 +434,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 											<select
 												value={device.type}
 												onChange={(e) => updateDevice(device.uid, { type: e.target.value as DeviceTypeId })}
-												className="w-full bg-panel-bg border border-panel-border rounded px-3 py-1.5 text-sm font-mono text-panel-text focus:outline-none focus:border-blue-500 cursor-pointer"
+												className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 											>
 												{DEVICE_TYPES.map((dt) => (
 													<option
@@ -456,7 +456,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 												<select
 													value={device.memory}
 													onChange={(e) => updateDevice(device.uid, { memory: e.target.value })}
-													className="w-full bg-panel-bg border border-panel-border rounded px-3 py-1.5 text-sm font-mono text-panel-text focus:outline-none focus:border-blue-500 cursor-pointer"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 												>
 													{preset.memoryOptions.map((m) => (
 														<option
@@ -473,14 +473,14 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 													placeholder="e.g. 4GB"
 													value={device.memory}
 													onChange={(e) => updateDevice(device.uid, { memory: e.target.value })}
-													className="w-full bg-panel-bg border border-panel-border rounded px-3 py-1.5 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none"
 												/>
 											)}
 										</div>
 										<div>
 											<label className="block text-xs text-panel-dim mb-1">Mode</label>
 											{availableModes.length === 1 ? (
-												<div className="bg-panel-bg border border-panel-border rounded px-3 py-1.5 text-sm font-mono text-panel-muted">
+												<div className="bg-info-bg border border-panel-border rounded px-3 text-sm text-panel-muted h-8 leading-8 overflow-hidden">
 													{MODE_LABELS[availableModes[0]]}
 													<span className="text-panel-dim text-xs ml-2">— {MODE_DESCRIPTIONS[availableModes[0]]}</span>
 												</div>
@@ -488,7 +488,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 												<select
 													value={device.mode}
 													onChange={(e) => updateDevice(device.uid, { mode: e.target.value as DeviceMode })}
-													className="w-full bg-panel-bg border border-panel-border rounded px-3 py-1.5 text-sm font-mono text-panel-text focus:outline-none focus:border-blue-500 cursor-pointer"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 												>
 													{availableModes.map((mode) => (
 														<option
@@ -506,7 +506,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 									{/* Display configuration (shown when mode requires display) */}
 									{showDisplay && device.display && (
 										<div className="border-t border-panel-border pt-3 mt-1">
-											<div className="text-xs text-panel-dim mb-2 font-mono">Display Configuration</div>
+											<div className="text-xs text-panel-dim mb-2 font-semibold">Display Configuration</div>
 											<div className="grid grid-cols-3 gap-3">
 												<div>
 													<label className="block text-xs text-panel-dim mb-1">
@@ -518,7 +518,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														placeholder="e.g. 1024x600"
 														value={device.display.resolution}
 														onChange={(e) => updateDeviceDisplay(device.uid, { resolution: e.target.value })}
-														className={`w-full bg-panel-bg border rounded px-2 py-1.5 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500 ${
+														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.resolution.trim()
 																? 'border-status-fail'
 																: 'border-panel-border'
@@ -543,7 +543,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														placeholder='e.g. 7"'
 														value={device.display.screenSize}
 														onChange={(e) => updateDeviceDisplay(device.uid, { screenSize: e.target.value })}
-														className={`w-full bg-panel-bg border rounded px-2 py-1.5 text-sm font-mono text-panel-text placeholder:text-panel-subtle focus:outline-none focus:border-blue-500 ${
+														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.screenSize.trim()
 																? 'border-status-fail'
 																: 'border-panel-border'
@@ -567,7 +567,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 																orientation: e.target.value as 'landscape' | 'portrait',
 															})
 														}
-														className="w-full bg-panel-bg border border-panel-border rounded px-2 py-1.5 text-sm font-mono text-panel-text focus:outline-none focus:border-blue-500 cursor-pointer"
+														className="w-full bg-panel-surface border border-panel-border rounded px-2 text-sm text-panel-text focus:outline-none cursor-pointer"
 													>
 														<option value="landscape">Landscape</option>
 														<option value="portrait">Portrait</option>
@@ -601,8 +601,8 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 				</section>
 
 				{/* Integration Selection — grouped by section */}
-				<section className="bg-panel-surface border border-panel-border rounded-lg p-5 mb-6">
-					<h2 className="text-xs font-mono text-panel-muted uppercase tracking-wider mb-4">Integrations</h2>
+				<section className="bg-panel-surface border border-panel-border rounded el-card-shadow p-5 mb-6">
+					<h2 className="text-xs font-semibold text-panel-dim uppercase tracking-wider mb-4">Integrations</h2>
 					<p className="text-xs text-panel-dim mb-4">
 						Select the integrations available in your test environment. Tests requiring unselected integrations will be
 						hidden.
@@ -612,7 +612,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 							key={section}
 							className="mb-4 last:mb-0"
 						>
-							<h3 className="text-[11px] font-mono text-panel-dim uppercase tracking-wider mb-2">{section}</h3>
+							<h3 className="text-[11px] font-semibold text-panel-dim uppercase tracking-wider mb-2">{section}</h3>
 							<div className="grid grid-cols-2 gap-2">
 								{integrations.map((integration) => (
 									<label
@@ -623,9 +623,9 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 											type="checkbox"
 											checked={selectedIntegrations.has(integration.id)}
 											onChange={() => toggleIntegration(integration.id)}
-											className="cursor-pointer accent-blue-500"
+											className="cursor-pointer"
 										/>
-										<span className="text-sm text-panel-muted font-mono">{integration.name}</span>
+										<span className="text-sm text-panel-muted">{integration.name}</span>
 									</label>
 								))}
 							</div>
@@ -651,10 +651,10 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 					</div>
 					<button
 						onClick={handleStart}
-						className={`px-6 py-2.5 rounded text-sm font-mono cursor-pointer transition-colors ${
+						className={`px-6 py-2.5 rounded text-sm cursor-pointer ${
 							isFormValid()
-								? 'bg-blue-600 text-white hover:bg-blue-500'
-								: 'bg-panel-surface text-panel-muted border border-panel-border hover:border-panel-muted'
+								? 'bg-primary text-white hover:bg-primary-light shadow-sm'
+								: 'bg-panel-surface text-panel-muted border border-panel-border hover:border-panel-dim'
 						}`}
 					>
 						Start Testing →
