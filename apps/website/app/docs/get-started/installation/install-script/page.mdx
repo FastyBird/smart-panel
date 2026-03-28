@@ -149,11 +149,14 @@ You should see the service running with its PID, uptime, and memory usage.
 Open a browser and navigate to:
 
 ```
-http://<device-ip>:3000
+http://smart-panel.local:3000
 ```
 
+Or use the device's IP address: `http://<device-ip>:3000`
+
 <Callout type="info">
-	If you enabled mDNS (default), you can also use `http://smart-panel.local:3000`.
+	The `.local` hostname requires mDNS support (enabled by default).
+	You can find the IP address by running `hostname -I` on the device.
 </Callout>
 
 ### View Logs
