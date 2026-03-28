@@ -70,7 +70,7 @@ input[type='checkbox'] {
 }
 
 /* Consistent form element sizing (Element Plus default: 32px height) */
-input[type='text'],
+input[type='text']:not(.input-compact),
 select {
 	height: 32px;
 	line-height: 32px;

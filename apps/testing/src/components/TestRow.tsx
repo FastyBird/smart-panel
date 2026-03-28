@@ -36,7 +36,7 @@ export function TestRow({
 	const shouldShowNotes = showNotes || hasFailure;
 
 	return (
-		<div className="border-b border-panel-border">
+		<div className="border-b border-panel-border last:border-b-0">
 			<div className="flex items-center py-2 gap-2">
 				<span className="text-panel-dim w-[42px] text-[11px] font-mono">{testId}</span>
 				<button
@@ -92,7 +92,7 @@ export function TestRow({
 									placeholder="Landscape notes..."
 									value={results.landscape.notes}
 									onChange={(e) => onNotesChange('landscape', e.target.value)}
-									className="w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
+									className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 								/>
 							) : null}
 							{results.portrait.status === 'fail' || showNotes ? (
@@ -101,7 +101,7 @@ export function TestRow({
 									placeholder="Portrait notes..."
 									value={results.portrait.notes}
 									onChange={(e) => onNotesChange('portrait', e.target.value)}
-									className="w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
+									className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 								/>
 							) : null}
 						</div>
@@ -111,7 +111,7 @@ export function TestRow({
 							placeholder="Notes..."
 							value={results.single.notes}
 							onChange={(e) => onNotesChange('single', e.target.value)}
-							className="w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
+							className="input-compact w-full bg-panel-surface border border-panel-border rounded px-2 py-1 text-[11px] text-panel-muted placeholder:text-panel-subtle"
 						/>
 					)}
 				</div>

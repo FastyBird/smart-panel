@@ -108,7 +108,10 @@ export function ResultsSummary({ session, testPlan, onBack, onReset }: ResultsSu
 							<tbody>
 								{session.configurations.map((config) => {
 									const counts = countResults(session.results, config.id);
-									const pctDone = counts.total > 0 ? Math.round(((counts.pass + counts.fail + counts.skip) / counts.total) * 100) : 0;
+									const pctDone =
+										counts.total > 0
+											? Math.round(((counts.pass + counts.fail + counts.skip) / counts.total) * 100)
+											: 0;
 									return (
 										<tr
 											key={config.id}
