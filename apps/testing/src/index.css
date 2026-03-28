@@ -69,6 +69,16 @@ input[type='checkbox'] {
 	accent-color: var(--color-primary);
 }
 
+/* Consistent form element sizing (Element Plus default: 32px height) */
+input[type='text'],
+select {
+	height: 32px;
+	line-height: 32px;
+	padding-top: 0;
+	padding-bottom: 0;
+	box-sizing: border-box;
+}
+
 /* Select styling for light theme */
 select {
 	appearance: auto;

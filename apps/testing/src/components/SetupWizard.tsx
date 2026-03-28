@@ -335,7 +335,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 								placeholder="e.g. v1.0.0"
 								value={version}
 								onChange={(e) => setVersion(e.target.value)}
-								className={`w-full bg-panel-surface border rounded px-3 py-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
+								className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 									submitted && !version.trim() ? 'border-status-fail' : 'border-panel-border'
 								}`}
 							/>
@@ -351,7 +351,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 								placeholder="e.g. Adam"
 								value={tester}
 								onChange={(e) => setTester(e.target.value)}
-								className={`w-full bg-panel-surface border rounded px-3 py-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
+								className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 									submitted && !tester.trim() ? 'border-status-fail' : 'border-panel-border'
 								}`}
 							/>
@@ -424,7 +424,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 												placeholder="e.g. Office Panel, Kitchen RPi"
 												value={device.label}
 												onChange={(e) => updateDevice(device.uid, { label: e.target.value })}
-												className={`w-full bg-panel-surface border rounded px-3 py-1.5 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
+												className={`w-full bg-panel-surface border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 													submitted && !device.label.trim() ? 'border-status-fail' : 'border-panel-border'
 												}`}
 											/>
@@ -434,7 +434,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 											<select
 												value={device.type}
 												onChange={(e) => updateDevice(device.uid, { type: e.target.value as DeviceTypeId })}
-												className="w-full bg-panel-surface border border-panel-border rounded px-3 py-1.5 text-sm text-panel-text focus:outline-none cursor-pointer"
+												className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 											>
 												{DEVICE_TYPES.map((dt) => (
 													<option
@@ -456,7 +456,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 												<select
 													value={device.memory}
 													onChange={(e) => updateDevice(device.uid, { memory: e.target.value })}
-													className="w-full bg-panel-surface border border-panel-border rounded px-3 py-1.5 text-sm text-panel-text focus:outline-none cursor-pointer"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 												>
 													{preset.memoryOptions.map((m) => (
 														<option
@@ -473,14 +473,14 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 													placeholder="e.g. 4GB"
 													value={device.memory}
 													onChange={(e) => updateDevice(device.uid, { memory: e.target.value })}
-													className="w-full bg-panel-surface border border-panel-border rounded px-3 py-1.5 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none"
 												/>
 											)}
 										</div>
 										<div>
 											<label className="block text-xs text-panel-dim mb-1">Mode</label>
 											{availableModes.length === 1 ? (
-												<div className="bg-info-bg border border-panel-border rounded px-3 py-1.5 text-sm text-panel-muted">
+												<div className="bg-info-bg border border-panel-border rounded px-3 text-sm text-panel-muted h-8 leading-8 overflow-hidden">
 													{MODE_LABELS[availableModes[0]]}
 													<span className="text-panel-dim text-xs ml-2">
 														— {MODE_DESCRIPTIONS[availableModes[0]]}
@@ -492,7 +492,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 													onChange={(e) =>
 														updateDevice(device.uid, { mode: e.target.value as DeviceMode })
 													}
-													className="w-full bg-panel-surface border border-panel-border rounded px-3 py-1.5 text-sm text-panel-text focus:outline-none cursor-pointer"
+													className="w-full bg-panel-surface border border-panel-border rounded px-3 text-sm text-panel-text focus:outline-none cursor-pointer"
 												>
 													{availableModes.map((mode) => (
 														<option
@@ -524,7 +524,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														onChange={(e) =>
 															updateDeviceDisplay(device.uid, { resolution: e.target.value })
 														}
-														className={`w-full bg-panel-surface border rounded px-2 py-1.5 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
+														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.resolution.trim()
 																? 'border-status-fail'
 																: 'border-panel-border'
@@ -551,7 +551,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 														onChange={(e) =>
 															updateDeviceDisplay(device.uid, { screenSize: e.target.value })
 														}
-														className={`w-full bg-panel-surface border rounded px-2 py-1.5 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
+														className={`w-full bg-panel-surface border rounded px-2 text-sm text-panel-text placeholder:text-panel-subtle focus:outline-none ${
 															submitted && !device.display.screenSize.trim()
 																? 'border-status-fail'
 																: 'border-panel-border'
@@ -575,7 +575,7 @@ export function SetupWizard({ testPlan, onStart }: SetupWizardProps) {
 																orientation: e.target.value as 'landscape' | 'portrait',
 															})
 														}
-														className="w-full bg-panel-surface border border-panel-border rounded px-2 py-1.5 text-sm text-panel-text focus:outline-none cursor-pointer"
+														className="w-full bg-panel-surface border border-panel-border rounded px-2 text-sm text-panel-text focus:outline-none cursor-pointer"
 													>
 														<option value="landscape">Landscape</option>
 														<option value="portrait">Portrait</option>
