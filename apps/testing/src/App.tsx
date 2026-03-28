@@ -19,17 +19,17 @@ export default function App() {
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<span className="text-panel-muted font-mono">Loading test plan...</span>
+			<div className="flex items-center justify-center min-h-screen bg-panel-bg">
+				<span className="text-panel-dim">Loading test plan...</span>
 			</div>
 		);
 	}
 
 	if (error || !testPlan) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
+			<div className="flex items-center justify-center min-h-screen bg-panel-bg">
 				<div className="text-center">
-					<h1 className="text-status-fail text-xl font-mono mb-2">Failed to load test plan</h1>
+					<h1 className="text-status-fail text-xl mb-2">Failed to load test plan</h1>
 					<p className="text-panel-dim text-sm">{error}</p>
 				</div>
 			</div>
@@ -40,15 +40,15 @@ export default function App() {
 	if (showResume && session) {
 		const versionMismatch = session.testPlanVersion !== testPlan.version;
 		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="bg-panel-surface border border-panel-border rounded-lg p-6 max-w-md">
-					<h2 className="text-lg font-mono text-panel-text mb-2">Existing session found</h2>
-					<p className="text-panel-muted text-sm mb-1">
+			<div className="flex items-center justify-center min-h-screen bg-panel-bg">
+				<div className="bg-panel-surface border border-panel-border rounded el-card-shadow p-6 max-w-md">
+					<h2 className="text-lg font-semibold text-panel-text mb-2">Existing session found</h2>
+					<p className="text-panel-dim text-sm mb-1">
 						{session.version} — started {new Date(session.startedAt).toLocaleDateString()}
 					</p>
-					<p className="text-panel-muted text-sm mb-4">Tester: {session.tester}</p>
+					<p className="text-panel-dim text-sm mb-4">Tester: {session.tester}</p>
 					{versionMismatch && (
-						<p className="text-status-skip text-xs mb-4">
+						<p className="text-status-skip text-xs mb-4 bg-status-skip-bg border border-status-skip-border rounded px-3 py-2">
 							⚠ Test plan has been updated since this session was saved. Some results may not match current tests.
 						</p>
 					)}
@@ -58,7 +58,7 @@ export default function App() {
 								setShowResume(false);
 								setScreen('execution');
 							}}
-							className="flex-1 bg-blue-600 text-white px-4 py-2 rounded text-sm cursor-pointer hover:bg-blue-500"
+							className="flex-1 bg-primary text-white px-4 py-2 rounded text-sm cursor-pointer hover:bg-primary-light"
 						>
 							Resume
 						</button>
@@ -68,7 +68,7 @@ export default function App() {
 								setShowResume(false);
 								setScreen('setup');
 							}}
-							className="flex-1 bg-panel-border text-panel-muted px-4 py-2 rounded text-sm cursor-pointer hover:bg-panel-subtle"
+							className="flex-1 bg-panel-surface text-panel-muted px-4 py-2 rounded text-sm cursor-pointer border border-panel-border hover:border-panel-dim hover:text-panel-text"
 						>
 							Start Fresh
 						</button>

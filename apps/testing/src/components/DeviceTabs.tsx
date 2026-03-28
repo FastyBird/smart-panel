@@ -28,15 +28,19 @@ export function DeviceTabs({ configurations, activeConfigId, onSelect, getProgre
 						key={config.id}
 						onClick={() => onSelect(config.id)}
 						title={`${displayLabel} (${roleLabel})${displayInfo}${config.memory ? ` · ${config.memory}` : ''}`}
-						className={`px-4 py-2 text-[12px] cursor-pointer whitespace-nowrap ${
-							isActive ? 'text-panel-text border-b-2 border-blue-500' : 'text-panel-dim hover:text-panel-muted'
+						className={`px-4 py-2.5 text-[12px] cursor-pointer whitespace-nowrap border-b-2 ${
+							isActive
+								? 'text-primary border-primary font-semibold'
+								: 'text-panel-dim border-transparent hover:text-panel-text hover:border-panel-subtle'
 						}`}
 					>
 						<span>{displayLabel}</span>
 						<span className="text-panel-dim ml-1">({roleLabel})</span>
 						<span
 							className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] ${
-								allDone ? 'bg-status-pass-bg text-status-pass' : 'bg-panel-surface text-panel-dim'
+								allDone
+									? 'bg-status-pass-bg text-status-pass border border-status-pass-border'
+									: 'bg-info-bg text-panel-dim'
 							}`}
 						>
 							{progress.done}/{progress.total}

@@ -15,8 +15,8 @@ export function ProgressBar({ pass, fail, skip, total, label }: ProgressBarProps
 	return (
 		<div className="flex items-center gap-3">
 			{label && <span className="text-[11px] text-panel-dim">{label}</span>}
-			<div className="flex-1 bg-panel-border rounded h-1">
-				<div className="flex h-1 rounded overflow-hidden">
+			<div className="flex-1 bg-panel-border rounded-full h-1.5">
+				<div className="flex h-1.5 rounded-full overflow-hidden">
 					{pctPass > 0 && (
 						<div
 							className="bg-status-pass"
