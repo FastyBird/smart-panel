@@ -32,11 +32,8 @@
 	--color-info-bg: #f4f4f5;
 
 	/* Fonts - Element Plus uses system fonts */
-	--font-sans:
-		'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-		'Microsoft YaHei', Arial, sans-serif;
-	--font-mono:
-		'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+	--font-sans: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+	--font-mono: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 /* Element Plus-like base styles */
