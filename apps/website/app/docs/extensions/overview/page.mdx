@@ -1,0 +1,147 @@
+import { Callout } from 'nextra/components'
+
+# Extensions
+
+Smart Panel is built on a modular architecture. The system is split into **modules** (core features) and
+**plugins** (integrations and components), all working together to deliver a flexible smart home platform.
+
+---
+
+## Architecture
+
+The codebase is organized into two layers:
+
+- **Modules** — core system features that provide the fundamental functionality
+- **Plugins** — integrations and components that extend the system with device support, UI elements,
+  AI capabilities, weather providers, and more
+
+Both modules and plugins exist across all three applications: the **backend** (NestJS), the **admin UI** (Vue.js),
+and the **panel display** (Flutter).
+
+<Callout type="info">
+	Third-party developers can build and distribute their own extensions as npm packages. See
+	[Building Extensions](/docs/extensions/building-extensions) for details.
+</Callout>
+
+---
+
+## Core Modules
+
+These modules ship with every Smart Panel installation and provide the system's core functionality:
+
+| Module | Description |
+|--------|-------------|
+| **API** | REST API layer and request handling |
+| **Auth** | Authentication and JWT token management |
+| **Buddy** | AI assistant and voice control framework |
+| **Config** | System configuration and settings |
+| **Dashboard** | Pages, tiles, and display layout management |
+| **Devices** | Device, channel, and property management |
+| **Displays** | Panel display registration and configuration |
+| **Energy** | Energy consumption and production tracking |
+| **Extensions** | Extension discovery and registration |
+| **Intents** | Voice and AI intent handling |
+| **mDNS** | Network discovery for panels and devices |
+| **Platform** | Hardware platform detection and management |
+| **Scenes** | Scene creation and execution |
+| **Security** | Access control and permissions |
+| **Spaces** | Room, zone, and device assignment |
+| **Stats** | System statistics and metrics |
+| **Storage** | File and data storage |
+| **System** | Updates, health checks, and system info |
+| **Users** | User accounts and role management |
+| **Weather** | Weather data aggregation |
+| **WebSocket** | Real-time communication with panel displays |
+
+---
+
+## Built-in Plugins
+
+Smart Panel ships with **34 built-in plugins** organized into the following categories.
+
+### Device Integrations
+
+Connect Smart Panel to external smart home platforms and protocols. See
+[Device Integrations](/docs/extensions/device-integrations) for configuration details.
+
+| Plugin | Description |
+|--------|-------------|
+| **Home Assistant** | Imports devices and entities via WebSocket API |
+| **Shelly NG** | Discovers and controls Shelly Next-Generation devices via mDNS/RPC |
+| **Shelly v1** | Support for first-generation Shelly devices |
+| **Third-Party** | Generic HTTP API for custom devices — any platform, any language |
+| **WLED** | Controls WLED-based LED strips and lights |
+| **Zigbee2MQTT** | Integrates Zigbee devices through Zigbee2MQTT bridge |
+| **reTerminal** | Native hardware integration for SeeedStudio reTerminal (sensors, LEDs, buttons) |
+
+### Pages
+
+Define the layout types available on the panel display:
+
+| Plugin | Description |
+|--------|-------------|
+| **Tiles Page** | Flexible grid layout for interactive tiles |
+| **Cards Page** | Grouped card layout for compact device overview |
+| **Device Detail Page** | Full-screen auto-generated view for a single device |
+
+### Tiles
+
+Visual blocks that appear within pages:
+
+| Plugin | Description |
+|--------|-------------|
+| **Device Preview** | Shows device state with quick controls |
+| **Scene** | One-tap scene trigger button |
+| **Time** | Current time and date display |
+| **Weather** | Current weather conditions or 7-day forecast |
+
+### Data Sources
+
+Bridge between tiles and live data:
+
+| Plugin | Description |
+|--------|-------------|
+| **Device Channel** | Connects tiles to device property values in real time |
+| **Weather** | Provides weather data to weather tiles |
+
+### Weather Providers
+
+| Plugin | Description |
+|--------|-------------|
+| **Open-Meteo** | Free weather API — no API key required |
+| **OpenWeatherMap** | Current weather data via OpenWeatherMap API |
+| **OpenWeatherMap OneCall** | Extended forecast via OpenWeatherMap OneCall API |
+
+### AI & Voice (Buddy)
+
+AI assistant and voice control integrations:
+
+| Plugin | Description |
+|--------|-------------|
+| **Claude** | Anthropic Claude for AI assistant conversations |
+| **Claude Setup Token** | Token-based Claude configuration |
+| **OpenAI** | OpenAI GPT for AI assistant conversations |
+| **OpenAI Codex** | OpenAI Codex for code-related assistance |
+| **Ollama** | Local LLM inference via Ollama |
+| **Discord** | Discord bot integration for remote control |
+| **Telegram** | Telegram bot integration for remote control |
+| **WhatsApp** | WhatsApp integration for remote control |
+| **ElevenLabs** | Text-to-speech via ElevenLabs API |
+| **System TTS** | Local text-to-speech using system voices |
+| **Whisper Local** | Local speech-to-text via Whisper model |
+| **VoiceAI** | Voice AI pipeline for natural voice interaction |
+
+### Other
+
+| Plugin | Description |
+|--------|-------------|
+| **Scenes Local** | Local scene execution engine |
+| **Rotating File Logger** | File-based logging with automatic rotation |
+| **Simulator** | Device simulator for testing and development |
+
+---
+
+## What's Next?
+
+- [**Device Integrations**](/docs/extensions/device-integrations) — details on each device plugin and how to configure it
+- [**Building Extensions**](/docs/extensions/building-extensions) — create your own extensions

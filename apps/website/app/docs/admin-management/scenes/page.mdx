@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout, Steps } from 'nextra/components'
 
 # Scenes
 
@@ -40,69 +40,62 @@ Scenes can be organized by category to make them easier to find:
 
 ---
 
-## Managing Scenes via the API
+## Scenes Overview
 
-Scenes are managed through the REST API. You can create, update, delete, and trigger scenes programmatically.
+Navigate to **Scenes** in the admin sidebar to see all your scenes.
 
-### Create a Scene
+<div style={{ textAlign: 'center' }}>
+	![Scenes overview](/images/modules/scenes/01_scenes_overview.png)
+</div>
 
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/scenes \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "name": "Movie Night",
-      "category": "movie",
-      "enabled": true,
-      "actions": [
-        {
-          "type": "local",
-          "configuration": {
-            "device_id": "<device-uuid>",
-            "channel_id": "<channel-uuid>",
-            "property_id": "<property-uuid>",
-            "expected_value": false
-          }
-        }
-      ]
-    }
-  }'
-```
-
-### Trigger a Scene
-
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/scenes/<scene-id>/trigger \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data": {
-      "source": "manual"
-    }
-  }'
-```
-
-### List All Scenes
-
-```bash copy
-curl http://smart-panel.local:3000/api/scenes \
-  -H "Authorization: Bearer <token>"
-```
+From here you can view scene details, create new scenes, or trigger existing ones.
 
 ---
 
-## Scene Actions
+## Creating a Scene
 
-Each action within a scene targets a specific device property and sets it to an expected value. Actions execute
-**sequentially** in the order they are defined.
+<Steps>
+	### Click **+ Add Scene**
 
-Actions can be managed separately:
+	In the **Scenes** section, click the add button to create a new scene.
 
-- `GET /api/scenes/:id/actions` — list actions for a scene
-- `POST /api/scenes/:id/actions` — add a new action
-- `PATCH /api/scenes/:id/actions/:actionId` — update an action
-- `DELETE /api/scenes/:id/actions/:actionId` — remove an action
+	<div style={{ textAlign: 'center' }}>
+		![Add a new scene](/images/modules/scenes/02_scene_add.png)
+	</div>
+
+	### Fill in Scene Details
+
+	- **Name** — display name (e.g., "Movie Night")
+	- **Category** — choose from the categories above
+	- **Description** *(optional)* — a short note about what the scene does
+	- **Space** *(optional)* — assign the scene to a room or zone
+
+	### Add Actions
+
+	Click **+ Add Action** to define what happens when the scene is triggered. Each action targets a specific
+	device property and sets it to a desired value.
+
+	<div style={{ textAlign: 'center' }}>
+		![Add scene action](/images/modules/scenes/03_scene_add_action.png)
+	</div>
+
+	For each action, select:
+
+	- **Device** — the target device
+	- **Channel** — which capability to control
+	- **Property** — the specific data point (e.g., power, brightness)
+	- **Value** — the desired state (e.g., `on`, `50%`, `22°C`)
+</Steps>
+
+---
+
+## Editing Actions
+
+Open any scene to review and modify its actions. You can reorder, edit, or remove individual actions.
+
+<div style={{ textAlign: 'center' }}>
+	![Edit scene actions](/images/modules/scenes/04_scene_edit_actions.png)
+</div>
 
 ---
 
@@ -110,39 +103,24 @@ Actions can be managed separately:
 
 When a scene is triggered:
 
-1. The system verifies the scene is **enabled** and **triggerable**
+1. The system verifies the scene is **enabled**
 2. Actions are executed in order, targeting the specified device properties
 3. Each action's result (success or failure) is tracked
-4. The scene's `last_triggered_at` timestamp is updated
 
 <Callout type="info">
-	By default, scene execution continues even if an individual action fails. This ensures that one unresponsive
+	Scene execution continues even if an individual action fails. This ensures that one unresponsive
 	device doesn't block the rest of your scene.
 </Callout>
 
----
-
-## Scene Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | string | Display name (required) |
-| `category` | string | Scene category (e.g., `lighting`, `movie`, `custom`) |
-| `description` | string | Optional description |
-| `enabled` | boolean | Whether the scene can be triggered (default: `true`) |
-| `triggerable` | boolean | Whether manual triggering is allowed (default: `true`) |
-| `editable` | boolean | Whether the scene can be modified (default: `true`) |
-| `order` | number | Display order in lists |
-| `primary_space_id` | UUID | Optional space (room/zone) association |
-
 <Callout>
-	Some scenes created by plugins may have `editable` set to `false`, meaning they cannot be modified or deleted
-	through the API.
+	Some scenes created by plugins may not be editable — they are managed by the plugin and cannot be modified
+	or deleted through the admin interface.
 </Callout>
 
 ---
 
 ## What's Next?
 
-- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for the full scenes endpoint documentation
-- Learn how to organize devices into [Spaces](/docs/admin-management/spaces) for better scene targeting
+- Organize devices into [Spaces](/docs/admin-management/spaces) for better scene targeting
+- Build your [Dashboard](/docs/admin-management/dashboard) to add scene triggers to your display
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for programmatic scene management

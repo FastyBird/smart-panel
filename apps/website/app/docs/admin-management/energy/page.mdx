@@ -5,16 +5,28 @@ import { Callout } from 'nextra/components'
 Smart Panel can track energy consumption and production from your devices, giving you insights into how much
 power your home uses and where it goes.
 
+<Callout type="info">
+	Energy monitoring works **automatically** — there is no admin interface to configure. As long as your devices
+	report energy data, the panel collects and displays it.
+</Callout>
+
 ---
 
-## Overview
+## How It Works
 
 The energy module collects readings from devices that report power usage (e.g., smart plugs, energy meters)
-and stores them as **5-minute interval deltas**. This data powers three levels of insight:
+and stores them as **5-minute interval deltas**. The panel display then shows three levels of insight:
 
 - **Summary** — total consumption and production for a time range
-- **Time series** — consumption over time for charts and graphs
+- **Time series** — consumption over time as charts and graphs
 - **Breakdown** — which devices consume the most energy
+
+All data collection and aggregation happens in the background. Results are visible directly on the panel
+display's **Energy** screen for each room.
+
+<div style={{ textAlign: 'center', maxWidth: '400px', margin: '0 auto' }}>
+	![Energy screen on the panel display](/images/modules/energy/01_energy_screen.png)
+</div>
 
 ---
 
@@ -47,72 +59,13 @@ The system tracks four types of energy flow:
 
 ---
 
-## Querying Energy Data
-
-All energy endpoints are read-only. Data is ingested automatically from device readings.
-
-### Home summary
-
-Get total energy consumption and production for your entire home:
-
-```bash copy
-curl "http://smart-panel.local:3000/api/energy/home/summary?range=today" \
-  -H "Authorization: Bearer <token>"
-```
-
-### Space summary
-
-Get energy data for a specific room or zone:
-
-```bash copy
-curl "http://smart-panel.local:3000/api/energy/spaces/<space-id>/summary?range=week" \
-  -H "Authorization: Bearer <token>"
-```
-
-### Time series
-
-Get time-series data points for charts:
-
-```bash copy
-curl "http://smart-panel.local:3000/api/energy/home/timeseries?range=today&interval=1h" \
-  -H "Authorization: Bearer <token>"
-```
-
-Supported intervals: `5m`, `1h`, `1d`
-
-### Device breakdown
-
-See which devices use the most energy:
-
-```bash copy
-curl "http://smart-panel.local:3000/api/energy/home/breakdown?range=month" \
-  -H "Authorization: Bearer <token>"
-```
-
----
-
-## Time Ranges
-
-All energy queries accept a `range` parameter:
-
-| Range | Description |
-|-------|-------------|
-| `today` | From midnight to now |
-| `yesterday` | Full previous day |
-| `week` | Last 7 days |
-| `month` | Last 30 days |
-
----
-
 ## Data Retention
 
-Energy data is retained for **90 days** by default. Older data is automatically cleaned up. The maximum
-configurable retention is approximately 10 years (3,650 days).
+Energy data is retained for **90 days** by default. Older data is automatically cleaned up.
 
 ---
 
 ## What's Next?
 
-- Set up InfluxDB for better performance with the [Docker guide](/docs/get-started/installation/docker#with-influxdb-time-series-data)
 - Learn about [Spaces](/docs/admin-management/spaces) to organize energy data by room
-- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for full endpoint documentation
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for programmatic access to energy data

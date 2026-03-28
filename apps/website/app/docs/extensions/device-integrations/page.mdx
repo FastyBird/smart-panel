@@ -1,0 +1,62 @@
+import { Callout } from 'nextra/components'
+
+# Device Integrations
+
+Device plugins connect Smart Panel to external smart home platforms and protocols. Each plugin handles device
+discovery, state synchronization, and command execution — mapping external devices into Smart Panel's
+device → channel → property hierarchy.
+
+<Callout type="info">
+	Most device plugins discover and create devices **automatically**. You typically only need to provide
+	connection details (host, token, etc.) in the Admin UI under **Config → Plugins** and the plugin
+	handles the rest.
+</Callout>
+
+---
+
+## Available Integrations
+
+| Plugin | Protocol | Discovery | Description |
+|--------|----------|-----------|-------------|
+| **Home Assistant** | WebSocket | Automatic | Imports devices and entities from a Home Assistant instance. Bidirectional real-time sync — state changes and commands flow both ways instantly. Requires a long-lived access token. |
+| **Shelly NG** | mDNS / RPC | Automatic | Discovers and controls Shelly Next-Generation devices (Plus, Pro, BLU series) on the local network. No cloud dependency — all communication stays local. |
+| **Shelly v1** | HTTP / CoAP | Automatic | Support for first-generation Shelly devices using the original HTTP and CoAP APIs. |
+| **WLED** | HTTP | Automatic | Controls WLED-based LED strips and lights discovered on the local network. |
+| **Zigbee2MQTT** | MQTT | Automatic | Integrates Zigbee devices through a Zigbee2MQTT bridge. Imports all paired devices with their channels and properties. |
+| **Third-Party** | HTTP REST | Manual | Generic API for custom devices. Any application or service can register devices and exchange state data over standard HTTP endpoints. Works with any language or platform. |
+| **reTerminal** | Linux sysfs | Automatic | Native hardware integration for SeeedStudio reTerminal (CM4 and DM). Reads built-in sensors (light, accelerometer, CPU temp) and controls LEDs, buzzer, and buttons. |
+
+---
+
+## How Plugins Work
+
+All device plugins follow the same pattern:
+
+1. **Discovery** — the plugin finds devices on the network (or they are created manually)
+2. **Mapping** — external device structures are mapped to Smart Panel's device → channel → property model
+3. **Sync** — property values are synchronized in real time (via polling, WebSocket, or push)
+4. **Commands** — actions from the panel display are forwarded to the actual device
+
+Devices created by plugins appear in the [Devices](/docs/admin-management/devices) section of the admin UI
+and can be assigned to [Spaces](/docs/admin-management/spaces), used in [Scenes](/docs/admin-management/scenes),
+and displayed on [Pages](/docs/admin-management/dashboard).
+
+---
+
+## Configuration
+
+Each plugin is configured through the **Admin UI** under **Config → Plugins**, or via `config.yaml`.
+The available settings depend on the specific plugin — typically connection details like host addresses,
+API tokens, or polling intervals.
+
+<Callout>
+	Plugins with automatic discovery require minimal configuration — often just enabling the plugin
+	is enough. Third-party devices are the exception, as each device is created individually.
+</Callout>
+
+---
+
+## What's Next?
+
+- [**Building Extensions**](/docs/extensions/building-extensions) — create your own device plugin
+- [**API Reference**](https://fastybird.stoplight.io/docs/smart-panel) — full endpoint documentation for plugin APIs

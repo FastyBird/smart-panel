@@ -1,0 +1,82 @@
+import { Callout } from 'nextra/components'
+
+# Configuration
+
+Smart Panel is configured directly through the **Admin UI**. Each module and plugin has its own settings
+page where you can adjust its behavior without editing config files.
+
+---
+
+## Modules
+
+Navigate to **Config → Modules** in the admin sidebar to see all system modules and their settings.
+
+<div style={{ textAlign: 'center' }}>
+	![Modules configuration overview](/images/modules/configuration/01_configuration_modules_overview.png)
+</div>
+
+Click on any module to view and edit its configuration.
+
+<div style={{ textAlign: 'center' }}>
+	![Module configuration detail](/images/modules/configuration/02_configuration_module.png)
+</div>
+
+### Common Module Settings
+
+| Module | Key Settings |
+|--------|-------------|
+| **Audio** | Speaker on/off, speaker volume, microphone on/off, microphone volume |
+| **Display** | Dark mode, brightness, screen lock duration, screen saver |
+| **Language** | Language locale, timezone, time format (12h/24h) |
+| **Weather** | Location, unit (celsius/fahrenheit), weather provider |
+| **Storage** | Primary and fallback storage backends for time-series data |
+
+---
+
+## Plugins
+
+Navigate to **Config → Plugins** to see all installed plugins and their configuration.
+
+<div style={{ textAlign: 'center' }}>
+	![Plugins configuration overview](/images/modules/configuration/03_configuration_plugins_overview.png)
+</div>
+
+Click on any plugin to view and edit its settings.
+
+<div style={{ textAlign: 'center' }}>
+	![Plugin configuration detail](/images/modules/configuration/04_configuration_plugin.png)
+</div>
+
+Each plugin exposes its own configuration options — typically connection details like host addresses,
+API tokens, polling intervals, or feature toggles.
+
+<Callout type="info">
+	Changes take effect immediately in most cases. Some plugin changes (like connection settings)
+	may require the plugin to reconnect.
+</Callout>
+
+---
+
+## Extensions
+
+All extensions — both built-in and third-party — are managed under the **Extensions** section in the admin sidebar.
+
+<div style={{ textAlign: 'center' }}>
+	![Extensions overview](/images/modules/configuration/05_extensions_overview.png)
+</div>
+
+<div style={{ textAlign: 'center' }}>
+	![Extension services](/images/modules/configuration/06_extensions_services.png)
+</div>
+
+<Callout>
+	Extensions are npm packages that add custom modules or plugins. See
+	[Building Extensions](/docs/extensions/building-extensions) for details on creating your own.
+</Callout>
+
+---
+
+## What's Next?
+
+- [**Users & Roles**](/docs/admin-management/users) — manage user accounts and permissions
+- [**Extensions**](/docs/extensions/overview) — explore built-in and third-party extensions
