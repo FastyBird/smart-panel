@@ -129,7 +129,7 @@ export default function LandingPage() {
 								{/* Screen */}
 								<div className="rounded-[9px] overflow-hidden">
 									<img
-										src="/landing/screen_dark_room_overview.png"
+										src="/images/landing/screen_dark_room_overview.png"
 										alt="SmartPanel wall display"
 										className="w-full h-auto block"
 									/>
@@ -386,7 +386,7 @@ export default function LandingPage() {
 										panel automatically, making it the fastest way to get started.
 									</p>
 									<div className="mt-4">
-										<Button variant={"outline"} href={"/docs/plugins/devices-module/home-assistant"} size={"sm"}>
+										<Button variant={"outline"} href={"/docs/extensions/device-integrations"} size={"sm"}>
 											Learn more
 											<Icon path={mdiArrowRight} size={0.7} className="ml-2" />
 										</Button>

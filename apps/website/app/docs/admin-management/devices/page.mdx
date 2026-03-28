@@ -1,85 +1,179 @@
-import { Callout, Steps } from 'nextra/components'
+import { Callout, Steps, Tabs } from 'nextra/components'
 
 # Devices
 
-Devices represent the core components of your smart home — such as lights, thermostats, sensors, or virtual integrations
-like Home Assistant. Each device is made up of one or more **channels**, which define what the device can do or monitor.
+Devices are the heart of your Smart Panel setup. Each device represents a physical or virtual component of your smart
+home — such as a light, thermostat, sensor, or media player.
+
+<Callout type="info">
+	Most devices are **created automatically** by plugins. If you're using an integration like Home Assistant, Shelly,
+	or Zigbee2MQTT, your devices will appear in the panel after the plugin syncs. Manual creation is only needed for
+	**Third-party** devices.
+</Callout>
 
 ---
 
-## Add a New Device
+## How Devices Are Structured
+
+Every device follows a three-level hierarchy:
+
+- **Device** — the physical or virtual unit (e.g., *Living Room Lamp*)
+- **Channels** — functional capabilities of the device (e.g., *light*, *temperature*, *battery*)
+- **Properties** — individual data points or controls within a channel (e.g., *power*, *brightness*, *color*)
+
+This structure is consistent across all device types — whether created manually or synced by a plugin.
+
+---
+
+## Device List
+
+Navigate to **Devices** in the admin sidebar to see all your devices.
+
+<div style={{ textAlign: 'center' }}>
+	![List of configured devices](/images/modules/devices/01_devices_overview.png)
+</div>
+
+From here you can view device details, add new devices, or manage existing ones.
+
+---
+
+## Adding a Device Manually
+
+If you need to create a device that isn't managed by a plugin, you can add it manually.
 
 <Steps>
-	### Open the Admin UI
+	### Click **+ Add Device**
 
-	Open the Admin Interface in your browser:
+	In the **Devices** section, click the **+ Add Device** button in the top-right corner.
 
-	```bash copy
-	http://smart-panel.local:3000
-	```
-
-	You'll see the dashboard where you can manage devices, channels, properties, and pages.
-
-	## Navigate to Devices
-
-	Click **Devices** in the sidebar. Here, you’ll find a list of all currently connected or created devices.
-
-	- You can **create** a device manually.
-	- Or you can wait for an integration (like Home Assistant) to auto-discover devices.
-
-	<p align="center">
-		<img src="/images/devices-list.png" alt="List of configured devices" />
-	</p>
-
-	### Click **+ Add**
-
-	Navigate to the **Devices** section and click the **+ Add Device** button in the top-right corner.
-
-	This will open the device creation dialog.
-
-	<p align="center">
-		<img src="/images/devices-device-add.png" alt="Add new device" />
-	</p>
-
-	---
+	<div style={{ textAlign: 'center' }}>
+		![Add new device](/images/modules/devices/02_device_add.png)
+	</div>
 
 	### Select Device Type (Plugin)
 
-	Choose the source for the device — this defines how the panel communicates with it. For example:
+	Choose the source for the device — this defines how the panel communicates with it:
 
-	- **Third-party** for manually created devices
-	- **Home Assistant** for devices synced from your HA setup
-	- **Matter**, **Zigbee**, (will be added soon)
+	- **Third-party** — for manually created devices controlled via the API
+	- **Home Assistant** — for devices synced from your HA setup
+	- **Shelly**, **Zigbee2MQTT**, and others — depending on installed plugins
 
-	---
+	<div style={{ textAlign: 'center' }}>
+		![Select device plugin](/images/modules/devices/06_add_device_plugin.png)
+	</div>
 
 	### Fill in Device Details
 
 	Enter the basic information:
 
-	- **Name** – Friendly display name (e.g., *Living Room Lamp*)
-	- **Description** *(optional)* – A short note about the device
-	- **Category** – The device type, like *light*, *thermostat*, or *camera*
+	- **Name** — friendly display name (e.g., *Living Room Lamp*)
+	- **Description** *(optional)* — a short note about the device
+	- **Category** — the device type, like *light*, *thermostat*, or *camera*
 
 	<Callout>
-		Device categories and their required channels are defined in the [**System Architecture**](/docs/system-architecture/overview) section. Each
-		category defines the expected capabilities of the device.
+		Device categories and their required channels are defined in the [**System Architecture**](/docs/system-architecture/overview)
+		section.
 	</Callout>
 </Steps>
 
 ---
 
-## After Creating a Device
+## Device Detail
 
-Once your device is created, you can:
+Click on any device to see its full configuration — including its channels and their properties.
 
-- **Add Channels**: Define which parts of the device you want to control or monitor.
-- **Place It on a Page**: Use the **Pages** section to visualize the device on your display.
+<div style={{ textAlign: 'center' }}>
+	![Device detail](/images/modules/devices/03_device_detail.png)
+</div>
 
 ---
 
-## What’s Next?
+## Channels
 
-Now that you’ve added a device, let’s explore how to configure its **Channels**.
+Channels define what a device can **do** or **measure** — like turning a light on, reporting temperature, or adjusting
+fan speed. Each device includes one or more channels based on its functionality.
 
-👉 Head to the [Channels](/docs/admin-management/channels) section.
+<Callout type="info">
+	For plugin-managed devices, channels are created automatically based on the integration's device capabilities.
+</Callout>
+
+### Adding a Channel
+
+<Steps>
+	### Open a Device
+
+	In the device detail view, switch to the **Channels** tab.
+
+	<div style={{ textAlign: 'center' }}>
+		![Channels list](/images/modules/devices/03_device_detail.png)
+	</div>
+
+	### Click **+ Add Channel**
+
+	This opens the channel creation dialog.
+
+	<div style={{ textAlign: 'center' }}>
+		![Add new channel](/images/modules/devices/04_add_channel.png)
+	</div>
+
+	### Fill in Channel Details
+
+	- **Name** — the name used internally (e.g., `light`, `temperature`, `valve`)
+	- **Category** — choose from a list of supported channel types
+	- **Description** *(optional)* — short description of the channel
+</Steps>
+
+<Callout>
+	The channel category determines which properties can be used. Check the
+	[**Supported Channels**](/docs/system-architecture/supported-channels/overview) reference for details.
+</Callout>
+
+---
+
+## Properties
+
+Properties define the actual **data points** or **controls** inside a channel — like a light's power state, a
+thermostat's target temperature, or a sensor's battery level.
+
+### Adding a Property
+
+<Steps>
+	### Open a Channel
+
+	From the device detail, select a channel to see its properties.
+
+	<div style={{ textAlign: 'center' }}>
+		![Channel detail](/images/modules/devices/03_device_detail.png)
+	</div>
+
+	### Click **+ Add Property**
+
+	This opens the property creation dialog.
+
+	<div style={{ textAlign: 'center' }}>
+		![Add new property](/images/modules/devices/05_add_channel_property.png)
+	</div>
+
+	### Define the Property
+
+	- **Name** — internal identifier (e.g., `state`, `brightness`, `humidity`)
+	- **Data Type** — type of value (`boolean`, `float`, `enum`, etc.)
+	- **Unit** — optional unit of measurement (`°C`, `%`, `W`, etc.)
+	- **Permissions** — define if it's readable, writable, or both
+	- **Format** *(optional)* — additional structure (e.g., for enums)
+
+	<Callout type="info">
+		The form may vary depending on the selected channel category. In some cases, fields like data type or format are
+		pre-filled by the system and cannot be changed manually.
+	</Callout>
+</Steps>
+
+---
+
+## What's Next?
+
+With your devices configured, you can:
+
+- [**Spaces**](/docs/admin-management/spaces) — organize devices into rooms and areas
+- [**Scenes**](/docs/admin-management/scenes) — create automations that control multiple devices
+- [**Dashboard**](/docs/admin-management/dashboard) — build dashboards to visualize and control your devices

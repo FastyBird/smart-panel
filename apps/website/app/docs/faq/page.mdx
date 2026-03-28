@@ -9,8 +9,8 @@ using the Smart Panel.
 
 ## I can’t connect to `smart-panel.local`
 
-- Make sure your Raspberry Pi is **powered on** and **connected to the same network** as your computer.
-- Try connecting using the Pi’s IP address instead.
+- Make sure your device is **powered on** and **connected to the same network** as your computer.
+- Try connecting using the device’s IP address instead (find it with `hostname -I` on the device).
 - Some networks or routers don’t support `.local` domains. In that case:
 	- Check your router’s connected device list for the IP.
 	- On Windows/macOS, install [Bonjour](https://support.apple.com/kb/dl999?locale=en_US) if not already installed.
@@ -19,10 +19,14 @@ using the Smart Panel.
 
 ## What’s the default SSH username and password?
 
-- **Username**: `pi`
-- **Password**: `raspberry`
+For pre-built Raspbian images:
 
-If you changed it during flashing (e.g., using Raspberry Pi Imager), use your custom credentials.
+- **Username**: `smartpanel`
+- **Password**: `smartpanel`
+
+You will be prompted to change the password on first login.
+
+For other Linux installations, use the credentials you set up when installing the operating system.
 
 ---
 
@@ -58,7 +62,7 @@ sudo journalctl -u smart-panel-display -b
 
 ## How do I reset or reconfigure my Smart Panel?
 
-SSH into your Raspberry Pi. The location of runtime data depends on your installation method:
+SSH into your device. The location of runtime data depends on your installation method:
 
 | Installation Method | Data Location |
 |---|---|

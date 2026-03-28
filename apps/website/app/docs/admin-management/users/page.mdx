@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout, Steps } from 'nextra/components'
 
 # Users & Roles
 
@@ -19,73 +19,40 @@ There are three roles, each with different levels of access:
 
 <Callout type="info">
 	The owner account is created during the initial onboarding process. You cannot create a second owner or change
-	the owner role via the API.
+	the owner role.
 </Callout>
 
 ---
 
-## Managing Users via the API
+## Users Overview
 
-User management requires **Owner** or **Admin** role.
+Navigate to **Users** in the admin sidebar to see all registered accounts.
 
-### List all users
-
-```bash copy
-curl http://smart-panel.local:3000/api/users \
-  -H "Authorization: Bearer <token>"
-```
-
-### Create a new user
-
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/users \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "username": "alice",
-      "password": "securepassword",
-      "first_name": "Alice",
-      "last_name": "Smith",
-      "email": "alice@example.com",
-      "role": "user"
-    }
-  }'
-```
-
-### Update a user
-
-```bash copy
-curl -X PATCH http://smart-panel.local:3000/api/users/<user-id> \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "first_name": "Alice",
-      "role": "admin"
-    }
-  }'
-```
-
-### Delete a user
-
-```bash copy
-curl -X DELETE http://smart-panel.local:3000/api/users/<user-id> \
-  -H "Authorization: Bearer <token>"
-```
+<div style={{ textAlign: 'center' }}>
+	![Users overview](/images/modules/users/01_users_overview.png)
+</div>
 
 ---
 
-## User Properties
+## Adding a User
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `username` | string | Yes | Unique login name |
-| `password` | string | Yes (create) | Password (hashed with bcrypt) |
-| `email` | string | No | Unique email address |
-| `first_name` | string | No | First name |
-| `last_name` | string | No | Last name |
-| `role` | string | Yes | One of `owner`, `admin`, or `user` |
+<Steps>
+	### Click **+ Add User**
+
+	In the **Users** section, click the add button to create a new user.
+
+	<div style={{ textAlign: 'center' }}>
+		![Add a new user](/images/modules/users/02_user_add.png)
+	</div>
+
+	### Fill in User Details
+
+	- **Username** — unique login name
+	- **Password** — a secure password (minimum 8 characters)
+	- **Email** *(optional)* — unique email address
+	- **First name** / **Last name** *(optional)* — display name
+	- **Role** — choose `Admin` or `User`
+</Steps>
 
 <Callout type="warning">
 	Usernames and emails must be unique. Attempting to create a user with a duplicate username or email will
@@ -94,30 +61,6 @@ curl -X DELETE http://smart-panel.local:3000/api/users/<user-id> \
 
 ---
 
-## Authentication
-
-Smart Panel uses **JWT (JSON Web Token)** authentication. To obtain a token:
-
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data": {
-      "username": "alice",
-      "password": "securepassword"
-    }
-  }'
-```
-
-The response includes an access token that you include in the `Authorization` header for subsequent requests:
-
-```
-Authorization: Bearer <access-token>
-```
-
----
-
 ## What's Next?
 
-- Learn about organizing devices into [Spaces](/docs/admin-management/spaces)
-- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for full endpoint documentation
+- Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for programmatic user management

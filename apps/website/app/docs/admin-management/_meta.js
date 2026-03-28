@@ -4,16 +4,7 @@ export default {
     type: "separator",
     title: "Devices Management",
   },
-  "devices-overview": "Overview",
   devices: "Devices",
-  channels: "Channels",
-  properties: "Properties",
-  "dashboard-management": {
-    type: "separator",
-    title: "Dashboard Management",
-  },
-  "dashboard-overview": "Overview",
-  pages: "Pages",
   "home-management": {
     type: "separator",
     title: "Home Management",
@@ -21,5 +12,15 @@ export default {
   spaces: "Spaces & Rooms",
   scenes: "Scenes",
   energy: "Energy Monitoring",
+  "dashboard-management": {
+    type: "separator",
+    title: "Dashboard Management",
+  },
+  dashboard: "Pages",
+  "system-management": {
+    type: "separator",
+    title: "System Management",
+  },
+  configuration: "Configuration",
   users: "Users & Roles",
 };

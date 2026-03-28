@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout, Steps } from 'nextra/components'
 
 # Spaces & Rooms
 
@@ -41,117 +41,180 @@ Rooms can optionally belong to a zone, but they can also exist independently.
 
 ---
 
-## Managing Spaces via the API
+## Spaces Overview
 
-### Create a zone
+Navigate to **Spaces** in the admin sidebar to see all your zones and rooms.
 
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/spaces \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "name": "Ground Floor",
-      "type": "zone",
-      "category": "floor_ground",
-      "icon": "mdi:home-floor-g"
-    }
-  }'
-```
-
-### Create a room within a zone
-
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/spaces \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "name": "Living Room",
-      "type": "room",
-      "category": "living_room",
-      "parent_id": "<zone-uuid>",
-      "icon": "mdi:sofa"
-    }
-  }'
-```
-
-### Assign devices to a space
-
-```bash copy
-curl -X POST http://smart-panel.local:3000/api/spaces/<space-id>/assign \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "data": {
-      "device_ids": ["<device-uuid-1>", "<device-uuid-2>"]
-    }
-  }'
-```
-
-### List all spaces
-
-```bash copy
-curl http://smart-panel.local:3000/api/spaces \
-  -H "Authorization: Bearer <token>"
-```
-
-### Get devices in a space
-
-```bash copy
-curl http://smart-panel.local:3000/api/spaces/<space-id>/devices \
-  -H "Authorization: Bearer <token>"
-```
+<div style={{ textAlign: 'center' }}>
+	![Spaces overview](/images/modules/spaces/01_spaces_oveview.png)
+</div>
 
 ---
 
-## Space Properties
+## Adding a Space
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `name` | string | Yes | Display name |
-| `type` | string | Yes | `room` or `zone` |
-| `category` | string | Yes (zones) | Specific room/zone type |
-| `parent_id` | UUID | No | Parent zone (rooms only) |
-| `icon` | string | No | MDI icon identifier (e.g., `mdi:sofa`) |
-| `display_order` | number | No | Sort order in lists |
-| `suggestions_enabled` | boolean | No | Enable automation suggestions |
+<Steps>
+	### Click **+ Add**
+
+	In the **Spaces** section, click the add button to create a new zone or room.
+
+	<div style={{ textAlign: 'center' }}>
+		![Add a new space](/images/modules/spaces/02_space_add.png)
+	</div>
+
+	### Fill in Details
+
+	- **Name** — display name (e.g., "Living Room")
+	- **Type** — choose `Zone` or `Room`
+	- **Category** — specific type from the tables above
+	- **Parent zone** *(rooms only)* — optionally assign to a zone
+	- **Icon** — MDI icon identifier (e.g., `mdi:sofa`)
+</Steps>
 
 ---
 
-## Smart Suggestions
+## Space Detail
 
-Smart Panel can analyze your device names and automatically suggest which spaces they belong to. Access
-this feature via:
+Click on any space to see its full configuration — assigned devices, scenes, displays, and domain settings.
 
-```bash copy
-curl http://smart-panel.local:3000/api/spaces/propose \
-  -H "Authorization: Bearer <token>"
-```
+<div style={{ textAlign: 'center' }}>
+	![Space detail](/images/modules/spaces/03_space_detail.png)
+</div>
 
-This returns AI-powered suggestions based on device naming patterns — for example, a device named
-"Kitchen Light" would be suggested for a Kitchen room.
+---
 
-<Callout type="info">
-	Space proposals are suggestions only. You still need to manually assign devices to confirm the placement.
-</Callout>
+## Assigning Devices
+
+Each space can have devices assigned to it. This determines which devices appear on the panel display for that room.
+
+<div style={{ textAlign: 'center' }}>
+	![Assign devices to space](/images/modules/spaces/04_space_assign_device.png)
+</div>
+
+---
+
+## Assigning Scenes
+
+You can link scenes to a space so they're easily accessible from that room's panel view.
+
+<div style={{ textAlign: 'center' }}>
+	![Assign scenes to space](/images/modules/spaces/05_space_assign_scene.png)
+</div>
+
+---
+
+## Assigning a Display
+
+Assign a panel display to a space to define which room the physical device is mounted in. This controls what
+the display shows by default.
+
+<div style={{ textAlign: 'center' }}>
+	![Assign display to space](/images/modules/spaces/06_space_assign_display.png)
+</div>
+
+---
+
+## Configuring Domains
+
+Each space has domain-specific settings that control how devices are grouped and presented on the panel display.
+Domains include lighting, climate, shading, sensors, and media.
+
+### Lights
+
+Configure which light devices and channels are controlled from this room's lighting screen.
+
+<div style={{ textAlign: 'center' }}>
+	![Configure lights domain](/images/modules/spaces/07_space_configure_lights_domain.png)
+</div>
+
+### Climate
+
+Set up thermostats, heating units, and other climate devices for the room.
+
+<div style={{ textAlign: 'center' }}>
+	![Configure climate domain](/images/modules/spaces/08_space_configure_climate_domain.png)
+</div>
+
+### Shading
+
+Assign blinds, shutters, and curtains to control from this room.
+
+<div style={{ textAlign: 'center' }}>
+	![Configure shading domain](/images/modules/spaces/09_space_configure_shading_domain.png)
+</div>
+
+### Sensors
+
+Choose which sensors display their readings on this room's sensor screen.
+
+<div style={{ textAlign: 'center' }}>
+	![Configure sensors domain](/images/modules/spaces/10_space_configure_sensors_domain.png)
+</div>
+
+### Media
+
+Define media activities (Watch, Listen, Gaming, etc.) and assign devices to each activity.
+
+<div style={{ textAlign: 'center' }}>
+	![Configure media activities](/images/modules/spaces/11_space_configure_media_activities.png)
+</div>
+
+<div style={{ textAlign: 'center' }}>
+	![Configure media activity detail](/images/modules/spaces/12_space_configure_media_activity.png)
+</div>
+
+---
+
+## Spaces Wizard
+
+For first-time setup, the **Spaces Wizard** guides you through creating rooms and assigning devices and displays
+in a step-by-step flow.
+
+<Steps>
+	### Create Spaces
+
+	Define your rooms and zones in one go.
+
+	<div style={{ textAlign: 'center' }}>
+		![Wizard — create spaces](/images/modules/spaces/13_spaces_wizard_create_spaces.png)
+	</div>
+
+	### Assign Displays
+
+	Link your panel displays to the rooms where they are physically mounted.
+
+	<div style={{ textAlign: 'center' }}>
+		![Wizard — assign displays](/images/modules/spaces/14_spaces_wizard_assign_display.png)
+	</div>
+
+	### Assign Devices
+
+	Distribute your devices across rooms.
+
+	<div style={{ textAlign: 'center' }}>
+		![Wizard — assign devices](/images/modules/spaces/15_spaces_wizard_assign_devices.png)
+	</div>
+
+	### Done
+
+	Your spaces are configured and ready to use.
+
+	<div style={{ textAlign: 'center' }}>
+		![Wizard — finished](/images/modules/spaces/16_spaces_wizard_finished.png)
+	</div>
+</Steps>
 
 ---
 
 ## Deleting a Space
 
-When you delete a zone, its child rooms become orphaned (they still exist but lose their parent).
+When you delete a zone, its child rooms become orphaned — they still exist but lose their parent.
 When you delete a room, its assigned devices are unassigned.
-
-```bash copy
-curl -X DELETE http://smart-panel.local:3000/api/spaces/<space-id> \
-  -H "Authorization: Bearer <token>"
-```
 
 ---
 
 ## What's Next?
 
-- Add devices to your spaces by following the [Devices](/docs/admin-management/devices) guide
 - Create room-specific [Scenes](/docs/admin-management/scenes) that target devices in a space
+- Build your [Dashboard](/docs/admin-management/dashboard) to customize the panel display
 - Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for full endpoint documentation

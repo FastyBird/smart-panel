@@ -53,8 +53,49 @@ just flash, boot, and configure WiFi.
 
 	## Flash using Raspberry Pi Imager
 
-	Open [Raspberry Pi Imager](https://www.raspberrypi.com/software/), select **Use custom**, and
-	choose the downloaded `.img.xz` file. Select your SD card and click **Write**.
+	Open [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and follow these steps:
+
+	**1. Select your Raspberry Pi model**
+
+	<div style={{ textAlign: 'center' }}>
+		![Select device](/images/rpi_image/01_select_device.png)
+	</div>
+
+	**2. Choose the downloaded image — select "Use custom" and pick the `.img.xz` file**
+
+	<div style={{ textAlign: 'center' }}>
+		![Select image](/images/rpi_image/02_select_image.png)
+	</div>
+
+	**3. Select your SD card**
+
+	<div style={{ textAlign: 'center' }}>
+		![Select drive](/images/rpi_image/03_select_drive.png)
+	</div>
+
+	**4. Review the summary and click Write**
+
+	<div style={{ textAlign: 'center' }}>
+		![Confirm write](/images/rpi_image/04_confirm_write.png)
+	</div>
+
+	**5. Confirm that all data on the SD card will be erased**
+
+	<div style={{ textAlign: 'center' }}>
+		![Confirm wipe](/images/rpi_image/05_confirm_wipe.png)
+	</div>
+
+	**6. Wait for the image to be written**
+
+	<div style={{ textAlign: 'center' }}>
+		![Writing progress](/images/rpi_image/06_upload_progress.png)
+	</div>
+
+	**7. Done — remove the SD card**
+
+	<div style={{ textAlign: 'center' }}>
+		![Write finished](/images/rpi_image/07_write_finished.png)
+	</div>
 
 	## Boot the Pi
 
@@ -114,6 +155,17 @@ What happens on first boot:
 ---
 
 ## Post-Installation
+
+### Default SSH Credentials
+
+The pre-built image ships with the following default credentials:
+
+- **Username**: `smartpanel`
+- **Password**: `smartpanel`
+
+<Callout type="info">
+	On first SSH login, you will be prompted to change the default password.
+</Callout>
 
 ### Access the Admin Interface
 

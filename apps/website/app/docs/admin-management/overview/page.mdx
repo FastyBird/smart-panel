@@ -13,6 +13,8 @@ data sources.
 ### What You Can Do Here
 
 - Add and organize smart devices
+- Organize devices into **spaces** — rooms, floors, and areas of your home
+- Create **scenes** to trigger multiple device actions at once
 - Build pages and dashboards with drag-and-drop tiles
 - Connect devices to tiles through data sources
 - Use plugins to sync devices from other platforms (like Home Assistant)
@@ -23,9 +25,9 @@ Whether you’re starting from scratch or syncing existing smart devices, this s
 
 ### Where This Happens
 
-All of these actions are done through the **Admin Panel**, which runs on your Raspberry Pi and is accessible via a browser.
+All of these actions are done through the **Admin Panel**, which runs alongside the backend and is accessible via a browser from any device on your network.
 
-Just visit [http://smart-panel.local:3000](http://smart-panel.local:3000) or use your Pi’s IP address with port 3000 to access the panel.
+Just visit [http://smart-panel.local:3000](http://smart-panel.local:3000) or use your device’s IP address with port 3000 to access the panel.
 
 <Callout>
 	The domain `smart-panel.local` is available via mDNS when the backend is running. You can use it
@@ -35,6 +37,8 @@ Just visit [http://smart-panel.local:3000](http://smart-panel.local:3000) or use
 You’ll see:
 
 - A list of your **devices**
+- Your **spaces** — rooms and areas where devices are placed
+- Your **scenes** — saved automations for one-tap control
 - A collection of **pages** and **tiles**
 - Tools to configure your **system**, **plugins**, and more
 
@@ -52,6 +56,9 @@ Use the Admin Panel to:
 
 ### What’s Next?
 
-Let’s start by adding your first device or exploring what was discovered via plugins.
+This section is organized into four areas:
 
-👉 Head to the [**Devices**](/docs/admin-management/devices) page to get started.
+- [**Devices Management**](/docs/admin-management/devices) — add devices, channels, and properties
+- [**Home Management**](/docs/admin-management/spaces) — organize into spaces, create scenes, and monitor energy
+- [**Dashboard Management**](/docs/admin-management/dashboard) — build pages and tiles for your display
+- [**System Management**](/docs/admin-management/users) — manage users and roles
