@@ -79,6 +79,7 @@ describe('PagesController', () => {
 		brightness: 100,
 		screenLockDuration: 30,
 		screenSaver: true,
+		screenPowerOff: false,
 		audioOutputSupported: false,
 		audioInputSupported: false,
 		speaker: false,
