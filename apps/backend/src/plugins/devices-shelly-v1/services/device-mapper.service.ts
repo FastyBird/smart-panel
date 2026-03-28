@@ -316,8 +316,9 @@ export class DeviceMapperService {
 				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
 				name: 'Link Quality',
 				category: PropertyCategory.LINK_QUALITY,
-				dataType: DataTypeType.INT,
-				value: deviceStatus?.wifi_sta?.rssi || null,
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				value: deviceStatus?.wifi_sta?.rssi ? this.rssiToQuality(deviceStatus.wifi_sta.rssi) : null,
 			},
 			{
 				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.STATUS,
@@ -371,12 +372,13 @@ export class DeviceMapperService {
 		const channelEntries = Array.from(channelBindingsMap.entries()).map(([identifier, channelBindings]) => ({
 			identifier,
 			bindings: channelBindings,
-			category: this.inferChannelCategory(identifier, channelBindings),
+			category: this.inferChannelCategory(identifier, channelBindings, device.category),
 		}));
 
 		// Sort: control channels (light, switch, etc.) first, then monitoring channels (power, energy)
 		const controlCategories = [
 			ChannelCategory.LIGHT,
+			ChannelCategory.OUTLET,
 			ChannelCategory.SWITCHER,
 			ChannelCategory.FAN,
 			ChannelCategory.VALVE,
@@ -472,7 +474,7 @@ export class DeviceMapperService {
 		);
 
 		if (!channel) {
-			const channelCategory = this.inferChannelCategory(channelIdentifier, bindings);
+			const channelCategory = this.inferChannelCategory(channelIdentifier, bindings, device.category);
 			const channelName = this.formatChannelName(channelIdentifier);
 
 			const createChannelDto: CreateShellyV1ChannelDto = {
@@ -755,12 +757,29 @@ export class DeviceMapperService {
 	}
 
 	/**
+	 * Relay-type channel prefix to device-category-aware channel mapping.
+	 * When the device category implies a specific channel type, the relay
+	 * channel should match (e.g. outlet device → outlet channel).
+	 */
+	private static readonly RELAY_DEVICE_CATEGORY_TO_CHANNEL: Partial<Record<DeviceCategory, ChannelCategory>> = {
+		[DeviceCategory.OUTLET]: ChannelCategory.OUTLET,
+		[DeviceCategory.SWITCHER]: ChannelCategory.SWITCHER,
+		[DeviceCategory.PUMP]: ChannelCategory.SWITCHER,
+		[DeviceCategory.VALVE]: ChannelCategory.VALVE,
+	};
+
+	/**
 	 * Infer a channel category from its property bindings
 	 * 1. If channelCategory is defined in PropertyBinding, use that
-	 * 2. If not, try to find category in SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY by prefix
-	 * 3. If not found, use default property-based mapping
+	 * 2. For relay channels, use device category to determine channel type
+	 * 3. If not, try to find category in SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY by prefix
+	 * 4. If not found, use default property-based mapping
 	 */
-	private inferChannelCategory(channelIdentifier: string, bindings: PropertyBinding[]): ChannelCategory {
+	private inferChannelCategory(
+		channelIdentifier: string,
+		bindings: PropertyBinding[],
+		deviceCategory?: DeviceCategory,
+	): ChannelCategory {
 		// Step 1: Check if any binding has an explicit channelCategory defined
 		for (const binding of bindings) {
 			if (binding.channelCategory !== undefined) {
@@ -768,8 +787,16 @@ export class DeviceMapperService {
 			}
 		}
 
-		// Step 2: Try to find category by channel identifier prefix
+		// Step 2: For relay channels, use device category to determine channel type
 		const prefix = channelIdentifier.split('_')[0];
+		if (prefix === 'relay' && deviceCategory) {
+			const mapped = DeviceMapperService.RELAY_DEVICE_CATEGORY_TO_CHANNEL[deviceCategory];
+			if (mapped) {
+				return mapped;
+			}
+		}
+
+		// Step 3: Try to find category by channel identifier prefix
 		if (SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]) {
 			return SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix];
 		}
@@ -840,5 +867,15 @@ export class DeviceMapperService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Convert RSSI (dBm) to signal quality percentage (0-100)
+	 */
+	private rssiToQuality(rssi: number): number {
+		if (rssi <= -100) return 0;
+		if (rssi >= -50) return 100;
+
+		return Math.round(2 * (rssi + 100));
 	}
 }

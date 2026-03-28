@@ -122,8 +122,8 @@ mappings:
         properties:
           - z2m_property: pm25
             panel:
-              identifier: DENSITY
-              name: PM2.5 Density
+              identifier: CONCENTRATION
+              name: PM2.5 Concentration
               data_type: FLOAT
               format: [0, 1000]
               unit: "µg/m³"

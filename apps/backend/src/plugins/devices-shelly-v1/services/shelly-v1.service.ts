@@ -731,17 +731,20 @@ export class ShellyV1Service implements IManagedPluginService {
 						);
 
 						if (linkQualityProperty) {
+							const quality = this.rssiToQuality(status.wifi_sta.rssi);
+
 							await this.channelsPropertiesService.update<
 								ShellyV1ChannelPropertyEntity,
 								UpdateShellyV1ChannelPropertyDto
 							>(linkQualityProperty.id, {
 								type: DEVICES_SHELLY_V1_TYPE,
-								value: status.wifi_sta.rssi,
+								value: quality,
 							});
 
-							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`, {
-								resource: device.id,
-							});
+							this.logger.debug(
+								`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm (${quality}%)`,
+								{ resource: device.id },
+							);
 						}
 					}
 
@@ -780,5 +783,15 @@ export class ShellyV1Service implements IManagedPluginService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 		}
+	}
+
+	/**
+	 * Convert RSSI (dBm) to signal quality percentage (0-100)
+	 */
+	private rssiToQuality(rssi: number): number {
+		if (rssi <= -100) return 0;
+		if (rssi >= -50) return 100;
+
+		return Math.round(2 * (rssi + 100));
 	}
 }

@@ -211,18 +211,18 @@ mappings:
           - z2m_property: illuminance
             direction: read_only
             panel:
-              identifier: DENSITY
+              identifier: ILLUMINANCE
               name: Illuminance
               data_type: FLOAT
               unit: "lx"
               settable: false
-        # Illuminance level is derived from lux density
+        # Illuminance level is derived from lux value
         derived_properties:
           - identifier: LEVEL
             name: Light Level
             data_type: ENUM
             format: ["dark", "dusky", "moderate", "bright"]
-            source_property: DENSITY
+            source_property: ILLUMINANCE
             derivation: illuminance_level_from_density
 
   # Illuminance sensor (lux variant)
@@ -241,18 +241,18 @@ mappings:
           - z2m_property: illuminance_lux
             direction: read_only
             panel:
-              identifier: DENSITY
+              identifier: ILLUMINANCE
               name: Illuminance
               data_type: FLOAT
               unit: "lx"
               settable: false
-        # Illuminance level is derived from lux density
+        # Illuminance level is derived from lux value
         derived_properties:
           - identifier: LEVEL
             name: Light Level
             data_type: ENUM
             format: ["dark", "dusky", "moderate", "bright"]
-            source_property: DENSITY
+            source_property: ILLUMINANCE
             derivation: illuminance_level_from_density
 
   # ============================================
@@ -582,7 +582,7 @@ mappings:
   # ============================================
 
   # PM2.5 sensor (fine particulate matter)
-  # Uses air_particulate channel with DENSITY property
+  # Uses air_particulate channel with CONCENTRATION property
   # Note: MODE property would need to be set to "pm2_5" but static values aren't supported yet
   - name: pm25_sensor
     description: "PM2.5 air particulate sensor"
@@ -599,15 +599,15 @@ mappings:
           - z2m_property: pm25
             direction: read_only
             panel:
-              identifier: DENSITY
-              name: PM2.5 Density
+              identifier: CONCENTRATION
+              name: PM2.5 Concentration
               data_type: FLOAT
               format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # PM10 sensor (coarse particulate matter)
-  # Uses air_particulate channel with DENSITY property
+  # Uses air_particulate channel with CONCENTRATION property
   # Note: MODE property would need to be set to "pm10" but static values aren't supported yet
   - name: pm10_sensor
     description: "PM10 air particulate sensor"
@@ -624,15 +624,15 @@ mappings:
           - z2m_property: pm10
             direction: read_only
             panel:
-              identifier: DENSITY
-              name: PM10 Density
+              identifier: CONCENTRATION
+              name: PM10 Concentration
               data_type: FLOAT
               format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # PM1 sensor (ultrafine particulate matter)
-  # Uses air_particulate channel with DENSITY property
+  # Uses air_particulate channel with CONCENTRATION property
   # Note: MODE property would need to be set to "pm1" but static values aren't supported yet
   - name: pm1_sensor
     description: "PM1 air particulate sensor"
@@ -649,15 +649,15 @@ mappings:
           - z2m_property: pm1
             direction: read_only
             panel:
-              identifier: DENSITY
-              name: PM1 Density
+              identifier: CONCENTRATION
+              name: PM1 Concentration
               data_type: FLOAT
               format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # Formaldehyde sensor (HCHO)
-  # Uses volatile_organic_compounds channel with DENSITY property
+  # Uses volatile_organic_compounds channel with CONCENTRATION property
   - name: formaldehyde_sensor
     description: "Formaldehyde (HCHO) sensor"
     priority: 50
@@ -673,7 +673,7 @@ mappings:
           - z2m_property: formaldehyde
             direction: read_only
             panel:
-              identifier: DENSITY
+              identifier: CONCENTRATION
               name: Formaldehyde
               data_type: FLOAT
               format: [0.0, 1000.0]
@@ -681,7 +681,7 @@ mappings:
               settable: false
 
   # CO2 sensor
-  # Uses carbon_dioxide channel with DENSITY property
+  # Uses carbon_dioxide channel with CONCENTRATION property
   - name: co2_sensor
     description: "CO2 sensor"
     priority: 50
@@ -697,7 +697,7 @@ mappings:
           - z2m_property: co2
             direction: read_only
             panel:
-              identifier: DENSITY
+              identifier: CONCENTRATION
               name: CO2 Level
               data_type: FLOAT
               format: [0.0, 100000.0]
@@ -705,7 +705,7 @@ mappings:
               settable: false
 
   # VOC sensor
-  # Uses volatile_organic_compounds channel with DENSITY property
+  # Uses volatile_organic_compounds channel with CONCENTRATION property
   - name: voc_sensor
     description: "VOC (Volatile Organic Compounds) sensor"
     priority: 50
@@ -721,7 +721,7 @@ mappings:
           - z2m_property: voc
             direction: read_only
             panel:
-              identifier: DENSITY
+              identifier: CONCENTRATION
               name: VOC Level
               data_type: FLOAT
               format: [0.0, 1000.0]
