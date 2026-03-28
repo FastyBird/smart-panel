@@ -175,7 +175,12 @@ From another device on the same network, open a browser:
 http://smart-panel.local:3000
 ```
 
-Or use the hostname you configured in place of `smart-panel`.
+Or use the device's IP address: `http://<device-ip>:3000`
+
+<Callout type="info">
+	If you configured a custom hostname during setup, replace `smart-panel` with that hostname.
+	You can find the IP address with `hostname -I` on the device.
+</Callout>
 
 ### View Logs
 
@@ -185,7 +190,131 @@ sudo journalctl -u smart-panel -f
 
 # Display (AIO/Display variants)
 sudo journalctl -u smart-panel-display -f
+
+# First-boot log (useful for diagnosing startup issues)
+cat /boot/firmware/smart-panel-firstboot.log
 ```
+
+---
+
+## Included Services & Tools
+
+The Raspbian image ships with several pre-configured systemd services and CLI tools. Not all are available on every
+variant.
+
+### Systemd Services
+
+| Service | Variants | Description |
+|---------|----------|-------------|
+| `smart-panel` | Server, AIO | NestJS backend and admin UI |
+| `smart-panel-display` | Display, AIO | Flutter-pi display application |
+| `smart-panel-discovery` | Display, AIO | mDNS discovery proxy for backend detection |
+| `smart-panel-portal` | All | WiFi captive portal (runs on first boot when no WiFi is configured) |
+| `smart-panel-wifi-watchdog` | All | Re-activates the captive portal if WiFi drops for more than 5 minutes |
+| `smart-panel-auto-rotate` | Display, AIO | Accelerometer-based screen rotation (disabled by default, reTerminal CM4 only) |
+| `smart-panel-firstboot` | All | One-time initialization on first boot |
+
+Check any service with:
+
+```bash copy
+sudo systemctl status <service-name>
+```
+
+### Auto-Rotate (Display & AIO)
+
+On supported hardware (Seeed reTerminal CM4 with built-in accelerometer), the display can automatically rotate
+when the device is physically turned.
+
+```bash copy
+# Enable auto-rotation
+sudo smart-panel-auto-rotate enable
+
+# Disable auto-rotation
+sudo smart-panel-auto-rotate disable
+
+# Check current status and accelerometer readings
+smart-panel-auto-rotate status
+```
+
+Auto-rotate is **disabled by default**. Once enabled, it monitors the accelerometer and restarts the display
+service when an orientation change is detected.
+
+<Callout type="info">
+	Auto-rotation requires the LIS3DHTR accelerometer at `/sys/devices/platform/lis3lv02d/position`.
+	On hardware without this sensor, the `enable` command will report that the accelerometer is not found.
+</Callout>
+
+### Display Configuration (Display & AIO)
+
+The display service reads its configuration from `/etc/smart-panel/display`. You can adjust the physical
+display dimensions (which control UI scaling — smaller values produce larger UI elements) and the screen rotation:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `FB_DISPLAY_DIMENSIONS` | Physical display size as `width_mm,height_mm` | `90,54` |
+| `FB_DISPLAY_ROTATION` | Screen rotation in degrees | `0`, `90`, `180`, `270` |
+
+**Seeed reTerminal 5"** — the auto-detected dimensions (~108x65mm) result in small UI elements.
+For a better experience, use these recommended values:
+
+```bash copy
+sudo sed -i 's/^FB_DISPLAY_DIMENSIONS=.*/FB_DISPLAY_DIMENSIONS=90,54/' /etc/smart-panel/display && sudo systemctl restart smart-panel-display
+```
+
+**Official Raspberry Pi 7" Touchscreen:**
+
+```bash copy
+sudo sed -i 's/^FB_DISPLAY_DIMENSIONS=.*/FB_DISPLAY_DIMENSIONS=155,86/' /etc/smart-panel/display && sudo systemctl restart smart-panel-display
+```
+
+Leave `FB_DISPLAY_DIMENSIONS` empty to use auto-detection (works well for most other displays).
+
+To set rotation manually (e.g. upside-down mount):
+
+```bash copy
+sudo sed -i 's/^FB_DISPLAY_ROTATION=.*/FB_DISPLAY_ROTATION=180/' /etc/smart-panel/display && sudo systemctl restart smart-panel-display
+```
+
+### WiFi Captive Portal (All Variants)
+
+The captive portal automatically starts when no WiFi is configured. If you need to reconfigure WiFi later:
+
+```bash copy
+# Manually trigger the captive portal
+sudo rm /var/lib/smart-panel/.wifi-configured
+sudo systemctl restart smart-panel-portal
+```
+
+The WiFi watchdog also re-activates the portal automatically if WiFi is unreachable for more than 5 minutes
+(and no Ethernet is connected).
+
+### Backend Configuration (Server & AIO)
+
+Backend configuration is stored in `/etc/smart-panel/environment`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FB_BACKEND_PORT` | `3000` | HTTP server port |
+| `FB_DB_PATH` | `/var/lib/smart-panel/data` | SQLite database directory |
+| `FB_CONFIG_PATH` | `/var/lib/smart-panel/config` | Configuration files directory |
+| `FB_TOKEN_SECRET` | Auto-generated | JWT signing secret (generated on first boot) |
+
+Apply changes with:
+
+```bash copy
+sudo systemctl restart smart-panel
+```
+
+### File Locations
+
+| Path | Description |
+|------|-------------|
+| `/opt/smart-panel/current/` | Backend application (symlink to versioned directory) |
+| `/opt/smart-panel-display/current/` | Display application (symlink to versioned directory) |
+| `/var/lib/smart-panel/data/` | SQLite database |
+| `/var/lib/smart-panel/config/` | User configuration files |
+| `/etc/smart-panel/` | System configuration (environment, display settings) |
+| `/boot/firmware/smart-panel-firstboot.log` | First-boot diagnostics log |
 
 ---
 

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Install Smart Panel</title>
+	<style>
+		:root {
+			--bg: #0a0a0a;
+			--surface: #161616;
+			--border: #2a2a2a;
+			--text: #e5e5e5;
+			--muted: #a0a0a0;
+			--accent: #3b82f6;
+			--accent-hover: #60a5fa;
+			--green: #22c55e;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+			background: var(--bg);
+			color: var(--text);
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 2rem;
+			line-height: 1.6;
+		}
+
+		.container {
+			max-width: 640px;
+			width: 100%;
+		}
+
+		h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			margin-bottom: 0.5rem;
+		}
+
+		.subtitle {
+			color: var(--muted);
+			margin-bottom: 2.5rem;
+			font-size: 1.1rem;
+		}
+
+		.section {
+			margin-bottom: 2rem;
+		}
+
+		.section h2 {
+			font-size: 0.85rem;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: var(--muted);
+			margin-bottom: 0.75rem;
+		}
+
+		.code-block {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 1rem 1.25rem;
+			font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+			font-size: 0.9rem;
+			overflow-x: auto;
+			position: relative;
+			cursor: pointer;
+			transition: border-color 0.2s;
+		}
+
+		.code-block:hover {
+			border-color: var(--accent);
+		}
+
+		.code-block code {
+			white-space: pre;
+			color: var(--text);
+		}
+
+		.code-block .copy-hint {
+			position: absolute;
+			top: 0.5rem;
+			right: 0.75rem;
+			font-size: 0.75rem;
+			color: var(--muted);
+			opacity: 0;
+			transition: opacity 0.2s;
+		}
+
+		.code-block:hover .copy-hint {
+			opacity: 1;
+		}
+
+		.code-block.copied .copy-hint {
+			color: var(--green);
+			opacity: 1;
+		}
+
+		.note {
+			color: var(--muted);
+			font-size: 0.85rem;
+			margin-top: 0.5rem;
+		}
+
+		.note code {
+			background: var(--surface);
+			padding: 0.15em 0.4em;
+			border-radius: 4px;
+			font-size: 0.85em;
+		}
+
+		.links {
+			margin-top: 2.5rem;
+			padding-top: 1.5rem;
+			border-top: 1px solid var(--border);
+			display: flex;
+			gap: 1.5rem;
+			flex-wrap: wrap;
+		}
+
+		.links a {
+			color: var(--accent);
+			text-decoration: none;
+			font-size: 0.9rem;
+		}
+
+		.links a:hover {
+			color: var(--accent-hover);
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Smart Panel</h1>
+		<p class="subtitle">Install on any Linux device with one command.</p>
+
+		<div class="section">
+			<h2>Server (Backend + Admin UI)</h2>
+			<div class="code-block" onclick="copyToClipboard(this)">
+				<span class="copy-hint">click to copy</span>
+				<code>curl -fsSL https://get.smart-panel.fastybird.com | sudo bash</code>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>Display Panel</h2>
+			<div class="code-block" onclick="copyToClipboard(this)">
+				<span class="copy-hint">click to copy</span>
+				<code>curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash \
+  -s -- --backend http://YOUR_SERVER_IP:3000</code>
+			</div>
+			<p class="note">Replace <code>YOUR_SERVER_IP</code> with your server's IP address.</p>
+		</div>
+
+		<div class="section">
+			<h2>All-in-One (Server + Display)</h2>
+			<div class="code-block" onclick="copyToClipboard(this)">
+				<span class="copy-hint">click to copy</span>
+				<code>curl -fsSL https://get.smart-panel.fastybird.com | sudo bash &amp;&amp; \
+curl -fsSL https://get.smart-panel.fastybird.com/panel | sudo bash \
+  -s -- --backend http://localhost:3000 --kiosk</code>
+			</div>
+		</div>
+
+		<div class="links">
+			<a href="https://smart-panel.fastybird.com/docs">Documentation</a>
+			<a href="https://github.com/FastyBird/smart-panel">GitHub</a>
+			<a href="https://github.com/FastyBird/smart-panel/releases">Releases</a>
+		</div>
+	</div>
+
+	<script>
+		function copyToClipboard(el) {
+			const code = el.querySelector('code').textContent;
+			navigator.clipboard.writeText(code).then(function () {
+				el.classList.add('copied');
+				el.querySelector('.copy-hint').textContent = 'copied!';
+				setTimeout(function () {
+					el.classList.remove('copied');
+					el.querySelector('.copy-hint').textContent = 'click to copy';
+				}, 2000);
+			});
+		}
+	</script>
+</body>
+</html>
