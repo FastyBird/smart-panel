@@ -177,6 +177,11 @@
 								{{ display.screenSaver ? 'Enabled' : 'Disabled' }}
 							</el-tag>
 						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.screenPowerOff')">
+							<el-tag :type="display.screenPowerOff ? 'success' : 'info'">
+								{{ display.screenPowerOff ? 'Enabled' : 'Disabled' }}
+							</el-tag>
+						</el-descriptions-item>
 					</el-descriptions>
 				</el-card>
 			</el-col>

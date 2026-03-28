@@ -151,6 +151,9 @@
 			"screenSaver": {
 				"title": "Šetrič obrazovky"
 			},
+			"screenPowerOff": {
+				"title": "Vypnutie obrazovky"
+			},
 			"audio": {
 				"speaker": {
 					"title": "Reproduktor (zvukový výstup)"
@@ -399,6 +402,7 @@
 			"brightness": "Jas",
 			"screenLockDuration": "Trvanie uzamknutia obrazovky",
 			"screenSaver": "Šetrič obrazovky",
+			"screenPowerOff": "Vypnutie obrazovky",
 			"speakerEnabled": "Reproduktor povolený",
 			"speakerVolume": "Hlasitosť reproduktora",
 			"microphoneEnabled": "Mikrofón povolený",

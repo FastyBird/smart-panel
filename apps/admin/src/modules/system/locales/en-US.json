@@ -425,7 +425,7 @@
     "osDistro": "Distribution",
     "osRelease": "Version",
     "uptime": "System uptime",
-    "networkInterface": "Network interface",
+    "networkInterface": "Interface",
     "ip4Address": "IP address",
     "ip6Address": "IPv6 address",
     "macAddress": "MAC address",

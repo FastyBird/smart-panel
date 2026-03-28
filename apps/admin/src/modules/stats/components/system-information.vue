@@ -72,8 +72,8 @@
 
 			<el-descriptions-item
 				:label-width="150"
-				class-name="border-l-none! border-t-none! border-b-none!"
-				label-class-name="border-l-none! border-t-none! border-b-none!"
+				class-name="border-l-none! border-t-none! border-b-none! config-path-cell"
+				label-class-name="border-l-none! border-t-none! border-b-none! whitespace-nowrap!"
 			>
 				<template #label>
 					{{ t('statsModule.fields.systemInformation.configPath.title') }}
@@ -83,9 +83,10 @@
 					<template #content>
 						<div class="flex flex-col gap-2">
 							<div class="font-bold">{{ t('statsModule.fields.systemInformation.configPath.tooltip') }}</div>
-							<code class="font-mono">{{ configApp?.path }}</code>
+							<span class="font-mono text-xs">{{ configApp?.path }}</span>
 							<el-button
 								size="small"
+								type="primary"
 								@click.stop="copyPath"
 							>
 								{{ t('statsModule.buttons.copy.title') }}
@@ -93,7 +94,7 @@
 						</div>
 					</template>
 
-					<span class="inline-block max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap align-bottom">
+					<span class="block overflow-hidden text-ellipsis whitespace-nowrap pr-4">
 						{{ configApp?.path }}
 					</span>
 				</el-tooltip>
@@ -128,3 +129,10 @@ const copyPath = (): void => {
 	success('Config path copied to clipboard!');
 };
 </script>
+
+<style>
+.config-path-cell {
+	max-width: 0;
+	overflow: hidden;
+}
+</style>

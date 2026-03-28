@@ -32,20 +32,23 @@ export const ForecastWeatherTileSchema = TileSchema.extend({
 // BACKEND API
 // ===========
 
-export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile & { parent: { type: string; id: string } }> = TileCreateReqSchema.and(
+export const DayWeatherTileCreateReqSchema: ZodType<
+	Omit<ApiCreateDayWeatherTile, 'location_id'> & { parent: { type: string; id: string }; location_id?: string | null }
+> = TileCreateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
-		location_id: z.string().uuid().optional(),
+		location_id: z.string().uuid().optional().nullable(),
 	})
 );
 
-export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeatherTile & { parent: { type: string; id: string } }> =
-	TileCreateReqSchema.and(
-		z.object({
-			type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
-			location_id: z.string().uuid().optional(),
-		})
-	);
+export const ForecastWeatherTileCreateReqSchema: ZodType<
+	Omit<ApiCreateForecastWeatherTile, 'location_id'> & { parent: { type: string; id: string }; location_id?: string | null }
+> = TileCreateReqSchema.and(
+	z.object({
+		type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
+		location_id: z.string().uuid().optional().nullable(),
+	})
+);
 
 export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({

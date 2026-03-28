@@ -73,6 +73,7 @@ export interface IDisplayEditForm {
 	screenLockDuration: number;
 	darkMode: boolean;
 	screenSaver: boolean;
+	screenPowerOff: boolean;
 	// Audio settings
 	speaker: boolean;
 	speakerVolume: number;

@@ -213,6 +213,9 @@ if [ "${VARIANT}" = "server" ]; then
 	# Server variant: use the existing stage-smart-panel as-is
 	rm -rf "${PI_GEN_DIR}/stage-smart-panel"
 	cp -r "${SCRIPT_DIR}/stage-smart-panel" "${PI_GEN_DIR}/stage-smart-panel"
+	# Copy modules directory so stage scripts can reference shared files (e.g. captive portal)
+	rm -rf "${PI_GEN_DIR}/modules"
+	cp -r "${SCRIPT_DIR}/modules" "${PI_GEN_DIR}/modules"
 else
 	# display/aio: assemble from modules
 	echo "  -> Assembling stage from modules for ${VARIANT} variant..."
