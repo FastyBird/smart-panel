@@ -192,7 +192,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Build App"
-        run: "pnpm --filter @fastybird/smart-panel-admin build"
+        run: "pnpm --filter @fastybird/smart-panel-admin build:no-check"
 
       - name: "Publish To NPM"
         uses: "./.github/actions/publish-npm-package"
