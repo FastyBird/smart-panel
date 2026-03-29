@@ -54,30 +54,46 @@ runs:
         SOURCES
         sudo apt-get update
 
-        # Install ARM64 cross-libraries for linking
-        # Install each package individually — libgbm-dev:arm64 often pulls in
-        # libglib2.0-dev:arm64 which conflicts with held amd64 packages on the runner.
-        # If a -dev package fails, fall back to its runtime lib for linking.
-        ARM64_PACKAGES=(
-          libfontconfig1-dev:arm64
-          libxkbcommon-dev:arm64
-          libdrm-dev:arm64
-          libegl-dev:arm64
-          libinput-dev:arm64
-          libudev-dev:arm64
-          libsystemd-dev:arm64
-        )
-        for pkg in "${ARM64_PACKAGES[@]}"; do
-          sudo apt-get install -y --no-install-recommends "$pkg" || \
-            echo "⚠️  Failed to install $pkg (non-critical, continuing)"
-        done
+        # Install ARM64 cross-libraries for linking.
+        # Several -dev:arm64 packages transitively depend on libglib2.0-dev:arm64
+        # which conflicts with held amd64 packages on the runner, and runtime
+        # libs like libglib2.0-0t64:arm64 have postinst scripts that try to
+        # execute arm64 binaries on the amd64 host.
+        #
+        # Strategy: install conflict-free -dev packages via apt, then download
+        # and extract problematic arm64 libs with dpkg-deb (bypassing postinst).
 
-        # libgbm-dev:arm64 is problematic due to libglib2.0-dev:arm64 transitive dep.
-        # Try full dev package first, fall back to runtime lib only.
-        sudo apt-get install -y --no-install-recommends libgbm-dev:arm64 || {
-          echo "⚠️  libgbm-dev:arm64 failed, installing runtime lib instead"
-          sudo apt-get install -y --no-install-recommends libgbm1:arm64 || true
-        }
+        # These -dev packages install cleanly (no glib dependency)
+        sudo apt-get install -y --no-install-recommends \
+          libxkbcommon-dev:arm64 \
+          libdrm-dev:arm64 \
+          libegl-dev:arm64 \
+          libudev-dev:arm64 \
+          libsystemd-dev:arm64
+
+        # These packages transitively pull in libglib2.0:arm64 whose postinst
+        # tries to execute arm64 binaries on the amd64 host. Download and extract
+        # the .so files directly, bypassing dpkg postinst scripts.
+        CROSS_LIBS_DIR=$(mktemp -d)
+        cd "$CROSS_LIBS_DIR"
+        apt-get download \
+          libinput10:arm64 \
+          libgbm1:arm64 \
+          libfontconfig1:arm64 2>/dev/null || true
+
+        for deb in *.deb; do
+          [ -f "$deb" ] && sudo dpkg-deb -x "$deb" /
+        done
+        cd -
+        rm -rf "$CROSS_LIBS_DIR"
+
+        # Create linker symlinks for runtime libs (the linker needs .so, not .so.N)
+        for lib in /usr/lib/aarch64-linux-gnu/libinput.so.* \
+                   /usr/lib/aarch64-linux-gnu/libgbm.so.* \
+                   /usr/lib/aarch64-linux-gnu/libfontconfig.so.*; do
+          base="${lib%%.*}.so"
+          [ ! -e "$base" ] && sudo ln -s "$(basename "$lib")" "$base"
+        done
       shell: bash
 
     - name: "Install flutter-elinux"
