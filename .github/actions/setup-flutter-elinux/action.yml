@@ -56,9 +56,6 @@ runs:
 
         # Install ARM64 cross-libraries for linking.
         # libegl-dev:arm64 pulls in the full mesa stack including libgbm1:arm64.
-        # libinput-dev:arm64 and libfontconfig1-dev:arm64 fail because they
-        # depend on libglib2.0-dev:arm64 (conflicts with amd64 held packages)
-        # and its runtime lib postinst tries to run arm64 binaries on the host.
         sudo apt-get install -y --no-install-recommends \
           libxkbcommon-dev:arm64 \
           libdrm-dev:arm64 \
@@ -66,38 +63,23 @@ runs:
           libudev-dev:arm64 \
           libsystemd-dev:arm64
 
-        # libinput, libfontconfig and their transitive deps can't be installed
-        # via apt (glib conflict / postinst runs arm64 binaries on amd64 host).
-        # Download debs and extract with dpkg-deb (bypasses postinst scripts).
+        # libinput and libfontconfig can't be installed via apt due to
+        # libglib2.0-dev:arm64 conflicts and postinst trying to run arm64 binaries.
+        # Download and extract with dpkg-deb (bypasses postinst scripts).
         CROSS_LIBS_DIR=$(mktemp -d)
         pushd "$CROSS_LIBS_DIR" > /dev/null
-        # Main libs + transitive deps needed at link time:
-        # libinput10 -> libevdev2, libwacom9
-        # libfontconfig1 -> libfreetype6
-        apt-get download \
-          libinput10:arm64 \
-          libevdev2:arm64 \
-          libwacom9:arm64 \
-          libfontconfig1:arm64 \
-          libfreetype6:arm64 || true
-        echo "Downloaded debs:"
-        ls -1 *.deb 2>/dev/null || echo "  (none)"
+        apt-get download libinput10:arm64 libfontconfig1:arm64 || true
         for deb in *.deb; do
-          if [ -f "$deb" ]; then
-            echo "Extracting $deb"
-            sudo dpkg-deb -x "$deb" / || echo "Warning: failed to extract $deb"
-          fi
+          [ -f "$deb" ] && sudo dpkg-deb -x "$deb" / || true
         done
         popd > /dev/null
         rm -rf "$CROSS_LIBS_DIR"
 
-        # Verify critical arm64 libs are present
-        echo "=== ARM64 cross-libraries ==="
-        ls /usr/lib/aarch64-linux-gnu/libinput.so* \
-           /usr/lib/aarch64-linux-gnu/libgbm.so* \
-           /usr/lib/aarch64-linux-gnu/libevdev.so* \
-           /usr/lib/aarch64-linux-gnu/libfontconfig.so* \
-           /usr/lib/aarch64-linux-gnu/libfreetype.so* 2>/dev/null || echo "WARNING: Some ARM64 libs missing!"
+        # Export linker flag to allow unresolved symbols in shared libs.
+        # This is standard for cross-compilation — transitive deps (glib, png,
+        # freetype, etc.) can't all be installed on the amd64 host, but the
+        # final binary runs on real arm64 hardware with all libs present.
+        echo "LDFLAGS=-Wl,--allow-shlib-undefined" >> "$GITHUB_ENV"
       shell: bash
 
     - name: "Install flutter-elinux"
@@ -116,6 +98,19 @@ runs:
         # Create eLinux project structure
         flutter-elinux create --platforms elinux .
         flutter-elinux pub get
+      shell: bash
+
+    - name: "Patch eLinux CMake for cross-compilation"
+      if: inputs.target-arch == 'arm64'
+      run: |
+        # Add --allow-shlib-undefined to the linker flags in the eLinux CMakeLists.
+        # This lets the linker skip unresolved symbols from transitive deps
+        # (glib, freetype, libpng, etc.) that can't be installed on the amd64 host.
+        ELINUX_CMAKE="apps/panel/elinux/CMakeLists.txt"
+        if [ -f "$ELINUX_CMAKE" ]; then
+          sed -i '/^project(/a set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-shlib-undefined")' "$ELINUX_CMAKE"
+          echo "Patched $ELINUX_CMAKE with --allow-shlib-undefined"
+        fi
       shell: bash
 
     - name: "Verify flutter-elinux"
