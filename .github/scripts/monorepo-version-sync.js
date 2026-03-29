@@ -51,8 +51,12 @@ const parseBaseVersion = (ref) => {
 
 const getPublishedVersions = (packageName, base, tag) => {
 	try {
+		// Use --prefer-online and a temp cache to bypass stale npm cache
 		const versions = JSON.parse(
-			child_process.execSync(`npm info ${packageName} versions --json`).toString("utf8")
+			child_process.execSync(
+				`npm info ${packageName} versions --json --prefer-online --cache=/tmp/npm-version-check-cache`,
+				{ timeout: 30000 }
+			).toString("utf8")
 		);
 
 		return versions
