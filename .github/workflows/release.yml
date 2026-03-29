@@ -382,32 +382,13 @@ jobs:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
 
-      - name: "Build ARMv7 Flutter Bundle (32-bit)"
-        env:
-          FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
-          FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
-        run: "melos build-panel-arm-release"
-
-      - name: "Archive ARMv7 Flutter Assets (32-bit)"
-        run: |
-          tar -czvf smart-panel-display-flutterpi-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-flutterpi-armv7.tar.gz > smart-panel-display-flutterpi-armv7.tar.gz.sha256
-
-      - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v7"
-        with:
-          name: "display-panel-flutterpi-armv7"
-          path: |
-            smart-panel-display-flutterpi-armv7.tar.gz
-            smart-panel-display-flutterpi-armv7.tar.gz.sha256
-
-      - name: "Build ARM64 Flutter Bundle (64-bit)"
+      - name: "Build ARM64 Flutter Bundle"
         env:
           FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
           FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
         run: "melos build-panel-arm64-release"
 
-      - name: "Archive ARM64 Flutter Assets (64-bit)"
+      - name: "Archive ARM64 Flutter Assets"
         run: |
           tar -czvf smart-panel-display-flutterpi-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
           shasum -a 256 smart-panel-display-flutterpi-arm64.tar.gz > smart-panel-display-flutterpi-arm64.tar.gz.sha256
@@ -577,55 +558,7 @@ jobs:
           rm ./pnpm-lock.yaml
           rm ./pnpm-workspace.yaml
 
-      - name: "Download Display Assets (32-bit)"
-        uses: "actions/download-artifact@v7"
-        with:
-          name: display-panel-flutterpi-armv7
-
-      - name: "Extract Flutter Assets to /build-armv7/display"
-        run: |
-          mkdir -p ./build-armv7/display
-          tar -xzf ./smart-panel-display-flutterpi-armv7.tar.gz -C ./build-armv7/display
-
-      - name: "Prepare Build Folder (32-bit)"
-        run: |
-          cp ./build/package.json ./build-armv7/
-          cp ./build/.env.local ./build-armv7/
-          cp .env ./build-armv7/
-          cp -r var ./build-armv7/
-
-      - name: "Build ARMv7 App (32-bit)"
-        uses: "pguyot/arm-runner-action@v2"
-        with:
-          base_image: "raspios_lite:latest"
-          cpu: "cortex-a7"
-          cpu_info: "cpuinfo/raspberrypi_zero2_w"
-          image_additional_mb: "4096"
-          copy_repository_path: "/opt/smart-panel"
-          copy_artifact_path: "smart-panel-server-armv7.tar.gz;smart-panel-server-armv7.tar.gz.sha256"
-          copy_artifact_dest: "."
-          commands: |
-            apt-get update
-            apt-get install -y curl git
-            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-            apt-get install -y nodejs
-            cd /opt/smart-panel/build-armv7
-            npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
-            npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
-            npm install --omit=dev
-            cd /opt/smart-panel
-            tar -czvf smart-panel-server-armv7.tar.gz -C ./build-armv7 .
-            shasum -a 256 smart-panel-server-armv7.tar.gz > smart-panel-server-armv7.tar.gz.sha256
-
-      - name: "Upload ARMv7 Artifact (32-bit)"
-        uses: "actions/upload-artifact@v7"
-        with:
-          name: "server-bundle-armv7"
-          path: |
-            smart-panel-server-armv7.tar.gz
-            smart-panel-server-armv7.tar.gz.sha256
-
-      - name: "Download Display Assets (64-bit)"
+      - name: "Download Display Assets"
         uses: "actions/download-artifact@v7"
         with:
           name: "display-panel-flutterpi-arm64"
@@ -698,22 +631,12 @@ jobs:
           echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: "Download ARMv7 Application Build (32-bit)"
-        uses: "actions/download-artifact@v7"
-        with:
-          name: "server-bundle-armv7"
-
-      - name: "Download ARM64 Application Build (64-bit)"
+      - name: "Download ARM64 Application Build"
         uses: "actions/download-artifact@v7"
         with:
           name: "server-bundle-arm64"
 
-      - name: "Download ARMv7 Display Assets (flutter-pi 32-bit)"
-        uses: "actions/download-artifact@v7"
-        with:
-          name: "display-panel-flutterpi-armv7"
-
-      - name: "Download ARM64 Display Assets (flutter-pi 64-bit)"
+      - name: "Download ARM64 Display Assets (flutter-pi)"
         uses: "actions/download-artifact@v7"
         with:
           name: "display-panel-flutterpi-arm64"
@@ -752,12 +675,8 @@ jobs:
           tag_name: v${{ needs.tag.outputs.version }}
           files: |
             version.json
-            smart-panel-server-armv7.tar.gz
-            smart-panel-server-armv7.tar.gz.sha256
             smart-panel-server-arm64.tar.gz
             smart-panel-server-arm64.tar.gz.sha256
-            smart-panel-display-flutterpi-armv7.tar.gz
-            smart-panel-display-flutterpi-armv7.tar.gz.sha256
             smart-panel-display-flutterpi-arm64.tar.gz
             smart-panel-display-flutterpi-arm64.tar.gz.sha256
             smart-panel-display-android.apk
