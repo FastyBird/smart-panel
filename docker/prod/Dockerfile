@@ -38,10 +38,10 @@ COPY apps/admin/ apps/admin/
 COPY packages/extension-sdk/ packages/extension-sdk/
 COPY spec/ spec/
 
-# Generate specs and build
+# Generate specs and build (extension SDK must be built before openapi generation)
 RUN pnpm run generate:spec && \
-	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-extension-sdk build && \
+	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-admin build:no-check
 
 # ============================================================
@@ -69,10 +69,10 @@ COPY apps/backend/ apps/backend/
 COPY packages/extension-sdk/ packages/extension-sdk/
 COPY spec/ spec/
 
-# Generate specs and build
+# Generate specs and build (extension SDK must be built before openapi generation)
 RUN pnpm run generate:spec && \
-	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-extension-sdk build && \
+	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-backend build
 
 # ============================================================

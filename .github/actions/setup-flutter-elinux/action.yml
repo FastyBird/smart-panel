@@ -46,13 +46,17 @@ runs:
         [ -f /etc/apt/sources.list ] && \
           sudo sed -i '/^\s*deb /{/\[arch=/!s/^\(\s*deb\s\)/\1[arch=amd64] /}' /etc/apt/sources.list
 
-        # Add ARM64 sources from ports.ubuntu.com
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" | sudo tee /etc/apt/sources.list.d/arm64-ports.list
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
+        # Add ARM64 sources from ports.ubuntu.com (include security for version parity)
+        cat <<SOURCES | sudo tee /etc/apt/sources.list.d/arm64-ports.list
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main universe
+        SOURCES
         sudo apt-get update
 
         # Install ARM64 cross-libraries for linking
-        sudo apt-get install -y \
+        # --allow-downgrades handles version mismatches between host and arm64 packages
+        sudo apt-get install -y --no-install-recommends --allow-downgrades \
           libfontconfig1-dev:arm64 \
           libxkbcommon-dev:arm64 \
           libdrm-dev:arm64 \
