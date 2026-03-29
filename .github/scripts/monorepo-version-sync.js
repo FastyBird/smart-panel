@@ -9,7 +9,7 @@ const PACKAGES = [
 	{ name: "@fastybird/smart-panel-backend", path: "apps/backend", check: true },
 	{ name: "@fastybird/smart-panel-website", path: "apps/website", check: false },
 	{ name: "@fastybird/smart-panel-extension-example", path: "packages/example-extension", check: false },
-	{ name: "@fastybird/smart-panel-extension-sdk", path: "packages/extension-sdk", check: false },
+	{ name: "@fastybird/smart-panel-extension-sdk", path: "packages/extension-sdk", check: true },
 	{ name: "@fastybird/smart-panel", path: "build", check: true },
 ];
 
