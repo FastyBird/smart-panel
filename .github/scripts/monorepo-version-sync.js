@@ -65,6 +65,21 @@ const getPublishedVersions = (packageName, base, tag) => {
 	}
 }
 
+const getCurrentRepoVersion = (base, tag) => {
+	try {
+		const pkg = JSON.parse(fs.readFileSync(ROOT_PKG_PATH, "utf8"));
+		const current = pkg.version;
+
+		if (tag === "latest" ? current === base : current.startsWith(`${base}-${tag}.`)) {
+			return current;
+		}
+	} catch {
+		// Ignore
+	}
+
+	return null;
+}
+
 const extractBuildNumber = (existingVersions) => {
 	if (tag === "latest") {
 		return existingVersions.length; // e.g. 0, 1, 2, ...
@@ -168,6 +183,14 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 		.flatMap((pkg) =>
 			getPublishedVersions(pkg.name, baseVersion, tag)
 		);
+
+	// Also consider the current repo version as a baseline to avoid re-using
+	// versions that were published and then unpublished (npm 24h reservation)
+	const repoVersion = getCurrentRepoVersion(baseVersion, tag);
+	if (repoVersion && !allPublishedVersions.includes(repoVersion)) {
+		allPublishedVersions.push(repoVersion);
+		allPublishedVersions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+	}
 
 	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
 
