@@ -110,6 +110,9 @@ export class LinuxInstaller implements BaseInstaller {
 		// Create systemd service file
 		this.createServiceFile(user, dataDir);
 
+		// Install polkit rule for reboot/poweroff authorization
+		this.createPolkitRule(user);
+
 		// Reload systemd
 		exec('systemctl daemon-reload');
 
@@ -162,6 +165,12 @@ export class LinuxInstaller implements BaseInstaller {
 
 		// Reload systemd
 		exec('systemctl daemon-reload');
+
+		// Remove polkit rule
+		const polkitRule = '/etc/polkit-1/rules.d/50-smart-panel.rules';
+		if (existsSync(polkitRule)) {
+			unlinkSync(polkitRule);
+		}
 
 		// Remove environment file
 		if (existsSync('/etc/smart-panel/environment')) {
@@ -472,5 +481,27 @@ WantedBy=multi-user.target
 `;
 
 		writeFile(SYSTEMD_PATH, content, 0o644);
+	}
+
+	private createPolkitRule(user: string): void {
+		const rulesDir = '/etc/polkit-1/rules.d';
+
+		createDirectory(rulesDir, undefined, 0o755);
+
+		const content = `// Allow the ${user} service user to reboot and power off
+polkit.addRule(function (action, subject) {
+	if (
+		(action.id === "org.freedesktop.login1.power-off" ||
+			action.id === "org.freedesktop.login1.power-off-multiple-sessions" ||
+			action.id === "org.freedesktop.login1.reboot" ||
+			action.id === "org.freedesktop.login1.reboot-multiple-sessions") &&
+		subject.user === "${user}"
+	) {
+		return polkit.Result.YES;
+	}
+});
+`;
+
+		writeFile(join(rulesDir, '50-smart-panel.rules'), content, 0o644);
 	}
 }
