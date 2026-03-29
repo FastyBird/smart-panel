@@ -54,6 +54,16 @@ const deviceManagerService = {
 	createOrUpdate: jest.fn().mockResolvedValue({}),
 };
 
+const deviceAddressService = {
+	findDeviceByCanonicalMac: jest.fn().mockResolvedValue(null),
+	setCanonicalMac: jest.fn().mockResolvedValue(undefined),
+	syncAddressesAndHostname: jest.fn().mockResolvedValue(undefined),
+	getPreferredAddress: jest.fn().mockResolvedValue(null),
+	upsertAddress: jest.fn().mockResolvedValue(undefined),
+	getAllAddresses: jest.fn().mockResolvedValue([]),
+	removeAllForDevice: jest.fn().mockResolvedValue(undefined),
+};
+
 const transformerRegistry = {
 	get: jest.fn().mockReturnValue(null),
 };
@@ -74,7 +84,7 @@ type FakeSwitch = {
 type FakeDevice = {
 	id: string;
 	modelName: string;
-	system: { config: { device: { name: string | null } } };
+	system: { config: { device: { name: string | null; mac: string } } };
 	wifi?: Wifi;
 	ethernet?: { key: string; ip: string | null };
 	switch?: { key: string; output: boolean };
@@ -140,6 +150,7 @@ describe('DelegatesManagerService', () => {
 			channelsPropertiesService as any,
 			deviceConnectivityService as any,
 			deviceManagerService as any,
+			deviceAddressService as any,
 			propertyMappingStorage as any,
 			transformerRegistry as any,
 		);
@@ -223,7 +234,7 @@ describe('DelegatesManagerService', () => {
 		const shelly: FakeDevice = {
 			id: 'shelly123',
 			modelName: 'Plus 1',
-			system: { config: { device: { name: 'My Shelly' } } },
+			system: { config: { device: { name: 'My Shelly', mac: 'AABBCCDDEEFF' } } },
 			wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.10' },
 			switch: { key: 'switch:0', output: false },
 		};
@@ -265,7 +276,7 @@ describe('DelegatesManagerService', () => {
 		const shelly: FakeDevice = {
 			id: 'shelly-set',
 			modelName: 'Plus 1',
-			system: { config: { device: { name: 'My Shelly' } } },
+			system: { config: { device: { name: 'My Shelly', mac: 'AABBCCDDEEFF' } } },
 			wifi: { key: 'wifi:0', rssi: -70, sta_ip: '192.168.1.22' },
 		};
 
@@ -361,7 +372,7 @@ describe('DelegatesManagerService', () => {
 		const shelly: FakeDevice = {
 			id: 'shelly-remove',
 			modelName: 'Plus 1',
-			system: { config: { device: { name: 'X' } } },
+			system: { config: { device: { name: 'X', mac: 'AABBCCDDEEFF' } } },
 			wifi: { key: 'wifi:0', rssi: -55, sta_ip: '192.168.1.30' },
 		};
 
@@ -400,7 +411,7 @@ describe('DelegatesManagerService', () => {
 		const shelly1: FakeDevice = {
 			id: 'shelly-detach-1',
 			modelName: 'Plus 1',
-			system: { config: { device: { name: 'D1' } } },
+			system: { config: { device: { name: 'D1', mac: 'AABBCCDDEEFF' } } },
 			wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.11' },
 		};
 

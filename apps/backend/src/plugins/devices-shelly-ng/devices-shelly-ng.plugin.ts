@@ -44,10 +44,12 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
+import { ShellyNgDeviceAddressEntity } from './entities/shelly-ng-device-address.entity';
 import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
 import { ShellyNgConfigModel } from './models/config.model';
 import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
 import { DatabaseDiscovererService } from './services/database-discoverer.service';
+import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
@@ -60,7 +62,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([ShellyNgDeviceEntity, ShellyNgChannelEntity, ShellyNgChannelPropertyEntity]),
+		TypeOrmModule.forFeature([ShellyNgDeviceEntity, ShellyNgChannelEntity, ShellyNgChannelPropertyEntity, ShellyNgDeviceAddressEntity]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
@@ -71,6 +73,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		MappingLoaderService,
 		PropertyMappingStorageService,
 		ShellyRpcClientService,
+		DeviceAddressService,
 		DatabaseDiscovererService,
 		DelegatesManagerService,
 		DeviceManagerService,

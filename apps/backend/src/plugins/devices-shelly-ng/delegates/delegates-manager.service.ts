@@ -21,7 +21,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { AddressType, ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
 	DevicesShellyNgNotFoundException,
@@ -37,6 +37,7 @@ import {
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
+import { DeviceAddressService } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
@@ -94,12 +95,20 @@ export class DelegatesManagerService {
 	 */
 	private readonly deviceLocks: Map<string, Promise<void>> = new Map();
 
+	/**
+	 * Tracks how many delegates are currently connected per system device ID.
+	 * Used to avoid setting DISCONNECTED when one interface goes down but another
+	 * is still active (e.g., WiFi disconnects but Ethernet stays connected).
+	 */
+	private readonly connectedDelegatesPerDevice: Map<string, number> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceManagerService: DeviceManagerService,
+		private readonly deviceAddressService: DeviceAddressService,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly transformerRegistry: TransformerRegistry,
 	) {}
@@ -129,17 +138,38 @@ export class DelegatesManagerService {
 
 		this.delegates.set(shelly.id, delegate);
 
-		const hostname = shelly.wifi?.sta_ip ?? shelly.ethernet?.ip ?? null;
+		const wifiIp = shelly.wifi?.sta_ip ?? null;
+		const ethernetIp = shelly.ethernet?.ip ?? null;
+		const hostname = ethernetIp ?? wifiIp ?? null;
 
 		if (hostname === null) {
 			throw new DevicesShellyNgException('Missing device hostname or IP address');
 		}
+
+		// Get canonical MAC from the device's system config for deduplication.
+		// Shelly Pro devices may have different MACs on WiFi vs Ethernet, but
+		// Sys.GetConfig always returns the same canonical MAC regardless of interface.
+		const canonicalMac: string | null = shelly.system?.config?.device?.mac ?? null;
 
 		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
 			'identifier',
 			shelly.id,
 			DEVICES_SHELLY_NG_TYPE,
 		);
+
+		// If not found by library device ID, check by canonical MAC to detect
+		// the same physical device discovered via a different network interface
+		// (e.g., Shelly Pro found via WiFi first, now discovered via Ethernet).
+		if (device === null && canonicalMac) {
+			device = await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac);
+
+			if (device !== null) {
+				this.logger.log(
+					`Device=${shelly.id} matched existing device=${device.identifier} by canonical MAC=${canonicalMac} (multi-interface merge)`,
+					{ resource: device.id },
+				);
+			}
+		}
 
 		let isNewDevice = false;
 
@@ -171,6 +201,14 @@ export class DelegatesManagerService {
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
 
+		// Store canonical MAC for future deduplication
+		if (canonicalMac && device.canonicalMac !== canonicalMac) {
+			await this.deviceAddressService.setCanonicalMac(device.id, canonicalMac);
+		}
+
+		// Store network addresses and update hostname to preferred (ethernet-first)
+		await this.deviceAddressService.syncAddressesAndHostname(device.id, wifiIp, ethernetIp);
+
 		if (isNewDevice) {
 			// Provision channels and properties before setting up handlers.
 			// This is called explicitly (awaited) so channels exist by the time
@@ -178,12 +216,9 @@ export class DelegatesManagerService {
 			// createOrUpdate asynchronously, but it is idempotent.
 			await this.deviceManagerService.createOrUpdate(device.id);
 
-			// Reload device to pick up any changes made by createOrUpdate
-			device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-				'identifier',
-				shelly.id,
-				DEVICES_SHELLY_NG_TYPE,
-			);
+			// Reload device by system ID since the identifier might differ from shelly.id
+			// when the device was matched by canonical MAC
+			device = await this.devicesService.findOne<ShellyNgDeviceEntity>(device.id, DEVICES_SHELLY_NG_TYPE);
 
 			if (device === null) {
 				throw new DevicesShellyNgException('Device not found after provisioning');
@@ -1628,28 +1663,58 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.set(delegate.id, valueHandler);
 
 		const connectionHandler = (state: boolean | null): void => {
-			this.deviceConnectivityService
-				.setConnectionState(device.id, {
-					state:
-						state === null ? ConnectionState.UNKNOWN : state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
-				})
-				.then((): void => {
-					if (state) {
-						// Intentionally empty - device connected
-					} else {
-						// Intentionally empty - device disconnected
-					}
-				})
-				.catch((err: Error) => {
-					this.logger.error(
-						`Failed to set state=${state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED} for device=${delegate.id}`,
-						{
-							resource: device.id,
-							message: err.message,
-							stack: err.stack,
-						},
+			const deviceDbId = this.delegateDeviceIds.get(delegate.id) ?? device.id;
+
+			if (state === true) {
+				// Increment connected delegates counter
+				const count = (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) + 1;
+				this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+				this.deviceConnectivityService
+					.setConnectionState(deviceDbId, { state: ConnectionState.CONNECTED })
+					.catch((err: Error) => {
+						this.logger.error(
+							`Failed to set state=${ConnectionState.CONNECTED} for device=${delegate.id}`,
+							{ resource: deviceDbId, message: err.message, stack: err.stack },
+						);
+					});
+			} else if (state === false) {
+				// Decrement connected delegates counter
+				const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
+				this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+				// Only set DISCONNECTED if no other delegate for this device is still connected
+				if (count === 0) {
+					this.deviceConnectivityService
+						.setConnectionState(deviceDbId, { state: ConnectionState.DISCONNECTED })
+						.catch((err: Error) => {
+							this.logger.error(
+								`Failed to set state=${ConnectionState.DISCONNECTED} for device=${delegate.id}`,
+								{ resource: deviceDbId, message: err.message, stack: err.stack },
+							);
+						});
+				} else {
+					this.logger.debug(
+						`Device=${delegate.id} disconnected but ${count} other delegate(s) still connected`,
+						{ resource: deviceDbId },
 					);
-				});
+				}
+			} else {
+				// state === null → removing delegate
+				const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
+				this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+				if (count === 0) {
+					this.deviceConnectivityService
+						.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+						.catch((err: Error) => {
+							this.logger.error(
+								`Failed to set state=${ConnectionState.UNKNOWN} for device=${delegate.id}`,
+								{ resource: deviceDbId, message: err.message, stack: err.stack },
+							);
+						});
+				}
+			}
 		};
 
 		delegate.on('connected', connectionHandler);
@@ -1993,6 +2058,7 @@ export class DelegatesManagerService {
 
 		this.pendingWrites.clear();
 		this.deviceLocks.clear();
+		this.connectedDelegatesPerDevice.clear();
 	}
 
 	destroy(): void {

@@ -89,6 +89,16 @@ export const DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME = 'Devices Shelly NG plugin';
 export const DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION =
 	'Endpoints for interacting with Shelly Next-Generation (NG) devices and their states. This plugin allows discovery, inspection, and potential adoption of Shelly Next-Generation devices into the Smart Panel ecosystem.';
 
+export enum AddressType {
+	ETHERNET = 'ethernet',
+	WIFI = 'wifi',
+}
+
+export const ADDRESS_PRIORITY: Record<AddressType, number> = {
+	[AddressType.ETHERNET]: 0,
+	[AddressType.WIFI]: 1,
+};
+
 export enum ComponentType {
 	SWITCH = 'switch',
 	COVER = 'cover',

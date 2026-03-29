@@ -7,6 +7,8 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
+import { DeviceAddressService } from './device-address.service';
+
 @Injectable()
 export class DatabaseDiscovererService extends DeviceDiscoverer {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -16,7 +18,10 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 
 	private readonly emitInterval = 20; // The interval, in milliseconds, to wait between each emitted device.
 
-	constructor(private readonly devicesService: DevicesService) {
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly deviceAddressService: DeviceAddressService,
+	) {
 		super();
 	}
 
@@ -34,9 +39,13 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 				continue;
 			}
 
+			// Use preferred address from address table (ethernet-first), fall back to device hostname
+			const preferredAddress = await this.deviceAddressService.getPreferredAddress(d.id);
+			const hostname = preferredAddress ?? d.hostname;
+
 			await this.emitDevice({
 				deviceId: d.identifier,
-				hostname: d.hostname,
+				hostname,
 			});
 		}
 	}

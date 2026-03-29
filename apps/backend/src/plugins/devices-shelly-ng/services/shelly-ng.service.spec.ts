@@ -26,6 +26,8 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 	DEVICES_SHELLY_NG_TYPE: 'devices-shelly-ng',
 	ComponentType: { WIFI: 'wifi' }, // add more keys if a test path needs them
 	DeviceProfile: { SWITCH: 'switch', COVER: 'cover' },
+	AddressType: { ETHERNET: 'ethernet', WIFI: 'wifi' },
+	ADDRESS_PRIORITY: { ethernet: 0, wifi: 1 },
 	DESCRIPTORS: {}, // avoid pulling in device model classes
 }));
 
