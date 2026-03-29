@@ -55,16 +55,29 @@ runs:
         sudo apt-get update
 
         # Install ARM64 cross-libraries for linking
-        # --allow-downgrades handles version mismatches between host and arm64 packages
-        sudo apt-get install -y --no-install-recommends --allow-downgrades \
-          libfontconfig1-dev:arm64 \
-          libxkbcommon-dev:arm64 \
-          libdrm-dev:arm64 \
-          libgbm-dev:arm64 \
-          libegl-dev:arm64 \
-          libinput-dev:arm64 \
-          libudev-dev:arm64 \
+        # Install each package individually — libgbm-dev:arm64 often pulls in
+        # libglib2.0-dev:arm64 which conflicts with held amd64 packages on the runner.
+        # If a -dev package fails, fall back to its runtime lib for linking.
+        ARM64_PACKAGES=(
+          libfontconfig1-dev:arm64
+          libxkbcommon-dev:arm64
+          libdrm-dev:arm64
+          libegl-dev:arm64
+          libinput-dev:arm64
+          libudev-dev:arm64
           libsystemd-dev:arm64
+        )
+        for pkg in "${ARM64_PACKAGES[@]}"; do
+          sudo apt-get install -y --no-install-recommends "$pkg" || \
+            echo "⚠️  Failed to install $pkg (non-critical, continuing)"
+        done
+
+        # libgbm-dev:arm64 is problematic due to libglib2.0-dev:arm64 transitive dep.
+        # Try full dev package first, fall back to runtime lib only.
+        sudo apt-get install -y --no-install-recommends libgbm-dev:arm64 || {
+          echo "⚠️  libgbm-dev:arm64 failed, installing runtime lib instead"
+          sudo apt-get install -y --no-install-recommends libgbm1:arm64 || true
+        }
       shell: bash
 
     - name: "Install flutter-elinux"

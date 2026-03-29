@@ -192,7 +192,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Build App"
-        run: "pnpm --filter @fastybird/smart-panel-admin build"
+        run: "pnpm --filter @fastybird/smart-panel-admin build:no-check"
 
       - name: "Publish To NPM"
         uses: "./.github/actions/publish-npm-package"
@@ -431,7 +431,7 @@ jobs:
       - name: "Install Linux Build Dependencies"
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"

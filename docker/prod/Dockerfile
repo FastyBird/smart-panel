@@ -37,6 +37,7 @@ COPY apps/backend/ apps/backend/
 COPY apps/admin/ apps/admin/
 COPY packages/extension-sdk/ packages/extension-sdk/
 COPY spec/ spec/
+COPY var/ var/
 
 # Generate specs and build (extension SDK must be built before openapi generation)
 RUN pnpm run generate:spec && \
@@ -68,6 +69,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/backend/ apps/backend/
 COPY packages/extension-sdk/ packages/extension-sdk/
 COPY spec/ spec/
+COPY var/ var/
 
 # Generate specs and build (extension SDK must be built before openapi generation)
 RUN pnpm run generate:spec && \
