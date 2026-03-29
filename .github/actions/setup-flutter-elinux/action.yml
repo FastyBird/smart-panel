@@ -69,13 +69,18 @@ runs:
         # libinput and libfontconfig can't be installed via apt (glib conflict).
         # Download debs and extract with dpkg-deb (bypasses postinst scripts).
         CROSS_LIBS_DIR=$(mktemp -d)
-        apt-get download libinput10:arm64 libfontconfig1:arm64 -o Dir::Cache::Archives="$CROSS_LIBS_DIR" 2>/dev/null || true
-        for deb in "$CROSS_LIBS_DIR"/*.deb; do
+        pushd "$CROSS_LIBS_DIR" > /dev/null
+        # apt-get download may exit non-zero with warnings; ignore exit code
+        apt-get download libinput10:arm64 libfontconfig1:arm64 || true
+        echo "Downloaded debs:"
+        ls -la *.deb 2>/dev/null || echo "  (none)"
+        for deb in *.deb; do
           if [ -f "$deb" ]; then
-            echo "Extracting $(basename "$deb")"
+            echo "Extracting $deb"
             sudo dpkg-deb -x "$deb" / || echo "Warning: failed to extract $deb"
           fi
         done
+        popd > /dev/null
         rm -rf "$CROSS_LIBS_DIR"
 
         # Create .so linker symlinks (linker needs libinput.so, not libinput.so.10)
