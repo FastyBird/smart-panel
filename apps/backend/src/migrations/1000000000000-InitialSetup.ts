@@ -335,6 +335,7 @@ export class InitialSetup1000000000000 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "temporary_devices_module_devices_controls"`);
         await queryRunner.query(`DROP INDEX "IDX_de1447169fa1df5ea8d41bf02a"`);
         await queryRunner.query(`DROP INDEX "IDX_36ec1c9bafc04373563cfb5f83"`);
+        await queryRunner.query(`DROP INDEX "IDX_shelly_ng_canonical_mac"`);
         await queryRunner.query(`DROP INDEX "IDX_9c2fa00cfe1d7964da6b8ad497"`);
         await queryRunner.query(`DROP INDEX "IDX_b6aa1841ab84616391d34cd5cf"`);
         await queryRunner.query(`DROP INDEX "IDX_2e587b2a8bcb55f468bb6ec6fe"`);
@@ -344,6 +345,7 @@ export class InitialSetup1000000000000 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "temporary_devices_module_devices"`);
         await queryRunner.query(`CREATE INDEX "IDX_de1447169fa1df5ea8d41bf02a" ON "devices_module_devices" ("type") `);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_36ec1c9bafc04373563cfb5f83" ON "devices_module_devices" ("haDeviceId") `);
+        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_shelly_ng_canonical_mac" ON "devices_module_devices" ("canonicalMac") `);
         await queryRunner.query(`CREATE INDEX "IDX_9c2fa00cfe1d7964da6b8ad497" ON "devices_module_devices" ("roomId") `);
         await queryRunner.query(`CREATE INDEX "IDX_b6aa1841ab84616391d34cd5cf" ON "devices_module_devices" ("enabled") `);
         await queryRunner.query(`CREATE INDEX "IDX_2e587b2a8bcb55f468bb6ec6fe" ON "devices_module_devices" ("identifier") `);

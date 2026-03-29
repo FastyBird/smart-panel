@@ -1771,6 +1771,19 @@ export class DelegatesManagerService {
 								});
 							});
 					}
+				} else if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
+					// Delegate was already disconnected (counter already decremented),
+					// but it's the last delegate being removed — transition to UNKNOWN
+					// since no delegate is monitoring the device anymore.
+					this.deviceConnectivityService
+						.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+						.catch((err: Error) => {
+							this.logger.error(`Failed to set state=UNKNOWN for device=${delegate.id}`, {
+								resource: deviceDbId,
+								message: err.message,
+								stack: err.stack,
+							});
+						});
 				}
 
 				this.delegateConnectedState.delete(delegate.id);
