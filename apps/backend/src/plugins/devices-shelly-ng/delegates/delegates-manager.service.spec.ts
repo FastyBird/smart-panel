@@ -97,6 +97,7 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			super();
 			this.shelly = shelly;
 			this.id = shelly.id;
+			this.connected = true;
 
 			// component maps the manager iterates over
 			this.switches = new Map();
@@ -338,6 +339,7 @@ describe('DelegatesManagerService', () => {
 			return true;
 		});
 
+		svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 		svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
 
 		const result = await svc.setChannelValue(device, channel, [
@@ -458,6 +460,7 @@ describe('DelegatesManagerService', () => {
 				return true;
 			});
 
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
 
 			const result = await svc.setPropertyValue(device, property, 10);
@@ -481,6 +484,7 @@ describe('DelegatesManagerService', () => {
 				return true;
 			});
 
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
 
 			const result = await svc.setPropertyValue(device, property, 10);
@@ -539,7 +543,8 @@ describe('DelegatesManagerService', () => {
 				return true;
 			});
 
-			svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
+		svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
 
 			const result = await svc.setChannelValue(device, channel, [
 				{ property: prop1, value: 10 },
@@ -573,6 +578,7 @@ describe('DelegatesManagerService', () => {
 			(transformerRegistry.get as jest.Mock).mockReturnValueOnce(mockTransformer);
 
 			const handlerSpy = jest.fn(async () => true);
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
 
 			const result = await svc.setPropertyValue(device, property, true);
@@ -607,6 +613,7 @@ describe('DelegatesManagerService', () => {
 				return true;
 			});
 
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
 
 			const result = await svc.setPropertyValue(device, property, 10);
@@ -642,6 +649,7 @@ describe('DelegatesManagerService', () => {
 				return true;
 			});
 
+			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
 			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
 
 			const result = await svc.setPropertyValue(device, property, 50);
