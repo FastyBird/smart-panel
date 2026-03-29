@@ -74,7 +74,7 @@ runs:
         VERSION=$(jq -r .version package.json)
         PACKAGE_NAME=$(jq -r .name package.json)
 
-        if npm view "$PACKAGE_NAME@$VERSION" --registry=${{ inputs.npm-registry-url }} > /dev/null 2>&1; then
+        if npm view "$PACKAGE_NAME@$VERSION" --registry=${{ inputs.npm-registry-url }} --prefer-online --cache=/tmp/npm-publish-check-cache > /dev/null 2>&1; then
           echo "🔁 Skipping: $PACKAGE_NAME@$VERSION already exists on registry"
           exit 0
         fi
