@@ -55,15 +55,10 @@ runs:
         sudo apt-get update
 
         # Install ARM64 cross-libraries for linking.
-        # Several -dev:arm64 packages transitively depend on libglib2.0-dev:arm64
-        # which conflicts with held amd64 packages on the runner, and runtime
-        # libs like libglib2.0-0t64:arm64 have postinst scripts that try to
-        # execute arm64 binaries on the amd64 host.
-        #
-        # Strategy: install conflict-free -dev packages via apt, then download
-        # and extract problematic arm64 libs with dpkg-deb (bypassing postinst).
-
-        # These -dev packages install cleanly (no glib dependency)
+        # libegl-dev:arm64 pulls in the full mesa stack including libgbm1:arm64.
+        # libinput-dev:arm64 and libfontconfig1-dev:arm64 fail because they
+        # depend on libglib2.0-dev:arm64 (conflicts with amd64 held packages)
+        # and its runtime lib postinst tries to run arm64 binaries on the host.
         sudo apt-get install -y --no-install-recommends \
           libxkbcommon-dev:arm64 \
           libdrm-dev:arm64 \
@@ -71,29 +66,30 @@ runs:
           libudev-dev:arm64 \
           libsystemd-dev:arm64
 
-        # These packages transitively pull in libglib2.0:arm64 whose postinst
-        # tries to execute arm64 binaries on the amd64 host. Download and extract
-        # the .so files directly, bypassing dpkg postinst scripts.
+        # libinput and libfontconfig can't be installed via apt (glib conflict).
+        # Download debs and extract with dpkg-deb (bypasses postinst scripts).
         CROSS_LIBS_DIR=$(mktemp -d)
-        cd "$CROSS_LIBS_DIR"
-        apt-get download \
-          libinput10:arm64 \
-          libgbm1:arm64 \
-          libfontconfig1:arm64 2>/dev/null || true
-
-        for deb in *.deb; do
-          [ -f "$deb" ] && sudo dpkg-deb -x "$deb" /
+        apt-get download libinput10:arm64 libfontconfig1:arm64 -o Dir::Cache::Archives="$CROSS_LIBS_DIR" 2>/dev/null || true
+        for deb in "$CROSS_LIBS_DIR"/*.deb; do
+          if [ -f "$deb" ]; then
+            echo "Extracting $(basename "$deb")"
+            sudo dpkg-deb -x "$deb" / || echo "Warning: failed to extract $deb"
+          fi
         done
-        cd -
         rm -rf "$CROSS_LIBS_DIR"
 
-        # Create linker symlinks for runtime libs (the linker needs .so, not .so.N)
-        for lib in /usr/lib/aarch64-linux-gnu/libinput.so.* \
-                   /usr/lib/aarch64-linux-gnu/libgbm.so.* \
-                   /usr/lib/aarch64-linux-gnu/libfontconfig.so.*; do
-          base="${lib%%.*}.so"
-          [ ! -e "$base" ] && sudo ln -s "$(basename "$lib")" "$base"
+        # Create .so linker symlinks (linker needs libinput.so, not libinput.so.10)
+        for pattern in libinput libfontconfig libgbm; do
+          versioned=$(ls /usr/lib/aarch64-linux-gnu/${pattern}.so.* 2>/dev/null | head -1)
+          if [ -n "$versioned" ] && [ ! -e "/usr/lib/aarch64-linux-gnu/${pattern}.so" ]; then
+            sudo ln -s "$(basename "$versioned")" "/usr/lib/aarch64-linux-gnu/${pattern}.so"
+            echo "Created symlink: ${pattern}.so -> $(basename "$versioned")"
+          fi
         done
+
+        # Verify critical libs are present
+        echo "=== ARM64 cross-libraries ==="
+        ls -la /usr/lib/aarch64-linux-gnu/libinput.so* /usr/lib/aarch64-linux-gnu/libgbm.so* 2>/dev/null || echo "WARNING: Some ARM64 libs missing!"
       shell: bash
 
     - name: "Install flutter-elinux"
