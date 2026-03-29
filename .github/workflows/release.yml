@@ -769,6 +769,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  build-raspbian:
+    needs: ["tag", "sync-versions"]
+    name: "Build Raspbian Images"
+    uses: "./.github/workflows/build-raspbian-image.yml"
+    with:
+      version: "${{ needs.sync-versions.outputs.version }}"
+      tag_name: "v${{ needs.tag.outputs.version }}"
+    permissions:
+      contents: write
+
   build-docker:
     needs: ["tag", "sync-versions", "changelog"]
     name: "Build & Push Docker Image"
