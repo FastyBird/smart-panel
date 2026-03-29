@@ -1780,15 +1780,13 @@ export class DelegatesManagerService {
 							});
 					}
 				} else if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
-					this.deviceConnectivityService
-						.setConnectionState(deviceDbId, { state: targetState })
-						.catch((err: Error) => {
-							this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
-								resource: deviceDbId,
-								message: err.message,
-								stack: err.stack,
-							});
+					this.deviceConnectivityService.setConnectionState(deviceDbId, { state: targetState }).catch((err: Error) => {
+						this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
+							resource: deviceDbId,
+							message: err.message,
+							stack: err.stack,
 						});
+					});
 				}
 
 				this.delegateConnectedState.delete(delegate.id);
