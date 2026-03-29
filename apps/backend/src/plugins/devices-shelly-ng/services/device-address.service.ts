@@ -41,17 +41,23 @@ export class DeviceAddressService {
 				});
 			}
 		} else {
-			const entity = this.addressRepository.create({
-				deviceId,
-				interfaceType,
-				address,
-			});
+			try {
+				const entity = this.addressRepository.create({
+					deviceId,
+					interfaceType,
+					address,
+				});
 
-			await this.addressRepository.save(entity);
+				await this.addressRepository.save(entity);
 
-			this.logger.log(`Stored ${interfaceType} address ${address} for device=${deviceId}`, {
-				resource: deviceId,
-			});
+				this.logger.log(`Stored ${interfaceType} address ${address} for device=${deviceId}`, {
+					resource: deviceId,
+				});
+			} catch {
+				// Unique constraint violation — another delegate inserted concurrently.
+				// Retry as an update.
+				await this.addressRepository.update({ deviceId, interfaceType }, { address });
+			}
 		}
 	}
 
