@@ -1780,17 +1780,15 @@ export class DelegatesManagerService {
 							});
 					}
 				} else if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
-					// Delegate was already disconnected (counter already decremented).
-					// Transition to the appropriate state based on whether other delegates remain.
-					this.deviceConnectivityService.setConnectionState(deviceDbId, { state: targetState }).catch(
-						(err: Error) => {
+					this.deviceConnectivityService
+						.setConnectionState(deviceDbId, { state: targetState })
+						.catch((err: Error) => {
 							this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
 								resource: deviceDbId,
 								message: err.message,
 								stack: err.stack,
 							});
-						},
-					);
+						});
 				}
 
 				this.delegateConnectedState.delete(delegate.id);

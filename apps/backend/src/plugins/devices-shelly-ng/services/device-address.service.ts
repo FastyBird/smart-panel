@@ -66,33 +66,21 @@ export class DeviceAddressService {
 	 * to the preferred (ethernet-first) address.
 	 */
 	async syncAddressesAndHostname(deviceId: string, wifiIp: string | null, ethernetIp: string | null): Promise<void> {
+		// Only upsert addresses that are present. A null IP means the delegate
+		// doesn't have info about that interface — not that the interface is gone.
+		// Another delegate may have stored the address from its own discovery.
 		if (ethernetIp) {
 			await this.upsertAddress(deviceId, AddressType.ETHERNET, ethernetIp);
-		} else {
-			await this.removeAddress(deviceId, AddressType.ETHERNET);
 		}
 
 		if (wifiIp) {
 			await this.upsertAddress(deviceId, AddressType.WIFI, wifiIp);
-		} else {
-			await this.removeAddress(deviceId, AddressType.WIFI);
 		}
 
 		const preferred = await this.getPreferredAddress(deviceId);
 
 		if (preferred) {
 			await this.deviceRepository.update(deviceId, { hostname: preferred });
-		}
-	}
-
-	/**
-	 * Remove a specific address for a device (e.g. when an interface is no longer available).
-	 */
-	private async removeAddress(deviceId: string, interfaceType: AddressType): Promise<void> {
-		const result = await this.addressRepository.delete({ deviceId, interfaceType });
-
-		if (result.affected && result.affected > 0) {
-			this.logger.log(`Removed stale ${interfaceType} address for device=${deviceId}`, { resource: deviceId });
 		}
 	}
 
