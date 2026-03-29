@@ -1756,15 +1756,23 @@ export class DelegatesManagerService {
 				}
 			} else {
 				// state === null → removing delegate
+				const identifier = this.delegateToIdentifier.get(delegate.id);
+				const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
+				// The current delegate is still in the set at this point (removed later in performRemove)
+				const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
+				// If other delegates still exist for this device, the device is still being
+				// monitored (possibly reconnecting). Use DISCONNECTED, not UNKNOWN.
+				const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
+
 				if (wasConnected) {
 					const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
 					this.connectedDelegatesPerDevice.set(deviceDbId, count);
 
 					if (count === 0) {
 						this.deviceConnectivityService
-							.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+							.setConnectionState(deviceDbId, { state: targetState })
 							.catch((err: Error) => {
-								this.logger.error(`Failed to set state=UNKNOWN for device=${delegate.id}`, {
+								this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
 									resource: deviceDbId,
 									message: err.message,
 									stack: err.stack,
@@ -1772,13 +1780,12 @@ export class DelegatesManagerService {
 							});
 					}
 				} else if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
-					// Delegate was already disconnected (counter already decremented),
-					// but it's the last delegate being removed — transition to UNKNOWN
-					// since no delegate is monitoring the device anymore.
+					// Delegate was already disconnected (counter already decremented).
+					// Transition to the appropriate state based on whether other delegates remain.
 					this.deviceConnectivityService
-						.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+						.setConnectionState(deviceDbId, { state: targetState })
 						.catch((err: Error) => {
-							this.logger.error(`Failed to set state=UNKNOWN for device=${delegate.id}`, {
+							this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
 								resource: deviceDbId,
 								message: err.message,
 								stack: err.stack,
@@ -1825,15 +1832,18 @@ export class DelegatesManagerService {
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
-			// Mark device as unknown before detaching listeners so UI reflects removal
 			connectionHandler(null);
 		} else {
 			const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
+			const identifier = this.delegateToIdentifier.get(deviceId);
+			const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
+			const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
+			const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
 
 			void this.deviceConnectivityService
-				.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+				.setConnectionState(deviceDbId, { state: targetState })
 				.catch((err: Error): void => {
-					this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
+					this.logger.warn(`Failed to mark device=${delegate.id} as ${targetState} while removing delegate`, {
 						resource: delegate.id,
 						message: err.message,
 						stack: err.stack,
