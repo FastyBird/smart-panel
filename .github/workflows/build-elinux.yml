@@ -1,6 +1,24 @@
 name: "Build eLinux Display App"
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version string for the build"
+        type: string
+        required: true
+      build-number:
+        description: "Build number"
+        type: string
+        default: "1"
+      tag_name:
+        description: "Release tag to upload artifacts to (empty = skip upload)"
+        type: string
+        default: ""
+      target-arch:
+        description: "Target architecture: x64, arm64, or all"
+        type: string
+        default: "all"
   workflow_dispatch:
     inputs:
       target-arch:
@@ -11,16 +29,43 @@ on:
         options:
           - x64
           - arm64
+          - all
+
+permissions:
+  contents: write
 
 jobs:
+  matrix-setup:
+    name: "Setup build matrix"
+    runs-on: "ubuntu-latest"
+    outputs:
+      architectures: "${{ steps.set-matrix.outputs.architectures }}"
+    steps:
+      - name: "Determine architectures to build"
+        id: "set-matrix"
+        env:
+          TARGET_ARCH: "${{ inputs.target-arch || 'all' }}"
+        run: |
+          if [ "${TARGET_ARCH}" = "all" ]; then
+            echo 'architectures=["x64","arm64"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "architectures=[\"${TARGET_ARCH}\"]" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
-    name: "Build eLinux (${{ inputs.target-arch }})"
-    runs-on: ubuntu-latest
+    name: "Build eLinux (${{ matrix.target-arch }})"
+    needs: "matrix-setup"
+    runs-on: "ubuntu-latest"
     timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target-arch: "${{ fromJson(needs.matrix-setup.outputs.architectures) }}"
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: "actions/checkout@v6"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -37,19 +82,25 @@ jobs:
       - name: "Setup flutter-elinux"
         uses: "./.github/actions/setup-flutter-elinux"
         with:
-          target-arch: "${{ inputs.target-arch }}"
+          target-arch: "${{ matrix.target-arch }}"
 
       - name: "Build eLinux x64 App"
-        if: inputs.target-arch == 'x64'
+        if: matrix.target-arch == 'x64'
+        env:
+          FB_PANEL_APP_VERSION: "${{ inputs.version || '1.0.0' }}"
+          FB_PANEL_APP_BUILD: "${{ inputs.build-number || '1' }}"
         run: |
           cd apps/panel
           flutter-elinux build elinux --release \
             --target-backend-type=gbm \
-            --dart-define=APP_VERSION=1.0.0 \
-            --dart-define=APP_BUILD=1
+            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
+            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
 
       - name: "Build eLinux ARM64 App"
-        if: inputs.target-arch == 'arm64'
+        if: matrix.target-arch == 'arm64'
+        env:
+          FB_PANEL_APP_VERSION: "${{ inputs.version || '1.0.0' }}"
+          FB_PANEL_APP_BUILD: "${{ inputs.build-number || '1' }}"
         run: |
           cd apps/panel
           flutter-elinux build elinux --release \
@@ -57,19 +108,34 @@ jobs:
             --target-arch=arm64 \
             --target-compiler-triple=aarch64-linux-gnu \
             --target-sysroot=/ \
-            --dart-define=APP_VERSION=1.0.0 \
-            --dart-define=APP_BUILD=1
+            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
+            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
 
-      - name: "Package artifact"
+      - name: "Archive eLinux App"
         env:
-          ARCH: "${{ inputs.target-arch }}"
+          ARCH: "${{ matrix.target-arch }}"
         run: |
           tar -czvf "smart-panel-display-elinux-${ARCH}.tar.gz" \
             -C "./apps/panel/build/elinux/${ARCH}/release/bundle" .
+          shasum -a 256 "smart-panel-display-elinux-${ARCH}.tar.gz" \
+            > "smart-panel-display-elinux-${ARCH}.tar.gz.sha256"
 
       - name: "Upload artifact"
-        uses: actions/upload-artifact@v4
+        uses: "actions/upload-artifact@v7"
         with:
-          name: "smart-panel-elinux-${{ inputs.target-arch }}"
-          path: "smart-panel-display-elinux-${{ inputs.target-arch }}.tar.gz"
-          retention-days: 14
+          name: "display-panel-elinux-${{ matrix.target-arch }}"
+          path: |
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
+          retention-days: 30
+
+      - name: "Upload to release"
+        if: inputs.tag_name != ''
+        uses: "softprops/action-gh-release@v2"
+        with:
+          tag_name: "${{ inputs.tag_name }}"
+          files: |
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
+            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
