@@ -62,6 +62,10 @@ smart-panel ALL=(ALL) NOPASSWD: /usr/bin/chown -R smart-panel\:smart-panel /opt/
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
 
+# Install polkit rule to allow smart-panel user to reboot/poweroff
+mkdir -p /etc/polkit-1/rules.d
+cp /tmp/smart-panel-config/50-smart-panel.rules /etc/polkit-1/rules.d/
+
 # Grant the default user passwordless sudo access
 cat > /etc/sudoers.d/010_smartpanel-nopasswd << 'SUDOERS'
 smartpanel ALL=(ALL) NOPASSWD: ALL

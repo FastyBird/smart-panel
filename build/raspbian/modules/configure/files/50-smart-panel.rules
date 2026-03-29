@@ -1,0 +1,16 @@
+// Allow the smart-panel service user to reboot and power off without
+// interactive authentication.  This file is installed to
+// /etc/polkit-1/rules.d/ and is the primary mechanism for authorising
+// power actions — it works regardless of NoNewPrivileges or sudo.
+
+polkit.addRule(function (action, subject) {
+	if (
+		(action.id === "org.freedesktop.login1.power-off" ||
+			action.id === "org.freedesktop.login1.power-off-multiple-sessions" ||
+			action.id === "org.freedesktop.login1.reboot" ||
+			action.id === "org.freedesktop.login1.reboot-multiple-sessions") &&
+		subject.user === "smart-panel"
+	) {
+		return polkit.Result.YES;
+	}
+});
