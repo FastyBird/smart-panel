@@ -82,6 +82,14 @@ export class DelegatesManagerService {
 	private readonly delegateDeviceIds: Map<string, string> = new Map();
 
 	/**
+	 * Maps delegate ID (library device ID) → device.identifier (DB identifier).
+	 * Used to key setPropertiesHandlers and setChannelsHandlers consistently
+	 * so that lookups from setPropertyValue/setChannelValue match, even when
+	 * a device is discovered via a different network interface.
+	 */
+	private readonly delegateToIdentifier: Map<string, string> = new Map();
+
+	/**
 	 * Generation counter per device ID. Incremented at the start of each insert(),
 	 * reset on remove(). Allows in-progress insert() to detect that the device was
 	 * removed (or re-inserted) mid-operation and bail out early.
@@ -200,6 +208,7 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
+		this.delegateToIdentifier.set(delegate.id, device.identifier);
 
 		// Store canonical MAC for future deduplication
 		if (canonicalMac && device.canonicalMac !== canonicalMac) {
@@ -350,7 +359,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${switcherOn.id}`,
+				`${device.identifier}|${switcherOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
 						return false;
@@ -537,7 +546,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${coverPosition.id}`,
+				`${device.identifier}|${coverPosition.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					const n = coerceNumberSafe(val);
 
@@ -568,7 +577,7 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, coverCommand, 'stop');
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${coverCommand.id}`,
+				`${device.identifier}|${coverCommand.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'string') {
 						return false;
@@ -624,7 +633,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${lightOn.id}`,
+				`${device.identifier}|${lightOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
 						return false;
@@ -661,7 +670,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${brightness.id}`,
+					`${device.identifier}|${brightness.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -719,7 +728,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${rgbOn.id}`,
+				`${device.identifier}|${rgbOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
 						return false;
@@ -756,7 +765,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${brightness.id}`,
+					`${device.identifier}|${brightness.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -831,7 +840,7 @@ export class DelegatesManagerService {
 					});
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorRed.id}`,
+						`${device.identifier}|${colorRed.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -850,7 +859,7 @@ export class DelegatesManagerService {
 					);
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorGreen.id}`,
+						`${device.identifier}|${colorGreen.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -869,7 +878,7 @@ export class DelegatesManagerService {
 					);
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorBlue.id}`,
+						`${device.identifier}|${colorBlue.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -889,7 +898,7 @@ export class DelegatesManagerService {
 				}
 			}
 
-			this.setChannelsHandlers.set(`${delegate.id}|${rgb.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+			this.setChannelsHandlers.set(`${device.identifier}|${rgb.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
 				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
 				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
 				const colorRedUpdate = updates.find((u) => u.property.identifier === 'rgb:red');
@@ -980,7 +989,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${rgbwOn.id}`,
+				`${device.identifier}|${rgbwOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
 						return false;
@@ -1017,7 +1026,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${brightness.id}`,
+					`${device.identifier}|${brightness.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -1092,7 +1101,7 @@ export class DelegatesManagerService {
 					});
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorRed.id}`,
+						`${device.identifier}|${colorRed.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -1111,7 +1120,7 @@ export class DelegatesManagerService {
 					);
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorGreen.id}`,
+						`${device.identifier}|${colorGreen.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -1130,7 +1139,7 @@ export class DelegatesManagerService {
 					);
 
 					this.setPropertiesHandlers.set(
-						`${delegate.id}|${colorBlue.id}`,
+						`${device.identifier}|${colorBlue.id}`,
 						async (val: string | number | boolean): Promise<boolean> => {
 							const n = coerceNumberSafe(val);
 
@@ -1170,7 +1179,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${white.id}`,
+					`${device.identifier}|${white.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -1189,7 +1198,7 @@ export class DelegatesManagerService {
 				);
 			}
 
-			this.setChannelsHandlers.set(`${delegate.id}|${rgbw.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+			this.setChannelsHandlers.set(`${device.identifier}|${rgbw.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
 				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
 				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
 				const colorRedUpdate = updates.find((u) => u.property.identifier === 'rgb:red');
@@ -1287,7 +1296,7 @@ export class DelegatesManagerService {
 			});
 
 			this.setPropertiesHandlers.set(
-				`${delegate.id}|${cctOn.id}`,
+				`${device.identifier}|${cctOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
 						return false;
@@ -1324,7 +1333,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${brightness.id}`,
+					`${device.identifier}|${brightness.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -1363,7 +1372,7 @@ export class DelegatesManagerService {
 				});
 
 				this.setPropertiesHandlers.set(
-					`${delegate.id}|${ct.id}`,
+					`${device.identifier}|${ct.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
 						const n = coerceNumberSafe(val);
 
@@ -1382,7 +1391,7 @@ export class DelegatesManagerService {
 				);
 			}
 
-			this.setChannelsHandlers.set(`${delegate.id}|${cct.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+			this.setChannelsHandlers.set(`${device.identifier}|${cct.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
 				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
 				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
 				const ctUpdate = updates.find((u) => u.property.identifier === 'temperature');
@@ -1780,14 +1789,19 @@ export class DelegatesManagerService {
 			}
 		}
 
+		// setPropertiesHandlers and setChannelsHandlers are keyed by device.identifier
+		// (the DB identifier), not by delegate.id (the library device ID), so we use
+		// the delegateToIdentifier map for cleanup.
+		const deviceIdentifier = this.delegateToIdentifier.get(deviceId) ?? deviceId;
+
 		for (const key of Array.from(this.setPropertiesHandlers.keys())) {
-			if (key.startsWith(`${deviceId}|`)) {
+			if (key.startsWith(`${deviceIdentifier}|`)) {
 				this.setPropertiesHandlers.delete(key);
 			}
 		}
 
 		for (const key of Array.from(this.setChannelsHandlers.keys())) {
-			if (key.startsWith(`${deviceId}|`)) {
+			if (key.startsWith(`${deviceIdentifier}|`)) {
 				this.setChannelsHandlers.delete(key);
 			}
 		}
@@ -1805,6 +1819,7 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateDeviceIds.delete(deviceId);
+		this.delegateToIdentifier.delete(deviceId);
 
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);
@@ -2059,6 +2074,7 @@ export class DelegatesManagerService {
 		this.pendingWrites.clear();
 		this.deviceLocks.clear();
 		this.connectedDelegatesPerDevice.clear();
+		this.delegateToIdentifier.clear();
 	}
 
 	destroy(): void {

@@ -122,17 +122,4 @@ export class DeviceAddressService {
 		await this.deviceRepository.update(deviceId, { canonicalMac });
 	}
 
-	/**
-	 * Returns all known addresses for a device.
-	 */
-	async getAllAddresses(deviceId: string): Promise<ShellyNgDeviceAddressEntity[]> {
-		return this.addressRepository.find({ where: { deviceId } });
-	}
-
-	/**
-	 * Remove all addresses for a device.
-	 */
-	async removeAllForDevice(deviceId: string): Promise<void> {
-		await this.addressRepository.delete({ deviceId });
-	}
 }

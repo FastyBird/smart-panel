@@ -61,8 +61,6 @@ const deviceAddressService = {
 	syncAddressesAndHostname: jest.fn().mockResolvedValue(undefined),
 	getPreferredAddress: jest.fn().mockResolvedValue(null),
 	upsertAddress: jest.fn().mockResolvedValue(undefined),
-	getAllAddresses: jest.fn().mockResolvedValue([]),
-	removeAllForDevice: jest.fn().mockResolvedValue(undefined),
 };
 
 const transformerRegistry = {
