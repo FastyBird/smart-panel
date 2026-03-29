@@ -2101,7 +2101,7 @@ export class DelegatesManagerService {
 	/**
 	 * Resolve a property handler by device identifier.
 	 * Handlers are keyed by delegate.id, but callers only have device.identifier.
-	 * Iterates all delegates for the device to find a matching handler.
+	 * Prefers handlers from connected delegates; falls back to any available handler.
 	 */
 	private resolvePropertyHandler(
 		deviceIdentifier: string,
@@ -2111,17 +2111,24 @@ export class DelegatesManagerService {
 
 		if (!delegateIds) return undefined;
 
+		let fallback: ((val: string | number | boolean) => Promise<boolean>) | undefined;
+
 		for (const delegateId of delegateIds) {
 			const handler = this.setPropertiesHandlers.get(`${delegateId}|${propertyId}`);
 
-			if (handler) return handler;
+			if (!handler) continue;
+
+			if (this.delegateConnectedState.get(delegateId)) return handler;
+
+			fallback ??= handler;
 		}
 
-		return undefined;
+		return fallback;
 	}
 
 	/**
 	 * Resolve a channel handler by device identifier.
+	 * Prefers handlers from connected delegates; falls back to any available handler.
 	 */
 	private resolveChannelHandler(
 		deviceIdentifier: string,
@@ -2131,13 +2138,19 @@ export class DelegatesManagerService {
 
 		if (!delegateIds) return undefined;
 
+		let fallback: ((updates: BatchUpdate[]) => Promise<boolean>) | undefined;
+
 		for (const delegateId of delegateIds) {
 			const handler = this.setChannelsHandlers.get(`${delegateId}|${channelId}`);
 
-			if (handler) return handler;
+			if (!handler) continue;
+
+			if (this.delegateConnectedState.get(delegateId)) return handler;
+
+			fallback ??= handler;
 		}
 
-		return undefined;
+		return fallback;
 	}
 
 	detach(): void {
