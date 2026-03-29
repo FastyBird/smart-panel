@@ -35,6 +35,9 @@ cp -r "${STAGE_DIR}/files/plymouth" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-discovery.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-discovery.py" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
+# Copy polkit rules (allow smart-panel user to reboot/poweroff)
+cp "${STAGE_DIR}/files/50-smart-panel.rules" "${ROOTFS_DIR}/tmp/smart-panel-config/"
+
 # Copy captive portal files (WiFi provisioning on first boot)
 cp "${STAGE_DIR}/files/smart-panel-portal.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/smart-panel-wifi-watchdog.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"

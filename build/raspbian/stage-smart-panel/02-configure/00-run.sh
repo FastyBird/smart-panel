@@ -11,8 +11,9 @@ cp "${STAGE_DIR}/files/smart-panel-firstboot.service" "${ROOTFS_DIR}/tmp/smart-p
 cp "${STAGE_DIR}/files/environment" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 cp "${STAGE_DIR}/files/first-boot.sh" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 
-# Copy captive portal files from modules (shared with variant-aware builds)
+# Copy polkit rules and captive portal files from modules (shared with variant-aware builds)
 MODULES_DIR="$(cd "${STAGE_DIR}/../../modules/configure" && pwd)"
+cp "${MODULES_DIR}/files/50-smart-panel.rules" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 if [ -d "${MODULES_DIR}/files/portal" ]; then
 	cp "${MODULES_DIR}/files/smart-panel-portal.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"
 	cp "${MODULES_DIR}/files/smart-panel-wifi-watchdog.service" "${ROOTFS_DIR}/tmp/smart-panel-config/"

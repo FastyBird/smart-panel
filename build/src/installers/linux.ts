@@ -458,13 +458,13 @@ StandardError=journal
 SyslogIdentifier=smart-panel
 
 # Security hardening
-NoNewPrivileges=true
+# Note: NoNewPrivileges is NOT set because the app uses sudo for
+# reboot/poweroff. ProtectKernelTunables and ProtectKernelModules
+# are also omitted because they implicitly enable NoNewPrivileges.
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=${dataDir}
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
 ProtectControlGroups=true
 
 [Install]

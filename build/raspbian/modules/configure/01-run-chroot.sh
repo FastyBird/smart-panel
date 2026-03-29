@@ -46,6 +46,10 @@ DISPLAY_DIR="/opt/smart-panel-display"
 # Install udev rules for hardware access (reTerminal LEDs, buzzer)
 cp /tmp/smart-panel-config/99-reterminal.rules /etc/udev/rules.d/
 
+# Install polkit rule to allow smart-panel user to reboot/poweroff
+mkdir -p /etc/polkit-1/rules.d
+cp /tmp/smart-panel-config/50-smart-panel.rules /etc/polkit-1/rules.d/
+
 # ──────────────────────────────────────────────────────────────
 # Backend services (server + aio)
 # ──────────────────────────────────────────────────────────────
