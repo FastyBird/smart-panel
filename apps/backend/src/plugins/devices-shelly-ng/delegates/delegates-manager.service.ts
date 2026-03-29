@@ -21,11 +21,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import {
-	ComponentType,
-	DEVICES_SHELLY_NG_PLUGIN_NAME,
-	DEVICES_SHELLY_NG_TYPE,
-} from '../devices-shelly-ng.constants';
+import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
 	DevicesShellyNgNotFoundException,
@@ -1696,7 +1692,6 @@ export class DelegatesManagerService {
 			const wasConnected = this.delegateConnectedState.get(delegate.id) ?? false;
 
 			if (state === true) {
-				// Guard: only increment if this delegate wasn't already marked connected
 				if (wasConnected) return;
 
 				this.delegateConnectedState.set(delegate.id, true);
@@ -1714,7 +1709,6 @@ export class DelegatesManagerService {
 						});
 					});
 			} else if (state === false) {
-				// Guard: only decrement if this delegate was connected
 				if (!wasConnected) return;
 
 				this.delegateConnectedState.set(delegate.id, false);
@@ -1726,25 +1720,19 @@ export class DelegatesManagerService {
 					this.deviceConnectivityService
 						.setConnectionState(deviceDbId, { state: ConnectionState.DISCONNECTED })
 						.catch((err: Error) => {
-							this.logger.error(
-								`Failed to set state=${ConnectionState.DISCONNECTED} for device=${delegate.id}`,
-								{
-									resource: deviceDbId,
-									message: err.message,
-									stack: err.stack,
-								},
-							);
+							this.logger.error(`Failed to set state=DISCONNECTED for device=${delegate.id}`, {
+								resource: deviceDbId,
+								message: err.message,
+								stack: err.stack,
+							});
 						});
 				} else {
-					this.logger.debug(
-						`Device=${delegate.id} disconnected but ${count} other delegate(s) still connected`,
-						{
-							resource: deviceDbId,
-						},
-					);
+					this.logger.debug(`Device=${delegate.id} disconnected but ${count} other delegate(s) still connected`, {
+						resource: deviceDbId,
+					});
 				}
 			} else {
-				// state === null → removing delegate, only decrement if it was connected
+				// state === null → removing delegate
 				if (wasConnected) {
 					const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
 					this.connectedDelegatesPerDevice.set(deviceDbId, count);
@@ -1753,14 +1741,11 @@ export class DelegatesManagerService {
 						this.deviceConnectivityService
 							.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
 							.catch((err: Error) => {
-								this.logger.error(
-									`Failed to set state=${ConnectionState.UNKNOWN} for device=${delegate.id}`,
-									{
-										resource: deviceDbId,
-										message: err.message,
-										stack: err.stack,
-									},
-								);
+								this.logger.error(`Failed to set state=UNKNOWN for device=${delegate.id}`, {
+									resource: deviceDbId,
+									message: err.message,
+									stack: err.stack,
+								});
 							});
 					}
 				}

@@ -62,16 +62,31 @@ export class DeviceAddressService {
 	async syncAddressesAndHostname(deviceId: string, wifiIp: string | null, ethernetIp: string | null): Promise<void> {
 		if (ethernetIp) {
 			await this.upsertAddress(deviceId, AddressType.ETHERNET, ethernetIp);
+		} else {
+			await this.removeAddress(deviceId, AddressType.ETHERNET);
 		}
 
 		if (wifiIp) {
 			await this.upsertAddress(deviceId, AddressType.WIFI, wifiIp);
+		} else {
+			await this.removeAddress(deviceId, AddressType.WIFI);
 		}
 
 		const preferred = await this.getPreferredAddress(deviceId);
 
 		if (preferred) {
 			await this.deviceRepository.update(deviceId, { hostname: preferred });
+		}
+	}
+
+	/**
+	 * Remove a specific address for a device (e.g. when an interface is no longer available).
+	 */
+	private async removeAddress(deviceId: string, interfaceType: AddressType): Promise<void> {
+		const result = await this.addressRepository.delete({ deviceId, interfaceType });
+
+		if (result.affected && result.affected > 0) {
+			this.logger.log(`Removed stale ${interfaceType} address for device=${deviceId}`, { resource: deviceId });
 		}
 	}
 
@@ -88,9 +103,7 @@ export class DeviceAddressService {
 			return null;
 		}
 
-		addresses.sort(
-			(a, b) => (ADDRESS_PRIORITY[a.interfaceType] ?? 99) - (ADDRESS_PRIORITY[b.interfaceType] ?? 99),
-		);
+		addresses.sort((a, b) => (ADDRESS_PRIORITY[a.interfaceType] ?? 99) - (ADDRESS_PRIORITY[b.interfaceType] ?? 99));
 
 		return addresses[0].address;
 	}
