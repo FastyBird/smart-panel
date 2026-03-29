@@ -1831,20 +1831,24 @@ export class DelegatesManagerService {
 			connectionHandler(null);
 		} else {
 			const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
-			const identifier = this.delegateToIdentifier.get(deviceId);
-			const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
-			const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
-			const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
 
-			void this.deviceConnectivityService
-				.setConnectionState(deviceDbId, { state: targetState })
-				.catch((err: Error): void => {
-					this.logger.warn(`Failed to mark device=${delegate.id} as ${targetState} while removing delegate`, {
-						resource: delegate.id,
-						message: err.message,
-						stack: err.stack,
+			// Only update state if no other delegate is still connected
+			if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
+				const identifier = this.delegateToIdentifier.get(deviceId);
+				const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
+				const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
+				const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
+
+				void this.deviceConnectivityService
+					.setConnectionState(deviceDbId, { state: targetState })
+					.catch((err: Error): void => {
+						this.logger.warn(`Failed to mark device=${delegate.id} as ${targetState} while removing delegate`, {
+							resource: delegate.id,
+							message: err.message,
+							stack: err.stack,
+						});
 					});
-				});
+			}
 		}
 
 		if (valueHandler) {
