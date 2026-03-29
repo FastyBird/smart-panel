@@ -468,85 +468,16 @@ jobs:
             smart-panel-display-linux-x64.tar.gz.sha256
 
   build-elinux:
-    needs: "sync-versions"
-    name: "Build eLinux App (${{ matrix.target-arch }})"
-    runs-on: "${{ matrix.operating-system }}"
-
-    strategy:
-      matrix:
-        node-version: [ "24" ]
-        pnpm-version: [ "10.12.0" ]
-        flutter-version: [ "3.27.0" ]
-        flutter-channel: [ "stable" ]
-        operating-system: [ "ubuntu-latest" ]
-        target-arch: [ "x64", "arm64" ]
-
-    steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v6"
-        with:
-          fetch-depth: 0
-
-      - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.ref_name }}
-
-      - name: "Setup Node Project"
-        uses: "./.github/actions/setup-node-project"
-        with:
-          node-version: "${{ matrix.node-version }}"
-          pnpm-version: "${{ matrix.pnpm-version }}"
-
-      - name: "Setup Flutter"
-        uses: "./.github/actions/setup-flutter-project"
-        with:
-          flutter-version: "${{ matrix.flutter-version }}"
-          flutter-channel: "${{ matrix.flutter-channel }}"
-
-      - name: "Setup flutter-elinux"
-        uses: "./.github/actions/setup-flutter-elinux"
-        with:
-          target-arch: "${{ matrix.target-arch }}"
-
-      - name: "Build eLinux x64 App"
-        if: matrix.target-arch == 'x64'
-        env:
-          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
-          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
-        run: |
-          cd apps/panel
-          flutter-elinux build elinux --release \
-            --target-backend-type=gbm \
-            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
-            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
-
-      - name: "Build eLinux ARM64 App"
-        if: matrix.target-arch == 'arm64'
-        env:
-          FB_PANEL_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
-          FB_PANEL_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
-        run: |
-          cd apps/panel
-          flutter-elinux build elinux --release \
-            --target-backend-type=gbm \
-            --target-arch=arm64 \
-            --target-compiler-triple=aarch64-linux-gnu \
-            --target-sysroot=/ \
-            --dart-define=APP_VERSION=$FB_PANEL_APP_VERSION \
-            --dart-define=APP_BUILD=$FB_PANEL_APP_BUILD
-
-      - name: "Archive eLinux App"
-        run: |
-          ARCH="${{ matrix.target-arch }}"
-          tar -czvf "smart-panel-display-elinux-${ARCH}.tar.gz" -C "./apps/panel/build/elinux/${ARCH}/release/bundle" .
-          shasum -a 256 "smart-panel-display-elinux-${ARCH}.tar.gz" > "smart-panel-display-elinux-${ARCH}.tar.gz.sha256"
-
-      - name: "Upload eLinux Artifact"
-        uses: "actions/upload-artifact@v7"
-        with:
-          name: "display-panel-elinux-${{ matrix.target-arch }}"
-          path: |
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
+    needs: ["sync-versions", "pre-release-alpha"]
+    name: "Build eLinux Display Apps"
+    uses: "./.github/workflows/build-elinux.yml"
+    with:
+      version: "${{ needs.sync-versions.outputs.version }}"
+      build-number: "${{ needs.sync-versions.outputs.buildNumber }}"
+      tag_name: "v${{ needs.sync-versions.outputs.version }}"
+      target-arch: "all"
+    permissions:
+      contents: write
 
   build-application:
     needs: ["sync-versions", "build-display", "publish-admin", "publish-backend"]
@@ -669,7 +600,7 @@ jobs:
             smart-panel-server-arm64.tar.gz.sha256
 
   pre-release-alpha:
-    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application", "build-android", "build-linux-desktop", "build-elinux"]
+    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application", "build-android", "build-linux-desktop"]
     name: "Create Alpha Pre Release"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -712,16 +643,6 @@ jobs:
         uses: "actions/download-artifact@v7"
         with:
           name: "display-panel-linux-x64"
-
-      - name: "Download eLinux x64 Build"
-        uses: "actions/download-artifact@v7"
-        with:
-          name: "display-panel-elinux-x64"
-
-      - name: "Download eLinux ARM64 Build"
-        uses: "actions/download-artifact@v7"
-        with:
-          name: "display-panel-elinux-arm64"
 
       - name: "Download flutter-pi ARMv7 Build (32-bit)"
         uses: "actions/download-artifact@v7"
@@ -773,10 +694,6 @@ jobs:
             smart-panel-display-android.apk.sha256
             smart-panel-display-linux-x64.tar.gz
             smart-panel-display-linux-x64.tar.gz.sha256
-            smart-panel-display-elinux-x64.tar.gz
-            smart-panel-display-elinux-x64.tar.gz.sha256
-            smart-panel-display-elinux-arm64.tar.gz
-            smart-panel-display-elinux-arm64.tar.gz.sha256
             install.sh
             install-panel.sh
         env:
