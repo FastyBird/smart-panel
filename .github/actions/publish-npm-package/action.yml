@@ -73,14 +73,28 @@ runs:
       run: |
         VERSION=$(jq -r .version package.json)
         PACKAGE_NAME=$(jq -r .name package.json)
-        
-        if npm view $PACKAGE_NAME@$VERSION --registry=${{ inputs.npm-registry-url }} > /dev/null 2>&1; then
+
+        if npm view "$PACKAGE_NAME@$VERSION" --registry=${{ inputs.npm-registry-url }} > /dev/null 2>&1; then
           echo "🔁 Skipping: $PACKAGE_NAME@$VERSION already exists on registry"
+          exit 0
+        fi
+
+        PUBLISH_ARGS="--registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks"
+        if [ -n "${{ inputs.tag }}" ]; then
+          PUBLISH_ARGS="$PUBLISH_ARGS --tag=${{ inputs.tag }}"
+        fi
+
+        if pnpm publish $PUBLISH_ARGS 2>&1 | tee /tmp/publish-output.txt; then
+          echo "✅ Published $PACKAGE_NAME@$VERSION"
         else
-          if [ -z "${{ inputs.tag }}" ]; then
-            pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks
+          # Treat "already published" as success (npm cache lag can cause
+          # the pre-check to miss it while the registry rejects the publish)
+          if grep -qiE "previously published|EPUBLISHCONFLICT|E409|E400.*Cannot publish over" /tmp/publish-output.txt; then
+            echo "🔁 Skipping: $PACKAGE_NAME@$VERSION was already published (detected at publish time)"
           else
-            pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
+            echo "❌ Failed to publish $PACKAGE_NAME@$VERSION"
+            cat /tmp/publish-output.txt
+            exit 1
           fi
         fi
       shell: bash
