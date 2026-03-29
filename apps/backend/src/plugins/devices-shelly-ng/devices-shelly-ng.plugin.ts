@@ -62,7 +62,12 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([ShellyNgDeviceEntity, ShellyNgChannelEntity, ShellyNgChannelPropertyEntity, ShellyNgDeviceAddressEntity]),
+		TypeOrmModule.forFeature([
+			ShellyNgDeviceEntity,
+			ShellyNgChannelEntity,
+			ShellyNgChannelPropertyEntity,
+			ShellyNgDeviceAddressEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,

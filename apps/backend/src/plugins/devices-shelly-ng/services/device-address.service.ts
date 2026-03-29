@@ -4,12 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import {
-	ADDRESS_PRIORITY,
-	AddressType,
-	DEVICES_SHELLY_NG_PLUGIN_NAME,
-	DEVICES_SHELLY_NG_TYPE,
-} from '../devices-shelly-ng.constants';
+import { ADDRESS_PRIORITY, AddressType, DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ShellyNgDeviceAddressEntity } from '../entities/shelly-ng-device-address.entity';
 
@@ -64,11 +59,7 @@ export class DeviceAddressService {
 	 * Store addresses from a discovered device and update the device hostname
 	 * to the preferred (ethernet-first) address.
 	 */
-	async syncAddressesAndHostname(
-		deviceId: string,
-		wifiIp: string | null,
-		ethernetIp: string | null,
-	): Promise<void> {
+	async syncAddressesAndHostname(deviceId: string, wifiIp: string | null, ethernetIp: string | null): Promise<void> {
 		if (ethernetIp) {
 			await this.upsertAddress(deviceId, AddressType.ETHERNET, ethernetIp);
 		}
@@ -97,7 +88,6 @@ export class DeviceAddressService {
 			return null;
 		}
 
-		// Sort by priority: ethernet (0) before wifi (1)
 		addresses.sort(
 			(a, b) => (ADDRESS_PRIORITY[a.interfaceType] ?? 99) - (ADDRESS_PRIORITY[b.interfaceType] ?? 99),
 		);
@@ -108,10 +98,12 @@ export class DeviceAddressService {
 	/**
 	 * Find a device by its canonical MAC address.
 	 * Used for deduplication of Shelly Pro devices with both WiFi and Ethernet.
+	 * The repository is scoped to ShellyNgDeviceEntity (a @ChildEntity), so TypeORM
+	 * automatically applies the STI discriminator filter — no explicit type condition needed.
 	 */
 	async findDeviceByCanonicalMac(canonicalMac: string): Promise<ShellyNgDeviceEntity | null> {
 		return this.deviceRepository.findOne({
-			where: { canonicalMac, type: DEVICES_SHELLY_NG_TYPE } as any,
+			where: { canonicalMac },
 		});
 	}
 
@@ -121,5 +113,4 @@ export class DeviceAddressService {
 	async setCanonicalMac(deviceId: string, canonicalMac: string): Promise<void> {
 		await this.deviceRepository.update(deviceId, { canonicalMac });
 	}
-
 }

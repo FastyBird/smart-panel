@@ -544,7 +544,7 @@ describe('DelegatesManagerService', () => {
 			});
 
 			svc['identifierToDelegates'].set(device.identifier, new Set([device.identifier]));
-		svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
+			svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
 
 			const result = await svc.setChannelValue(device, channel, [
 				{ property: prop1, value: 10 },
