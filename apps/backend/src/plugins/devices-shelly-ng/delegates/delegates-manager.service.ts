@@ -115,6 +115,15 @@ export class DelegatesManagerService {
 	private readonly deviceLocks: Map<string, Promise<void>> = new Map();
 
 	/**
+	 * Serializes the canonical MAC lookup + device creation section.
+	 * Two delegates of the same physical device have different shelly.id values,
+	 * so their per-device locks are independent. This shared lock, keyed by
+	 * canonical MAC, ensures only one delegate at a time runs the
+	 * find-or-create path to prevent duplicate device creation.
+	 */
+	private readonly canonicalMacLocks: Map<string, Promise<void>> = new Map();
+
+	/**
 	 * Tracks how many delegates are currently connected per system device ID.
 	 * Used to avoid setting DISCONNECTED when one interface goes down but another
 	 * is still active (e.g., WiFi disconnects but Ethernet stays connected).
@@ -170,53 +179,72 @@ export class DelegatesManagerService {
 		// Sys.GetConfig always returns the same canonical MAC regardless of interface.
 		const canonicalMac: string | null = shelly.system?.config?.device?.mac ?? null;
 
-		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			shelly.id,
-			DEVICES_SHELLY_NG_TYPE,
-		);
+		// The find-or-create block is serialized by canonical MAC to prevent two
+		// delegates of the same physical device (different shelly.id per interface)
+		// from racing and both creating separate DB devices.
+		const { device: resolvedDevice, isNewDevice } = await this.withCanonicalMacLock(canonicalMac, async () => {
+			let dev = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+				'identifier',
+				shelly.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
 
-		// If not found by library device ID, check by canonical MAC to detect
-		// the same physical device discovered via a different network interface
-		// (e.g., Shelly Pro found via WiFi first, now discovered via Ethernet).
-		if (!device && canonicalMac) {
-			device = (await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac)) ?? null;
+			// If not found by library device ID, check by canonical MAC to detect
+			// the same physical device discovered via a different network interface
+			// (e.g., Shelly Pro found via WiFi first, now discovered via Ethernet).
+			if (!dev && canonicalMac) {
+				dev = (await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac)) ?? null;
 
-			if (device) {
-				this.logger.log(
-					`Device=${shelly.id} matched existing device=${device.identifier} by canonical MAC=${canonicalMac} (multi-interface merge)`,
-					{ resource: device.id },
-				);
-			}
-		}
-
-		let isNewDevice = false;
-
-		if (device === null) {
-			try {
-				device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
-					type: DEVICES_SHELLY_NG_TYPE,
-					category: this.determineCategory(delegate),
-					identifier: shelly.id,
-					hostname,
-					name: shelly.system.config.device.name ?? shelly.modelName,
-				});
-
-				isNewDevice = true;
-			} catch (error) {
-				// Handle race condition: device may have been created by another process
-				// Retry finding the device
-				device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-					'identifier',
-					shelly.id,
-					DEVICES_SHELLY_NG_TYPE,
-				);
-
-				if (device === null) {
-					throw error; // Re-throw if device still doesn't exist
+				if (dev) {
+					this.logger.log(
+						`Device=${shelly.id} matched existing device=${dev.identifier} by canonical MAC=${canonicalMac} (multi-interface merge)`,
+						{ resource: dev.id },
+					);
 				}
 			}
-		}
+
+			let created = false;
+
+			if (dev === null) {
+				try {
+					dev = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
+						type: DEVICES_SHELLY_NG_TYPE,
+						category: this.determineCategory(delegate),
+						identifier: shelly.id,
+						hostname,
+						name: shelly.system.config.device.name ?? shelly.modelName,
+					});
+
+					created = true;
+				} catch (error) {
+					// Handle race condition: device may have been created by another process
+					dev = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+						'identifier',
+						shelly.id,
+						DEVICES_SHELLY_NG_TYPE,
+					);
+
+					// Also retry by canonical MAC in case the other delegate used a different identifier
+					if (!dev && canonicalMac) {
+						dev = (await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac)) ?? null;
+					}
+
+					if (dev === null) {
+						throw error;
+					}
+				}
+			}
+
+			// Store canonical MAC for future deduplication (inside lock so the next
+			// delegate's findDeviceByCanonicalMac sees it)
+			if (canonicalMac && dev.canonicalMac !== canonicalMac) {
+				await this.deviceAddressService.setCanonicalMac(dev.id, canonicalMac);
+			}
+
+			return { device: dev, isNewDevice: created };
+		});
+
+		let device = resolvedDevice;
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
 		this.delegateToIdentifier.set(delegate.id, device.identifier);
@@ -225,11 +253,6 @@ export class DelegatesManagerService {
 		const delegateSet = this.identifierToDelegates.get(device.identifier) ?? new Set();
 		delegateSet.add(delegate.id);
 		this.identifierToDelegates.set(device.identifier, delegateSet);
-
-		// Store canonical MAC for future deduplication
-		if (canonicalMac && device.canonicalMac !== canonicalMac) {
-			await this.deviceAddressService.setCanonicalMac(device.id, canonicalMac);
-		}
 
 		// Store network addresses and update hostname to preferred (ethernet-first)
 		await this.deviceAddressService.syncAddressesAndHostname(device.id, wifiIp, ethernetIp);
@@ -2169,6 +2192,7 @@ export class DelegatesManagerService {
 
 		this.pendingWrites.clear();
 		this.deviceLocks.clear();
+		this.canonicalMacLocks.clear();
 		this.connectedDelegatesPerDevice.clear();
 		this.delegateToIdentifier.clear();
 		this.identifierToDelegates.clear();
@@ -2184,6 +2208,37 @@ export class DelegatesManagerService {
 	 * insert and remove operations run sequentially — even when mDNS fires
 	 * rapid attach/detach events.
 	 */
+	/**
+	 * Serialize the find-or-create path by canonical MAC.
+	 * If canonicalMac is null (unavailable), the function runs unserialized
+	 * — the per-device lock still provides safety for same-shelly.id calls.
+	 */
+	private async withCanonicalMacLock<T>(canonicalMac: string | null, fn: () => Promise<T>): Promise<T> {
+		if (!canonicalMac) {
+			return fn();
+		}
+
+		const pending = this.canonicalMacLocks.get(canonicalMac) ?? Promise.resolve();
+
+		let resolveLock!: () => void;
+		const lock = new Promise<void>((r) => {
+			resolveLock = r;
+		});
+		this.canonicalMacLocks.set(canonicalMac, lock);
+
+		await pending.catch(() => {});
+
+		try {
+			return await fn();
+		} finally {
+			resolveLock();
+
+			if (this.canonicalMacLocks.get(canonicalMac) === lock) {
+				this.canonicalMacLocks.delete(canonicalMac);
+			}
+		}
+	}
+
 	private async withDeviceLock<T>(deviceId: string, fn: () => Promise<T>): Promise<T> {
 		const pending = this.deviceLocks.get(deviceId) ?? Promise.resolve();
 

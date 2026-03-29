@@ -57,7 +57,7 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	@Expose({ name: 'canonical_mac' })
 	@IsOptional()
 	@IsString()
-	@Column({ nullable: true, default: null })
+	@Column({ nullable: true, default: null, unique: true })
 	canonicalMac: string | null = null;
 
 	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { cascade: true })
