@@ -160,10 +160,10 @@ export class DelegatesManagerService {
 		// If not found by library device ID, check by canonical MAC to detect
 		// the same physical device discovered via a different network interface
 		// (e.g., Shelly Pro found via WiFi first, now discovered via Ethernet).
-		if (device === null && canonicalMac) {
-			device = await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac);
+		if (!device && canonicalMac) {
+			device = await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac) ?? null;
 
-			if (device !== null) {
+			if (device) {
 				this.logger.log(
 					`Device=${shelly.id} matched existing device=${device.identifier} by canonical MAC=${canonicalMac} (multi-interface merge)`,
 					{ resource: device.id },

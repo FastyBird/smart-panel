@@ -24,6 +24,7 @@ import {
 import { DelegatesManagerService } from './delegates-manager.service';
 
 const devicesService = {
+	findOne: jest.fn(),
 	findOneBy: jest.fn(),
 	create: jest.fn(),
 	update: jest.fn(),
@@ -197,9 +198,8 @@ describe('DelegatesManagerService', () => {
 		} as ShellyNgChannelPropertyEntity;
 
 		// devicesService mocks
-		(devicesService.findOneBy as jest.Mock)
-			.mockResolvedValueOnce(null) // first call: device not found → create
-			.mockResolvedValueOnce(device as unknown as ShellyNgDeviceEntity); // second call: reload after createOrUpdate
+		(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null); // first call: device not found → create
+		(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device as unknown as ShellyNgDeviceEntity); // reload after createOrUpdate
 		(devicesService.create as jest.Mock).mockImplementation(
 			async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
 				device.identifier = dto.identifier;
