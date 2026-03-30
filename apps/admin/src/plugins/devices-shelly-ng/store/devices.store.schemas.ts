@@ -30,8 +30,15 @@ export const ShellyNgDeviceSchema = DeviceSchema.extend({
 	ethernetAddress: z.string().nullable().optional(),
 });
 
-// BACKEND API
+// BACKEND API (snake_case — matches raw API contract before snakeToCamel transform)
 // ===========
+
+// Address schema in API response format (snake_case keys)
+const ShellyNgDeviceAddressResSchema = z.object({
+	id: z.string(),
+	interface_type: z.enum(['ethernet', 'wifi']),
+	address: z.string(),
+});
 
 export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCreateReqSchema.and(
 	z.object({
@@ -56,10 +63,6 @@ export const ShellyNgDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 		password: z.string().nullable(),
 		canonical_mac: z.string().nullable().optional(),
 		has_ethernet: z.boolean(),
-		addresses: z.array(z.object({
-			id: z.string(),
-			interface_type: z.enum(['ethernet', 'wifi']),
-			address: z.string(),
-		})).optional().default([]),
+		addresses: z.array(ShellyNgDeviceAddressResSchema).optional().default([]),
 	})
 );
