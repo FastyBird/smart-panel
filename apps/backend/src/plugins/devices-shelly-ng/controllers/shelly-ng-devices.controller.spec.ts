@@ -16,6 +16,16 @@ import { DeviceManagerService } from '../services/device-manager.service';
 import { ShellyNgDevicesController } from './shelly-ng-devices.controller';
 
 jest.mock('../devices-shelly-ng.constants', () => ({
+	DEVICES_SHELLY_NG_PLUGIN_NAME: 'devices-shelly-ng-plugin',
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME: 'devices-shelly-ng',
+	AddressType: {
+		ETHERNET: 'ethernet',
+		WIFI: 'wifi',
+	},
+	ADDRESS_PRIORITY: {
+		ethernet: 0,
+		wifi: 1,
+	},
 	DESCRIPTORS: {
 		SHELLYPLUS1: {
 			name: 'Shelly Plus 1',

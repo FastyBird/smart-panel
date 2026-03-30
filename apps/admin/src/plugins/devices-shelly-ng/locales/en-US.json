@@ -51,6 +51,14 @@
         "validation": {
           "required": "Please fill in device hostname or IP address"
         }
+      },
+      "ethernetAddress": {
+        "title": "Ethernet address",
+        "placeholder": "Ethernet IP address (e.g. 192.168.1.100)"
+      },
+      "wifiAddress": {
+        "title": "WiFi address",
+        "placeholder": "WiFi IP address (e.g. 192.168.1.101)"
       }
     },
     "config": {

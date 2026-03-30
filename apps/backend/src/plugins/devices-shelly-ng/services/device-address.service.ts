@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +7,14 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { ADDRESS_PRIORITY, AddressType, DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ShellyNgDeviceAddressEntity } from '../entities/shelly-ng-device-address.entity';
+
+/**
+ * Normalize a MAC address to uppercase hex without separators.
+ * Handles colon-separated, dash-separated, and bare hex input.
+ */
+export function normalizeMac(mac: string): string {
+	return mac.replace(/[:-]/g, '').toUpperCase();
+}
 
 @Injectable()
 export class DeviceAddressService {
@@ -62,25 +70,17 @@ export class DeviceAddressService {
 	}
 
 	/**
-	 * Store addresses from a discovered device and update the device hostname
-	 * to the preferred (ethernet-first) address.
+	 * Store addresses from a discovered device.
+	 * Only upserts addresses that are present — a null IP means the delegate
+	 * doesn't have info about that interface, not that the interface is gone.
 	 */
-	async syncAddressesAndHostname(deviceId: string, wifiIp: string | null, ethernetIp: string | null): Promise<void> {
-		// Only upsert addresses that are present. A null IP means the delegate
-		// doesn't have info about that interface — not that the interface is gone.
-		// Another delegate may have stored the address from its own discovery.
+	async syncAddresses(deviceId: string, wifiIp: string | null, ethernetIp: string | null): Promise<void> {
 		if (ethernetIp) {
 			await this.upsertAddress(deviceId, AddressType.ETHERNET, ethernetIp);
 		}
 
 		if (wifiIp) {
 			await this.upsertAddress(deviceId, AddressType.WIFI, wifiIp);
-		}
-
-		const preferred = await this.getPreferredAddress(deviceId);
-
-		if (preferred) {
-			await this.deviceRepository.update(deviceId, { hostname: preferred });
 		}
 	}
 
@@ -103,6 +103,45 @@ export class DeviceAddressService {
 	}
 
 	/**
+	 * Batch-load preferred addresses for multiple devices.
+	 * Returns a map of deviceId → preferred address (ethernet-first).
+	 */
+	async getPreferredAddresses(deviceIds: string[]): Promise<Map<string, string>> {
+		if (deviceIds.length === 0) {
+			return new Map();
+		}
+
+		const addresses = await this.addressRepository.find({
+			where: { deviceId: In(deviceIds) },
+		});
+
+		// Group by device, pick preferred (lowest priority number)
+		const byDevice = new Map<string, ShellyNgDeviceAddressEntity[]>();
+
+		for (const addr of addresses) {
+			const list = byDevice.get(addr.deviceId) ?? [];
+			list.push(addr);
+			byDevice.set(addr.deviceId, list);
+		}
+
+		const result = new Map<string, string>();
+
+		for (const [deviceId, addrs] of byDevice) {
+			addrs.sort((a, b) => (ADDRESS_PRIORITY[a.interfaceType] ?? 99) - (ADDRESS_PRIORITY[b.interfaceType] ?? 99));
+			result.set(deviceId, addrs[0].address);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Returns all addresses for a device.
+	 */
+	async getAddresses(deviceId: string): Promise<ShellyNgDeviceAddressEntity[]> {
+		return this.addressRepository.find({ where: { deviceId } });
+	}
+
+	/**
 	 * Find a device by its canonical MAC address.
 	 * Used for deduplication of Shelly Pro devices with both WiFi and Ethernet.
 	 * The repository is scoped to ShellyNgDeviceEntity (a @ChildEntity), so TypeORM
@@ -110,14 +149,22 @@ export class DeviceAddressService {
 	 */
 	async findDeviceByCanonicalMac(canonicalMac: string): Promise<ShellyNgDeviceEntity | null> {
 		return this.deviceRepository.findOne({
-			where: { canonicalMac },
+			where: { canonicalMac: normalizeMac(canonicalMac) },
 		});
 	}
 
 	/**
-	 * Set the canonical MAC on a device entity.
+	 * Set the canonical MAC on a device entity (normalized to uppercase hex).
 	 */
 	async setCanonicalMac(deviceId: string, canonicalMac: string): Promise<void> {
-		await this.deviceRepository.update(deviceId, { canonicalMac });
+		await this.deviceRepository.update(deviceId, { canonicalMac: normalizeMac(canonicalMac) });
+	}
+
+	/**
+	 * Persist whether the device has an Ethernet interface.
+	 * Derived from the device descriptor's system components during provisioning.
+	 */
+	async setHasEthernet(deviceId: string, hasEthernet: boolean): Promise<void> {
+		await this.deviceRepository.update(deviceId, { hasEthernet });
 	}
 }

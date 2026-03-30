@@ -58,9 +58,11 @@ const deviceManagerService = {
 const deviceAddressService = {
 	findDeviceByCanonicalMac: jest.fn().mockResolvedValue(null),
 	setCanonicalMac: jest.fn().mockResolvedValue(undefined),
-	syncAddressesAndHostname: jest.fn().mockResolvedValue(undefined),
-	getPreferredAddress: jest.fn().mockResolvedValue(null),
+	syncAddresses: jest.fn().mockResolvedValue(undefined),
+	getPreferredAddress: jest.fn().mockResolvedValue('192.168.1.10'),
+	getPreferredAddresses: jest.fn().mockResolvedValue(new Map()),
 	upsertAddress: jest.fn().mockResolvedValue(undefined),
+	getAddresses: jest.fn().mockResolvedValue([]),
 };
 
 const transformerRegistry = {
@@ -202,7 +204,6 @@ describe('DelegatesManagerService', () => {
 		(devicesService.create as jest.Mock).mockImplementation(
 			async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
 				device.identifier = dto.identifier;
-				device.hostname = dto.hostname;
 				device.name = dto.name;
 				device.category = dto.category;
 				return device as unknown as ShellyNgDeviceEntity;
@@ -656,6 +657,138 @@ describe('DelegatesManagerService', () => {
 
 			expect(result).toBe(true);
 			expect(handlerSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('multi-interface merge path', () => {
+		test('two delegates with same canonical MAC share a single device record', async () => {
+			const device = {
+				id: 'db-dev-multi',
+				identifier: 'shellyproWifi',
+			} as ShellyNgDeviceEntity;
+
+			const deviceInfoCh = {
+				device: device.id,
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device-information',
+				name: 'Device information',
+			} as ShellyNgChannelEntity;
+
+			const statusProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.STATUS,
+				identifier: 'status',
+				value: new PropertyValueState(ConnectionState.UNKNOWN),
+			} as ShellyNgChannelPropertyEntity;
+
+			const linkQProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.LINK_QUALITY,
+				identifier: 'link_quality',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const switchCh = {
+				device: device.id,
+				category: ChannelCategory.SWITCHER,
+				identifier: 'switch:0',
+				name: 'Switch 0',
+			} as ShellyNgChannelEntity;
+
+			const switchOn = {
+				channel: switchCh.id,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+				value: new PropertyValueState(false),
+			} as ShellyNgChannelPropertyEntity;
+
+			const canonicalMac = 'A8032ABE5084';
+
+			// First delegate (WiFi) — creates device
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null); // not found by shelly.id
+			(deviceAddressService.findDeviceByCanonicalMac as jest.Mock).mockResolvedValueOnce(null); // not found by MAC
+
+			(devicesService.create as jest.Mock).mockImplementation(
+				async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+					device.identifier = dto.identifier;
+					device.name = dto.name;
+					device.category = dto.category;
+					return device as unknown as ShellyNgDeviceEntity;
+				},
+			);
+
+			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity);
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown) => payload,
+			);
+
+			const shellyWifi: FakeDevice = {
+				id: 'shellyproWifi',
+				modelName: 'Pro 1',
+				system: { config: { device: { name: 'Pro Device', mac: canonicalMac } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.10' },
+			};
+
+			await svc.insert(shellyWifi as unknown as Device);
+
+			expect(devicesService.create).toHaveBeenCalledTimes(1);
+			expect(deviceAddressService.setCanonicalMac).toHaveBeenCalledWith(device.id, canonicalMac);
+			expect(deviceAddressService.syncAddresses).toHaveBeenCalledWith(device.id, '192.168.1.10', null);
+
+			// Second delegate (Ethernet) — should find existing device by canonical MAC, NOT create new
+			jest.clearAllMocks();
+			deviceConnectivityService.setConnectionState = jest.fn().mockResolvedValue(undefined);
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null); // not found by shelly.id (different)
+			(deviceAddressService.findDeviceByCanonicalMac as jest.Mock).mockResolvedValueOnce(
+				device as unknown as ShellyNgDeviceEntity,
+			); // found by MAC!
+
+			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity);
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown) => payload,
+			);
+
+			const shellyEth: FakeDevice = {
+				id: 'shellyproEth',
+				modelName: 'Pro 1',
+				system: { config: { device: { name: 'Pro Device', mac: canonicalMac } } },
+				ethernet: { key: 'eth:0', ip: '192.168.1.20' },
+			};
+
+			await svc.insert(shellyEth as unknown as Device);
+
+			// Should NOT have created a new device — merged into existing
+			expect(devicesService.create).not.toHaveBeenCalled();
+			// Should have synced the ethernet address
+			expect(deviceAddressService.syncAddresses).toHaveBeenCalledWith(device.id, null, '192.168.1.20');
+
+			// Both delegates connected → counter should be 2
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(device.id, {
+				state: ConnectionState.CONNECTED,
+			});
 		});
 	});
 });

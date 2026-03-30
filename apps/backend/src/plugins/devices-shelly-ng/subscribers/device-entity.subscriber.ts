@@ -4,8 +4,9 @@ import { InsertEvent } from 'typeorm/subscriber/event/InsertEvent';
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
+import { AddressType, DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+import { DeviceAddressService } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { ShellyNgService } from '../services/shelly-ng.service';
 
@@ -19,6 +20,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly deviceManagerService: DeviceManagerService,
+		private readonly deviceAddressService: DeviceAddressService,
 		private readonly shellyNgService: ShellyNgService,
 	) {
 		this.dataSource.subscribers.push(this);
@@ -34,20 +36,44 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 
 	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {
 		let needsResync = false;
+		let wifiAddress: string | null | undefined;
+		let ethernetAddress: string | null | undefined;
 
 		for (const updatedColumn of event.updatedColumns) {
-			// Resync when credentials, hostname, or category changes
+			const col = updatedColumn.databaseName.toLowerCase();
+
+			// Resync when credentials or category changes
 			// Category change requires channel re-creation with new categories
-			if (['password', 'hostname', 'category'].includes(updatedColumn.databaseName.toLowerCase())) {
+			if (['password', 'category'].includes(col)) {
 				needsResync = true;
 			}
 		}
 
-		if (!needsResync) {
+		// Check for address updates passed via transient @Expose fields on the entity.
+		// These survive toInstance() in the generic devices service update flow.
+		const entity = event.entity as ShellyNgDeviceEntity;
+
+		if (entity.wifiAddress !== undefined) {
+			wifiAddress = entity.wifiAddress;
+		}
+
+		if (entity.ethernetAddress !== undefined) {
+			ethernetAddress = entity.ethernetAddress;
+		}
+
+		const hasAddressUpdate = wifiAddress !== undefined || ethernetAddress !== undefined;
+
+		if (!needsResync && !hasAddressUpdate) {
 			return;
 		}
 
-		this.scheduleProvision(event.databaseEntity.id);
+		if (hasAddressUpdate) {
+			this.scheduleAddressSync(event.databaseEntity.id, wifiAddress, ethernetAddress);
+		}
+
+		if (needsResync) {
+			this.scheduleProvision(event.databaseEntity.id);
+		}
 	}
 
 	afterRemove(): void {
@@ -59,6 +85,33 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				stack: err.stack,
 			});
 		});
+	}
+
+	private scheduleAddressSync(
+		deviceId: string,
+		wifiAddress: string | null | undefined,
+		ethernetAddress: string | null | undefined,
+	): void {
+		setTimeout(() => {
+			void (async (): Promise<void> => {
+				try {
+					if (wifiAddress !== undefined && wifiAddress !== null) {
+						await this.deviceAddressService.upsertAddress(deviceId, AddressType.WIFI, wifiAddress);
+					}
+
+					if (ethernetAddress !== undefined && ethernetAddress !== null) {
+						await this.deviceAddressService.upsertAddress(deviceId, AddressType.ETHERNET, ethernetAddress);
+					}
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
+						message: err.message,
+						stack: err.stack,
+					});
+				}
+			})();
+		}, 0);
 	}
 
 	private scheduleProvision(deviceId: string): void {

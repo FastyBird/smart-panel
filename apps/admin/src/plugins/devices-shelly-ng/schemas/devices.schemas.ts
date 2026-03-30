@@ -10,7 +10,8 @@ export const ShellyNgDeviceAddFormSchema = DeviceAddFormSchema.extend({
 
 export const ShellyNgDeviceEditFormSchema = DeviceEditFormSchema.extend({
 	password: z.string().nullable().optional(),
-	hostname: z.string().trim().nonempty(),
+	wifiAddress: z.string().trim().nullable().optional(),
+	ethernetAddress: z.string().trim().nullable().optional(),
 });
 
 export const ShellyNgSupportedDeviceSchema = z.object({

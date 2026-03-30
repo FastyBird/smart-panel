@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, OneToMany } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -35,18 +35,15 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	@Column({ nullable: true, default: null })
 	password: string | null = null;
 
-	@ApiPropertyOptional({
-		description: 'Device hostname or IP address (preferred/active address)',
-		type: 'string',
-		example: '192.168.1.100',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString()
-	@Column({ nullable: true, default: null })
-	hostname: string | null = null;
-
+	/**
+	 * Canonical MAC address from Shelly device system config, used for deduplication
+	 * of multi-interface devices (e.g., Shelly Pro with WiFi + Ethernet).
+	 *
+	 * NOTE: This column lives on the shared STI parent table `devices_module_devices`
+	 * because TypeORM places all @ChildEntity columns there. It will be NULL for all
+	 * non-Shelly-NG device types. The unique index allows multiple NULLs in SQLite;
+	 * verify NULL uniqueness semantics if migrating to PostgreSQL or MySQL.
+	 */
 	@ApiPropertyOptional({
 		description: 'Canonical MAC address from Shelly device info, used for deduplication of multi-interface devices',
 		name: 'canonical_mac',
@@ -60,7 +57,34 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	@Column({ nullable: true, default: null, unique: true })
 	canonicalMac: string | null = null;
 
-	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { cascade: true })
+	@ApiProperty({
+		description: 'Whether the device has an Ethernet interface (Pro devices)',
+		name: 'has_ethernet',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_ethernet' })
+	@IsBoolean()
+	@Column({ type: 'boolean', default: false })
+	hasEthernet: boolean = false;
+
+	/**
+	 * Transient fields for passing address updates through the DTO → entity → subscriber
+	 * pipeline. Not persisted as columns — the subscriber reads them and delegates
+	 * to DeviceAddressService for actual storage in the addresses table.
+	 */
+	@Expose({ name: 'wifi_address' })
+	@IsOptional()
+	@IsString()
+	wifiAddress?: string | null;
+
+	@Expose({ name: 'ethernet_address' })
+	@IsOptional()
+	@IsString()
+	ethernetAddress?: string | null;
+
+	@Expose()
+	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { cascade: true, eager: true })
 	addresses: ShellyNgDeviceAddressEntity[];
 
 	toString(): string {

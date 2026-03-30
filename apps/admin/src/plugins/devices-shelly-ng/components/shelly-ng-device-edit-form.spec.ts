@@ -17,6 +17,7 @@ vi.mock('../composables/useDeviceEditForm', () => ({
 			{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
 			{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
 		],
+		hasEthernet: { value: true },
 		model: {
 			id: '123',
 			name: '',
@@ -61,9 +62,12 @@ describe('ShellyNgDeviceEditForm', () => {
 					category: DevicesModuleDeviceCategory.generic,
 					name: '',
 					description: '',
-					hostname: '192.168.0.1',
 					password: 'secret',
-				} as IShellyNgDevice,
+					addresses: [
+						{ id: 'addr-1', interfaceType: 'ethernet', address: '192.168.0.1' },
+						{ id: 'addr-2', interfaceType: 'wifi', address: '192.168.0.2' },
+					],
+				} as unknown as IShellyNgDevice,
 			},
 		});
 	});
@@ -72,7 +76,8 @@ describe('ShellyNgDeviceEditForm', () => {
 		expect(wrapper.find('input[name="id"]').exists()).toBe(true);
 		expect(wrapper.find('input[name="name"]').exists()).toBe(true);
 		expect(wrapper.find('textarea').exists()).toBe(true);
-		expect(wrapper.find('input[name="hostname"]').exists()).toBe(true);
+		expect(wrapper.find('input[name="ethernetAddress"]').exists()).toBe(true);
+		expect(wrapper.find('input[name="wifiAddress"]').exists()).toBe(true);
 		expect(wrapper.find('input[name="password"]').exists()).toBe(true);
 	});
 

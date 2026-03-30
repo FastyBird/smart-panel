@@ -26,22 +26,33 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 	}
 
 	async run() {
-		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
-			if (d.enabled === false) {
-				continue;
-			}
+		const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
+
+		const enabledDevices = devices.filter((d) => {
+			if (d.enabled === false) return false;
 
 			if (d.identifier === null) {
 				this.logger.error(
 					`Failed to prepare device to be managed by Shelly manager. Missing identifier for device=${d.id}`,
 				);
 
-				continue;
+				return false;
 			}
 
-			// Use preferred address from address table (ethernet-first), fall back to device hostname
-			const preferredAddress = await this.deviceAddressService.getPreferredAddress(d.id);
-			const hostname = preferredAddress ?? d.hostname;
+			return true;
+		});
+
+		// Batch-load preferred addresses for all enabled devices (single query)
+		const preferredAddresses = await this.deviceAddressService.getPreferredAddresses(enabledDevices.map((d) => d.id));
+
+		for (const d of enabledDevices) {
+			const hostname = preferredAddresses.get(d.id) ?? null;
+
+			if (hostname === null) {
+				this.logger.warn(`No address found for device=${d.id}, skipping discovery emit`);
+
+				continue;
+			}
 
 			await this.emitDevice({
 				deviceId: d.identifier,

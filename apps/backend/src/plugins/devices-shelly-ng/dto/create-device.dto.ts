@@ -19,18 +19,6 @@ export class CreateShellyNgDeviceDto extends CreateDeviceDto {
 	readonly type: typeof DEVICES_SHELLY_NG_TYPE;
 
 	@ApiPropertyOptional({
-		description: 'Device hostname or IP address',
-		example: '192.168.1.100',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({
-		message: '[{"field":"hostname","reason":"Hostname attribute must be a valid IP address or network hostname."}]',
-	})
-	hostname: string | null = null;
-
-	@ApiPropertyOptional({
 		description: 'Device password',
 		example: 'password123',
 		nullable: true,

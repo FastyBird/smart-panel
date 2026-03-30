@@ -67,7 +67,7 @@ export class DelegatesManagerService {
 		(compKey: string, attr: string, val: CharacteristicValue) => void
 	> = new Map();
 
-	private readonly delegateConnectionHandlers: Map<string, (state: boolean) => void> = new Map();
+	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
@@ -168,9 +168,8 @@ export class DelegatesManagerService {
 
 		const wifiIp = shelly.wifi?.sta_ip ?? null;
 		const ethernetIp = shelly.ethernet?.ip ?? null;
-		const hostname = ethernetIp ?? wifiIp ?? null;
 
-		if (hostname === null) {
+		if (ethernetIp === null && wifiIp === null) {
 			throw new DevicesShellyNgException('Missing device hostname or IP address');
 		}
 
@@ -211,7 +210,6 @@ export class DelegatesManagerService {
 						type: DEVICES_SHELLY_NG_TYPE,
 						category: this.determineCategory(delegate),
 						identifier: shelly.id,
-						hostname,
 						name: shelly.system.config.device.name ?? shelly.modelName,
 					});
 
@@ -254,8 +252,8 @@ export class DelegatesManagerService {
 		delegateSet.add(delegate.id);
 		this.identifierToDelegates.set(device.identifier, delegateSet);
 
-		// Store network addresses and update hostname to preferred (ethernet-first)
-		await this.deviceAddressService.syncAddressesAndHostname(device.id, wifiIp, ethernetIp);
+		// Store network addresses (ethernet-first preference resolved by address service)
+		await this.deviceAddressService.syncAddresses(device.id, wifiIp, ethernetIp);
 
 		if (isNewDevice) {
 			// Provision channels and properties before setting up handlers.
@@ -1889,6 +1887,12 @@ export class DelegatesManagerService {
 				delegateSet.delete(deviceId);
 				if (delegateSet.size === 0) {
 					this.identifierToDelegates.delete(identifier);
+
+					// Clean up stale counter when last delegate for this device is removed
+					const deviceDbId = this.delegateDeviceIds.get(deviceId);
+					if (deviceDbId) {
+						this.connectedDelegatesPerDevice.delete(deviceDbId);
+					}
 				}
 			}
 		}
@@ -2227,11 +2231,6 @@ export class DelegatesManagerService {
 	}
 
 	/**
-	 * Serialize async operations per device. Ensures that for any given device,
-	 * insert and remove operations run sequentially — even when mDNS fires
-	 * rapid attach/detach events.
-	 */
-	/**
 	 * Serialize the find-or-create path by canonical MAC.
 	 * If canonicalMac is null (unavailable), the function runs unserialized
 	 * — the per-device lock still provides safety for same-shelly.id calls.
@@ -2262,6 +2261,11 @@ export class DelegatesManagerService {
 		}
 	}
 
+	/**
+	 * Serialize async operations per device. Ensures that for any given device,
+	 * insert and remove operations run sequentially — even when mDNS fires
+	 * rapid attach/detach events.
+	 */
 	private async withDeviceLock<T>(deviceId: string, fn: () => Promise<T>): Promise<T> {
 		const pending = this.deviceLocks.get(deviceId) ?? Promise.resolve();
 

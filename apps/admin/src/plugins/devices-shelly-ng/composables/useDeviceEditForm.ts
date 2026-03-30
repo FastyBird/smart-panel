@@ -82,7 +82,23 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		}
 	);
 
-	const model = reactive<IShellyNgDeviceEditForm>(device as unknown as IShellyNgDeviceEditForm);
+	// Extract addresses from device data
+	const rawDevice = device as IDevice & {
+		addresses?: { interfaceType: string; address: string }[];
+	};
+
+	const wifiAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'wifi')?.address ?? null;
+	const ethernetAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'ethernet')?.address ?? null;
+
+	const hasEthernet = computed<boolean>((): boolean => {
+		return (device as IDevice & { hasEthernet?: boolean }).hasEthernet ?? false;
+	});
+
+	const model = reactive<IShellyNgDeviceEditForm>({
+		...(device as unknown as IShellyNgDeviceEditForm),
+		wifiAddress: wifiAddr,
+		ethernetAddress: ethernetAddr,
+	});
 
 	let initialModel: Reactive<IShellyNgDeviceEditForm> = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
 
@@ -122,6 +138,8 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 				data: {
 					...parsedModel.data,
 					type: device.type,
+					wifi_address: parsedModel.data.wifiAddress ?? undefined,
+					ethernet_address: parsedModel.data.ethernetAddress ?? undefined,
 				},
 			});
 
@@ -189,6 +207,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 	return {
 		categoriesOptions,
+		hasEthernet,
 		supportedDevices,
 		model,
 		formEl,
