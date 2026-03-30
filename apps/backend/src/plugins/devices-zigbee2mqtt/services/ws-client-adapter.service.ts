@@ -219,7 +219,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 */
 	private handleWsMessage(data: WebSocket.Data): void {
 		try {
-			const raw = typeof data === 'string' ? data : data.toString();
+			const raw = typeof data === 'string' ? data : Buffer.from(data as Buffer).toString('utf-8');
 			const wsMessage = JSON.parse(raw) as Z2mWsMessage;
 
 			if (!wsMessage.topic) {

@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import { DevicesZigbee2mqttPluginUpdateConfigConnection_type } from '../../../openapi';
 import type { DevicesZigbee2mqttPluginUpdateConfigSchema, DevicesZigbee2mqttPluginConfigSchema } from '../../../openapi.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constants';
 
@@ -48,7 +49,7 @@ export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
 export const Zigbee2mqttConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME),
-		connection_type: z.enum(['mqtt', 'ws']).optional(),
+		connection_type: z.nativeEnum(DevicesZigbee2mqttPluginUpdateConfigConnection_type).optional(),
 		mqtt: z
 			.object({
 				host: z.string().optional(),
@@ -94,7 +95,7 @@ export const Zigbee2mqttConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Config
 export const Zigbee2mqttConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME),
-		connection_type: z.enum(['mqtt', 'ws']),
+		connection_type: z.nativeEnum(DevicesZigbee2mqttPluginUpdateConfigConnection_type),
 		mqtt: z.object({
 			host: z.string(),
 			port: z.number(),

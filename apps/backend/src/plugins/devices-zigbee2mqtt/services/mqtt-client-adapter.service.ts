@@ -138,8 +138,7 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 			return new Promise((resolve) => {
 				this.client?.end(true, {}, () => {
 					this.client = null;
-					this.deviceRegistry.clear();
-					this.stateCache.clear();
+					this.resetState();
 					resolve();
 				});
 			});
