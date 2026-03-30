@@ -175,7 +175,9 @@ export class Zigbee2mqttService implements IManagedPluginService {
 					oldConfig.ws.host !== newConfig.ws.host ||
 					oldConfig.ws.port !== newConfig.ws.port ||
 					oldConfig.ws.baseTopic !== newConfig.ws.baseTopic ||
-					oldConfig.ws.secure !== newConfig.ws.secure;
+					oldConfig.ws.secure !== newConfig.ws.secure ||
+					oldConfig.ws.connectTimeout !== newConfig.ws.connectTimeout ||
+					oldConfig.ws.reconnectInterval !== newConfig.ws.reconnectInterval;
 
 				if (wsChanged) {
 					this.logger.log('WebSocket config changed, restart required');
