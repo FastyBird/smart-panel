@@ -13,7 +13,7 @@ import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { printError, printStep, printSuccess, printWarning } from './command.utils';
 
-type PanelPlatform = 'flutter-pi-armv7' | 'flutter-pi-arm64' | 'elinux' | 'linux' | 'android';
+type PanelPlatform = 'flutter-pi-arm64' | 'elinux' | 'linux' | 'android';
 
 interface UpdatePanelOptions {
 	platform?: string;
@@ -24,11 +24,10 @@ interface UpdatePanelOptions {
 }
 
 const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
-	'flutter-pi-armv7': /smart-panel-display-armv7\.tar\.gz/,
-	'flutter-pi-arm64': /smart-panel-display-arm64\.tar\.gz/,
-	elinux: /smart-panel-display-elinux-x64\.tar\.gz/,
-	linux: /smart-panel-display-linux-x64\.tar\.gz/,
-	android: /smart-panel-display\.apk/,
+	'flutter-pi-arm64': /smart-panel-display-flutterpi-[\w.-]+-arm64\.tar\.gz/,
+	elinux: /smart-panel-display-elinux-[\w.-]+-x64\.tar\.gz/,
+	linux: /smart-panel-display-linux-[\w.-]+-x64\.tar\.gz/,
+	android: /smart-panel-display-android-[\w.-]+\.apk/,
 };
 
 const DEFAULT_INSTALL_DIR = '/opt/smart-panel-display';
@@ -145,10 +144,10 @@ export class UpdatePanelCommand extends CommandRunner {
 
 	@Option({
 		flags: '-p, --platform <platform>',
-		description: 'Panel platform: flutter-pi-armv7, flutter-pi-arm64, elinux, linux, android',
+		description: 'Panel platform: flutter-pi-arm64, elinux, linux, android',
 	})
 	parsePlatform(val: string): string {
-		const allowed: PanelPlatform[] = ['flutter-pi-armv7', 'flutter-pi-arm64', 'elinux', 'linux', 'android'];
+		const allowed: PanelPlatform[] = ['flutter-pi-arm64', 'elinux', 'linux', 'android'];
 
 		if (!allowed.includes(val as PanelPlatform)) {
 			console.error(`\x1b[31m❌ Invalid platform: ${val}. Allowed: ${allowed.join(', ')}\x1b[0m`);
@@ -208,7 +207,6 @@ export class UpdatePanelCommand extends CommandRunner {
 				name: 'platform',
 				message: 'Select the panel platform to update:',
 				choices: [
-					{ name: 'Raspberry Pi - ARM 32-bit (flutter-pi-armv7)', value: 'flutter-pi-armv7' },
 					{ name: 'Raspberry Pi - ARM 64-bit (flutter-pi-arm64)', value: 'flutter-pi-arm64' },
 					{ name: 'Embedded Linux - DRM/GBM (elinux)', value: 'elinux' },
 					{ name: 'Linux Desktop (linux)', value: 'linux' },
@@ -230,17 +228,13 @@ export class UpdatePanelCommand extends CommandRunner {
 				const model = readFileSync(modelPath, 'utf-8').toLowerCase();
 
 				if (model.includes('raspberry')) {
-					return arch === 'arm64' ? 'flutter-pi-arm64' : 'flutter-pi-armv7';
+					return 'flutter-pi-arm64';
 				}
 			}
 
-			// ARM devices default to flutter-pi with correct arch
+			// ARM64 devices default to flutter-pi
 			if (arch === 'arm64') {
 				return 'flutter-pi-arm64';
-			}
-
-			if (arch === 'arm') {
-				return 'flutter-pi-armv7';
 			}
 
 			// x64 Linux - check if display service exists

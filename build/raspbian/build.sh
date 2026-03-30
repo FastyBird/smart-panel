@@ -391,11 +391,11 @@ mkdir -p "${OUTPUT_DIR}"
 VERSION=$(git -C "${PROJECT_ROOT}" describe --tags --always 2>/dev/null || echo "dev")
 VERSION="${VERSION//\//-}"
 
-# Include variant in filename (server omits it for backwards compatibility)
+# Include variant in filename with raspbian prefix
 if [ "${VARIANT}" = "server" ]; then
-	NAME_PREFIX="smart-panel"
+	NAME_PREFIX="smart-panel-raspbian-server"
 else
-	NAME_PREFIX="smart-panel-${VARIANT}"
+	NAME_PREFIX="smart-panel-raspbian-${VARIANT}"
 fi
 
 echo "  -> Deploy directory contents:"

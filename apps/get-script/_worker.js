@@ -2,9 +2,9 @@
  * Cloudflare Pages Advanced Mode Worker
  *
  * Routes:
- *   GET /       → curl/wget: proxies install.sh from GitHub
- *                  browser:   serves index.html landing page
- *   GET /panel  → proxies install-panel.sh from GitHub
+ *   GET /         → curl/wget: proxies install-server.sh from GitHub
+ *                    browser:   serves index.html landing page
+ *   GET /display  → proxies install-display.sh from GitHub
  *
  * Deploy: Cloudflare Pages with this file in the project root.
  * The /public directory holds static assets (index.html).
@@ -13,8 +13,8 @@
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/FastyBird/smart-panel/main/scripts';
 
 const SCRIPT_ROUTES = {
-	'/': `${GITHUB_RAW_BASE}/install.sh`,
-	'/panel': `${GITHUB_RAW_BASE}/install-panel.sh`,
+	'/': `${GITHUB_RAW_BASE}/install-server.sh`,
+	'/display': `${GITHUB_RAW_BASE}/install-display.sh`,
 };
 
 /**
@@ -61,9 +61,9 @@ export default {
 		const url = new URL(request.url);
 		const path = url.pathname.replace(/\/+$/, '') || '/';
 
-		// /panel always returns the script (no HTML alternative)
-		if (path === '/panel') {
-			return proxyScript(SCRIPT_ROUTES['/panel']);
+		// /display always returns the script (no HTML alternative)
+		if (path === '/display') {
+			return proxyScript(SCRIPT_ROUTES['/display']);
 		}
 
 		// Root path: CLI gets the script, browsers get the landing page

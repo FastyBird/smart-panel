@@ -4,7 +4,7 @@ Minimal site that serves Smart Panel install scripts from the GitHub repository.
 
 - **Browsers** visiting the root see a landing page with install commands
 - **`curl`/`wget`** hitting the root get the server install script directly
-- **`/panel`** always returns the display install script
+- **`/display`** always returns the display install script
 
 ## How it works
 
@@ -24,8 +24,8 @@ The `_worker.js` file is automatically picked up by Cloudflare Pages in Advanced
 
 | Path | CLI (`curl`, `wget`) | Browser |
 |------|---------------------|---------|
-| `/` | `scripts/install.sh` | Landing page |
-| `/panel` | `scripts/install-panel.sh` | `scripts/install-panel.sh` |
+| `/` | `scripts/install-server.sh` | Landing page |
+| `/display` | `scripts/install-display.sh` | `scripts/install-display.sh` |
 
 ## Test locally
 
@@ -33,8 +33,8 @@ The `_worker.js` file is automatically picked up by Cloudflare Pages in Advanced
 # Should return the install script
 curl -fsSL http://localhost:8788
 
-# Should return the panel install script
-curl -fsSL http://localhost:8788/panel
+# Should return the display install script
+curl -fsSL http://localhost:8788/display
 ```
 
 Use [Wrangler](https://developers.cloudflare.com/workers/wrangler/) to run locally:
