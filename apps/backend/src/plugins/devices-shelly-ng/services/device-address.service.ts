@@ -167,4 +167,19 @@ export class DeviceAddressService {
 	async setHasEthernet(deviceId: string, hasEthernet: boolean): Promise<void> {
 		await this.deviceRepository.update(deviceId, { hasEthernet });
 	}
+
+	/**
+	 * Read the legacy `hostname` column value for a device via raw query.
+	 * The column still exists on the STI table (used by other plugins) but is
+	 * no longer declared on ShellyNgDeviceEntity. Used for one-time migration
+	 * of pre-existing devices that have hostname but no address table entries.
+	 */
+	async getLegacyHostname(deviceId: string): Promise<string | null> {
+		const result = await this.deviceRepository.query(
+			'SELECT "hostname" FROM "devices_module_devices" WHERE "id" = ?',
+			[deviceId],
+		);
+
+		return result?.[0]?.hostname ?? null;
+	}
 }

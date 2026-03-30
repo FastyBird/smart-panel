@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { AddressType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 import { DeviceAddressService } from './device-address.service';
@@ -46,7 +46,21 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 		const preferredAddresses = await this.deviceAddressService.getPreferredAddresses(enabledDevices.map((d) => d.id));
 
 		for (const d of enabledDevices) {
-			const hostname = preferredAddresses.get(d.id) ?? null;
+			let hostname = preferredAddresses.get(d.id) ?? null;
+
+			// Fallback: migrate legacy hostname column for pre-existing devices
+			// that were created before the address table was introduced.
+			if (hostname === null) {
+				const legacyHostname = await this.deviceAddressService.getLegacyHostname(d.id);
+
+				if (legacyHostname) {
+					await this.deviceAddressService.upsertAddress(d.id, AddressType.WIFI, legacyHostname);
+
+					this.logger.log(`Migrated legacy hostname=${legacyHostname} to address table for device=${d.id}`);
+
+					hostname = legacyHostname;
+				}
+			}
 
 			if (hostname === null) {
 				this.logger.warn(`No address found for device=${d.id}, skipping discovery emit`);
