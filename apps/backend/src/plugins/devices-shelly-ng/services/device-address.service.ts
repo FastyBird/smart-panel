@@ -186,11 +186,11 @@ export class DeviceAddressService {
 	 * of pre-existing devices that have hostname but no address table entries.
 	 */
 	async getLegacyHostname(deviceId: string): Promise<string | null> {
-		const result = await this.deviceRepository.query(
+		const result: { hostname: string | null }[] = await this.deviceRepository.query(
 			'SELECT "hostname" FROM "devices_module_devices" WHERE "id" = ?',
 			[deviceId],
 		);
 
-		return result?.[0]?.hostname ?? null;
+		return result[0]?.hostname ?? null;
 	}
 }
