@@ -6,7 +6,8 @@
 		<el-descriptions
 			:column="1"
 			border
-			label-class-name="min-w-[140px]!"
+			label-width="140px"
+			class-name="log-detail-descriptions"
 		>
 			<el-descriptions-item :label="t('systemModule.fields.systemLogs.timestamp.title')">
 				<span class="font-mono">{{ systemLog.ts }}</span>

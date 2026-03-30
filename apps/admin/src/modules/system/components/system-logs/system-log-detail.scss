@@ -6,4 +6,14 @@
 		--el-tag-text-color: var(--el-text-color-regular);
 		--el-tag-border-color: var(--el-border-color);
 	}
+
+	.log-detail-descriptions {
+		table-layout: fixed;
+		width: 100%;
+
+		td {
+			word-break: break-word;
+			overflow-wrap: break-word;
+		}
+	}
 }
