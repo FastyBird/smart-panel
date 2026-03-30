@@ -130,18 +130,41 @@
 		<!-- Log detail drawer -->
 		<el-drawer
 			v-model="detailVisible"
-			:title="t('devicesModule.texts.devices.logs.detail')"
+			:show-close="false"
+			:with-header="false"
 			direction="rtl"
-			size="480px"
+			size="40%"
 		>
-			<el-scrollbar class="h-full">
-				<div class="p-2 md:px-4">
-					<system-log-detail
-						v-if="selectedLog"
-						:system-log="selectedLog"
-					/>
-				</div>
-			</el-scrollbar>
+			<div class="flex flex-col h-full">
+				<app-bar menu-button-hidden>
+					<template #title>
+						{{ t('devicesModule.texts.devices.logs.detail') }}
+					</template>
+
+					<template #button-right>
+						<app-bar-button
+							:align="AppBarButtonAlign.RIGHT"
+							class="mr-2"
+							@click="selectedLog = null"
+						>
+							<template #icon>
+								<el-icon>
+									<icon icon="mdi:close" />
+								</el-icon>
+							</template>
+						</app-bar-button>
+					</template>
+				</app-bar>
+
+				<el-scrollbar class="grow-1">
+					<div class="p-2 md:px-4">
+						<system-log-detail
+							v-if="selectedLog"
+							:system-log="selectedLog"
+						/>
+					</div>
+				</el-scrollbar>
+			</div>
 		</el-drawer>
 	</div>
 </template>
@@ -150,12 +173,12 @@
 import { computed, onBeforeMount, ref, type Ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDrawer, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
-import { IconWithChild } from '../../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, IconWithChild } from '../../../../common';
 import { SystemModuleLogEntryType } from '../../../../openapi.constants';
 import { SystemLogDetail } from '../../../../modules/system';
 import type { ILogEntry } from '../../../../modules/system/store/logs-entries.store.types';
