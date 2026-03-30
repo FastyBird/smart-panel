@@ -53,9 +53,12 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 		this.logger.log(`Connecting to Zigbee2MQTT WebSocket: ${wsUrl}`);
 
 		return new Promise((resolve, reject) => {
+			let settled = false;
+
 			try {
 				const timeoutId = setTimeout(() => {
-					if (!this.connected) {
+					if (!settled && !this.connected) {
+						settled = true;
 						this.logger.error('WebSocket connection timed out');
 						this.ws?.terminate();
 						this.ws = null;
@@ -67,6 +70,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 				this.ws.on('open', () => {
 					clearTimeout(timeoutId);
+					settled = true;
 
 					this.logger.log('Connected to Zigbee2MQTT WebSocket');
 					this.connected = true;
@@ -81,7 +85,8 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 						message: error.message,
 					});
 
-					if (!this.connected) {
+					if (!settled && !this.connected) {
+						settled = true;
 						reject(error);
 					}
 				});
