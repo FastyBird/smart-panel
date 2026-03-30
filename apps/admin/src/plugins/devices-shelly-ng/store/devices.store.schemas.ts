@@ -51,6 +51,7 @@ export const ShellyNgDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		password: z.string().nullable(),
 		canonical_mac: z.string().nullable().optional(),
+		has_ethernet: z.boolean(),
 		addresses: z.array(z.object({
 			id: z.string(),
 			interface_type: z.enum(['ethernet', 'wifi']),
