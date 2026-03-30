@@ -450,7 +450,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -513,7 +513,7 @@ const fieldErrors = computed<Record<string, string | undefined>>(() => {
 	return errors;
 });
 
-const rules = reactive<FormRules<IZigbee2mqttConfigEditForm>>({
+const mqttRules: FormRules<IZigbee2mqttConfigEditForm> = {
 	'mqtt.host': [{ required: true, message: t('devicesZigbee2mqttPlugin.fields.config.mqtt.host.validation.required'), trigger: 'blur' }],
 	'mqtt.port': [
 		{ required: true, message: t('devicesZigbee2mqttPlugin.fields.config.mqtt.port.validation.required'), trigger: 'change' },
@@ -551,6 +551,9 @@ const rules = reactive<FormRules<IZigbee2mqttConfigEditForm>>({
 			trigger: 'change',
 		},
 	],
+};
+
+const wsRules: FormRules<IZigbee2mqttConfigEditForm> = {
 	'ws.host': [{ required: true, message: t('devicesZigbee2mqttPlugin.fields.config.ws.host.validation.required'), trigger: 'blur' }],
 	'ws.port': [
 		{ required: true, message: t('devicesZigbee2mqttPlugin.fields.config.ws.port.validation.required'), trigger: 'change' },
@@ -580,7 +583,11 @@ const rules = reactive<FormRules<IZigbee2mqttConfigEditForm>>({
 			trigger: 'change',
 		},
 	],
-});
+};
+
+const rules = computed<FormRules<IZigbee2mqttConfigEditForm>>(() =>
+	model.connectionType === 'ws' ? wsRules : mqttRules,
+);
 
 watch(
 	(): FormResultType => formResult.value,

@@ -10,8 +10,10 @@ import {
 	Z2mBridgeState,
 	Z2mDevice,
 	Z2mDeviceAvailability,
+	Z2mMqttConfig,
 	Z2mRegisteredDevice,
 	Z2mSetPayload,
+	Z2mWsConfig,
 } from '../interfaces/zigbee2mqtt.interface';
 
 /**
@@ -110,7 +112,7 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Connect to the Zigbee2MQTT instance
 	 */
-	abstract connect(config: unknown): Promise<void>;
+	abstract connect(config: Z2mMqttConfig | Z2mWsConfig): Promise<void>;
 
 	/**
 	 * Disconnect from the Zigbee2MQTT instance
@@ -187,7 +189,7 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Handle bridge messages (state, devices, events)
 	 */
-	protected handleBridgeMessage(subtopic: string, message: string): void {
+	protected handleBridgeMessage(subtopic: string | undefined, message: string): void {
 		switch (subtopic) {
 			case 'state':
 				this.handleBridgeStateMessage(message);
