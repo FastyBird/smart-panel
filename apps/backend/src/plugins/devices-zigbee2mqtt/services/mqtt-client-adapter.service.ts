@@ -25,14 +25,16 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	 * Connect to the MQTT broker
 	 */
 	async connect(config: Z2mMqttConfig): Promise<void> {
-		this.config = config;
 		this.configBaseTopic = config.baseTopic;
 
 		// Clear any existing reconnect timer
 		this.clearReconnectTimer();
 
-		// Disconnect existing client if any
+		// Disconnect existing client if any (disconnect() nulls this.config,
+		// so we assign it after disconnect to preserve it for reconnection)
 		await this.disconnect();
+
+		this.config = config;
 
 		const brokerUrl = this.buildBrokerUrl(config);
 

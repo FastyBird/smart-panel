@@ -37,14 +37,16 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 * Connect to the Zigbee2MQTT WebSocket API
 	 */
 	async connect(config: Z2mWsConfig): Promise<void> {
-		this.config = config;
 		this.configBaseTopic = config.baseTopic;
 
 		// Clear any existing reconnect timer
 		this.clearReconnectTimer();
 
-		// Disconnect existing client if any
+		// Disconnect existing client if any (disconnect() nulls this.config,
+		// so we assign it after disconnect to preserve it for reconnection)
 		await this.disconnect();
+
+		this.config = config;
 
 		const wsUrl = this.buildWsUrl(config);
 
@@ -130,7 +132,18 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 					return;
 				}
 
+				// Force close after 2 seconds if graceful close doesn't complete
+				const forceCloseTimer = setTimeout(() => {
+					if (this.ws) {
+						this.ws.terminate();
+						this.ws = null;
+						this.resetState();
+						resolve();
+					}
+				}, 2000);
+
 				const onClose = (): void => {
+					clearTimeout(forceCloseTimer);
 					this.ws?.removeListener('close', onClose);
 					this.ws = null;
 					this.resetState();
@@ -139,16 +152,6 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 				this.ws.on('close', onClose);
 				this.ws.close();
-
-				// Force close after 2 seconds if graceful close doesn't complete
-				setTimeout(() => {
-					if (this.ws) {
-						this.ws.terminate();
-						this.ws = null;
-						this.resetState();
-						resolve();
-					}
-				}, 2000);
 			});
 		}
 	}
