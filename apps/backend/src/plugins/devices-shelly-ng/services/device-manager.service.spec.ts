@@ -167,6 +167,7 @@ jest.mock('../../../spec/channels', () => {
 
 jest.mock('../devices-shelly-ng.constants', () => ({
 	DEVICES_SHELLY_NG_TYPE: 'devices-shelly-ng',
+	DEVICES_SHELLY_NG_PLUGIN_NAME: 'devices-shelly-ng-plugin',
 	ComponentType: {
 		SWITCH: 'switch',
 		COVER: 'cover',
@@ -177,10 +178,19 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 		TEMPERATURE: 'temperature',
 		PM: 'pm1',
 		WIFI: 'wifi',
+		ETHERNET: 'ethernet',
 	},
 	DeviceProfile: {
 		SWITCH: 'switch',
 		COVER: 'cover',
+	},
+	AddressType: {
+		ETHERNET: 'ethernet',
+		WIFI: 'wifi',
+	},
+	ADDRESS_PRIORITY: {
+		ethernet: 0,
+		wifi: 1,
 	},
 	DESCRIPTORS: {},
 }));
@@ -203,6 +213,19 @@ const mockPropertyMappingStorage = {
 	getPropertyIdsForChannel: jest.fn(),
 } as any;
 
+const mockDeviceAddressService = {
+	getPreferredAddress: jest.fn().mockResolvedValue('192.168.1.10'),
+	getPreferredAddressOrMigrate: jest.fn().mockResolvedValue('192.168.1.10'),
+	getPreferredAddresses: jest.fn().mockResolvedValue(new Map()),
+	syncAddresses: jest.fn().mockResolvedValue(undefined),
+	upsertAddress: jest.fn().mockResolvedValue(undefined),
+	findDeviceByCanonicalMac: jest.fn().mockResolvedValue(null),
+	setCanonicalMac: jest.fn().mockResolvedValue(undefined),
+	setHasEthernet: jest.fn().mockResolvedValue(undefined),
+	getAddresses: jest.fn().mockResolvedValue([]),
+	getLegacyHostname: jest.fn().mockResolvedValue(null),
+} as any;
+
 const mockProvisionQueue = new DeviceProvisionQueueService();
 
 const makeService = () =>
@@ -215,6 +238,7 @@ const makeService = () =>
 		mockTransformerRegistry,
 		mockPropertyMappingStorage,
 		mockProvisionQueue,
+		mockDeviceAddressService,
 	);
 
 beforeEach(() => {
@@ -281,7 +305,6 @@ describe('DeviceManagerService.createOrUpdate', () => {
 
 		const device = {
 			id: 'db-dev-1',
-			hostname: '192.168.1.10',
 			password: 'pass',
 			category: DeviceCategory.SWITCHER,
 		} as any;
@@ -289,7 +312,10 @@ describe('DeviceManagerService.createOrUpdate', () => {
 		mockDevicesService.findOne.mockResolvedValue(device);
 
 		// Spy private getSpecification to bypass DESCRIPTORS
-		jest.spyOn<any, any>(svc as any, 'getSpecification').mockReturnValue({ models: ['SOME-MODEL'] });
+		jest.spyOn<any, any>(svc as any, 'getSpecification').mockReturnValue({
+			models: ['SOME-MODEL'],
+			system: [{ type: 'wifi' }],
+		});
 
 		// RPC device info & components
 		mockRpc.getDeviceInfo.mockResolvedValue({

@@ -7,6 +7,8 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
+import { DeviceAddressService } from './device-address.service';
+
 @Injectable()
 export class DatabaseDiscovererService extends DeviceDiscoverer {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -16,27 +18,47 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 
 	private readonly emitInterval = 20; // The interval, in milliseconds, to wait between each emitted device.
 
-	constructor(private readonly devicesService: DevicesService) {
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly deviceAddressService: DeviceAddressService,
+	) {
 		super();
 	}
 
 	async run() {
-		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
-			if (d.enabled === false) {
-				continue;
-			}
+		const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
+
+		const enabledDevices = devices.filter((d) => {
+			if (d.enabled === false) return false;
 
 			if (d.identifier === null) {
 				this.logger.error(
 					`Failed to prepare device to be managed by Shelly manager. Missing identifier for device=${d.id}`,
 				);
 
+				return false;
+			}
+
+			return true;
+		});
+
+		// Batch-load preferred addresses for all enabled devices (single query)
+		const preferredAddresses = await this.deviceAddressService.getPreferredAddresses(enabledDevices.map((d) => d.id));
+
+		for (const d of enabledDevices) {
+			// Use batch-loaded address, or fall back to legacy hostname migration
+			const hostname =
+				preferredAddresses.get(d.id) ?? (await this.deviceAddressService.getPreferredAddressOrMigrate(d.id));
+
+			if (hostname === null) {
+				this.logger.warn(`No address found for device=${d.id}, skipping discovery emit`);
+
 				continue;
 			}
 
 			await this.emitDevice({
 				deviceId: d.identifier,
-				hostname: d.hostname,
+				hostname,
 			});
 		}
 	}

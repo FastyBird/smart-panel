@@ -22,6 +22,7 @@ export interface IUseDeviceAddForm {
 
 export interface IUseDeviceEditForm {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleDeviceCategory; label: string }[]>;
+	hasEthernet: ComputedRef<boolean>;
 	supportedDevices: Ref<IShellyNgSupportedDevice[]>;
 	model: Reactive<IShellyNgDeviceEditForm>;
 	formEl: Ref<FormInstance | undefined>;

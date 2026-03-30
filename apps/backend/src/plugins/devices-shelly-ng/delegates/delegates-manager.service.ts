@@ -37,6 +37,7 @@ import {
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
+import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
@@ -66,7 +67,7 @@ export class DelegatesManagerService {
 		(compKey: string, attr: string, val: CharacteristicValue) => void
 	> = new Map();
 
-	private readonly delegateConnectionHandlers: Map<string, (state: boolean) => void> = new Map();
+	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
@@ -79,6 +80,25 @@ export class DelegatesManagerService {
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
 
 	private readonly delegateDeviceIds: Map<string, string> = new Map();
+
+	/**
+	 * Maps delegate ID (library device ID) → device.identifier (DB identifier).
+	 */
+	private readonly delegateToIdentifier: Map<string, string> = new Map();
+
+	/**
+	 * Reverse map: device.identifier → Set of delegate IDs.
+	 * Used by setPropertyValue/setChannelValue to resolve from device.identifier
+	 * to the correct delegate's handler keys.
+	 */
+	private readonly identifierToDelegates: Map<string, Set<string>> = new Map();
+
+	/**
+	 * Tracks the connected state of each individual delegate.
+	 * Guards against double-increment (connect event after initial connectionHandler(true))
+	 * and double-decrement (disconnect event followed by removal).
+	 */
+	private readonly delegateConnectedState: Map<string, boolean> = new Map();
 
 	/**
 	 * Generation counter per device ID. Incremented at the start of each insert(),
@@ -94,12 +114,29 @@ export class DelegatesManagerService {
 	 */
 	private readonly deviceLocks: Map<string, Promise<void>> = new Map();
 
+	/**
+	 * Serializes the canonical MAC lookup + device creation section.
+	 * Two delegates of the same physical device have different shelly.id values,
+	 * so their per-device locks are independent. This shared lock, keyed by
+	 * canonical MAC, ensures only one delegate at a time runs the
+	 * find-or-create path to prevent duplicate device creation.
+	 */
+	private readonly canonicalMacLocks: Map<string, Promise<void>> = new Map();
+
+	/**
+	 * Tracks how many delegates are currently connected per system device ID.
+	 * Used to avoid setting DISCONNECTED when one interface goes down but another
+	 * is still active (e.g., WiFi disconnects but Ethernet stays connected).
+	 */
+	private readonly connectedDelegatesPerDevice: Map<string, number> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceManagerService: DeviceManagerService,
+		private readonly deviceAddressService: DeviceAddressService,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly transformerRegistry: TransformerRegistry,
 	) {}
@@ -129,61 +166,112 @@ export class DelegatesManagerService {
 
 		this.delegates.set(shelly.id, delegate);
 
-		const hostname = shelly.wifi?.sta_ip ?? shelly.ethernet?.ip ?? null;
+		const wifiIp = shelly.wifi?.sta_ip ?? null;
+		const ethernetIp = shelly.ethernet?.ip ?? null;
 
-		if (hostname === null) {
+		if (ethernetIp === null && wifiIp === null) {
 			throw new DevicesShellyNgException('Missing device hostname or IP address');
 		}
 
-		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			shelly.id,
-			DEVICES_SHELLY_NG_TYPE,
-		);
+		// Get canonical MAC from the device's system config for deduplication.
+		// Shelly Pro devices may have different MACs on WiFi vs Ethernet, but
+		// Sys.GetConfig always returns the same canonical MAC regardless of interface.
+		const canonicalMac: string | null = shelly.system?.config?.device?.mac ?? null;
 
-		let isNewDevice = false;
-
-		if (device === null) {
-			try {
-				device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
-					type: DEVICES_SHELLY_NG_TYPE,
-					category: this.determineCategory(delegate),
-					identifier: shelly.id,
-					hostname,
-					name: shelly.system.config.device.name ?? shelly.modelName,
-				});
-
-				isNewDevice = true;
-			} catch (error) {
-				// Handle race condition: device may have been created by another process
-				// Retry finding the device
-				device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-					'identifier',
-					shelly.id,
-					DEVICES_SHELLY_NG_TYPE,
-				);
-
-				if (device === null) {
-					throw error; // Re-throw if device still doesn't exist
-				}
-			}
-		}
-
-		this.delegateDeviceIds.set(delegate.id, device.id);
-
-		if (isNewDevice) {
-			// Provision channels and properties before setting up handlers.
-			// This is called explicitly (awaited) so channels exist by the time
-			// handler setup queries run below. The subscriber also fires
-			// createOrUpdate asynchronously, but it is idempotent.
-			await this.deviceManagerService.createOrUpdate(device.id);
-
-			// Reload device to pick up any changes made by createOrUpdate
-			device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+		// The find-or-create block is serialized by canonical MAC to prevent two
+		// delegates of the same physical device (different shelly.id per interface)
+		// from racing and both creating separate DB devices.
+		const { device: resolvedDevice, isNewDevice } = await this.withCanonicalMacLock(canonicalMac, async () => {
+			let dev = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
 				'identifier',
 				shelly.id,
 				DEVICES_SHELLY_NG_TYPE,
 			);
+
+			// If not found by library device ID, check by canonical MAC to detect
+			// the same physical device discovered via a different network interface
+			// (e.g., Shelly Pro found via WiFi first, now discovered via Ethernet).
+			if (!dev && canonicalMac) {
+				dev = (await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac)) ?? null;
+
+				if (dev) {
+					this.logger.log(
+						`Device=${shelly.id} matched existing device=${dev.identifier} by canonical MAC=${canonicalMac} (multi-interface merge)`,
+						{ resource: dev.id },
+					);
+				}
+			}
+
+			let created = false;
+
+			if (dev === null) {
+				try {
+					dev = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
+						type: DEVICES_SHELLY_NG_TYPE,
+						category: this.determineCategory(delegate),
+						identifier: shelly.id,
+						name: shelly.system.config.device.name ?? shelly.modelName,
+					});
+
+					created = true;
+				} catch (error) {
+					// Handle race condition: device may have been created by another process
+					dev = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+						'identifier',
+						shelly.id,
+						DEVICES_SHELLY_NG_TYPE,
+					);
+
+					// Also retry by canonical MAC in case the other delegate used a different identifier
+					if (!dev && canonicalMac) {
+						dev = (await this.deviceAddressService.findDeviceByCanonicalMac(canonicalMac)) ?? null;
+					}
+
+					if (dev === null) {
+						throw error;
+					}
+				}
+			}
+
+			// Store canonical MAC for future deduplication (inside lock so the next
+			// delegate's findDeviceByCanonicalMac sees it)
+			if (canonicalMac && dev.canonicalMac !== normalizeMac(canonicalMac)) {
+				await this.deviceAddressService.setCanonicalMac(dev.id, canonicalMac);
+			}
+
+			return { device: dev, isNewDevice: created };
+		});
+
+		let device = resolvedDevice;
+
+		this.delegateDeviceIds.set(delegate.id, device.id);
+		this.delegateToIdentifier.set(delegate.id, device.identifier);
+
+		// Track reverse mapping: device.identifier → delegate IDs
+		const delegateSet = this.identifierToDelegates.get(device.identifier) ?? new Set();
+		delegateSet.add(delegate.id);
+		this.identifierToDelegates.set(device.identifier, delegateSet);
+
+		// Store network addresses (ethernet-first preference resolved by address service)
+		await this.deviceAddressService.syncAddresses(device.id, wifiIp, ethernetIp);
+
+		// Ensure channels are provisioned before setting up handlers.
+		// For new devices this is the initial provisioning. For multi-interface merges,
+		// the second delegate may arrive before the first's createOrUpdate finishes —
+		// the provision queue serializes concurrent calls for the same device ID.
+		const existingChannel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+			'category',
+			ChannelCategory.DEVICE_INFORMATION,
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		if (isNewDevice || existingChannel === null) {
+			await this.deviceManagerService.createOrUpdate(device.id);
+
+			// Reload device since identifier might differ from shelly.id
+			// when the device was matched by canonical MAC
+			device = await this.devicesService.findOne<ShellyNgDeviceEntity>(device.id, DEVICES_SHELLY_NG_TYPE);
 
 			if (device === null) {
 				throw new DevicesShellyNgException('Device not found after provisioning');
@@ -1628,35 +1716,98 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.set(delegate.id, valueHandler);
 
 		const connectionHandler = (state: boolean | null): void => {
-			this.deviceConnectivityService
-				.setConnectionState(device.id, {
-					state:
-						state === null ? ConnectionState.UNKNOWN : state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
-				})
-				.then((): void => {
-					if (state) {
-						// Intentionally empty - device connected
-					} else {
-						// Intentionally empty - device disconnected
-					}
-				})
-				.catch((err: Error) => {
-					this.logger.error(
-						`Failed to set state=${state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED} for device=${delegate.id}`,
-						{
-							resource: device.id,
+			const deviceDbId = this.delegateDeviceIds.get(delegate.id) ?? device.id;
+			const wasConnected = this.delegateConnectedState.get(delegate.id) ?? false;
+
+			if (state === true) {
+				if (wasConnected) return;
+
+				this.delegateConnectedState.set(delegate.id, true);
+
+				const count = (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) + 1;
+				this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+				this.deviceConnectivityService
+					.setConnectionState(deviceDbId, { state: ConnectionState.CONNECTED })
+					.catch((err: Error) => {
+						this.logger.error(`Failed to set state=${ConnectionState.CONNECTED} for device=${delegate.id}`, {
+							resource: deviceDbId,
 							message: err.message,
 							stack: err.stack,
-						},
-					);
-				});
+						});
+					});
+			} else if (state === false) {
+				if (!wasConnected) return;
+
+				this.delegateConnectedState.set(delegate.id, false);
+
+				const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
+				this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+				if (count === 0) {
+					this.deviceConnectivityService
+						.setConnectionState(deviceDbId, { state: ConnectionState.DISCONNECTED })
+						.catch((err: Error) => {
+							this.logger.error(`Failed to set state=DISCONNECTED for device=${delegate.id}`, {
+								resource: deviceDbId,
+								message: err.message,
+								stack: err.stack,
+							});
+						});
+				} else {
+					this.logger.debug(`Device=${delegate.id} disconnected but ${count} other delegate(s) still connected`, {
+						resource: deviceDbId,
+					});
+				}
+			} else {
+				// state === null → removing delegate
+				const identifier = this.delegateToIdentifier.get(delegate.id);
+				const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
+				// The current delegate is still in the set at this point (removed later in performRemove)
+				const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
+				// If other delegates still exist for this device, the device is still being
+				// monitored (possibly reconnecting). Use DISCONNECTED, not UNKNOWN.
+				const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
+
+				if (wasConnected) {
+					const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
+					this.connectedDelegatesPerDevice.set(deviceDbId, count);
+
+					if (count === 0) {
+						this.deviceConnectivityService
+							.setConnectionState(deviceDbId, { state: targetState })
+							.catch((err: Error) => {
+								this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
+									resource: deviceDbId,
+									message: err.message,
+									stack: err.stack,
+								});
+							});
+					}
+				} else if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
+					this.deviceConnectivityService.setConnectionState(deviceDbId, { state: targetState }).catch((err: Error) => {
+						this.logger.error(`Failed to set state=${targetState} for device=${delegate.id}`, {
+							resource: deviceDbId,
+							message: err.message,
+							stack: err.stack,
+						});
+					});
+				}
+
+				this.delegateConnectedState.delete(delegate.id);
+			}
 		};
 
 		delegate.on('connected', connectionHandler);
 
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
-		connectionHandler(true);
+		// Signal initial connection state based on the delegate's current state.
+		// The guard inside connectionHandler prevents double-increment if the
+		// library later fires a redundant 'connect' event.
+		if (delegate.connected) {
+			connectionHandler(true);
+		}
 
 		this.logger.log(`Attached Shelly device=${delegate.id}`, { resource: device.id });
 
@@ -1682,20 +1833,27 @@ export class DelegatesManagerService {
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
-			// Mark device as unknown before detaching listeners so UI reflects removal
 			connectionHandler(null);
 		} else {
 			const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
 
-			void this.deviceConnectivityService
-				.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
-				.catch((err: Error): void => {
-					this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
-						resource: delegate.id,
-						message: err.message,
-						stack: err.stack,
+			// Only update state if no other delegate is still connected
+			if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) === 0) {
+				const identifier = this.delegateToIdentifier.get(deviceId);
+				const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
+				const otherDelegatesRemain = siblingDelegates ? siblingDelegates.size > 1 : false;
+				const targetState = otherDelegatesRemain ? ConnectionState.DISCONNECTED : ConnectionState.UNKNOWN;
+
+				void this.deviceConnectivityService
+					.setConnectionState(deviceDbId, { state: targetState })
+					.catch((err: Error): void => {
+						this.logger.warn(`Failed to mark device=${delegate.id} as ${targetState} while removing delegate`, {
+							resource: delegate.id,
+							message: err.message,
+							stack: err.stack,
+						});
 					});
-				});
+			}
 		}
 
 		if (valueHandler) {
@@ -1715,6 +1873,7 @@ export class DelegatesManagerService {
 			}
 		}
 
+		// Clean up only this delegate's handlers (keyed by delegate.id, not device.identifier)
 		for (const key of Array.from(this.setPropertiesHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
 				this.setPropertiesHandlers.delete(key);
@@ -1724,6 +1883,24 @@ export class DelegatesManagerService {
 		for (const key of Array.from(this.setChannelsHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
 				this.setChannelsHandlers.delete(key);
+			}
+		}
+
+		// Remove from reverse identifier → delegates map
+		const identifier = this.delegateToIdentifier.get(deviceId);
+		if (identifier) {
+			const delegateSet = this.identifierToDelegates.get(identifier);
+			if (delegateSet) {
+				delegateSet.delete(deviceId);
+				if (delegateSet.size === 0) {
+					this.identifierToDelegates.delete(identifier);
+
+					// Clean up stale counter when last delegate for this device is removed
+					const deviceDbId = this.delegateDeviceIds.get(deviceId);
+					if (deviceDbId) {
+						this.connectedDelegatesPerDevice.delete(deviceDbId);
+					}
+				}
 			}
 		}
 
@@ -1740,6 +1917,7 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateDeviceIds.delete(deviceId);
+		this.delegateToIdentifier.delete(deviceId);
 
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);
@@ -1754,7 +1932,7 @@ export class DelegatesManagerService {
 		channel: ShellyNgChannelEntity,
 		updates: { property: ShellyNgChannelPropertyEntity; value: string | number | boolean }[],
 	): Promise<boolean> {
-		const handler = this.setChannelsHandlers.get(`${device.identifier}|${channel.id}`);
+		const handler = this.resolveChannelHandler(device.identifier, channel.id);
 
 		if (!handler) {
 			return Promise.reject(
@@ -1786,7 +1964,7 @@ export class DelegatesManagerService {
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 	): Promise<boolean> {
-		const handler = this.setPropertiesHandlers.get(`${device.identifier}|${property.id}`);
+		const handler = this.resolvePropertyHandler(device.identifier, property.id);
 
 		if (!handler) {
 			this.logger.warn(
@@ -1977,6 +2155,61 @@ export class DelegatesManagerService {
 		);
 	}
 
+	/**
+	 * Resolve a property handler by device identifier.
+	 * Handlers are keyed by delegate.id, but callers only have device.identifier.
+	 * Prefers handlers from connected delegates; falls back to any available handler.
+	 */
+	private resolvePropertyHandler(
+		deviceIdentifier: string,
+		propertyId: string,
+	): ((val: string | number | boolean) => Promise<boolean>) | undefined {
+		const delegateIds = this.identifierToDelegates.get(deviceIdentifier);
+
+		if (!delegateIds) return undefined;
+
+		let fallback: ((val: string | number | boolean) => Promise<boolean>) | undefined;
+
+		for (const delegateId of delegateIds) {
+			const handler = this.setPropertiesHandlers.get(`${delegateId}|${propertyId}`);
+
+			if (!handler) continue;
+
+			if (this.delegateConnectedState.get(delegateId)) return handler;
+
+			fallback ??= handler;
+		}
+
+		return fallback;
+	}
+
+	/**
+	 * Resolve a channel handler by device identifier.
+	 * Prefers handlers from connected delegates; falls back to any available handler.
+	 */
+	private resolveChannelHandler(
+		deviceIdentifier: string,
+		channelId: string,
+	): ((updates: BatchUpdate[]) => Promise<boolean>) | undefined {
+		const delegateIds = this.identifierToDelegates.get(deviceIdentifier);
+
+		if (!delegateIds) return undefined;
+
+		let fallback: ((updates: BatchUpdate[]) => Promise<boolean>) | undefined;
+
+		for (const delegateId of delegateIds) {
+			const handler = this.setChannelsHandlers.get(`${delegateId}|${channelId}`);
+
+			if (!handler) continue;
+
+			if (this.delegateConnectedState.get(delegateId)) return handler;
+
+			fallback ??= handler;
+		}
+
+		return fallback;
+	}
+
 	detach(): void {
 		for (const [deviceId] of this.delegates.entries()) {
 			this.performRemove(deviceId);
@@ -1993,10 +2226,46 @@ export class DelegatesManagerService {
 
 		this.pendingWrites.clear();
 		this.deviceLocks.clear();
+		this.canonicalMacLocks.clear();
+		this.connectedDelegatesPerDevice.clear();
+		this.delegateToIdentifier.clear();
+		this.identifierToDelegates.clear();
+		this.delegateConnectedState.clear();
 	}
 
 	destroy(): void {
 		this.detach();
+	}
+
+	/**
+	 * Serialize the find-or-create path by canonical MAC.
+	 * If canonicalMac is null (unavailable), the function runs unserialized
+	 * — the per-device lock still provides safety for same-shelly.id calls.
+	 */
+	private async withCanonicalMacLock<T>(canonicalMac: string | null, fn: () => Promise<T>): Promise<T> {
+		if (!canonicalMac) {
+			return fn();
+		}
+
+		const pending = this.canonicalMacLocks.get(canonicalMac) ?? Promise.resolve();
+
+		let resolveLock!: () => void;
+		const lock = new Promise<void>((r) => {
+			resolveLock = r;
+		});
+		this.canonicalMacLocks.set(canonicalMac, lock);
+
+		await pending.catch(() => {});
+
+		try {
+			return await fn();
+		} finally {
+			resolveLock();
+
+			if (this.canonicalMacLocks.get(canonicalMac) === lock) {
+				this.canonicalMacLocks.delete(canonicalMac);
+			}
+		}
 	}
 
 	/**

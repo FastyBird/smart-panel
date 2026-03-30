@@ -82,7 +82,23 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		}
 	);
 
-	const model = reactive<IShellyNgDeviceEditForm>(device as unknown as IShellyNgDeviceEditForm);
+	// Extract addresses from device data
+	const rawDevice = device as IDevice & {
+		addresses?: { interfaceType: string; address: string }[];
+	};
+
+	const wifiAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'wifi')?.address ?? null;
+	const ethernetAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'ethernet')?.address ?? null;
+
+	const hasEthernet = computed<boolean>((): boolean => {
+		return (device as IDevice & { hasEthernet?: boolean }).hasEthernet ?? false;
+	});
+
+	const model = reactive<IShellyNgDeviceEditForm>({
+		...(device as unknown as IShellyNgDeviceEditForm),
+		wifiAddress: wifiAddr,
+		ethernetAddress: ethernetAddr,
+	});
 
 	let initialModel: Reactive<IShellyNgDeviceEditForm> = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
 
@@ -117,10 +133,24 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.WORKING;
 
 		try {
+			const { wifiAddress, ethernetAddress, ...deviceData } = parsedModel.data;
+
+			// Only send address fields when they've actually changed
+			const addressUpdates: Record<string, string | null> = {};
+
+			if (wifiAddress !== initialModel.wifiAddress) {
+				addressUpdates.wifiAddress = wifiAddress ?? null;
+			}
+
+			if (ethernetAddress !== initialModel.ethernetAddress) {
+				addressUpdates.ethernetAddress = ethernetAddress ?? null;
+			}
+
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...deviceData,
+					...addressUpdates,
 					type: device.type,
 				},
 			});
@@ -189,6 +219,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 	return {
 		categoriesOptions,
+		hasEthernet,
 		supportedDevices,
 		model,
 		formEl,

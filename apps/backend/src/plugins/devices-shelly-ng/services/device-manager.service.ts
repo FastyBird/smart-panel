@@ -48,6 +48,7 @@ import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { rssiToQuality, toEnergy } from '../utils/transform.utils';
 
+import { DeviceAddressService } from './device-address.service';
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
 
 @Injectable()
@@ -80,6 +81,7 @@ export class DeviceManagerService {
 		private readonly transformerRegistry: TransformerRegistry,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
+		private readonly deviceAddressService: DeviceAddressService,
 	) {}
 
 	async getDeviceInfo(
@@ -157,14 +159,34 @@ export class DeviceManagerService {
 				throw new DevicesShellyNgException('Device not found.');
 			}
 
-			const deviceInfo = await this.getDeviceInfo(device.hostname, device.password);
+			const hostname = await this.deviceAddressService.getPreferredAddressOrMigrate(device.id);
+
+			if (hostname === null) {
+				// No address yet — the device was just created and addresses will be
+				// synced shortly. The explicit createOrUpdate() call in performInsert()
+				// will succeed after syncAddresses() runs.
+				this.logger.debug(`No network address found yet for device=${device.id}, skipping provision`);
+
+				return device;
+			}
+
+			const deviceInfo = await this.getDeviceInfo(hostname, device.password);
 
 			const deviceSpec = this.getSpecification(deviceInfo.model);
 
 			if (deviceSpec === null) {
 				throw new DevicesShellyNgException(
-					`Provided device is not supported hostname=${device.hostname} model=${deviceInfo.model}`,
+					`Provided device is not supported hostname=${hostname} model=${deviceInfo.model}`,
 				);
+			}
+
+			// Persist whether the device has an Ethernet interface (Pro devices)
+			const specHasEthernet = deviceSpec.system.some((s) => s.type === ComponentType.ETHERNET);
+
+			if (device.hasEthernet !== specHasEthernet) {
+				device.hasEthernet = specHasEthernet;
+
+				await this.deviceAddressService.setHasEthernet(device.id, specHasEthernet);
 			}
 
 			const channelsIds: string[] = [];
@@ -218,7 +240,7 @@ export class DeviceManagerService {
 			);
 
 			try {
-				const wifiInfo = await this.shellyRpcClientService.getWifiStatus(device.hostname, {
+				const wifiInfo = await this.shellyRpcClientService.getWifiStatus(hostname, {
 					password: device.password,
 				});
 
@@ -240,7 +262,7 @@ export class DeviceManagerService {
 
 			const limit = pLimit(this.rpcConcurrency);
 
-			const host = device.hostname;
+			const host = hostname;
 			const password = device.password;
 
 			for (const [type, ids] of Object.entries(deviceComponents)) {
@@ -1372,7 +1394,7 @@ export class DeviceManagerService {
 						let devicePowerStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getDevicePowerStatus>>;
 
 						try {
-							devicePowerStatus = await this.shellyRpcClientService.getDevicePowerStatus(device.hostname, key, {
+							devicePowerStatus = await this.shellyRpcClientService.getDevicePowerStatus(host, key, {
 								password: device.password,
 							});
 						} catch (error) {

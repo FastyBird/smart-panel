@@ -8,10 +8,30 @@ export const ShellyNgDeviceAddFormSchema = DeviceAddFormSchema.extend({
 	hostname: z.string().trim().nonempty(),
 });
 
+const emptyToNull = z
+	.string()
+	.trim()
+	.transform((v) => (v === '' ? null : v))
+	.nullable()
+	.optional();
+
 export const ShellyNgDeviceEditFormSchema = DeviceEditFormSchema.extend({
 	password: z.string().nullable().optional(),
-	hostname: z.string().trim().nonempty(),
-});
+	wifiAddress: emptyToNull,
+	ethernetAddress: emptyToNull,
+}).refine(
+	(data) => {
+		// Only enforce "at least one address" when address fields are present in the form.
+		// When both are undefined (not part of the edit), skip — existing server-side addresses are unchanged.
+		if (data.wifiAddress === undefined && data.ethernetAddress === undefined) return true;
+
+		return !!data.wifiAddress || !!data.ethernetAddress;
+	},
+	{
+		message: 'At least one network address (WiFi or Ethernet) is required',
+		path: ['wifiAddress'],
+	},
+);
 
 export const ShellyNgSupportedDeviceSchema = z.object({
 	group: z.string(),

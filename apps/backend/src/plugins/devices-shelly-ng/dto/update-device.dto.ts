@@ -29,14 +29,29 @@ export class UpdateShellyNgDeviceDto extends UpdateDeviceDto {
 	password?: string | null;
 
 	@ApiPropertyOptional({
-		description: 'Device hostname or IP address',
+		description: 'WiFi interface IP address',
+		name: 'wifi_address',
 		example: '192.168.1.100',
 		nullable: true,
 	})
-	@Expose()
+	@Expose({ name: 'wifi_address' })
 	@IsOptional()
 	@IsString({
-		message: '[{"field":"hostname","reason":"Hostname attribute must be a valid IP address or network hostname."}]',
+		message: '[{"field":"wifi_address","reason":"WiFi address must be a valid IP address or network hostname."}]',
 	})
-	hostname?: string | null;
+	wifiAddress?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Ethernet interface IP address',
+		name: 'ethernet_address',
+		example: '192.168.1.101',
+		nullable: true,
+	})
+	@Expose({ name: 'ethernet_address' })
+	@IsOptional()
+	@IsString({
+		message:
+			'[{"field":"ethernet_address","reason":"Ethernet address must be a valid IP address or network hostname."}]',
+	})
+	ethernetAddress?: string | null;
 }

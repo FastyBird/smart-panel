@@ -13,16 +13,19 @@ import { useDeviceEditForm } from './useDeviceEditForm';
 
 const deviceId = uuid().toString();
 
-const mockDevice: IShellyNgDevice = {
+const mockDevice = {
 	id: deviceId.toString(),
 	type: 'test-type',
 	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	draft: true,
-	hostname: '192.168.0.1',
 	password: 'secret',
-} as IShellyNgDevice;
+	addresses: [
+		{ id: 'addr-1', interfaceType: 'ethernet', address: '192.168.0.1' },
+		{ id: 'addr-2', interfaceType: 'wifi', address: '192.168.0.2' },
+	],
+} as unknown as IShellyNgDevice;
 
 const mockEdit = vi.fn();
 const mockSave = vi.fn();
@@ -101,7 +104,8 @@ describe('useDeviceEditForm', () => {
 		expect(form.model.id).toBe(mockDevice.id);
 		expect(form.model.name).toBe(mockDevice.name);
 		expect(form.model.description).toBe(mockDevice.description);
-		expect(form.model.hostname).toBe(mockDevice.hostname);
+		expect(form.model.ethernetAddress).toBe('192.168.0.1');
+		expect(form.model.wifiAddress).toBe('192.168.0.2');
 		expect(form.model.password).toBe(mockDevice.password);
 	});
 
@@ -137,15 +141,14 @@ describe('useDeviceEditForm', () => {
 
 		expect(mockEdit).toHaveBeenCalledWith({
 			id: mockDevice.id,
-			data: {
+			data: expect.objectContaining({
 				id: mockDevice.id,
 				type: mockDevice.type,
 				category: mockDevice.category,
 				name: mockDevice.name,
 				description: mockDevice.description,
-				hostname: '192.168.0.1',
 				password: 'secret',
-			},
+			}),
 		});
 		expect(mockSave).toHaveBeenCalledWith({ id: mockDevice.id });
 		expect(mockSuccess).toHaveBeenCalled();

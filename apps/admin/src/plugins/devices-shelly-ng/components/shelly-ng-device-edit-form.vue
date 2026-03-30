@@ -87,13 +87,25 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
-			prop="hostname"
+			v-if="hasEthernet"
+			:label="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.title')"
+			prop="ethernetAddress"
 		>
 			<el-input
-				v-model="model.hostname"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.hostname.placeholder')"
-				name="hostname"
+				v-model="model.ethernetAddress"
+				:placeholder="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.placeholder')"
+				name="ethernetAddress"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('devicesShellyNgPlugin.fields.devices.wifiAddress.title')"
+			prop="wifiAddress"
+		>
+			<el-input
+				v-model="model.wifiAddress"
+				:placeholder="t('devicesShellyNgPlugin.fields.devices.wifiAddress.placeholder')"
+				name="wifiAddress"
 			/>
 		</el-form-item>
 
@@ -142,18 +154,24 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm({
+const { categoriesOptions, hasEthernet, model, formEl, formChanged, submit, formResult } = useDeviceEditForm({
 	device: props.device as IShellyNgDevice,
 });
 
+// Restore prefills from add-form navigation (device already exists → redirect to edit)
 const pre = (window.history.state?.prefills ?? null) as { hostname?: string; password?: string } | null;
 
 if (pre) {
-	model.hostname = pre.hostname ?? model.hostname;
-	model.password = pre.password ?? model.password;
+	// The add form probed via hostname — use it as the wifi address if not already set
+	if (pre.hostname && !model.wifiAddress) {
+		model.wifiAddress = pre.hostname;
+	}
+
+	if (pre.password) {
+		model.password = pre.password;
+	}
 
 	// Clear immediately so it doesn't linger on further nav
-	// (replacing state with a copy without prefills)
 	const s = { ...window.history.state };
 
 	delete s.prefills;
