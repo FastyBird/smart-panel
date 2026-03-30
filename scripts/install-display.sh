@@ -105,7 +105,8 @@ get_arch() {
 	local arch=$(uname -m)
 	case $arch in
 		armv7l|armv6l)
-			echo "armv7"
+			print_error "32-bit ARM (armv7/armv6) is no longer supported. Please use a 64-bit OS."
+			exit 1
 			;;
 		aarch64|arm64)
 			echo "arm64"
@@ -133,8 +134,8 @@ detect_platform() {
 		return
 	fi
 
-	# Check for ARM (likely embedded Linux, use flutter-pi)
-	if [[ "$arch" == "armv7" || "$arch" == "arm64" ]]; then
+	# Check for ARM64 (likely embedded Linux, use flutter-pi)
+	if [[ "$arch" == "arm64" ]]; then
 		echo "flutter-pi"
 		return
 	fi
