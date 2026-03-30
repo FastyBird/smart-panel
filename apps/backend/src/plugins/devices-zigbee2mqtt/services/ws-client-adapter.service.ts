@@ -93,6 +93,12 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 					this.connected = false;
 					this.bridgeOnline = false;
 
+					// Null out the reference to the now-closed socket so that
+					// disconnect() called during reconnect skips the close path
+					// instead of calling close() on an already-closed socket
+					// (which is a no-op and would stall for the 2s force-close timer).
+					this.ws = null;
+
 					this.logger.log('Disconnected from Zigbee2MQTT WebSocket');
 
 					if (wasConnected) {
