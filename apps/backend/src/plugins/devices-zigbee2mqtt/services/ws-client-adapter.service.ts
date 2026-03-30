@@ -132,26 +132,38 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 					return;
 				}
 
+				// Capture the socket being closed so callbacks reference it, not a future this.ws
+				const closingWs = this.ws;
+
+				// Remove all listeners from the old socket to prevent stale callbacks
+				// (e.g., the connect()-registered 'close' listener) from firing after
+				// a new WebSocket is assigned to this.ws
+				closingWs.removeAllListeners();
+
 				// Force close after 2 seconds if graceful close doesn't complete
 				const forceCloseTimer = setTimeout(() => {
-					if (this.ws) {
-						this.ws.terminate();
-						this.ws = null;
-						this.resetState();
-						resolve();
-					}
-				}, 2000);
+					closingWs.terminate();
 
-				const onClose = (): void => {
-					clearTimeout(forceCloseTimer);
-					this.ws?.removeListener('close', onClose);
-					this.ws = null;
+					if (this.ws === closingWs) {
+						this.ws = null;
+					}
+
 					this.resetState();
 					resolve();
-				};
+				}, 2000);
 
-				this.ws.on('close', onClose);
-				this.ws.close();
+				closingWs.on('close', () => {
+					clearTimeout(forceCloseTimer);
+
+					if (this.ws === closingWs) {
+						this.ws = null;
+					}
+
+					this.resetState();
+					resolve();
+				});
+
+				closingWs.close();
 			});
 		}
 	}
