@@ -104,6 +104,7 @@
 		"noExtensions": "No extensions installed",
 		"noFilteredExtensions": "No extensions match your current filters",
 		"logs": {
+			"detail": "Log detail",
 			"noLogs": "No logs available",
 			"noLogsDescription": "This extension has not produced any log entries yet",
 			"noFilteredLogs": "No logs match your current filters",

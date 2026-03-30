@@ -225,6 +225,7 @@
       "noControllableProperties": "This device has no controllable properties. Properties must have read-write or write-only permissions to be controlled.",
       "logs": {
         "title": "Device Logs",
+        "detail": "Log detail",
         "noLogs": "No logs available",
         "noLogsDescription": "No logs have been recorded for this device yet",
         "noMessage": "(no message)",

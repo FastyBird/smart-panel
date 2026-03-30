@@ -77,7 +77,8 @@
 				<div
 					v-for="log in logs"
 					:key="log.id"
-					class="px-3 py-2 border-b hover:bg-[var(--el-fill-color-light)]"
+					class="px-3 py-2 border-b hover:bg-[var(--el-fill-color-light)] cursor-pointer"
+					@click="selectedLog = log"
 				>
 					<div class="grid grid-cols-[140px_70px_1fr] gap-3 items-center">
 						<span class="font-mono text-xs">
@@ -125,20 +126,35 @@
 				</div>
 			</div>
 		</el-scrollbar>
+
+		<!-- Log detail drawer -->
+		<el-drawer
+			v-model="detailVisible"
+			:title="t('devicesModule.texts.devices.logs.detail')"
+			direction="rtl"
+			size="480px"
+		>
+			<system-log-detail
+				v-if="selectedLog"
+				:system-log="selectedLog"
+			/>
+		</el-drawer>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, type Ref, toRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, type Ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
+import { ElButton, ElDrawer, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
 import { IconWithChild } from '../../../../common';
 import { SystemModuleLogEntryType } from '../../../../openapi.constants';
+import { SystemLogDetail } from '../../../../modules/system';
+import type { ILogEntry } from '../../../../modules/system/store/logs-entries.store.types';
 import { useDeviceLogs } from '../../composables/composables';
 
 import type { IDeviceLogsProps } from './device-logs.types';
@@ -172,6 +188,14 @@ const doLoadMoreLogs = (): Promise<void> => (isSharedMode ? props.loadMoreLogs!(
 const doFetchLogs = (): Promise<void> => (isSharedMode ? props.fetchLogs!() : ownComposable!.fetchLogs());
 
 const innerLive: Ref<boolean> = useVModel(props, 'live', emit, { defaultValue: false });
+
+const selectedLog = ref<ILogEntry | null>(null);
+const detailVisible = computed<boolean>({
+	get: () => selectedLog.value !== null,
+	set: (val) => {
+		if (!val) selectedLog.value = null;
+	},
+});
 
 // Sync live state between parent prop/v-model and composable's live ref
 watch(
