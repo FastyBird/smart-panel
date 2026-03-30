@@ -327,24 +327,8 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 			},
 			// Position command type - indicates how Z2M sets position
 			// Z2M normalizes commands internally (position, lift_percentage, goto_lift_percentage)
-			{
-				property_category: PropertyCategory.MODE,
-				virtual_type: VirtualPropertyType.STATIC,
-				data_type: DataTypeType.ENUM,
-				permissions: [PermissionType.READ_ONLY],
-				format: ['position', 'lift_percentage', 'goto_lift_percentage'],
-				static_value: 'position',
-			},
-			// Tilt command type - indicates how Z2M sets tilt
-			// Z2M normalizes tilt commands internally (tilt, tilt_percentage)
-			{
-				property_category: PropertyCategory.TILT,
-				virtual_type: VirtualPropertyType.STATIC,
-				data_type: DataTypeType.ENUM,
-				permissions: [PermissionType.READ_ONLY],
-				format: ['tilt', 'tilt_percentage'],
-				static_value: 'tilt',
-			},
+			// Tilt and position mode are handled by the YAML feature mapping (covers.yaml)
+			// which only creates properties when the device actually exposes those features.
 		],
 	},
 ];
