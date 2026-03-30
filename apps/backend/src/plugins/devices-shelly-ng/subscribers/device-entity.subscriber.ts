@@ -56,14 +56,17 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 
 		// Check for address updates passed via transient @Expose fields on the entity.
 		// These survive toInstance() in the generic devices service update flow.
-		const entity = event.entity as ShellyNgDeviceEntity;
+		// event.entity may be undefined if TypeORM couldn't resolve the entity.
+		if (event.entity) {
+			const entity = event.entity as ShellyNgDeviceEntity;
 
-		if (entity.wifiAddress !== undefined) {
-			wifiAddress = entity.wifiAddress;
-		}
+			if (entity.wifiAddress !== undefined) {
+				wifiAddress = entity.wifiAddress;
+			}
 
-		if (entity.ethernetAddress !== undefined) {
-			ethernetAddress = entity.ethernetAddress;
+			if (entity.ethernetAddress !== undefined) {
+				ethernetAddress = entity.ethernetAddress;
+			}
 		}
 
 		const hasAddressUpdate = wifiAddress !== undefined || ethernetAddress !== undefined;

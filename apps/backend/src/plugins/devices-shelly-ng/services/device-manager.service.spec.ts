@@ -215,6 +215,7 @@ const mockPropertyMappingStorage = {
 
 const mockDeviceAddressService = {
 	getPreferredAddress: jest.fn().mockResolvedValue('192.168.1.10'),
+	getPreferredAddressOrMigrate: jest.fn().mockResolvedValue('192.168.1.10'),
 	getPreferredAddresses: jest.fn().mockResolvedValue(new Map()),
 	syncAddresses: jest.fn().mockResolvedValue(undefined),
 	upsertAddress: jest.fn().mockResolvedValue(undefined),
@@ -222,6 +223,7 @@ const mockDeviceAddressService = {
 	setCanonicalMac: jest.fn().mockResolvedValue(undefined),
 	setHasEthernet: jest.fn().mockResolvedValue(undefined),
 	getAddresses: jest.fn().mockResolvedValue([]),
+	getLegacyHostname: jest.fn().mockResolvedValue(null),
 } as any;
 
 const mockProvisionQueue = new DeviceProvisionQueueService();

@@ -96,6 +96,33 @@ export class DeviceAddressService {
 	}
 
 	/**
+	 * Returns the preferred address for a device, falling back to the legacy
+	 * hostname column for pre-existing devices that haven't been migrated yet.
+	 * If a legacy hostname is found, it's auto-migrated to the address table.
+	 */
+	async getPreferredAddressOrMigrate(deviceId: string): Promise<string | null> {
+		const preferred = await this.getPreferredAddress(deviceId);
+
+		if (preferred !== null) {
+			return preferred;
+		}
+
+		const legacyHostname = await this.getLegacyHostname(deviceId);
+
+		if (legacyHostname) {
+			await this.upsertAddress(deviceId, AddressType.WIFI, legacyHostname);
+
+			this.logger.log(`Migrated legacy hostname=${legacyHostname} to address table for device=${deviceId}`, {
+				resource: deviceId,
+			});
+
+			return legacyHostname;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Returns the preferred address for a device.
 	 * Prefers ethernet (LAN) over WiFi.
 	 */
