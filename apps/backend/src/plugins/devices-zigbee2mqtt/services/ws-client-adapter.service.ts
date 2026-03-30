@@ -124,16 +124,17 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	async disconnect(): Promise<void> {
 		this.clearReconnectTimer();
 
+		// Set flags before closing the socket to prevent the close-event handler
+		// (registered during connect) from scheduling a reconnect.
+		this.connected = false;
+		this.bridgeOnline = false;
+		this.config = null;
+
 		if (this.ws) {
 			this.logger.log('Disconnecting from Zigbee2MQTT WebSocket');
 
-			this.connected = false;
-			this.bridgeOnline = false;
-			this.config = null;
-
-			return new Promise((resolve) => {
+			await new Promise<void>((resolve) => {
 				if (!this.ws) {
-					this.resetState();
 					resolve();
 					return;
 				}
@@ -154,7 +155,6 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 						this.ws = null;
 					}
 
-					this.resetState();
 					resolve();
 				}, 2000);
 
@@ -165,13 +165,16 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 						this.ws = null;
 					}
 
-					this.resetState();
 					resolve();
 				});
 
 				closingWs.close();
 			});
 		}
+
+		// Always clear device registry and state cache, even if ws was already null
+		// (e.g., close event fired before disconnect was called)
+		this.resetState();
 	}
 
 	/**

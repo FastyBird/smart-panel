@@ -123,26 +123,23 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	async disconnect(): Promise<void> {
 		this.clearReconnectTimer();
 
+		// Set flags before closing to prevent the close-event handler from scheduling a reconnect.
+		this.connected = false;
+		this.bridgeOnline = false;
+		this.config = null;
+
 		if (this.client) {
 			this.logger.log('Disconnecting from MQTT broker');
 
-			// Set connected to false BEFORE calling end() to prevent the 'close' event handler
-			// from scheduling a reconnect. The 'close' event fires during end() and checks
-			// wasConnected - by setting this first, wasConnected will be false.
-			this.connected = false;
-			this.bridgeOnline = false;
-
-			// Also clear config to prevent any reconnection attempts
-			this.config = null;
-
-			return new Promise((resolve) => {
+			await new Promise<void>((resolve) => {
 				this.client?.end(true, {}, () => {
 					this.client = null;
-					this.resetState();
 					resolve();
 				});
 			});
 		}
+
+		this.resetState();
 	}
 
 	/**
