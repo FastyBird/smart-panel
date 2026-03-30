@@ -77,7 +77,7 @@
 				<div
 					v-for="log in logs"
 					:key="log.id"
-					class="px-3 py-2 border-b hover:bg-gray-50"
+					class="px-3 py-2 border-b hover:bg-[var(--el-fill-color-light)]"
 				>
 					<div class="grid grid-cols-[140px_70px_1fr] gap-3 items-center">
 						<span class="font-mono text-xs">
