@@ -23,6 +23,14 @@ export const DEFAULT_MQTT_RECONNECT_INTERVAL = 5000;
 export const DEFAULT_MQTT_CONNECT_TIMEOUT = 30000;
 export const DEFAULT_MQTT_KEEPALIVE = 60;
 
+// Default WebSocket configuration values
+export const DEFAULT_WS_PORT = 8080;
+export const DEFAULT_WS_CONNECT_TIMEOUT = 10000;
+export const DEFAULT_WS_RECONNECT_INTERVAL = 5000;
+
+// Connection type
+export const DEFAULT_CONNECTION_TYPE = 'mqtt' as const;
+
 // Channel identifiers
 // Channel identifiers must match spec/channels.ts
 export const Z2M_CHANNEL_IDENTIFIERS = {

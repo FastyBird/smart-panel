@@ -54,6 +54,7 @@ import { Z2mExposesMapperService } from './services/exposes-mapper.service';
 import { Z2mMappingPreviewService } from './services/mapping-preview.service';
 import { Z2mMqttClientAdapterService } from './services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from './services/virtual-property.service';
+import { Z2mWsClientAdapterService } from './services/ws-client-adapter.service';
 import { Zigbee2mqttConfigValidatorService } from './services/zigbee2mqtt-config-validator.service';
 import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 
@@ -78,6 +79,7 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		// Core services
 		Zigbee2mqttConfigValidatorService,
 		Z2mMqttClientAdapterService,
+		Z2mWsClientAdapterService,
 		Z2mExposesMapperService,
 		Z2mDeviceMapperService,
 		Z2mVirtualPropertyService,
@@ -229,7 +231,7 @@ Integration plugin for Zigbee devices through Zigbee2MQTT bridge.
 
 ## Features
 
-- **MQTT-Based Communication** - Connects to Zigbee2MQTT via MQTT broker
+- **Dual Connection Mode** - Connect via MQTT broker or directly via WebSocket to Zigbee2MQTT
 - **Automatic Device Discovery** - Discovers and maps devices from Zigbee2MQTT bridge
 - **Dynamic Capability Mapping** - Automatically maps Z2M exposes to Smart Panel properties
 - **Real-time State Updates** - Receives state changes via MQTT subscriptions
@@ -327,15 +329,18 @@ mappings:
 ## Requirements
 
 - Running Zigbee2MQTT instance
-- MQTT broker (Mosquitto, etc.)
-- Network connectivity to MQTT broker
+- For MQTT mode: MQTT broker (Mosquitto, etc.) and network connectivity
+- For WebSocket mode: Network connectivity to Zigbee2MQTT frontend
 
 ## Configuration
 
-- **MQTT Host** - MQTT broker hostname or IP
-- **MQTT Port** - MQTT broker port (default: 1883)
+- **Connection Type** - "mqtt" (via MQTT broker) or "ws" (direct WebSocket to Zigbee2MQTT)
+- **MQTT Host** - MQTT broker hostname or IP (MQTT mode)
+- **MQTT Port** - MQTT broker port, default: 1883 (MQTT mode)
+- **WebSocket Host** - Zigbee2MQTT frontend hostname or IP (WebSocket mode)
+- **WebSocket Port** - Zigbee2MQTT frontend port, default: 8080 (WebSocket mode)
 - **Base Topic** - Zigbee2MQTT base topic (default: zigbee2mqtt)
-- **TLS** - Optional TLS/SSL configuration
+- **TLS** - Optional TLS/SSL configuration (MQTT mode)
 - **Discovery** - Auto-add devices and sync on startup options`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',

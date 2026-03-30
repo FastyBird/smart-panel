@@ -287,3 +287,12 @@ export interface Z2mMqttConfig {
 		key?: string;
 	};
 }
+
+export interface Z2mWsConfig {
+	host: string;
+	port: number;
+	baseTopic: string;
+	secure: boolean;
+	connectTimeout: number;
+	reconnectInterval: number;
+}

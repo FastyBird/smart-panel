@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ConfigPluginEditFormSchema } from '../../../modules/config';
 
 export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
+	connectionType: z.enum(['mqtt', 'ws']),
 	mqtt: z.object({
 		host: z.string().trim().min(1),
 		port: z.coerce.number().int().min(1).max(65535),
@@ -12,6 +13,14 @@ export const Zigbee2mqttConfigEditFormSchema = ConfigPluginEditFormSchema.extend
 		clientId: z.string().nullable(),
 		cleanSession: z.boolean(),
 		keepalive: z.coerce.number().int().min(10),
+		connectTimeout: z.coerce.number().int().min(1000),
+		reconnectInterval: z.coerce.number().int().min(1000),
+	}),
+	ws: z.object({
+		host: z.string().trim().min(1),
+		port: z.coerce.number().int().min(1).max(65535),
+		baseTopic: z.string().trim().min(1),
+		secure: z.boolean(),
 		connectTimeout: z.coerce.number().int().min(1000),
 		reconnectInterval: z.coerce.number().int().min(1000),
 	}),

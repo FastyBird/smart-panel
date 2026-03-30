@@ -406,6 +406,11 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip write-only properties (e.g., command) — they don't receive state updates
+				if (property.permissions?.length === 1 && property.permissions[0] === PermissionType.WRITE_ONLY) {
+					continue;
+				}
+
 				// Skip brightness - handled separately with range normalization (Z2M 0-254 -> spec 0-100%)
 				if (channel.category === ChannelCategory.LIGHT && property.category === PropertyCategory.BRIGHTNESS) {
 					continue;
@@ -1082,24 +1087,19 @@ export class Z2mDeviceMapperService {
 	 * like color (where multiple properties share the same z2mProperty), we use the spec identifier
 	 */
 	private async createProperty(channel: Zigbee2mqttChannelEntity, mappedProperty: MappedProperty): Promise<void> {
-		// For properties that share the same z2mProperty (like hue and saturation both mapping to "color"),
-		// we need to use the spec identifier to avoid conflicts
-		// Check if this is a color-related property that shares z2mProperty="color"
-		const isSharedZ2mProperty =
-			mappedProperty.z2mProperty === 'color' &&
-			(mappedProperty.category === PropertyCategory.HUE || mappedProperty.category === PropertyCategory.SATURATION);
-
 		// Static properties use their spec identifier since they don't come from Z2M state
 		const isStaticProperty = mappedProperty.z2mProperty.startsWith('__static_');
 
 		// Derived properties use their spec identifier since they are computed from other properties
 		const isDerivedProperty = mappedProperty.z2mProperty.startsWith('__derived_');
 
-		// Use spec identifier for shared, static, and derived properties; z2mProperty for regular properties
-		const propertyIdentifier =
-			isSharedZ2mProperty || isStaticProperty || isDerivedProperty
-				? mappedProperty.identifier
-				: mappedProperty.z2mProperty;
+		// Use spec identifier when z2mProperty differs from the mapped identifier.
+		// This handles cases where multiple properties share the same z2mProperty
+		// (e.g., status/command both mapping to "state", hue/saturation to "color").
+		const useSpecIdentifier =
+			isStaticProperty || isDerivedProperty || mappedProperty.identifier !== mappedProperty.z2mProperty;
+
+		const propertyIdentifier = useSpecIdentifier ? mappedProperty.identifier : mappedProperty.z2mProperty;
 
 		let property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',
@@ -1127,6 +1127,7 @@ export class Z2mDeviceMapperService {
 				permissions: mappedProperty.permissions,
 				format,
 				step: mappedProperty.step ?? null,
+				invalid: mappedProperty.invalid ?? null,
 				// Static properties have a fixed value that doesn't change
 				value: mappedProperty.staticValue ?? null,
 			};

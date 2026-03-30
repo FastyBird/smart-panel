@@ -11,9 +11,10 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
+import { Z2mBaseClientAdapter } from '../services/base-client-adapter';
 import { Z2mDeviceMapperService } from '../services/device-mapper.service';
-import { Z2mMqttClientAdapterService } from '../services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
+import { Zigbee2mqttService } from '../services/zigbee2mqtt.service';
 
 export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 	device: Zigbee2mqttDeviceEntity;
@@ -24,7 +25,7 @@ export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 /**
  * Zigbee2MQTT Device Platform
  *
- * Handles property write commands by publishing to MQTT.
+ * Handles property write commands via the active adapter (MQTT or WebSocket).
  */
 @Injectable()
 export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
@@ -34,7 +35,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	);
 
 	constructor(
-		private readonly mqttAdapter: Z2mMqttClientAdapterService,
+		private readonly zigbee2mqttService: Zigbee2mqttService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly deviceMapper: Z2mDeviceMapperService,
@@ -53,9 +54,11 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			return true;
 		}
 
-		// Check if MQTT is connected
-		if (!this.mqttAdapter.isConnected()) {
-			this.logger.warn('MQTT not connected, cannot send command');
+		// Check if adapter is connected
+		const adapter = this.zigbee2mqttService.getActiveAdapter();
+
+		if (!adapter.isConnected()) {
+			this.logger.warn('Not connected to Zigbee2MQTT, cannot send command');
 			return false;
 		}
 
@@ -117,13 +120,13 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				continue;
 			}
 
-			// Device identifier = friendly_name (used for MQTT topic)
+			// Device identifier = friendly_name (used for Z2M topic routing)
 			const friendlyName = device.identifier;
 
 			// Process each channel's updates for this device
 			for (const { channel, props } of channels.values()) {
 				try {
-					const success = await this.executeCommand(device, channel, Array.from(props.values()), friendlyName);
+					const success = await this.executeCommand(adapter, device, channel, Array.from(props.values()), friendlyName);
 					results.push(success);
 				} catch (error) {
 					this.logger.error('Error processing command', {
@@ -138,15 +141,16 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	}
 
 	/**
-	 * Execute command by publishing to MQTT
+	 * Execute command via the active adapter
 	 */
 	private async executeCommand(
+		adapter: Z2mBaseClientAdapter,
 		device: Zigbee2mqttDeviceEntity,
 		channel: Zigbee2mqttChannelEntity,
 		propertyUpdates: Array<{ property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>,
 		friendlyName: string,
 	): Promise<boolean> {
-		// Build MQTT payload
+		// Build Z2M set payload
 		const payload: Z2mSetPayload = {};
 
 		// Track color components for batching into a single color object
@@ -244,29 +248,13 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
 
-		const success = await this.mqttAdapter.publishCommand(friendlyName, payload);
+		const success = await adapter.publishCommand(friendlyName, payload);
 
-		if (success) {
-			// Intentionally empty - command sent successfully
-		} else {
+		if (!success) {
 			this.logger.warn(`Failed to send command to ${friendlyName}`);
 		}
 
 		return success;
-	}
-
-	/**
-	 * Coerce value to boolean
-	 */
-	private coerceBoolean(value: string | number | boolean): boolean {
-		if (typeof value === 'boolean') {
-			return value;
-		}
-		if (typeof value === 'number') {
-			return value !== 0;
-		}
-		const strValue = String(value).toLowerCase();
-		return strValue === 'true' || strValue === '1' || strValue === 'on';
 	}
 
 	/**

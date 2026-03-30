@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -10,6 +10,9 @@ import {
 	DEFAULT_MQTT_KEEPALIVE,
 	DEFAULT_MQTT_PORT,
 	DEFAULT_MQTT_RECONNECT_INTERVAL,
+	DEFAULT_WS_CONNECT_TIMEOUT,
+	DEFAULT_WS_PORT,
+	DEFAULT_WS_RECONNECT_INTERVAL,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 } from '../devices-zigbee2mqtt.constants';
 
@@ -38,6 +41,7 @@ export class Z2mUpdateMqttDto {
 	@IsOptional()
 	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"port","reason":"Port minimum value must be at least 1."}]' })
+	@Max(65535, { message: '[{"field":"port","reason":"Port maximum value must be at most 65535."}]' })
 	port?: number;
 
 	@ApiPropertyOptional({
@@ -222,6 +226,86 @@ export class Z2mUpdateDiscoveryDto {
 }
 
 /**
+ * Zigbee2MQTT WebSocket update DTO
+ */
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginUpdateConfigWs' })
+export class Z2mUpdateWsDto {
+	@ApiPropertyOptional({
+		description: 'Zigbee2MQTT frontend hostname or IP address',
+		example: 'localhost',
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsString({ message: '[{"field":"host","reason":"Host must be a valid string."}]' })
+	host?: string;
+
+	@ApiPropertyOptional({
+		description: 'Zigbee2MQTT frontend port',
+		example: DEFAULT_WS_PORT,
+		minimum: 1,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
+	@Min(1, { message: '[{"field":"port","reason":"Port minimum value must be at least 1."}]' })
+	@Max(65535, { message: '[{"field":"port","reason":"Port maximum value must be at most 65535."}]' })
+	port?: number;
+
+	@ApiPropertyOptional({
+		description: 'Zigbee2MQTT base topic (used for message routing)',
+		example: DEFAULT_MQTT_BASE_TOPIC,
+		name: 'base_topic',
+	})
+	@Expose({ name: 'base_topic' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsString({ message: '[{"field":"base_topic","reason":"Base topic must be a valid string."}]' })
+	baseTopic?: string;
+
+	@ApiPropertyOptional({
+		description: 'Use secure WebSocket (wss://)',
+		example: false,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"secure","reason":"Secure must be a boolean value."}]' })
+	secure?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Connection timeout in milliseconds',
+		example: DEFAULT_WS_CONNECT_TIMEOUT,
+		minimum: 1000,
+		name: 'connect_timeout',
+	})
+	@Expose({ name: 'connect_timeout' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsInt({ message: '[{"field":"connect_timeout","reason":"Connect timeout must be a whole number."}]' })
+	@Min(1000, {
+		message: '[{"field":"connect_timeout","reason":"Connect timeout minimum value must be at least 1000ms."}]',
+	})
+	connectTimeout?: number;
+
+	@ApiPropertyOptional({
+		description: 'Reconnection interval in milliseconds',
+		example: DEFAULT_WS_RECONNECT_INTERVAL,
+		minimum: 1000,
+		name: 'reconnect_interval',
+	})
+	@Expose({ name: 'reconnect_interval' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsInt({ message: '[{"field":"reconnect_interval","reason":"Reconnect interval must be a whole number."}]' })
+	@Min(1000, {
+		message: '[{"field":"reconnect_interval","reason":"Reconnect interval minimum value must be at least 1000ms."}]',
+	})
+	reconnectInterval?: number;
+}
+
+/**
  * Main Zigbee2MQTT plugin configuration update DTO
  */
 @ApiSchema({ name: 'DevicesZigbee2mqttPluginUpdateConfig' })
@@ -235,7 +319,21 @@ export class Zigbee2mqttUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	type: typeof DEVICES_ZIGBEE2MQTT_PLUGIN_NAME;
 
 	@ApiPropertyOptional({
-		description: 'MQTT configuration',
+		description: 'Connection type: "mqtt" for MQTT broker or "ws" for direct WebSocket to Zigbee2MQTT frontend',
+		example: 'mqtt',
+		enum: ['mqtt', 'ws'],
+		name: 'connection_type',
+	})
+	@Expose({ name: 'connection_type' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsIn(['mqtt', 'ws'], {
+		message: '[{"field":"connection_type","reason":"Connection type must be either \\"mqtt\\" or \\"ws\\"."}]',
+	})
+	connectionType?: 'mqtt' | 'ws';
+
+	@ApiPropertyOptional({
+		description: 'MQTT configuration (used when connection_type is "mqtt")',
 		type: () => Z2mUpdateMqttDto,
 	})
 	@Expose()
@@ -246,7 +344,18 @@ export class Zigbee2mqttUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	mqtt?: Z2mUpdateMqttDto;
 
 	@ApiPropertyOptional({
-		description: 'TLS/SSL configuration',
+		description: 'WebSocket configuration (used when connection_type is "ws")',
+		type: () => Z2mUpdateWsDto,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => Z2mUpdateWsDto)
+	ws?: Z2mUpdateWsDto;
+
+	@ApiPropertyOptional({
+		description: 'TLS/SSL configuration (used when connection_type is "mqtt")',
 		type: () => Z2mUpdateTlsDto,
 	})
 	@Expose()
