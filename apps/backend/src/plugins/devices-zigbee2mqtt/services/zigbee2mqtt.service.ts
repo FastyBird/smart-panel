@@ -262,8 +262,9 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			const previousAdapter = this.activeAdapter;
 			this.activeAdapter = config.connectionType === 'ws' ? this.wsAdapter : this.mqttAdapter;
 
-			// If adapter changed, re-register callbacks
+			// If adapter changed, clear stale callbacks on the old adapter and register on the new one
 			if (this.activeAdapter !== previousAdapter) {
+				previousAdapter.setCallbacks({});
 				this.registerCallbacks(this.activeAdapter);
 			}
 

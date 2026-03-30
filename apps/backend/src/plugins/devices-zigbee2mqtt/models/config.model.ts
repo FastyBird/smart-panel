@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -33,10 +33,12 @@ export class Z2mMqttConfigModel {
 	@Expose()
 	@IsInt()
 	@Min(1)
+	@Max(65535)
 	@ApiProperty({
 		description: 'MQTT broker port',
 		example: DEFAULT_MQTT_PORT,
 		minimum: 1,
+		maximum: 65535,
 	})
 	port: number = DEFAULT_MQTT_PORT;
 
@@ -215,10 +217,12 @@ export class Z2mWsConfigModel {
 	@Expose()
 	@IsInt()
 	@Min(1)
+	@Max(65535)
 	@ApiProperty({
 		description: 'Zigbee2MQTT frontend port',
 		example: DEFAULT_WS_PORT,
 		minimum: 1,
+		maximum: 65535,
 	})
 	port: number = DEFAULT_WS_PORT;
 

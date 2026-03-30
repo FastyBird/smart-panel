@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -41,6 +41,7 @@ export class Z2mUpdateMqttDto {
 	@IsOptional()
 	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"port","reason":"Port minimum value must be at least 1."}]' })
+	@Max(65535, { message: '[{"field":"port","reason":"Port maximum value must be at most 65535."}]' })
 	port?: number;
 
 	@ApiPropertyOptional({
@@ -249,6 +250,7 @@ export class Z2mUpdateWsDto {
 	@IsOptional()
 	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"port","reason":"Port minimum value must be at least 1."}]' })
+	@Max(65535, { message: '[{"field":"port","reason":"Port maximum value must be at most 65535."}]' })
 	port?: number;
 
 	@ApiPropertyOptional({

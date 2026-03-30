@@ -143,7 +143,7 @@ export class Zigbee2mqttConfigValidatorService implements IPluginConfigValidator
 				settled = true;
 
 				try {
-					ws.close();
+					ws.terminate();
 				} catch {
 					// Ignore cleanup errors
 				}

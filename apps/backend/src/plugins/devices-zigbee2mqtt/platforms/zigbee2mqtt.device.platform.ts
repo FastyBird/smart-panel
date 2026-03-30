@@ -250,27 +250,11 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 		const success = await adapter.publishCommand(friendlyName, payload);
 
-		if (success) {
-			// Intentionally empty - command sent successfully
-		} else {
+		if (!success) {
 			this.logger.warn(`Failed to send command to ${friendlyName}`);
 		}
 
 		return success;
-	}
-
-	/**
-	 * Coerce value to boolean
-	 */
-	private coerceBoolean(value: string | number | boolean): boolean {
-		if (typeof value === 'boolean') {
-			return value;
-		}
-		if (typeof value === 'number') {
-			return value !== 0;
-		}
-		const strValue = String(value).toLowerCase();
-		return strValue === 'true' || strValue === '1' || strValue === 'on';
 	}
 
 	/**
