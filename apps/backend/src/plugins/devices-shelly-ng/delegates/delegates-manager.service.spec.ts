@@ -790,5 +790,146 @@ describe('DelegatesManagerService', () => {
 				state: ConnectionState.CONNECTED,
 			});
 		});
+
+		test('setPropertyValue resolves to connected delegate handler with two active delegates', async () => {
+			const device = {
+				id: 'db-dev-multi-write',
+				identifier: 'shellyproWifi',
+			} as ShellyNgDeviceEntity;
+
+			const deviceInfoCh = {
+				device: device.id,
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device-information',
+				name: 'Device information',
+			} as ShellyNgChannelEntity;
+
+			const statusProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.STATUS,
+				identifier: 'status',
+				value: new PropertyValueState(ConnectionState.UNKNOWN),
+			} as ShellyNgChannelPropertyEntity;
+
+			const linkQProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.LINK_QUALITY,
+				identifier: 'link_quality',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const switchCh = {
+				device: device.id,
+				category: ChannelCategory.SWITCHER,
+				identifier: 'switch:0',
+				name: 'Switch 0',
+			} as ShellyNgChannelEntity;
+
+			const switchOn = {
+				channel: switchCh.id,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+				value: new PropertyValueState(false),
+			} as ShellyNgChannelPropertyEntity;
+
+			const canonicalMac = 'AABBCCDDEE00';
+
+			// Insert WiFi delegate
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(deviceAddressService.findDeviceByCanonicalMac as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.create as jest.Mock).mockImplementation(async (dto: CreateShellyNgDeviceDto) => {
+				device.identifier = dto.identifier;
+				device.name = dto.name;
+				device.category = dto.category;
+				return device as unknown as ShellyNgDeviceEntity;
+			});
+			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity);
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown) => payload,
+			);
+
+			const wifiDelegate = (await svc.insert({
+				id: 'shellyproWifiW',
+				modelName: 'Pro 1',
+				system: { config: { device: { name: 'Pro Write', mac: canonicalMac } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.10' },
+				switch: { key: 'switch:0', output: false },
+			} as unknown as Device)) as any;
+
+			// Insert Ethernet delegate (merges into same device)
+			jest.clearAllMocks();
+			deviceConnectivityService.setConnectionState = jest.fn().mockResolvedValue(undefined);
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(deviceAddressService.findDeviceByCanonicalMac as jest.Mock).mockResolvedValueOnce(
+				device as unknown as ShellyNgDeviceEntity,
+			);
+			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity);
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown) => payload,
+			);
+
+			const ethDelegate = (await svc.insert({
+				id: 'shellyproEthW',
+				modelName: 'Pro 1',
+				system: { config: { device: { name: 'Pro Write', mac: canonicalMac } } },
+				ethernet: { key: 'eth:0', ip: '192.168.1.20' },
+				switch: { key: 'switch:0', output: false },
+			} as unknown as Device)) as any;
+
+			// Both delegates should share the same device identifier
+			const identifierDelegates = svc['identifierToDelegates'].get(device.identifier);
+			expect(identifierDelegates).toBeDefined();
+			expect(identifierDelegates!.size).toBe(2);
+
+			// Wire switch handlers on both delegates
+			const wifiSpy = jest.fn(async (_v?: unknown) => ({ was_on: false }));
+			const ethSpy = jest.fn(async (_v?: unknown) => ({ was_on: false }));
+
+			wifiDelegate.switches.set(0, { id: 0, key: 'switch:0', output: false, set: wifiSpy } as FakeSwitch);
+			ethDelegate.switches.set(0, { id: 0, key: 'switch:0', output: false, set: ethSpy } as FakeSwitch);
+
+			// Register handlers for both delegates using the real key scheme
+			svc['setPropertiesHandlers'].set(`${wifiDelegate.id}|${switchOn.id}`, async (v: unknown) => {
+				if (typeof v !== 'boolean') return false;
+				await wifiSpy(v);
+				return true;
+			});
+			svc['setPropertiesHandlers'].set(`${ethDelegate.id}|${switchOn.id}`, async (v: unknown) => {
+				if (typeof v !== 'boolean') return false;
+				await ethSpy(v);
+				return true;
+			});
+
+			// Both are connected — setPropertyValue should prefer one of them (both valid)
+			const ok = await svc.setPropertyValue(device, switchOn, true);
+			expect(ok).toBe(true);
+			expect(wifiSpy.mock.calls.length + ethSpy.mock.calls.length).toBe(1);
+
+			// Disconnect WiFi delegate — setPropertyValue should route to Ethernet
+			wifiSpy.mockClear();
+			ethSpy.mockClear();
+			wifiDelegate.emitConnected(false);
+
+			const ok2 = await svc.setPropertyValue(device, switchOn, false);
+			expect(ok2).toBe(true);
+			expect(ethSpy).toHaveBeenCalledWith(false);
+			expect(wifiSpy).not.toHaveBeenCalled();
+		});
 	});
 });
