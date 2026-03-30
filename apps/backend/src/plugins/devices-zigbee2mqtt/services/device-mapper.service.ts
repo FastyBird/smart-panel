@@ -1130,6 +1130,7 @@ export class Z2mDeviceMapperService {
 				permissions: mappedProperty.permissions,
 				format,
 				step: mappedProperty.step ?? null,
+				invalid: mappedProperty.invalid ?? null,
 				// Static properties have a fixed value that doesn't change
 				value: mappedProperty.staticValue ?? null,
 			};
