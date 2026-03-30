@@ -19,12 +19,14 @@ import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mDeviceMapperService } from './device-mapper.service';
 import { Z2mMqttClientAdapterService } from './mqtt-client-adapter.service';
+import { Z2mWsClientAdapterService } from './ws-client-adapter.service';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 describe('Zigbee2mqttService', () => {
 	let service: Zigbee2mqttService;
 	let configService: jest.Mocked<ConfigService>;
 	let mqttAdapter: jest.Mocked<Z2mMqttClientAdapterService>;
+	let wsAdapter: jest.Mocked<Z2mWsClientAdapterService>;
 	let deviceMapper: jest.Mocked<Z2mDeviceMapperService>;
 	let devicesService: jest.Mocked<DevicesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
@@ -39,6 +41,7 @@ describe('Zigbee2mqttService', () => {
 
 	const mockConfig: Partial<Zigbee2mqttConfigModel> = {
 		enabled: true,
+		connectionType: 'mqtt',
 		mqtt: {
 			host: 'localhost',
 			port: 1883,
@@ -49,6 +52,14 @@ describe('Zigbee2mqttService', () => {
 			cleanSession: true,
 			keepalive: 60,
 			connectTimeout: 30000,
+			reconnectInterval: 5000,
+		},
+		ws: {
+			host: 'localhost',
+			port: 8080,
+			baseTopic: 'zigbee2mqtt',
+			secure: false,
+			connectTimeout: 10000,
 			reconnectInterval: 5000,
 		},
 		tls: {
@@ -87,6 +98,22 @@ describe('Zigbee2mqttService', () => {
 			updated_at: new Date(),
 		}) as unknown as Zigbee2mqttDeviceEntity;
 
+	const createMockAdapterValue = () => ({
+		connect: jest.fn(),
+		disconnect: jest.fn(),
+		isConnected: jest.fn().mockReturnValue(false),
+		isBridgeOnline: jest.fn().mockReturnValue(false),
+		getRegisteredDevices: jest.fn().mockReturnValue([]),
+		getCachedState: jest.fn().mockReturnValue({}),
+		publishCommand: jest.fn().mockResolvedValue(true),
+		requestState: jest.fn().mockResolvedValue(true),
+		getDevice: jest.fn(),
+		getDeviceByIeeeAddress: jest.fn(),
+		setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {
+			capturedCallbacks = callbacks;
+		}),
+	});
+
 	beforeEach(async () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
@@ -102,17 +129,11 @@ describe('Zigbee2mqttService', () => {
 				},
 				{
 					provide: Z2mMqttClientAdapterService,
-					useValue: {
-						connect: jest.fn(),
-						disconnect: jest.fn(),
-						isConnected: jest.fn().mockReturnValue(false),
-						isBridgeOnline: jest.fn().mockReturnValue(false),
-						getRegisteredDevices: jest.fn().mockReturnValue([]),
-						getCachedState: jest.fn().mockReturnValue({}),
-						setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {
-							capturedCallbacks = callbacks;
-						}),
-					},
+					useValue: createMockAdapterValue(),
+				},
+				{
+					provide: Z2mWsClientAdapterService,
+					useValue: createMockAdapterValue(),
 				},
 				{
 					provide: Z2mDeviceMapperService,
@@ -149,6 +170,7 @@ describe('Zigbee2mqttService', () => {
 		service = module.get<Zigbee2mqttService>(Zigbee2mqttService);
 		configService = module.get(ConfigService);
 		mqttAdapter = module.get(Z2mMqttClientAdapterService);
+		wsAdapter = module.get(Z2mWsClientAdapterService);
 		deviceMapper = module.get(Z2mDeviceMapperService);
 		devicesService = module.get(DevicesService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
@@ -174,7 +196,7 @@ describe('Zigbee2mqttService', () => {
 	});
 
 	describe('start', () => {
-		it('should start the service successfully', async () => {
+		it('should start the service successfully with MQTT adapter', async () => {
 			mqttAdapter.connect.mockResolvedValue(undefined);
 
 			await service.start();
@@ -187,6 +209,28 @@ describe('Zigbee2mqttService', () => {
 					baseTopic: 'zigbee2mqtt',
 				}),
 			);
+		});
+
+		it('should start with WebSocket adapter when connectionType is ws', async () => {
+			const wsConfig = {
+				...mockConfig,
+				connectionType: 'ws',
+			};
+			configService.getPluginConfig.mockReturnValue(wsConfig as unknown as Zigbee2mqttConfigModel);
+			wsAdapter.connect.mockResolvedValue(undefined);
+
+			await service.start();
+
+			expect(service.getState()).toBe('started');
+			expect(wsAdapter.connect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					host: 'localhost',
+					port: 8080,
+					baseTopic: 'zigbee2mqtt',
+					secure: false,
+				}),
+			);
+			expect(mqttAdapter.connect).not.toHaveBeenCalled();
 		});
 
 		it('should initialize device states to UNKNOWN before starting', async () => {
@@ -265,17 +309,32 @@ describe('Zigbee2mqttService', () => {
 	});
 
 	describe('onConfigChanged', () => {
-		it('should return restartRequired true when relevant config changes', async () => {
+		it('should return restartRequired true when MQTT config changes', async () => {
 			mqttAdapter.connect.mockResolvedValue(undefined);
 
 			await service.start();
 
-			// Simulate config change by returning different values
 			const changedConfig = {
 				...mockConfig,
-				mqtt: { ...mockConfig.mqtt, host: 'new-host' }, // Changed from localhost
+				mqtt: { ...mockConfig.mqtt, host: 'new-host' },
 			};
 			configService.getPluginConfig.mockReturnValue(changedConfig as Zigbee2mqttConfigModel);
+
+			const result = await service.onConfigChanged();
+
+			expect(result).toEqual({ restartRequired: true });
+		});
+
+		it('should return restartRequired true when connection type changes', async () => {
+			mqttAdapter.connect.mockResolvedValue(undefined);
+
+			await service.start();
+
+			const changedConfig = {
+				...mockConfig,
+				connectionType: 'ws',
+			};
+			configService.getPluginConfig.mockReturnValue(changedConfig as unknown as Zigbee2mqttConfigModel);
 
 			const result = await service.onConfigChanged();
 
@@ -287,7 +346,6 @@ describe('Zigbee2mqttService', () => {
 
 			await service.start();
 
-			// Config is the same, no change
 			const result = await service.onConfigChanged();
 
 			expect(result).toEqual({ restartRequired: false });
@@ -405,7 +463,7 @@ describe('Zigbee2mqttService', () => {
 	});
 
 	describe('isBridgeOnline', () => {
-		it('should return bridge online status from adapter', () => {
+		it('should return bridge online status from active adapter', () => {
 			mqttAdapter.isBridgeOnline.mockReturnValue(true);
 
 			expect(service.isBridgeOnline()).toBe(true);
@@ -417,7 +475,7 @@ describe('Zigbee2mqttService', () => {
 	});
 
 	describe('getRegisteredDevices', () => {
-		it('should return registered devices from adapter', () => {
+		it('should return registered devices from active adapter', () => {
 			const mockDevices = [
 				{
 					ieeeAddress: '0x00158d00018255df',
@@ -433,6 +491,12 @@ describe('Zigbee2mqttService', () => {
 			mqttAdapter.getRegisteredDevices.mockReturnValue(mockDevices);
 
 			expect(service.getRegisteredDevices()).toEqual(mockDevices);
+		});
+	});
+
+	describe('getActiveAdapter', () => {
+		it('should return MQTT adapter by default', () => {
+			expect(service.getActiveAdapter()).toBe(mqttAdapter);
 		});
 	});
 });

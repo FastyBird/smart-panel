@@ -1,15 +1,19 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
+	DEFAULT_CONNECTION_TYPE,
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEFAULT_MQTT_CONNECT_TIMEOUT,
 	DEFAULT_MQTT_KEEPALIVE,
 	DEFAULT_MQTT_PORT,
 	DEFAULT_MQTT_RECONNECT_INTERVAL,
+	DEFAULT_WS_CONNECT_TIMEOUT,
+	DEFAULT_WS_PORT,
+	DEFAULT_WS_RECONNECT_INTERVAL,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 } from '../devices-zigbee2mqtt.constants';
 
@@ -196,6 +200,69 @@ export class Z2mDiscoveryConfigModel {
 }
 
 /**
+ * Zigbee2MQTT WebSocket connection configuration
+ */
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginDataWsConfig' })
+export class Z2mWsConfigModel {
+	@Expose()
+	@IsString()
+	@ApiProperty({
+		description: 'Zigbee2MQTT frontend hostname or IP address',
+		example: 'localhost',
+	})
+	host: string = 'localhost';
+
+	@Expose()
+	@IsInt()
+	@Min(1)
+	@ApiProperty({
+		description: 'Zigbee2MQTT frontend port',
+		example: DEFAULT_WS_PORT,
+		minimum: 1,
+	})
+	port: number = DEFAULT_WS_PORT;
+
+	@Expose({ name: 'base_topic' })
+	@IsString()
+	@ApiProperty({
+		name: 'base_topic',
+		description: 'Zigbee2MQTT base topic (used for message routing)',
+		example: DEFAULT_MQTT_BASE_TOPIC,
+	})
+	baseTopic: string = DEFAULT_MQTT_BASE_TOPIC;
+
+	@Expose()
+	@IsBoolean()
+	@ApiProperty({
+		description: 'Use secure WebSocket (wss://)',
+		example: false,
+	})
+	secure: boolean = false;
+
+	@Expose({ name: 'connect_timeout' })
+	@IsInt()
+	@Min(1000)
+	@ApiProperty({
+		name: 'connect_timeout',
+		description: 'Connection timeout in milliseconds',
+		example: DEFAULT_WS_CONNECT_TIMEOUT,
+		minimum: 1000,
+	})
+	connectTimeout: number = DEFAULT_WS_CONNECT_TIMEOUT;
+
+	@Expose({ name: 'reconnect_interval' })
+	@IsInt()
+	@Min(1000)
+	@ApiProperty({
+		name: 'reconnect_interval',
+		description: 'Reconnection interval in milliseconds',
+		example: DEFAULT_WS_RECONNECT_INTERVAL,
+		minimum: 1000,
+	})
+	reconnectInterval: number = DEFAULT_WS_RECONNECT_INTERVAL;
+}
+
+/**
  * Main Zigbee2MQTT plugin configuration model
  */
 @ApiSchema({ name: 'DevicesZigbee2mqttPluginDataConfig' })
@@ -208,20 +275,40 @@ export class Zigbee2mqttConfigModel extends PluginConfigModel {
 	})
 	type: string = DEVICES_ZIGBEE2MQTT_PLUGIN_NAME;
 
+	@Expose({ name: 'connection_type' })
+	@IsString()
+	@IsIn(['mqtt', 'ws'])
+	@ApiProperty({
+		name: 'connection_type',
+		description: 'Connection type: "mqtt" for MQTT broker or "ws" for direct WebSocket to Zigbee2MQTT frontend',
+		example: DEFAULT_CONNECTION_TYPE,
+		enum: ['mqtt', 'ws'],
+	})
+	connectionType: 'mqtt' | 'ws' = DEFAULT_CONNECTION_TYPE;
+
 	@Expose()
 	@ValidateNested()
 	@Type(() => Z2mMqttConfigModel)
 	@ApiProperty({
-		description: 'MQTT connection configuration',
+		description: 'MQTT connection configuration (used when connection_type is "mqtt")',
 		type: () => Z2mMqttConfigModel,
 	})
 	mqtt: Z2mMqttConfigModel = new Z2mMqttConfigModel();
 
 	@Expose()
 	@ValidateNested()
+	@Type(() => Z2mWsConfigModel)
+	@ApiProperty({
+		description: 'WebSocket connection configuration (used when connection_type is "ws")',
+		type: () => Z2mWsConfigModel,
+	})
+	ws: Z2mWsConfigModel = new Z2mWsConfigModel();
+
+	@Expose()
+	@ValidateNested()
 	@Type(() => Z2mTlsConfigModel)
 	@ApiProperty({
-		description: 'TLS/SSL configuration',
+		description: 'TLS/SSL configuration (used when connection_type is "mqtt")',
 		type: () => Z2mTlsConfigModel,
 	})
 	tls: Z2mTlsConfigModel = new Z2mTlsConfigModel();

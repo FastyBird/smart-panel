@@ -268,6 +268,11 @@ export type Z2mColor = Z2mColorHS | Z2mColorXY | Z2mColorRGB;
 // Configuration Types
 // =============================================================================
 
+/**
+ * Connection type for communicating with Zigbee2MQTT
+ */
+export type Z2mConnectionType = 'mqtt' | 'ws';
+
 export interface Z2mMqttConfig {
 	host: string;
 	port: number;
@@ -286,4 +291,13 @@ export interface Z2mMqttConfig {
 		cert?: string;
 		key?: string;
 	};
+}
+
+export interface Z2mWsConfig {
+	host: string;
+	port: number;
+	baseTopic: string;
+	secure: boolean;
+	connectTimeout: number;
+	reconnectInterval: number;
 }

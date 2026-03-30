@@ -17,6 +17,7 @@ import {
 	Z2mUpdateDiscoveryDto,
 	Z2mUpdateMqttDto,
 	Z2mUpdateTlsDto,
+	Z2mUpdateWsDto,
 	Zigbee2mqttUpdatePluginConfigDto,
 } from './dto/update-config.dto';
 import { UpdateZigbee2mqttDeviceDto } from './dto/update-device.dto';
@@ -29,6 +30,7 @@ import {
 	Z2mDiscoveryConfigModel,
 	Z2mMqttConfigModel,
 	Z2mTlsConfigModel,
+	Z2mWsConfigModel,
 	Zigbee2mqttConfigModel,
 } from './models/config.model';
 import {
@@ -57,6 +59,7 @@ export const DEVICES_ZIGBEE2MQTT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	Zigbee2mqttUpdatePluginConfigDto,
 	Z2mUpdateMqttDto,
 	Z2mUpdateTlsDto,
+	Z2mUpdateWsDto,
 	Z2mUpdateDiscoveryDto,
 	// Mapping preview DTOs
 	MappingPreviewRequestDto,
@@ -68,6 +71,7 @@ export const DEVICES_ZIGBEE2MQTT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	Zigbee2mqttConfigModel,
 	Z2mMqttConfigModel,
 	Z2mTlsConfigModel,
+	Z2mWsConfigModel,
 	Z2mDiscoveryConfigModel,
 	// Response models
 	Zigbee2mqttDiscoveredDeviceModel,

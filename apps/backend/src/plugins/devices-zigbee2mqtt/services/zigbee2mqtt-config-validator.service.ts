@@ -1,4 +1,5 @@
 import { connect } from 'mqtt';
+import WebSocket from 'ws';
 
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
@@ -23,6 +24,16 @@ export class Zigbee2mqttConfigValidatorService implements IPluginConfigValidator
 	}
 
 	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
+		const connectionType = (config['connection_type'] as string) || 'mqtt';
+
+		if (connectionType === 'ws') {
+			return this.validateWs(config);
+		}
+
+		return this.validateMqtt(config);
+	}
+
+	private async validateMqtt(config: Record<string, unknown>): Promise<IConfigValidationResult> {
 		const mqtt = config['mqtt'] as Record<string, unknown> | undefined;
 
 		if (!mqtt) {
@@ -101,6 +112,78 @@ export class Zigbee2mqttConfigValidatorService implements IPluginConfigValidator
 						errors: [{ message: `Cannot connect to MQTT broker: ${message}`, field: 'mqtt.host' }],
 					});
 				}
+			});
+		});
+	}
+
+	private async validateWs(config: Record<string, unknown>): Promise<IConfigValidationResult> {
+		const wsConfig = config['ws'] as Record<string, unknown> | undefined;
+
+		if (!wsConfig) {
+			return { valid: false, errors: [{ message: 'WebSocket configuration is required' }] };
+		}
+
+		const host = wsConfig['host'] as string | undefined;
+		const port = (wsConfig['port'] as number) || 8080;
+		const secure = wsConfig['secure'] === true;
+
+		if (!host) {
+			return { valid: false, errors: [{ message: 'WebSocket host is required', field: 'ws.host' }] };
+		}
+
+		const protocol = secure ? 'wss' : 'ws';
+		const wsUrl = `${protocol}://${host}:${port}/api`;
+
+		return new Promise<IConfigValidationResult>((resolve) => {
+			const timeoutMs = 10000;
+			let settled = false;
+
+			const settle = (result: IConfigValidationResult): void => {
+				if (settled) return;
+				settled = true;
+
+				try {
+					ws.close();
+				} catch {
+					// Ignore cleanup errors
+				}
+
+				resolve(result);
+			};
+
+			const timer = setTimeout(() => {
+				settle({
+					valid: false,
+					errors: [
+						{
+							message: 'Connection timed out — check Zigbee2MQTT host and port',
+							field: 'ws.host',
+						},
+					],
+				});
+			}, timeoutMs);
+
+			const ws = new WebSocket(wsUrl);
+
+			ws.on('open', () => {
+				clearTimeout(timer);
+				settle({ valid: true });
+			});
+
+			ws.on('error', (err: Error) => {
+				clearTimeout(timer);
+
+				this.logger.error(`WebSocket connection test failed: ${err.message}`);
+
+				settle({
+					valid: false,
+					errors: [
+						{
+							message: `Cannot connect to Zigbee2MQTT WebSocket: ${err.message}`,
+							field: 'ws.host',
+						},
+					],
+				});
 			});
 		});
 	}

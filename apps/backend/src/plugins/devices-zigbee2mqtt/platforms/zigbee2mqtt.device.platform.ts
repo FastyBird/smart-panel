@@ -12,8 +12,8 @@ import {
 import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { Z2mDeviceMapperService } from '../services/device-mapper.service';
-import { Z2mMqttClientAdapterService } from '../services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
+import { Zigbee2mqttService } from '../services/zigbee2mqtt.service';
 
 export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 	device: Zigbee2mqttDeviceEntity;
@@ -34,7 +34,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	);
 
 	constructor(
-		private readonly mqttAdapter: Z2mMqttClientAdapterService,
+		private readonly zigbee2mqttService: Zigbee2mqttService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly deviceMapper: Z2mDeviceMapperService,
@@ -53,9 +53,11 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			return true;
 		}
 
-		// Check if MQTT is connected
-		if (!this.mqttAdapter.isConnected()) {
-			this.logger.warn('MQTT not connected, cannot send command');
+		// Check if adapter is connected
+		const adapter = this.zigbee2mqttService.getActiveAdapter();
+
+		if (!adapter.isConnected()) {
+			this.logger.warn('Not connected to Zigbee2MQTT, cannot send command');
 			return false;
 		}
 
@@ -244,7 +246,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
 
-		const success = await this.mqttAdapter.publishCommand(friendlyName, payload);
+		const success = await this.zigbee2mqttService.getActiveAdapter().publishCommand(friendlyName, payload);
 
 		if (success) {
 			// Intentionally empty - command sent successfully

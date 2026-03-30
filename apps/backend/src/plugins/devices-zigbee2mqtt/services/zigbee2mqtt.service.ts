@@ -13,17 +13,19 @@ import {
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mMqttConfig } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mDevice, Z2mMqttConfig, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
+import { Z2mBaseClientAdapter } from './base-client-adapter';
 import { Z2mDeviceMapperService } from './device-mapper.service';
 import { Z2mMqttClientAdapterService } from './mqtt-client-adapter.service';
+import { Z2mWsClientAdapterService } from './ws-client-adapter.service';
 
 /**
  * Main Zigbee2MQTT Service
  *
- * Manages the lifecycle of Zigbee2MQTT integration, MQTT connection,
- * device synchronization, and event handling.
+ * Manages the lifecycle of Zigbee2MQTT integration, connection
+ * (via MQTT or WebSocket), device synchronization, and event handling.
  */
 @Injectable()
 export class Zigbee2mqttService implements IManagedPluginService {
@@ -44,25 +46,29 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private isSyncing = false; // Prevents concurrent sync operations
 	private transformersRestored = false; // Tracks if transformers have been restored after restart
 
+	// The active adapter is selected based on connection_type config
+	private activeAdapter: Z2mBaseClientAdapter;
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly mqttAdapter: Z2mMqttClientAdapterService,
+		private readonly wsAdapter: Z2mWsClientAdapterService,
 		private readonly deviceMapper: Z2mDeviceMapperService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {
-		// Register callbacks for adapter events
-		this.mqttAdapter.setCallbacks({
-			onBridgeOnline: () => this.handleBridgeOnline(),
-			onBridgeOffline: () => this.handleBridgeOffline(),
-			onDevicesReceived: (devices) => this.handleDevicesReceived(devices),
-			onDeviceStateChanged: (friendlyName, state) => this.handleDeviceStateChanged(friendlyName, state),
-			onDeviceAvailabilityChanged: (friendlyName, available) =>
-				this.handleDeviceAvailabilityChanged(friendlyName, available),
-			onDeviceJoined: (ieeeAddress, friendlyName) => this.handleDeviceJoined(ieeeAddress, friendlyName),
-			onDeviceLeft: (ieeeAddress, friendlyName) => this.handleDeviceLeft(ieeeAddress, friendlyName),
-		});
+		// Default to MQTT adapter initially
+		this.activeAdapter = this.mqttAdapter;
+		this.registerCallbacks(this.activeAdapter);
+	}
+
+	/**
+	 * Get the currently active client adapter.
+	 * Used by DevicePlatform and other services that need to send commands.
+	 */
+	getActiveAdapter(): Z2mBaseClientAdapter {
+		return this.activeAdapter;
 	}
 
 	/**
@@ -135,26 +141,46 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			const oldConfig = this.pluginConfig;
 			const newConfig = this.configService.getPluginConfig<Zigbee2mqttConfigModel>(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME);
 
-			// Compare MQTT connection settings that would require restart
-			const mqttChanged =
-				oldConfig.mqtt.host !== newConfig.mqtt.host ||
-				oldConfig.mqtt.port !== newConfig.mqtt.port ||
-				oldConfig.mqtt.username !== newConfig.mqtt.username ||
-				oldConfig.mqtt.password !== newConfig.mqtt.password ||
-				oldConfig.mqtt.baseTopic !== newConfig.mqtt.baseTopic ||
-				oldConfig.mqtt.clientId !== newConfig.mqtt.clientId;
-
-			// Compare TLS settings
-			const tlsChanged =
-				oldConfig.tls.enabled !== newConfig.tls.enabled ||
-				oldConfig.tls.rejectUnauthorized !== newConfig.tls.rejectUnauthorized ||
-				oldConfig.tls.ca !== newConfig.tls.ca ||
-				oldConfig.tls.cert !== newConfig.tls.cert ||
-				oldConfig.tls.key !== newConfig.tls.key;
-
-			if (mqttChanged || tlsChanged) {
-				this.logger.log('Config changed, restart required');
+			// Connection type change always requires restart
+			if (oldConfig.connectionType !== newConfig.connectionType) {
+				this.logger.log('Connection type changed, restart required');
 				return Promise.resolve({ restartRequired: true });
+			}
+
+			if (newConfig.connectionType === 'mqtt') {
+				// Compare MQTT connection settings that would require restart
+				const mqttChanged =
+					oldConfig.mqtt.host !== newConfig.mqtt.host ||
+					oldConfig.mqtt.port !== newConfig.mqtt.port ||
+					oldConfig.mqtt.username !== newConfig.mqtt.username ||
+					oldConfig.mqtt.password !== newConfig.mqtt.password ||
+					oldConfig.mqtt.baseTopic !== newConfig.mqtt.baseTopic ||
+					oldConfig.mqtt.clientId !== newConfig.mqtt.clientId;
+
+				// Compare TLS settings
+				const tlsChanged =
+					oldConfig.tls.enabled !== newConfig.tls.enabled ||
+					oldConfig.tls.rejectUnauthorized !== newConfig.tls.rejectUnauthorized ||
+					oldConfig.tls.ca !== newConfig.tls.ca ||
+					oldConfig.tls.cert !== newConfig.tls.cert ||
+					oldConfig.tls.key !== newConfig.tls.key;
+
+				if (mqttChanged || tlsChanged) {
+					this.logger.log('MQTT config changed, restart required');
+					return Promise.resolve({ restartRequired: true });
+				}
+			} else {
+				// Compare WebSocket connection settings
+				const wsChanged =
+					oldConfig.ws.host !== newConfig.ws.host ||
+					oldConfig.ws.port !== newConfig.ws.port ||
+					oldConfig.ws.baseTopic !== newConfig.ws.baseTopic ||
+					oldConfig.ws.secure !== newConfig.ws.secure;
+
+				if (wsChanged) {
+					this.logger.log('WebSocket config changed, restart required');
+					return Promise.resolve({ restartRequired: true });
+				}
 			}
 
 			// Config didn't change for this plugin (or only discovery settings changed), no restart needed
@@ -182,14 +208,14 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Check if bridge is online
 	 */
 	isBridgeOnline(): boolean {
-		return this.mqttAdapter.isBridgeOnline();
+		return this.activeAdapter.isBridgeOnline();
 	}
 
 	/**
 	 * Get all registered Z2M devices
 	 */
 	getRegisteredDevices() {
-		return this.mqttAdapter.getRegisteredDevices();
+		return this.activeAdapter.getRegisteredDevices();
 	}
 
 	/**
@@ -197,7 +223,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * This triggers Z2M to publish the device's current state
 	 */
 	async requestDeviceState(friendlyName: string): Promise<boolean> {
-		return this.mqttAdapter.requestState(friendlyName);
+		return this.activeAdapter.requestState(friendlyName);
 	}
 
 	/**
@@ -206,7 +232,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * regardless of whether the device is in the registry or adopted
 	 */
 	getCachedState(friendlyName: string): Record<string, unknown> {
-		return this.mqttAdapter.getCachedState(friendlyName);
+		return this.activeAdapter.getCachedState(friendlyName);
 	}
 
 	/**
@@ -231,11 +257,26 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.logger.log('Starting Zigbee2MQTT plugin service');
 
 		try {
-			// Build MQTT config
-			const mqttConfig = this.buildMqttConfig();
+			// Select adapter based on connection type
+			const config = this.config;
+			const previousAdapter = this.activeAdapter;
+			this.activeAdapter = config.connectionType === 'ws' ? this.wsAdapter : this.mqttAdapter;
 
-			// Connect to MQTT broker
-			await this.mqttAdapter.connect(mqttConfig);
+			// If adapter changed, re-register callbacks
+			if (this.activeAdapter !== previousAdapter) {
+				this.registerCallbacks(this.activeAdapter);
+			}
+
+			// Connect using the appropriate config
+			if (config.connectionType === 'ws') {
+				const wsConfig = this.buildWsConfig();
+				this.logger.log('Using WebSocket connection to Zigbee2MQTT');
+				await this.activeAdapter.connect(wsConfig);
+			} else {
+				const mqttConfig = this.buildMqttConfig();
+				this.logger.log('Using MQTT connection to Zigbee2MQTT');
+				await this.activeAdapter.connect(mqttConfig);
+			}
 
 			this.logger.log('Zigbee2MQTT plugin service started successfully');
 			this.state = 'started';
@@ -260,8 +301,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.logger.log('Stopping Zigbee2MQTT plugin service');
 
 		try {
-			// Disconnect from MQTT
-			await this.mqttAdapter.disconnect();
+			// Disconnect the active adapter
+			await this.activeAdapter.disconnect();
 
 			// Set all devices to unknown state
 			const devices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
@@ -280,6 +321,22 @@ export class Zigbee2mqttService implements IManagedPluginService {
 
 			this.state = 'stopped';
 		}
+	}
+
+	/**
+	 * Register event callbacks on the given adapter
+	 */
+	private registerCallbacks(adapter: Z2mBaseClientAdapter): void {
+		adapter.setCallbacks({
+			onBridgeOnline: () => this.handleBridgeOnline(),
+			onBridgeOffline: () => this.handleBridgeOffline(),
+			onDevicesReceived: (devices) => this.handleDevicesReceived(devices),
+			onDeviceStateChanged: (friendlyName, state) => this.handleDeviceStateChanged(friendlyName, state),
+			onDeviceAvailabilityChanged: (friendlyName, available) =>
+				this.handleDeviceAvailabilityChanged(friendlyName, available),
+			onDeviceJoined: (ieeeAddress, friendlyName) => this.handleDeviceJoined(ieeeAddress, friendlyName),
+			onDeviceLeft: (ieeeAddress, friendlyName) => this.handleDeviceLeft(ieeeAddress, friendlyName),
+		});
 	}
 
 	/**
@@ -308,6 +365,22 @@ export class Zigbee2mqttService implements IManagedPluginService {
 						key: config.tls.key ?? undefined,
 					}
 				: undefined,
+		};
+	}
+
+	/**
+	 * Build WebSocket configuration from plugin config
+	 */
+	private buildWsConfig(): Z2mWsConfig {
+		const config = this.config;
+
+		return {
+			host: config.ws.host,
+			port: config.ws.port,
+			baseTopic: config.ws.baseTopic,
+			secure: config.ws.secure,
+			connectTimeout: config.ws.connectTimeout,
+			reconnectInterval: config.ws.reconnectInterval,
 		};
 	}
 
@@ -366,23 +439,20 @@ export class Zigbee2mqttService implements IManagedPluginService {
 
 		// If bridge is not online yet and syncOnStartup is enabled,
 		// cache devices for processing when BRIDGE_ONLINE arrives
-		// This handles the race condition where DEVICES_RECEIVED arrives before BRIDGE_ONLINE
 		if (!this.bridgeOnline && this.config.discovery.syncOnStartup) {
 			this.pendingDevices = devices;
 			return;
 		}
 
 		// Always restore transformers for existing devices when we receive device list
-		// This ensures transformers are available after backend restart, even if sync is disabled
-		const registeredDevices = this.mqttAdapter.getRegisteredDevices();
+		const registeredDevices = this.activeAdapter.getRegisteredDevices();
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
 
 		// Process cached state for all existing devices
-		// State updates arriving before transformers were restored were skipped but cached
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
 		for (const device of existingDevices) {
-			const cachedState = this.mqttAdapter.getCachedState(device.identifier);
+			const cachedState = this.activeAdapter.getCachedState(device.identifier);
 			if (Object.keys(cachedState).length > 0) {
 				try {
 					await this.deviceMapper.updateDeviceState(device.identifier, cachedState);
@@ -397,7 +467,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			return;
 		}
 
-		// Prevent concurrent sync operations (can happen if Z2M sends devices list multiple times)
+		// Prevent concurrent sync operations
 		if (this.isSyncing) {
 			return;
 		}
@@ -409,11 +479,9 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Sync devices from Z2M to Smart Panel
 	 */
 	private async syncDevices(devices: Z2mDevice[], createIfNotExists: boolean): Promise<void> {
-		// Set syncing flag to prevent concurrent sync operations
 		this.isSyncing = true;
 
 		try {
-			// Map each device
 			for (const z2mDevice of devices) {
 				try {
 					await this.deviceMapper.mapDevice(z2mDevice, createIfNotExists);
@@ -434,8 +502,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Handle device state changed event
 	 */
 	private async handleDeviceStateChanged(friendlyName: string, state: Record<string, unknown>): Promise<void> {
-		// Skip state updates until transformers have been restored
-		// State is cached by MQTT adapter and will be available when device is queried later
 		if (!this.transformersRestored) {
 			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
 			return;
@@ -472,8 +538,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	private handleDeviceJoined(_ieeeAddress: string, friendlyName: string): void {
 		this.logger.log(`Device joined: ${friendlyName}`);
-
-		// Device will be mapped when the full device list is received
 	}
 
 	/**
@@ -482,7 +546,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private async handleDeviceLeft(_ieeeAddress: string, friendlyName: string): Promise<void> {
 		this.logger.log(`Device left: ${friendlyName}`);
 
-		// Mark device as disconnected
 		try {
 			await this.deviceMapper.setDeviceAvailability(friendlyName, false);
 		} catch (error) {
