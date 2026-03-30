@@ -89,30 +89,46 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		});
 	}
 
+	/**
+	 * Persist address changes. A non-null string upserts the address;
+	 * null removes the address entry for that interface.
+	 */
+	private async syncAddresses(
+		deviceId: string,
+		wifiAddress: string | null | undefined,
+		ethernetAddress: string | null | undefined,
+	): Promise<void> {
+		if (wifiAddress !== undefined) {
+			if (wifiAddress !== null) {
+				await this.deviceAddressService.upsertAddress(deviceId, AddressType.WIFI, wifiAddress);
+			} else {
+				await this.deviceAddressService.removeAddress(deviceId, AddressType.WIFI);
+			}
+		}
+
+		if (ethernetAddress !== undefined) {
+			if (ethernetAddress !== null) {
+				await this.deviceAddressService.upsertAddress(deviceId, AddressType.ETHERNET, ethernetAddress);
+			} else {
+				await this.deviceAddressService.removeAddress(deviceId, AddressType.ETHERNET);
+			}
+		}
+	}
+
 	private scheduleAddressSync(
 		deviceId: string,
 		wifiAddress: string | null | undefined,
 		ethernetAddress: string | null | undefined,
 	): void {
 		setTimeout(() => {
-			void (async (): Promise<void> => {
-				try {
-					if (wifiAddress !== undefined && wifiAddress !== null) {
-						await this.deviceAddressService.upsertAddress(deviceId, AddressType.WIFI, wifiAddress);
-					}
+			void this.syncAddresses(deviceId, wifiAddress, ethernetAddress).catch((error) => {
+				const err = error as Error;
 
-					if (ethernetAddress !== undefined && ethernetAddress !== null) {
-						await this.deviceAddressService.upsertAddress(deviceId, AddressType.ETHERNET, ethernetAddress);
-					}
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
-						message: err.message,
-						stack: err.stack,
-					});
-				}
-			})();
+				this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
+					message: err.message,
+					stack: err.stack,
+				});
+			});
 		}, 0);
 	}
 
@@ -124,13 +140,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		setTimeout(() => {
 			void (async (): Promise<void> => {
 				try {
-					if (wifiAddress !== undefined && wifiAddress !== null) {
-						await this.deviceAddressService.upsertAddress(deviceId, AddressType.WIFI, wifiAddress);
-					}
-
-					if (ethernetAddress !== undefined && ethernetAddress !== null) {
-						await this.deviceAddressService.upsertAddress(deviceId, AddressType.ETHERNET, ethernetAddress);
-					}
+					await this.syncAddresses(deviceId, wifiAddress, ethernetAddress);
 				} catch (error) {
 					const err = error as Error;
 

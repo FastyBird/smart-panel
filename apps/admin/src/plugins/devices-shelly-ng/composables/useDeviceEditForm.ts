@@ -140,8 +140,9 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 				data: {
 					...deviceData,
 					type: device.type,
-					wifi_address: wifiAddress || undefined,
-					ethernet_address: ethernetAddress || undefined,
+					// Pass null explicitly to clear an address; omit undefined (unchanged)
+					...(wifiAddress !== undefined ? { wifi_address: wifiAddress } : {}),
+					...(ethernetAddress !== undefined ? { ethernet_address: ethernetAddress } : {}),
 				},
 			});
 

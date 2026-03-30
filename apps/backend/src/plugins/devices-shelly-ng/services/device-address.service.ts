@@ -70,6 +70,17 @@ export class DeviceAddressService {
 	}
 
 	/**
+	 * Remove an address entry for a device interface.
+	 */
+	async removeAddress(deviceId: string, interfaceType: AddressType): Promise<void> {
+		const result = await this.addressRepository.delete({ deviceId, interfaceType });
+
+		if (result.affected) {
+			this.logger.log(`Removed ${interfaceType} address for device=${deviceId}`, { resource: deviceId });
+		}
+	}
+
+	/**
 	 * Store addresses from a discovered device.
 	 * Only upserts addresses that are present — a null IP means the delegate
 	 * doesn't have info about that interface, not that the interface is gone.
