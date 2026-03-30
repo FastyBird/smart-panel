@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-03-24. Reflects actual codebase state.
+> Last updated: 2026-03-30. Reflects actual codebase state.
 
 ---
 
@@ -194,8 +194,9 @@ All onboarding device setup tasks complete.
 |---|------|-------|--------|
 | 1 | [FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS](features/FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md) | backend, admin | :white_check_mark: Done |
 | 2 | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) | backend, admin | :clipboard: Planned |
+| 3 | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md) | backend, admin | :clipboard: Planned |
 
-**Remaining work:** Matter plugin implementation.
+**Remaining work:** Matter plugin implementation. Direct Zigbee integration via zigbee-herdsman (6 phases: coordinator service, converters, device platform, adoption flow, admin UI, network management).
 
 ---
 
@@ -341,10 +342,10 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
 | Companion Display | 0 | 0 | 9 | 9 |
-| Plugins | 1 | 0 | 1 | 2 |
+| Plugins | 1 | 0 | 2 | 3 |
 | Extension Actions | 1 | 0 | 7 | 8 |
 | Device & Infrastructure | 4 | 0 | 1 | 5 |
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **54** | **0** | **34** | **88** |
+| **Total** | **54** | **0** | **35** | **89** |
