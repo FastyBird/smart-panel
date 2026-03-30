@@ -161,7 +161,11 @@
 					</template>
 
 					<template #title>
-						{{ t('devicesModule.texts.devices.logs.detail') }}
+						{{ t('systemModule.headings.systemLogs.detail') }}
+					</template>
+
+					<template #subtitle>
+						{{ t('systemModule.subHeadings.systemLogs.detail') }}
 					</template>
 				</app-bar-heading>
 
