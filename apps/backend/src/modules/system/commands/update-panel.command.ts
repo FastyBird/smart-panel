@@ -24,10 +24,10 @@ interface UpdatePanelOptions {
 }
 
 const PANEL_ASSET_PATTERNS: Record<PanelPlatform, RegExp> = {
-	'flutter-pi-arm64': /smart-panel-display-flutterpi-[^-]+-arm64\.tar\.gz/,
-	elinux: /smart-panel-display-elinux-[^-]+-x64\.tar\.gz/,
-	linux: /smart-panel-display-linux-[^-]+-x64\.tar\.gz/,
-	android: /smart-panel-display-android-[^.]+\.apk/,
+	'flutter-pi-arm64': /smart-panel-display-flutterpi-[\w.-]+-arm64\.tar\.gz/,
+	elinux: /smart-panel-display-elinux-[\w.-]+-x64\.tar\.gz/,
+	linux: /smart-panel-display-linux-[\w.-]+-x64\.tar\.gz/,
+	android: /smart-panel-display-android-[\w.-]+\.apk/,
 };
 
 const DEFAULT_INSTALL_DIR = '/opt/smart-panel-display';
