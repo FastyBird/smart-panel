@@ -407,10 +407,7 @@ export class Z2mDeviceMapperService {
 				}
 
 				// Skip write-only properties (e.g., command) — they don't receive state updates
-				if (
-					property.permissions?.length === 1 &&
-					property.permissions[0] === PermissionType.WRITE_ONLY
-				) {
+				if (property.permissions?.length === 1 && property.permissions[0] === PermissionType.WRITE_ONLY) {
 					continue;
 				}
 
