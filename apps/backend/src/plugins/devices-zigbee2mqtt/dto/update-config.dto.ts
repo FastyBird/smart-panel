@@ -297,7 +297,9 @@ export class Z2mUpdateWsDto {
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"reconnect_interval","reason":"Reconnect interval must be a whole number."}]' })
-	@Min(1000, { message: '[{"field":"reconnect_interval","reason":"Reconnect interval minimum value must be at least 1000ms."}]' })
+	@Min(1000, {
+		message: '[{"field":"reconnect_interval","reason":"Reconnect interval minimum value must be at least 1000ms."}]',
+	})
 	reconnectInterval?: number;
 }
 
