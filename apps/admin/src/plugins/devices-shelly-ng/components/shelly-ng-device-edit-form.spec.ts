@@ -17,7 +17,7 @@ vi.mock('../composables/useDeviceEditForm', () => ({
 			{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
 			{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
 		],
-		hasEthernet: { value: true },
+		hasEthernet: ref(true),
 		model: {
 			id: '123',
 			name: '',

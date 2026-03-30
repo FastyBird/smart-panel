@@ -19,6 +19,9 @@ export const ShellyNgDeviceEditFormSchema = DeviceEditFormSchema.extend({
 	password: z.string().nullable().optional(),
 	wifiAddress: emptyToNull,
 	ethernetAddress: emptyToNull,
+}).refine((data) => data.wifiAddress || data.ethernetAddress, {
+	message: 'At least one network address (WiFi or Ethernet) is required',
+	path: ['wifiAddress'],
 });
 
 export const ShellyNgSupportedDeviceSchema = z.object({
