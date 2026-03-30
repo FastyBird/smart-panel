@@ -170,6 +170,10 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 	/**
 	 * Publish a command to a device via WebSocket
+	 *
+	 * Note: The z2m WebSocket API expects topics WITHOUT the baseTopic prefix.
+	 * The z2m frontend extension automatically prepends the baseTopic when
+	 * forwarding the message to MQTT internally.
 	 */
 	async publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean> {
 		if (!this.ws || !this.connected) {
@@ -177,7 +181,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 			return false;
 		}
 
-		const topic = `${this.baseTopic}/${friendlyName}/set`;
+		const topic = `${friendlyName}/set`;
 		const message: Z2mWsMessage = { topic, payload };
 
 		this.logger.debug(`Sending WS command to ${topic}: ${JSON.stringify(payload)}`);
@@ -198,13 +202,15 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 	/**
 	 * Request current state from a device via WebSocket
+	 *
+	 * Note: Topics are sent without the baseTopic prefix (see publishCommand).
 	 */
 	async requestState(friendlyName: string, properties: string[] = []): Promise<boolean> {
 		if (!this.ws || !this.connected) {
 			return false;
 		}
 
-		const topic = `${this.baseTopic}/${friendlyName}/get`;
+		const topic = `${friendlyName}/get`;
 		const payload = properties.length > 0 ? Object.fromEntries(properties.map((p) => [p, ''])) : { state: '' };
 		const message: Z2mWsMessage = { topic, payload };
 
@@ -242,8 +248,9 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 			// Convert payload to string for the shared message handler
 			const payloadStr = typeof wsMessage.payload === 'string' ? wsMessage.payload : JSON.stringify(wsMessage.payload);
 
-			// The topic from WS is the full MQTT topic (e.g. "zigbee2mqtt/bridge/state")
-			this.handleMessage(wsMessage.topic, payloadStr);
+			// The z2m WebSocket API sends topics WITHOUT the baseTopic prefix
+			// (e.g. "bridge/state", not "zigbee2mqtt/bridge/state"), so pass isRelative=true
+			this.handleMessage(wsMessage.topic, payloadStr, true);
 		} catch (error) {
 			this.logger.warn('Failed to parse WebSocket message', {
 				message: error instanceof Error ? error.message : String(error),
