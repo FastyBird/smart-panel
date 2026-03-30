@@ -393,8 +393,8 @@ export class UpdateService {
 			return null;
 		}
 
-		// Look for the backend tarball (e.g., smart-panel-v1.2.0-backend.tar.gz)
-		const backendAsset = assets.find((a) => a.name.includes('backend') && a.name.endsWith('.tar.gz'));
+		// Look for the server tarball (e.g., smart-panel-server-0.1.0-arm64.tar.gz)
+		const backendAsset = assets.find((a) => a.name.startsWith('smart-panel-server-') && a.name.endsWith('.tar.gz'));
 
 		if (!backendAsset) {
 			this.logger.warn(`No backend tarball found in release v${cleanVersion}`);
