@@ -25,7 +25,7 @@ export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 /**
  * Zigbee2MQTT Device Platform
  *
- * Handles property write commands by publishing to MQTT.
+ * Handles property write commands via the active adapter (MQTT or WebSocket).
  */
 @Injectable()
 export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
@@ -120,7 +120,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				continue;
 			}
 
-			// Device identifier = friendly_name (used for MQTT topic)
+			// Device identifier = friendly_name (used for Z2M topic routing)
 			const friendlyName = device.identifier;
 
 			// Process each channel's updates for this device
@@ -141,7 +141,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	}
 
 	/**
-	 * Execute command by publishing to MQTT
+	 * Execute command via the active adapter
 	 */
 	private async executeCommand(
 		adapter: Z2mBaseClientAdapter,
@@ -150,7 +150,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		propertyUpdates: Array<{ property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>,
 		friendlyName: string,
 	): Promise<boolean> {
-		// Build MQTT payload
+		// Build Z2M set payload
 		const payload: Z2mSetPayload = {};
 
 		// Track color components for batching into a single color object
