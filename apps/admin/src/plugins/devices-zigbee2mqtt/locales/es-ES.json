@@ -1,8 +1,11 @@
 {
 	"headings": {
 		"aboutPluginStatus": "Estado del plugin",
+		"aboutConnection": "Connection type",
 		"aboutMqtt": "Conexión MQTT",
 		"advancedMqttSettings": "Configuración avanzada de MQTT",
+		"aboutWs": "WebSocket connection",
+		"advancedWsSettings": "Advanced WebSocket settings",
 		"aboutTls": "Configuración TLS/SSL",
 		"aboutDiscovery": "Descubrimiento de dispositivos",
 		"steps": {
@@ -29,7 +32,9 @@
 	},
 	"texts": {
 		"aboutPluginStatus": "Habilitar o deshabilitar el plugin Zigbee2MQTT. Cuando está deshabilitado, no se monitorizarán ni controlarán dispositivos Zigbee.",
+		"aboutConnection": "Choose how to connect to Zigbee2MQTT. Use MQTT to connect via an MQTT broker, or WebSocket to connect directly to the Zigbee2MQTT frontend.",
 		"aboutMqtt": "Configure la conexión al broker MQTT donde Zigbee2MQTT publica los datos de los dispositivos.",
+		"aboutWs": "Configure the direct WebSocket connection to the Zigbee2MQTT frontend. This eliminates the need for a separate MQTT broker.",
 		"aboutTls": "Configure los ajustes TLS/SSL para conexiones MQTT seguras. Habilite TLS si su broker requiere conexiones cifradas.",
 		"aboutDiscovery": "Configure cómo se descubren y agregan los dispositivos desde el puente Zigbee2MQTT.",
 		"steps": {
@@ -50,6 +55,11 @@
 		"config": {
 			"enabled": {
 				"title": "Habilitado"
+			},
+			"connectionType": {
+				"title": "Connection type",
+				"mqtt": "MQTT broker",
+				"ws": "WebSocket (direct)"
 			},
 			"mqtt": {
 				"host": {
@@ -104,6 +114,44 @@
 					"title": "Reconexión (ms)",
 					"validation": {
 						"number": "Debe ser un número >= 1000"
+					}
+				}
+			},
+			"ws": {
+				"host": {
+					"title": "Zigbee2MQTT host",
+					"placeholder": "e.g., localhost or 192.168.1.100",
+					"validation": {
+						"required": "Zigbee2MQTT host is required"
+					}
+				},
+				"port": {
+					"title": "Port",
+					"validation": {
+						"required": "Port is required",
+						"range": "Port must be between 1 and 65535"
+					}
+				},
+				"baseTopic": {
+					"title": "Base topic",
+					"placeholder": "e.g., zigbee2mqtt",
+					"validation": {
+						"required": "Base topic is required"
+					}
+				},
+				"secure": {
+					"title": "Use secure connection (wss://)"
+				},
+				"connectTimeout": {
+					"title": "Timeout (ms)",
+					"validation": {
+						"number": "Must be a number >= 1000"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Reconnect (ms)",
+					"validation": {
+						"number": "Must be a number >= 1000"
 					}
 				}
 			},

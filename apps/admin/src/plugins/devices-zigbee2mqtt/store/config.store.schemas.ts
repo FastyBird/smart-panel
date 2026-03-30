@@ -8,6 +8,7 @@ type ApiUpdateConfig = DevicesZigbee2mqttPluginUpdateConfigSchema;
 type ApiConfig = DevicesZigbee2mqttPluginConfigSchema;
 
 export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
+	connectionType: z.enum(['mqtt', 'ws']),
 	mqtt: z.object({
 		host: z.string(),
 		port: z.number(),
@@ -17,6 +18,14 @@ export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
 		clientId: z.string().nullable(),
 		cleanSession: z.boolean(),
 		keepalive: z.number(),
+		connectTimeout: z.number(),
+		reconnectInterval: z.number(),
+	}),
+	ws: z.object({
+		host: z.string(),
+		port: z.number(),
+		baseTopic: z.string(),
+		secure: z.boolean(),
 		connectTimeout: z.number(),
 		reconnectInterval: z.number(),
 	}),
@@ -39,6 +48,7 @@ export const Zigbee2mqttConfigSchema = ConfigPluginSchema.extend({
 export const Zigbee2mqttConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME),
+		connection_type: z.enum(['mqtt', 'ws']).optional(),
 		mqtt: z
 			.object({
 				host: z.string().optional(),
@@ -49,6 +59,16 @@ export const Zigbee2mqttConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Config
 				client_id: z.string().nullable().optional(),
 				clean_session: z.boolean().optional(),
 				keepalive: z.number().optional(),
+				connect_timeout: z.number().optional(),
+				reconnect_interval: z.number().optional(),
+			})
+			.optional(),
+		ws: z
+			.object({
+				host: z.string().optional(),
+				port: z.number().optional(),
+				base_topic: z.string().optional(),
+				secure: z.boolean().optional(),
 				connect_timeout: z.number().optional(),
 				reconnect_interval: z.number().optional(),
 			})
@@ -74,6 +94,7 @@ export const Zigbee2mqttConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Config
 export const Zigbee2mqttConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME),
+		connection_type: z.enum(['mqtt', 'ws']),
 		mqtt: z.object({
 			host: z.string(),
 			port: z.number(),
@@ -83,6 +104,14 @@ export const Zigbee2mqttConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSch
 			client_id: z.string().nullable(),
 			clean_session: z.boolean(),
 			keepalive: z.number(),
+			connect_timeout: z.number(),
+			reconnect_interval: z.number(),
+		}),
+		ws: z.object({
+			host: z.string(),
+			port: z.number(),
+			base_topic: z.string(),
+			secure: z.boolean(),
 			connect_timeout: z.number(),
 			reconnect_interval: z.number(),
 		}),
