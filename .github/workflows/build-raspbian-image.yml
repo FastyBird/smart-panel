@@ -120,7 +120,7 @@ jobs:
           if [ -n "$IMAGE_SUFFIX" ]; then
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
-          for f in smart-panel-*; do
+          for f in smart-panel-raspbian-*; do
             # Replace the version segment (last part before -arm64) with the release version
             NEW_NAME=$(echo "$f" | sed "s/-[^-]*-arm64/-${VERSION}-arm64/")
             if [ "$f" != "$NEW_NAME" ]; then

@@ -114,19 +114,20 @@ jobs:
       - name: "Archive eLinux App"
         env:
           ARCH: "${{ matrix.target-arch }}"
+          VERSION: "${{ inputs.version || 'dev' }}"
         run: |
-          tar -czvf "smart-panel-display-elinux-${ARCH}.tar.gz" \
+          tar -czvf "smart-panel-display-elinux-${VERSION}-${ARCH}.tar.gz" \
             -C "./apps/panel/build/elinux/${ARCH}/release/bundle" .
-          shasum -a 256 "smart-panel-display-elinux-${ARCH}.tar.gz" \
-            > "smart-panel-display-elinux-${ARCH}.tar.gz.sha256"
+          shasum -a 256 "smart-panel-display-elinux-${VERSION}-${ARCH}.tar.gz" \
+            > "smart-panel-display-elinux-${VERSION}-${ARCH}.tar.gz.sha256"
 
       - name: "Upload artifact"
         uses: "actions/upload-artifact@v7"
         with:
           name: "display-panel-elinux-${{ matrix.target-arch }}"
           path: |
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
+            smart-panel-display-elinux-${{ inputs.version || 'dev' }}-${{ matrix.target-arch }}.tar.gz
+            smart-panel-display-elinux-${{ inputs.version || 'dev' }}-${{ matrix.target-arch }}.tar.gz.sha256
           retention-days: 30
 
       - name: "Upload to release"
@@ -135,7 +136,7 @@ jobs:
         with:
           tag_name: "${{ inputs.tag_name }}"
           files: |
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz
-            smart-panel-display-elinux-${{ matrix.target-arch }}.tar.gz.sha256
+            smart-panel-display-elinux-${{ inputs.version || 'dev' }}-${{ matrix.target-arch }}.tar.gz
+            smart-panel-display-elinux-${{ inputs.version || 'dev' }}-${{ matrix.target-arch }}.tar.gz.sha256
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

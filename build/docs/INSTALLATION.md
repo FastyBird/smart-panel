@@ -18,7 +18,7 @@ Smart Panel has two main components that can be installed independently or toget
 
 - **Operating System**: Linux with systemd (Debian, Ubuntu, Raspberry Pi OS, Fedora, etc.)
 - **Node.js**: Version 24 or higher
-- **Architecture**: ARM (32-bit), ARM64 (64-bit), or x64
+- **Architecture**: ARM64 (64-bit) or x64
 - **RAM**: 512 MB minimum, 1 GB recommended
 - **Storage**: 300 MB free space
 
@@ -64,10 +64,9 @@ Choose the tarball that matches your architecture:
 
 | Architecture | Tarball | Typical devices |
 |-------------|---------|-----------------|
-| ARMv7 (32-bit) | `smart-panel.tar.gz` | Raspberry Pi 3B+, Pi Zero 2W (32-bit OS) |
-| ARM64 (64-bit) | `smart-panel-arm64.tar.gz` | Raspberry Pi 4/5, Pi Zero 2W (64-bit OS) |
+| ARM64 (64-bit) | `smart-panel-server-{version}-arm64.tar.gz` | Raspberry Pi 4/5, Pi Zero 2W (64-bit OS) |
 
-> **Tip:** Check your architecture with `uname -m`. `armv7l` = ARMv7, `aarch64` = ARM64.
+> **Tip:** Check your architecture with `uname -m`. `aarch64` = ARM64.
 
 ```bash
 # Create installation directory
@@ -75,15 +74,18 @@ sudo mkdir -p /opt/smart-panel
 sudo chown -R ${USER}:${USER} /opt/smart-panel
 cd /opt/smart-panel
 
-# Download (ARMv7 example — replace with smart-panel-arm64.tar.gz for 64-bit)
-curl --http1.1 -L -C - -o smart-panel.tar.gz \
-    https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
-tar -xzf smart-panel.tar.gz -C .
-rm smart-panel.tar.gz
+# Set the version you want to install
+VERSION="0.1.0"
+
+# Download
+curl --http1.1 -L -C - -o smart-panel-server.tar.gz \
+    "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-server-${VERSION}-arm64.tar.gz"
+tar -xzf smart-panel-server.tar.gz -C .
+rm smart-panel-server.tar.gz
 
 # Optional: verify download integrity
-curl -LO https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.sha256
-sha256sum -c smart-panel.sha256
+curl -LO "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-server-${VERSION}-arm64.tar.gz.sha256"
+sha256sum -c smart-panel-server-${VERSION}-arm64.tar.gz.sha256
 
 # Create data directory
 sudo mkdir -p /var/smart-panel
@@ -459,11 +461,10 @@ The pre-built display app is available as release assets on GitHub:
 
 | Asset | Platform |
 |-------|----------|
-| `smart-panel-display-arm64.tar.gz` | Raspberry Pi (64-bit) via flutter-pi |
-| `smart-panel-display-armv7.tar.gz` | Raspberry Pi (32-bit) via flutter-pi |
-| `smart-panel-display-elinux-x64.tar.gz` | Linux x64 headless (DRM-GBM, no desktop needed) |
-| `smart-panel-display-linux-x64.tar.gz` | Linux x64 desktop (GTK) |
-| `smart-panel-display.apk` | Android (sideload via ADB) |
+| `smart-panel-display-flutterpi-{version}-arm64.tar.gz` | Raspberry Pi (64-bit) via flutter-pi |
+| `smart-panel-display-elinux-{version}-x64.tar.gz` | Linux x64 headless (DRM-GBM, no desktop needed) |
+| `smart-panel-display-linux-{version}-x64.tar.gz` | Linux x64 desktop (GTK) |
+| `smart-panel-display-android-{version}.apk` | Android (sideload via ADB) |
 
 Download from: `https://github.com/FastyBird/smart-panel/releases/latest`
 
@@ -490,8 +491,9 @@ Download from: `https://github.com/FastyBird/smart-panel/releases/latest`
 
 4. Download and extract the display app:
    ```bash
+   VERSION="0.1.0"  # Set the version you want to install
    sudo mkdir -p /opt/smart-panel-display
-   curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-arm64.tar.gz" \
+   curl -sL "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-display-flutterpi-${VERSION}-arm64.tar.gz" \
        | sudo tar -xzf - -C /opt/smart-panel-display
    ```
 
@@ -529,8 +531,9 @@ Download from: `https://github.com/FastyBird/smart-panel/releases/latest`
 
 2. Download and extract:
    ```bash
+   VERSION="0.1.0"  # Set the version you want to install
    sudo mkdir -p /opt/smart-panel-display
-   curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-elinux-x64.tar.gz" \
+   curl -sL "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-display-elinux-${VERSION}-x64.tar.gz" \
        | sudo tar -xzf - -C /opt/smart-panel-display
    sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
    ```
@@ -563,7 +566,8 @@ Download from: `https://github.com/FastyBird/smart-panel/releases/latest`
 #### Android (via ADB)
 
 ```bash
-curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display.apk" \
+VERSION="0.1.0"  # Set the version you want to install
+curl -sL "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-display-android-${VERSION}.apk" \
     -o /tmp/smart-panel-display.apk
 adb install -r /tmp/smart-panel-display.apk
 ```

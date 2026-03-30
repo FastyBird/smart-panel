@@ -441,8 +441,9 @@ install_android() {
 		exit 1
 	fi
 
-	local download_url="https://github.com/${GITHUB_REPO}/releases/download/${tag}/smart-panel-display.apk"
-	local apk_path="/tmp/smart-panel-display.apk"
+	local version="${tag#v}"
+	local download_url="https://github.com/${GITHUB_REPO}/releases/download/${tag}/smart-panel-display-android-${version}.apk"
+	local apk_path="/tmp/smart-panel-display-android-${version}.apk"
 
 	print_step "Downloading APK..."
 	curl -sL "$download_url" -o "$apk_path"
@@ -610,6 +611,8 @@ main() {
 		print_error "Could not determine release version"
 		exit 1
 	fi
+	# Version is the tag without the 'v' prefix (e.g., v0.1.0-alpha -> 0.1.0-alpha)
+	local version="${tag#v}"
 	print_step "Release: ${tag}"
 	echo ""
 
@@ -619,7 +622,7 @@ main() {
 			install_flutter_pi_deps
 
 			# Determine asset name based on architecture
-			local asset_name="smart-panel-display-${arch}.tar.gz"
+			local asset_name="smart-panel-display-flutterpi-${version}-${arch}.tar.gz"
 			download_and_extract "$tag" "$asset_name" "$INSTALL_DIR"
 			configure_backend_url
 			install_discovery_service "$tag"
@@ -633,7 +636,7 @@ main() {
 			check_root
 			install_elinux_deps
 
-			download_and_extract "$tag" "smart-panel-display-elinux-x64.tar.gz" "$INSTALL_DIR"
+			download_and_extract "$tag" "smart-panel-display-elinux-${version}-x64.tar.gz" "$INSTALL_DIR"
 			chmod +x "${INSTALL_DIR}/fastybird_smart_panel" 2>/dev/null || true
 			configure_backend_url
 			create_systemd_service_elinux
@@ -646,7 +649,7 @@ main() {
 			check_root
 			install_linux_desktop_deps
 
-			download_and_extract "$tag" "smart-panel-display-linux-x64.tar.gz" "$INSTALL_DIR"
+			download_and_extract "$tag" "smart-panel-display-linux-${version}-x64.tar.gz" "$INSTALL_DIR"
 			chmod +x "${INSTALL_DIR}/fastybird_smart_panel"
 			configure_backend_url
 			create_systemd_service_linux

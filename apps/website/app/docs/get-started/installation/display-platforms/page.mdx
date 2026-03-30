@@ -69,20 +69,15 @@ for manual installations. If you used the install script or a pre-built image, t
 
 			## Download the Display App
 
-			Download the correct release asset for your architecture:
+			Download the release asset for ARM64:
 
-			- **ARMv7 (32-bit):** `smart-panel-display-flutterpi-armv7.tar.gz`
-			- **ARM64 (64-bit):** `smart-panel-display-flutterpi-arm64.tar.gz`
+			- **ARM64 (64-bit):** `smart-panel-display-flutterpi-{version}-arm64.tar.gz`
 
 			```bash copy
-			ARCH=$(uname -m)
-			case $ARCH in
-				armv7l|armv6l) ASSET="smart-panel-display-flutterpi-armv7.tar.gz" ;;
-				aarch64|arm64) ASSET="smart-panel-display-flutterpi-arm64.tar.gz" ;;
-			esac
+			VERSION="latest"
 
 			sudo mkdir -p /opt/smart-panel-display
-			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/${ASSET}" \
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/${VERSION}/download/smart-panel-display-flutterpi-${VERSION}-arm64.tar.gz" \
 				| sudo tar -xzf - -C /opt/smart-panel-display
 			```
 
@@ -152,8 +147,8 @@ for manual installations. If you used the install script or a pre-built image, t
 
 		#### Release Assets
 
-		- **x64:** `smart-panel-display-elinux-x64.tar.gz`
-		- **ARM64:** `smart-panel-display-elinux-arm64.tar.gz` (for ARM64 boards running without a desktop)
+		- **x64:** `smart-panel-display-elinux-{version}-x64.tar.gz`
+		- **ARM64:** `smart-panel-display-elinux-{version}-arm64.tar.gz` (for ARM64 boards running without a desktop)
 
 		#### Manual Install
 
@@ -161,8 +156,10 @@ for manual installations. If you used the install script or a pre-built image, t
 			## Download the Display App
 
 			```bash copy
+			VERSION="latest"
+
 			sudo mkdir -p /opt/smart-panel-display
-			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-elinux-x64.tar.gz" \
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/${VERSION}/download/smart-panel-display-elinux-${VERSION}-x64.tar.gz" \
 				| sudo tar -xzf - -C /opt/smart-panel-display
 			sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
 			```
@@ -217,7 +214,7 @@ for manual installations. If you used the install script or a pre-built image, t
 
 		#### Release Asset
 
-		`smart-panel-display-linux-x64.tar.gz`
+		`smart-panel-display-linux-{version}-x64.tar.gz`
 
 		#### Manual Install
 
@@ -225,8 +222,10 @@ for manual installations. If you used the install script or a pre-built image, t
 			## Download the Display App
 
 			```bash copy
+			VERSION="latest"
+
 			sudo mkdir -p /opt/smart-panel-display
-			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-linux-x64.tar.gz" \
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/${VERSION}/download/smart-panel-display-linux-${VERSION}-x64.tar.gz" \
 				| sudo tar -xzf - -C /opt/smart-panel-display
 			sudo chmod +x /opt/smart-panel-display/fastybird_smart_panel
 			```
@@ -264,7 +263,7 @@ for manual installations. If you used the install script or a pre-built image, t
 
 		#### Release Asset
 
-		`smart-panel-display-android.apk`
+		`smart-panel-display-android-{version}.apk`
 
 		#### Install via ADB
 
@@ -284,7 +283,9 @@ for manual installations. If you used the install script or a pre-built image, t
 			## Download and Install the APK
 
 			```bash copy
-			curl -sL "https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel-display-android.apk" \
+			VERSION="latest"
+
+			curl -sL "https://github.com/FastyBird/smart-panel/releases/${VERSION}/download/smart-panel-display-android-${VERSION}.apk" \
 				-o /tmp/smart-panel-display.apk
 			adb install -r /tmp/smart-panel-display.apk
 			```
