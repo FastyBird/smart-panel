@@ -406,6 +406,14 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip write-only properties (e.g., command) — they don't receive state updates
+				if (
+					property.permissions?.length === 1 &&
+					property.permissions[0] === PermissionType.WRITE_ONLY
+				) {
+					continue;
+				}
+
 				// Skip brightness - handled separately with range normalization (Z2M 0-254 -> spec 0-100%)
 				if (channel.category === ChannelCategory.LIGHT && property.category === PropertyCategory.BRIGHTNESS) {
 					continue;
