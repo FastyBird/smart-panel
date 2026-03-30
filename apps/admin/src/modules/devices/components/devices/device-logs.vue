@@ -134,10 +134,14 @@
 			direction="rtl"
 			size="480px"
 		>
-			<system-log-detail
-				v-if="selectedLog"
-				:system-log="selectedLog"
-			/>
+			<el-scrollbar class="h-full">
+				<div class="p-2 md:px-4">
+					<system-log-detail
+						v-if="selectedLog"
+						:system-log="selectedLog"
+					/>
+				</div>
+			</el-scrollbar>
 		</el-drawer>
 	</div>
 </template>
