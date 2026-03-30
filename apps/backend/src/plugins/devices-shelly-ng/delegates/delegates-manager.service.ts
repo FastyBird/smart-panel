@@ -37,7 +37,7 @@ import {
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
-import { DeviceAddressService } from '../services/device-address.service';
+import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
@@ -235,7 +235,7 @@ export class DelegatesManagerService {
 
 			// Store canonical MAC for future deduplication (inside lock so the next
 			// delegate's findDeviceByCanonicalMac sees it)
-			if (canonicalMac && dev.canonicalMac !== canonicalMac) {
+			if (canonicalMac && dev.canonicalMac !== normalizeMac(canonicalMac)) {
 				await this.deviceAddressService.setCanonicalMac(dev.id, canonicalMac);
 			}
 

@@ -158,6 +158,27 @@ const { categoriesOptions, hasEthernet, model, formEl, formChanged, submit, form
 	device: props.device as IShellyNgDevice,
 });
 
+// Restore prefills from add-form navigation (device already exists → redirect to edit)
+const pre = (window.history.state?.prefills ?? null) as { hostname?: string; password?: string } | null;
+
+if (pre) {
+	// The add form probed via hostname — use it as the wifi address if not already set
+	if (pre.hostname && !model.wifiAddress) {
+		model.wifiAddress = pre.hostname;
+	}
+
+	if (pre.password) {
+		model.password = pre.password;
+	}
+
+	// Clear immediately so it doesn't linger on further nav
+	const s = { ...window.history.state };
+
+	delete s.prefills;
+
+	history.replaceState(s, '');
+}
+
 const rules = reactive<FormRules<IShellyNgDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	category: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
