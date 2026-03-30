@@ -178,6 +178,7 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 		TEMPERATURE: 'temperature',
 		PM: 'pm1',
 		WIFI: 'wifi',
+		ETHERNET: 'ethernet',
 	},
 	DeviceProfile: {
 		SWITCH: 'switch',

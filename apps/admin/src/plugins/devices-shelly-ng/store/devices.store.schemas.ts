@@ -24,6 +24,10 @@ export const ShellyNgDeviceSchema = DeviceSchema.extend({
 	canonicalMac: z.string().nullable().optional(),
 	hasEthernet: z.boolean().optional().default(false),
 	addresses: z.array(ShellyNgDeviceAddressSchema).optional().default([]),
+	// Transient fields for address edits — survive store schema validation
+	// so they reach transformDeviceUpdateRequest and the API
+	wifiAddress: z.string().nullable().optional(),
+	ethernetAddress: z.string().nullable().optional(),
 });
 
 // BACKEND API

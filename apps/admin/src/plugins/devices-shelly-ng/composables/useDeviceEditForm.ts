@@ -135,14 +135,23 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		try {
 			const { wifiAddress, ethernetAddress, ...deviceData } = parsedModel.data;
 
+			// Only send address fields when they've actually changed
+			const addressUpdates: Record<string, string | null> = {};
+
+			if (wifiAddress !== initialModel.wifiAddress) {
+				addressUpdates.wifiAddress = wifiAddress ?? null;
+			}
+
+			if (ethernetAddress !== initialModel.ethernetAddress) {
+				addressUpdates.ethernetAddress = ethernetAddress ?? null;
+			}
+
 			await devicesStore.edit({
 				id: device.id,
 				data: {
 					...deviceData,
+					...addressUpdates,
 					type: device.type,
-					// Pass null explicitly to clear an address; omit undefined (unchanged)
-					...(wifiAddress !== undefined ? { wifi_address: wifiAddress } : {}),
-					...(ethernetAddress !== undefined ? { ethernet_address: ethernetAddress } : {}),
 				},
 			});
 
