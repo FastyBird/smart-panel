@@ -18,6 +18,7 @@ import { DeviceProvisionQueueService } from '../../../modules/devices/services/d
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
+	AddressType,
 	ComponentType,
 	DESCRIPTORS,
 	DEVICES_SHELLY_NG_PLUGIN_NAME,
@@ -159,7 +160,20 @@ export class DeviceManagerService {
 				throw new DevicesShellyNgException('Device not found.');
 			}
 
-			const hostname = await this.deviceAddressService.getPreferredAddress(device.id);
+			let hostname = await this.deviceAddressService.getPreferredAddress(device.id);
+
+			// Fallback: migrate legacy hostname for pre-existing devices
+			if (hostname === null) {
+				const legacyHostname = await this.deviceAddressService.getLegacyHostname(device.id);
+
+				if (legacyHostname) {
+					await this.deviceAddressService.upsertAddress(device.id, AddressType.WIFI, legacyHostname);
+
+					this.logger.log(`Migrated legacy hostname=${legacyHostname} to address table for device=${device.id}`);
+
+					hostname = legacyHostname;
+				}
+			}
 
 			if (hostname === null) {
 				// No address yet — the device was just created and addresses will be
