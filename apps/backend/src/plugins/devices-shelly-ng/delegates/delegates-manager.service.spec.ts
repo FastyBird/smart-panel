@@ -210,8 +210,9 @@ describe('DelegatesManagerService', () => {
 			},
 		);
 
-		// channelsService mocks (device information + switch)
+		// channelsService mocks: pre-provision check (null → triggers createOrUpdate), then device info + switch
 		(channelsService.findOneBy as jest.Mock)
+			.mockImplementationOnce(async () => null)
 			.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
 			.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 
@@ -721,6 +722,7 @@ describe('DelegatesManagerService', () => {
 
 			(channelsService.findOneBy as jest.Mock)
 				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => null) // pre-provision check
 				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
 				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 
@@ -759,6 +761,7 @@ describe('DelegatesManagerService', () => {
 
 			(channelsService.findOneBy as jest.Mock)
 				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity) // pre-provision check (exists → skip)
 				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
 				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 
@@ -846,6 +849,7 @@ describe('DelegatesManagerService', () => {
 			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
 			(channelsService.findOneBy as jest.Mock)
 				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => null) // pre-provision check
 				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
 				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 			(channelsPropertiesService.findOneBy as jest.Mock)
@@ -874,6 +878,7 @@ describe('DelegatesManagerService', () => {
 			(devicesService.findOne as jest.Mock).mockResolvedValue(device as unknown as ShellyNgDeviceEntity);
 			(channelsService.findOneBy as jest.Mock)
 				.mockImplementation(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity) // pre-provision check (exists → skip)
 				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
 				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 			(channelsPropertiesService.findOneBy as jest.Mock)

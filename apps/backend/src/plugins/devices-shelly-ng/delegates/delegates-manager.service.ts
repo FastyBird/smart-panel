@@ -255,14 +255,21 @@ export class DelegatesManagerService {
 		// Store network addresses (ethernet-first preference resolved by address service)
 		await this.deviceAddressService.syncAddresses(device.id, wifiIp, ethernetIp);
 
-		if (isNewDevice) {
-			// Provision channels and properties before setting up handlers.
-			// This is called explicitly (awaited) so channels exist by the time
-			// handler setup queries run below. The subscriber also fires
-			// createOrUpdate asynchronously, but it is idempotent.
+		// Ensure channels are provisioned before setting up handlers.
+		// For new devices this is the initial provisioning. For multi-interface merges,
+		// the second delegate may arrive before the first's createOrUpdate finishes —
+		// the provision queue serializes concurrent calls for the same device ID.
+		const existingChannel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+			'category',
+			ChannelCategory.DEVICE_INFORMATION,
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		if (isNewDevice || existingChannel === null) {
 			await this.deviceManagerService.createOrUpdate(device.id);
 
-			// Reload device by system ID since the identifier might differ from shelly.id
+			// Reload device since identifier might differ from shelly.id
 			// when the device was matched by canonical MAC
 			device = await this.devicesService.findOne<ShellyNgDeviceEntity>(device.id, DEVICES_SHELLY_NG_TYPE);
 

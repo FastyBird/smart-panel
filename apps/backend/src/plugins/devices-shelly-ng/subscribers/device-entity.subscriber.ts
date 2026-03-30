@@ -75,12 +75,11 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			return;
 		}
 
-		// When both address sync and provision are needed, run them sequentially
-		// in a single deferred callback so provision sees the updated addresses.
-		if (hasAddressUpdate && needsResync) {
+		// Address changes always trigger provision after sync — ensures devices
+		// added via admin get provisioned once they have an address.
+		// createOrUpdate is idempotent and skips quickly if already provisioned.
+		if (hasAddressUpdate) {
 			this.scheduleAddressSyncThenProvision(event.databaseEntity.id, wifiAddress, ethernetAddress);
-		} else if (hasAddressUpdate) {
-			this.scheduleAddressSync(event.databaseEntity.id, wifiAddress, ethernetAddress);
 		} else if (needsResync) {
 			this.scheduleProvision(event.databaseEntity.id);
 		}
@@ -121,23 +120,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				await this.deviceAddressService.removeAddress(deviceId, AddressType.ETHERNET);
 			}
 		}
-	}
-
-	private scheduleAddressSync(
-		deviceId: string,
-		wifiAddress: string | null | undefined,
-		ethernetAddress: string | null | undefined,
-	): void {
-		setTimeout(() => {
-			void this.syncAddresses(deviceId, wifiAddress, ethernetAddress).catch((error) => {
-				const err = error as Error;
-
-				this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
-					message: err.message,
-					stack: err.stack,
-				});
-			});
-		}, 0);
 	}
 
 	private scheduleAddressSyncThenProvision(
