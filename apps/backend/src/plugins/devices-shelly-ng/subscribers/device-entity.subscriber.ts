@@ -67,11 +67,13 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			return;
 		}
 
-		if (hasAddressUpdate) {
+		// When both address sync and provision are needed, run them sequentially
+		// in a single deferred callback so provision sees the updated addresses.
+		if (hasAddressUpdate && needsResync) {
+			this.scheduleAddressSyncThenProvision(event.databaseEntity.id, wifiAddress, ethernetAddress);
+		} else if (hasAddressUpdate) {
 			this.scheduleAddressSync(event.databaseEntity.id, wifiAddress, ethernetAddress);
-		}
-
-		if (needsResync) {
+		} else if (needsResync) {
 			this.scheduleProvision(event.databaseEntity.id);
 		}
 	}
@@ -106,6 +108,51 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 					const err = error as Error;
 
 					this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
+						message: err.message,
+						stack: err.stack,
+					});
+				}
+			})();
+		}, 0);
+	}
+
+	private scheduleAddressSyncThenProvision(
+		deviceId: string,
+		wifiAddress: string | null | undefined,
+		ethernetAddress: string | null | undefined,
+	): void {
+		setTimeout(() => {
+			void (async (): Promise<void> => {
+				try {
+					if (wifiAddress !== undefined && wifiAddress !== null) {
+						await this.deviceAddressService.upsertAddress(deviceId, AddressType.WIFI, wifiAddress);
+					}
+
+					if (ethernetAddress !== undefined && ethernetAddress !== null) {
+						await this.deviceAddressService.upsertAddress(deviceId, AddressType.ETHERNET, ethernetAddress);
+					}
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error(`Failed to sync addresses for device=${deviceId}`, {
+						message: err.message,
+						stack: err.stack,
+					});
+
+					return; // Don't provision with stale addresses
+				}
+
+				try {
+					await this.deviceManagerService.createOrUpdate(deviceId);
+				} catch (error) {
+					const err = error as Error;
+
+					if (err.message === 'Device not found.') {
+						this.logger.warn(`Skip finalize for missing device=${deviceId}`);
+						return;
+					}
+
+					this.logger.error(`Failed to finalize device=${deviceId}`, {
 						message: err.message,
 						stack: err.stack,
 					});

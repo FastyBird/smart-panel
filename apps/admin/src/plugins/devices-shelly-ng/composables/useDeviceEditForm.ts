@@ -133,13 +133,15 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.WORKING;
 
 		try {
+			const { wifiAddress, ethernetAddress, ...deviceData } = parsedModel.data;
+
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					...parsedModel.data,
+					...deviceData,
 					type: device.type,
-					wifi_address: parsedModel.data.wifiAddress ?? undefined,
-					ethernet_address: parsedModel.data.ethernetAddress ?? undefined,
+					wifi_address: wifiAddress || undefined,
+					ethernet_address: ethernetAddress || undefined,
 				},
 			});
 
