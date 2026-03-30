@@ -218,10 +218,6 @@
 		>
 			<div class="flex flex-col h-full">
 				<app-bar menu-button-hidden>
-					<template #title>
-						{{ t('extensionsModule.texts.logs.detail') }}
-					</template>
-
 					<template #button-right>
 						<app-bar-button
 							:align="AppBarButtonAlign.RIGHT"
@@ -237,14 +233,27 @@
 					</template>
 				</app-bar>
 
-				<el-scrollbar class="grow-1">
-					<div class="p-2 md:px-4">
-						<system-log-detail
-							v-if="selectedLog"
-							:system-log="selectedLog"
+				<app-bar-heading teleport>
+					<template #icon>
+						<icon
+							icon="mdi:note-text-outline"
+							class="w[20px] h[20px]"
 						/>
-					</div>
-				</el-scrollbar>
+					</template>
+
+					<template #title>
+						{{ t('extensionsModule.texts.logs.detail') }}
+					</template>
+				</app-bar-heading>
+
+				<div class="flex flex-col overflow-hidden h-full">
+					<el-scrollbar
+						v-if="selectedLog"
+						class="grow-1 p-2 md:px-4"
+					>
+						<system-log-detail :system-log="selectedLog" />
+					</el-scrollbar>
+				</div>
 			</div>
 		</el-drawer>
 	</div>
@@ -259,7 +268,7 @@ import { ElButton, ElDrawer, ElIcon, ElOption, ElResult, ElScrollbar, ElSelect, 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, IconWithChild } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, IconWithChild } from '../../../common';
 import { SystemModuleLogEntryType } from '../../../openapi.constants';
 import { SystemLogDetail } from '../../../modules/system';
 import type { ILogEntry } from '../../../modules/system/store/logs-entries.store.types';
