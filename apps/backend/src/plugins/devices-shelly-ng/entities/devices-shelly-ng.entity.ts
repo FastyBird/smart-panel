@@ -84,7 +84,7 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	ethernetAddress?: string | null;
 
 	@Expose()
-	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { cascade: true, eager: true })
+	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { eager: true })
 	addresses: ShellyNgDeviceAddressEntity[];
 
 	toString(): string {
