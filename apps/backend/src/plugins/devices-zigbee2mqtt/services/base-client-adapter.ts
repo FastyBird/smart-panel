@@ -145,11 +145,12 @@ export abstract class Z2mBaseClientAdapter {
 	protected handleMessage(topic: string, message: string, isRelative = false): void {
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
-			const topicParts = relativePath.split('/');
 
-			if (topicParts.length === 0) {
+			if (!relativePath) {
 				return;
 			}
+
+			const topicParts = relativePath.split('/');
 
 			// IMPORTANT: Check device registry FIRST, before bridge routing
 			// This handles devices with names starting with "bridge/" (e.g., "bridge/light1")
