@@ -11,6 +11,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
+import { Z2mBaseClientAdapter } from '../services/base-client-adapter';
 import { Z2mDeviceMapperService } from '../services/device-mapper.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
 import { Zigbee2mqttService } from '../services/zigbee2mqtt.service';
@@ -125,7 +126,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			// Process each channel's updates for this device
 			for (const { channel, props } of channels.values()) {
 				try {
-					const success = await this.executeCommand(device, channel, Array.from(props.values()), friendlyName);
+					const success = await this.executeCommand(adapter, device, channel, Array.from(props.values()), friendlyName);
 					results.push(success);
 				} catch (error) {
 					this.logger.error('Error processing command', {
@@ -143,6 +144,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	 * Execute command by publishing to MQTT
 	 */
 	private async executeCommand(
+		adapter: Z2mBaseClientAdapter,
 		device: Zigbee2mqttDeviceEntity,
 		channel: Zigbee2mqttChannelEntity,
 		propertyUpdates: Array<{ property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>,
@@ -246,7 +248,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
 
-		const success = await this.zigbee2mqttService.getActiveAdapter().publishCommand(friendlyName, payload);
+		const success = await adapter.publishCommand(friendlyName, payload);
 
 		if (success) {
 			// Intentionally empty - command sent successfully
