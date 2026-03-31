@@ -33,10 +33,8 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	afterInsert(_event: InsertEvent<ShellyNgDeviceEntity>): void {
 		// Intentionally no-op. Device provisioning (createOrUpdate) is handled
 		// explicitly by DelegatesManagerService.performInsert() after addresses
-		// are synced. Firing it here would race with syncAddresses and hit the
-		// "no address yet" early return, wasting a DB query on every new device.
-		// For API-created devices, provisioning happens when the discovery
-		// library picks them up via mDNS.
+		// are synced. For API-created devices, provisioning is triggered by the
+		// afterCreate mapping hook registered in the plugin module.
 	}
 
 	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {

@@ -27,4 +27,15 @@ export class CreateShellyNgDeviceDto extends CreateDeviceDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
 	password?: string | null = null;
+
+	@ApiPropertyOptional({
+		description: 'WiFi IP address or hostname of the device',
+		example: '192.168.1.100',
+		nullable: true,
+		name: 'wifi_address',
+	})
+	@Expose({ name: 'wifi_address' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"wifi_address","reason":"WiFi address must be a valid string."}]' })
+	wifiAddress?: string | null = null;
 }

@@ -2211,10 +2211,28 @@ export class DelegatesManagerService {
 	}
 
 	detach(): void {
-		for (const [deviceId] of this.delegates.entries()) {
-			this.performRemove(deviceId);
+		// Remove event listeners from all delegates without triggering connection
+		// state updates. During a service restart, the UNKNOWN state set by
+		// performRemove() would race with the CONNECTED state from the new
+		// connections — the async UNKNOWN call often wins and leaves devices
+		// stuck in UNKNOWN even though they are actually connected.
+		for (const [, delegate] of this.delegates.entries()) {
+			const valueHandler = this.delegateValueHandlers.get(delegate.id);
+			const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
+
+			if (valueHandler) {
+				delegate.off('value', valueHandler);
+			}
+
+			if (connectionHandler) {
+				delegate.off('connected', connectionHandler);
+			}
 		}
 
+		this.delegates.clear();
+		this.delegateValueHandlers.clear();
+		this.delegateConnectionHandlers.clear();
+		this.delegateDeviceIds.clear();
 		this.changeHandlers.clear();
 		this.setPropertiesHandlers.clear();
 		this.setChannelsHandlers.clear();
@@ -2231,6 +2249,7 @@ export class DelegatesManagerService {
 		this.delegateToIdentifier.clear();
 		this.identifierToDelegates.clear();
 		this.delegateConnectedState.clear();
+		this.insertGeneration.clear();
 	}
 
 	destroy(): void {

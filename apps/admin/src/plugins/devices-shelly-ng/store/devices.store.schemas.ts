@@ -22,8 +22,8 @@ export const ShellyNgDeviceAddressSchema = z.object({
 export const ShellyNgDeviceSchema = DeviceSchema.extend({
 	password: z.string().nullable(),
 	canonicalMac: z.string().nullable().optional(),
-	hasEthernet: z.boolean().optional().default(false),
-	addresses: z.array(ShellyNgDeviceAddressSchema).optional().default([]),
+	hasEthernet: z.boolean().optional(),
+	addresses: z.array(ShellyNgDeviceAddressSchema).optional(),
 	// Transient fields for address edits — survive store schema validation
 	// so they reach transformDeviceUpdateRequest and the API
 	wifiAddress: z.string().nullable().optional(),
@@ -44,6 +44,7 @@ export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCre
 	z.object({
 		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		password: z.string().nullable(),
+		wifi_address: z.string().nullable().optional(),
 	})
 );
 

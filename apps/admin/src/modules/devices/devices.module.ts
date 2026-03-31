@@ -10,6 +10,7 @@ import {
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	snakeToCamel,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -95,6 +96,31 @@ export default {
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(DEVICES_MODULE_EVENT_PREFIX)) {
+				return;
+			}
+
+			// ConnectionChanged wraps the device under payload.device.
+			// Only update the status fields — the WS payload may lack relations
+			// (e.g. deviceZones) and pushing the full object through onEvent would
+			// let Zod defaults (zoneIds: []) overwrite real store data.
+			if (data.event === EventType.DEVICE_CONNECTION_CHANGED) {
+				const device = get(data.payload, 'device') as Record<string, unknown> | undefined;
+
+				if (device && typeof device === 'object' && 'id' in device && typeof device.id === 'string') {
+					const existing = devicesStore.findById(device.id);
+
+					if (existing) {
+						const status = get(device, 'status') as Record<string, unknown> | undefined;
+
+						if (status && typeof status === 'object') {
+							devicesStore.set({
+								id: device.id,
+								data: { ...existing, status: snakeToCamel(status) as typeof existing.status },
+							});
+						}
+					}
+				}
+
 				return;
 			}
 

@@ -8,6 +8,7 @@ export enum EventType {
 	DEVICE_CREATED = 'DevicesModule.Device.Created',
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',
 	DEVICE_DELETED = 'DevicesModule.Device.Deleted',
+	DEVICE_CONNECTION_CHANGED = 'DevicesModule.Device.ConnectionChanged',
 	DEVICE_CONTROL_CREATED = 'DevicesModule.DeviceControl.Created',
 	DEVICE_CONTROL_DELETED = 'DevicesModule.DeviceControl.Deleted',
 	CHANNEL_CREATED = 'DevicesModule.Channel.Created',

@@ -31,6 +31,16 @@ interface IUseDeviceEditFormProps {
 	messages?: { success?: string; error?: string };
 }
 
+type DeviceWithAddresses = IDevice & {
+	addresses?: { interfaceType: string; address: string }[];
+	hasEthernet?: boolean;
+};
+
+const extractAddresses = (d: DeviceWithAddresses): { wifi: string | null; ethernet: string | null } => ({
+	wifi: d.addresses?.find((a) => a.interfaceType === 'wifi')?.address ?? null,
+	ethernet: d.addresses?.find((a) => a.interfaceType === 'ethernet')?.address ?? null,
+});
+
 export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps): IUseDeviceEditForm => {
 	const storesManager = injectStoresManager();
 
@@ -83,21 +93,16 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 	);
 
 	// Extract addresses from device data
-	const rawDevice = device as IDevice & {
-		addresses?: { interfaceType: string; address: string }[];
-	};
-
-	const wifiAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'wifi')?.address ?? null;
-	const ethernetAddr = rawDevice.addresses?.find((a) => a.interfaceType === 'ethernet')?.address ?? null;
+	const addresses = extractAddresses(device as DeviceWithAddresses);
 
 	const hasEthernet = computed<boolean>((): boolean => {
-		return (device as IDevice & { hasEthernet?: boolean }).hasEthernet ?? false;
+		return (device as DeviceWithAddresses).hasEthernet ?? false;
 	});
 
 	const model = reactive<IShellyNgDeviceEditForm>({
 		...(device as unknown as IShellyNgDeviceEditForm),
-		wifiAddress: wifiAddr,
-		ethernetAddress: ethernetAddr,
+		wifiAddress: addresses.wifi,
+		ethernetAddress: addresses.ethernet,
 	});
 
 	let initialModel: Reactive<IShellyNgDeviceEditForm> = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));

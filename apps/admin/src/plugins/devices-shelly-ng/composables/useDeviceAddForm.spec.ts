@@ -102,7 +102,7 @@ describe('useDeviceAddForm', () => {
 				name: 'New Device',
 				description: null,
 				enabled: true,
-				hostname: '192.168.0.1',
+				wifiAddress: '192.168.0.1',
 				password: '',
 			},
 		});

@@ -26,6 +26,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
 import {
+	AddressType,
 	DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
 	DEVICES_SHELLY_NG_PLUGIN_NAME,
@@ -101,6 +102,8 @@ export class DevicesShellyNgPlugin {
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly deviceAddressService: DeviceAddressService,
+		private readonly deviceManagerService: DeviceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -115,6 +118,19 @@ export class DevicesShellyNgPlugin {
 			createDto: CreateShellyNgDeviceDto,
 			updateDto: UpdateShellyNgDeviceDto,
 			class: ShellyNgDeviceEntity,
+			afterCreate: async (
+				device: ShellyNgDeviceEntity,
+				createDto?: CreateShellyNgDeviceDto,
+			): Promise<ShellyNgDeviceEntity> => {
+				// Sync address from DTO and provision the device so the API
+				// response already contains channels.
+				if (createDto?.wifiAddress) {
+					await this.deviceAddressService.upsertAddress(device.id, AddressType.WIFI, createDto.wifiAddress);
+					await this.deviceManagerService.createOrUpdate(device.id);
+				}
+
+				return device;
+			},
 		});
 
 		this.channelsMapper.registerMapping<ShellyNgChannelEntity, CreateShellyNgChannelDto, UpdateShellyNgChannelDto>({

@@ -161,11 +161,14 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			const errorMessage = t('devicesShellyNgPlugin.messages.devices.notCreated', { device: model.name });
 
 			try {
+				const { hostname, ...deviceData } = parsedModel.data;
+
 				await devicesStore.add({
 					id,
 					draft: false,
 					data: {
-						...parsedModel.data,
+						...deviceData,
+						wifiAddress: hostname,
 						type: DEVICES_SHELLY_NG_TYPE,
 					},
 				});
