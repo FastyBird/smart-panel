@@ -314,6 +314,13 @@
 						v-if="device"
 						v-model:live="logsLive"
 						:device-id="device.id"
+						:logs="sharedDeviceLogs.logs"
+						:has-more="sharedDeviceLogs.hasMore"
+						:is-loading="sharedDeviceLogs.isLoading"
+						:live-ref="sharedDeviceLogs.live"
+						:fetch-logs="sharedDeviceLogs.fetchLogs"
+						:load-more-logs="sharedDeviceLogs.loadMoreLogs"
+						:refresh-logs="sharedDeviceLogs.refreshLogs"
 					/>
 				</el-tab-pane>
 			</el-tabs>
@@ -459,10 +466,11 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
 const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: props.id });
 
-// Alert count for logs tab badge
-const { alertCount, hasAlerts, fetchLogs } = useDeviceLogs({
+// Single shared logs composable — used for both the alert badge and the device-logs component
+const sharedDeviceLogs = useDeviceLogs({
 	deviceId: computed(() => props.id),
 });
+const { alertCount, hasAlerts, fetchLogs } = sharedDeviceLogs;
 
 // Track if device was previously loaded to detect deletion
 const wasDeviceLoaded = ref<boolean>(false);
@@ -491,6 +499,14 @@ const logsLive = ref<boolean>(false);
 watch(validationIssues, (issues) => {
 	if (activeTab.value === 'validation' && issues.length === 0) {
 		activeTab.value = 'overview';
+	}
+});
+
+// Stop live polling when leaving the logs tab
+watch(activeTab, (tab) => {
+	if (tab !== 'logs' && logsLive.value) {
+		logsLive.value = false;
+		sharedDeviceLogs.live.value = false;
 	}
 });
 
@@ -755,10 +771,12 @@ onBeforeMount((): void => {
 				// Silently ignore controls fetch errors - controls are optional
 			});
 
-			// Fetch device logs for alert badge
-			fetchLogs().catch((): void => {
-				// Silently ignore logs fetch errors - alerts badge is non-critical
-			});
+			// Fetch device logs for alert badge (only on device detail, not edit/control subroutes)
+			if (isDeviceRoute.value || isLGDevice.value) {
+				fetchLogs().catch((): void => {
+					// Silently ignore logs fetch errors - alerts badge is non-critical
+				});
+			}
 		})
 		.catch((error: unknown): void => {
 			if (error instanceof DevicesApiException && error.code === 404) {
