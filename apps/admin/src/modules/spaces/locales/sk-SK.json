@@ -797,5 +797,9 @@
 			"spacesCreated": "{count} space(s) created successfully",
 			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
 		}
+	},
+	"labels": {
+		"rooms": "Miestnosti",
+		"zones": "Zóny"
 	}
 }

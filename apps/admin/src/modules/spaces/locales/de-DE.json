@@ -797,5 +797,9 @@
 			"spacesCreated": "{count} Bereich(e) erfolgreich erstellt",
 			"completed": "Einrichtung abgeschlossen! {devices} Gerät(e), {displays} Display(s) und {zones} Zonenzuweisung(en)."
 		}
+	},
+	"labels": {
+		"rooms": "Räume",
+		"zones": "Zonen"
 	}
 }

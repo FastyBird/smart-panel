@@ -797,5 +797,9 @@
 			"spacesCreated": "{count} espacio(s) creado(s) correctamente",
 			"completed": "¡Configuración completada! {devices} dispositivo(s), {displays} pantalla(s) y {zones} asignación(es) de zona."
 		}
+	},
+	"labels": {
+		"rooms": "Habitaciones",
+		"zones": "Zonas"
 	}
 }

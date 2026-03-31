@@ -33,5 +33,8 @@ export { default as SpaceAddDisplayDialog } from './space-add-display-dialog.vue
 export { default as SpaceMediaActivitiesSummary } from './space-media-activities-summary.vue';
 export { default as SpaceMediaActivitiesDialog } from './space-media-activities-dialog.vue';
 
+// Reusable select
+export { default as SpaceSelect } from './space-select.vue';
+
 // Deprecated - use ListSpaces instead
 export { default as SpacesList } from './spaces-list.vue';
