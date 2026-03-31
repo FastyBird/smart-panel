@@ -45,8 +45,12 @@ const { t } = useI18n();
 
 const { properties: allProperties } = useChannelsProperties({ channelId: props.channel.id });
 
-// Filter out "status" category — device-level connection status is already shown in device-detail.vue
-const properties = computed(() => allProperties.value.filter((p) => p.category !== DevicesModuleChannelPropertyCategory.status));
+// Filter out properties not relevant to the overview card
+const hiddenCategories: DevicesModuleChannelPropertyCategory[] = [
+	DevicesModuleChannelPropertyCategory.status,
+	DevicesModuleChannelPropertyCategory.link_quality,
+];
+const properties = computed(() => allProperties.value.filter((p) => !hiddenCategories.includes(p.category)));
 
 // In a 2-per-row grid, check if this index is on the last row (no bottom border needed)
 const isLastRow = (index: number): boolean => {

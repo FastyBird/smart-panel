@@ -80,12 +80,16 @@ const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefine
 	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
 });
 
-// Check if device_information channel has visible (non-status) properties
+// Check if device_information channel has visible properties (matching the child filter)
+const hiddenCategories: DevicesModuleChannelPropertyCategory[] = [
+	DevicesModuleChannelPropertyCategory.status,
+	DevicesModuleChannelPropertyCategory.link_quality,
+];
 const { properties: deviceInfoProperties } = useChannelsProperties({
 	channelId: computed(() => deviceInfoChannel.value?.id),
 });
 const hasDeviceInfoProperties = computed<boolean>(
-	() => deviceInfoProperties.value.some((p) => p.category !== DevicesModuleChannelPropertyCategory.status),
+	() => deviceInfoProperties.value.some((p) => !hiddenCategories.includes(p.category)),
 );
 
 const stateColor = computed<StateColor>((): StateColor => {
