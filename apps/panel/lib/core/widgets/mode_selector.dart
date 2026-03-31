@@ -235,7 +235,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         final widthPerButton = availableWidth / buttonCount;
         final shouldShowLabels = !widget.showIcon
             ? true
-            : (widget.showLabels ?? (widthPerButton >= AppSpacings.scale(widget.minButtonWidth)));
+            : (widget.showLabels ?? (widthPerButton >= widget.minButtonWidth));
 
         final selectedIndex = widget.selectedValue != null
             ? widget.modes.indexWhere((m) => m.value == widget.selectedValue)
