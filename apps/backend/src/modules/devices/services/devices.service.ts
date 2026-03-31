@@ -101,26 +101,9 @@ export class DevicesService {
 
 		this.logger.debug(`Fetching device with id=${id}`);
 
-		const qb = repository
-			.createQueryBuilder('device')
-			.leftJoinAndSelect('device.controls', 'controls')
-			.leftJoinAndSelect('controls.device', 'controlDevice')
-			.leftJoinAndSelect('device.channels', 'channels')
-			.leftJoinAndSelect('channels.device', 'channelDevice')
-			.leftJoinAndSelect('channels.controls', 'channelControls')
-			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
-			.leftJoinAndSelect('channels.properties', 'channelProperties')
-			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
-			.leftJoinAndSelect('device.deviceZones', 'deviceZones');
-
-		// QueryBuilder ignores eager:true — auto-join any eager relations from plugin entities
-		for (const relation of repository.metadata?.relations ?? []) {
-			if (relation.isEager && !['controls', 'channels', 'deviceZones'].includes(relation.propertyName)) {
-				qb.leftJoinAndSelect(`device.${relation.propertyName}`, relation.propertyName);
-			}
-		}
-
-		const device = (await qb.where('device.id = :id', { id }).getOne()) as TDevice | null;
+		const device = (await this.buildDeviceQuery(repository)
+			.where('device.id = :id', { id })
+			.getOne()) as TDevice | null;
 
 		if (!device) {
 			this.logger.debug(`Device with id=${id} not found`);
@@ -144,26 +127,9 @@ export class DevicesService {
 
 		this.logger.debug(`Fetching device with ${column}=${value}`);
 
-		const qb = repository
-			.createQueryBuilder('device')
-			.leftJoinAndSelect('device.controls', 'controls')
-			.leftJoinAndSelect('controls.device', 'controlDevice')
-			.leftJoinAndSelect('device.channels', 'channels')
-			.leftJoinAndSelect('channels.device', 'channelDevice')
-			.leftJoinAndSelect('channels.controls', 'channelControls')
-			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
-			.leftJoinAndSelect('channels.properties', 'channelProperties')
-			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
-			.leftJoinAndSelect('device.deviceZones', 'deviceZones');
-
-		// QueryBuilder ignores eager:true — auto-join any eager relations from plugin entities
-		for (const relation of repository.metadata?.relations ?? []) {
-			if (relation.isEager && !['controls', 'channels', 'deviceZones'].includes(relation.propertyName)) {
-				qb.leftJoinAndSelect(`device.${relation.propertyName}`, relation.propertyName);
-			}
-		}
-
-		const device = (await qb.where(`device.${column} = :filterBy`, { filterBy: value }).getOne()) as TDevice | null;
+		const device = (await this.buildDeviceQuery(repository)
+			.where(`device.${column} = :filterBy`, { filterBy: value })
+			.getOne()) as TDevice | null;
 
 		if (!device) {
 			this.logger.debug(`Device with ${column}=${value} not found`);
@@ -402,6 +368,30 @@ export class DevicesService {
 		}
 
 		return device;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private buildDeviceQuery(repository: Repository<any>) {
+		const qb = repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.controls', 'controls')
+			.leftJoinAndSelect('controls.device', 'controlDevice')
+			.leftJoinAndSelect('device.channels', 'channels')
+			.leftJoinAndSelect('channels.device', 'channelDevice')
+			.leftJoinAndSelect('channels.controls', 'channelControls')
+			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
+			.leftJoinAndSelect('channels.properties', 'channelProperties')
+			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones');
+
+		// QueryBuilder ignores eager:true — auto-join any eager relations from plugin entities
+		for (const relation of repository.metadata?.relations ?? []) {
+			if (relation.isEager && !['controls', 'channels', 'deviceZones'].includes(relation.propertyName)) {
+				qb.leftJoinAndSelect(`device.${relation.propertyName}`, relation.propertyName);
+			}
+		}
+
+		return qb;
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

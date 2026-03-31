@@ -118,7 +118,10 @@ export class DevicesShellyNgPlugin {
 			createDto: CreateShellyNgDeviceDto,
 			updateDto: UpdateShellyNgDeviceDto,
 			class: ShellyNgDeviceEntity,
-			afterCreate: async (device: ShellyNgDeviceEntity, createDto?: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+			afterCreate: async (
+				device: ShellyNgDeviceEntity,
+				createDto?: CreateShellyNgDeviceDto,
+			): Promise<ShellyNgDeviceEntity> => {
 				// Sync address from DTO and provision the device so the API
 				// response already contains channels.
 				if (createDto?.wifiAddress) {
