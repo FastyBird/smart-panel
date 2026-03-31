@@ -251,7 +251,7 @@ export class DevicesService {
 		let savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
 		if (mapping.afterCreate) {
-			await mapping.afterCreate(savedDevice);
+			await mapping.afterCreate(savedDevice, dtoInstance);
 
 			// Reload a potentially updated device
 			savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;

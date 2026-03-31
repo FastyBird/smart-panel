@@ -30,16 +30,11 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		return ShellyNgDeviceEntity;
 	}
 
-	afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): void {
-		// For mDNS-discovered devices, provisioning is handled by
-		// DelegatesManagerService.performInsert() after addresses are synced.
-		// For API-created devices (manual add), the wifiAddress transient field
-		// carries the user-provided address — sync it and provision.
-		const entity = event.entity;
-
-		if (entity?.wifiAddress) {
-			this.scheduleAddressSyncThenProvision(entity.id, entity.wifiAddress, undefined);
-		}
+	afterInsert(_event: InsertEvent<ShellyNgDeviceEntity>): void {
+		// Intentionally no-op. Device provisioning (createOrUpdate) is handled
+		// explicitly by DelegatesManagerService.performInsert() after addresses
+		// are synced. For API-created devices, provisioning is triggered by the
+		// afterCreate mapping hook registered in the plugin module.
 	}
 
 	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {
