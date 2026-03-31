@@ -117,6 +117,8 @@
 			"categoryRequired": "Category is required",
 			"description": "Description",
 			"descriptionPlaceholder": "Optional description for this scene",
+			"icon": "Icon",
+			"iconPlaceholder": "Select an icon (optional)",
 			"actionsSection": "Scene actions",
 			"noActions": "No actions defined. Add actions to control devices when this scene is triggered.",
 			"actionsRequired": "At least one action is required",

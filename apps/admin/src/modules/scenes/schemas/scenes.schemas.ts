@@ -32,6 +32,7 @@ export const SceneAddFormSchema = z.object({
 		.nullable()
 		.optional(),
 	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+	icon: z.string().nullable().optional(),
 	enabled: z.boolean().default(true),
 	order: z.number().optional(),
 	primarySpaceId: z
@@ -53,6 +54,7 @@ export const SceneEditFormSchema = z.object({
 		.nullable()
 		.optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
+	icon: z.string().nullable().optional(),
 	enabled: z.boolean().optional(),
 	order: z.number().optional(),
 	primarySpaceId: z

@@ -22,6 +22,8 @@ class SceneView {
 
   String? get description => _model.description;
 
+  String? get icon => _model.icon;
+
   String? get primarySpaceId => _model.primarySpaceId;
 
   int get order => _model.order;

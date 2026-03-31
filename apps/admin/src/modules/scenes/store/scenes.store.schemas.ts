@@ -16,6 +16,7 @@ export const SceneSchema = z.object({
 	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
+	icon: z.string().trim().nullable().default(null),
 	order: z.number().int().min(0).default(0),
 	enabled: z.boolean().default(true),
 	triggerable: z.boolean().default(true),
@@ -66,6 +67,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			icon: z.string().trim().nullable().optional(),
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean(),
 			triggerable: z.boolean(),
@@ -97,6 +99,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			icon: z.string().trim().nullable().optional(),
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
@@ -115,6 +118,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			icon: z.string().trim().nullable().optional(),
 			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
@@ -149,6 +153,7 @@ export const SceneCreateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	icon: z.string().trim().nullable().optional(),
 	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
 	triggerable: z.boolean().optional(),
@@ -164,6 +169,7 @@ export const SceneUpdateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	icon: z.string().trim().nullable().optional(),
 	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
 	triggerable: z.boolean().optional(),
@@ -175,6 +181,7 @@ export const SceneResSchema = z.object({
 	category: z.nativeEnum(SceneCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
+	icon: z.string().trim().nullable(),
 	order: z.number().int().min(0),
 	enabled: z.boolean(),
 	triggerable: z.boolean(),

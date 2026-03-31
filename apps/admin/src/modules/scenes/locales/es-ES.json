@@ -117,6 +117,8 @@
 			"categoryRequired": "La categoría es obligatoria",
 			"description": "Descripción",
 			"descriptionPlaceholder": "Descripción opcional para esta escena",
+			"icon": "Icono",
+			"iconPlaceholder": "Seleccionar un icono (opcional)",
 			"actionsSection": "Acciones de la escena",
 			"noActions": "No hay acciones definidas. Añade acciones para controlar dispositivos cuando se active esta escena.",
 			"actionsRequired": "Se requiere al menos una acción",

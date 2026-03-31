@@ -19,6 +19,11 @@ export const useSceneIcon = ({ id }: IUseSceneIconProps): IUseSceneIcon => {
 	const icon = computed<string>((): string => {
 		const scene = scenesStore.findById(id);
 
+		// Use custom icon if set
+		if (scene?.icon) {
+			return scene.icon;
+		}
+
 		// Use category-based icon
 		if (scene?.category && scene.category in SCENE_CATEGORY_ICONS) {
 			return SCENE_CATEGORY_ICONS[scene.category];

@@ -111,6 +111,7 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		category: scene.category,
 		name: scene.name,
 		description: scene.description,
+		icon: scene.icon,
 		enabled: scene.enabled,
 		primarySpaceId: scene.primarySpaceId,
 		actions: sceneActionsAsFormData.value,
@@ -299,6 +300,7 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 				model.category = updatedScene.category;
 				model.name = updatedScene.name;
 				model.description = updatedScene.description;
+				model.icon = updatedScene.icon;
 				model.enabled = updatedScene.enabled;
 				model.primarySpaceId = updatedScene.primarySpaceId;
 

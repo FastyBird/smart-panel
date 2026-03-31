@@ -117,6 +117,8 @@
 			"categoryRequired": "Kategória je povinná",
 			"description": "Popis",
 			"descriptionPlaceholder": "Voliteľný popis pre túto scénu",
+			"icon": "Ikona",
+			"iconPlaceholder": "Vyberte ikonu (voliteľné)",
 			"actionsSection": "Akcie scény",
 			"noActions": "Nie sú definované žiadne akcie. Pridajte akcie na ovládanie zariadení pri spustení tejto scény.",
 			"actionsRequired": "Je vyžadovaná aspoň jedna akcia",
