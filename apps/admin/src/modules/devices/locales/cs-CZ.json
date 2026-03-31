@@ -671,7 +671,10 @@
     }
   },
   "labels": {
-    "live": "Živě"
+    "live": "Živě",
+    "overview": "Přehled",
+    "validation": "Validace",
+    "logs": "Protokoly"
   },
   "states": {
     "online": "Online",

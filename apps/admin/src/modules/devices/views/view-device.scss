@@ -12,4 +12,19 @@
 			}
 		}
 	}
+
+	@include e(tabs) {
+		:deep(.el-tabs__content) {
+			flex: 1;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+		}
+
+		:deep(.el-tab-pane) {
+			flex: 1;
+			min-height: 0;
+			height: 100%;
+		}
+	}
 }

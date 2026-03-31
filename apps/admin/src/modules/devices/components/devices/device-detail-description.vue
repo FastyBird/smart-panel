@@ -1,15 +1,22 @@
 <template>
 	<template
-		v-for="property in properties"
+		v-for="(property, index) in properties"
 		:key="property.id"
 	>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
+			class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
+			:class="{ 'b-b b-b-solid': !isLastRow(index) }"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t(`devicesModule.categories.channelsProperties.${property.category}`) }}
 		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+		<dd
+			class="m-0 p-2 flex items-center min-w-[8rem]"
+			:class="{
+				'b-b b-b-solid': !isLastRow(index),
+				'b-r b-r-solid': index % 2 === 0,
+			}"
+		>
 			<el-text>
 				{{ property.value !== null && typeof property.value === 'object' && 'value' in property.value ? property.value.value : property.value }}
 			</el-text>
@@ -18,10 +25,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElText } from 'element-plus';
 
+import { DevicesModuleChannelPropertyCategory } from '../../../../openapi.constants';
 import { useChannelsProperties } from '../../composables/useChannelsProperties';
 
 import type { IDeviceDetailDescriptionProps } from './device-detail-description.types';
@@ -34,5 +43,18 @@ const props = defineProps<IDeviceDetailDescriptionProps>();
 
 const { t } = useI18n();
 
-const { properties } = useChannelsProperties({ channelId: props.channel.id });
+const { properties: allProperties } = useChannelsProperties({ channelId: props.channel.id });
+
+// Filter out properties not relevant to the overview card
+const hiddenCategories: DevicesModuleChannelPropertyCategory[] = [
+	DevicesModuleChannelPropertyCategory.status,
+	DevicesModuleChannelPropertyCategory.link_quality,
+];
+const properties = computed(() => allProperties.value.filter((p) => !hiddenCategories.includes(p.category)));
+
+// In a 2-per-row grid, check if this index is on the last row (no bottom border needed)
+const isLastRow = (index: number): boolean => {
+	const lastRow = Math.floor((properties.value.length - 1) / 2);
+	return Math.floor(index / 2) === lastRow;
+};
 </script>
