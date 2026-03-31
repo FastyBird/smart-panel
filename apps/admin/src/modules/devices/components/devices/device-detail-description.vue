@@ -5,7 +5,7 @@
 	>
 		<dt
 			class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			:class="{ 'b-b b-b-solid': index < properties.length - 1 || index % 2 === 0 }"
+			:class="{ 'b-b b-b-solid': !isLastRow(index) }"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t(`devicesModule.categories.channelsProperties.${property.category}`) }}
@@ -13,7 +13,7 @@
 		<dd
 			class="m-0 p-2 flex items-center min-w-[8rem]"
 			:class="{
-				'b-b b-b-solid': index < properties.length - 1 || index % 2 === 0,
+				'b-b b-b-solid': !isLastRow(index),
 				'b-r b-r-solid': index % 2 === 0,
 			}"
 		>
@@ -47,4 +47,10 @@ const { properties: allProperties } = useChannelsProperties({ channelId: props.c
 
 // Filter out "status" category — device-level connection status is already shown in device-detail.vue
 const properties = computed(() => allProperties.value.filter((p) => p.category !== DevicesModuleChannelPropertyCategory.status));
+
+// In a 2-per-row grid, check if this index is on the last row (no bottom border needed)
+const isLastRow = (index: number): boolean => {
+	const lastRow = Math.floor((properties.value.length - 1) / 2);
+	return Math.floor(index / 2) === lastRow;
+};
 </script>

@@ -494,6 +494,13 @@ const remoteFormChanged = ref<boolean>(false);
 const activeTab = ref<string>('overview');
 const logsLive = ref<boolean>(false);
 
+// Fall back to 'overview' if the active tab becomes unavailable
+watch(validationIssues, (issues) => {
+	if (activeTab.value === 'validation' && issues.length === 0) {
+		activeTab.value = 'overview';
+	}
+});
+
 const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;
 });
