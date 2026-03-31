@@ -95,10 +95,10 @@ const { spaces, roomSpaces, zoneSpaces, fetching, findById } = useSpaces();
 const grouped = computed<boolean>(() => props.filter === 'all');
 
 const flatOptions = computed<ISpace[]>(() => {
-	if (props.filter === SpaceType.ROOM) {
+	if (props.filter === 'room') {
 		return roomSpaces.value;
 	}
-	if (props.filter === SpaceType.ZONE) {
+	if (props.filter === 'zone') {
 		return zoneSpaces.value;
 	}
 	return spaces.value;
