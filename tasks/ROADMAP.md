@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-03-30. Reflects actual codebase state.
+> Last updated: 2026-03-31. Reflects actual codebase state.
 
 ---
 
@@ -188,7 +188,22 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 8. Plugins
+## 8. Virtual Devices (Epic)
+
+> [EPIC-VIRTUAL-DEVICES](features/EPIC-VIRTUAL-DEVICES.md) — Status: :clipboard: Planned
+
+Split multi-channel devices into independent child devices and compose new logical devices from channels across multiple physical devices. Enables flexible room assignment, category remapping, and spec-compliant virtual devices.
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [FEATURE-DEVICE-SPLITTER-PLUGIN](features/FEATURE-DEVICE-SPLITTER-PLUGIN.md) | backend, admin, panel | :clipboard: Planned |
+| 2 | [FEATURE-DEVICE-COMPOSITE-PLUGIN](features/FEATURE-DEVICE-COMPOSITE-PLUGIN.md) | backend, admin, panel | :clipboard: Planned |
+
+**Next up:** Split device plugin first (provides `hidden` flag foundation), then combined device plugin.
+
+---
+
+## 9. Plugins
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -200,7 +215,7 @@ All onboarding device setup tasks complete.
 
 ---
 
-## 9. Extension Actions & Interactive Sessions (Epic)
+## 10. Extension Actions & Interactive Sessions (Epic)
 
 > [EPIC-EXTENSION-ACTIONS](epics/EPIC-EXTENSION-ACTIONS.md) — Status: :construction: In Progress
 
@@ -239,7 +254,7 @@ Extensions expose callable actions and interactive terminal sessions from the ad
 
 ---
 
-## 10. Companion Display (Epic)
+## 11. Companion Display (Epic)
 
 > [EPIC-COMPANION-DISPLAY](epics/EPIC-COMPANION-DISPLAY.md) — Status: :clipboard: Planned
 
@@ -278,7 +293,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 11. Device & Infrastructure
+## 12. Device & Infrastructure
 
 > Tasks from real-world device testing sessions — installation, updates, networking, storage resilience.
 
@@ -295,7 +310,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 12. Technical Debt
+## 13. Technical Debt
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -307,7 +322,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 13. Other Planned Features
+## 14. Other Planned Features
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
@@ -319,7 +334,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 14. Plans
+## 15. Plans
 
 | # | Plan | Status |
 |---|------|--------|
@@ -341,6 +356,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
 | Security | 1 | 0 | 0 | 1 |
+| Virtual Devices | 0 | 0 | 2 | 2 |
 | Companion Display | 0 | 0 | 9 | 9 |
 | Plugins | 1 | 0 | 2 | 3 |
 | Extension Actions | 1 | 0 | 7 | 8 |
@@ -348,4 +364,4 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 1 | 0 | 0 | 1 |
-| **Total** | **54** | **0** | **35** | **89** |
+| **Total** | **54** | **0** | **37** | **91** |
