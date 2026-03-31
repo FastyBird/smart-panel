@@ -99,6 +99,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/types/scene_extensions.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -2961,7 +2962,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   height: tileHeight,
                   child: UniversalTile(
                     layout: TileLayout.horizontal,
-                    icon: _getSceneIcon(scene),
+                    icon: scene.iconData,
                     name: scene.name,
                     isActive: _triggeringSceneId == scene.id,
                     activeColor: _getStatusColor(context),
@@ -3052,7 +3053,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             final scene = scenes[index];
             return _SceneTile(
               scene: scene,
-              icon: _getSceneIcon(scene),
+              icon: scene.iconData,
               onTap: _isSceneTriggering ? null : () => _activateScene(scene),
               isVertical: !isSmallScreen,
               isTriggering: _triggeringSceneId == scene.id,
@@ -3126,7 +3127,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       height: tileHeight,
       child: UniversalTile(
         layout: TileLayout.horizontal,
-        icon: _getSceneIcon(scene),
+        icon: scene.iconData,
         name: scene.name,
         isActive: _triggeringSceneId == scene.id,
         showGlow: false,
@@ -3679,41 +3680,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Get icon for scene based on its category or name
-  IconData _getSceneIcon(SceneView scene) {
-    final nameLower = scene.name.toLowerCase();
-
-    // Match common scene names to icons
-    if (nameLower.contains('relax')) return MdiIcons.sofaSingleOutline;
-    if (nameLower.contains('movie') || nameLower.contains('cinema')) {
-      return MdiIcons.movieOpenOutline;
-    }
-    if (nameLower.contains('bright') || nameLower.contains('day')) {
-      return MdiIcons.weatherSunny;
-    }
-    if (nameLower.contains('night') || nameLower.contains('sleep')) {
-      return MdiIcons.weatherNight;
-    }
-    if (nameLower.contains('read')) return MdiIcons.bookOpenPageVariantOutline;
-    if (nameLower.contains('party') || nameLower.contains('color')) {
-      return MdiIcons.partyPopper;
-    }
-    if (nameLower.contains('dinner') || nameLower.contains('romantic')) {
-      return MdiIcons.candle;
-    }
-    if (nameLower.contains('work') || nameLower.contains('focus')) {
-      return MdiIcons.deskLamp;
-    }
-    if (nameLower.contains('morning') || nameLower.contains('wake')) {
-      return MdiIcons.weatherSunsetUp;
-    }
-    if (nameLower.contains('evening') || nameLower.contains('sunset')) {
-      return MdiIcons.weatherSunsetDown;
-    }
-
-    // Default icon for lighting scenes
-    return MdiIcons.lightbulbGroup;
-  }
-
   Future<void> _activateScene(SceneView scene) async {
     if (_isSceneTriggering) return;
 
