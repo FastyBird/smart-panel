@@ -108,7 +108,10 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...data.value[payload.id], ...payload.data });
+			// Strip undefined values so schema defaults from partial WS updates
+			// don't overwrite real data already in the store
+			const cleaned = omitBy(payload.data, isUndefined);
+			const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...data.value[payload.id], ...cleaned });
 
 			if (!parsed.success) {
 				logger.error('Schema validation failed with:', parsed.error);
