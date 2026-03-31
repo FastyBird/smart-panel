@@ -771,12 +771,10 @@ onBeforeMount((): void => {
 				// Silently ignore controls fetch errors - controls are optional
 			});
 
-			// Fetch device logs for alert badge (only on device detail, not edit/control subroutes)
-			if (isDeviceRoute.value || isLGDevice.value) {
-				fetchLogs().catch((): void => {
-					// Silently ignore logs fetch errors - alerts badge is non-critical
-				});
-			}
+			// Fetch device logs for alert badge
+			fetchLogs().catch((): void => {
+				// Silently ignore logs fetch errors - alerts badge is non-critical
+			});
 		})
 		.catch((error: unknown): void => {
 			if (error instanceof DevicesApiException && error.code === 404) {

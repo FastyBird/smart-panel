@@ -89,7 +89,7 @@ const { properties: deviceInfoProperties } = useChannelsProperties({
 	channelId: computed(() => deviceInfoChannel.value?.id),
 });
 const hasDeviceInfoProperties = computed<boolean>(
-	() => deviceInfoProperties.value.some((p) => !hiddenCategories.includes(p.category)),
+	() => !!deviceInfoChannel.value && deviceInfoProperties.value.some((p) => !hiddenCategories.includes(p.category)),
 );
 
 const stateColor = computed<StateColor>((): StateColor => {
