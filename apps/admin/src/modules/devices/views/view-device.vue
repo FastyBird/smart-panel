@@ -422,7 +422,6 @@ import {
 	IconWithChild,
 	ViewError,
 	ViewHeader,
-	injectStoresManager,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,
@@ -436,7 +435,6 @@ import { deviceChannelsSpecificationOrder } from '../devices.mapping';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 import type { IDevice } from '../store/devices.store.types';
-import { devicesValidationStoreKey } from '../store/keys';
 
 import type { IViewDeviceProps } from './view-device.types';
 
@@ -459,12 +457,7 @@ const { validate: validateUuid } = useUuid();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
-const { fetchValidation } = useDeviceValidation({ id: props.id });
-
-// Validation issues for tab
-const storesManager = injectStoresManager();
-const validationStore = storesManager.getStore(devicesValidationStoreKey);
-const validationIssues = computed(() => validationStore.findById(props.id)?.issues ?? []);
+const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: props.id });
 
 // Alert count for logs tab badge
 const { alertCount, hasAlerts, fetchLogs } = useDeviceLogs({
