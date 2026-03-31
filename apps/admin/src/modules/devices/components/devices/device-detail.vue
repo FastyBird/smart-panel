@@ -1,45 +1,37 @@
 <template>
 	<el-card
 		class="mt-2"
+		shadow="never"
 		body-class="p-0!"
 	>
-		<dl class="grid m-0">
+		<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
+			<!-- Row 1: Category | Status -->
 			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
+				class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
+				:class="{ 'b-b b-b-solid': deviceInfoChannel }"
 				style="background: var(--el-fill-color-light)"
 			>
 				{{ t('devicesModule.texts.devices.category') }}
 			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+			<dd
+				class="b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]"
+				:class="{ 'b-b b-b-solid': deviceInfoChannel }"
+			>
 				<el-text>
 					{{ t(`devicesModule.categories.devices.${device.category}`) }}
 				</el-text>
 			</dd>
 			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('devicesModule.texts.devices.channels') }}
-			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-				<el-text>
-					<i18n-t
-						keypath="devicesModule.texts.devices.channelsCount"
-						:plural="channels.length"
-					>
-						<template #count>
-							<strong>{{ channels.length }}</strong>
-						</template>
-					</i18n-t>
-				</el-text>
-			</dd>
-			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
+				class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
+				:class="{ 'b-b b-b-solid': deviceInfoChannel }"
 				style="background: var(--el-fill-color-light)"
 			>
 				{{ t('devicesModule.texts.devices.status') }}
 			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+			<dd
+				class="m-0 p-2 flex items-center min-w-[8rem]"
+				:class="{ 'b-b b-b-solid': deviceInfoChannel }"
+			>
 				<el-text>
 					<el-tag
 						:type="stateColor"
@@ -49,221 +41,29 @@
 					</el-tag>
 				</el-text>
 			</dd>
-			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('devicesModule.texts.devices.validation') }}
-			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-				<el-text>
-					<el-tag
-						v-if="validationLoading"
-						size="small"
-						type="info"
-					>
-						<icon
-							icon="mdi:loading"
-							class="animate-spin"
-						/>
-					</el-tag>
-					<el-tag
-						v-else-if="isValid === true"
-						size="small"
-						type="success"
-					>
-						{{ t('devicesModule.validation.status.valid') }}
-					</el-tag>
-					<el-tag
-						v-else-if="isValid === false"
-						size="small"
-						type="danger"
-					>
-						{{ t('devicesModule.validation.status.invalid') }}
-						<template v-if="errorCount > 0 || warningCount > 0">
-							({{ errorCount }} {{ t('devicesModule.validation.errors') }}, {{ warningCount }} {{ t('devicesModule.validation.warnings') }})
-						</template>
-					</el-tag>
-					<el-tag
-						v-else
-						size="small"
-						type="info"
-					>
-						{{ t('devicesModule.validation.status.unknown') }}
-					</el-tag>
-				</el-text>
-			</dd>
+
+			<!-- Device information properties -->
 			<device-detail-description
 				v-if="deviceInfoChannel"
 				:device="device"
 				:channel="deviceInfoChannel"
 			/>
-			<dt
-				class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('devicesModule.texts.devices.alerts') }}
-			</dt>
-			<dd class="col-start-2 m-0 p-2 flex items-center gap-2 min-w-[8rem]">
-				<el-text>
-					<el-tag
-						v-if="logsLoading"
-						size="small"
-						type="info"
-					>
-						<icon
-							icon="mdi:loading"
-							class="animate-spin"
-						/>
-					</el-tag>
-					<el-tag
-						v-else
-						size="small"
-						:type="hasAlerts ? 'danger' : 'success'"
-					>
-						<i18n-t
-							keypath="devicesModule.texts.devices.alertsCount"
-							:plural="alertCount"
-						>
-							<template #count>
-								<strong>{{ alertCount }}</strong>
-							</template>
-						</i18n-t>
-					</el-tag>
-				</el-text>
-				<el-button
-					size="small"
-					text
-					@click="openLogsDialog"
-				>
-					<template #icon>
-						<icon icon="mdi:console" />
-					</template>
-					{{ t('devicesModule.buttons.viewLogs.title') }}
-				</el-button>
-			</dd>
 		</dl>
-	</el-card>
-
-	<!-- Device Logs Dialog -->
-	<el-dialog
-		v-model="logsDialogVisible"
-		:title="t('devicesModule.texts.devices.logs.title')"
-		width="80%"
-		destroy-on-close
-		@close="closeLogsDialog"
-	>
-		<div class="h-96">
-			<device-logs
-				v-model:live="logsLive"
-				:device-id="device.id"
-				:logs="deviceLogs.logs"
-				:has-more="deviceLogs.hasMore"
-				:is-loading="deviceLogs.isLoading"
-				:live-ref="deviceLogs.live"
-				:fetch-logs="deviceLogs.fetchLogs"
-				:load-more-logs="deviceLogs.loadMoreLogs"
-				:refresh-logs="deviceLogs.refreshLogs"
-			/>
-		</div>
-	</el-dialog>
-
-	<!-- Validation Issues Section -->
-	<el-card
-		v-if="issues.length > 0"
-		class="mt-4"
-		body-class="p-0!"
-		shadow="never"
-	>
-		<template #header>
-			<div class="flex items-center gap-2">
-				<el-icon
-					color="var(--el-color-danger)"
-					:size="18"
-				>
-					<icon icon="mdi:alert-circle-outline" />
-				</el-icon>
-				<span>{{ t('devicesModule.validation.issuesTitle') }}</span>
-				<el-tag
-					type="danger"
-					size="small"
-				>
-					{{ issues.length }}
-				</el-tag>
-			</div>
-		</template>
-
-		<el-table
-			:data="issues"
-			size="small"
-			class="w-full"
-		>
-			<el-table-column
-				:label="t('devicesModule.validation.table.severity')"
-				prop="severity"
-				:width="100"
-			>
-				<template #default="scope">
-					<el-tag
-						:type="scope.row.severity === 'error' ? 'danger' : 'warning'"
-						size="small"
-					>
-						{{ scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning') }}
-					</el-tag>
-				</template>
-			</el-table-column>
-			<el-table-column
-				:label="t('devicesModule.validation.table.type')"
-				prop="type"
-				:width="150"
-			>
-				<template #default="scope">
-					{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
-				</template>
-			</el-table-column>
-			<el-table-column
-				:label="t('devicesModule.validation.table.message')"
-				prop="message"
-			/>
-			<el-table-column
-				:label="t('devicesModule.validation.table.channel')"
-				prop="channelCategory"
-				:width="150"
-			>
-				<template #default="scope">
-					<template v-if="scope.row.channelCategory">
-						{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
-					</template>
-					<span
-						v-else
-						class="text-gray-400"
-					>
-						-
-					</span>
-				</template>
-			</el-table-column>
-		</el-table>
 	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, toRef } from 'vue';
-import { I18nT, useI18n } from 'vue-i18n';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElDialog, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+import { ElCard, ElTag, ElText } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { injectStoresManager } from '../../../../common';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
-import { useChannels, useDeviceLogs } from '../../composables/composables';
+import { useChannels } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
-import { devicesValidationStoreKey } from '../../store/keys';
 
 import DeviceDetailDescription from './device-detail-description.vue';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import DeviceLogs from './device-logs.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
 
 defineOptions({
@@ -275,38 +75,6 @@ const props = defineProps<IDeviceDetailProps>();
 const { t } = useI18n();
 
 const { channels } = useChannels({ deviceId: props.device.id });
-
-// Get validation data using findById getter
-const storesManager = injectStoresManager();
-const validationStore = storesManager.getStore(devicesValidationStoreKey);
-
-const validationResult = computed(() => validationStore.findById(props.device.id));
-const isValid = computed<boolean | null>(() => validationResult.value?.isValid ?? null);
-const issues = computed(() => validationResult.value?.issues ?? []);
-const errorCount = computed<number>(() => issues.value.filter((i) => i.severity === 'error').length);
-const warningCount = computed<number>(() => issues.value.filter((i) => i.severity === 'warning').length);
-const validationLoading = computed<boolean>(() => validationStore.fetching() || validationStore.getting(props.device.id));
-
-// Get device logs for alerts and pass to logs dialog
-const deviceLogs = useDeviceLogs({
-	deviceId: toRef(() => props.device.id),
-});
-const { alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = deviceLogs;
-
-// Logs dialog state
-const logsDialogVisible = ref<boolean>(false);
-const logsLive = ref<boolean>(false);
-
-const openLogsDialog = (): void => {
-	logsDialogVisible.value = true;
-};
-
-const closeLogsDialog = (): void => {
-	logsDialogVisible.value = false;
-	logsLive.value = false;
-	// Directly stop live polling to ensure timer is cleared even if dialog destroys child before watcher propagates
-	deviceLogs.live.value = false;
-};
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
 	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
@@ -336,9 +104,5 @@ const stateColor = computed<StateColor>((): StateColor => {
 	}
 
 	return 'danger';
-});
-
-onBeforeMount(() => {
-	void fetchLogs();
 });
 </script>

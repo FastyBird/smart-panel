@@ -671,7 +671,10 @@
     }
   },
   "labels": {
-    "live": "Live"
+    "live": "Live",
+    "overview": "Übersicht",
+    "validation": "Validierung",
+    "logs": "Protokolle"
   },
   "states": {
     "online": "Online",

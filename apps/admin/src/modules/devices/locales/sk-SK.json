@@ -671,7 +671,10 @@
 		}
 	},
 	"labels": {
-		"live": "Naživo"
+		"live": "Naživo",
+		"overview": "Prehľad",
+		"validation": "Validácia",
+		"logs": "Protokoly"
 	},
 	"states": {
 		"online": "Online",

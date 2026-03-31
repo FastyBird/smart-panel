@@ -671,7 +671,10 @@
 		}
 	},
 	"labels": {
-		"live": "Na żywo"
+		"live": "Na żywo",
+		"overview": "Przegląd",
+		"validation": "Walidacja",
+		"logs": "Dzienniki"
 	},
 	"states": {
 		"online": "Online",
