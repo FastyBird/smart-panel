@@ -115,11 +115,11 @@ export class ShellyNgService implements IManagedPluginService {
 					}
 				// fallthrough
 				case 'started':
-					this.doStop();
+					await this.doStop();
 					return;
 				case 'error':
 					// Clean up and transition to stopped state
-					this.doStop();
+					await this.doStop();
 					return;
 			}
 		});
@@ -311,7 +311,7 @@ export class ShellyNgService implements IManagedPluginService {
 		}
 	}
 
-	private doStop(): void {
+	private async doStop(): Promise<void> {
 		if (!this.shellies) {
 			this.state = 'stopped';
 			return;
@@ -341,6 +341,24 @@ export class ShellyNgService implements IManagedPluginService {
 		this.processingDiscovery = false;
 
 		this.delegatesRegistryService.detach();
+
+		// Mark all managed devices as UNKNOWN since the plugin is no longer running
+		try {
+			const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
+
+			for (const device of devices) {
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: ConnectionState.UNKNOWN,
+				});
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('Failed to reset device connection states during stop', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
 
 		this.state = 'stopped';
 	}
