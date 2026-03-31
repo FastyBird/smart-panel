@@ -30,13 +30,16 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		return ShellyNgDeviceEntity;
 	}
 
-	afterInsert(_event: InsertEvent<ShellyNgDeviceEntity>): void {
-		// Intentionally no-op. Device provisioning (createOrUpdate) is handled
-		// explicitly by DelegatesManagerService.performInsert() after addresses
-		// are synced. Firing it here would race with syncAddresses and hit the
-		// "no address yet" early return, wasting a DB query on every new device.
-		// For API-created devices, provisioning happens when the discovery
-		// library picks them up via mDNS.
+	afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): void {
+		// For mDNS-discovered devices, provisioning is handled by
+		// DelegatesManagerService.performInsert() after addresses are synced.
+		// For API-created devices (manual add), the wifiAddress transient field
+		// carries the user-provided address — sync it and provision.
+		const entity = event.entity;
+
+		if (entity?.wifiAddress) {
+			this.scheduleAddressSyncThenProvision(entity.id, entity.wifiAddress, undefined);
+		}
 	}
 
 	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {

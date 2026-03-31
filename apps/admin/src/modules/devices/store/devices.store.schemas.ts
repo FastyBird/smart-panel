@@ -37,7 +37,7 @@ export const DeviceSchema = z.object({
 		online: z.boolean().default(false),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
 		lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().default(null),
-	}),
+	}).default({}),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])

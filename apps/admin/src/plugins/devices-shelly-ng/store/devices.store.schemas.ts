@@ -44,6 +44,7 @@ export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCre
 	z.object({
 		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		password: z.string().nullable(),
+		wifi_address: z.string().nullable().optional(),
 	})
 );
 
