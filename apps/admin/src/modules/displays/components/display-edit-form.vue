@@ -100,27 +100,11 @@
 						:label="t('displaysModule.fields.displays.roomId.title')"
 						:prop="['roomId']"
 					>
-						<el-select
+						<space-select
 							v-model="model.roomId"
 							:placeholder="t('displaysModule.fields.displays.roomId.placeholder')"
-							name="roomId"
-							clearable
-							filterable
-						>
-							<el-option
-								v-for="room in roomSpaces"
-								:key="room.id"
-								:value="room.id"
-								:label="room.name"
-							>
-								<span class="flex items-center gap-2">
-									<el-icon v-if="room.icon">
-										<icon :icon="room.icon" />
-									</el-icon>
-									{{ room.name }}
-								</span>
-							</el-option>
-						</el-select>
+							filter="room"
+						/>
 						<div class="text-gray-500 text-sm mt-1">
 							{{ t('displaysModule.fields.displays.roomId.description') }}
 						</div>
@@ -687,6 +671,7 @@ import {
 import { Icon } from '@iconify/vue';
 
 import { usePages } from '../../dashboard/composables/composables';
+import { SpaceSelect } from '../../spaces/components/components';
 import { useSpaces } from '../../spaces/composables';
 import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
@@ -715,7 +700,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { pages, fetchPages } = usePages();
-const { roomSpaces, fetchSpaces, firstLoadFinished } = useSpaces();
+const { fetchSpaces, firstLoadFinished } = useSpaces();
 const { locations: weatherLocations, fetchLocations: fetchWeatherLocations } = useWeatherLocations();
 
 const screenLockDurationOptions = computed(() =>

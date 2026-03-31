@@ -797,5 +797,9 @@
 			"spacesCreated": "Pomyslnie utworzono {count} przestrzeni",
 			"completed": "Konfiguracja zakonczona! {devices} urzadzen, {displays} wyswietlaczy i {zones} przypisan stref."
 		}
+	},
+	"labels": {
+		"rooms": "Pokoje",
+		"zones": "Strefy"
 	}
 }

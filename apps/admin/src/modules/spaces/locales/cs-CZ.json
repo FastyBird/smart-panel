@@ -797,5 +797,9 @@
 			"spacesCreated": "{count} prostor(ů) bylo úspěšně vytvořeno",
 			"completed": "Nastavení dokončeno! {devices} zařízení, {displays} displej(ů) a {zones} přiřazení zón."
 		}
+	},
+	"labels": {
+		"rooms": "Místnosti",
+		"zones": "Zóny"
 	}
 }

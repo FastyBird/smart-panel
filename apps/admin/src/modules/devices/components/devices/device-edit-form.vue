@@ -103,28 +103,11 @@
 			:label="t('devicesModule.fields.devices.room.title')"
 			:prop="['roomId']"
 		>
-			<el-select
+			<space-select
 				v-model="model.roomId"
 				:placeholder="t('devicesModule.fields.devices.room.placeholder')"
-				name="roomId"
-				clearable
-				filterable
-				class="w-full"
-			>
-				<el-option
-					v-for="room in availableRooms"
-					:key="room.id"
-					:label="room.name"
-					:value="room.id"
-				>
-					<span class="flex items-center gap-2">
-						<el-icon v-if="room.icon">
-							<icon :icon="room.icon" />
-						</el-icon>
-						{{ room.name }}
-					</span>
-				</el-option>
-			</el-select>
+				filter="room"
+			/>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('devicesModule.fields.devices.room.hint') }}
 			</div>
@@ -133,14 +116,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
-import { Icon } from '@iconify/vue';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
-import { injectStoresManager } from '../../../../common';
-import { SpaceType, spacesStoreKey } from '../../../spaces';
+import { SpaceSelect } from '../../../spaces/components/components';
 import { useDeviceEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 import type { IDeviceEditForm } from '../../schemas/devices.types';
@@ -166,15 +147,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
-
 const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm({ device: props.device });
-
-// Get available rooms for the room selector (only spaces with type = ROOM)
-const availableRooms = computed(() =>
-	spacesStore.findAll().filter((s) => s.type === SpaceType.ROOM)
-);
 
 const rules = reactive<FormRules<IDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesModule.fields.devices.name.validation.required'), trigger: 'change' }],
