@@ -194,9 +194,23 @@ export class UpdateService {
 		});
 	}
 
-	async checkServerUpdate(channel: 'latest' | 'beta' | 'alpha' = 'latest'): Promise<VersionInfo> {
-		const cached = this.cachedServerInfo.get(channel);
-		const cacheTime = this.serverCacheTimestamp.get(channel) ?? 0;
+	/**
+	 * Detect the release channel from a semver version string.
+	 * e.g. "0.2.0-alpha.1" → "alpha", "1.0.0-beta.3" → "beta", "1.0.0" → "latest"
+	 */
+	detectChannel(version?: string): 'latest' | 'beta' | 'alpha' {
+		const v = version ?? this.getCurrentVersion();
+
+		if (v.includes('-alpha')) return 'alpha';
+		if (v.includes('-beta')) return 'beta';
+
+		return 'latest';
+	}
+
+	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
+		const resolvedChannel = channel ?? this.detectChannel();
+		const cached = this.cachedServerInfo.get(resolvedChannel);
+		const cacheTime = this.serverCacheTimestamp.get(resolvedChannel) ?? 0;
 
 		if (cached && Date.now() - cacheTime < this.CACHE_TTL_MS) {
 			return cached;
@@ -210,10 +224,10 @@ export class UpdateService {
 
 			if (installType === 'image') {
 				// Image installs: check GitHub version.json or releases API
-				latestVersion = await this.fetchLatestVersionFromGitHub(channel);
+				latestVersion = await this.fetchLatestVersionFromGitHub(resolvedChannel);
 			} else {
 				// npm installs: check npm registry dist-tags
-				latestVersion = await this.fetchLatestVersionFromNpm(channel);
+				latestVersion = await this.fetchLatestVersionFromNpm(resolvedChannel);
 			}
 
 			let updateAvailable = false;
@@ -235,8 +249,8 @@ export class UpdateService {
 				updateType,
 			};
 
-			this.cachedServerInfo.set(channel, result);
-			this.serverCacheTimestamp.set(channel, Date.now());
+			this.cachedServerInfo.set(resolvedChannel, result);
+			this.serverCacheTimestamp.set(resolvedChannel, Date.now());
 
 			return result;
 		} catch (error) {
@@ -255,27 +269,45 @@ export class UpdateService {
 
 	/**
 	 * Fetch latest version from GitHub version.json (for image installs).
-	 * For the 'latest' channel, uses the direct download URL which avoids API rate limits.
+	 * For the 'latest' channel, tries the direct download URL first (avoids API rate limits),
+	 * then falls back to the releases API if no stable release exists yet.
 	 * For pre-release channels (alpha/beta), queries the releases API to find matching releases.
 	 */
 	private async fetchLatestVersionFromGitHub(channel: 'latest' | 'beta' | 'alpha'): Promise<string | null> {
 		if (channel === 'latest') {
-			// Direct download — no API rate limit, follows redirect to the asset
-			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
-				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
-				signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
-			});
+			// Try direct download first — no API rate limit, follows redirect to the asset
+			try {
+				const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
+					headers: { 'User-Agent': 'FastyBird-SmartPanel' },
+					signal: AbortSignal.timeout(UpdateService.FETCH_TIMEOUT_MS),
+				});
 
-			if (!response.ok) {
-				throw new Error(`GitHub version.json returned ${response.status}`);
+				if (response.ok) {
+					const data = (await response.json()) as { version?: string; channel?: string };
+
+					return data.version?.replace(/^v/, '') ?? null;
+				}
+
+				this.logger.debug(`Direct version.json returned ${response.status}, falling back to releases API`);
+			} catch {
+				this.logger.debug('Direct version.json fetch failed, falling back to releases API');
 			}
 
-			const data = (await response.json()) as { version?: string; channel?: string };
-
-			return data.version?.replace(/^v/, '') ?? null;
+			// Fallback: check non-prerelease releases via API
+			return this.fetchVersionFromReleasesApi(channel, false);
 		}
 
-		// Pre-release channels: query the releases API and find the version.json asset
+		// Pre-release channels: query the releases API
+		return this.fetchVersionFromReleasesApi(channel, true);
+	}
+
+	/**
+	 * Query the GitHub releases API for a version.json matching the requested channel.
+	 */
+	private async fetchVersionFromReleasesApi(
+		channel: 'latest' | 'beta' | 'alpha',
+		prereleaseOnly: boolean,
+	): Promise<string | null> {
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
 			headers: {
 				Accept: 'application/vnd.github.v3+json',
@@ -294,9 +326,9 @@ export class UpdateService {
 			assets: Array<{ name: string; browser_download_url: string }>;
 		}>;
 
-		// Find the first pre-release with a version.json that matches the channel
 		for (const release of releases) {
-			if (!release.prerelease) continue;
+			if (prereleaseOnly && !release.prerelease) continue;
+			if (!prereleaseOnly && release.prerelease) continue;
 
 			const versionAsset = release.assets.find((a) => a.name === 'version.json');
 
