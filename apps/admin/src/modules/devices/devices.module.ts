@@ -10,6 +10,7 @@ import {
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
+	snakeToCamel,
 	type IModule,
 	type ModuleInjectionKey,
 } from '../../common';
@@ -114,7 +115,7 @@ export default {
 						if (status && typeof status === 'object') {
 							devicesStore.set({
 								id: device.id,
-								data: { ...existing, status: status as typeof existing.status },
+								data: { ...existing, status: snakeToCamel(status) as typeof existing.status },
 							});
 						}
 					}
