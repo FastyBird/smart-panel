@@ -98,6 +98,21 @@ export default {
 				return;
 			}
 
+			// ConnectionChanged wraps the device under payload.device
+			if (data.event === EventType.DEVICE_CONNECTION_CHANGED) {
+				const device = get(data.payload, 'device') as Record<string, unknown> | undefined;
+
+				if (device && typeof device === 'object' && 'id' in device && typeof device.id === 'string') {
+					devicesStore.onEvent({
+						id: device.id,
+						type: String(get(device, 'type', 'unknown')),
+						data: device,
+					});
+				}
+
+				return;
+			}
+
 			if (data.payload === null || typeof data.payload !== 'object' || !('id' in data.payload) || typeof data.payload.id !== 'string') {
 				return;
 			}
