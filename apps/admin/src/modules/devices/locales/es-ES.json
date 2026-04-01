@@ -671,7 +671,8 @@
     }
   },
   "labels": {
-    "live": "En vivo",
+    "liveTail": "Seguimiento en vivo",
+    "paused": "Pausado",
     "overview": "Resumen",
     "validation": "Validación",
     "logs": "Registros"

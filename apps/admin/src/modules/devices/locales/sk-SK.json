@@ -671,7 +671,8 @@
 		}
 	},
 	"labels": {
-		"live": "Naživo",
+		"liveTail": "Živý prenos",
+		"paused": "Pozastavené",
 		"overview": "Prehľad",
 		"validation": "Validácia",
 		"logs": "Protokoly"

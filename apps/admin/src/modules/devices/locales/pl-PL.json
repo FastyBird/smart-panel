@@ -671,7 +671,8 @@
 		}
 	},
 	"labels": {
-		"live": "Na żywo",
+		"liveTail": "Podgląd na żywo",
+		"paused": "Wstrzymane",
 		"overview": "Przegląd",
 		"validation": "Walidacja",
 		"logs": "Dzienniki"

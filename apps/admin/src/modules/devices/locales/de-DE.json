@@ -671,7 +671,8 @@
     }
   },
   "labels": {
-    "live": "Live",
+    "liveTail": "Live-Verfolgung",
+    "paused": "Pausiert",
     "overview": "Übersicht",
     "validation": "Validierung",
     "logs": "Protokolle"
