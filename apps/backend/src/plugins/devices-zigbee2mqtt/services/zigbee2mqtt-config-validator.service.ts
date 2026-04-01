@@ -24,7 +24,7 @@ export class Zigbee2mqttConfigValidatorService implements IPluginConfigValidator
 	}
 
 	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
-		const connectionType = (config['connection_type'] as string) || 'mqtt';
+		const connectionType = ((config['connectionType'] ?? config['connection_type']) as string) || 'mqtt';
 
 		if (connectionType === 'ws') {
 			return this.validateWs(config);

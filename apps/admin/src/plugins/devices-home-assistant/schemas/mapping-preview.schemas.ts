@@ -37,7 +37,7 @@ export const PropertyMappingPreviewSchema = z.object({
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
 	format: z
-		.array(z.union([z.string(), z.number()]))
+		.array(z.union([z.string(), z.number(), z.null()]))
 		.nullable()
 		.optional(),
 	required: z.boolean(),
@@ -127,7 +127,7 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	format: z
-		.array(z.union([z.string(), z.number()]))
+		.array(z.union([z.string(), z.number(), z.null()]))
 		.nullable()
 		.optional(),
 	haEntityId: z.string().optional(),
@@ -167,7 +167,7 @@ const HelperPropertyMappingSchema = z.object({
 	permissions: z.array(z.string()),
 	unit: z.string().nullable().optional(),
 	format: z
-		.array(z.union([z.string(), z.number()]))
+		.array(z.union([z.string(), z.number(), z.null()]))
 		.nullable()
 		.optional(),
 	required: z.boolean(),

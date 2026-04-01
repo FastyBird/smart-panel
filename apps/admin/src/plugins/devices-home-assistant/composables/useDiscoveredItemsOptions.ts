@@ -46,13 +46,15 @@ export const useDiscoveredItemsOptions = (): IUseDiscoveredItemsOptions => {
 		return groups;
 	});
 
-	// Fetch both devices and helpers
-	Promise.all([fetchDiscoveredDevices(), fetchDiscoveredHelpers()]).catch(() => {
-		// Could be ignored
-	});
+	const refreshItems = (): void => {
+		Promise.all([fetchDiscoveredDevices(), fetchDiscoveredHelpers()]).catch(() => {
+			// Could be ignored
+		});
+	};
 
 	return {
 		itemsOptions,
 		areLoading,
+		refreshItems,
 	};
 };

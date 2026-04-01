@@ -278,6 +278,7 @@ const {
 	formChanged,
 	submitStep,
 	clearPreview,
+	refreshItems,
 	formResult,
 } = useDeviceAddForm({
 	id: props.id,
@@ -509,6 +510,9 @@ onMounted((): void => {
 			// Could be ignored
 		});
 	}
+
+	// Always refresh discovered devices/helpers to get fresh data from HA
+	refreshItems();
 });
 
 watch(

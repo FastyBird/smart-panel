@@ -35,6 +35,7 @@
 			"haDeviceId": {
 				"title": "Zariadenie Home Assistant",
 				"placeholder": "Vyberte zariadenie z inštancie Home Assistant",
+				"loading": "Načítavanie zariadení z Home Assistant...",
 				"validation": {
 					"required": "Prosím vyberte zariadenie Home Assistant"
 				}

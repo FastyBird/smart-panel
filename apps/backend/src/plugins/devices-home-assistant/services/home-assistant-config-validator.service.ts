@@ -22,7 +22,7 @@ export class HomeAssistantConfigValidatorService implements IPluginConfigValidat
 
 	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
 		const hostname = config['hostname'] as string | undefined;
-		const apiKey = config['api_key'] as string | undefined;
+		const apiKey = (config['apiKey'] ?? config['api_key']) as string | undefined;
 
 		if (!hostname) {
 			return { valid: false, errors: [{ message: 'Hostname is required', field: 'hostname' }] };

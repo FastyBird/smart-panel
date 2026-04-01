@@ -35,6 +35,7 @@
       "haDeviceId": {
         "title": "Home Assistant-Gerät",
         "placeholder": "Gerät aus der Home Assistant-Instanz auswählen",
+        "loading": "Geräte werden von Home Assistant geladen...",
         "validation": {
           "required": "Bitte wählen Sie ein Home Assistant-Gerät"
         }

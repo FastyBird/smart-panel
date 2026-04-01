@@ -10,9 +10,9 @@
 			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.haDeviceId"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+				:placeholder="itemsOptionsLoading ? t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.loading') : t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
 				:loading="itemsOptionsLoading"
-				:disabled="totalOptionsCount === 0"
+				:disabled="itemsOptionsLoading"
 				name="haDeviceId"
 				filterable
 				@change="onDeviceChange"
