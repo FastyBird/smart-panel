@@ -77,6 +77,10 @@ RUN pnpm run generate:spec && \
 	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-backend build
 
+# Create a standalone deployment with flat node_modules (no pnpm symlinks).
+# pnpm deploy resolves all workspace dependencies into a self-contained directory.
+RUN pnpm --filter @fastybird/smart-panel-backend deploy --prod /build/deploy
+
 # ============================================================
 # Stage 3: Production runtime
 # ============================================================
@@ -86,11 +90,10 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-# Copy backend build output and dependencies
-COPY --from=backend-builder /build/apps/backend/dist/ ./dist/
-COPY --from=backend-builder /build/apps/backend/package.json ./
-COPY --from=backend-builder /build/apps/backend/node_modules/ ./node_modules/
-COPY --from=backend-builder /build/node_modules/ /app/root_node_modules/
+# Copy the standalone deployment (flat node_modules, no pnpm symlinks)
+COPY --from=backend-builder /build/deploy/node_modules/ ./node_modules/
+COPY --from=backend-builder /build/deploy/dist/ ./dist/
+COPY --from=backend-builder /build/deploy/package.json ./
 
 # Copy admin static files into backend's static directory
 COPY --from=admin-builder /build/apps/admin/dist/ ./static/
@@ -107,7 +110,6 @@ RUN mkdir -p /data/db /data/config
 
 # Environment defaults
 ENV NODE_ENV=production \
-	NODE_PATH=/app/root_node_modules \
 	FB_BACKEND_PORT=3000 \
 	FB_ADMIN_UI_PATH=/app/static \
 	FB_DB_PATH=/data/db \
