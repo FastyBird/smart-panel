@@ -205,13 +205,6 @@ export class HelperAdoptionService {
 				permissions: [PermissionType.READ_ONLY],
 			},
 			{
-				category: PropertyCategory.FIRMWARE_REVISION,
-				name: 'Firmware Revision',
-				value: 'N/A',
-				dataType: DataTypeType.STRING,
-				permissions: [PermissionType.READ_ONLY],
-			},
-			{
 				category: PropertyCategory.STATUS,
 				name: 'Status',
 				value: ConnectionState.CONNECTED,
@@ -272,6 +265,7 @@ export class HelperAdoptionService {
 				value: null,
 				ha_entity_id: entityId,
 				ha_attribute: propDef.haAttribute,
+				ha_transformer: propDef.haTransformer ?? null,
 			});
 
 			await this.channelsPropertiesService.create(channel.id, createPropertyDto);

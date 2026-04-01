@@ -35,6 +35,7 @@
       "haDeviceId": {
         "title": "Home Assistant device",
         "placeholder": "Select device from Home Assistant instance",
+        "loading": "Loading devices from Home Assistant...",
         "validation": {
           "required": "Please select Home Assistant device"
         }

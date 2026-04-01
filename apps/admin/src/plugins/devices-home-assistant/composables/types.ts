@@ -103,6 +103,7 @@ export interface IDiscoveryOptionGroup {
 export interface IUseDiscoveredItemsOptions {
 	itemsOptions: ComputedRef<IDiscoveryOptionGroup[]>;
 	areLoading: ComputedRef<boolean>;
+	refreshItems: () => void;
 }
 
 export interface IUseEntitiesOptions {
@@ -153,5 +154,6 @@ export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm
 	submitStep: (step: 'one' | 'two' | 'three' | 'four' | 'five', formEl?: FormInstance) => Promise<'ok' | 'added'>;
 	clear: () => void;
 	clearPreview: () => void;
+	refreshItems: () => void;
 	formResult: Ref<FormResultType>;
 }

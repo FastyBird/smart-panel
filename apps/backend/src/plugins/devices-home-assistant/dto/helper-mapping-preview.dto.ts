@@ -99,6 +99,19 @@ export class AdoptHelperPropertyDefinitionDto {
 	@Expose()
 	@IsOptional()
 	format?: (string | number)[] | null;
+
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"ha_transformer","reason":"Transformer name must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"ha_transformer","reason":"Transformer name must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion',
+		example: 'brightness_to_percent',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	haTransformer?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginAdoptHelperChannelDefinition' })

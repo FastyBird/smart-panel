@@ -35,7 +35,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const { preview, isLoading: isPreviewLoading, error: previewError, itemType, fetchPreview, clearPreview } = useMappingPreview();
 	const { isAdopting, error: adoptionError, adoptDevice } = useDeviceAdoption();
-	const { itemsOptions, areLoading: itemsOptionsLoading } = useDiscoveredItemsOptions();
+	const { itemsOptions, areLoading: itemsOptionsLoading, refreshItems } = useDiscoveredItemsOptions();
 
 	// Helper function to get item type from selected value
 	const getItemTypeFromSelection = (selectedId: string): ItemType => {
@@ -498,6 +498,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		submitStep,
 		clear,
 		clearPreview,
+		refreshItems,
 		formResult,
 	};
 };
