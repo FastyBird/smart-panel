@@ -46,7 +46,7 @@ vi.mock('../../modules/config/composables/useConfigModules', () => ({
 		areLoading: { value: false },
 		loaded: { value: true },
 		enabled: () => true,
-		fetchConfigModules: vi.fn(),
+		fetchConfigModules: vi.fn().mockResolvedValue(undefined),
 	})),
 }));
 
