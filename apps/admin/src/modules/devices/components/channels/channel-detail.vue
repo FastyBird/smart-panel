@@ -1,7 +1,7 @@
 <template>
 	<el-card
+		shadow="never"
 		body-class="p-0!"
-		style="--el-card-padding: 0.5rem"
 	>
 		<template #header>
 			<div class="flex flex-row items-center">

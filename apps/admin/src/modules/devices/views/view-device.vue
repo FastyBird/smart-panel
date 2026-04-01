@@ -137,16 +137,11 @@
 			:device="device"
 		/>
 
-		<!-- Tabs card -->
-		<el-card
-			shadow="never"
-			class="flex-1 min-h-0 flex flex-col mt-2"
-			body-class="p-0! flex-1 min-h-0 flex flex-col"
+		<!-- Tabs -->
+		<el-tabs
+			v-model="activeTab"
+			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 		>
-			<el-tabs
-				v-model="activeTab"
-				:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
-			>
 				<el-tab-pane
 					name="overview"
 					class="h-full overflow-hidden"
@@ -159,8 +154,7 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<div class="p-2">
-							<el-space
+						<el-space
 								v-if="sortedChannels"
 								direction="vertical"
 								size="large"
@@ -216,7 +210,6 @@
 									</template>
 								</el-result>
 							</el-card>
-						</div>
 					</el-scrollbar>
 				</el-tab-pane>
 
@@ -324,7 +317,6 @@
 					/>
 				</el-tab-pane>
 			</el-tabs>
-		</el-card>
 	</div>
 
 	<router-view
