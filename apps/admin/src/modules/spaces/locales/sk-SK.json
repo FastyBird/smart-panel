@@ -451,27 +451,27 @@
 	"detail": {
 		"title": "Space detail",
 		"domains": {
-			"title": "Domains",
-			"notConfigured": "Not configured",
+			"title": "Domény",
+			"notConfigured": "Nenakonfigurované",
 			"lighting": {
-				"title": "Lighting",
-				"description": "Configure how lights in this space are used — main, task, ambient, accent, and night lighting roles."
+				"title": "Osvetlenie",
+				"description": "Nastavte, ako sa v tomto priestore používajú svetlá — hlavné, pracovné, ambientné, akcentové a nočné role osvetlenia."
 			},
 			"climate": {
-				"title": "Climate",
-				"description": "Assign heating, cooling, and sensor roles to climate devices in this space."
+				"title": "Klíma",
+				"description": "Priraďte role vykurovania, chladenia a senzorov ku klimatickým zariadeniam v tomto priestore."
 			},
 			"covers": {
-				"title": "Covers",
-				"description": "Set roles for window coverings — primary, blackout, sheer, and outdoor blinds."
+				"title": "Žalúzie",
+				"description": "Nastavte role okenných krytín — primárne, zatemňovacie, záclonové a vonkajšie žalúzie."
 			},
 			"sensor": {
-				"title": "Sensors",
-				"description": "Group sensor channels by purpose — environment, safety, security, air quality, and energy."
+				"title": "Senzory",
+				"description": "Zoskupte senzorové kanály podľa účelu — prostredie, bezpečnosť, zabezpečenie, kvalita vzduchu a energia."
 			},
 			"media": {
-				"title": "Media",
-				"description": "Define media activities like watching, listening, and gaming with device endpoint routing."
+				"title": "Médiá",
+				"description": "Definujte mediálne aktivity ako sledovanie, počúvanie a hranie hier so smerovaním koncových bodov zariadení."
 			}
 		},
 		"lightingRoles": {

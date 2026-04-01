@@ -451,27 +451,27 @@
 	"detail": {
 		"title": "Szczegoly przestrzeni",
 		"domains": {
-			"title": "Domains",
-			"notConfigured": "Not configured",
+			"title": "Domeny",
+			"notConfigured": "Nie skonfigurowano",
 			"lighting": {
-				"title": "Lighting",
-				"description": "Configure how lights in this space are used — main, task, ambient, accent, and night lighting roles."
+				"title": "Oswietlenie",
+				"description": "Skonfiguruj sposob uzycia swiatel w tej przestrzeni — role oswietlenia glownego, roboczego, nastrojowego, akcentowego i nocnego."
 			},
 			"climate": {
-				"title": "Climate",
-				"description": "Assign heating, cooling, and sensor roles to climate devices in this space."
+				"title": "Klimat",
+				"description": "Przypisz role ogrzewania, chlodzenia i czujnikow do urzadzen klimatycznych w tej przestrzeni."
 			},
 			"covers": {
-				"title": "Covers",
-				"description": "Set roles for window coverings — primary, blackout, sheer, and outdoor blinds."
+				"title": "Oslony",
+				"description": "Ustaw role dla oslon okiennych — rolety glowne, zaciemniajace, firanki i zewnetrzne."
 			},
 			"sensor": {
-				"title": "Sensors",
-				"description": "Group sensor channels by purpose — environment, safety, security, air quality, and energy."
+				"title": "Czujniki",
+				"description": "Grupuj kanaly czujnikow wedlug przeznaczenia — srodowisko, bezpieczenstwo, ochrona, jakosc powietrza i energia."
 			},
 			"media": {
 				"title": "Media",
-				"description": "Define media activities like watching, listening, and gaming with device endpoint routing."
+				"description": "Zdefiniuj aktywnosci multimedialne, takie jak ogladanie, sluchanie i granie z routingiem punktow koncowych urzadzen."
 			}
 		},
 		"lightingRoles": {

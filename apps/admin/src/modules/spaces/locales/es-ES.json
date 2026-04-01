@@ -451,27 +451,27 @@
 	"detail": {
 		"title": "Detalle del espacio",
 		"domains": {
-			"title": "Domains",
-			"notConfigured": "Not configured",
+			"title": "Dominios",
+			"notConfigured": "No configurado",
 			"lighting": {
-				"title": "Lighting",
-				"description": "Configure how lights in this space are used — main, task, ambient, accent, and night lighting roles."
+				"title": "Iluminación",
+				"description": "Configure cómo se usan las luces en este espacio — roles de iluminación principal, de trabajo, ambiental, de acento y nocturna."
 			},
 			"climate": {
-				"title": "Climate",
-				"description": "Assign heating, cooling, and sensor roles to climate devices in this space."
+				"title": "Clima",
+				"description": "Asigne roles de calefacción, refrigeración y sensores a los dispositivos climáticos en este espacio."
 			},
 			"covers": {
-				"title": "Covers",
-				"description": "Set roles for window coverings — primary, blackout, sheer, and outdoor blinds."
+				"title": "Cubiertas",
+				"description": "Establezca roles para las cubiertas de ventanas — persianas primarias, de oscurecimiento, visillos y exteriores."
 			},
 			"sensor": {
-				"title": "Sensors",
-				"description": "Group sensor channels by purpose — environment, safety, security, air quality, and energy."
+				"title": "Sensores",
+				"description": "Agrupe los canales de sensores por propósito — entorno, seguridad, protección, calidad del aire y energía."
 			},
 			"media": {
-				"title": "Media",
-				"description": "Define media activities like watching, listening, and gaming with device endpoint routing."
+				"title": "Medios",
+				"description": "Defina actividades multimedia como ver, escuchar y jugar con enrutamiento de puntos finales de dispositivos."
 			}
 		},
 		"lightingRoles": {
