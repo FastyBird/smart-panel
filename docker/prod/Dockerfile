@@ -77,10 +77,6 @@ RUN pnpm run generate:spec && \
 	pnpm run generate:openapi && \
 	pnpm --filter @fastybird/smart-panel-backend build
 
-# Create a standalone deployment with flat node_modules (no pnpm symlinks).
-# pnpm deploy resolves all workspace dependencies into a self-contained directory.
-RUN pnpm --filter @fastybird/smart-panel-backend deploy --prod /build/deploy
-
 # ============================================================
 # Stage 3: Production runtime
 # ============================================================
@@ -90,10 +86,11 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-# Copy the standalone deployment (flat node_modules, no pnpm symlinks)
-COPY --from=backend-builder /build/deploy/node_modules/ ./node_modules/
-COPY --from=backend-builder /build/deploy/dist/ ./dist/
-COPY --from=backend-builder /build/deploy/package.json ./
+# Copy backend build output and dependencies
+COPY --from=backend-builder /build/apps/backend/dist/ ./dist/
+COPY --from=backend-builder /build/apps/backend/package.json ./
+COPY --from=backend-builder /build/apps/backend/node_modules/ ./node_modules/
+COPY --from=backend-builder /build/node_modules/ /app/root_node_modules/
 
 # Copy admin static files into backend's static directory
 COPY --from=admin-builder /build/apps/admin/dist/ ./static/
@@ -101,21 +98,17 @@ COPY --from=admin-builder /build/apps/admin/dist/ ./static/
 # Copy seed/config data
 COPY var/ /app/var/
 
-# Copy entrypoint script (handles both standalone and HA add-on modes)
-COPY docker/prod/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
 # Create data directories
 RUN mkdir -p /data/db /data/config
 
 # Environment defaults
 ENV NODE_ENV=production \
+	NODE_PATH=/app/root_node_modules \
 	FB_BACKEND_PORT=3000 \
 	FB_ADMIN_UI_PATH=/app/static \
 	FB_DB_PATH=/data/db \
 	FB_CONFIG_PATH=/data/config \
-	FB_DB_SYNC=false \
-	FB_DB_MIGRATIONS_RUN=true
+	FB_DB_SYNC=false
 
 EXPOSE 3000
 
@@ -126,5 +119,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start via entrypoint wrapper (reads HA options.json if present, then starts node)
-CMD ["/app/entrypoint.sh"]
+# Run migrations then start the server
+CMD ["sh", "-c", "node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js && node dist/main.js"]
