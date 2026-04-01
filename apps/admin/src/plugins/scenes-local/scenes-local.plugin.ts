@@ -49,7 +49,7 @@ export default {
 			elements: [
 				{
 					type: SCENES_LOCAL_TYPE,
-					name: 'Device property action',
+					name: 'Device Property Action',
 					components: {
 						sceneActionAddForm: LocalSceneActionAddForm,
 						sceneActionEditForm: LocalSceneActionEditForm,

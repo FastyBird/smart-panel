@@ -33,7 +33,7 @@ export default {
 		pluginsManager.addPlugin(dataSourcesDeviceChannelPluginKey, {
 			type: DATA_SOURCES_DEVICE_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.data-source-device-channel',
-			name: 'Device channel property data source',
+			name: 'Device Channel Property Data Source',
 			description:
 				'Enables dashboard tiles, pages, etc. to pull real-time data directly from specific channels within your IoT devices. Ideal for visualizing sensor values, statuses, or actuator states in a granular and dynamic way.',
 			links: {
@@ -44,7 +44,7 @@ export default {
 			elements: [
 				{
 					type: DATA_SOURCES_DEVICE_TYPE,
-					name: 'Device channel property',
+					name: 'Device Channel Property',
 					components: {
 						dataSourceAddForm: DeviceChannelDataSourceAddForm,
 						dataSourceEditForm: DeviceChannelDataSourceEditForm,

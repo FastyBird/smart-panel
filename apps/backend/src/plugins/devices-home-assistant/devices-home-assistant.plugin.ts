@@ -270,7 +270,7 @@ export class DevicesHomeAssistantPlugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-			name: 'Home Assistant Devices',
+			name: 'Home Assistant',
 			description: 'Integration with Home Assistant for device management',
 			author: 'FastyBird',
 			readme: `# Home Assistant Devices Plugin

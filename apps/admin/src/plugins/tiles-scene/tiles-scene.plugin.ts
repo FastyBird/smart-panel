@@ -31,7 +31,7 @@ export default {
 		pluginsManager.addPlugin(tilesScenePluginKey, {
 			type: TILES_SCENE_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-scene',
-			name: 'Scene tile',
+			name: 'Scene Tile',
 			description: 'A compact tile for displaying and triggering scenes. Ideal for quick access to your favorite scenes from the dashboard.',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com',

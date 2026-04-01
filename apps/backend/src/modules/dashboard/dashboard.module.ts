@@ -140,7 +140,7 @@ export class DashboardModule implements OnModuleInit {
 		// Register extension metadata
 		this.extensionsService.registerModuleMetadata({
 			type: DASHBOARD_MODULE_NAME,
-			name: 'Dashboard',
+			name: 'Dashboards',
 			description: 'Dashboard pages and tiles management',
 			author: 'FastyBird',
 			readme: `# Dashboard Module

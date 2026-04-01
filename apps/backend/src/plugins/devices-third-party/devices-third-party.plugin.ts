@@ -182,7 +182,7 @@ export class DevicesThirdPartyPlugin {
 		// Register extension metadata
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
-			name: 'Third Party Devices',
+			name: 'Third Party',
 			description: 'Support for integrating third-party devices via custom protocols',
 			author: 'FastyBird',
 			readme: `# Third Party Devices Plugin

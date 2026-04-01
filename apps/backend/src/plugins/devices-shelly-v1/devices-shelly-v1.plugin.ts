@@ -195,7 +195,7 @@ export class DevicesShellyV1Plugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_SHELLY_V1_PLUGIN_NAME,
-			name: 'Shelly V1 Devices',
+			name: 'Shelly Gen 1',
 			description: 'Support for Shelly first-generation devices',
 			author: 'FastyBird',
 			readme: `# Shelly V1 Devices Plugin

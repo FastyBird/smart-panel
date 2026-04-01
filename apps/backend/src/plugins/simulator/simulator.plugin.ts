@@ -231,12 +231,12 @@ export class SimulatorPlugin {
 		// Register extension metadata
 		this.extensionsService.registerPluginMetadata({
 			type: SIMULATOR_PLUGIN_NAME,
-			name: 'Device Simulator',
-			description: 'Plugin for creating simulated devices for testing and development',
+			name: 'Simulator',
+			description: 'Plugin for creating simulated devices, spaces, and scenes for testing and development',
 			author: 'FastyBird',
-			readme: `# Device Simulator Plugin
+			readme: `# Simulator Plugin
 
-Plugin for creating virtual devices for testing purposes without requiring physical hardware.
+Plugin for creating virtual devices, spaces, and scenes for testing purposes without requiring physical hardware.
 
 ## Features
 

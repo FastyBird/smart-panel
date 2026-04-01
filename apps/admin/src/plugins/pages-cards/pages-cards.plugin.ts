@@ -57,7 +57,7 @@ export default {
 		pluginsManager.addPlugin(pagesCardsPluginKey, {
 			type: PAGES_CARDS_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-cards',
-			name: 'Cards page',
+			name: 'Cards Page',
 			description: 'Organize tiles into separate cards for better structure. Useful for grouping related controls and data on a single page.',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com',

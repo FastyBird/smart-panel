@@ -75,7 +75,7 @@ export class TilesTimePlugin {
 
 		this.extensionsService.registerPluginMetadata({
 			type: TILES_TIME_PLUGIN_NAME,
-			name: 'Time Tiles',
+			name: 'Clock Tile',
 			description: 'Dashboard tiles for displaying time and date',
 			author: 'FastyBird',
 			readme: `# Time Tiles Plugin

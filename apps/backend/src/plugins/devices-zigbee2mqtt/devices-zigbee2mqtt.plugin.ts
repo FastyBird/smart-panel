@@ -222,7 +222,7 @@ export class DevicesZigbee2mqttPlugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
-			name: 'Zigbee2MQTT Devices',
+			name: 'Zigbee2MQTT',
 			description: 'Integration plugin for Zigbee devices via Zigbee2MQTT',
 			author: 'FastyBird',
 			readme: `# Zigbee2MQTT Plugin

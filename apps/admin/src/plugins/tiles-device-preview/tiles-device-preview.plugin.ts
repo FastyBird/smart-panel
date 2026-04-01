@@ -32,7 +32,7 @@ export default {
 		pluginsManager.addPlugin(tilesDevicePreviewPluginKey, {
 			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-device-preview',
-			name: 'Device preview tile',
+			name: 'Device Preview Tile',
 			description:
 				'A compact tile for previewing the state of a device, including icons and key attributes. Ideal for at-a-glance control or status display.',
 			links: {
@@ -43,7 +43,7 @@ export default {
 			elements: [
 				{
 					type: TILES_DEVICE_PREVIEW_TYPE,
-					name: 'Device preview',
+					name: 'Device Preview',
 					components: {
 						tileAddForm: DevicePreviewTileAddForm,
 						tileEditForm: DevicePreviewTileEditForm,

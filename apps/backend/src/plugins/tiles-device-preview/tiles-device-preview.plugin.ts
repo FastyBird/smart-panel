@@ -90,7 +90,7 @@ export class TilesDevicePreviewPlugin {
 
 		this.extensionsService.registerPluginMetadata({
 			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
-			name: 'Device Preview Tiles',
+			name: 'Device Preview Tile',
 			description: 'Dashboard tiles for displaying device status preview',
 			author: 'FastyBird',
 			readme: `# Device Preview Tiles Plugin

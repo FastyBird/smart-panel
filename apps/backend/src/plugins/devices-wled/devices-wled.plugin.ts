@@ -194,7 +194,7 @@ export class DevicesWledPlugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_WLED_PLUGIN_NAME,
-			name: 'WLED Devices',
+			name: 'WLED',
 			description: 'Support for WLED addressable LED controllers',
 			author: 'FastyBird',
 			readme: `# WLED Devices Plugin
