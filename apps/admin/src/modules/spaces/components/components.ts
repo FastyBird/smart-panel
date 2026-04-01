@@ -18,6 +18,10 @@ export { default as SpaceClimateRolesDialog } from './space-climate-roles-dialog
 export { default as SpaceCoversRolesDialog } from './space-covers-roles-dialog.vue';
 export { default as SpaceSensorRolesDialog } from './space-sensor-roles-dialog.vue';
 
+// Space domain cards
+export { default as SpaceDomainCard } from './space-domain-card.vue';
+export { default as SpaceDomainsSection } from './space-domains-section.vue';
+
 // Space detail sections
 export { default as SpaceDetail } from './space-detail.vue';
 export { default as SpaceDevicesSection } from './space-devices-section.vue';

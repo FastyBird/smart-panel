@@ -113,11 +113,30 @@
 		<template v-if="space">
 			<space-detail :space="space" />
 
-			<!-- Tabs for Devices, Scenes, and Displays -->
+			<!-- Tabs -->
 			<el-tabs
 				v-model="activeTab"
 				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 			>
+				<el-tab-pane
+					name="domains"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:view-dashboard" />
+							{{ t('spacesModule.detail.domains.title') }}
+						</div>
+					</template>
+
+					<el-scrollbar class="h-full">
+						<space-domains-section
+							ref="domainsSectionRef"
+							:space="space"
+						/>
+					</el-scrollbar>
+				</el-tab-pane>
+
 				<el-tab-pane
 					name="devices"
 					class="h-full overflow-hidden"
@@ -316,6 +335,7 @@ import {
 	SpaceDetail,
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
+	SpaceDomainsSection,
 	SpaceScenesSection,
 } from '../components/components';
 import { useSpace } from '../composables';
@@ -362,7 +382,7 @@ const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 // Tabs
-const activeTab = ref<string>('devices');
+const activeTab = ref<string>('domains');
 
 // Dialog visibility
 const showAddDeviceDialog = ref<boolean>(false);
@@ -370,6 +390,7 @@ const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 
 // Component refs
+const domainsSectionRef = ref<InstanceType<typeof SpaceDomainsSection> | null>(null);
 const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
 const scenesSectionRef = ref<InstanceType<typeof SpaceScenesSection> | null>(null);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);

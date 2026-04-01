@@ -450,6 +450,30 @@
 	},
 	"detail": {
 		"title": "Bereichsdetails",
+		"domains": {
+			"title": "Domains",
+			"notConfigured": "Not configured",
+			"lighting": {
+				"title": "Lighting",
+				"description": "Configure how lights in this space are used — main, task, ambient, accent, and night lighting roles."
+			},
+			"climate": {
+				"title": "Climate",
+				"description": "Assign heating, cooling, and sensor roles to climate devices in this space."
+			},
+			"covers": {
+				"title": "Covers",
+				"description": "Set roles for window coverings — primary, blackout, sheer, and outdoor blinds."
+			},
+			"sensor": {
+				"title": "Sensors",
+				"description": "Group sensor channels by purpose — environment, safety, security, air quality, and energy."
+			},
+			"media": {
+				"title": "Media",
+				"description": "Define media activities like watching, listening, and gaming with device endpoint routing."
+			}
+		},
 		"lightingRoles": {
 			"title": "Beleuchtungsrollen",
 			"lightsAssigned": "Lichter zugewiesen",

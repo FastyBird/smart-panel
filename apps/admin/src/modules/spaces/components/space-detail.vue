@@ -59,36 +59,6 @@
 					{{ space.icon }}
 				</el-text>
 			</dd>
-			<!-- Lighting roles summary -->
-			<space-lighting-roles-summary
-				ref="lightingRolesSummaryRef"
-				:space="space"
-				@edit="showLightingRolesDialog = true"
-			/>
-			<!-- Climate roles summary -->
-			<space-climate-roles-summary
-				ref="climateRolesSummaryRef"
-				:space="space"
-				@edit="showClimateRolesDialog = true"
-			/>
-			<!-- Covers roles summary -->
-			<space-covers-roles-summary
-				ref="coversRolesSummaryRef"
-				:space="space"
-				@edit="showCoversRolesDialog = true"
-			/>
-			<!-- Sensor roles summary -->
-			<space-sensor-roles-summary
-				ref="sensorRolesSummaryRef"
-				:space="space"
-				@edit="showSensorRolesDialog = true"
-			/>
-			<!-- Media activities summary -->
-			<space-media-activities-summary
-				ref="mediaActivitiesSummaryRef"
-				:space="space"
-				@edit="showMediaActivitiesDialog = true"
-			/>
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -153,40 +123,6 @@
 		</dl>
 	</el-card>
 
-	<!-- Lighting roles dialog -->
-	<space-lighting-roles-dialog
-		v-model:visible="showLightingRolesDialog"
-		:space="space"
-		@roles-changed="onLightingRolesChanged"
-	/>
-
-	<!-- Climate roles dialog -->
-	<space-climate-roles-dialog
-		v-model:visible="showClimateRolesDialog"
-		:space="space"
-		@roles-changed="onClimateRolesChanged"
-	/>
-
-	<!-- Covers roles dialog -->
-	<space-covers-roles-dialog
-		v-model:visible="showCoversRolesDialog"
-		:space="space"
-		@roles-changed="onCoversRolesChanged"
-	/>
-
-	<!-- Sensor roles dialog -->
-	<space-sensor-roles-dialog
-		v-model:visible="showSensorRolesDialog"
-		:space="space"
-		@roles-changed="onSensorRolesChanged"
-	/>
-
-	<!-- Media activities dialog -->
-	<space-media-activities-dialog
-		v-model:visible="showMediaActivitiesDialog"
-		:space="space"
-		@bindings-changed="onMediaActivitiesChanged"
-	/>
 </template>
 
 <script setup lang="ts">
@@ -201,16 +137,6 @@ import { useFlashMessage } from '../../../common';
 import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
-import SpaceClimateRolesDialog from './space-climate-roles-dialog.vue';
-import SpaceClimateRolesSummary from './space-climate-roles-summary.vue';
-import SpaceCoversRolesDialog from './space-covers-roles-dialog.vue';
-import SpaceCoversRolesSummary from './space-covers-roles-summary.vue';
-import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
-import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
-import SpaceMediaActivitiesDialog from './space-media-activities-dialog.vue';
-import SpaceMediaActivitiesSummary from './space-media-activities-summary.vue';
-import SpaceSensorRolesDialog from './space-sensor-roles-dialog.vue';
-import SpaceSensorRolesSummary from './space-sensor-roles-summary.vue';
 
 import type { ISpaceDetailProps } from './space-detail.types';
 
@@ -225,18 +151,6 @@ const flashMessage = useFlashMessage();
 
 const { spaces, firstLoadFinished, fetchSpaces } = useSpaces();
 const { editSpace } = useSpace(computed(() => props.space?.id));
-
-// Role dialog state
-const showLightingRolesDialog = ref(false);
-const showClimateRolesDialog = ref(false);
-const showCoversRolesDialog = ref(false);
-const showSensorRolesDialog = ref(false);
-const showMediaActivitiesDialog = ref(false);
-const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
-const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
-const coversRolesSummaryRef = ref<InstanceType<typeof SpaceCoversRolesSummary> | null>(null);
-const sensorRolesSummaryRef = ref<InstanceType<typeof SpaceSensorRolesSummary> | null>(null);
-const mediaActivitiesSummaryRef = ref<InstanceType<typeof SpaceMediaActivitiesSummary> | null>(null);
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
@@ -357,25 +271,5 @@ onBeforeUnmount(() => {
 	document.removeEventListener('keydown', handleEscapeKey);
 });
 
-// Role dialog handlers
-const onLightingRolesChanged = (): void => {
-	lightingRolesSummaryRef.value?.reload();
-};
-
-const onClimateRolesChanged = (): void => {
-	climateRolesSummaryRef.value?.reload();
-};
-
-const onCoversRolesChanged = (): void => {
-	coversRolesSummaryRef.value?.reload();
-};
-
-const onSensorRolesChanged = (): void => {
-	sensorRolesSummaryRef.value?.reload();
-};
-
-const onMediaActivitiesChanged = (): void => {
-	mediaActivitiesSummaryRef.value?.reload();
-};
 </script>
 
