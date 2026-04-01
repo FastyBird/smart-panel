@@ -66,6 +66,11 @@ jobs:
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v6"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
