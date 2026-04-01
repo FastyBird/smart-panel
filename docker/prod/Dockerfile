@@ -108,7 +108,8 @@ ENV NODE_ENV=production \
 	FB_ADMIN_UI_PATH=/app/static \
 	FB_DB_PATH=/data/db \
 	FB_CONFIG_PATH=/data/config \
-	FB_DB_SYNC=false
+	FB_DB_SYNC=false \
+	FB_DB_MIGRATIONS_RUN=true
 
 EXPOSE 3000
 
@@ -119,5 +120,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Run migrations then start the server
-CMD ["sh", "-c", "node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js && node dist/main.js"]
+# Start the server (migrations run automatically via FB_DB_MIGRATIONS_RUN=true)
+CMD ["node", "dist/main.js"]
