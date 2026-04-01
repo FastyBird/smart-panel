@@ -200,7 +200,7 @@ export class DevicesReTerminalPlugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_RETERMINAL_PLUGIN_NAME,
-			name: 'reTerminal Devices',
+			name: 'reTerminal',
 			description: 'Support for SeeedStudio reTerminal hardware peripherals',
 			author: 'FastyBird',
 			readme: `# reTerminal Devices Plugin

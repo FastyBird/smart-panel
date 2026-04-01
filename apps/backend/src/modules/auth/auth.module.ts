@@ -118,7 +118,7 @@ export class AuthModule implements OnModuleInit {
 		// Register extension metadata
 		this.extensionsService.registerModuleMetadata({
 			type: AUTH_MODULE_NAME,
-			name: 'Authentication',
+			name: 'Sign‑in & Security',
 			description: 'Authentication and token management',
 			author: 'FastyBird',
 			readme: `# Authentication Module

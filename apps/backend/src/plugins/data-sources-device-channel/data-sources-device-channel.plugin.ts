@@ -102,7 +102,7 @@ export class DataSourcesDeviceChannelPlugin {
 
 		this.extensionsService.registerPluginMetadata({
 			type: DATA_SOURCES_DEVICE_PLUGIN_NAME,
-			name: 'Device Channel Data Sources',
+			name: 'Device Channel Property Data Source',
 			description: 'Data sources for connecting tiles to device channel properties',
 			author: 'FastyBird',
 			readme: `# Device Channel Data Sources Plugin

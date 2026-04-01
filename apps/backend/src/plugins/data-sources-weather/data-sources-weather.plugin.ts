@@ -137,7 +137,7 @@ export class DataSourcesWeatherPlugin {
 
 		this.extensionsService.registerPluginMetadata({
 			type: DATA_SOURCES_WEATHER_PLUGIN_NAME,
-			name: 'Weather Data Sources',
+			name: 'Weather Data Source',
 			description: 'Data sources for connecting tiles to weather information',
 			author: 'FastyBird',
 			readme: `# Weather Data Sources Plugin

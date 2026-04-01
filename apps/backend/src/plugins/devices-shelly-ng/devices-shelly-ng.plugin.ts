@@ -223,7 +223,7 @@ export class DevicesShellyNgPlugin {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_SHELLY_NG_PLUGIN_NAME,
-			name: 'Shelly NG Devices',
+			name: 'Shelly Next Generation',
 			description: 'Support for Shelly next-generation devices',
 			author: 'FastyBird',
 			readme: `# Shelly NG Devices Plugin

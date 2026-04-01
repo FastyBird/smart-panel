@@ -47,7 +47,7 @@ export default {
 		pluginsManager.addPlugin(pagesTilesPluginKey, {
 			type: PAGES_TILES_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-tiles',
-			name: 'Tiles page',
+			name: 'Tiles Page',
 			description: 'A flexible page layout displaying multiple tiles in a grid. Ideal for visualizing device data and controls in a compact format.',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com',

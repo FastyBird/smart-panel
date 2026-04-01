@@ -119,7 +119,7 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
-			name: 'OpenWeatherMap One Call',
+			name: 'OpenWeatherMap OneCall 3.0',
 			description: 'Weather data provider using OpenWeatherMap One Call API',
 			author: 'FastyBird',
 			readme: `# OpenWeatherMap One Call Weather Provider

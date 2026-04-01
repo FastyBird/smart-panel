@@ -91,7 +91,7 @@ export class TilesScenePlugin {
 
 		this.extensionsService.registerPluginMetadata({
 			type: TILES_SCENE_PLUGIN_NAME,
-			name: 'Scene Tiles',
+			name: 'Scene Tile',
 			description: 'Dashboard tiles for displaying scene status and triggering scenes',
 			author: 'FastyBird',
 			readme: `# Scene Tiles Plugin

@@ -19,7 +19,7 @@ export default {
 		pluginsManager.addPlugin(tilesTimePluginKey, {
 			type: TILES_TIME_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-time',
-			name: 'Clock tile',
+			name: 'Clock Tile',
 			description:
 				'A simple tile for displaying the current time, optionally with the date. Great for keeping your smart panel visually synced with real-time.',
 			links: {

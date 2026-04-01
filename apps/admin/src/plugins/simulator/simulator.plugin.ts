@@ -51,8 +51,8 @@ export default {
 		pluginsManager.addPlugin(simulatorPluginKey, {
 			type: SIMULATOR_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.simulator',
-			name: 'Device Simulator',
-			description: 'Create virtual devices for testing and development without physical hardware',
+			name: 'Simulator',
+			description: 'Create virtual devices, spaces, and scenes for testing and development without physical hardware',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				devDocumentation: 'https://smart-panel.fastybird.com/docs',
