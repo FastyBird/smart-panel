@@ -450,6 +450,30 @@
 	},
 	"detail": {
 		"title": "Szczegoly przestrzeni",
+		"domains": {
+			"title": "Domeny",
+			"notConfigured": "Nie skonfigurowano",
+			"lighting": {
+				"title": "Oswietlenie",
+				"description": "Skonfiguruj sposob uzycia swiatel w tej przestrzeni — role oswietlenia glownego, roboczego, nastrojowego, akcentowego i nocnego."
+			},
+			"climate": {
+				"title": "Klimat",
+				"description": "Przypisz role ogrzewania, chlodzenia i czujnikow do urzadzen klimatycznych w tej przestrzeni."
+			},
+			"covers": {
+				"title": "Oslony",
+				"description": "Ustaw role dla oslon okiennych — rolety glowne, zaciemniajace, firanki i zewnetrzne."
+			},
+			"sensor": {
+				"title": "Czujniki",
+				"description": "Grupuj kanaly czujnikow wedlug przeznaczenia — srodowisko, bezpieczenstwo, ochrona, jakosc powietrza i energia."
+			},
+			"media": {
+				"title": "Media",
+				"description": "Zdefiniuj aktywnosci multimedialne, takie jak ogladanie, sluchanie i granie z routingiem punktow koncowych urzadzen."
+			}
+		},
 		"lightingRoles": {
 			"title": "Role oswietlenia",
 			"lightsAssigned": "Przypisane oswietlenie",

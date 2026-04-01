@@ -450,6 +450,30 @@
 	},
 	"detail": {
 		"title": "Space detail",
+		"domains": {
+			"title": "Domény",
+			"notConfigured": "Nenakonfigurované",
+			"lighting": {
+				"title": "Osvetlenie",
+				"description": "Nastavte, ako sa v tomto priestore používajú svetlá — hlavné, pracovné, ambientné, akcentové a nočné role osvetlenia."
+			},
+			"climate": {
+				"title": "Klíma",
+				"description": "Priraďte role vykurovania, chladenia a senzorov ku klimatickým zariadeniam v tomto priestore."
+			},
+			"covers": {
+				"title": "Žalúzie",
+				"description": "Nastavte role okenných krytín — primárne, zatemňovacie, záclonové a vonkajšie žalúzie."
+			},
+			"sensor": {
+				"title": "Senzory",
+				"description": "Zoskupte senzorové kanály podľa účelu — prostredie, bezpečnosť, zabezpečenie, kvalita vzduchu a energia."
+			},
+			"media": {
+				"title": "Médiá",
+				"description": "Definujte mediálne aktivity ako sledovanie, počúvanie a hranie hier so smerovaním koncových bodov zariadení."
+			}
+		},
 		"lightingRoles": {
 			"title": "Lighting roles",
 			"lightsAssigned": "Lights assigned",

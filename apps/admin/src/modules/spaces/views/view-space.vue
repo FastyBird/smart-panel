@@ -103,90 +103,110 @@
 		@back="onClose"
 	/>
 
-	<el-scrollbar
+	<div
 		v-else-if="isSpaceRoute || isLGDevice"
 		v-loading="isLoading || space === null"
 		:element-loading-text="t('spacesModule.texts.loadingSpace')"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
+		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 mb-2"
+		:class="[ns.b()]"
 	>
 		<template v-if="space">
 			<space-detail :space="space" />
 
-			<!-- Tabs for Devices and Displays -->
-			<el-card
-				shadow="never"
-				class="flex-1 min-h-0 flex flex-col mt-4"
-				body-class="p-0! flex-1 min-h-0 flex flex-col"
+			<!-- Tabs -->
+			<el-tabs
+				v-model="activeTab"
+				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 			>
-				<el-tabs
-					v-model="activeTab"
-					:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
+				<el-tab-pane
+					name="domains"
+					class="h-full overflow-hidden"
 				>
-					<el-tab-pane
-						name="devices"
-						class="h-full overflow-hidden"
-					>
-						<template #label>
-							<div class="flex items-center gap-2 px-4">
-								<icon icon="mdi:devices" />
-								{{ t('spacesModule.detail.devices.title') }}
-							</div>
-						</template>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:view-dashboard" />
+							{{ t('spacesModule.detail.domains.title') }}
+						</div>
+					</template>
 
-						<el-scrollbar class="h-full">
+					<el-scrollbar class="h-full">
+						<space-domains-section
+							ref="domainsSectionRef"
+							:space="space"
+						/>
+					</el-scrollbar>
+				</el-tab-pane>
+
+				<el-tab-pane
+					name="devices"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:devices" />
+							{{ t('spacesModule.detail.devices.title') }}
+						</div>
+					</template>
+
+					<el-scrollbar class="h-full">
+						<el-card shadow="never" body-class="p-0!">
 							<space-devices-section
 								ref="devicesSectionRef"
 								:space-id="space.id"
 								:space-type="space.type"
 								@open-add-dialog="onAddDevice"
 							/>
-						</el-scrollbar>
-					</el-tab-pane>
+						</el-card>
+					</el-scrollbar>
+				</el-tab-pane>
 
-					<el-tab-pane
-						name="scenes"
-						class="h-full overflow-hidden"
-					>
-						<template #label>
-							<div class="flex items-center gap-2 px-4">
-								<icon icon="mdi:play-box-multiple" />
-								{{ t('spacesModule.detail.scenes.title') }}
-							</div>
-						</template>
+				<el-tab-pane
+					name="scenes"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:play-box-multiple" />
+							{{ t('spacesModule.detail.scenes.title') }}
+						</div>
+					</template>
 
-						<el-scrollbar class="h-full">
+					<el-scrollbar class="h-full">
+						<el-card shadow="never" body-class="p-0!">
 							<space-scenes-section
 								ref="scenesSectionRef"
 								:space-id="space.id"
 								@open-add-dialog="onAddScene"
 							/>
-						</el-scrollbar>
-					</el-tab-pane>
+						</el-card>
+					</el-scrollbar>
+				</el-tab-pane>
 
-					<el-tab-pane
-						v-if="space?.type === SpaceType.ROOM"
-						name="displays"
-						class="h-full overflow-hidden"
-					>
-						<template #label>
-							<div class="flex items-center gap-2 px-4">
-								<icon icon="mdi:monitor" />
-								{{ t('spacesModule.detail.displays.title') }}
-							</div>
-						</template>
+				<el-tab-pane
+					v-if="space?.type === SpaceType.ROOM"
+					name="displays"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:monitor" />
+							{{ t('spacesModule.detail.displays.title') }}
+						</div>
+					</template>
 
-						<el-scrollbar class="h-full">
+					<el-scrollbar class="h-full">
+						<el-card shadow="never" body-class="p-0!">
 							<space-displays-section
 								ref="displaysSectionRef"
 								:space-id="space.id"
 								@open-add-dialog="onAddDisplay"
 							/>
-						</el-scrollbar>
-					</el-tab-pane>
-				</el-tabs>
-			</el-card>
+						</el-card>
+					</el-scrollbar>
+				</el-tab-pane>
+			</el-tabs>
 		</template>
-	</el-scrollbar>
+	</div>
 
 	<router-view
 		v-else
@@ -315,6 +335,7 @@ import {
 	SpaceDetail,
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
+	SpaceDomainsSection,
 	SpaceScenesSection,
 } from '../components/components';
 import { useSpace } from '../composables';
@@ -361,7 +382,7 @@ const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 // Tabs
-const activeTab = ref<string>('devices');
+const activeTab = ref<string>('domains');
 
 // Dialog visibility
 const showAddDeviceDialog = ref<boolean>(false);
@@ -369,6 +390,7 @@ const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 
 // Component refs
+const domainsSectionRef = ref<InstanceType<typeof SpaceDomainsSection> | null>(null);
 const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
 const scenesSectionRef = ref<InstanceType<typeof SpaceScenesSection> | null>(null);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
@@ -567,3 +589,7 @@ watch(
 	}
 );
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'view-space.scss';
+</style>

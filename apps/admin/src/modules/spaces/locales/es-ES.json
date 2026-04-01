@@ -450,6 +450,30 @@
 	},
 	"detail": {
 		"title": "Detalle del espacio",
+		"domains": {
+			"title": "Dominios",
+			"notConfigured": "No configurado",
+			"lighting": {
+				"title": "Iluminación",
+				"description": "Configure cómo se usan las luces en este espacio — roles de iluminación principal, de trabajo, ambiental, de acento y nocturna."
+			},
+			"climate": {
+				"title": "Clima",
+				"description": "Asigne roles de calefacción, refrigeración y sensores a los dispositivos climáticos en este espacio."
+			},
+			"covers": {
+				"title": "Cubiertas",
+				"description": "Establezca roles para las cubiertas de ventanas — persianas primarias, de oscurecimiento, visillos y exteriores."
+			},
+			"sensor": {
+				"title": "Sensores",
+				"description": "Agrupe los canales de sensores por propósito — entorno, seguridad, protección, calidad del aire y energía."
+			},
+			"media": {
+				"title": "Medios",
+				"description": "Defina actividades multimedia como ver, escuchar y jugar con enrutamiento de puntos finales de dispositivos."
+			}
+		},
 		"lightingRoles": {
 			"title": "Roles de iluminación",
 			"lightsAssigned": "Luces asignadas",

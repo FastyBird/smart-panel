@@ -450,6 +450,30 @@
 	},
 	"detail": {
 		"title": "Bereichsdetails",
+		"domains": {
+			"title": "Domänen",
+			"notConfigured": "Nicht konfiguriert",
+			"lighting": {
+				"title": "Beleuchtung",
+				"description": "Konfigurieren Sie, wie Lichter in diesem Bereich verwendet werden — Haupt-, Arbeits-, Ambiente-, Akzent- und Nachtbeleuchtungsrollen."
+			},
+			"climate": {
+				"title": "Klima",
+				"description": "Weisen Sie Heiz-, Kühl- und Sensorrollen den Klimageräten in diesem Bereich zu."
+			},
+			"covers": {
+				"title": "Abdeckungen",
+				"description": "Legen Sie Rollen für Fensterabdeckungen fest — Primär-, Verdunkelungs-, Gardinen- und Außenjalousien."
+			},
+			"sensor": {
+				"title": "Sensoren",
+				"description": "Gruppieren Sie Sensorkanäle nach Zweck — Umgebung, Sicherheit, Schutz, Luftqualität und Energie."
+			},
+			"media": {
+				"title": "Medien",
+				"description": "Definieren Sie Medienaktivitäten wie Fernsehen, Musik hören und Spielen mit Geräte-Endpunkt-Routing."
+			}
+		},
 		"lightingRoles": {
 			"title": "Beleuchtungsrollen",
 			"lightsAssigned": "Lichter zugewiesen",
