@@ -1,4 +1,4 @@
-import { HttpError, InfluxDB, Point, QueryApi, WriteApi } from '@influxdata/influxdb-client';
+import { HttpError, InfluxDB, Point, QueryApi, WriteApi, flux } from '@influxdata/influxdb-client';
 
 import { createExtensionLogger } from '../../common/logger';
 import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
@@ -21,6 +21,19 @@ export interface InfluxV2Config {
 	token?: string;
 	org: string;
 	bucket: string;
+}
+
+/**
+ * Coerce a field value to boolean safely.
+ * Handles string values like "false", "0", "no" correctly (unlike Boolean()).
+ */
+function toBoolean(value: string | number | boolean): boolean {
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'number') return value !== 0;
+
+	const lower = value.toLowerCase().trim();
+
+	return lower !== '' && lower !== '0' && lower !== 'false' && lower !== 'no';
 }
 
 /**
@@ -49,7 +62,7 @@ function toInfluxPoint(point: StoragePoint, schemas: Map<string, StorageMeasurem
 					p.floatField(key, Number(value));
 					break;
 				case StorageFieldType.BOOLEAN:
-					p.booleanField(key, Boolean(value));
+					p.booleanField(key, toBoolean(value));
 					break;
 				case StorageFieldType.STRING:
 					p.stringField(key, String(value));
@@ -120,7 +133,9 @@ export class InfluxV2StoragePlugin implements StoragePlugin {
 
 		try {
 			// Verify connectivity by running a simple Flux query
-			await this.getQueryApi().collectRows(`buckets() |> filter(fn: (r) => r.name == "${this.config.bucket}")`);
+			const bucket = this.config.bucket;
+
+			await this.getQueryApi().collectRows(flux`buckets() |> filter(fn: (r) => r.name == ${bucket})`);
 			this.connected = true;
 			this.logger.log('Successfully connected to InfluxDB v2.');
 		} catch (error) {
@@ -165,11 +180,9 @@ export class InfluxV2StoragePlugin implements StoragePlugin {
 		await api.flush();
 	}
 
-	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+	async query<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
 		try {
-			const queryApi = options?.database ? this.getClient().getQueryApi(options.database) : this.getQueryApi();
-
-			const rows = await queryApi.collectRows<T>(query);
+			const rows = await this.getQueryApi().collectRows<T>(query);
 
 			return rows;
 		} catch (error) {
@@ -183,11 +196,9 @@ export class InfluxV2StoragePlugin implements StoragePlugin {
 		}
 	}
 
-	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
+	async queryRaw<T>(query: string, _options?: StorageQueryOptions): Promise<T> {
 		try {
-			const queryApi = options?.database ? this.getClient().getQueryApi(options.database) : this.getQueryApi();
-
-			const result = await queryApi.collectRows(query);
+			const result = await this.getQueryApi().collectRows(query);
 
 			return result as T;
 		} catch (error) {
@@ -206,28 +217,36 @@ export class InfluxV2StoragePlugin implements StoragePlugin {
 	}
 
 	async dropMeasurement(measurement: string): Promise<void> {
-		const query = `
-			import "influxdata/influxdb"
-			influxdb.deleteFrom(
-				bucket: "${this.config.bucket}",
-				start: 1970-01-01T00:00:00Z,
-				stop: now(),
-				predicate: (r) => r._measurement == "${measurement}"
-			)
-		`;
+		const url = `${this.config.url}/api/v2/delete?org=${encodeURIComponent(this.config.org)}&bucket=${encodeURIComponent(this.config.bucket)}`;
 
 		try {
-			await this.getQueryApi().collectRows(query);
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(this.config.token ? { Authorization: `Token ${this.config.token}` } : {}),
+				},
+				body: JSON.stringify({
+					start: '1970-01-01T00:00:00Z',
+					stop: new Date().toISOString(),
+					predicate: `_measurement="${measurement.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+				}),
+			});
+
+			if (!response.ok) {
+				const body = await response.text();
+
+				this.logger.warn(`Failed to drop measurement '${measurement}': ${response.status} ${body}`);
+			}
 		} catch (error) {
 			this.logger.warn(`Failed to drop measurement '${measurement}'`, (error as Error).message);
 		}
 	}
 
 	async getMeasurements(): Promise<string[]> {
-		const query = `
-			import "influxdata/influxdb/schema"
-			schema.measurements(bucket: "${this.config.bucket}")
-		`;
+		const bucket = this.config.bucket;
+		const query = flux`import "influxdata/influxdb/schema"
+schema.measurements(bucket: ${bucket})`;
 
 		const rows = await this.getQueryApi().collectRows<{ _value: string }>(query);
 
