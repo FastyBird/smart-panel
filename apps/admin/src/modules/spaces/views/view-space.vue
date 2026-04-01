@@ -103,11 +103,11 @@
 		@back="onClose"
 	/>
 
-	<el-scrollbar
+	<div
 		v-else-if="isSpaceRoute || isLGDevice"
 		v-loading="isLoading || space === null"
 		:element-loading-text="t('spacesModule.texts.loadingSpace')"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
+		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 mb-2"
 		:class="[ns.b()]"
 	>
 		<template v-if="space">
@@ -206,7 +206,7 @@
 				</el-tab-pane>
 			</el-tabs>
 		</template>
-	</el-scrollbar>
+	</div>
 
 	<router-view
 		v-else
