@@ -3,7 +3,7 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { PluginConfigModel } from '../../../config/models/config.model';
+import { PluginConfigModel } from '../../modules/config/models/config.model';
 
 import {
 	INFLUXDB_V2_DEFAULT_BUCKET,

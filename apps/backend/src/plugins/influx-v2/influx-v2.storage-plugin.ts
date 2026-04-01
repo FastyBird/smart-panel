@@ -1,8 +1,13 @@
 import { HttpError, InfluxDB, Point, QueryApi, WriteApi } from '@influxdata/influxdb-client';
 
-import { createExtensionLogger } from '../../../../common/logger';
-import { StoragePlugin } from '../../interfaces/storage-plugin.interface';
-import { StorageFieldType, StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../storage.types';
+import { createExtensionLogger } from '../../common/logger';
+import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
+import {
+	StorageFieldType,
+	StorageMeasurementSchema,
+	StoragePoint,
+	StorageQueryOptions,
+} from '../../modules/storage/storage.types';
 
 import {
 	INFLUXDB_V2_DEFAULT_BUCKET,
@@ -76,10 +81,10 @@ function toInfluxPoint(point: StoragePoint, schemas: Map<string, StorageMeasurem
  * storage using the Flux query language, buckets, organizations,
  * and token-based authentication.
  */
-export class InfluxV2Plugin implements StoragePlugin {
+export class InfluxV2StoragePlugin implements StoragePlugin {
 	readonly name = INFLUX_V2_PLUGIN_NAME;
 
-	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2Plugin');
+	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2StoragePlugin');
 
 	private client: InfluxDB | null = null;
 	private writeApi: WriteApi | null = null;

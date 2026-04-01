@@ -91,6 +91,7 @@ import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttPlugin } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.plugin';
+import { InfluxV2Plugin } from './plugins/influx-v2/influx-v2.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
@@ -406,6 +407,7 @@ export class AppModule {
 				BuddyWhatsappPlugin,
 				BuddyDiscordPlugin,
 				ScenesLocalPlugin,
+				InfluxV2Plugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],
