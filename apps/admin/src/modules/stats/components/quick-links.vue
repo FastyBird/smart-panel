@@ -7,39 +7,54 @@
 			{{ t('statsModule.headings.quickLinks') }}
 		</template>
 
-		<div class="flex flex-row items-center justify-between">
+		<div class="flex flex-row flex-wrap gap-2">
 			<el-button
-				class="px-4!"
+				class="flex-1 min-w-[120px] ml-0!"
 				@click="onOpenSpaces"
 			>
+				<template #icon>
+					<icon icon="mdi:home-group" />
+				</template>
 				{{ t('statsModule.buttons.spaces.title') }}
 			</el-button>
 
 			<el-button
-				class="px-4!"
+				class="flex-1 min-w-[120px] ml-0!"
 				@click="onOpenPages"
 			>
+				<template #icon>
+					<icon icon="mdi:view-dashboard" />
+				</template>
 				{{ t('statsModule.buttons.pages.title') }}
 			</el-button>
 
 			<el-button
-				class="px-4!"
+				class="flex-1 min-w-[120px] ml-0!"
 				@click="onOpenDevices"
 			>
+				<template #icon>
+					<icon icon="mdi:devices" />
+				</template>
 				{{ t('statsModule.buttons.devices.title') }}
 			</el-button>
 
 			<el-button
-				class="px-4!"
+				class="flex-1 min-w-[120px] ml-0!"
 				@click="onOpenConfig"
 			>
+				<template #icon>
+					<icon icon="mdi:cog" />
+				</template>
 				{{ t('statsModule.buttons.config.title') }}
 			</el-button>
 
 			<el-button
-				class="px-4!"
+				class="flex-1 min-w-[120px] ml-0!"
 				@click="onOpenDocs"
 			>
+				<template #icon>
+					<icon icon="mdi:book-open-page-variant" />
+				</template>
 				{{ t('statsModule.buttons.docs.title') }}
 			</el-button>
 		</div>
@@ -51,6 +66,8 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { ElButton, ElCard } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { RouteNames as SpacesModuleRouteNames } from '../../spaces';
 import { RouteNames as ConfigModuleRouteNames } from '../../config';
