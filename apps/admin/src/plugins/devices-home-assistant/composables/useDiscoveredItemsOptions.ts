@@ -52,9 +52,6 @@ export const useDiscoveredItemsOptions = (): IUseDiscoveredItemsOptions => {
 		});
 	};
 
-	// Fetch both devices and helpers on init
-	refreshItems();
-
 	return {
 		itemsOptions,
 		areLoading,
