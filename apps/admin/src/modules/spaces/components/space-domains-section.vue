@@ -412,7 +412,7 @@ const loadSensorRoles = async (): Promise<void> => {
 // ── Media ───────────────────────────────────────────────────
 
 const spaceIdRef = computed(() => props.space?.id);
-const { endpoints, fetchEndpoints, fetchBindings, findBindingByActivity } = useSpaceMedia(spaceIdRef);
+const { fetchEndpoints, fetchBindings, findBindingByActivity } = useSpaceMedia(spaceIdRef);
 
 const mediaLoading = ref(false);
 const mediaTags = ref<IDomainTag[]>([]);
