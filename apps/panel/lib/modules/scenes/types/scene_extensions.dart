@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:flutter/material.dart';
@@ -45,18 +46,18 @@ IconData getSceneCategoryIcon(ScenesModuleDataSceneCategory category) {
 
 /// Extension methods for ScenesModuleDataScene (API model)
 extension SceneExtensions on ScenesModuleDataScene {
-  /// Get the icon data for this scene based on category
-  IconData get iconData => getSceneCategoryIcon(category);
+  /// Get the icon: custom icon if set, otherwise category icon
+  IconData get iconData => resolveIconNullable(icon) ?? getSceneCategoryIcon(category);
 }
 
 /// Extension methods for SceneModel
 extension SceneModelExtensions on SceneModel {
-  /// Get the icon data for this scene based on category
-  IconData get iconData => getSceneCategoryIcon(category);
+  /// Get the icon: custom icon if set, otherwise category icon
+  IconData get iconData => resolveIconNullable(icon) ?? getSceneCategoryIcon(category);
 }
 
 /// Extension methods for SceneView
 extension SceneViewExtensions on SceneView {
-  /// Get the icon data for this scene based on category
-  IconData get iconData => getSceneCategoryIcon(category);
+  /// Get the icon: custom icon if set, otherwise category icon
+  IconData get iconData => resolveIconNullable(icon) ?? getSceneCategoryIcon(category);
 }

@@ -117,6 +117,8 @@
 			"categoryRequired": "Kategoria jest wymagana",
 			"description": "Opis",
 			"descriptionPlaceholder": "Opcjonalny opis tej sceny",
+			"icon": "Ikona",
+			"iconPlaceholder": "Wybierz ikonę (opcjonalnie)",
 			"actionsSection": "Akcje sceny",
 			"noActions": "Nie zdefiniowano akcji. Dodaj akcje, aby sterować urządzeniami po uruchomieniu tej sceny.",
 			"actionsRequired": "Wymagana jest co najmniej jedna akcja",

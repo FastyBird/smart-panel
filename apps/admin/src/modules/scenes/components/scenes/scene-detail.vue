@@ -213,6 +213,9 @@ const { devices } = useDevices();
 const actions = computed(() => actionsStore.findForScene(props.scene.id));
 
 const categoryIcon = computed<string>(() => {
+	if (props.scene.icon) {
+		return props.scene.icon;
+	}
 	return SCENE_CATEGORY_ICONS[props.scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
 });
 

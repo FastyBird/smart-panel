@@ -104,6 +104,14 @@
 							:placeholder="t('scenes.form.descriptionPlaceholder')"
 						/>
 					</el-form-item>
+
+					<!-- Icon -->
+					<el-form-item :label="t('scenes.form.icon')" prop="icon">
+						<icon-picker
+							v-model="iconPickerValue"
+							:placeholder="t('scenes.form.iconPlaceholder')"
+						/>
+					</el-form-item>
 				</div>
 			</el-collapse-item>
 
@@ -289,7 +297,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { v4 as uuid } from 'uuid';
 
-import { useFlashMessage } from '../../../../common';
+import { IconPicker, useFlashMessage } from '../../../../common';
 import { useSceneAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../scenes.constants';
 import type { ISceneActionAddForm, ISceneAddForm } from '../../schemas/scenes.types';
@@ -362,6 +370,13 @@ const currentActionFormComponent = computed(() => {
 const currentEditActionFormComponent = computed(() => {
 	if (!editingAction.value) return null;
 	return getActionEditFormComponent(editingAction.value.type);
+});
+
+const iconPickerValue = computed({
+	get: () => model.icon?.replace('mdi:', '') ?? null,
+	set: (val: string | null) => {
+		model.icon = val ? `mdi:${val}` : null;
+	},
 });
 
 const getSelectedSpaceIcon = (): string => {

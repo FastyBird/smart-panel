@@ -10,7 +10,7 @@
 			<template #default="{ row }">
 				<div class="flex items-center gap-2">
 					<el-avatar :size="32">
-						<icon :icon="getSceneCategoryIcon(row.category)" class="w[20px] h[20px]" />
+						<icon :icon="getSceneIcon(row)" class="w[20px] h[20px]" />
 					</el-avatar>
 					<div>
 						<div class="font-medium">{{ row.name }}</div>
@@ -218,8 +218,11 @@ const selectedScene = ref<IScene | null>(null);
 const selectedTargetSpace = ref<string | null>(null);
 const isReassigning = ref(false);
 
-const getSceneCategoryIcon = (category: SceneCategory): string => {
-	return SCENE_CATEGORY_ICONS[category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
+const getSceneIcon = (scene: IScene): string => {
+	if (scene.icon) {
+		return scene.icon;
+	}
+	return SCENE_CATEGORY_ICONS[scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
 };
 
 const openAddDialog = (): void => {

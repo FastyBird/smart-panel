@@ -64,6 +64,18 @@ export class UpdateSceneDto {
 	description?: string | null;
 
 	@ApiPropertyOptional({
+		description: 'Icon identifier for the scene',
+		type: 'string',
+		nullable: true,
+		example: 'mdi:sofa',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"icon","reason":"Icon must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	icon?: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Display order for UI',
 		type: 'integer',
 		minimum: 0,

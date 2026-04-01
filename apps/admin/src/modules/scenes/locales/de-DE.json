@@ -117,6 +117,8 @@
 			"categoryRequired": "Kategorie ist erforderlich",
 			"description": "Beschreibung",
 			"descriptionPlaceholder": "Optionale Beschreibung für diese Szene",
+			"icon": "Symbol",
+			"iconPlaceholder": "Symbol auswählen (optional)",
 			"actionsSection": "Szenenaktionen",
 			"noActions": "Keine Aktionen definiert. Fügen Sie Aktionen hinzu, um Geräte zu steuern, wenn diese Szene ausgelöst wird.",
 			"actionsRequired": "Mindestens eine Aktion ist erforderlich",

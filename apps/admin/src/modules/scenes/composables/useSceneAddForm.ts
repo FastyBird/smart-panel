@@ -93,6 +93,7 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		category: SceneCategory.GENERIC,
 		name: '',
 		description: null,
+		icon: null,
 		enabled: true,
 		primarySpaceId: null,
 		actions: [],

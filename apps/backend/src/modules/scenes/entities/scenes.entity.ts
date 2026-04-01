@@ -74,6 +74,18 @@ export class SceneEntity extends BaseEntity {
 	@Column({ nullable: true })
 	description: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the scene',
+		type: 'string',
+		nullable: true,
+		example: 'mdi:sofa',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true, default: null })
+	icon: string | null;
+
 	@ApiProperty({
 		description: 'Display order for UI',
 		type: 'integer',

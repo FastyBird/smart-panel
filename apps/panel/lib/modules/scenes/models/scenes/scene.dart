@@ -6,6 +6,7 @@ class SceneModel extends Model {
   final ScenesModuleDataSceneCategory _category;
   final String _name;
   final String? _description;
+  final String? _icon;
   final String? _primarySpaceId;
   final int _order;
   final bool _enabled;
@@ -19,6 +20,7 @@ class SceneModel extends Model {
     required ScenesModuleDataSceneCategory category,
     required String name,
     String? description,
+    String? icon,
     String? primarySpaceId,
     required int order,
     required bool enabled,
@@ -31,6 +33,7 @@ class SceneModel extends Model {
   })  : _category = category,
         _name = name,
         _description = description,
+        _icon = icon,
         _primarySpaceId =
             primarySpaceId != null ? UuidUtils.validateUuid(primarySpaceId) : null,
         _order = order,
@@ -45,6 +48,8 @@ class SceneModel extends Model {
   String get name => _name;
 
   String? get description => _description;
+
+  String? get icon => _icon;
 
   String? get primarySpaceId => _primarySpaceId;
 
@@ -78,6 +83,7 @@ class SceneModel extends Model {
       category: ScenesModuleDataSceneCategory.fromJson(json['category']),
       name: json['name'],
       description: json['description'],
+      icon: json['icon'],
       primarySpaceId: json['primary_space_id'],
       order: json['order'] ?? 0,
       enabled: json['enabled'] ?? true,
