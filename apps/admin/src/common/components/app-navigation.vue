@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -164,9 +164,17 @@ const ns = useNamespace('app-navigation');
 
 const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
-const { enabled: isModuleEnabled, loaded: modulesLoaded } = useConfigModules();
+const { enabled: isModuleEnabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 
 const accountManager = injectAccountManager();
+
+const configFetchFailed = ref(false);
+
+onBeforeMount(() => {
+	fetchConfigModules().catch(() => {
+		configFetchFailed.value = true;
+	});
+});
 
 const visibleMenuItems = computed(() => {
 	return Object.fromEntries(
@@ -175,8 +183,9 @@ const visibleMenuItems = computed(() => {
 
 			if (!moduleType) return true;
 
-			// Show all module routes until config is loaded to avoid hiding valid items
-			if (!modulesLoaded.value) return true;
+			// While loading, hide module items to avoid showing disabled modules
+			// If fetch failed, show all as degraded fallback
+			if (!modulesLoaded.value) return configFetchFailed.value;
 
 			return isModuleEnabled(moduleType);
 		})
