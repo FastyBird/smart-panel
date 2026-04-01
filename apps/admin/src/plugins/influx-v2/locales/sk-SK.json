@@ -1,0 +1,44 @@
+{
+	"headings": {
+		"connection": "Pripojenie InfluxDB v2",
+		"authentication": "Autentifikácia"
+	},
+	"messages": {
+		"config": {
+			"edited": "Konfigurácia InfluxDB v2 bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu InfluxDB v2"
+		}
+	},
+	"texts": {
+		"about": "Nakonfigurujte pripojenie InfluxDB v2 na ukladanie časových radov."
+	},
+	"fields": {
+		"config": {
+			"url": {
+				"title": "URL servera",
+				"placeholder": "http://127.0.0.1:8086",
+				"validation": {
+					"required": "URL servera je povinná"
+				}
+			},
+			"org": {
+				"title": "Organizácia",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Organizácia je povinná"
+				}
+			},
+			"bucket": {
+				"title": "Bucket",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Názov bucketu je povinný"
+				}
+			},
+			"token": {
+				"title": "API token",
+				"placeholder": "Ponechajte prázdne ak nie je potrebné"
+			}
+		}
+	}
+}

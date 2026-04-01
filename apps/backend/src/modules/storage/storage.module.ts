@@ -10,6 +10,7 @@ import { SwaggerModule } from '../swagger/swagger.module';
 import { UpdateStorageConfigDto } from './dto/update-config.dto';
 import { StorageConfigModel } from './models/config.model';
 import { InfluxV1PluginModule } from './plugins/influx-v1/influx-v1.module';
+import { InfluxV2PluginModule } from './plugins/influx-v2/influx-v2.module';
 import { MemoryPluginModule } from './plugins/memory/memory.module';
 import { StorageService } from './services/storage.service';
 import { STORAGE_MODULE_NAME } from './storage.constants';
@@ -21,7 +22,7 @@ import { STORAGE_MODULE_SWAGGER_EXTRA_MODELS } from './storage.openapi';
 	description: 'Endpoints related to time-series storage configuration.',
 })
 @Module({
-	imports: [NestConfigModule, SwaggerModule, InfluxV1PluginModule, MemoryPluginModule],
+	imports: [NestConfigModule, SwaggerModule, InfluxV1PluginModule, InfluxV2PluginModule, MemoryPluginModule],
 	providers: [StorageService],
 	exports: [StorageService],
 })
