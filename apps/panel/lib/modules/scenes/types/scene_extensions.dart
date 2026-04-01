@@ -46,8 +46,8 @@ IconData getSceneCategoryIcon(ScenesModuleDataSceneCategory category) {
 
 /// Extension methods for ScenesModuleDataScene (API model)
 extension SceneExtensions on ScenesModuleDataScene {
-  /// Get the icon data for this scene based on category
-  IconData get iconData => getSceneCategoryIcon(category);
+  /// Get the icon: custom icon if set, otherwise category icon
+  IconData get iconData => resolveIconNullable(icon) ?? getSceneCategoryIcon(category);
 }
 
 /// Extension methods for SceneModel
