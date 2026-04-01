@@ -130,7 +130,7 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<el-card shadow="never">
+						<el-card shadow="never" body-class="p-0!">
 							<space-devices-section
 								ref="devicesSectionRef"
 								:space-id="space.id"
@@ -153,7 +153,7 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<el-card shadow="never">
+						<el-card shadow="never" body-class="p-0!">
 							<space-scenes-section
 								ref="scenesSectionRef"
 								:space-id="space.id"
@@ -176,7 +176,7 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<el-card shadow="never">
+						<el-card shadow="never" body-class="p-0!">
 							<space-displays-section
 								ref="displaysSectionRef"
 								:space-id="space.id"
