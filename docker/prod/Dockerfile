@@ -98,6 +98,10 @@ COPY --from=admin-builder /build/apps/admin/dist/ ./static/
 # Copy seed/config data
 COPY var/ /app/var/
 
+# Copy entrypoint script (handles both standalone and HA add-on modes)
+COPY docker/prod/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create data directories
 RUN mkdir -p /data/db /data/config
 
@@ -120,5 +124,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the server (migrations run automatically via FB_DB_MIGRATIONS_RUN=true)
-CMD ["node", "dist/main.js"]
+# Start via entrypoint wrapper (reads HA options.json if present, then starts node)
+CMD ["/app/entrypoint.sh"]
