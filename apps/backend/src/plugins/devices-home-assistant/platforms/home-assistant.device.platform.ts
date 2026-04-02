@@ -174,7 +174,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 
 	private get apiKey(): string {
 		if (this.supervisorService.isInSupervisorMode()) {
-			return this.supervisorService.getSupervisorToken()!;
+			return this.supervisorService.getSupervisorToken();
 		}
 
 		return this.config.apiKey;

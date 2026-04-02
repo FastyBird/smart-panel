@@ -52,7 +52,15 @@ describe('HomeAssistantWsService', () => {
 				HomeAssistantWsService,
 				{ provide: ConfigService, useValue: mockConfigService },
 				{ provide: HomeAssistantHttpService, useValue: mockHttpService },
-				{ provide: HaSupervisorService, useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' } },
+				{
+					provide: HaSupervisorService,
+					useValue: {
+						isInSupervisorMode: () => false,
+						getSupervisorToken: () => null,
+						getSupervisorApiUrl: () => '',
+						getSupervisorWsUrl: () => '',
+					},
+				},
 			],
 		}).compile();
 

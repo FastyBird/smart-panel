@@ -370,7 +370,6 @@ export class DevicesService {
 		return device;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private buildDeviceQuery(repository: Repository<any>) {
 		const qb = repository
 			.createQueryBuilder('device')

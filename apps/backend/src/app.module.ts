@@ -78,8 +78,6 @@ import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp/buddy-whatsapp.plu
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
-import { InfluxV1Plugin } from './plugins/influx-v1/influx-v1.plugin';
-import { MemoryStoragePlugin } from './plugins/memory-storage/memory-storage.plugin';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
 import { DEVICES_RETERMINAL_PLUGIN_PREFIX } from './plugins/devices-reterminal/devices-reterminal.constants';
 import { DevicesReTerminalPlugin } from './plugins/devices-reterminal/devices-reterminal.plugin';
@@ -93,7 +91,9 @@ import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttPlugin } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.plugin';
+import { InfluxV1Plugin } from './plugins/influx-v1/influx-v1.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
+import { MemoryStoragePlugin } from './plugins/memory-storage/memory-storage.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';

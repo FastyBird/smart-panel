@@ -51,7 +51,12 @@ describe('HomeAssistantDevicePlatform', () => {
 				},
 				{
 					provide: HaSupervisorService,
-					useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' },
+					useValue: {
+						isInSupervisorMode: () => false,
+						getSupervisorToken: () => null,
+						getSupervisorApiUrl: () => '',
+						getSupervisorWsUrl: () => '',
+					},
 				},
 			],
 		}).compile();
