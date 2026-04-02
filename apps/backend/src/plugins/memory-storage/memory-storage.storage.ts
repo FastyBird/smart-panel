@@ -1,10 +1,10 @@
-import { createExtensionLogger } from '../../../../common/logger';
-import { StoragePlugin } from '../../interfaces/storage-plugin.interface';
-import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../storage.types';
+import { createExtensionLogger } from '../../common/logger';
+import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
+import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../modules/storage/storage.types';
 
 import { InMemoryTimeSeriesStore } from './in-memory-timeseries.store';
 import { InfluxQLParser } from './influxql-parser';
-import { MEMORY_PLUGIN_NAME } from './memory.constants';
+import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
 
 /**
  * In-memory storage plugin.
@@ -15,10 +15,10 @@ import { MEMORY_PLUGIN_NAME } from './memory.constants';
  *
  * Data does NOT persist across process restarts.
  */
-export class MemoryStoragePlugin implements StoragePlugin {
+export class MemoryStorage implements StoragePlugin {
 	readonly name = MEMORY_PLUGIN_NAME;
 
-	private readonly logger = createExtensionLogger(MEMORY_PLUGIN_NAME, 'MemoryStoragePlugin');
+	private readonly logger = createExtensionLogger(MEMORY_PLUGIN_NAME, 'MemoryStorage');
 
 	private store: InMemoryTimeSeriesStore | null = null;
 	private parser: InfluxQLParser | null = null;

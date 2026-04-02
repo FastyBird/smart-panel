@@ -3,9 +3,9 @@ import { IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { UpdatePluginConfigDto } from '../../../config/dto/config.dto';
+import { UpdatePluginConfigDto } from '../../modules/config/dto/config.dto';
 
-import { MEMORY_PLUGIN_NAME } from './memory.constants';
+import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
 
 @ApiSchema({ name: 'StorageMemoryPluginUpdateConfig' })
 export class UpdateMemoryConfigDto extends UpdatePluginConfigDto {

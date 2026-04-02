@@ -4,9 +4,7 @@ import { IsBoolean, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { INFLUX_V1_PLUGIN_NAME } from '../plugins/influx-v1/influx-v1.constants';
-import { MEMORY_PLUGIN_NAME } from '../plugins/memory/memory.constants';
-import { STORAGE_MODULE_NAME } from '../storage.constants';
+import { STORAGE_DEFAULT_FALLBACK, STORAGE_DEFAULT_PRIMARY, STORAGE_MODULE_NAME } from '../storage.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataStorage' })
 export class StorageConfigModel extends ModuleConfigModel {
@@ -35,7 +33,7 @@ export class StorageConfigModel extends ModuleConfigModel {
 	})
 	@Expose({ name: 'primary_storage' })
 	@IsString()
-	primaryStorage: string = INFLUX_V1_PLUGIN_NAME;
+	primaryStorage: string = STORAGE_DEFAULT_PRIMARY;
 
 	@ApiProperty({
 		description: 'Fallback storage plugin (used when primary is unavailable)',
@@ -44,5 +42,5 @@ export class StorageConfigModel extends ModuleConfigModel {
 	})
 	@Expose({ name: 'fallback_storage' })
 	@IsString()
-	fallbackStorage: string = MEMORY_PLUGIN_NAME;
+	fallbackStorage: string = STORAGE_DEFAULT_FALLBACK;
 }

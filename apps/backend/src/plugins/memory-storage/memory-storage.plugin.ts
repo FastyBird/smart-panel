@@ -1,21 +1,21 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 
-import { PluginsTypeMapperService } from '../../../config/services/plugins-type-mapper.service';
-import { ExtensionsService } from '../../../extensions/services/extensions.service';
-import { SwaggerModelsRegistryService } from '../../../swagger/services/swagger-models-registry.service';
-import { StorageService } from '../../services/storage.service';
-import { StorageModule } from '../../storage.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { StorageService } from '../../modules/storage/services/storage.service';
+import { StorageModule } from '../../modules/storage/storage.module';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { MemoryConfigModel } from './memory.config.model';
-import { MEMORY_PLUGIN_NAME } from './memory.constants';
-import { MEMORY_SWAGGER_EXTRA_MODELS } from './memory.openapi';
-import { MemoryStoragePlugin } from './memory.plugin';
-import { UpdateMemoryConfigDto } from './memory.update-config.dto';
+import { MemoryConfigModel } from './memory-storage.config.model';
+import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
+import { MEMORY_SWAGGER_EXTRA_MODELS } from './memory-storage.openapi';
+import { MemoryStorage } from './memory-storage.storage';
+import { UpdateMemoryConfigDto } from './memory-storage.update-config.dto';
 
 @Module({
-	imports: [forwardRef(() => StorageModule)],
+	imports: [StorageModule],
 })
-export class MemoryPluginModule implements OnModuleInit {
+export class MemoryStoragePlugin implements OnModuleInit {
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
@@ -31,7 +31,7 @@ export class MemoryPluginModule implements OnModuleInit {
 		});
 
 		this.storageService.registerPluginFactory(MEMORY_PLUGIN_NAME, () => {
-			return new MemoryStoragePlugin();
+			return new MemoryStorage();
 		});
 
 		for (const model of MEMORY_SWAGGER_EXTRA_MODELS) {
