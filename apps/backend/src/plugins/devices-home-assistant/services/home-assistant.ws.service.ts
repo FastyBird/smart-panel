@@ -279,9 +279,16 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
-		const url = new URL(`${this.baseUrl}/api/websocket`);
+		// The Supervisor proxy exposes WS at /core/websocket, not /core/api/websocket
+		const wsPath = this.supervisorService.isInSupervisorMode() ? '/websocket' : '/api/websocket';
+		const url = new URL(`${this.baseUrl}${wsPath}`);
 
-		this.ws = new WebSocket(url);
+		// The HA Supervisor proxy requires Authorization on the HTTP upgrade request
+		const options: WebSocket.ClientOptions = this.supervisorService.isInSupervisorMode()
+			? { headers: { Authorization: `Bearer ${this.apiKey}` } }
+			: {};
+
+		this.ws = new WebSocket(url, options);
 
 		this.ws.on('open', () => {
 			this.logger.log('WebSocket connection to Home Assistant instance opened');
