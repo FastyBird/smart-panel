@@ -156,6 +156,17 @@ const updateBuildPackageJson = (newVersion) => {
 
 	pkg.version = newVersion;
 
+	// Pin workspace package dependencies to the exact version being published.
+	// Ranges like >=0.1.0-0 don't match pre-release versions of other tuples
+	// (e.g. 0.9.0-alpha.0), so npm would skip them during install.
+	if (pkg.dependencies) {
+		for (const depName of Object.keys(pkg.dependencies)) {
+			if (depName.startsWith("@fastybird/smart-panel")) {
+				pkg.dependencies[depName] = newVersion;
+			}
+		}
+	}
+
 	fs.writeFileSync(BUILD_PKG_PATH, JSON.stringify(pkg, null, 2));
 
 	console.log(`✅ Updated build package.json`);
