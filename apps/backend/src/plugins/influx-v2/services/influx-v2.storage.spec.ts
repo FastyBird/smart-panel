@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -95,9 +95,7 @@ describe('InfluxV2Storage', () => {
 
 			mockFlush.mockRejectedValue(flushError);
 
-			const points: StoragePoint[] = [
-				{ measurement: 'temperature', fields: { value: 23.5 } },
-			];
+			const points: StoragePoint[] = [{ measurement: 'temperature', fields: { value: 23.5 } }];
 
 			await expect(storage.writePoints(points)).rejects.toThrow('network timeout');
 		});
