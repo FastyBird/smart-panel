@@ -6,11 +6,11 @@ import { StorageService } from '../../modules/storage/services/storage.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { MemoryConfigModel } from './memory-storage.config.model';
+import { UpdateMemoryConfigDto } from './dto/update-config.dto';
 import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
 import { MEMORY_SWAGGER_EXTRA_MODELS } from './memory-storage.openapi';
-import { MemoryStorage } from './memory-storage.storage';
-import { UpdateMemoryConfigDto } from './memory-storage.update-config.dto';
+import { MemoryConfigModel } from './models/config.model';
+import { MemoryStorage } from './services/memory-storage.storage';
 
 @Module({
 	imports: [StorageModule],

@@ -1,10 +1,10 @@
-import { createExtensionLogger } from '../../common/logger';
-import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
-import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../modules/storage/storage.types';
+import { createExtensionLogger } from '../../../common/logger';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../../../modules/storage/storage.types';
+import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
 import { InMemoryTimeSeriesStore } from './in-memory-timeseries.store';
 import { InfluxQLParser } from './influxql-parser';
-import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
 
 /**
  * In-memory storage plugin.

@@ -1,7 +1,6 @@
-import { createExtensionLogger } from '../../common/logger';
-import { StoragePoint } from '../../modules/storage/storage.types';
-
-import { MEMORY_PLUGIN_NAME } from './memory-storage.constants';
+import { createExtensionLogger } from '../../../common/logger';
+import { StoragePoint } from '../../../modules/storage/storage.types';
+import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
 /**
  * Stored time-series point with normalized fields.

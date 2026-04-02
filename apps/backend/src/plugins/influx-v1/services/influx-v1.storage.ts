@@ -1,16 +1,15 @@
 import { FieldType, IPingStats, IPoint, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
-import { createExtensionLogger } from '../../common/logger';
-import { safeNumber, safeToString } from '../../common/utils/transform.utils';
-import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
+import { createExtensionLogger } from '../../../common/logger';
+import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
 import {
 	StorageFieldType,
 	StorageMeasurementSchema,
 	StoragePoint,
 	StorageQueryOptions,
-} from '../../modules/storage/storage.types';
-
-import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
+} from '../../../modules/storage/storage.types';
+import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, INFLUX_V1_PLUGIN_NAME } from '../influx-v1.constants';
 
 type RetentionPolicyRow = {
 	name: string;

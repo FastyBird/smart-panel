@@ -1,4 +1,4 @@
-import { MemoryConfigModel } from './memory-storage.config.model';
-import { UpdateMemoryConfigDto } from './memory-storage.update-config.dto';
+import { UpdateMemoryConfigDto } from './dto/update-config.dto';
+import { MemoryConfigModel } from './models/config.model';
 
 export const MEMORY_SWAGGER_EXTRA_MODELS = [UpdateMemoryConfigDto, MemoryConfigModel];

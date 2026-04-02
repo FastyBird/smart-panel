@@ -3,9 +3,8 @@ import { IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UpdatePluginConfigDto } from '../../modules/config/dto/config.dto';
-
-import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
+import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
+import { INFLUX_V1_PLUGIN_NAME } from '../influx-v1.constants';
 
 @ApiSchema({ name: 'StorageInfluxV1PluginUpdateConfig' })
 export class UpdateInfluxV1ConfigDto extends UpdatePluginConfigDto {

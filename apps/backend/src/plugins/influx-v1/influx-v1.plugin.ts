@@ -8,11 +8,11 @@ import { StorageService } from '../../modules/storage/services/storage.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { InfluxV1ConfigModel } from './influx-v1.config.model';
+import { UpdateInfluxV1ConfigDto } from './dto/update-config.dto';
 import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
 import { INFLUX_V1_SWAGGER_EXTRA_MODELS } from './influx-v1.openapi';
-import { InfluxV1Storage } from './influx-v1.storage';
-import { UpdateInfluxV1ConfigDto } from './influx-v1.update-config.dto';
+import { InfluxV1ConfigModel } from './models/config.model';
+import { InfluxV1Storage } from './services/influx-v1.storage';
 
 @Module({
 	imports: [StorageModule],
