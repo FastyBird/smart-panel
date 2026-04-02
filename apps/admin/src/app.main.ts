@@ -151,7 +151,8 @@ provideRouterGuards(app, routerGuards);
 
 // Sockets
 app.use(SocketsPlugin, {
-	baseUrl: `${window.location.origin}${ingressBase}`,
+	baseUrl: window.location.origin,
+	...(ingressBase ? { path: `${ingressBase}/socket.io/` } : {}),
 });
 
 // Common module

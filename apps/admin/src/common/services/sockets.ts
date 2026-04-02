@@ -21,12 +21,12 @@ export const injectSockets = (app?: App): Socket => {
 };
 
 export const SocketsPlugin = {
-	install(app: App, options: { baseUrl: string } & Partial<ManagerOptions & SocketOptions>) {
+	install(app: App, options: { baseUrl: string; path?: string } & Partial<ManagerOptions & SocketOptions>) {
 		const socketInstance = io(options.baseUrl, {
 			auth: {},
 			transports: ['websocket'],
 			autoConnect: false,
-			// reconnection: false,
+			...(options.path ? { path: options.path } : {}),
 		});
 
 		socketInstance.on('connect', () => {
