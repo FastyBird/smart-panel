@@ -142,7 +142,8 @@ export class InfluxV2Storage implements StoragePlugin {
 
 			this.logger.error('Failed to connect to InfluxDB v2', { message: err.message, stack: err.stack });
 
-			this.connected = false;
+			// Clean up resources to prevent leaking the WriteApi auto-flush timer
+			await this.destroy();
 		}
 	}
 
