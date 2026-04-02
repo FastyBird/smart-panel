@@ -4,8 +4,12 @@ import NProgress from 'nprogress';
 
 import { RouteNames } from '../../app.constants';
 
+// Detect HA ingress prefix for router base path
+const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
+const routerBase = ingressMatch ? `${ingressMatch[1]}/` : '/';
+
 export const router = createRouter({
-	history: createWebHistory(),
+	history: createWebHistory(routerBase),
 	routes: [
 		{
 			path: '/',

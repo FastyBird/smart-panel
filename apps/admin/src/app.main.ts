@@ -124,9 +124,13 @@ const modulesManager = new ModulesManager();
 app.config.globalProperties['modulesManager'] = modulesManager;
 provideModulesManager(app, modulesManager);
 
+// Detect HA ingress prefix from current URL
+const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
+const ingressBase = ingressMatch ? ingressMatch[1] : '';
+
 // Backend
 const backendClient = createClient<OpenApiPaths>({
-	baseUrl: `${window.location.origin}/api/v1`,
+	baseUrl: `${window.location.origin}${ingressBase}/api/v1`,
 });
 app.config.globalProperties['backend'] = backendClient;
 provideBackendClient(app, backendClient);
@@ -147,7 +151,7 @@ provideRouterGuards(app, routerGuards);
 
 // Sockets
 app.use(SocketsPlugin, {
-	baseUrl: window.location.origin,
+	baseUrl: `${window.location.origin}${ingressBase}`,
 });
 
 // Common module
