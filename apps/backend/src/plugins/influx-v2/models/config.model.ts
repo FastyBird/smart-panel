@@ -3,14 +3,13 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { PluginConfigModel } from '../../modules/config/models/config.model';
-
+import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
 	INFLUXDB_V2_DEFAULT_BUCKET,
 	INFLUXDB_V2_DEFAULT_ORG,
 	INFLUXDB_V2_DEFAULT_URL,
 	INFLUX_V2_PLUGIN_NAME,
-} from './influx-v2.constants';
+} from '../influx-v2.constants';
 
 @ApiSchema({ name: 'StorageInfluxV2PluginDataConfig' })
 export class InfluxV2ConfigModel extends PluginConfigModel {

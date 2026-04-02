@@ -1,20 +1,19 @@
 import { HttpError, InfluxDB, Point, QueryApi, WriteApi, flux } from '@influxdata/influxdb-client';
 
-import { createExtensionLogger } from '../../common/logger';
-import { StoragePlugin } from '../../modules/storage/interfaces/storage-plugin.interface';
+import { createExtensionLogger } from '../../../common/logger';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
 import {
 	StorageFieldType,
 	StorageMeasurementSchema,
 	StoragePoint,
 	StorageQueryOptions,
-} from '../../modules/storage/storage.types';
-
+} from '../../../modules/storage/storage.types';
 import {
 	INFLUXDB_V2_DEFAULT_BUCKET,
 	INFLUXDB_V2_DEFAULT_ORG,
 	INFLUXDB_V2_DEFAULT_URL,
 	INFLUX_V2_PLUGIN_NAME,
-} from './influx-v2.constants';
+} from '../influx-v2.constants';
 
 export interface InfluxV2Config {
 	url: string;
@@ -94,10 +93,10 @@ function toInfluxPoint(point: StoragePoint, schemas: Map<string, StorageMeasurem
  * storage using the Flux query language, buckets, organizations,
  * and token-based authentication.
  */
-export class InfluxV2StoragePlugin implements StoragePlugin {
+export class InfluxV2Storage implements StoragePlugin {
 	readonly name = INFLUX_V2_PLUGIN_NAME;
 
-	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2StoragePlugin');
+	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2Storage');
 
 	private client: InfluxDB | null = null;
 	private writeApi: WriteApi | null = null;
@@ -217,7 +216,10 @@ export class InfluxV2StoragePlugin implements StoragePlugin {
 	}
 
 	async dropMeasurement(measurement: string): Promise<void> {
-		const url = `${this.config.url}/api/v2/delete?org=${encodeURIComponent(this.config.org)}&bucket=${encodeURIComponent(this.config.bucket)}`;
+		const url =
+			`${this.config.url}/api/v2/delete` +
+			`?org=${encodeURIComponent(this.config.org)}` +
+			`&bucket=${encodeURIComponent(this.config.bucket)}`;
 
 		try {
 			const response = await fetch(url, {

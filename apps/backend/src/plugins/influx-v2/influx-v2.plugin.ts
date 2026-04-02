@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../common/logger';
 import { ConfigService } from '../../modules/config/services/config.service';
@@ -8,18 +8,16 @@ import { StorageService } from '../../modules/storage/services/storage.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { InfluxV2ConfigModel } from './influx-v2.config.model';
+import { UpdateInfluxV2ConfigDto } from './dto/update-config.dto';
 import { INFLUX_V2_PLUGIN_NAME } from './influx-v2.constants';
 import { INFLUX_V2_SWAGGER_EXTRA_MODELS } from './influx-v2.openapi';
-import { InfluxV2StoragePlugin } from './influx-v2.storage-plugin';
-import { UpdateInfluxV2ConfigDto } from './influx-v2.update-config.dto';
+import { InfluxV2ConfigModel } from './models/config.model';
+import { InfluxV2Storage } from './services/influx-v2.storage';
 
 @Module({
-	imports: [forwardRef(() => StorageModule)],
+	imports: [StorageModule],
 })
 export class InfluxV2Plugin implements OnModuleInit {
-	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2Plugin');
-
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
@@ -38,7 +36,7 @@ export class InfluxV2Plugin implements OnModuleInit {
 		this.storageService.registerPluginFactory(INFLUX_V2_PLUGIN_NAME, () => {
 			const pluginConfig = this.getPluginConfig();
 
-			return new InfluxV2StoragePlugin({
+			return new InfluxV2Storage({
 				url: pluginConfig.url,
 				token: pluginConfig.token,
 				org: pluginConfig.org,
@@ -72,6 +70,8 @@ Connects to an InfluxDB 2.x server and provides time-series storage using the Fl
 			},
 		});
 	}
+
+	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2Plugin');
 
 	private getPluginConfig(): InfluxV2ConfigModel {
 		try {
