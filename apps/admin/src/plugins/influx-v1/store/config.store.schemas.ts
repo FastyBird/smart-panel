@@ -8,8 +8,8 @@ type ApiUpdateConfig = {
 	enabled?: boolean;
 	host?: string;
 	database?: string;
-	username?: string;
-	password?: string;
+	username?: string | null;
+	password?: string | null;
 };
 
 type ApiConfig = {
@@ -17,15 +17,15 @@ type ApiConfig = {
 	enabled: boolean;
 	host: string;
 	database: string;
-	username?: string;
-	password?: string;
+	username?: string | null;
+	password?: string | null;
 };
 
 export const InfluxV1ConfigSchema = ConfigPluginSchema.extend({
 	host: z.string(),
 	database: z.string(),
-	username: z.string().optional(),
-	password: z.string().optional(),
+	username: z.string().nullable().optional(),
+	password: z.string().nullable().optional(),
 });
 
 // BACKEND API
@@ -36,8 +36,8 @@ export const InfluxV1ConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPlu
 		type: z.literal(INFLUX_V1_PLUGIN_NAME),
 		host: z.string().optional(),
 		database: z.string().optional(),
-		username: z.string().optional(),
-		password: z.string().optional(),
+		username: z.string().nullable().optional(),
+		password: z.string().nullable().optional(),
 	})
 );
 
@@ -46,7 +46,7 @@ export const InfluxV1ConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema
 		type: z.literal(INFLUX_V1_PLUGIN_NAME),
 		host: z.string(),
 		database: z.string(),
-		username: z.string().optional(),
-		password: z.string().optional(),
+		username: z.string().nullable().optional(),
+		password: z.string().nullable().optional(),
 	})
 );
