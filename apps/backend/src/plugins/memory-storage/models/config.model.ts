@@ -3,9 +3,8 @@ import { IsBoolean, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { PluginConfigModel } from '../../../config/models/config.model';
-
-import { MEMORY_PLUGIN_NAME } from './memory.constants';
+import { PluginConfigModel } from '../../../modules/config/models/config.model';
+import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
 @ApiSchema({ name: 'StorageMemoryPluginDataConfig' })
 export class MemoryConfigModel extends PluginConfigModel {

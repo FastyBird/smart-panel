@@ -1,23 +1,23 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 
-import { createExtensionLogger } from '../../../../common/logger';
-import { ConfigService } from '../../../config/services/config.service';
-import { PluginsTypeMapperService } from '../../../config/services/plugins-type-mapper.service';
-import { ExtensionsService } from '../../../extensions/services/extensions.service';
-import { SwaggerModelsRegistryService } from '../../../swagger/services/swagger-models-registry.service';
-import { StorageService } from '../../services/storage.service';
-import { StorageModule } from '../../storage.module';
+import { createExtensionLogger } from '../../common/logger';
+import { ConfigService } from '../../modules/config/services/config.service';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { StorageService } from '../../modules/storage/services/storage.service';
+import { StorageModule } from '../../modules/storage/storage.module';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
-import { InfluxV1ConfigModel } from './influx-v1.config.model';
+import { UpdateInfluxV1ConfigDto } from './dto/update-config.dto';
 import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
 import { INFLUX_V1_SWAGGER_EXTRA_MODELS } from './influx-v1.openapi';
-import { InfluxV1Plugin } from './influx-v1.plugin';
-import { UpdateInfluxV1ConfigDto } from './influx-v1.update-config.dto';
+import { InfluxV1ConfigModel } from './models/config.model';
+import { InfluxV1Storage } from './services/influx-v1.storage';
 
 @Module({
-	imports: [forwardRef(() => StorageModule)],
+	imports: [StorageModule],
 })
-export class InfluxV1PluginModule implements OnModuleInit {
+export class InfluxV1Plugin implements OnModuleInit {
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
@@ -36,7 +36,7 @@ export class InfluxV1PluginModule implements OnModuleInit {
 		this.storageService.registerPluginFactory(INFLUX_V1_PLUGIN_NAME, () => {
 			const pluginConfig = this.getPluginConfig();
 
-			return new InfluxV1Plugin({
+			return new InfluxV1Storage({
 				host: pluginConfig.host,
 				database: pluginConfig.database,
 				username: pluginConfig.username,
@@ -69,7 +69,7 @@ Connects to an InfluxDB 1.x server and provides full time-series storage with re
 		});
 	}
 
-	private readonly logger = createExtensionLogger(INFLUX_V1_PLUGIN_NAME, 'InfluxV1PluginModule');
+	private readonly logger = createExtensionLogger(INFLUX_V1_PLUGIN_NAME, 'InfluxV1Plugin');
 
 	private getPluginConfig(): InfluxV1ConfigModel {
 		try {

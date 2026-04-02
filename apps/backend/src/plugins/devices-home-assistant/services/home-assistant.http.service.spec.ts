@@ -57,7 +57,15 @@ describe('HomeAssistantHttpService', () => {
 				{ provide: MapperService, useValue: mockHomeAssistantMapperService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 				{ provide: VirtualPropertyService, useValue: mockVirtualPropertyService },
-				{ provide: HaSupervisorService, useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' } },
+				{
+					provide: HaSupervisorService,
+					useValue: {
+						isInSupervisorMode: () => false,
+						getSupervisorToken: () => null,
+						getSupervisorApiUrl: () => '',
+						getSupervisorWsUrl: () => '',
+					},
+				},
 			],
 		}).compile();
 

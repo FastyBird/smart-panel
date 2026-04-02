@@ -4,19 +4,11 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import {
-	CONFIG_MODULE_NAME,
-	CONFIG_MODULE_PLUGIN_TYPE,
-	type IPluginsComponents,
-	type IPluginsSchemas,
-} from '../../modules/config';
 
 import { locales } from './locales';
 import { MEMORY_STORAGE_PLUGIN_NAME } from './memory-storage.constants';
-import { MemoryStorageConfigSchema, MemoryStorageConfigUpdateReqSchema } from './store/config.store.schemas';
 
-const memoryStoragePluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> =
-	Symbol('FB-Plugin-MemoryStorage');
+const memoryStoragePluginKey: PluginInjectionKey<IPlugin> = Symbol('FB-Plugin-MemoryStorage');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -39,17 +31,8 @@ export default {
 				devDocumentation: 'https://smart-panel.fastybird.com/docs',
 				bugsTracking: 'https://github.com/FastyBird/smart-panel/issues',
 			},
-			elements: [
-				{
-					type: CONFIG_MODULE_PLUGIN_TYPE,
-					schemas: {
-						pluginConfigSchema: MemoryStorageConfigSchema,
-						pluginConfigUpdateReqSchema: MemoryStorageConfigUpdateReqSchema,
-					},
-					modules: [CONFIG_MODULE_NAME],
-				},
-			],
-			modules: [CONFIG_MODULE_NAME],
+			elements: [],
+			modules: [],
 			isCore: false,
 		});
 	},

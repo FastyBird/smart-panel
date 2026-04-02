@@ -1,12 +1,6 @@
-import type { FormResultType, IConfigFormFieldError, LayoutType } from '../../../modules/config';
-import type { IConfigPlugin } from '../../../modules/config/store/config-plugins.store.types';
+import type { IConfigFormFieldError, IPluginConfigEditFormProps, LayoutType } from '../../../modules/config';
 
-export interface IHomeAssistantConfigFormProps {
-	config: IConfigPlugin;
-	remoteFormSubmit?: boolean;
-	remoteFormResult?: FormResultType;
-	remoteFormReset?: boolean;
-	remoteFormChanged?: boolean;
+export interface IHomeAssistantConfigFormProps extends IPluginConfigEditFormProps {
 	remoteFormErrors?: IConfigFormFieldError[];
 	layout?: LayoutType;
 }

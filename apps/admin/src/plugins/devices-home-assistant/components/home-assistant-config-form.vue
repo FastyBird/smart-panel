@@ -7,7 +7,7 @@
 		status-icon
 	>
 		<el-alert
-			v-if="props.config.supervisorMode"
+			v-if="supervisorMode"
 			type="success"
 			:title="t('devicesHomeAssistantPlugin.headings.supervisorMode')"
 			:description="t('devicesHomeAssistantPlugin.texts.supervisorModeActive')"
@@ -41,7 +41,7 @@
 			<el-input
 				v-model="model.apiKey"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.config.apiKey.placeholder')"
-				:disabled="props.config.supervisorMode"
+				:disabled="supervisorMode"
 				name="apiKey"
 				:rows="4"
 				type="textarea"
@@ -59,7 +59,7 @@
 					:fetch-suggestions="querySearch"
 					:placeholder="t('devicesHomeAssistantPlugin.fields.config.hostname.placeholder')"
 					:loading="isLoadingInstances"
-					:disabled="props.config.supervisorMode"
+					:disabled="supervisorMode"
 					class="flex-1"
 					clearable
 					@focus="onHostnameFocus"
@@ -75,7 +75,7 @@
 					</template>
 				</el-autocomplete>
 				<el-tooltip
-					v-if="!props.config.supervisorMode"
+					v-if="!supervisorMode"
 					:content="t('devicesHomeAssistantPlugin.buttons.refreshDiscovery')"
 					placement="top"
 				>
@@ -141,6 +141,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const supervisorMode = computed((): boolean => {
+	return 'supervisorMode' in props.config && Boolean((props.config as Record<string, unknown>).supervisorMode);
+});
 
 const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeAssistantConfigEditForm>({
 	config: props.config,
