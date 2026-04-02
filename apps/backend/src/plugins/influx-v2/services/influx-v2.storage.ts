@@ -246,13 +246,23 @@ export class InfluxV2Storage implements StoragePlugin {
 	}
 
 	async getMeasurements(): Promise<string[]> {
-		const bucket = this.config.bucket;
-		const query = flux`import "influxdata/influxdb/schema"
+		try {
+			const bucket = this.config.bucket;
+			const query = flux`import "influxdata/influxdb/schema"
 schema.measurements(bucket: ${bucket})`;
 
-		const rows = await this.getQueryApi().collectRows<{ _value: string }>(query);
+			const rows = await this.getQueryApi().collectRows<{ _value: string }>(query);
 
-		return rows.map((row) => row._value);
+			return rows.map((row) => row._value);
+		} catch (error) {
+			if (error instanceof HttpError && error.statusCode === 404) {
+				this.logger.warn('Bucket not found, returning empty measurements.');
+
+				return [];
+			}
+
+			throw error;
+		}
 	}
 
 	// ─── InfluxDB v2-Specific Operations ──────────────────────────────
