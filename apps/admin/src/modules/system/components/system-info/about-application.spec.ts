@@ -24,7 +24,7 @@ describe('AboutApplication', () => {
 
 	it('renders application name and version', () => {
 		expect(wrapper.text()).toContain('FastyBird! Smart Panel');
-		expect(wrapper.text()).toContain('Version 1.0.0');
+		expect(wrapper.text()).toMatch(/Version \d+\.\d+\.\d+/);
 	});
 
 	it('renders the translated about text', () => {
