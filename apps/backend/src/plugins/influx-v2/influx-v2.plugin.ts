@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../common/logger';
 import { ConfigService } from '../../modules/config/services/config.service';
@@ -17,7 +17,7 @@ import { UpdateInfluxV2ConfigDto } from './influx-v2.update-config.dto';
 @Module({
 	imports: [forwardRef(() => StorageModule)],
 })
-export class InfluxV2Plugin {
+export class InfluxV2Plugin implements OnModuleInit {
 	private readonly logger = createExtensionLogger(INFLUX_V2_PLUGIN_NAME, 'InfluxV2Plugin');
 
 	constructor(
