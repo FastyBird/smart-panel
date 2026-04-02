@@ -162,6 +162,7 @@
   },
   "headings": {
     "aboutConnectionSettings": "Conexión de Home Assistant",
+    "supervisorMode": "Gestionado por Home Assistant",
     "device": {
       "deviceSelection": "Seleccionar dispositivo",
       "deviceInformation": "Información del dispositivo",
@@ -244,6 +245,7 @@
   },
   "texts": {
     "aboutConnectionSettings": "Configure la conexión a su instancia de Home Assistant. Cuando esté habilitado, los dispositivos de Home Assistant estarán disponibles en el Smart Panel. Necesitará un token de acceso de larga duración de Home Assistant y el nombre de host o la dirección IP de su instancia.",
+    "supervisorModeActive": "Este plugin se ejecuta como complemento de Home Assistant. La conexión se gestiona automáticamente mediante la API del Supervisor. La clave API y el nombre de host están configurados por el sistema y no se pueden cambiar manualmente.",
     "mapping": {
       "customizationDescription": "Puede personalizar el mapeo cambiando las categorías de canal para las entidades o habilitando/deshabilitando entidades. Por defecto, todas las entidades con una categoría de canal sugerida están habilitadas. Haga clic en 'Siguiente' para continuar con la configuración seleccionada."
     }

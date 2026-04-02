@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -37,4 +37,14 @@ export class HomeAssistantConfigModel extends PluginConfigModel {
 	@Expose()
 	@IsString()
 	hostname: string = 'homeassistant.local';
+
+	@ApiProperty({
+		description: 'Whether the plugin is controlled by the HA Supervisor (read-only, derived from environment)',
+		type: 'boolean',
+		name: 'supervisor_mode',
+	})
+	@Expose({ name: 'supervisor_mode' })
+	@IsBoolean()
+	@IsOptional()
+	supervisorMode: boolean = !!process.env.SUPERVISOR_TOKEN;
 }

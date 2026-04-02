@@ -62,6 +62,7 @@ import { DeviceAdoptionService } from './services/device-adoption.service';
 import { HaMdnsDiscovererService } from './services/ha-mdns-discoverer.service';
 import { HelperAdoptionService } from './services/helper-adoption.service';
 import { HelperMappingPreviewService } from './services/helper-mapping-preview.service';
+import { HaSupervisorService } from './services/ha-supervisor.service';
 import { HomeAssistantConfigValidatorService } from './services/home-assistant-config-validator.service';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
@@ -93,6 +94,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		TransformerRegistry,
 		MappingLoaderService,
 		// Core services
+		HaSupervisorService,
 		HomeAssistantConfigValidatorService,
 		HomeAssistantHttpService,
 		HomeAssistantWsService,

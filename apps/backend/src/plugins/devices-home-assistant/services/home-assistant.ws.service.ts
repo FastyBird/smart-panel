@@ -26,6 +26,7 @@ import {
 	HomeAssistantEntityRegistryResultModel,
 } from '../models/home-assistant.model';
 
+import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
 export interface WsEventService {
@@ -90,6 +91,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
+		private readonly supervisorService: HaSupervisorService,
 	) {}
 
 	registerEventsHandler(event: string, handler: WsEventService) {
@@ -463,6 +465,10 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private get apiKey(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorToken()!;
+		}
+
 		return this.config.apiKey;
 	}
 
@@ -471,6 +477,10 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private get baseUrl(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorWsUrl();
+		}
+
 		if (this.hostname.startsWith('http://')) {
 			return this.hostname.replace(/\/+$/, '').replace(/^http:\/\//, 'ws://');
 		}

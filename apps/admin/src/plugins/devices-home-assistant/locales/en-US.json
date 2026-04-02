@@ -162,6 +162,7 @@
   },
   "headings": {
     "aboutConnectionSettings": "Home Assistant connection",
+    "supervisorMode": "Managed by Home Assistant",
     "device": {
       "deviceSelection": "Select device",
       "deviceInformation": "Device information",
@@ -244,6 +245,7 @@
   },
   "texts": {
     "aboutConnectionSettings": "Configure the connection to your Home Assistant instance. When enabled, devices from Home Assistant will be available in the Smart Panel. You'll need a long-lived access token from Home Assistant and the hostname or IP address of your instance.",
+    "supervisorModeActive": "This plugin is running as a Home Assistant add-on. The connection is managed automatically using the Supervisor API. The API key and hostname are configured by the system and cannot be changed manually.",
     "mapping": {
       "customizationDescription": "You can customize the mapping by changing channel categories for entities or enabling/disabling entities. By default, all entities with a suggested channel category are enabled. Click 'Next' to proceed with the selected configuration."
     }

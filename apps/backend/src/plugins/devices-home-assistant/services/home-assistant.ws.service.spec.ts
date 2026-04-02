@@ -6,6 +6,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { DevicesHomeAssistantException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantConfigModel } from '../models/config.model';
 
+import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 
@@ -51,6 +52,7 @@ describe('HomeAssistantWsService', () => {
 				HomeAssistantWsService,
 				{ provide: ConfigService, useValue: mockConfigService },
 				{ provide: HomeAssistantHttpService, useValue: mockHttpService },
+				{ provide: HaSupervisorService, useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' } },
 			],
 		}).compile();
 

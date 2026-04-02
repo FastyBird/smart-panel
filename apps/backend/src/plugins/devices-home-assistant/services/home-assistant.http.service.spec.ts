@@ -13,6 +13,7 @@ import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 
+import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { VirtualPropertyService } from './virtual-property.service';
 
@@ -56,6 +57,7 @@ describe('HomeAssistantHttpService', () => {
 				{ provide: MapperService, useValue: mockHomeAssistantMapperService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 				{ provide: VirtualPropertyService, useValue: mockVirtualPropertyService },
+				{ provide: HaSupervisorService, useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' } },
 			],
 		}).compile();
 

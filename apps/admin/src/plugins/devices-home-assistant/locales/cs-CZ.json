@@ -162,6 +162,7 @@
 	},
 	"headings": {
 		"aboutConnectionSettings": "Připojení Home Assistant",
+		"supervisorMode": "Spravováno Home Assistantem",
 		"device": {
 			"deviceSelection": "Vybrat zařízení",
 			"deviceInformation": "Informace o zařízení",
@@ -244,6 +245,7 @@
 	},
 	"texts": {
 		"aboutConnectionSettings": "Nakonfigurujte připojení k vaší instanci Home Assistant. Pokud je povoleno, zařízení z Home Assistant budou dostupná ve Smart Panelu. Budete potřebovat dlouhodobý přístupový token z Home Assistant a název hostitele nebo IP adresu vaší instance.",
+		"supervisorModeActive": "Tento plugin běží jako doplněk Home Assistant. Připojení je spravováno automaticky pomocí Supervisor API. API klíč a název hostitele jsou konfigurovány systémem a nelze je měnit ručně.",
 		"mapping": {
 			"customizationDescription": "Můžete přizpůsobit mapování změnou kategorií kanálů pro entity nebo povolením/zakázáním entit. Ve výchozím nastavení jsou všechny entity s navrženou kategorií kanálu povoleny. Klikněte na 'Další' pro pokračování s vybranou konfigurací."
 		}

@@ -18,6 +18,7 @@ import {
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
+import { HaSupervisorService } from '../services/ha-supervisor.service';
 
 export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 	device: HomeAssistantDeviceEntity;
@@ -35,6 +36,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly mapperService: MapperService,
+		private readonly supervisorService: HaSupervisorService,
 	) {
 		super();
 	}
@@ -171,6 +173,10 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	private get apiKey(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorToken()!;
+		}
+
 		return this.config.apiKey;
 	}
 
@@ -179,6 +185,10 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	private get baseUrl(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorApiUrl();
+		}
+
 		if (this.hostname.startsWith('http://') || this.hostname.startsWith('https://')) {
 			return this.hostname.replace(/\/+$/, '');
 		}

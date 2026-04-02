@@ -12,6 +12,7 @@ import {
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
+import { HaSupervisorService } from '../services/ha-supervisor.service';
 
 import { HomeAssistantDevicePlatform } from './home-assistant.device.platform';
 
@@ -47,6 +48,10 @@ describe('HomeAssistantDevicePlatform', () => {
 							return { hostname: 'localhost' } as HomeAssistantConfigModel;
 						}),
 					},
+				},
+				{
+					provide: HaSupervisorService,
+					useValue: { isInSupervisorMode: () => false, getSupervisorToken: () => null, getSupervisorApiUrl: () => '', getSupervisorWsUrl: () => '' },
 				},
 			],
 		}).compile();

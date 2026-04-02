@@ -162,6 +162,7 @@
 	},
 	"headings": {
 		"aboutConnectionSettings": "Pripojenie Home Assistant",
+		"supervisorMode": "Spravované Home Assistantom",
 		"device": {
 			"deviceSelection": "Výber zariadenia",
 			"deviceInformation": "Informácie o zariadení",
@@ -244,6 +245,7 @@
 	},
 	"texts": {
 		"aboutConnectionSettings": "Nakonfigurujte pripojenie k vašej inštancii Home Assistant. Keď je povolená, zariadenia z Home Assistant budú dostupné v Smart Paneli. Budete potrebovať dlhodobý prístupový token z Home Assistant a hostname alebo IP adresu vašej inštancie.",
+		"supervisorModeActive": "Tento plugin beží ako doplnok Home Assistant. Pripojenie je spravované automaticky pomocou Supervisor API. API kľúč a hostname sú konfigurované systémom a nemožno ich meniť ručne.",
 		"mapping": {
 			"customizationDescription": "Môžete prispôsobiť mapovanie zmenou kategórií kanálov pre entity alebo povolením/zakázaním entít. Predvolene sú všetky entity s navrhovanou kategóriou kanála povolené. Kliknite na 'Ďalej' pre pokračovanie s vybranou konfiguráciou."
 		}

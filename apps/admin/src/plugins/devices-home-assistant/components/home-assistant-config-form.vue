@@ -7,6 +7,14 @@
 		status-icon
 	>
 		<el-alert
+			v-if="props.config.supervisorMode"
+			type="success"
+			:title="t('devicesHomeAssistantPlugin.headings.supervisorMode')"
+			:description="t('devicesHomeAssistantPlugin.texts.supervisorModeActive')"
+			:closable="false"
+		/>
+		<el-alert
+			v-else
 			type="info"
 			:title="t('devicesHomeAssistantPlugin.headings.aboutConnectionSettings')"
 			:description="t('devicesHomeAssistantPlugin.texts.aboutConnectionSettings')"
@@ -33,6 +41,7 @@
 			<el-input
 				v-model="model.apiKey"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.config.apiKey.placeholder')"
+				:disabled="props.config.supervisorMode"
 				name="apiKey"
 				:rows="4"
 				type="textarea"
@@ -50,6 +59,7 @@
 					:fetch-suggestions="querySearch"
 					:placeholder="t('devicesHomeAssistantPlugin.fields.config.hostname.placeholder')"
 					:loading="isLoadingInstances"
+					:disabled="props.config.supervisorMode"
 					class="flex-1"
 					clearable
 					@focus="onHostnameFocus"
@@ -65,6 +75,7 @@
 					</template>
 				</el-autocomplete>
 				<el-tooltip
+					v-if="!props.config.supervisorMode"
 					:content="t('devicesHomeAssistantPlugin.buttons.refreshDiscovery')"
 					placement="top"
 				>

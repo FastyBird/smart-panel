@@ -40,6 +40,7 @@ import {
 	HomeAssistantStateModel,
 } from '../models/home-assistant.model';
 
+import { HaSupervisorService } from './ha-supervisor.service';
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
 
@@ -74,6 +75,7 @@ export class HomeAssistantHttpService {
 		private readonly homeAssistantMapperService: MapperService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly virtualPropertyService: VirtualPropertyService,
+		private readonly supervisorService: HaSupervisorService,
 	) {}
 
 	async getDiscoveredDevice(id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
@@ -722,6 +724,10 @@ export class HomeAssistantHttpService {
 	}
 
 	private get apiKey(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorToken()!;
+		}
+
 		return this.config.apiKey;
 	}
 
@@ -730,6 +736,10 @@ export class HomeAssistantHttpService {
 	}
 
 	private get baseUrl(): string {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return this.supervisorService.getSupervisorApiUrl();
+		}
+
 		if (this.hostname.startsWith('http://') || this.hostname.startsWith('https://')) {
 			return this.hostname.replace(/\/+$/, '');
 		}

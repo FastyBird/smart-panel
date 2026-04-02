@@ -162,6 +162,7 @@
   },
   "headings": {
     "aboutConnectionSettings": "Home Assistant-Verbindung",
+    "supervisorMode": "Verwaltet von Home Assistant",
     "device": {
       "deviceSelection": "Gerät auswählen",
       "deviceInformation": "Geräteinformationen",
@@ -244,6 +245,7 @@
   },
   "texts": {
     "aboutConnectionSettings": "Konfigurieren Sie die Verbindung zu Ihrer Home Assistant-Instanz. Wenn aktiviert, werden Geräte aus Home Assistant im Smart Panel verfügbar. Sie benötigen einen langlebigen Zugriffstoken von Home Assistant und den Hostname oder die IP-Adresse Ihrer Instanz.",
+    "supervisorModeActive": "Dieses Plugin wird als Home Assistant Add-on ausgeführt. Die Verbindung wird automatisch über die Supervisor-API verwaltet. Der API-Schlüssel und der Hostname werden vom System konfiguriert und können nicht manuell geändert werden.",
     "mapping": {
       "customizationDescription": "Sie können die Zuordnung anpassen, indem Sie Kanalkategorien für Entitäten ändern oder Entitäten aktivieren/deaktivieren. Standardmäßig sind alle Entitäten mit einer vorgeschlagenen Kanalkategorie aktiviert. Klicken Sie auf 'Weiter', um mit der ausgewählten Konfiguration fortzufahren."
     }

@@ -8,19 +8,28 @@ import type {
 import { PluginConfigValidatorService } from '../../../modules/config/services/plugin-config-validator.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
+import { HaSupervisorService } from './ha-supervisor.service';
+
 @Injectable()
 export class HomeAssistantConfigValidatorService implements IPluginConfigValidator, OnModuleInit {
 	private readonly logger = createExtensionLogger(DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'ConfigValidator');
 
 	readonly pluginType = DEVICES_HOME_ASSISTANT_PLUGIN_NAME;
 
-	constructor(private readonly pluginConfigValidator: PluginConfigValidatorService) {}
+	constructor(
+		private readonly pluginConfigValidator: PluginConfigValidatorService,
+		private readonly supervisorService: HaSupervisorService,
+	) {}
 
 	onModuleInit(): void {
 		this.pluginConfigValidator.register(this);
 	}
 
 	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
+		if (this.supervisorService.isInSupervisorMode()) {
+			return { valid: true };
+		}
+
 		const hostname = config['hostname'] as string | undefined;
 		const apiKey = (config['apiKey'] ?? config['api_key']) as string | undefined;
 

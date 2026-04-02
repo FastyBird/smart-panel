@@ -10,6 +10,7 @@ type ApiConfig = DevicesHomeAssistantPluginConfigSchema;
 export const HomeAssistantConfigSchema = ConfigPluginSchema.extend({
 	apiKey: z.string().trim().nonempty().nullable(),
 	hostname: z.string().trim().nonempty(),
+	supervisorMode: z.boolean().default(false),
 });
 
 // BACKEND API
@@ -23,10 +24,11 @@ export const HomeAssistantConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Conf
 	})
 );
 
-export const HomeAssistantConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
+export const HomeAssistantConfigResSchema = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_HOME_ASSISTANT_PLUGIN_NAME),
 		api_key: z.string().trim().nonempty().nullable(),
 		hostname: z.string().trim().nonempty(),
+		supervisor_mode: z.boolean().default(false),
 	})
 );

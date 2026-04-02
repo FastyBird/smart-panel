@@ -162,6 +162,7 @@
 	},
 	"headings": {
 		"aboutConnectionSettings": "Polaczenie Home Assistant",
+		"supervisorMode": "Zarzadzane przez Home Assistant",
 		"device": {
 			"deviceSelection": "Wybierz urzadzenie",
 			"deviceInformation": "Informacje o urzadzeniu",
@@ -244,6 +245,7 @@
 	},
 	"texts": {
 		"aboutConnectionSettings": "Skonfiguruj polaczenie z instancja Home Assistant. Po wlaczeniu urzadzenia z Home Assistant beda dostepne w Smart Panel. Potrzebujesz dlugoterminowego tokenu dostepu z Home Assistant i nazwy hosta lub adresu IP instancji.",
+		"supervisorModeActive": "Ta wtyczka dziala jako dodatek Home Assistant. Polaczenie jest zarzadzane automatycznie za pomoca Supervisor API. Klucz API i nazwa hosta sa konfigurowane przez system i nie moga byc zmieniane recznie.",
 		"mapping": {
 			"customizationDescription": "Mozesz dostosowac mapowanie zmieniajac kategorie kanalow dla encji lub wlaczajac/wylaczajac encje. Domyslnie wszystkie encje z sugerowana kategoria kanalu sa wlaczone. Kliknij 'Dalej', aby kontynuowac z wybrana konfiguracja."
 		}
