@@ -177,7 +177,18 @@ export class InfluxV2Storage implements StoragePlugin {
 			api.writePoint(toInfluxPoint(point, this.schemas));
 		}
 
-		await api.flush();
+		try {
+			await api.flush();
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('Failed to flush write points to InfluxDB v2', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw error;
+		}
 	}
 
 	async query<T>(query: string, _options?: StorageQueryOptions): Promise<T[]> {
