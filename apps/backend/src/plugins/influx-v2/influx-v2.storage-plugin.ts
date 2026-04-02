@@ -271,14 +271,6 @@ schema.measurements(bucket: ${bucket})`;
 
 	// ─── Private Helpers ──────────────────────────────────────────────
 
-	private getClient(): InfluxDB {
-		if (!this.client) {
-			throw new Error('InfluxDB v2 client is not initialized');
-		}
-
-		return this.client;
-	}
-
 	private getWriteApi(): WriteApi {
 		if (!this.writeApi) {
 			throw new Error('InfluxDB v2 write API is not initialized');
