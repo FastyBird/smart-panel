@@ -6,6 +6,11 @@ on:
       - "alpha-*.*.*"
       - "alpha"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Base version to release (e.g. 0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -39,7 +44,9 @@ jobs:
 
       - name: "Sync Versions"
         id: "set-version"
-        run: "node .github/scripts/monorepo-version-sync.js ${{ github.ref }} alpha"
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: "node .github/scripts/monorepo-version-sync.js ${INPUT_VERSION:-${{ github.ref }}} alpha"
 
       - name: "Commit Version Changes"
         run: |

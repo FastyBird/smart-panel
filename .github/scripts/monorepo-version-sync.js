@@ -21,16 +21,23 @@ const ref = process.argv[2];
 const tag = process.argv[3] || "alpha";
 
 const BRANCH_VERSION_PATTERN = /^([a-zA-Z]+)-(\d+\.\d+\.\d+)$/;
+const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 
 if (!ref) {
-	console.error("Missing ref argument (e.g. 'refs/heads/alpha-1.2.3')");
+	console.error("Missing argument (e.g. 'refs/heads/alpha-1.2.3' or '1.2.3')");
 
 	process.exit(1);
 }
 
 const parseBaseVersion = (ref) => {
+	// Direct version string (e.g. "1.2.3") — used with workflow_dispatch inputs
+	if (ref.match(SEMVER_PATTERN)) {
+		return ref;
+	}
+
+	// Branch ref (e.g. "refs/heads/alpha-1.2.3") — used with branch push triggers
 	if (!ref.startsWith("refs/heads/")) {
-		throw new Error("Invalid ref");
+		throw new Error("Invalid ref. Expected a semver version (x.y.z) or a branch ref (refs/heads/tag-x.y.z)");
 	}
 
 	const branch = ref.replace("refs/heads/", "");
