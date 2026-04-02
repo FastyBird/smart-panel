@@ -126,7 +126,7 @@ provideModulesManager(app, modulesManager);
 
 // Backend
 const backendClient = createClient<OpenApiPaths>({
-	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`,
+	baseUrl: `${window.location.origin}/api/v1`,
 });
 app.config.globalProperties['backend'] = backendClient;
 provideBackendClient(app, backendClient);
@@ -147,7 +147,7 @@ provideRouterGuards(app, routerGuards);
 
 // Sockets
 app.use(SocketsPlugin, {
-	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.FB_BACKEND_PORT}`,
+	baseUrl: window.location.origin,
 });
 
 // Common module

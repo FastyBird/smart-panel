@@ -79,6 +79,12 @@ export default defineConfig((config: UserConfig): UserConfig => {
 					changeOrigin: true,
 					secure: false,
 				},
+				'/socket.io': {
+					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
+					changeOrigin: true,
+					secure: false,
+					ws: true,
+				},
 			},
 			watch: {
 				usePolling: true,
