@@ -243,7 +243,7 @@ export class InfluxV2Storage implements StoragePlugin {
 				body: JSON.stringify({
 					start: '1970-01-01T00:00:00Z',
 					stop: '2099-12-31T23:59:59Z',
-					predicate: `_measurement="${measurement.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+					predicate: `_measurement == "${measurement.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
 				}),
 			});
 
