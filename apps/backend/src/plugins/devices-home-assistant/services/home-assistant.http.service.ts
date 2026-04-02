@@ -730,6 +730,10 @@ export class HomeAssistantHttpService {
 	}
 
 	private get baseUrl(): string {
+		if (this.hostname.startsWith('http://') || this.hostname.startsWith('https://')) {
+			return this.hostname.replace(/\/+$/, '');
+		}
+
 		return `http://${this.hostname}`;
 	}
 
@@ -776,7 +780,7 @@ export class HomeAssistantHttpService {
 
 	private async fetchSingleHaDevice(id: string): Promise<HomeAssistantDiscoveredDeviceDto | null> {
 		try {
-			const url = new URL('/api/template', this.baseUrl);
+			const url = new URL(`${this.baseUrl}/api/template`);
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -833,7 +837,7 @@ export class HomeAssistantHttpService {
 
 	private async fetchListHaDevices(): Promise<HomeAssistantDiscoveredDeviceDto[] | null> {
 		try {
-			const url = new URL('/api/template', this.baseUrl);
+			const url = new URL(`${this.baseUrl}/api/template`);
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -883,7 +887,7 @@ export class HomeAssistantHttpService {
 
 	private async fetchSingleHaState(entityId: string): Promise<HomeAssistantStateDto | null> {
 		try {
-			const url = new URL(`/api/states/${entityId}`, this.baseUrl);
+			const url = new URL(`${this.baseUrl}/api/states/${entityId}`);
 
 			const response = await fetch(url, {
 				method: 'GET',
@@ -928,7 +932,7 @@ export class HomeAssistantHttpService {
 
 	private async fetchListHaStates(): Promise<HomeAssistantStateDto[] | null> {
 		try {
-			const url = new URL('/api/states', this.baseUrl);
+			const url = new URL(`${this.baseUrl}/api/states`);
 
 			const response = await fetch(url, {
 				method: 'GET',
@@ -975,7 +979,7 @@ export class HomeAssistantHttpService {
 
 	private async fetchListHaHelpers(): Promise<HomeAssistantDiscoveredHelperDto[] | null> {
 		try {
-			const url = new URL('/api/template', this.baseUrl);
+			const url = new URL(`${this.baseUrl}/api/template`);
 
 			const response = await fetch(url, {
 				method: 'POST',

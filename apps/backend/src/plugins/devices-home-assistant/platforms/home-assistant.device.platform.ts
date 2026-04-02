@@ -179,6 +179,10 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	private get baseUrl(): string {
+		if (this.hostname.startsWith('http://') || this.hostname.startsWith('https://')) {
+			return this.hostname.replace(/\/+$/, '');
+		}
+
 		return `http://${this.hostname}`;
 	}
 }

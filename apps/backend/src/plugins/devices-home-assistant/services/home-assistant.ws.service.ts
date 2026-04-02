@@ -277,7 +277,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
-		const url = new URL('/api/websocket', this.baseUrl);
+		const url = new URL(`${this.baseUrl}/api/websocket`);
 
 		this.ws = new WebSocket(url);
 
@@ -471,6 +471,14 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private get baseUrl(): string {
+		if (this.hostname.startsWith('http://')) {
+			return this.hostname.replace(/\/+$/, '').replace(/^http:\/\//, 'ws://');
+		}
+
+		if (this.hostname.startsWith('https://')) {
+			return this.hostname.replace(/\/+$/, '').replace(/^https:\/\//, 'wss://');
+		}
+
 		return `ws://${this.hostname}`;
 	}
 
