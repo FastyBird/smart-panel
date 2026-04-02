@@ -142,7 +142,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const supervisorMode = computed(() => 'supervisorMode' in props.config && Boolean(supervisorMode));
+const supervisorMode = computed((): boolean => {
+	return 'supervisorMode' in props.config && Boolean((props.config as Record<string, unknown>).supervisorMode);
+});
 
 const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeAssistantConfigEditForm>({
 	config: props.config,
