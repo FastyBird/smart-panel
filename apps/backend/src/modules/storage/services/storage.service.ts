@@ -412,6 +412,10 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	}
 
 	private createPlugin(pluginName: string): StoragePlugin | null {
+		if (!pluginName) {
+			return null;
+		}
+
 		const factory = this.pluginFactories.get(pluginName);
 
 		if (!factory) {

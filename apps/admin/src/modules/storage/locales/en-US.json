@@ -22,11 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Fallback Storage",
-				"placeholder": "Select fallback storage plugin (optional)"
-			},
-			"plugins": {
-				"influxV1": "InfluxDB v1",
-				"memory": "In-Memory Storage"
+				"placeholder": "Select fallback storage plugin (optional)",
+				"none": "None"
 			}
 		}
 	}

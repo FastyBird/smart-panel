@@ -12,13 +12,13 @@ import {
 } from '../../modules/config';
 import { STORAGE_MODULE_NAME } from '../../modules/storage/storage.constants';
 
-import { InfluxV1ConfigForm } from './components/components';
-import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
+import { InfluxV2ConfigForm } from './components/components';
+import { INFLUX_V2_PLUGIN_NAME } from './influx-v2.constants';
 import { locales } from './locales';
-import { InfluxV1ConfigEditFormSchema } from './schemas/config.schemas';
-import { InfluxV1ConfigSchema, InfluxV1ConfigUpdateReqSchema } from './store/config.store.schemas';
+import { InfluxV2ConfigEditFormSchema } from './schemas/config.schemas';
+import { InfluxV2ConfigSchema, InfluxV2ConfigUpdateReqSchema } from './store/config.store.schemas';
 
-const influxV1PluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-InfluxV1');
+const influxV2PluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-InfluxV2');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -26,16 +26,16 @@ export default {
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
-			const mergedMessages = defaultsDeep(currentMessages, { influxV1Plugin: translations });
+			const mergedMessages = defaultsDeep(currentMessages, { influxV2Plugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
 
-		pluginsManager.addPlugin(influxV1PluginKey, {
-			type: INFLUX_V1_PLUGIN_NAME,
-			source: 'com.fastybird.smart-panel.plugin.influx-v1',
-			name: 'InfluxDB v1',
-			description: 'InfluxDB 1.x time-series storage backend with retention policies and continuous queries',
+		pluginsManager.addPlugin(influxV2PluginKey, {
+			type: INFLUX_V2_PLUGIN_NAME,
+			source: 'com.fastybird.smart-panel.plugin.influx-v2',
+			name: 'InfluxDB v2',
+			description: 'InfluxDB 2.x time-series storage backend with Flux query language, token-based auth, and bucket management',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				devDocumentation: 'https://smart-panel.fastybird.com/docs',
@@ -45,12 +45,12 @@ export default {
 				{
 					type: CONFIG_MODULE_PLUGIN_TYPE,
 					components: {
-						pluginConfigEditForm: InfluxV1ConfigForm,
+						pluginConfigEditForm: InfluxV2ConfigForm,
 					},
 					schemas: {
-						pluginConfigSchema: InfluxV1ConfigSchema,
-						pluginConfigEditFormSchema: InfluxV1ConfigEditFormSchema,
-						pluginConfigUpdateReqSchema: InfluxV1ConfigUpdateReqSchema,
+						pluginConfigSchema: InfluxV2ConfigSchema,
+						pluginConfigEditFormSchema: InfluxV2ConfigEditFormSchema,
+						pluginConfigUpdateReqSchema: InfluxV2ConfigUpdateReqSchema,
 					},
 					modules: [CONFIG_MODULE_NAME],
 				},

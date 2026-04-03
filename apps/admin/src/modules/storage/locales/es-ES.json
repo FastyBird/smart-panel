@@ -22,11 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Almacenamiento alternativo",
-				"placeholder": "Seleccionar complemento de almacenamiento alternativo (opcional)"
-			},
-			"plugins": {
-				"influxV1": "InfluxDB v1",
-				"memory": "Almacenamiento en memoria"
+				"placeholder": "Seleccionar complemento de almacenamiento alternativo (opcional)",
+				"none": "Ninguno"
 			}
 		}
 	}

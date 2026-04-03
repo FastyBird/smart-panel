@@ -4,6 +4,7 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import { STORAGE_MODULE_NAME } from '../../modules/storage/storage.constants';
 
 import { locales } from './locales';
 import { MEMORY_STORAGE_PLUGIN_NAME } from './memory-storage.constants';
@@ -32,7 +33,7 @@ export default {
 				bugsTracking: 'https://github.com/FastyBird/smart-panel/issues',
 			},
 			elements: [],
-			modules: [],
+			modules: [STORAGE_MODULE_NAME],
 			isCore: false,
 		});
 	},

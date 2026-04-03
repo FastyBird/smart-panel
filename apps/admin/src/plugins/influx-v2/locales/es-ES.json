@@ -1,0 +1,44 @@
+{
+	"headings": {
+		"connection": "Conexión de InfluxDB v2",
+		"authentication": "Autenticación"
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración de InfluxDB v2 ha sido actualizada correctamente",
+			"notEdited": "Error al actualizar la configuración de InfluxDB v2"
+		}
+	},
+	"texts": {
+		"about": "Configure la conexión de InfluxDB v2 para el almacenamiento de datos de series temporales."
+	},
+	"fields": {
+		"config": {
+			"url": {
+				"title": "URL del servidor",
+				"placeholder": "http://127.0.0.1:8086",
+				"validation": {
+					"required": "La URL del servidor es obligatoria"
+				}
+			},
+			"org": {
+				"title": "Organización",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "La organización es obligatoria"
+				}
+			},
+			"bucket": {
+				"title": "Bucket",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "El nombre del bucket es obligatorio"
+				}
+			},
+			"token": {
+				"title": "Token de API",
+				"placeholder": "Déjelo vacío si no es necesario"
+			}
+		}
+	}
+}
