@@ -304,6 +304,8 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		});
 
 		this.ws.on('close', () => {
+			this.stopPing();
+
 			// Reject pending connection promise if still waiting
 			if (this.connectionResolver) {
 				this.connectionResolver.reject(new Error('WebSocket connection closed before authentication completed'));
