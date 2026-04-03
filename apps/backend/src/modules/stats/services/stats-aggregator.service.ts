@@ -74,6 +74,23 @@ export class StatsAggregatorService {
 		return out;
 	}
 
+	@Cron(CronExpression.EVERY_MINUTE)
+	private evictExpiredCache(): void {
+		const now = Date.now();
+		let evicted = 0;
+
+		for (const [key, value] of this.cache) {
+			if (now - value.at > this.ttlMs) {
+				this.cache.delete(key);
+				evicted++;
+			}
+		}
+
+		if (evicted > 0) {
+			this.logger.debug(`Evicted ${evicted} expired stats cache entries`);
+		}
+	}
+
 	@Cron(CronExpression.EVERY_5_SECONDS)
 	async broadcastStatsInfo() {
 		try {

@@ -20,31 +20,23 @@ export class RaspberryPlatform extends Platform {
 	private cachedNpmVersion: string | null = null;
 
 	async getSystemInfo() {
-		const [cpu, memory, storage, os, temp, network, graphics, networkInterface]: [
-			Systeminformation.CurrentLoadData,
-			Systeminformation.MemData,
-			Systeminformation.FsSizeData[],
-			Systeminformation.OsData,
-			Systeminformation.CpuTemperatureData,
-			Systeminformation.NetworkStatsData[],
-			Systeminformation.GraphicsData,
-			Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[],
-		] = await Promise.all([
+		const [cpu, memory, temp, network] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
-			si.fsSize(),
-			si.osInfo(),
 			si.cpuTemperature(),
 			si.networkStats(),
-			si.graphics(),
-			si.networkInterfaces('default'),
+		]);
+
+		const [storage, osInfo, graphics, networkInterface] = await Promise.all([
+			this.cachedFsSize(),
+			this.cachedOsInfo(),
+			this.cachedGraphics(),
+			this.cachedNetworkInterfaces(),
 		]);
 
 		const time = si.time();
 
-		const defaultNetworkInterface = (
-			Array.isArray(networkInterface) ? networkInterface[0] : networkInterface
-		) as Systeminformation.NetworkInterfacesData;
+		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
 		const resolution = await this.getCurrentResolution();
 
@@ -63,9 +55,9 @@ export class RaspberryPlatform extends Platform {
 			})),
 			primaryStorage: await this.getPrimaryDisk(),
 			os: {
-				platform: os.platform,
-				distro: os.distro,
-				release: os.release,
+				platform: osInfo.platform,
+				distro: osInfo.distro,
+				release: osInfo.release,
 				uptime: time.uptime,
 				node: await this.getNodeVersion(),
 				npm: await this.getNpmVersion(),
@@ -84,7 +76,7 @@ export class RaspberryPlatform extends Platform {
 				ip4: defaultNetworkInterface.ip4,
 				ip6: defaultNetworkInterface.ip6,
 				mac: defaultNetworkInterface.mac,
-				hostname: os.hostname,
+				hostname: osInfo.hostname,
 			},
 			display: {
 				resolutionX: graphics.displays[0]?.resolutionX || resolution?.width || 0,
@@ -242,7 +234,7 @@ export class RaspberryPlatform extends Platform {
 	async getPrimaryDisk(): Promise<StorageDto> {
 		const targetPath = process.cwd();
 
-		const fsList = await si.fsSize(); // [{ fs, type, mount, size, used, available }, ...]
+		const fsList = await this.cachedFsSize();
 
 		const filtered = fsList.filter((d) => !this.isPseudoFs(d.type) && d.size > 0);
 
