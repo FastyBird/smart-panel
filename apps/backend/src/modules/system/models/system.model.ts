@@ -215,6 +215,16 @@ export class SystemHealthModel {
 
 @ApiSchema({ name: 'SystemModuleDataSystemInfo' })
 export class SystemInfoModel {
+	@ApiProperty({
+		description: 'Smart Panel platform type',
+		type: 'string',
+		enum: ['generic', 'raspberry', 'docker', 'development', 'home-assistant'],
+		example: 'raspberry',
+	})
+	@Expose()
+	@IsString()
+	platform: string;
+
 	@ApiProperty({ name: 'cpu_load', description: 'CPU load percentage', type: 'number', example: 45.5 })
 	@Expose({ name: 'cpu_load' })
 	@IsNumber()
