@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import fs from 'fs/promises';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -29,6 +30,39 @@ export abstract class Platform {
 	abstract getNodeVersion(): Promise<string>;
 	abstract getNpmVersion(): Promise<string | null>;
 	abstract getPrimaryDisk(): Promise<StorageDto>;
+
+	protected static readonly THROTTLE_SYSFS_PATH = '/sys/devices/platform/soc/soc:firmware/get_throttled';
+
+	/**
+	 * Parse a raw hex throttle value into the four standard flags.
+	 */
+	protected parseThrottleFlags(status: number) {
+		return {
+			undervoltage: !!(status & 0x1),
+			frequencyCapping: !!(status & 0x2),
+			throttling: !!(status & 0x4),
+			softTempLimit: !!(status & 0x8),
+		};
+	}
+
+	/**
+	 * Read throttle status from the Raspberry Pi firmware sysfs path.
+	 * Returns null when the path is not available.
+	 */
+	protected async readThrottleFromSysfs(): Promise<ThrottleStatusDto | null> {
+		try {
+			const data = await fs.readFile(Platform.THROTTLE_SYSFS_PATH, 'utf-8');
+			const status = parseInt(data.trim(), 16);
+
+			if (!isNaN(status)) {
+				return this.validateDto(ThrottleStatusDto, this.parseThrottleFlags(status));
+			}
+		} catch {
+			// sysfs not available
+		}
+
+		return null;
+	}
 
 	protected async validateDto<T extends object>(dtoClass: new () => T, rawData: unknown): Promise<T> {
 		const instance = toInstance(dtoClass, rawData);

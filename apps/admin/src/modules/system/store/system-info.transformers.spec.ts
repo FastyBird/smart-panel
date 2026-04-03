@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import { SystemValidationException } from '../system.exceptions';
 
 import type { ISystemInfoRes } from './system-info.store.types';
@@ -20,6 +21,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validSystemInfoResponse: ISystemInfoRes = {
+	platform: SystemModuleDataSystemInfoPlatform.generic,
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -84,6 +86,7 @@ describe('System Info Transformers', (): void => {
 			const result = transformSystemInfoResponse(validSystemInfoResponse);
 
 			expect(result).toEqual({
+				platform: SystemModuleDataSystemInfoPlatform.generic,
 				cpuLoad: 15.3,
 				memory: {
 					total: 8388608000,

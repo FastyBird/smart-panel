@@ -38,6 +38,10 @@ export class PlatformService {
 			});
 	}
 
+	getPlatformType(): PlatformType {
+		return this.platformType;
+	}
+
 	getSystemInfo() {
 		this.logger.debug('Fetching system information');
 
@@ -125,6 +129,13 @@ export class PlatformService {
 	}
 
 	private async autoDetectPlatform(): Promise<{ platform: Platform; type: PlatformType }> {
+		// SUPERVISOR_TOKEN is always set inside HA addons by the Supervisor
+		if (process.env.SUPERVISOR_TOKEN) {
+			this.logger.log('Home Assistant Supervisor environment detected (SUPERVISOR_TOKEN present)');
+
+			return { platform: this.createPlatform(PlatformType.HOME_ASSISTANT), type: PlatformType.HOME_ASSISTANT };
+		}
+
 		const systemInfo = await si.system();
 		const osInfo = await si.osInfo();
 

@@ -112,12 +112,7 @@ export class RaspberryPlatform extends Platform {
 				if (match) {
 					const status = parseInt(match[1], 16);
 
-					return this.validateDto(ThrottleStatusDto, {
-						undervoltage: !!(status & 0x1),
-						frequencyCapping: !!(status & 0x2),
-						throttling: !!(status & 0x4),
-						softTempLimit: !!(status & 0x8),
-					});
+					return this.validateDto(ThrottleStatusDto, this.parseThrottleFlags(status));
 				}
 			} catch {
 				// Try next strategy
@@ -125,30 +120,15 @@ export class RaspberryPlatform extends Platform {
 		}
 
 		// Fallback: read from sysfs (available on some Pi models)
-		try {
-			const data = await fs.readFile('/sys/devices/platform/soc/soc:firmware/get_throttled', 'utf-8');
-			const status = parseInt(data.trim(), 16);
+		const sysfsResult = await this.readThrottleFromSysfs();
 
-			if (!isNaN(status)) {
-				return this.validateDto(ThrottleStatusDto, {
-					undervoltage: !!(status & 0x1),
-					frequencyCapping: !!(status & 0x2),
-					throttling: !!(status & 0x4),
-					softTempLimit: !!(status & 0x8),
-				});
-			}
-		} catch {
-			// sysfs not available
+		if (sysfsResult) {
+			return sysfsResult;
 		}
 
 		this.logger.warn('[THROTTLE] Could not read throttle status, returning defaults');
 
-		return this.validateDto(ThrottleStatusDto, {
-			undervoltage: false,
-			frequencyCapping: false,
-			throttling: false,
-			softTempLimit: false,
-		});
+		return this.validateDto(ThrottleStatusDto, this.parseThrottleFlags(0));
 	}
 
 	async getTemperature() {

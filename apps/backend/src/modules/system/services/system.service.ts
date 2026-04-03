@@ -20,7 +20,10 @@ export class SystemService {
 	async getSystemInfo(): Promise<SystemInfoModel> {
 		const rawInfo = await this.platformService.getSystemInfo();
 
-		return toInstance(SystemInfoModel, rawInfo);
+		return toInstance(SystemInfoModel, {
+			...rawInfo,
+			platform: this.platformService.getPlatformType(),
+		});
 	}
 
 	async getThrottleStatus(): Promise<ThrottleStatusModel> {
