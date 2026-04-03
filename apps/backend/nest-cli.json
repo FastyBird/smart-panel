@@ -44,6 +44,10 @@
       {
         "include": "plugins/simulator/scenarios/definitions/**/*.yaml",
         "outDir": "dist"
+      },
+      {
+        "include": "modules/system/scripts/**/*.sh",
+        "outDir": "dist"
       }
     ]
   }
