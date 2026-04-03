@@ -3,11 +3,17 @@ import { readFile } from 'fs/promises';
 import os from 'os';
 import { promisify } from 'util';
 
+import { SystemInfoDto } from '../dto/system-info.dto';
+
 import { GenericPlatform } from './generic.platform';
 
 const execFileAsync = promisify(execFile);
 
 export class DockerPlatform extends GenericPlatform {
+	async getSystemInfo(): Promise<SystemInfoDto> {
+		return this.getContainerSystemInfo();
+	}
+
 	async rebootDevice(): Promise<void> {
 		this.logger.log('[SYSTEM] Restarting container via Docker API...');
 
@@ -72,7 +78,6 @@ export class DockerPlatform extends GenericPlatform {
 		}
 
 		// Try cgroup v2: /proc/self/mountinfo contains the container ID in the mount path
-		// e.g. "/docker/containers/<id>/..." or "/system.slice/docker-<id>.scope"
 		try {
 			const mountinfo = await readFile('/proc/self/mountinfo', 'utf-8');
 			const match = mountinfo.match(/docker[/-]([a-f0-9]{12,64})/);
