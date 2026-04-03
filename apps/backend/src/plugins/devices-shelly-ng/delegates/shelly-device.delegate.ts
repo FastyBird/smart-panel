@@ -214,15 +214,23 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			return false;
 		}
 
+		let timer: NodeJS.Timeout | undefined;
+
 		try {
 			await Promise.race([
 				this.shelly.rpcHandler.request('Shelly.GetStatus'),
-				new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), timeoutMs)),
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => reject(new Error('Ping timeout')), timeoutMs);
+				}),
 			]);
 
 			return true;
 		} catch {
 			return false;
+		} finally {
+			if (timer) {
+				clearTimeout(timer);
+			}
 		}
 	}
 
@@ -237,6 +245,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		// Access the protected socket to force-terminate it.
 		// TypeScript access modifiers are not enforced at runtime.
 		const rpcHandler = this.shelly.rpcHandler as unknown as { socket?: { terminate?: () => void } };
+
+		// Reset reconnect backoff so the library uses the shortest interval
+		// (first entry in reconnectInterval) instead of an escalated delay.
+		this.shelly.rpcHandler.resetReconnectInterval();
 
 		if (rpcHandler.socket?.terminate) {
 			rpcHandler.socket.terminate();
