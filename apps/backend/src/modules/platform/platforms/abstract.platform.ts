@@ -119,13 +119,55 @@ export abstract class Platform {
 	}
 
 	/**
+	 * Read the container's effective CPU count from cgroup quota.
+	 * Falls back to os.cpus().length (host count) when no quota is set.
+	 */
+	protected async readContainerCpuCount(): Promise<number> {
+		// cgroup v2: /sys/fs/cgroup/cpu.max — format: "$quota $period" or "max $period"
+		try {
+			const raw = await fs.readFile('/sys/fs/cgroup/cpu.max', 'utf-8');
+			const [quotaStr, periodStr] = raw.trim().split(/\s+/);
+
+			if (quotaStr !== 'max') {
+				const quota = parseInt(quotaStr, 10);
+				const period = parseInt(periodStr, 10);
+
+				if (!isNaN(quota) && !isNaN(period) && period > 0) {
+					return Math.max(1, quota / period);
+				}
+			}
+		} catch {
+			// cgroup v2 not available
+		}
+
+		// cgroup v1: cpu.cfs_quota_us / cpu.cfs_period_us — quota -1 means unlimited
+		try {
+			const [quotaRaw, periodRaw] = await Promise.all([
+				fs.readFile('/sys/fs/cgroup/cpu/cpu.cfs_quota_us', 'utf-8'),
+				fs.readFile('/sys/fs/cgroup/cpu/cpu.cfs_period_us', 'utf-8'),
+			]);
+
+			const quota = parseInt(quotaRaw.trim(), 10);
+			const period = parseInt(periodRaw.trim(), 10);
+
+			if (!isNaN(quota) && quota > 0 && !isNaN(period) && period > 0) {
+				return Math.max(1, quota / period);
+			}
+		} catch {
+			// cgroup v1 not available
+		}
+
+		return os.cpus().length || 1;
+	}
+
+	/**
 	 * Read container CPU usage percentage from cgroup cpu stats.
 	 * Tries cgroup v2 (cpu.stat, microseconds) then v1 (cpuacct.usage, nanoseconds).
 	 * Returns the CPU usage ratio (0-100) over a short sample window,
 	 * or null if cgroup stats are not available.
 	 */
 	protected async readContainerCpuLoad(): Promise<number | null> {
-		const cpuCount = os.cpus().length || 1;
+		const cpuCount = await this.readContainerCpuCount();
 
 		// cgroup v2: usage_usec in /sys/fs/cgroup/cpu.stat (microseconds)
 		try {
@@ -207,7 +249,20 @@ export abstract class Platform {
 	 * Shared by DockerPlatform and HomeAssistantPlatform.
 	 */
 	protected async getContainerSystemInfo(): Promise<SystemInfoDto> {
-		const [hostCpu, hostMemory, storage, osInfo, temp, network, graphics, networkInterface] = await Promise.all([
+		// Run cgroup reads in parallel with si.* calls — readContainerCpuLoad
+		// contains a 200ms sampling window that overlaps with the si.* I/O.
+		const [
+			hostCpu,
+			hostMemory,
+			storage,
+			osInfo,
+			temp,
+			network,
+			graphics,
+			networkInterface,
+			containerMemory,
+			containerCpu,
+		] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
 			si.fsSize(),
@@ -218,20 +273,18 @@ export abstract class Platform {
 			si.networkInterfaces('default') as Promise<
 				Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
 			>,
+			this.readContainerMemory(),
+			this.readContainerCpuLoad(),
 		]);
 
 		const time = si.time();
 
-		// Container-aware memory (cgroup) with host fallback
-		const containerMemory = await this.readContainerMemory();
 		const memory = containerMemory ?? {
 			total: hostMemory.total,
 			used: hostMemory.used,
 			free: hostMemory.free,
 		};
 
-		// Container-aware CPU (cgroup) with host fallback
-		const containerCpu = await this.readContainerCpuLoad();
 		const cpuLoad = containerCpu ?? hostCpu.currentLoad;
 
 		// Container-relevant storage only
