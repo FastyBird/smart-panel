@@ -132,7 +132,7 @@ export abstract class Platform {
 				const quota = parseInt(quotaStr, 10);
 				const period = parseInt(periodStr, 10);
 
-				if (!isNaN(quota) && !isNaN(period) && period > 0) {
+				if (!isNaN(quota) && quota > 0 && !isNaN(period) && period > 0) {
 					return quota / period;
 				}
 			}
