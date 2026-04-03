@@ -10,6 +10,7 @@ import {
 	type IPluginsComponents,
 	type IPluginsSchemas,
 } from '../../modules/config';
+import { STORAGE_MODULE_NAME } from '../../modules/storage/storage.constants';
 
 import { InfluxV2ConfigForm } from './components/components';
 import { INFLUX_V2_PLUGIN_NAME } from './influx-v2.constants';
@@ -54,7 +55,7 @@ export default {
 					modules: [CONFIG_MODULE_NAME],
 				},
 			],
-			modules: [CONFIG_MODULE_NAME],
+			modules: [CONFIG_MODULE_NAME, STORAGE_MODULE_NAME],
 			isCore: false,
 		});
 	},

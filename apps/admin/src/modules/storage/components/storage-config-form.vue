@@ -58,6 +58,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import { useStoragePlugins } from '../composables/useStoragePlugins';
 import type { IStorageConfigEditForm } from '../schemas/config.types';
 
 import type { IStorageConfigFormProps } from './storage-config-form.types';
@@ -82,11 +83,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const storagePluginOptions = [
-	{ value: 'influx-v1-plugin', label: t('storageModule.fields.config.plugins.influxV1') },
-	{ value: 'influx-v2-plugin', label: t('storageModule.fields.config.plugins.influxV2') },
-	{ value: 'memory-storage-plugin', label: t('storageModule.fields.config.plugins.memory') },
-];
+const { options: storagePluginOptions } = useStoragePlugins();
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IStorageConfigEditForm>({
 	config: props.config,

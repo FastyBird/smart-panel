@@ -23,11 +23,6 @@
 			"fallbackStorage": {
 				"title": "Magazyn zapasowy",
 				"placeholder": "Wybierz zapasową wtyczkę magazynu (opcjonalnie)"
-			},
-			"plugins": {
-				"influxV1": "InfluxDB v1",
-				"influxV2": "InfluxDB v2",
-				"memory": "Magazyn w pamięci"
 			}
 		}
 	}

@@ -23,11 +23,6 @@
 			"fallbackStorage": {
 				"title": "Záložné úložisko",
 				"placeholder": "Vyberte plugin záložného úložiska (voliteľné)"
-			},
-			"plugins": {
-				"influxV1": "InfluxDB v1",
-				"influxV2": "InfluxDB v2",
-				"memory": "Úložisko v pamäti"
 			}
 		}
 	}

@@ -23,11 +23,6 @@
 			"fallbackStorage": {
 				"title": "Ausweichspeicher",
 				"placeholder": "Ausweichspeicher-Plugin auswählen (optional)"
-			},
-			"plugins": {
-				"influxV1": "InfluxDB v1",
-				"influxV2": "InfluxDB v2",
-				"memory": "In-Memory-Speicher"
 			}
 		}
 	}
