@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-04-01. Reflects actual codebase state.
+> Last updated: 2026-04-03. Reflects actual codebase state.
 
 ---
 
@@ -91,13 +91,30 @@
 
 All 4 phases complete: Observer + Text Chat, Proactive Intelligence, Voice Interaction, Multi-Channel.
 
-No remaining active tasks in this epic.
+### Phase 3: Voice Interaction
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 1 | [FEATURE-BUDDY-VOICE-WAKE-WORD](features/FEATURE-BUDDY-VOICE-WAKE-WORD.md) | backend, panel | :white_check_mark: Done |
+| 2 | [FEATURE-BUDDY-VOICE-STT](features/FEATURE-BUDDY-VOICE-STT.md) | backend | :white_check_mark: Done |
+| 3 | [FEATURE-BUDDY-VOICE-TTS](features/FEATURE-BUDDY-VOICE-TTS.md) | backend | :white_check_mark: Done |
+| 4 | [FEATURE-BUDDY-VOICE-INTENT-ROUTING](features/FEATURE-BUDDY-VOICE-INTENT-ROUTING.md) | backend | :white_check_mark: Done |
+
+### Phase 4: Multi-Channel & Personality
+
+| # | Task | Scope | Status |
+|---|------|-------|--------|
+| 5 | [FEATURE-BUDDY-CHANNEL-ADMIN-CHAT](features/FEATURE-BUDDY-CHANNEL-ADMIN-CHAT.md) | admin | :white_check_mark: Done |
+| 6 | [FEATURE-BUDDY-CHANNEL-PERSONALITY](features/FEATURE-BUDDY-CHANNEL-PERSONALITY.md) | backend | :white_check_mark: Done |
+| 7 | [FEATURE-BUDDY-CHANNEL-TELEGRAM](features/FEATURE-BUDDY-CHANNEL-TELEGRAM.md) | backend | :white_check_mark: Done |
+| 8 | [FEATURE-BUDDY-CHANNEL-DISCORD](features/FEATURE-BUDDY-CHANNEL-DISCORD.md) | backend | :white_check_mark: Done |
+| 9 | [FEATURE-BUDDY-CHANNEL-WHATSAPP](features/FEATURE-BUDDY-CHANNEL-WHATSAPP.md) | backend | :white_check_mark: Done |
 
 ---
 
 ## 4a. AI Buddy Face (Epic)
 
-> [EPIC-AI-BUDDY-FACE](features/EPIC-AI-BUDDY-FACE.md) — Status: :clipboard: Planned
+> [EPIC-AI-BUDDY-FACE](epics/EPIC-AI-BUDDY-FACE.md) — Status: :clipboard: Planned
 
 Give the AI buddy a visual personality with an animated face on the panel display.
 The backend buddy module (LLM, STT, TTS, voice, chat) is already fully implemented.
@@ -190,7 +207,7 @@ All onboarding device setup tasks complete.
 
 ## 8. Virtual Devices (Epic)
 
-> [EPIC-VIRTUAL-DEVICES](features/EPIC-VIRTUAL-DEVICES.md) — Status: :clipboard: Planned
+> [EPIC-VIRTUAL-DEVICES](epics/EPIC-VIRTUAL-DEVICES.md) — Status: :clipboard: Planned
 
 Split multi-channel devices into independent child devices and compose new logical devices from channels across multiple physical devices. Enables flexible room assignment, category remapping, and spec-compliant virtual devices.
 
@@ -299,10 +316,10 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
-| 1 | [FEATURE-INFLUXDB-FALLBACK](features/influxdb-memory-fallback.md) | backend, admin | :white_check_mark: Done |
-| 2 | [FEATURE-IMAGE-UPDATE](features/image-update-mechanism.md) | backend | :white_check_mark: Done |
-| 3 | [FEATURE-FLUTTERPI-MDNS](features/flutter-pi-mdns-discovery-service.md) | backend, panel | :white_check_mark: Done |
-| 4 | [FEATURE-CAPTIVE-PORTAL](features/captive-portal-wifi-setup.md) | backend | :white_check_mark: Done |
+| 1 | [FEATURE-INFLUXDB-MEMORY-FALLBACK](features/FEATURE-INFLUXDB-MEMORY-FALLBACK.md) | backend, admin | :white_check_mark: Done |
+| 2 | [FEATURE-IMAGE-UPDATE-MECHANISM](features/FEATURE-IMAGE-UPDATE-MECHANISM.md) | backend | :white_check_mark: Done |
+| 3 | [FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE](features/FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE.md) | backend, panel | :white_check_mark: Done |
+| 4 | [FEATURE-CAPTIVE-PORTAL-WIFI-SETUP](features/FEATURE-CAPTIVE-PORTAL-WIFI-SETUP.md) | backend | :white_check_mark: Done |
 | 5 | [FEATURE-PANEL-APP-UPDATES](features/FEATURE-PANEL-APP-UPDATES.md) | backend, admin, panel | :clipboard: Planned |
 | 6 | [FEATURE-SYSTEM-SERVICE-RESTART](features/FEATURE-SYSTEM-SERVICE-RESTART.md) | backend, admin | :clipboard: Planned |
 
@@ -340,6 +357,8 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | # | Plan | Status |
 |---|------|--------|
 | 1 | [plan-epic-intents-backend](plans/plan-epic-intents-backend.md) | :white_check_mark: Done |
+| 2 | [plan-extend-extensions-module-actions](plans/plan-extend-extensions-module-actions.md) | :white_check_mark: Done |
+| 3 | [plan-pre-release-docs-update](plans/plan-pre-release-docs-update.md) | :clipboard: Planned |
 
 ---
 
@@ -351,6 +370,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Media | 8 | 0 | 0 | 8 |
 | Domains Epic | 2 | 0 | 7 | 9 |
 | Buddy Epic | 9 | 0 | 0 | 9 |
+| Buddy Voice/Channels | 9 | 0 | 0 | 9 |
 | AI Buddy Face | 0 | 0 | 2 | 2 |
 | Buddy Hardening | 3 | 0 | 5 | 8 |
 | Onboarding Epic | 3 | 0 | 0 | 3 |
@@ -364,5 +384,5 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Device & Infrastructure | 4 | 0 | 2 | 6 |
 | Technical | 5 | 0 | 0 | 5 |
 | Other Features | 4 | 0 | 1 | 5 |
-| Plans | 1 | 0 | 0 | 1 |
-| **Total** | **54** | **0** | **38** | **92** |
+| Plans | 2 | 0 | 1 | 3 |
+| **Total** | **64** | **0** | **39** | **103** |
