@@ -9,9 +9,9 @@ This is a monorepo for the FastyBird Smart Panel project:
 ## Architecture Reference
 
 These files contain detailed domain architecture documentation:
-- `docs/CLIMATE_ARCHITECTURE.md` - Climate domain architecture
-- `docs/MEDIA_ARCHITECTURE.md` - Media domain architecture
-- `docs/OPTIMISTIC_UI_ARCHITECTURE.md` - Panel optimistic UI patterns
+- `docs/climate-architecture.md` - Climate domain architecture
+- `docs/media-architecture.md` - Media domain architecture
+- `docs/optimistic-ui-architecture.md` - Panel optimistic UI patterns
 
 Read them when working on the relevant domain.
 

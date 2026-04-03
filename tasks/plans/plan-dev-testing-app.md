@@ -8,8 +8,7 @@
 
 **Tech Stack:** Vite 6, React 19, TypeScript, Tailwind CSS 4, js-yaml
 
-**Spec:** `docs/superpowers/specs/2026-03-19-dev-testing-app-design.md`
-**Hardware test plan:** `docs/superpowers/specs/2026-03-19-hardware-testing-plan-design.md`
+**Spec:** `tasks/plans/plan-dev-testing-app-design.md`
 
 ---
 
