@@ -1,4 +1,4 @@
-# Smart Panel - Claude Code Instructions
+# Smart Panel - AI Agent Instructions
 
 This is a monorepo for the FastyBird Smart Panel project:
 - **Backend**: NestJS application (`apps/backend/`)
@@ -6,19 +6,22 @@ This is a monorepo for the FastyBird Smart Panel project:
 - **Panel**: Flutter/Dart embedded app (`apps/panel/`)
 - **Website**: Next.js documentation site (`apps/website/`)
 
-## Essential Documentation
+## Architecture Reference
 
-Read these files for detailed guidelines:
-- `.ai-rules/GUIDELINES.md` - Development setup, commands, coding style, AI guidelines
-- `.ai-rules/API_CONVENTIONS.md` - Backend API & Swagger conventions
-- `.ai-rules/CLIMATE_ARCHITECTURE.md` - Climate domain architecture
-- `.ai-rules/MEDIA_ARCHITECTURE.md` - Media domain architecture
-- `.ai-rules/OPTIMISTIC_UI_ARCHITECTURE.md` - Panel optimistic UI patterns
-- `tasks/` - Feature and technical task specifications
+These files contain detailed domain architecture documentation:
+- `docs/CLIMATE_ARCHITECTURE.md` - Climate domain architecture
+- `docs/MEDIA_ARCHITECTURE.md` - Media domain architecture
+- `docs/OPTIMISTIC_UI_ARCHITECTURE.md` - Panel optimistic UI patterns
 
-## Quick Reference
+Read them when working on the relevant domain.
 
-### Commands
+## Requirements
+
+- **Node.js**: >= 24
+- **pnpm**: >= 10
+- **Dart/Flutter**: For panel app development
+
+## Commands
 
 ```bash
 # Install & setup
@@ -29,8 +32,9 @@ pnpm run start:dev              # Backend dev server
 pnpm run admin:build            # Build admin app
 
 # Testing
-pnpm run test:unit              # Backend unit tests
+pnpm run test:unit              # Backend unit tests (Jest)
 pnpm run test:e2e               # Backend E2E tests
+pnpm --filter ./apps/admin run test:unit  # Admin unit tests (Vitest)
 
 # Linting & formatting
 pnpm run lint:js                # Lint TypeScript
@@ -38,51 +42,113 @@ pnpm run lint:js:fix            # Auto-fix lint issues
 pnpm run pretty                 # Format code
 
 # Code generation
-pnpm run generate:openapi       # Generate OpenAPI spec from backend
+pnpm run generate:openapi       # Generate OpenAPI spec + admin types + panel client
 pnpm run generate:spec          # Generate device/channel specs
+
+# Database migrations
+cd apps/backend
+pnpm run typeorm:migration:run  # Run pending migrations
+
+# Flutter panel
+melos rebuild-all               # Rebuild API and specs after OpenAPI changes
+melos analyze                   # Analyze Dart code
 ```
 
-### Key Rules
+## Generated Code - DO NOT EDIT
 
-1. **Generated code** - Never edit files in:
-   - `spec/api/v1/openapi.json`
-   - `apps/backend/src/spec/`
-   - `apps/admin/src/openapi.constants.ts`
-   - `apps/panel/lib/api/`
-   - `apps/panel/lib/spec/`
+Never edit these files manually. Update the source (backend Swagger decorators, spec generators) instead:
+- `spec/api/v1/openapi.json` - Generated from backend Swagger decorators
+- `apps/backend/src/spec/` - Generated device/channel specs
+- `apps/admin/src/openapi.ts` - Generated from OpenAPI spec
+- `apps/panel/lib/api/` - Generated Dart API client
+- `apps/panel/lib/spec/` - Generated Dart device/channel specs
 
-2. **Backend API** - Follow patterns in `.ai-rules/API_CONVENTIONS.md`:
-   - Controllers return `*ResponseModel`
-   - DTOs are input only
-   - Use Swagger decorators for OpenAPI generation
+Note: `apps/admin/src/openapi.constants.ts` is manually maintained (exports from generated `openapi.ts`).
 
-3. **Code style**:
-   - TypeScript: tabs, 120 width, single quotes, semicolons
-   - Dart: package imports only, snake_case files
+## Code Style
 
-4. **Testing** - Add tests for new business logic
+### TypeScript (Backend & Admin)
 
-### Project Structure
+- **Indentation**: tabs (not spaces)
+- **Print width**: 120 characters
+- **Quotes**: single quotes
+- **Semicolons**: always
+- **Trailing commas**: always on multiline
+- **Import sorting**: external imports first, then relative (`../` then `./`), with blank line between groups
+
+Naming:
+- Variables & functions: `camelCase`
+- Classes, interfaces, enums, types: `PascalCase`
+- Vue components: `PascalCase` filenames
+- Folders: `kebab-case`
+
+### Flutter/Dart
+
+- **Imports**: package imports only (no relative imports)
+- **Files**: `snake_case.dart`
+- **Classes/widgets**: `PascalCase`
+
+## Backend API Conventions
+
+The **backend is the source of truth** for the OpenAPI specification. The **Devices module** is the golden reference implementation.
+
+### Controllers
+
+- Always annotate with `@ApiTags(MODULE_API_TAG_NAME)`
+- Each action requires `@ApiOperation` with `tags`, `summary`, `description`, `operationId`
+- Always return `*ResponseModel` (extends `BaseSuccessResponseModel<T>`)
+- Use `@ApiSuccessResponse` / `@ApiCreatedSuccessResponse` for success responses
+- Swagger decorators MUST come before NestJS decorators (`@Get`, `@Post`, etc.)
+
+### DTOs vs Models vs Entities
+
+- **DTOs** (`*Dto`) — input only, never in responses
+- **Entities** (`*Entity`) — DB-backed objects, appear in response `data`
+- **Models** (`*Model`) — computed/non-DB values in response `data`
+- **Response Models** (`*ResponseModel`) — wraps `data` in standard response envelope
+
+### Schema naming
+
+- Response: `{ModuleName}Res{Name}` (e.g., `DevicesModuleResDevices`)
+- DTO: `{ModuleName}{Action}{Entity}` (e.g., `DevicesModuleCreateDevice`)
+- Request wrapper: `{ModuleName}Req{Action}{Entity}`
+- Data model: `{ModuleName}Data{Name}`
+
+### Controller response pattern
+
+```typescript
+const response = new DevicesResponseModel();
+response.data = devices;
+return response;
+```
+
+## Testing
+
+- **Backend**: Jest. Unit tests (`*.spec.ts`) next to source files. E2E tests in `test/`.
+- **Admin**: Vitest + `@testing-library/vue`. Test composables and stores.
+- **Panel**: Flutter widget tests for non-trivial UI logic.
+
+Add tests for new business logic. If tests are skipped, explain why in the PR.
+
+## Project Structure
 
 ```
 apps/
 ├── backend/src/
 │   ├── modules/     # Core: api, auth, config, dashboard, devices, displays,
-│   │                #   energy, extensions, influxdb, intents, mdns, platform,
-│   │                #   scenes, security, seed, spaces, stats, swagger,
-│   │                #   system, users, weather, websocket
-│   └── plugins/     # Integrations: devices-*, pages-*, tiles-*,
-│                    #   data-sources-*, scenes-*, weather-*, logger-*
+│   │                #   energy, extensions, intents, mdns, platform,
+│   │                #   scenes, security, seed, spaces, stats, storage,
+│   │                #   swagger, system, users, weather, websocket
+│   └── plugins/     # Integrations: devices-home-assistant, devices-shelly-ng,
+│                    #   devices-shelly-v1, devices-third-party, influx-v1,
+│                    #   memory-storage, simulator, pages-*, tiles-*,
+│                    #   data-sources-*, scenes-*, weather-*, logger-*,
+│                    #   buddy-*
 ├── admin/src/
-│   ├── modules/     # Mirrors backend modules (auth, config, dashboard,
-│   │                #   devices, displays, energy, extensions, influxdb,
-│   │                #   intents, mdns, scenes, security, spaces, stats,
-│   │                #   system, users, weather)
+│   ├── modules/     # Mirrors backend modules
 │   └── plugins/     # Mirrors backend plugins
 ├── panel/lib/
-│   ├── modules/     # Feature modules (config, dashboard, deck, devices,
-│   │                #   displays, energy, intents, scenes, security,
-│   │                #   spaces, system, weather)
+│   ├── modules/     # Feature modules
 │   ├── features/    # UI features (deck, discovery, overlay, settings)
 │   ├── plugins/     # Plugin implementations
 │   ├── api/         # Generated API client (DO NOT EDIT)
@@ -92,19 +158,31 @@ apps/
 packages/
 ├── extension-sdk/       # SDK for building extensions
 └── example-extension/   # Example extension
+
+docs/                    # Architecture reference documents
+tasks/                   # Feature and technical task specifications
 ```
 
-### Custom Slash Commands
+## Custom Slash Commands
 
 - `/test [backend|admin|all]` - Run tests
 - `/lint [backend|admin|all]` - Run linting and type checking
 - `/openapi` - Generate OpenAPI specification
 - `/task <task-id>` - Work on a task from `tasks/`
 
-### Task Workflow
+## Task Workflow
 
 When implementing features:
 1. Check `tasks/` for task specifications
 2. Follow the task's acceptance criteria
 3. Update task status when done
 4. Mark checkboxes as complete
+
+## Key Rules
+
+1. Never push directly to main. Always create a branch and PR.
+2. Respect modular architecture — avoid "god services" mixing multiple concerns.
+3. Prefer existing patterns, helpers, and abstractions over inventing new ones.
+4. Do not introduce new dependencies without a strong reason.
+5. Pay special attention to: auth, error handling, timeouts on external calls, data validation.
+6. Pre-release migration policy: always update the initial migration, never create incremental ones before v1.0.
