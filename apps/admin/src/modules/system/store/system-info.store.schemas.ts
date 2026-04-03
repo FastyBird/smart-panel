@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import type { SystemModuleSystemInfoSchema } from '../../../openapi.constants';
+import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 
 type ApiSystemInfo = SystemModuleSystemInfoSchema;
 
@@ -8,6 +9,7 @@ type ApiSystemInfo = SystemModuleSystemInfoSchema;
 // ===========
 
 export const SystemInfoSchema = z.object({
+	platform: z.nativeEnum(SystemModuleDataSystemInfoPlatform),
 	cpuLoad: z.number(),
 	memory: z.object({
 		total: z.number(),
@@ -80,6 +82,7 @@ export const SystemInfoOnEventActionPayloadSchema = z.object({
 
 export const SystemInfoSetActionPayloadSchema = z.object({
 	data: z.object({
+		platform: z.nativeEnum(SystemModuleDataSystemInfoPlatform),
 		cpuLoad: z.number(),
 		memory: z.object({
 			total: z.number(),
@@ -144,7 +147,7 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 // ===========
 
 export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
-	platform: z.enum(['generic', 'raspberry', 'docker', 'development', 'home-assistant']),
+	platform: z.nativeEnum(SystemModuleDataSystemInfoPlatform),
 	cpu_load: z.number(),
 	memory: z.object({
 		total: z.number(),

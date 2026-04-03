@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import { SystemValidationException } from '../system.exceptions';
 
 import type { ISystemInfoRes } from './system-info.store.types';
@@ -20,7 +21,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validSystemInfoResponse: ISystemInfoRes = {
-	platform: 'generic',
+	platform: SystemModuleDataSystemInfoPlatform.generic,
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
