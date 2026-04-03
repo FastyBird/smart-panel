@@ -747,6 +747,23 @@ export class HomeAssistantHttpService {
 		return `http://${this.hostname}`;
 	}
 
+	private readonly HTTP_TIMEOUT_MS = 15_000;
+
+	/**
+	 * Fetch wrapper with AbortController timeout.
+	 * Prevents hanging requests when HA is unresponsive.
+	 */
+	private async fetchWithTimeout(url: URL | string, init?: RequestInit): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), this.HTTP_TIMEOUT_MS);
+
+		try {
+			return await fetch(url, { ...init, signal: controller.signal });
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+
 	private ensureApiKey(): void {
 		if (this.apiKey === null) {
 			this.logger.warn('Missing API key for Home Assistant HTTP service');
@@ -792,7 +809,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithTimeout(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -849,7 +866,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithTimeout(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -899,7 +916,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/states/${entityId}`);
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithTimeout(url, {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -944,7 +961,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/states`);
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithTimeout(url, {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -991,7 +1008,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithTimeout(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,

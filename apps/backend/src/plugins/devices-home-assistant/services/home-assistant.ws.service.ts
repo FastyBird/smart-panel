@@ -63,6 +63,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	private retryCount = 0;
 
 	private reconnectTimeout: NodeJS.Timeout | null = null;
+	private pingInterval: NodeJS.Timeout | null = null;
 
 	private eventsHandlers: Map<string, WsEventService> = new Map();
 
@@ -303,6 +304,8 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		});
 
 		this.ws.on('close', () => {
+			this.stopPing();
+
 			// Reject pending connection promise if still waiting
 			if (this.connectionResolver) {
 				this.connectionResolver.reject(new Error('WebSocket connection closed before authentication completed'));
@@ -336,12 +339,22 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	private disconnect() {
 		this.intentionalDisconnect = true;
 
+		this.stopPing();
+
 		// Reject any pending connection promise before clearing it
 		// This prevents start() from hanging indefinitely if stop() is called during 'starting' state
 		if (this.connectionResolver) {
 			this.connectionResolver.reject(new Error('Connection aborted - service is being stopped'));
 			this.connectionResolver = null;
 		}
+
+		// Reject all pending responses and clear their timeouts
+		for (const [, { timeout, reject }] of this.responses) {
+			clearTimeout(timeout);
+			reject(new Error('Connection closed'));
+		}
+
+		this.responses.clear();
 
 		this.ws?.close();
 		this.ws = null;
@@ -507,13 +520,26 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		if (!this.reconnectTimeout) {
 			this.reconnectTimeout = setTimeout(() => {
 				this.reconnectTimeout = null;
-				this.connect();
+
+				if (this.state === 'started' && !this.intentionalDisconnect) {
+					this.connect();
+				}
 			}, delay);
 		}
 	}
 
 	private async handleMessage(data: string) {
-		const msg: object = JSON.parse(data) as object;
+		let msg: Record<string, unknown>;
+
+		try {
+			msg = JSON.parse(data) as Record<string, unknown>;
+		} catch (error) {
+			this.logger.error('Failed to parse WebSocket message', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+
+			return;
+		}
 
 		if ('id' in msg && msg.id && typeof msg.id === 'number' && this.responses.has(msg.id)) {
 			const { resolve } = this.responses.get(msg.id);
@@ -541,6 +567,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 			}
 
 			this.subscribeToStates();
+			this.startPing();
 
 			// Mark all HA devices as connected now that we're authenticated
 			this.homeAssistantHttpService.markAllDevicesConnected().catch((err: Error) => {
@@ -593,6 +620,36 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				event_type: 'state_changed',
 			}),
 		);
+	}
+
+	/**
+	 * Send periodic HA ping messages to detect zombie connections.
+	 * HA responds with { type: 'pong', id: N } which the response
+	 * handler picks up. If the ping times out (10s), the response
+	 * timeout rejects and we know the connection is dead.
+	 */
+	private startPing() {
+		this.stopPing();
+
+		this.pingInterval = setInterval(() => {
+			if (!this.isConnected()) {
+				return;
+			}
+
+			this.send({ type: 'ping' }).catch(() => {
+				this.logger.warn('HA WebSocket ping timed out, connection may be dead');
+
+				// Force-close to trigger the 'close' handler → reconnect
+				this.ws?.terminate();
+			});
+		}, 30_000);
+	}
+
+	private stopPing() {
+		if (this.pingInterval) {
+			clearInterval(this.pingInterval);
+			this.pingInterval = null;
+		}
 	}
 
 	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
