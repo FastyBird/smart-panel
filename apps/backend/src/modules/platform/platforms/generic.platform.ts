@@ -5,6 +5,7 @@ import si, { Systeminformation } from 'systeminformation';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
+import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PlatformNotSupportedException } from '../platform.exceptions';
 
@@ -93,7 +94,7 @@ export class GenericPlatform extends Platform {
 		return this.validateDto(SystemInfoDto, rawData);
 	}
 
-	getThrottleStatus() {
+	getThrottleStatus(): Promise<ThrottleStatusDto> {
 		return Promise.reject(new PlatformNotSupportedException('Throttle status not supported on this platform'));
 	}
 
