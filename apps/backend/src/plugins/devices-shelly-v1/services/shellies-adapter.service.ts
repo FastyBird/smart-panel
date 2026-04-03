@@ -353,9 +353,16 @@ export class ShelliesAdapterService {
 				}),
 			);
 
+			const recheckNow = Date.now();
+
 			for (const { device, alive } of results) {
 				// Re-check online — another invocation or event may have changed it
 				if (!device.online) {
+					continue;
+				}
+
+				// Re-check lastSeen — CoAP may have resumed during the HTTP ping window
+				if (device.lastSeen && typeof device.lastSeen === 'number' && recheckNow - device.lastSeen <= staleTimeout) {
 					continue;
 				}
 
