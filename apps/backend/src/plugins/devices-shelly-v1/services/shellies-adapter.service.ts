@@ -132,6 +132,7 @@ export class ShelliesAdapterService {
 
 			this.shellies = null;
 			this.isStarted = false;
+			this.statusCheckRunning = false;
 
 			this.logger.log('Shellies adapter stopped successfully');
 		} catch (error) {
