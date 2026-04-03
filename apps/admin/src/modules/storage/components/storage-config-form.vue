@@ -84,6 +84,7 @@ const { t } = useI18n();
 
 const storagePluginOptions = [
 	{ value: 'influx-v1-plugin', label: t('storageModule.fields.config.plugins.influxV1') },
+	{ value: 'influx-v2-plugin', label: t('storageModule.fields.config.plugins.influxV2') },
 	{ value: 'memory-storage-plugin', label: t('storageModule.fields.config.plugins.memory') },
 ];
 

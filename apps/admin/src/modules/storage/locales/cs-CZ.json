@@ -26,6 +26,7 @@
 			},
 			"plugins": {
 				"influxV1": "InfluxDB v1",
+				"influxV2": "InfluxDB v2",
 				"memory": "Úložiště v paměti"
 			}
 		}
