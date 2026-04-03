@@ -1,5 +1,6 @@
 import { validate } from 'class-validator';
 import fs from 'fs/promises';
+import os from 'os';
 import si, { Systeminformation } from 'systeminformation';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -146,9 +147,12 @@ export abstract class Platform {
 
 			const elapsedUs = (t2 - t1) * 1000;
 			const cpuUs = u2 - u1;
+			// usage_usec is total across all cores — divide by CPU count
+			// to get 0-100% matching si.currentLoad().currentLoad semantics
+			const cpuCount = os.cpus().length || 1;
 
 			if (elapsedUs > 0) {
-				return Math.min(100, (cpuUs / elapsedUs) * 100);
+				return Math.min(100, (cpuUs / (elapsedUs * cpuCount)) * 100);
 			}
 		} catch {
 			// cgroup cpu stats not available
