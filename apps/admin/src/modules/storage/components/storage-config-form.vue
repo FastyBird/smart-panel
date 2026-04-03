@@ -39,8 +39,12 @@
 			<el-select
 				v-model="model.fallbackStorage"
 				:placeholder="t('storageModule.fields.config.fallbackStorage.placeholder')"
-				clearable
 			>
+				<el-option
+					key="none"
+					:label="t('storageModule.fields.config.fallbackStorage.none')"
+					value=""
+				/>
 				<el-option
 					v-for="option in storagePluginOptions"
 					:key="option.value"

@@ -22,7 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Záložné úložisko",
-				"placeholder": "Vyberte plugin záložného úložiska (voliteľné)"
+				"placeholder": "Vyberte plugin záložného úložiska (voliteľné)",
+				"none": "Žiadne"
 			}
 		}
 	}

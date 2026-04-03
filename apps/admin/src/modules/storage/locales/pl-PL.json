@@ -22,7 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Magazyn zapasowy",
-				"placeholder": "Wybierz zapasową wtyczkę magazynu (opcjonalnie)"
+				"placeholder": "Wybierz zapasową wtyczkę magazynu (opcjonalnie)",
+				"none": "Brak"
 			}
 		}
 	}

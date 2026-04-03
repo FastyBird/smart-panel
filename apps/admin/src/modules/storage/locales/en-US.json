@@ -22,7 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Fallback Storage",
-				"placeholder": "Select fallback storage plugin (optional)"
+				"placeholder": "Select fallback storage plugin (optional)",
+				"none": "None"
 			}
 		}
 	}

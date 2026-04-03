@@ -22,7 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Ausweichspeicher",
-				"placeholder": "Ausweichspeicher-Plugin auswählen (optional)"
+				"placeholder": "Ausweichspeicher-Plugin auswählen (optional)",
+				"none": "Keiner"
 			}
 		}
 	}

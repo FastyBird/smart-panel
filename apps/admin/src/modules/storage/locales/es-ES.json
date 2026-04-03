@@ -22,7 +22,8 @@
 			},
 			"fallbackStorage": {
 				"title": "Almacenamiento alternativo",
-				"placeholder": "Seleccionar complemento de almacenamiento alternativo (opcional)"
+				"placeholder": "Seleccionar complemento de almacenamiento alternativo (opcional)",
+				"none": "Ninguno"
 			}
 		}
 	}
