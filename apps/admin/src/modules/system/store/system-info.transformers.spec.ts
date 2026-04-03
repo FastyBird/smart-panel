@@ -20,6 +20,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validSystemInfoResponse: ISystemInfoRes = {
+	platform: 'generic',
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,

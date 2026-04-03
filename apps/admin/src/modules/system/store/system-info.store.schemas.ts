@@ -144,6 +144,7 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 // ===========
 
 export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
+	platform: z.enum(['generic', 'raspberry', 'docker', 'development', 'home-assistant']),
 	cpu_load: z.number(),
 	memory: z.object({
 		total: z.number(),

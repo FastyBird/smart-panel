@@ -33,6 +33,7 @@ describe('SystemService', () => {
 						getThrottleStatus: jest.fn(),
 						getTemperature: jest.fn(),
 						getNetworkStats: jest.fn(),
+						getPlatformType: jest.fn().mockReturnValue('generic'),
 					},
 				},
 				{
