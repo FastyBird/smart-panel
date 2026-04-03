@@ -198,6 +198,63 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		return this.shelly.id;
 	}
 
+	/**
+	 * Returns whether the underlying WebSocket reports itself as connected.
+	 */
+	public get rpcConnected(): boolean {
+		return this.shelly.rpcHandler.connected;
+	}
+
+	/**
+	 * Sends a lightweight RPC request (Shelly.GetDeviceInfo) to verify the device
+	 * is actually responsive. Resolves to true if the device responds, false otherwise.
+	 */
+	async ping(timeoutMs: number = 5_000): Promise<boolean> {
+		if (!this.shelly.rpcHandler.connected) {
+			return false;
+		}
+
+		let timer: NodeJS.Timeout | undefined;
+
+		try {
+			await Promise.race([
+				this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'),
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => reject(new Error('Ping timeout')), timeoutMs);
+				}),
+			]);
+
+			return true;
+		} catch {
+			return false;
+		} finally {
+			if (timer) {
+				clearTimeout(timer);
+			}
+		}
+	}
+
+	/**
+	 * Forcibly terminates the underlying WebSocket to trigger a reconnection cycle.
+	 * Unlike a graceful close (code 1000), terminate() causes a non-1000 close code
+	 * which makes the shellies-ds9 library schedule an automatic reconnection.
+	 */
+	forceReconnect(): void {
+		this.logger.warn(`Forcing reconnection for device=${this.shelly.id}`, { resource: this.shelly.id });
+
+		// Access the protected socket to force-terminate it.
+		// TypeScript access modifiers are not enforced at runtime.
+		const rpcHandler = this.shelly.rpcHandler as unknown as { socket?: { terminate?: () => void } };
+
+		// Reset reconnect backoff so the library uses the shortest interval
+		// (first entry in reconnectInterval) instead of an escalated delay.
+		this.shelly.rpcHandler.resetReconnectInterval();
+
+		if (rpcHandler.socket?.terminate) {
+			rpcHandler.socket.terminate();
+		}
+	}
+
 	private handleConnect = (): void => {
 		this.logger.log(`Device=${this.shelly.id} connected`, { resource: this.shelly.id });
 

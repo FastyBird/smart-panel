@@ -32,36 +32,36 @@ export class ShellyNgWebsocketsConfigModel {
 	@ApiProperty({
 		name: 'request_timeout',
 		description: 'Request timeout in seconds',
-		example: 60,
+		example: 10,
 	})
 	@Expose({ name: 'request_timeout' })
 	@IsInt()
 	@Min(1)
-	requestTimeout: number = 60; // seconds
+	requestTimeout: number = 10; // seconds
 
 	@ApiProperty({
 		name: 'ping_interval',
 		description: 'Ping interval in seconds',
-		example: 60,
+		example: 30,
 	})
 	@Expose({ name: 'ping_interval' })
 	@IsInt()
 	@Min(0)
-	pingInterval: number = 60; // seconds
+	pingInterval: number = 30; // seconds
 
 	@ApiProperty({
 		name: 'reconnect_interval',
 		description: 'Reconnect interval sequence in seconds',
 		type: 'array',
 		items: { type: 'number', format: 'int32' },
-		example: [5, 10, 30, 60, 300, 600],
+		example: [5, 10, 15, 30, 60, 60],
 	})
 	@Expose({ name: 'reconnect_interval' })
 	@IsArray()
 	@ArrayNotEmpty()
 	@IsInt({ each: true })
 	@Min(1, { each: true })
-	reconnectInterval: number[] = [5, 10, 30, 60, 5 * 60, 10 * 60]; // seconds
+	reconnectInterval: number[] = [5, 10, 15, 30, 60, 60]; // seconds
 }
 
 @ApiSchema({ name: 'DevicesShellyNgPluginDataShellyNgConfig' })
