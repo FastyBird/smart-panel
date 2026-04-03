@@ -17,6 +17,8 @@ import {
 import shellies from '../lib/shellies';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+
 @Injectable()
 export class ShelliesAdapterService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -37,7 +39,10 @@ export class ShelliesAdapterService {
 
 	private callbacks: ShelliesAdapterCallbacks = {};
 
-	constructor(private readonly configService: ConfigService) {}
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly httpClient: ShellyV1HttpClientService,
+	) {}
 
 	/**
 	 * Set callbacks for adapter events
@@ -105,7 +110,17 @@ export class ShelliesAdapterService {
 		try {
 			this.logger.log('Stopping Shellies adapter');
 
-			// Remove all event listeners
+			// Remove per-device event listeners registered in handleDeviceDiscovered()
+			// to prevent listener accumulation across stop/start cycles.
+			for (const registeredDevice of this.devicesRegistry.values()) {
+				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
+
+				if (device) {
+					device.removeAllListeners();
+				}
+			}
+
+			// Remove shellies-level event listeners
 			this.shellies.removeAllListeners();
 
 			// Stop discovery
@@ -286,11 +301,15 @@ export class ShelliesAdapterService {
 	}
 
 	/**
-	 * Periodically check device status based on the lastSeen timestamp
-	 * This is a workaround because shellies library's stale/offline events don't work properly
+	 * Periodically check device status based on the lastSeen timestamp.
+	 * This is a workaround because shellies library's stale/offline events don't work properly.
+	 *
+	 * When a device exceeds the stale timeout, an HTTP ping (/shelly) is attempted
+	 * before marking offline. If the device responds, CoAP is broken but the device
+	 * is alive — we update lastSeen and keep it online.
 	 */
 	@Cron(CronExpression.EVERY_5_SECONDS)
-	checkDevicesStatus(): void {
+	async checkDevicesStatus(): Promise<void> {
 		if (!this.isStarted || !this.shellies) {
 			return;
 		}
@@ -301,10 +320,12 @@ export class ShelliesAdapterService {
 		for (const registeredDevice of this.devicesRegistry.values()) {
 			try {
 				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
+
 				if (!device) {
 					this.logger.warn(`Device ${registeredDevice.id} not found in shellies library`, {
 						resource: registeredDevice.id,
 					});
+
 					continue;
 				}
 
@@ -313,6 +334,21 @@ export class ShelliesAdapterService {
 					const timeSinceLastSeen = now - device.lastSeen;
 
 					if (timeSinceLastSeen > staleTimeout && device.online) {
+						// Try HTTP ping before marking offline — device may be alive
+						// but CoAP multicast is not reaching us.
+						const alive = await this.pingDevice(registeredDevice.host);
+
+						if (alive) {
+							this.logger.debug(`Device ${device.id} CoAP stale but HTTP OK, keeping online`, {
+								resource: device.id,
+							});
+
+							// Update lastSeen so we don't re-ping every 5 seconds
+							device.lastSeen = Date.now();
+
+							continue;
+						}
+
 						this.logger.warn(
 							`Device ${device.id} is stale (${Math.round(timeSinceLastSeen / 1000)}s since last seen, threshold: ${this.config.timeouts.staleTimeout}s), marking as offline`,
 							{ resource: device.id },
@@ -330,6 +366,20 @@ export class ShelliesAdapterService {
 					resource: registeredDevice.id,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Lightweight HTTP ping via /shelly endpoint (no auth required).
+	 * Returns true if the device responds, false on any error/timeout.
+	 */
+	private async pingDevice(host: string): Promise<boolean> {
+		try {
+			await this.httpClient.getDeviceInfo(host, 3_000);
+
+			return true;
+		} catch {
+			return false;
 		}
 	}
 

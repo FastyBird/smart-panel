@@ -675,6 +675,13 @@ export class ShellyV1Service implements IManagedPluginService {
 					continue;
 				}
 
+				// Skip offline devices — HTTP calls will time out and waste time
+				const shellyDevice = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
+
+				if (shellyDevice && !shellyDevice.online) {
+					continue;
+				}
+
 				try {
 					// Find the device in a database first to get credentials
 					const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
