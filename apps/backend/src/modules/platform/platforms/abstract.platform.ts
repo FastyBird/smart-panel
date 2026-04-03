@@ -119,13 +119,17 @@ export abstract class Platform {
 	}
 
 	/**
-	 * Read container CPU usage percentage from cgroup v2 cpu.stat.
+	 * Read container CPU usage percentage from cgroup cpu stats.
+	 * Tries cgroup v2 (cpu.stat, microseconds) then v1 (cpuacct.usage, nanoseconds).
 	 * Returns the CPU usage ratio (0-100) over a short sample window,
 	 * or null if cgroup stats are not available.
 	 */
 	protected async readContainerCpuLoad(): Promise<number | null> {
+		const cpuCount = os.cpus().length || 1;
+
+		// cgroup v2: usage_usec in /sys/fs/cgroup/cpu.stat (microseconds)
 		try {
-			const readUsage = async (): Promise<number> => {
+			const readV2 = async (): Promise<number> => {
 				const stat = await fs.readFile('/sys/fs/cgroup/cpu.stat', 'utf-8');
 				const match = stat.match(/usage_usec\s+(\d+)/);
 
@@ -137,25 +141,47 @@ export abstract class Platform {
 			};
 
 			const t1 = Date.now();
-			const u1 = await readUsage();
+			const u1 = await readV2();
 
-			// Sample over 200ms
 			await new Promise((r) => setTimeout(r, 200));
 
 			const t2 = Date.now();
-			const u2 = await readUsage();
+			const u2 = await readV2();
 
 			const elapsedUs = (t2 - t1) * 1000;
 			const cpuUs = u2 - u1;
-			// usage_usec is total across all cores — divide by CPU count
-			// to get 0-100% matching si.currentLoad().currentLoad semantics
-			const cpuCount = os.cpus().length || 1;
 
 			if (elapsedUs > 0) {
 				return Math.min(100, (cpuUs / (elapsedUs * cpuCount)) * 100);
 			}
 		} catch {
-			// cgroup cpu stats not available
+			// cgroup v2 not available
+		}
+
+		// cgroup v1: /sys/fs/cgroup/cpuacct/cpuacct.usage (nanoseconds)
+		try {
+			const readV1 = async (): Promise<number> => {
+				const raw = await fs.readFile('/sys/fs/cgroup/cpuacct/cpuacct.usage', 'utf-8');
+
+				return parseInt(raw.trim(), 10);
+			};
+
+			const t1 = Date.now();
+			const u1 = await readV1();
+
+			await new Promise((r) => setTimeout(r, 200));
+
+			const t2 = Date.now();
+			const u2 = await readV1();
+
+			const elapsedNs = (t2 - t1) * 1_000_000;
+			const cpuNs = u2 - u1;
+
+			if (elapsedNs > 0) {
+				return Math.min(100, (cpuNs / (elapsedNs * cpuCount)) * 100);
+			}
+		} catch {
+			// cgroup v1 not available
 		}
 
 		return null;
