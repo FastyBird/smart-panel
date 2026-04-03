@@ -155,8 +155,26 @@ export class UpdateExecutorService implements OnModuleInit {
 			startedAt: new Date(),
 		});
 
-		// Spawn detached update script
-		const updateScript = join(__dirname, '..', '..', '..', '..', '..', 'build', 'scripts', 'update-worker.sh');
+		// Spawn detached update script (bundled as NestJS asset in dist/modules/system/scripts/)
+		const updateScript = join(__dirname, '..', 'scripts', 'update-worker.sh');
+
+		if (!existsSync(updateScript)) {
+			this.updateService.releaseUpdateLock();
+
+			const errorMsg = `Update worker script not found at ${updateScript}`;
+
+			this.logger.error(errorMsg);
+
+			this.updateService.setStatus({
+				status: UpdateStatusType.FAILED,
+				phase: UpdatePhase.FAILED,
+				progressPercent: null,
+				message: null,
+				error: errorMsg,
+			});
+
+			throw new Error(errorMsg);
+		}
 
 		try {
 			const { spawn } = await import('child_process');
