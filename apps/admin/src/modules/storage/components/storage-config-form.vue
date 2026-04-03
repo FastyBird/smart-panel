@@ -27,6 +27,7 @@
 					:key="option.value"
 					:label="option.label"
 					:value="option.value"
+					:disabled="option.disabled"
 				/>
 			</el-select>
 		</el-form-item>
@@ -45,6 +46,7 @@
 					:key="option.value"
 					:label="option.label"
 					:value="option.value"
+					:disabled="option.disabled"
 				/>
 			</el-select>
 		</el-form-item>

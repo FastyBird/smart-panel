@@ -12,16 +12,17 @@ export const useStoragePlugins = () => {
 
 	const plugins = computed<IPlugin[]>((): IPlugin[] => {
 		return orderBy(
-			pluginsManager.getPlugins().filter((plugin) => plugin.modules?.includes(STORAGE_MODULE_NAME) && enabled(plugin.type)),
+			pluginsManager.getPlugins().filter((plugin) => plugin.modules?.includes(STORAGE_MODULE_NAME)),
 			[(plugin) => plugin.name],
 			['asc'],
 		);
 	});
 
-	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>(() => {
+	const options = computed<{ value: IPlugin['type']; label: IPlugin['name']; disabled: boolean }[]>(() => {
 		return plugins.value.map((plugin) => ({
 			value: plugin.type,
 			label: plugin.name,
+			disabled: !enabled(plugin.type),
 		}));
 	});
 
