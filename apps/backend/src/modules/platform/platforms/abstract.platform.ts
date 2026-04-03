@@ -133,7 +133,7 @@ export abstract class Platform {
 				const period = parseInt(periodStr, 10);
 
 				if (!isNaN(quota) && !isNaN(period) && period > 0) {
-					return Math.max(1, quota / period);
+					return quota / period;
 				}
 			}
 		} catch {
@@ -151,7 +151,7 @@ export abstract class Platform {
 			const period = parseInt(periodRaw.trim(), 10);
 
 			if (!isNaN(quota) && quota > 0 && !isNaN(period) && period > 0) {
-				return Math.max(1, quota / period);
+				return quota / period;
 			}
 		} catch {
 			// cgroup v1 not available
