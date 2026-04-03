@@ -114,6 +114,8 @@ export class StateChangedEventService implements WsEventService {
 		this.debounceTimers.set(
 			entityId,
 			setTimeout(() => {
+				this.debounceTimers.delete(entityId);
+
 				void (async () => {
 					this.logger.debug(
 						`[STATE CHANGED] Processing state for ${entityId}, ` +
