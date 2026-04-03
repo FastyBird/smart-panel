@@ -5,11 +5,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
+import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import type { ISystemInfo } from '../store/system-info.store.types';
 
 import { useSystemInfo } from './useSystemInfo';
 
 const mockAudio: ISystemInfo = {
+	platform: SystemModuleDataSystemInfoPlatform.generic,
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,

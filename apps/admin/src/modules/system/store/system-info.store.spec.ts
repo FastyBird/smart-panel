@@ -2,12 +2,14 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 
 import { useSystemInfo } from './system-info.store';
 import type { ISystemInfoSetActionPayload } from './system-info.store.types';
 
 const mockSystemInfoRes = {
+	platform: SystemModuleDataSystemInfoPlatform.generic,
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -68,6 +70,7 @@ const mockSystemInfoRes = {
 };
 
 const mockSystemInfo = {
+	platform: SystemModuleDataSystemInfoPlatform.generic,
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,
