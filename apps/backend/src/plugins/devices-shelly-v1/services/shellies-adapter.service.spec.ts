@@ -14,6 +14,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ShelliesAdapterCallbacks, ShellyDevice } from '../interfaces/shellies.interface';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 // Mock the shellies library
 jest.mock('../lib/shellies', () => ({
@@ -33,6 +34,7 @@ const mockShelliesLibrary = require('../lib/shellies');
 describe('ShelliesAdapterService', () => {
 	let service: ShelliesAdapterService;
 	let configService: jest.Mocked<ConfigService>;
+	let httpClient: jest.Mocked<ShellyV1HttpClientService>;
 	let callbacks: {
 		onDeviceDiscovered: jest.Mock;
 		onDeviceChanged: jest.Mock;
@@ -72,7 +74,11 @@ describe('ShelliesAdapterService', () => {
 			onError: jest.fn(),
 		};
 
-		service = new ShelliesAdapterService(configService);
+		httpClient = {
+			getDeviceInfo: jest.fn().mockResolvedValue({}),
+		} as any;
+
+		service = new ShelliesAdapterService(configService, httpClient);
 		service.setCallbacks(callbacks as ShelliesAdapterCallbacks);
 	});
 
