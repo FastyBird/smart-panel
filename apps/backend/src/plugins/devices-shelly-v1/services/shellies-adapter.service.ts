@@ -30,6 +30,7 @@ export class ShelliesAdapterService {
 	private isStarted = false;
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
+	private statusCheckRunning = false;
 
 	/**
 	 * Registry of discovered devices
@@ -310,62 +311,75 @@ export class ShelliesAdapterService {
 	 */
 	@Cron(CronExpression.EVERY_5_SECONDS)
 	async checkDevicesStatus(): Promise<void> {
-		if (!this.isStarted || !this.shellies) {
+		if (!this.isStarted || !this.shellies || this.statusCheckRunning) {
 			return;
 		}
 
-		const now = Date.now();
-		const staleTimeout = this.config.timeouts.staleTimeout * 1000;
+		this.statusCheckRunning = true;
 
-		for (const registeredDevice of this.devicesRegistry.values()) {
-			try {
+		try {
+			const now = Date.now();
+			const staleTimeout = this.config.timeouts.staleTimeout * 1000;
+
+			// Collect stale devices that need an HTTP ping
+			const staleCandidates: Array<{ device: ShellyDevice; host: string }> = [];
+
+			for (const registeredDevice of this.devicesRegistry.values()) {
 				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
 
 				if (!device) {
-					this.logger.warn(`Device ${registeredDevice.id} not found in shellies library`, {
-						resource: registeredDevice.id,
-					});
-
 					continue;
 				}
 
-				// Check if a device has exceeded the stale timeout
 				if (device.lastSeen && typeof device.lastSeen === 'number') {
 					const timeSinceLastSeen = now - device.lastSeen;
 
 					if (timeSinceLastSeen > staleTimeout && device.online) {
-						// Try HTTP ping before marking offline — device may be alive
-						// but CoAP multicast is not reaching us.
-						const alive = await this.pingDevice(registeredDevice.host);
-
-						if (alive) {
-							this.logger.debug(`Device ${device.id} CoAP stale but HTTP OK, keeping online`, {
-								resource: device.id,
-							});
-
-							// Update lastSeen so we don't re-ping every 5 seconds
-							device.lastSeen = Date.now();
-
-							continue;
-						}
-
-						this.logger.warn(
-							`Device ${device.id} is stale (${Math.round(timeSinceLastSeen / 1000)}s since last seen, threshold: ${this.config.timeouts.staleTimeout}s), marking as offline`,
-							{ resource: device.id },
-						);
-
-						// Manually trigger offline event since shellies library events don't work properly
-						this.handleDeviceOffline(device);
-						// Prevent re-triggering by updating the device's online status in memory
-						device.online = false;
+						staleCandidates.push({ device, host: registeredDevice.host });
 					}
 				}
-			} catch (error) {
-				this.logger.error(`Error checking device status for ${registeredDevice.id}`, {
-					message: error instanceof Error ? error.message : String(error),
-					resource: registeredDevice.id,
-				});
 			}
+
+			if (staleCandidates.length === 0) {
+				return;
+			}
+
+			// Ping all stale devices concurrently to avoid sequential 3s timeouts
+			const results = await Promise.all(
+				staleCandidates.map(async ({ device, host }) => {
+					const alive = await this.pingDevice(host);
+
+					return { device, alive };
+				}),
+			);
+
+			for (const { device, alive } of results) {
+				// Re-check online — another invocation or event may have changed it
+				if (!device.online) {
+					continue;
+				}
+
+				if (alive) {
+					this.logger.debug(`Device ${device.id} CoAP stale but HTTP OK, keeping online`, {
+						resource: device.id,
+					});
+
+					device.lastSeen = Date.now();
+				} else {
+					this.logger.warn(`Device ${device.id} is stale and unreachable via HTTP, marking as offline`, {
+						resource: device.id,
+					});
+
+					this.handleDeviceOffline(device);
+					device.online = false;
+				}
+			}
+		} catch (error) {
+			this.logger.error('Error during device status check', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+		} finally {
+			this.statusCheckRunning = false;
 		}
 	}
 
