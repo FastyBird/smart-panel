@@ -7,6 +7,9 @@ INSTALL_TYPE="${INSTALL_TYPE:-npm}"
 IMAGE_BASE_DIR="${IMAGE_BASE_DIR:-/opt/smart-panel}"
 DOWNLOAD_URL="${DOWNLOAD_URL:-}"
 
+# Capture once — used for all status writes so timeout detection works correctly
+STARTED_AT="$(date -Iseconds)"
+
 update_status() {
 	local status="$1"
 	local phase="$2"
@@ -27,7 +30,7 @@ update_status() {
 	fi
 
 	printf '{\n\t"status": "%s",\n\t"phase": "%s",\n\t"targetVersion": "%s",\n\t"startedAt": "%s"' \
-		"$status" "$phase" "$VERSION" "$(date -Iseconds)" > "$tmp_file"
+		"$status" "$phase" "$VERSION" "$STARTED_AT" > "$tmp_file"
 
 	if [ -n "$completed_at" ]; then
 		printf ',\n\t"completedAt": "%s"' "$completed_at" >> "$tmp_file"
@@ -247,11 +250,13 @@ update_status "installing" "installing"
 
 if [ "$VERSION" = "latest" ]; then
 	npm update -g @fastybird/smart-panel 2>&1 || {
+		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "npm update failed"
 		exit 1
 	}
 else
 	npm install -g "@fastybird/smart-panel@$VERSION" 2>&1 || {
+		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "npm install failed for version $VERSION"
 		exit 1
 	}
@@ -267,6 +272,7 @@ if [ -f "$(npm root -g)/@fastybird/smart-panel/dataSource.js" ]; then
 	node "$(npm root -g)/@fastybird/smart-panel/node_modules/typeorm/cli.js" \
 		migration:run \
 		-d "$(npm root -g)/@fastybird/smart-panel/dataSource.js" 2>&1 || {
+		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "Database migration failed"
 		exit 1
 	}

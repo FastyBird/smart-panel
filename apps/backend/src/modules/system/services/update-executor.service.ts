@@ -173,6 +173,14 @@ export class UpdateExecutorService implements OnModuleInit {
 				error: errorMsg,
 			});
 
+			this.writeStatusFile({
+				status: UpdateStatusType.FAILED,
+				phase: UpdatePhase.FAILED,
+				targetVersion,
+				startedAt: new Date().toISOString(),
+				error: errorMsg,
+			});
+
 			throw new Error(errorMsg);
 		}
 
