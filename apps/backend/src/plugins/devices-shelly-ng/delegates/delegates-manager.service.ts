@@ -2267,7 +2267,9 @@ export class DelegatesManagerService {
 				// If the delegate thinks it's disconnected but the underlying
 				// RPC handler still reports connected, the socket may be stuck.
 				if (delegate.rpcConnected) {
-					this.logger.warn(`Device=${id} delegate is disconnected but RPC handler reports connected, forcing reconnect`);
+					this.logger.warn(
+						`Device=${id} delegate is disconnected but RPC handler reports connected, forcing reconnect`,
+					);
 					delegate.forceReconnect();
 				}
 

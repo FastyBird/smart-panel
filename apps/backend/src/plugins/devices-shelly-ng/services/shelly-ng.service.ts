@@ -46,6 +46,7 @@ export class ShellyNgService implements IManagedPluginService {
 	private pendingRestart: Promise<void> | null = null;
 	private restartTimer: NodeJS.Timeout | null = null;
 	private healthCheckTimer: NodeJS.Timeout | null = null;
+	private healthCheckRunning = false;
 
 	/**
 	 * Global sequential queue for processing discovered devices.
@@ -524,16 +525,23 @@ export class ShellyNgService implements IManagedPluginService {
 		const HEALTH_CHECK_INTERVAL_MS = 90_000;
 
 		this.healthCheckTimer = setInterval(() => {
-			if (this.state !== 'started') {
+			if (this.state !== 'started' || this.healthCheckRunning) {
 				return;
 			}
 
-			this.delegatesRegistryService.checkHealth().catch((err: Error) => {
-				this.logger.error('Health check failed', {
-					message: err.message,
-					stack: err.stack,
+			this.healthCheckRunning = true;
+
+			this.delegatesRegistryService
+				.checkHealth()
+				.catch((err: Error) => {
+					this.logger.error('Health check failed', {
+						message: err.message,
+						stack: err.stack,
+					});
+				})
+				.finally(() => {
+					this.healthCheckRunning = false;
 				});
-			});
 		}, HEALTH_CHECK_INTERVAL_MS);
 	}
 
