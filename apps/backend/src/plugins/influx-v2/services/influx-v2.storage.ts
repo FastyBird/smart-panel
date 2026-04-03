@@ -233,27 +233,23 @@ export class InfluxV2Storage implements StoragePlugin {
 			`?org=${encodeURIComponent(this.config.org)}` +
 			`&bucket=${encodeURIComponent(this.config.bucket)}`;
 
-		try {
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(this.config.token ? { Authorization: `Token ${this.config.token}` } : {}),
-				},
-				body: JSON.stringify({
-					start: '1970-01-01T00:00:00Z',
-					stop: '2099-12-31T23:59:59Z',
-					predicate: `_measurement == "${measurement.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
-				}),
-			});
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				...(this.config.token ? { Authorization: `Token ${this.config.token}` } : {}),
+			},
+			body: JSON.stringify({
+				start: '1970-01-01T00:00:00Z',
+				stop: '2099-12-31T23:59:59Z',
+				predicate: `_measurement == "${measurement.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+			}),
+		});
 
-			if (!response.ok) {
-				const body = await response.text();
+		if (!response.ok) {
+			const body = await response.text();
 
-				this.logger.warn(`Failed to drop measurement '${measurement}': ${response.status} ${body}`);
-			}
-		} catch (error) {
-			this.logger.warn(`Failed to drop measurement '${measurement}'`, (error as Error).message);
+			throw new Error(`Failed to drop measurement '${measurement}': ${response.status} ${body}`);
 		}
 	}
 

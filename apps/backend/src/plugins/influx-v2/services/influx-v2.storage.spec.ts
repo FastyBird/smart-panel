@@ -236,14 +236,14 @@ describe('InfluxV2Storage', () => {
 			mockFetch.mockRestore();
 		});
 
-		it('should not throw when delete fails', async () => {
+		it('should throw when delete fails', async () => {
 			const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
 				ok: false,
 				status: 500,
 				text: () => Promise.resolve('Internal Server Error'),
 			} as unknown as Response);
 
-			await expect(storage.dropMeasurement('temperature')).resolves.not.toThrow();
+			await expect(storage.dropMeasurement('temperature')).rejects.toThrow('Failed to drop measurement');
 
 			mockFetch.mockRestore();
 		});
