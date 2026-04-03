@@ -32,8 +32,8 @@ export class ShellyNgUpdatePluginConfigMdnsDto {
 @ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfigWebsockets' })
 export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	@ApiPropertyOptional({
-		description: 'Websocket request timeout in milliseconds',
-		example: 5000,
+		description: 'Websocket request timeout in seconds',
+		example: 10,
 		minimum: 1,
 		name: 'request_timeout',
 	})
@@ -48,8 +48,8 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	request_timeout?: number;
 
 	@ApiPropertyOptional({
-		description: 'Websocket ping interval in milliseconds',
-		example: 30000,
+		description: 'Websocket ping interval in seconds',
+		example: 30,
 		minimum: 0,
 		name: 'ping_interval',
 	})
@@ -63,8 +63,8 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	ping_interval?: number;
 
 	@ApiPropertyOptional({
-		description: 'Websocket reconnect interval values in milliseconds',
-		example: [1000, 2000, 5000, 10000],
+		description: 'Websocket reconnect interval values in seconds',
+		example: [5, 10, 15, 30, 60],
 		isArray: true,
 		type: Number,
 		name: 'reconnect_interval',

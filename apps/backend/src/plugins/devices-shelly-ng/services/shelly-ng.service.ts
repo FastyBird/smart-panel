@@ -45,6 +45,7 @@ export class ShellyNgService implements IManagedPluginService {
 	private startStopLock: Promise<void> = Promise.resolve();
 	private pendingRestart: Promise<void> | null = null;
 	private restartTimer: NodeJS.Timeout | null = null;
+	private healthCheckTimer: NodeJS.Timeout | null = null;
 
 	/**
 	 * Global sequential queue for processing discovered devices.
@@ -303,6 +304,8 @@ export class ShellyNgService implements IManagedPluginService {
 				}
 			}
 
+			this.startHealthCheck();
+
 			this.state = 'started';
 		} catch (e) {
 			this.state = 'error';
@@ -312,6 +315,8 @@ export class ShellyNgService implements IManagedPluginService {
 	}
 
 	private async doStop(): Promise<void> {
+		this.stopHealthCheck();
+
 		if (!this.shellies) {
 			this.state = 'stopped';
 			return;
@@ -502,6 +507,40 @@ export class ShellyNgService implements IManagedPluginService {
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: ConnectionState.UNKNOWN,
 			});
+		}
+	}
+
+	/**
+	 * Starts the periodic health-check that pings connected devices and
+	 * force-reconnects any that fail to respond.
+	 */
+	private startHealthCheck(): void {
+		this.stopHealthCheck();
+
+		// Run every 90 seconds. This is deliberately longer than the ping interval
+		// (30s) + request timeout (10s) = 40s, so the library's built-in ping/pong
+		// has time to detect most failures first. The health check acts as a safety
+		// net for cases where the library's reconnection gets stuck.
+		const HEALTH_CHECK_INTERVAL_MS = 90_000;
+
+		this.healthCheckTimer = setInterval(() => {
+			if (this.state !== 'started') {
+				return;
+			}
+
+			this.delegatesRegistryService.checkHealth().catch((err: Error) => {
+				this.logger.error('Health check failed', {
+					message: err.message,
+					stack: err.stack,
+				});
+			});
+		}, HEALTH_CHECK_INTERVAL_MS);
+	}
+
+	private stopHealthCheck(): void {
+		if (this.healthCheckTimer) {
+			clearInterval(this.healthCheckTimer);
+			this.healthCheckTimer = null;
 		}
 	}
 

@@ -2257,6 +2257,33 @@ export class DelegatesManagerService {
 	}
 
 	/**
+	 * Health-check all delegates that report themselves as connected.
+	 * Sends a lightweight RPC ping and force-reconnects any delegate
+	 * that fails to respond within the timeout.
+	 */
+	async checkHealth(pingTimeoutMs: number = 5_000): Promise<void> {
+		for (const [id, delegate] of this.delegates.entries()) {
+			if (!delegate.connected) {
+				// If the delegate thinks it's disconnected but the underlying
+				// RPC handler still reports connected, the socket may be stuck.
+				if (delegate.rpcConnected) {
+					this.logger.warn(`Device=${id} delegate is disconnected but RPC handler reports connected, forcing reconnect`);
+					delegate.forceReconnect();
+				}
+
+				continue;
+			}
+
+			const alive = await delegate.ping(pingTimeoutMs);
+
+			if (!alive && delegate.connected) {
+				this.logger.warn(`Device=${id} failed health check (ping timeout), forcing reconnect`);
+				delegate.forceReconnect();
+			}
+		}
+	}
+
+	/**
 	 * Serialize the find-or-create path by canonical MAC.
 	 * If canonicalMac is null (unavailable), the function runs unserialized
 	 * — the per-device lock still provides safety for same-shelly.id calls.
