@@ -1,3 +1,4 @@
+import { SystemInfoDto } from '../dto/system-info.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { PlatformException } from '../platform.exceptions';
 
@@ -12,6 +13,10 @@ export class HomeAssistantPlatform extends GenericPlatform {
 
 		this.supervisorToken = process.env.SUPERVISOR_TOKEN ?? null;
 		this.supervisorUrl = process.env.SUPERVISOR_URL ?? 'http://supervisor';
+	}
+
+	async getSystemInfo(): Promise<SystemInfoDto> {
+		return this.getContainerSystemInfo();
 	}
 
 	/**
