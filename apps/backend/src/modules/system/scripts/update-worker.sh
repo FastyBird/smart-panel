@@ -250,14 +250,14 @@ update_status "installing" "installing"
 
 if [ "$VERSION" = "latest" ]; then
 	npm update -g @fastybird/smart-panel 2>&1 || {
-		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "npm update failed"
+		sudo systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 else
 	npm install -g "@fastybird/smart-panel@$VERSION" 2>&1 || {
-		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "npm install failed for version $VERSION"
+		sudo systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 fi
@@ -272,8 +272,8 @@ if [ -f "$(npm root -g)/@fastybird/smart-panel/dataSource.js" ]; then
 	node "$(npm root -g)/@fastybird/smart-panel/node_modules/typeorm/cli.js" \
 		migration:run \
 		-d "$(npm root -g)/@fastybird/smart-panel/dataSource.js" 2>&1 || {
-		sudo systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "Database migration failed"
+		sudo systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 fi
