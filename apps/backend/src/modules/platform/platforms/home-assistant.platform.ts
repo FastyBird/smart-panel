@@ -1,5 +1,3 @@
-import fs from 'fs/promises';
-
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { PlatformException } from '../platform.exceptions';
 
@@ -23,28 +21,13 @@ export class HomeAssistantPlatform extends GenericPlatform {
 	 * since the Supervisor API does not expose throttle information.
 	 */
 	async getThrottleStatus(): Promise<ThrottleStatusDto> {
-		try {
-			const data = await fs.readFile('/sys/devices/platform/soc/soc:firmware/get_throttled', 'utf-8');
-			const status = parseInt(data.trim(), 16);
+		const result = await this.readThrottleFromSysfs();
 
-			if (!isNaN(status)) {
-				return this.validateDto(ThrottleStatusDto, {
-					undervoltage: !!(status & 0x1),
-					frequencyCapping: !!(status & 0x2),
-					throttling: !!(status & 0x4),
-					softTempLimit: !!(status & 0x8),
-				});
-			}
-		} catch {
-			// sysfs not available inside this container
+		if (result) {
+			return result;
 		}
 
-		return this.validateDto(ThrottleStatusDto, {
-			undervoltage: false,
-			frequencyCapping: false,
-			throttling: false,
-			softTempLimit: false,
-		});
+		return this.validateDto(ThrottleStatusDto, this.parseThrottleFlags(0));
 	}
 
 	async rebootDevice(): Promise<void> {
@@ -80,16 +63,12 @@ export class HomeAssistantPlatform extends GenericPlatform {
 				signal: controller.signal,
 			});
 
-			clearTimeout(timeoutId);
-
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
 
 			return await response.text();
 		} catch (error) {
-			clearTimeout(timeoutId);
-
 			const err = error as Error;
 
 			if (err.name === 'AbortError') {
@@ -101,6 +80,8 @@ export class HomeAssistantPlatform extends GenericPlatform {
 			this.logger.error(`Supervisor API call failed: ${method} ${endpoint} - ${err.message}`);
 
 			throw new PlatformException(`Home Assistant Supervisor API call failed: ${err.message}`);
+		} finally {
+			clearTimeout(timeoutId);
 		}
 	}
 }
