@@ -86,6 +86,7 @@ describe('System Info Transformers', (): void => {
 			const result = transformSystemInfoResponse(validSystemInfoResponse);
 
 			expect(result).toEqual({
+				platform: SystemModuleDataSystemInfoPlatform.generic,
 				cpuLoad: 15.3,
 				memory: {
 					total: 8388608000,
