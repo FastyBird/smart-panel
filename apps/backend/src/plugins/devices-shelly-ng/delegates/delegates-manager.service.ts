@@ -2257,11 +2257,14 @@ export class DelegatesManagerService {
 	}
 
 	/**
-	 * Health-check all delegates that report themselves as connected.
-	 * Sends a lightweight RPC ping and force-reconnects any delegate
-	 * that fails to respond within the timeout.
+	 * Health-check all delegates. Pings connected delegates concurrently
+	 * (up to CONCURRENCY at a time) and force-reconnects any that fail
+	 * to respond within the timeout.
 	 */
 	async checkHealth(pingTimeoutMs: number = 5_000): Promise<void> {
+		const CONCURRENCY = 10;
+		const tasks: Array<() => Promise<void>> = [];
+
 		for (const [id, delegate] of this.delegates.entries()) {
 			if (!delegate.connected) {
 				// If the delegate thinks it's disconnected but the underlying
@@ -2276,12 +2279,19 @@ export class DelegatesManagerService {
 				continue;
 			}
 
-			const alive = await delegate.ping(pingTimeoutMs);
+			tasks.push(async () => {
+				const alive = await delegate.ping(pingTimeoutMs);
 
-			if (!alive && delegate.connected) {
-				this.logger.warn(`Device=${id} failed health check (ping timeout), forcing reconnect`);
-				delegate.forceReconnect();
-			}
+				if (!alive && delegate.connected) {
+					this.logger.warn(`Device=${id} failed health check (ping timeout), forcing reconnect`);
+					delegate.forceReconnect();
+				}
+			});
+		}
+
+		// Process pings in batches to avoid flooding the network
+		for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+			await Promise.all(tasks.slice(i, i + CONCURRENCY).map((fn) => fn()));
 		}
 	}
 

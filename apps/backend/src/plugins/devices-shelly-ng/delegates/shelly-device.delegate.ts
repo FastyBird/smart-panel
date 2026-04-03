@@ -206,7 +206,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	/**
-	 * Sends a lightweight RPC request (Shelly.GetStatus) to verify the device
+	 * Sends a lightweight RPC request (Shelly.GetDeviceInfo) to verify the device
 	 * is actually responsive. Resolves to true if the device responds, false otherwise.
 	 */
 	async ping(timeoutMs: number = 5_000): Promise<boolean> {
@@ -218,7 +218,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 		try {
 			await Promise.race([
-				this.shelly.rpcHandler.request('Shelly.GetStatus'),
+				this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => reject(new Error('Ping timeout')), timeoutMs);
 				}),
