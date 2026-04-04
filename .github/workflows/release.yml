@@ -607,12 +607,16 @@ jobs:
               mkdir -p ./extension-sdk
               cp -r "$SDK_DIR/dist" ./extension-sdk/dist
               cp "$SDK_DIR/package.json" ./extension-sdk/package.json
+              jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
+                | del(.dependencies["@fastybird/smart-panel-backend"])
+                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                "$BACKEND_DIR/package.json" > ./package.json.tmp
+            else
+              jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])
+                | del(.dependencies["@fastybird/smart-panel-backend"])
+                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                "$BACKEND_DIR/package.json" > ./package.json.tmp
             fi
-
-            jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
-              | del(.dependencies["@fastybird/smart-panel-backend"])
-              | del(.dependencies["@fastybird/smart-panel-admin"])' \
-              "$BACKEND_DIR/package.json" > ./package.json.tmp
             mv ./package.json.tmp ./package.json
 
             rm -rf node_modules

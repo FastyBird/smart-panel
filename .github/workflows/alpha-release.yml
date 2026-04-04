@@ -540,17 +540,21 @@ jobs:
             cp -r "$BACKEND_DIR/dist" ./dist
             mkdir -p ./static
             cp -r "$ADMIN_DIR/dist/"* ./static/
+            # Rewrite package.json: use backend's deps, remove npm wrapper packages
             if [ -d "$SDK_DIR" ]; then
               mkdir -p ./extension-sdk
               cp -r "$SDK_DIR/dist" ./extension-sdk/dist
               cp "$SDK_DIR/package.json" ./extension-sdk/package.json
+              jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
+                | del(.dependencies["@fastybird/smart-panel-backend"])
+                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                "$BACKEND_DIR/package.json" > ./package.json.tmp
+            else
+              jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])
+                | del(.dependencies["@fastybird/smart-panel-backend"])
+                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                "$BACKEND_DIR/package.json" > ./package.json.tmp
             fi
-
-            # Rewrite package.json to use backend's deps with extension-sdk as file: reference
-            jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
-              | del(.dependencies["@fastybird/smart-panel-backend"])
-              | del(.dependencies["@fastybird/smart-panel-admin"])' \
-              "$BACKEND_DIR/package.json" > ./package.json.tmp
             mv ./package.json.tmp ./package.json
 
             # Reinstall with the rewritten package.json to get clean node_modules
