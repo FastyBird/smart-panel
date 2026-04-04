@@ -257,6 +257,17 @@ export class UpdateExecutorService implements OnModuleInit {
 		this.statusPollTimer = setInterval(() => {
 			// Stop polling after timeout
 			if (Date.now() - startedAt > STATUS_POLL_MAX_MS) {
+				this.logger.error('Update status polling timed out');
+
+				this.updateService.setStatus({
+					status: UpdateStatusType.FAILED,
+					phase: UpdatePhase.FAILED,
+					progressPercent: null,
+					message: null,
+					error: 'Update timed out — no completion signal received',
+				});
+
+				this.updateService.releaseUpdateLock();
 				this.stopStatusPolling();
 
 				return;
