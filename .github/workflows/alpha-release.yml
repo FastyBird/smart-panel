@@ -547,12 +547,14 @@ jobs:
               cp "$SDK_DIR/package.json" ./extension-sdk/package.json
               jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
                 | del(.dependencies["@fastybird/smart-panel-backend"])
-                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                | del(.dependencies["@fastybird/smart-panel-admin"])
+                | del(.devDependencies)' \
                 "$BACKEND_DIR/package.json" > ./package.json.tmp
             else
               jq 'del(.dependencies["@fastybird/smart-panel-extension-sdk"])
                 | del(.dependencies["@fastybird/smart-panel-backend"])
-                | del(.dependencies["@fastybird/smart-panel-admin"])' \
+                | del(.dependencies["@fastybird/smart-panel-admin"])
+                | del(.devDependencies)' \
                 "$BACKEND_DIR/package.json" > ./package.json.tmp
             fi
             mv ./package.json.tmp ./package.json
