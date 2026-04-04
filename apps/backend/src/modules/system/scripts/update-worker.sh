@@ -122,26 +122,18 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		exit 1
 	}
 
-	# ── Install/verify dependencies ──
+	# ── Verify dependencies ──
 	cd "$NEW_VERSION_DIR"
 
 	# The release tarball includes pre-built node_modules with native modules
-	# compiled for ARM64. Only reinstall if node_modules is missing.
+	# compiled for ARM64 by the CI arm-runner. Only install as fallback if
+	# node_modules is missing (e.g. manually extracted tarball without deps).
 	if [ ! -d "node_modules" ]; then
 		npm install --omit=dev 2>&1 || {
 			rm -rf "$NEW_VERSION_DIR"
 			update_status "failed" "failed" "npm install failed"
 			exit 1
 		}
-
-		# Rebuild native modules if needed
-		if [ -x "${IMAGE_BASE_DIR}/rebuild-native.sh" ]; then
-			"${IMAGE_BASE_DIR}/rebuild-native.sh" "${NEW_VERSION_DIR}" 2>&1 || {
-				rm -rf "$NEW_VERSION_DIR"
-				update_status "failed" "failed" "Native module rebuild failed"
-				exit 1
-			}
-		fi
 	fi
 
 	# Set ownership
