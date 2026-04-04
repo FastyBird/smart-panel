@@ -20,9 +20,29 @@ export interface UpdateProgressFile {
 const STATUS_FILE = '/var/lib/smart-panel/update-status.json';
 const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
+const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
+const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000; // Stop polling after timeout + grace
+
+/**
+ * Map worker phases to approximate progress percentages.
+ * Image path: downloading→installing→stopping→migrating→starting
+ * NPM path:   downloading→stopping→installing→migrating→starting
+ * Installing and stopping share the same value so neither path goes backwards.
+ */
+const PHASE_PROGRESS: Record<string, number> = {
+	downloading: 20,
+	installing: 45,
+	stopping: 45,
+	migrating: 65,
+	starting: 85,
+	complete: 100,
+};
+
 @Injectable()
 export class UpdateExecutorService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateExecutorService');
+	private statusPollTimer: NodeJS.Timeout | null = null;
+	private progressHighWaterMark = 0;
 
 	constructor(private readonly updateService: UpdateService) {}
 
@@ -203,6 +223,11 @@ export class UpdateExecutorService implements OnModuleInit {
 			child.unref();
 
 			this.logger.log(`Update worker spawned for version ${targetVersion} (PID: ${child.pid}, type: ${installType})`);
+
+			// Poll the status file to sync worker progress to in-memory status.
+			// This catches fast failures (e.g. sudo check) and provides real-time
+			// progress updates to the admin UI via WebSocket.
+			this.startStatusPolling();
 		} catch (error) {
 			const err = error as Error;
 
@@ -225,6 +250,93 @@ export class UpdateExecutorService implements OnModuleInit {
 			});
 
 			throw error;
+		}
+	}
+
+	private startStatusPolling(): void {
+		this.stopStatusPolling();
+		this.progressHighWaterMark = 10;
+
+		const startedAt = Date.now();
+
+		this.statusPollTimer = setInterval(() => {
+			// Stop polling after timeout
+			if (Date.now() - startedAt > STATUS_POLL_MAX_MS) {
+				this.logger.error('Update status polling timed out');
+
+				this.updateService.setStatus({
+					status: UpdateStatusType.FAILED,
+					phase: UpdatePhase.FAILED,
+					progressPercent: null,
+					message: null,
+					error: 'Update timed out — no completion signal received',
+				});
+
+				this.updateService.releaseUpdateLock();
+				this.stopStatusPolling();
+
+				return;
+			}
+
+			if (!existsSync(STATUS_FILE)) {
+				return;
+			}
+
+			try {
+				const raw = readFileSync(STATUS_FILE, 'utf-8');
+				const fileStatus = JSON.parse(raw) as UpdateProgressFile;
+
+				if (fileStatus.status === UpdateStatusType.FAILED) {
+					this.logger.error(`Update worker failed: ${fileStatus.error ?? 'unknown error'}`);
+
+					this.updateService.setStatus({
+						status: UpdateStatusType.FAILED,
+						phase: UpdatePhase.FAILED,
+						progressPercent: null,
+						message: null,
+						error: fileStatus.error ?? 'Update failed with unknown error',
+					});
+
+					this.updateService.releaseUpdateLock();
+					this.stopStatusPolling();
+				} else if (fileStatus.status === UpdateStatusType.COMPLETE) {
+					this.updateService.setStatus({
+						status: UpdateStatusType.COMPLETE,
+						phase: UpdatePhase.COMPLETE,
+						progressPercent: 100,
+						message: `Successfully updated to ${fileStatus.targetVersion}`,
+						error: null,
+					});
+
+					this.updateService.releaseUpdateLock();
+					this.stopStatusPolling();
+				} else {
+					// In-progress — sync worker phase to in-memory status.
+					// Use high-water mark so progress never goes backwards
+					// (image and npm paths have different phase ordering).
+					const rawProgress = PHASE_PROGRESS[fileStatus.phase] ?? 10;
+					const progress = Math.max(this.progressHighWaterMark, rawProgress);
+
+					this.progressHighWaterMark = progress;
+
+					this.updateService.setStatus({
+						status: fileStatus.status ?? UpdateStatusType.DOWNLOADING,
+						phase: fileStatus.phase ?? UpdatePhase.DOWNLOADING,
+						progressPercent: progress,
+						message: `Update in progress: ${fileStatus.phase}...`,
+						error: null,
+					});
+				}
+			} catch {
+				// File may be mid-write, retry next cycle
+			}
+		}, STATUS_POLL_INTERVAL_MS);
+	}
+
+	private stopStatusPolling(): void {
+		if (this.statusPollTimer) {
+			clearInterval(this.statusPollTimer);
+			this.statusPollTimer = null;
 		}
 	}
 
