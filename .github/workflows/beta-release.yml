@@ -520,13 +520,38 @@ jobs:
           copy_artifact_dest: "."
           commands: |
             apt-get update
-            apt-get install -y curl git
+            apt-get install -y curl git jq
             curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
             apt-get install -y nodejs
             cd /opt/smart-panel/build-arm64
             npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
             npm install --omit=dev
+
+            # Restructure from npm layout to Raspbian image layout
+            BACKEND_DIR="node_modules/@fastybird/smart-panel-backend"
+            ADMIN_DIR="node_modules/@fastybird/smart-panel-admin"
+            SDK_DIR="node_modules/@fastybird/smart-panel-extension-sdk"
+
+            cp -r "$BACKEND_DIR/dist" ./dist
+            mkdir -p ./static
+            cp -r "$ADMIN_DIR/dist/"* ./static/
+            if [ -d "$SDK_DIR" ]; then
+              mkdir -p ./extension-sdk
+              cp -r "$SDK_DIR/dist" ./extension-sdk/dist
+              cp "$SDK_DIR/package.json" ./extension-sdk/package.json
+            fi
+
+            jq '.dependencies["@fastybird/smart-panel-extension-sdk"] = "file:./extension-sdk"
+              | del(.dependencies["@fastybird/smart-panel-backend"])
+              | del(.dependencies["@fastybird/smart-panel-admin"])' \
+              "$BACKEND_DIR/package.json" > ./package.json.tmp
+            mv ./package.json.tmp ./package.json
+
+            rm -rf node_modules
+            npm install --omit=dev
+            rm -f package-lock.json
+
             cd /opt/smart-panel
             tar -czvf smart-panel-server-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz -C ./build-arm64 .
             shasum -a 256 smart-panel-server-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz > smart-panel-server-${{ needs.sync-versions.outputs.version }}-arm64.tar.gz.sha256
