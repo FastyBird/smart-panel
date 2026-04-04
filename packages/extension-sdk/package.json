@@ -1,6 +1,6 @@
 {
   "name": "@fastybird/smart-panel-extension-sdk",
-  "version": "0.1.0-alpha.9",
+  "version": "0.1.0-alpha.10",
   "type": "commonjs",
   "description": "SDK types and helpers for Smart Panel extensions (modules & plugins).",
   "homepage": "https://smart-panel.fastybird.com",
