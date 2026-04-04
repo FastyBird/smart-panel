@@ -1,6 +1,6 @@
 {
   "name": "@fastybird/smart-panel-admin",
-  "version": "0.4.0-alpha.1",
+  "version": "0.1.0-alpha.9",
   "type": "module",
   "description": "Powerful application for administrating and integrating the FastyBird IoT Smart Panel",
   "keywords": [
