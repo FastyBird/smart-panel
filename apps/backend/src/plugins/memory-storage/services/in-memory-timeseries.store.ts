@@ -44,7 +44,7 @@ export class InMemoryTimeSeriesStore {
 
 	private evictionTimer: NodeJS.Timeout | null = null;
 
-	constructor(maxPointsPerMeasurement = 10_000, maxAgeMs = 24 * 60 * 60 * 1000) {
+	constructor(maxPointsPerMeasurement = 2_000, maxAgeMs = 6 * 60 * 60 * 1000) {
 		this.maxPointsPerMeasurement = maxPointsPerMeasurement;
 		this.maxAgeMs = maxAgeMs;
 

@@ -13,8 +13,77 @@ import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PLATFORM_MODULE_NAME } from '../platform.constants';
 import { PlatformException } from '../platform.exceptions';
 
+interface CacheEntry<T> {
+	data: T;
+	at: number;
+}
+
 export abstract class Platform {
 	protected logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'Platform');
+
+	// ─── TTL Cache for slow-changing si.* calls ──────────────────
+	// Prevents spawning child processes every 5 seconds for data
+	// that changes rarely (OS info, graphics, storage, network interfaces).
+
+	private static readonly SLOW_CACHE_TTL_MS = 60_000; // 1 minute
+	private static readonly STORAGE_CACHE_TTL_MS = 30_000; // 30 seconds
+
+	private siOsInfoCache: CacheEntry<Systeminformation.OsData> | null = null;
+	private siGraphicsCache: CacheEntry<Systeminformation.GraphicsData> | null = null;
+	private siNetworkInterfacesCache: CacheEntry<
+		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
+	> | null = null;
+	private siFsSizeCache: CacheEntry<Systeminformation.FsSizeData[]> | null = null;
+
+	protected async cachedOsInfo(): Promise<Systeminformation.OsData> {
+		if (this.siOsInfoCache && Date.now() - this.siOsInfoCache.at < Platform.SLOW_CACHE_TTL_MS) {
+			return this.siOsInfoCache.data;
+		}
+
+		const data = await si.osInfo();
+
+		this.siOsInfoCache = { data, at: Date.now() };
+
+		return data;
+	}
+
+	protected async cachedGraphics(): Promise<Systeminformation.GraphicsData> {
+		if (this.siGraphicsCache && Date.now() - this.siGraphicsCache.at < Platform.SLOW_CACHE_TTL_MS) {
+			return this.siGraphicsCache.data;
+		}
+
+		const data = await si.graphics();
+
+		this.siGraphicsCache = { data, at: Date.now() };
+
+		return data;
+	}
+
+	protected async cachedNetworkInterfaces(): Promise<
+		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
+	> {
+		if (this.siNetworkInterfacesCache && Date.now() - this.siNetworkInterfacesCache.at < Platform.SLOW_CACHE_TTL_MS) {
+			return this.siNetworkInterfacesCache.data;
+		}
+
+		const data = await si.networkInterfaces('default');
+
+		this.siNetworkInterfacesCache = { data, at: Date.now() };
+
+		return data;
+	}
+
+	protected async cachedFsSize(): Promise<Systeminformation.FsSizeData[]> {
+		if (this.siFsSizeCache && Date.now() - this.siFsSizeCache.at < Platform.STORAGE_CACHE_TTL_MS) {
+			return this.siFsSizeCache.data;
+		}
+
+		const data = await si.fsSize();
+
+		this.siFsSizeCache = { data, at: Date.now() };
+
+		return data;
+	}
 
 	abstract getSystemInfo(): Promise<SystemInfoDto>;
 	abstract getThrottleStatus(): Promise<ThrottleStatusDto>;
@@ -249,32 +318,30 @@ export abstract class Platform {
 	 * Shared by DockerPlatform and HomeAssistantPlatform.
 	 */
 	protected async getContainerSystemInfo(): Promise<SystemInfoDto> {
-		// Run cgroup reads in parallel with si.* calls — readContainerCpuLoad
-		// contains a 200ms sampling window that overlaps with the si.* I/O.
+		// All calls in one Promise.all so readContainerCpuLoad's 200ms sampling
+		// window overlaps with other I/O. Cached calls return instantly when warm.
 		const [
 			hostCpu,
 			hostMemory,
-			storage,
-			osInfo,
 			temp,
 			network,
-			graphics,
-			networkInterface,
 			containerMemory,
 			containerCpu,
+			storage,
+			osInfo,
+			graphics,
+			networkInterface,
 		] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
-			si.fsSize(),
-			si.osInfo(),
 			si.cpuTemperature(),
 			si.networkStats(),
-			si.graphics(),
-			si.networkInterfaces('default') as Promise<
-				Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
-			>,
 			this.readContainerMemory(),
 			this.readContainerCpuLoad(),
+			this.cachedFsSize(),
+			this.cachedOsInfo(),
+			this.cachedGraphics(),
+			this.cachedNetworkInterfaces(),
 		]);
 
 		const time = si.time();
