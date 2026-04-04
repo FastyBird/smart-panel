@@ -25,12 +25,15 @@ const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000; // Stop polling after tim
 
 /**
  * Map worker phases to approximate progress percentages.
+ * Image path: downloading→installing→stopping→migrating→starting
+ * NPM path:   downloading→stopping→installing→migrating→starting
+ * Installing and stopping share the same value so neither path goes backwards.
  */
 const PHASE_PROGRESS: Record<string, number> = {
 	downloading: 20,
-	installing: 40,
-	stopping: 60,
-	migrating: 70,
+	installing: 45,
+	stopping: 45,
+	migrating: 65,
 	starting: 85,
 	complete: 100,
 };
@@ -39,6 +42,7 @@ const PHASE_PROGRESS: Record<string, number> = {
 export class UpdateExecutorService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateExecutorService');
 	private statusPollTimer: NodeJS.Timeout | null = null;
+	private progressHighWaterMark = 0;
 
 	constructor(private readonly updateService: UpdateService) {}
 
@@ -251,6 +255,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 	private startStatusPolling(): void {
 		this.stopStatusPolling();
+		this.progressHighWaterMark = 10;
 
 		const startedAt = Date.now();
 
@@ -306,8 +311,13 @@ export class UpdateExecutorService implements OnModuleInit {
 					this.updateService.releaseUpdateLock();
 					this.stopStatusPolling();
 				} else {
-					// In-progress — sync worker phase to in-memory status
-					const progress = PHASE_PROGRESS[fileStatus.phase] ?? 10;
+					// In-progress — sync worker phase to in-memory status.
+					// Use high-water mark so progress never goes backwards
+					// (image and npm paths have different phase ordering).
+					const rawProgress = PHASE_PROGRESS[fileStatus.phase] ?? 10;
+					const progress = Math.max(this.progressHighWaterMark, rawProgress);
+
+					this.progressHighWaterMark = progress;
 
 					this.updateService.setStatus({
 						status: fileStatus.status ?? UpdateStatusType.DOWNLOADING,
