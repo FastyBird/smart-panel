@@ -318,20 +318,26 @@ export abstract class Platform {
 	 * Shared by DockerPlatform and HomeAssistantPlatform.
 	 */
 	protected async getContainerSystemInfo(): Promise<SystemInfoDto> {
-		// Run cgroup reads in parallel with si.* calls — readContainerCpuLoad
-		// contains a 200ms sampling window that overlaps with the si.* I/O.
-		// Real-time metrics + cgroup reads in parallel
-		const [hostCpu, hostMemory, temp, network, containerMemory, containerCpu] = await Promise.all([
+		// All calls in one Promise.all so readContainerCpuLoad's 200ms sampling
+		// window overlaps with other I/O. Cached calls return instantly when warm.
+		const [
+			hostCpu,
+			hostMemory,
+			temp,
+			network,
+			containerMemory,
+			containerCpu,
+			storage,
+			osInfo,
+			graphics,
+			networkInterface,
+		] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
 			si.cpuTemperature(),
 			si.networkStats(),
 			this.readContainerMemory(),
 			this.readContainerCpuLoad(),
-		]);
-
-		// Slow-changing metrics (cached with TTL)
-		const [storage, osInfo, graphics, networkInterface] = await Promise.all([
 			this.cachedFsSize(),
 			this.cachedOsInfo(),
 			this.cachedGraphics(),

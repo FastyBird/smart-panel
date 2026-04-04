@@ -20,14 +20,11 @@ export class RaspberryPlatform extends Platform {
 	private cachedNpmVersion: string | null = null;
 
 	async getSystemInfo() {
-		const [cpu, memory, temp, network] = await Promise.all([
+		const [cpu, memory, temp, network, storage, osInfo, graphics, networkInterface] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
 			si.cpuTemperature(),
 			si.networkStats(),
-		]);
-
-		const [storage, osInfo, graphics, networkInterface] = await Promise.all([
 			this.cachedFsSize(),
 			this.cachedOsInfo(),
 			this.cachedGraphics(),
@@ -72,10 +69,10 @@ export class RaspberryPlatform extends Platform {
 				txBytes: row.tx_bytes,
 			})),
 			defaultNetwork: {
-				interface: defaultNetworkInterface.iface,
-				ip4: defaultNetworkInterface.ip4,
-				ip6: defaultNetworkInterface.ip6,
-				mac: defaultNetworkInterface.mac,
+				interface: defaultNetworkInterface?.iface ?? '',
+				ip4: defaultNetworkInterface?.ip4 ?? '',
+				ip6: defaultNetworkInterface?.ip6 ?? '',
+				mac: defaultNetworkInterface?.mac ?? '',
 				hostname: osInfo.hostname,
 			},
 			display: {

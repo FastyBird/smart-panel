@@ -15,16 +15,13 @@ export class GenericPlatform extends Platform {
 	private cachedNpmVersion: string | null = null;
 
 	async getSystemInfo() {
-		// Real-time metrics (change every few seconds)
-		const [cpu, memory, temp, network] = await Promise.all([
+		// Real-time + cached calls in one batch. Cached calls return instantly
+		// when warm; on cold cache they run in parallel with real-time I/O.
+		const [cpu, memory, temp, network, storage, osInfo, graphics, networkInterface] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
 			si.cpuTemperature(),
 			si.networkStats(),
-		]);
-
-		// Slow-changing metrics (cached with TTL to avoid spawning child processes every 5s)
-		const [storage, osInfo, graphics, networkInterface] = await Promise.all([
 			this.cachedFsSize(),
 			this.cachedOsInfo(),
 			this.cachedGraphics(),
@@ -67,10 +64,10 @@ export class GenericPlatform extends Platform {
 				txBytes: row.tx_bytes,
 			})),
 			defaultNetwork: {
-				interface: defaultNetworkInterface.iface,
-				ip4: defaultNetworkInterface.ip4,
-				ip6: defaultNetworkInterface.ip6,
-				mac: defaultNetworkInterface.mac,
+				interface: defaultNetworkInterface?.iface ?? '',
+				ip4: defaultNetworkInterface?.ip4 ?? '',
+				ip6: defaultNetworkInterface?.ip6 ?? '',
+				mac: defaultNetworkInterface?.mac ?? '',
 				hostname: osInfo.hostname,
 			},
 			display: {
