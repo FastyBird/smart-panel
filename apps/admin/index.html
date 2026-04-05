@@ -2,7 +2,17 @@
 <html lang="en" class="h-full min-h-full max-h-full w-full min-w-full max-w-full m-0 p-0">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.ico" />
+    <script>
+      // Set <base href> dynamically so relative asset paths resolve correctly
+      // in both standalone (/) and HA ingress (/api/hassio_ingress/<token>/) contexts.
+      (function() {
+        var m = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+\/)/);
+        var b = document.createElement('base');
+        b.href = m ? m[1] : '/';
+        document.head.appendChild(b);
+      })();
+    </script>
+    <link rel="icon" href="favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FastyBird Smart Panel Admin</title>
   </head>
