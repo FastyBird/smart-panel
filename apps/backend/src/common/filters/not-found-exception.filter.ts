@@ -1,5 +1,5 @@
-import { createReadStream, existsSync } from 'fs';
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+import { createReadStream, existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,7 +15,11 @@ export class NotFoundExceptionFilter implements ExceptionFilter {
 	private readonly indexPath: string | null;
 
 	constructor(private readonly configService: ConfigService) {
-		const staticRoot = getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../../../static'));
+		const staticRoot = getEnvValue<string>(
+			configService,
+			'FB_ADMIN_UI_PATH',
+			path.resolve(__dirname, '../../../static'),
+		);
 		const resolved = path.join(staticRoot, 'index.html');
 
 		this.indexPath = existsSync(resolved) ? resolved : null;
