@@ -18,7 +18,7 @@ export default defineConfig((config: UserConfig): UserConfig => {
 	const includeStatic = process.env.FB_INCLUDE_STATIC_EXT === '1';
 
 	return {
-		base: './',
+		base: '/',
 		envPrefix: ['FB_APP_', 'FB_BACKEND_', 'FB_ADMIN_'],
 		envDir: path.resolve(__dirname, '../../'),
 		plugins: [
