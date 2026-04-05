@@ -89,7 +89,7 @@ async function bootstrap() {
 		new InternalServerErrorExceptionFilter(),
 		new BadRequestExceptionFilter(),
 		new UnprocessableEntityExceptionFilter(),
-		new NotFoundExceptionFilter(),
+		new NotFoundExceptionFilter(configService),
 		new QueryFailedExceptionFilter(),
 	);
 

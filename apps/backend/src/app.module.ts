@@ -423,13 +423,11 @@ export class AppModule {
 						return [
 							{
 								rootPath,
-								// Fastify v5 wildcard: /* matches all path depths for SPA fallback
-								renderPath: '/*',
-								// path-to-regexp v8 patterns for route exclusion
-								exclude: ['/api/{*path}', '/socket.io/{*path}'],
-								serveStaticOptions: {
-									fallthrough: true,
-								},
+								// Disable the SPA catch-all renderFn from @nestjs/serve-static —
+								// its Fastify loader ignores 'exclude' patterns, so it catches
+								// API routes and serves index.html instead of JSON.
+								// SPA deep link fallback is handled by NotFoundExceptionFilter.
+								renderPath: '/__never_match__',
 							},
 						];
 					},
