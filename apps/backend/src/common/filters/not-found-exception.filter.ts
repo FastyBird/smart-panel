@@ -31,8 +31,12 @@ export class NotFoundExceptionFilter implements ExceptionFilter {
 		const response = ctx.getResponse<Response>();
 		const url = request.url;
 
-		// SPA fallback: serve index.html for non-API routes (frontend deep links)
-		if (this.indexPath && !url.startsWith('/api/') && !url.startsWith('/socket.io/')) {
+		// SPA fallback: serve index.html for non-API frontend deep links.
+		// Skip requests with file extensions (e.g. .js, .css, .png) — those are
+		// missing static assets and should return a real 404, not index.html.
+		const hasFileExtension = /\.\w{2,10}(\?.*)?$/.test(url);
+
+		if (this.indexPath && !hasFileExtension && !url.startsWith('/api/') && !url.startsWith('/socket.io/')) {
 			void response.type('text/html').send(createReadStream(this.indexPath));
 
 			return;

@@ -428,6 +428,10 @@ export class AppModule {
 								// API routes and serves index.html instead of JSON.
 								// SPA deep link fallback is handled by NotFoundExceptionFilter.
 								renderPath: '/__never_match__',
+								serveStaticOptions: {
+									// Serve files with decorateReply so reply.sendFile works
+									decorateReply: true,
+								},
 							},
 						];
 					},
