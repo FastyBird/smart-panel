@@ -180,7 +180,7 @@ When implementing features:
 
 ## Key Rules
 
-1. Never push directly to main. Always create a branch and PR.
+1. **NEVER push directly to main.** All changes must go through a feature branch and Pull Request — no exceptions, not even for "quick fixes" or lint fixes. Only push to main if the user explicitly requests it.
 2. Respect modular architecture — avoid "god services" mixing multiple concerns.
 3. Prefer existing patterns, helpers, and abstractions over inventing new ones.
 4. Do not introduce new dependencies without a strong reason.
