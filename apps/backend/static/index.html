@@ -1,107 +1,50 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full min-h-full max-h-full w-full min-w-full max-w-full m-0 p-0">
-  <head>
-    <meta charset="UTF-8" />
-    <script>
-      // Set <base href> dynamically so relative asset paths resolve correctly
-      // in both standalone (/) and HA ingress (/api/hassio_ingress/<token>/) contexts.
-      (function() {
-        var m = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+\/)/);
-        var b = document.createElement('base');
-        b.href = m ? m[1] : '/';
-        document.head.appendChild(b);
-      })();
-    </script>
-    <link rel="icon" href="favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FastyBird Smart Panel Admin</title>
-    <script type="module" crossorigin src="./assets/index-DUBGvjpB.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/chunk-DECur_0Z.js">
-    <link rel="modulepreload" crossorigin href="./assets/icon-with-child-CFkymQJ0.js">
-    <link rel="modulepreload" crossorigin href="./assets/common-BQIBMWOA.js">
-    <link rel="modulepreload" crossorigin href="./assets/auth.constants-BtlHaDRV.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-CutLdrTk.js">
-    <link rel="modulepreload" crossorigin href="./assets/layout-profile-B2E13HVK.js">
-    <link rel="modulepreload" crossorigin href="./assets/layout-sign-rwbIHUo6.js">
-    <link rel="modulepreload" crossorigin href="./assets/empty-ACPQ20_N.js">
-    <link rel="modulepreload" crossorigin href="./assets/integration-config-dialog-1vbrBIae.js">
-    <link rel="modulepreload" crossorigin href="./assets/radio-bukAo9da.js">
-    <link rel="modulepreload" crossorigin href="./assets/steps-DwaKmqG_.js">
-    <link rel="modulepreload" crossorigin href="./assets/useBuddyChat-BSB8ISGn.js">
-    <link rel="modulepreload" crossorigin href="./assets/keys-DVEtutPb.js">
-    <link rel="modulepreload" crossorigin href="./assets/types-C9r4o5Ho.js">
-    <link rel="modulepreload" crossorigin href="./assets/useDataSources-C7zaDibn.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-C9eOr-E7.js">
-    <link rel="modulepreload" crossorigin href="./assets/useLocation-C2Cs7MLf.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-Nxyoztwd.js">
-    <link rel="modulepreload" crossorigin href="./assets/keys-DWeeqbdi.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-CPKXtHb_.js">
-    <link rel="modulepreload" crossorigin href="./assets/keys-o2K4DVjh.js">
-    <link rel="modulepreload" crossorigin href="./assets/useDevices-B3dnl6Cx.js">
-    <link rel="modulepreload" crossorigin href="./assets/useSpaces-DL3KA8XB.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-BOUnA2an.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-CWjkmXuh.js">
-    <link rel="modulepreload" crossorigin href="./assets/input-number-xU54c3k-.js">
-    <link rel="modulepreload" crossorigin href="./assets/pagination-4e7C8fMk.js">
-    <link rel="modulepreload" crossorigin href="./assets/skeleton-v7Dta0pf.js">
-    <link rel="modulepreload" crossorigin href="./assets/table-CvmmhY_l.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-DfapxhIR.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-DukiTEOL.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-CIhUijsh.js">
-    <link rel="modulepreload" crossorigin href="./assets/select-data-source-plugin-jMwu1QAZ.js">
-    <link rel="modulepreload" crossorigin href="./assets/data-source-edit-form-DwyFEXWb.js">
-    <link rel="modulepreload" crossorigin href="./assets/list-data-sources-adjust-B7Kqf4Oi.js">
-    <link rel="modulepreload" crossorigin href="./assets/tile-detail-BZip7faR.js">
-    <link rel="modulepreload" crossorigin href="./assets/tile-edit-form-OFGKiy2i.js">
-    <link rel="modulepreload" crossorigin href="./assets/usePage-Dw7SkLLG.js">
-    <link rel="modulepreload" crossorigin href="./assets/dashboard.types-DpqC7ZM0.js">
-    <link rel="modulepreload" crossorigin href="./assets/dashboard-D7KcDUuL.js">
-    <link rel="modulepreload" crossorigin href="./assets/system.exceptions-CLPql-b3.js">
-    <link rel="modulepreload" crossorigin href="./assets/logs-entries.transformers-CPh54VOl.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-BsJ5FPk-.js">
-    <link rel="modulepreload" crossorigin href="./assets/drawer-BUwbVH3Y.js">
-    <link rel="modulepreload" crossorigin href="./assets/popover-DB0_XsoM.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-DXvlBjL4.js">
-    <link rel="modulepreload" crossorigin href="./assets/weather-forecast.transformers-BtevfL31.js">
-    <link rel="modulepreload" crossorigin href="./assets/weather-icon-CkuFNv0P.js">
-    <link rel="modulepreload" crossorigin href="./assets/weather-BdzrhskR.js">
-    <link rel="modulepreload" crossorigin href="./assets/extensions.constants-zRRiNzmt.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-DyHYrkm92.js">
-    <link rel="modulepreload" crossorigin href="./assets/components-BxcyqH6_.js">
-    <link rel="modulepreload" crossorigin href="./assets/scene-add-form-DhTuLKVX.js">
-    <link rel="modulepreload" crossorigin href="./assets/scene-edit-form-zuWPZB_H.js">
-    <link rel="modulepreload" crossorigin href="./assets/system-B-Dw1TU2.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-DorUG9lb.js">
-    <link rel="modulepreload" crossorigin href="./assets/list-locations-CItYkN8h.js">
-    <link rel="modulepreload" crossorigin href="./assets/composables-BU1aKa642.js">
-    <link rel="modulepreload" crossorigin href="./assets/keys-C6Zi4a10.js">
-    <link rel="modulepreload" crossorigin href="./assets/card-add-form-BT3mC2Al.js">
-    <link rel="modulepreload" crossorigin href="./assets/card-edit-form-CEJMcjhT.js">
-    <link rel="modulepreload" crossorigin href="./assets/gridstack.min-BC6WoZvX.js">
-    <link rel="modulepreload" crossorigin href="./assets/page-configure-jf2a99mv.js">
-    <link rel="modulepreload" crossorigin href="./assets/pages-cards.contants-B5RdaI3z.js">
-    <link rel="modulepreload" crossorigin href="./assets/page-configure-Dqlwdh3a.js">
-    <link rel="modulepreload" crossorigin href="./assets/pages-tiles.constants-Day6cR-b.js">
-    <link rel="modulepreload" crossorigin href="./assets/useGeolocation-BK8YYx0J.js">
-    <link rel="modulepreload" crossorigin href="./assets/vue-meta.esm-browser.min-D3jkQa9r.js">
-    <link rel="stylesheet" crossorigin href="./assets/icon-with-child-BLEwUDjY.css">
-    <link rel="stylesheet" crossorigin href="./assets/common-Cs35nU4Y.css">
-    <link rel="stylesheet" crossorigin href="./assets/components-PplhdqR7.css">
-    <link rel="stylesheet" crossorigin href="./assets/components-D8W8DxC-.css">
-    <link rel="stylesheet" crossorigin href="./assets/components-BE-5Sryy.css">
-    <link rel="stylesheet" crossorigin href="./assets/list-data-sources-adjust-P1Kz0PkR.css">
-    <link rel="stylesheet" crossorigin href="./assets/components-BTzOpjua.css">
-    <link rel="stylesheet" crossorigin href="./assets/weather-BKeryvnv.css">
-    <link rel="stylesheet" crossorigin href="./assets/components-D43uSIHo.css">
-    <link rel="stylesheet" crossorigin href="./assets/scene-add-form-ID_EnW77.css">
-    <link rel="stylesheet" crossorigin href="./assets/scene-edit-form-BseJSBSG.css">
-    <link rel="stylesheet" crossorigin href="./assets/gridstack-DrhE8fGa.css">
-    <link rel="stylesheet" crossorigin href="./assets/page-configure-DTDs8kPD.css">
-    <link rel="stylesheet" crossorigin href="./assets/page-configure-DtP48ui2.css">
-    <link rel="stylesheet" crossorigin href="./assets/useGeolocation-vh-t_kPv.css">
-    <link rel="stylesheet" crossorigin href="./assets/index-BqdQfX0b.css">
-  </head>
-  <body class="h-full min-h-full max-h-full w-full min-w-full max-w-full m-0 p-0">
-    <div id="app" class="h-full min-h-full max-h-full w-full min-w-full max-w-full m-0 p-0"></div>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Panel Admin UI – Not Available</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #1e1e1e;
+      color: #f8f8f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2em;
+      color: #ff6b6b;
+    }
+
+    p {
+      margin: 1em 0;
+    }
+
+    code {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Panel Admin UI Unavailable</h1>
+    <p>The Admin UI static files are not configured or missing.</p>
+    <p>To fix this, ensure that the environment variable <code>FB_ADMIN_UI_PATH</code> is pointing to the correct directory containing your built frontend app.</p>
+    <p>If this is a production deployment, make sure you've built the admin app using <code>pnpm build</code> and copied it to the target device.</p>
+    <p>Need help? Visit <a href="https://smart-panel.fastybird.com/docs" target="_blank" style="color: #61dafb;">FastyBird Docs</a>.</p>
+  </div>
+</body>
 </html>

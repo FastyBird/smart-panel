@@ -1,8 +1,7 @@
-import { existsSync } from 'fs';
-import path from 'path';
-
 import { useContainer } from 'class-validator';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { existsSync } from 'fs';
+import path from 'path';
 
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
