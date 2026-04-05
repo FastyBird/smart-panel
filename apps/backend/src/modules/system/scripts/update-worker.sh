@@ -60,8 +60,9 @@ trap cleanup EXIT
 # Image-based update (Raspbian image installs)
 # ──────────────────────────────────────────────────────────────
 if [ "$INSTALL_TYPE" = "image" ]; then
-	# Verify passwordless sudo is available (required for systemctl, chown, ln)
-	if ! sudo -n true 2>/dev/null; then
+	# Verify passwordless sudo is available (required for systemctl, chown, ln).
+	# The sudoers policy must include /usr/bin/true for this check.
+	if ! sudo -n /usr/bin/true 2>/dev/null; then
 		update_status "failed" "failed" "Passwordless sudo is not available for this user"
 		exit 1
 	fi

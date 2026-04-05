@@ -82,6 +82,7 @@ CLI_WRAPPER
 	# Allow smart-panel user to run specific system commands via sudoers
 	cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
 # Smart Panel system commands
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/true
 smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
 smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
