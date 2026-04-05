@@ -423,7 +423,10 @@ export class AppModule {
 						return [
 							{
 								rootPath,
-								exclude: ['/api*', '/socket.io*', '/favicon.ico'],
+								// Fastify v5 wildcard: /* matches all path depths for SPA fallback
+								renderPath: '/*',
+								// path-to-regexp v8 patterns for route exclusion
+								exclude: ['/api/{*path}', '/socket.io/{*path}'],
 								serveStaticOptions: {
 									fallthrough: true,
 								},
