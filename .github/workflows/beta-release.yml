@@ -526,7 +526,7 @@ jobs:
             cd /opt/smart-panel/build-arm64
             npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
-            npm install --omit=dev
+            npm install --omit=dev --legacy-peer-deps
 
             # Restructure from npm layout to Raspbian image layout
             BACKEND_DIR="node_modules/@fastybird/smart-panel-backend"
@@ -555,7 +555,7 @@ jobs:
             mv ./package.json.tmp ./package.json
 
             rm -rf node_modules
-            npm install --omit=dev
+            npm install --omit=dev --legacy-peer-deps
             rm -f package-lock.json
 
             cd /opt/smart-panel
