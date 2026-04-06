@@ -1,15 +1,11 @@
-import { type ComputedRef, computed } from 'vue';
+import { computed } from 'vue';
 
 import { useConfigModule } from '../../modules/config/composables/useConfigModule';
 import { SYSTEM_MODULE_NAME } from '../../modules/system/system.constants';
 import { formatPercent } from '../utils/format.utils';
 import { type NumberFormatSetting, formatNumber } from '../utils/number.utils';
 
-export interface IUseNumberFormat {
-	numberFormat: ComputedRef<NumberFormatSetting | undefined>;
-	format: (value: number, options?: Intl.NumberFormatOptions) => string;
-	formatPct: (value?: number | null, fractionDigits?: number) => string;
-}
+import type { IUseNumberFormat } from './types';
 
 export const useNumberFormat = (): IUseNumberFormat => {
 	const { configModule } = useConfigModule({ type: SYSTEM_MODULE_NAME });

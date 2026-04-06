@@ -34,7 +34,7 @@ import { ElCard, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useNumberFormat } from '../../../common/composables/useNumberFormat';
+import { useNumberFormat } from '../../../common';
 import { useConfigModule } from '../../config';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';

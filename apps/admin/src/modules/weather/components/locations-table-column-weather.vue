@@ -41,7 +41,7 @@ import { ElIcon, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useNumberFormat } from '../../../common/composables/useNumberFormat';
+import { useNumberFormat } from '../../../common';
 import type { ILocationWeatherData } from '../composables/useLocationsWeather';
 import { getWeatherIcon } from '../utils/utils';
 
