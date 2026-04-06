@@ -220,6 +220,20 @@ export class UsersController {
 			throw new UnprocessableEntityException('The owner role cannot be changed');
 		}
 
+		// Verify current password when a user changes their own password.
+		// Admins editing another user's password don't need to provide it.
+		if (updateDto.data.password && authenticatedUserId !== null && authenticatedUserId === id) {
+			if (!updateDto.data.currentPassword) {
+				throw new UnprocessableEntityException('Current password is required when changing your own password');
+			}
+
+			const isCurrentPasswordValid = await this.usersService.verifyPassword(user.id, updateDto.data.currentPassword);
+
+			if (!isCurrentPasswordValid) {
+				throw new UnprocessableEntityException('Current password is incorrect');
+			}
+		}
+
 		if (updateDto.data.email) {
 			const existingEmail = await this.usersService.findByEmail(updateDto.data.email);
 

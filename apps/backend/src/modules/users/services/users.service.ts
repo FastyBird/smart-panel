@@ -92,6 +92,19 @@ export class UsersService {
 		return savedUser;
 	}
 
+	async verifyPassword(id: string, plainPassword: string): Promise<boolean> {
+		const user = await this.repository.findOne({
+			where: { id },
+			select: ['id', 'password'],
+		});
+
+		if (!user || !user.password) {
+			return false;
+		}
+
+		return bcrypt.compare(plainPassword, user.password);
+	}
+
 	async update(id: string, updateDto: UpdateUserDto): Promise<UserEntity> {
 		const user = await this.getOneOrThrow(id);
 

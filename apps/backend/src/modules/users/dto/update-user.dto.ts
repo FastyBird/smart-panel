@@ -20,7 +20,7 @@ export class UpdateUserDto {
 	username?: string;
 
 	@ApiPropertyOptional({
-		description: "User's password.",
+		description: "User's new password.",
 		type: 'string',
 		format: 'password',
 		example: 'superstrongpassword',
@@ -32,6 +32,18 @@ export class UpdateUserDto {
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	password?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'current_password',
+		description: 'Current password for verification when changing password.',
+		type: 'string',
+		format: 'password',
+		example: 'oldpassword',
+	})
+	@Expose({ name: 'current_password' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"current_password","reason":"Current password must be a string."}]' })
+	currentPassword?: string;
 
 	@ApiPropertyOptional({
 		description: "User's email address.",
