@@ -20,7 +20,7 @@
 
 			<span class="flex flex-row items-start gap-1">
 				<span class="font-bold text-4xl">
-					{{ temperature !== null ? formatNumber(temperature, { maximumFractionDigits: 1 }) : '-' }}
+					{{ temperature !== null ? format(temperature, { maximumFractionDigits: 1 }) : '-' }}
 				</span>
 				<span class="text-lg text-gray-400">
 					{{ unit }}
@@ -38,7 +38,7 @@ import { ElCard, ElIcon, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { useConfigModule } from '../../config';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { useWeatherDay } from '../composables/useWeatherDay';
@@ -51,6 +51,7 @@ defineOptions({
 
 const { t } = useI18n();
 
+const { format } = useNumberFormat();
 const { weatherDay, fetchWeatherDay, isLoading } = useWeatherDay();
 const { configModule: configWeather, fetchConfigModule: fetchConfigWeather } = useConfigModule({ type: WEATHER_MODULE_NAME });
 

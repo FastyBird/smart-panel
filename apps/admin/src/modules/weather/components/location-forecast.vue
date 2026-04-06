@@ -34,7 +34,7 @@ import { ElCard, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { useConfigModule } from '../../config';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';
@@ -48,6 +48,7 @@ defineOptions({
 const props = defineProps<ILocationForecastProps>();
 
 const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+const { format } = useNumberFormat();
 
 const temperatureUnit = computed<string>(() => {
 	const config = weatherConfig.value as { unit?: string } | null;
@@ -62,6 +63,6 @@ const formatTemp = (temp: number | null | undefined): string => {
 	if (temp === null || temp === undefined) {
 		return '-';
 	}
-	return formatNumber(temp, { maximumFractionDigits: 0 });
+	return format(temp, { maximumFractionDigits: 0 });
 };
 </script>

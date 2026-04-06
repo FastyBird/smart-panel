@@ -53,7 +53,8 @@ vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
 }));
 
-vi.mock('../../config', () => ({
+vi.mock('../../config', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../config')>()),
 	useConfigModule: () => ({
 		configModule: ref({ primaryLocationId: '123e4567-e89b-12d3-a456-426614174000' }),
 	}),

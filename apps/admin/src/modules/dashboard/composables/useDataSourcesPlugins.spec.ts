@@ -57,7 +57,8 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
-vi.mock('../../config', () => ({
+vi.mock('../../config', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../config')>()),
 	useConfigPlugins: () => ({
 		enabled: () => true,
 		loaded: ref(true),

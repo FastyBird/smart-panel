@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-04-03. Reflects actual codebase state.
+> Last updated: 2026-04-06. Reflects actual codebase state.
 
 ---
 
@@ -337,6 +337,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | 3 | [TECH-EXTENSIONS-CAN-REMOVE-OPENAPI](technical/TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md) | backend, admin | :white_check_mark: Done |
 | 4 | [TECH-ONBOARDING-ROUTER-GUARDS](technical/TECH-ONBOARDING-ROUTER-GUARDS.md) | admin | :white_check_mark: Done |
 | 5 | [TECH-PROPERTY-TIMESERIES-E2E](technical/TECH-PROPERTY-TIMESERIES-E2E.md) | backend | :white_check_mark: Done |
+| 6 | [TECH-ADMIN-UNIFY-NUMBER-FORMATTING](technical/TECH-ADMIN-UNIFY-NUMBER-FORMATTING.md) | admin | :white_check_mark: Done |
 
 ---
 
@@ -382,7 +383,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Plugins | 1 | 0 | 2 | 3 |
 | Extension Actions | 1 | 0 | 7 | 8 |
 | Device & Infrastructure | 4 | 0 | 2 | 6 |
-| Technical | 5 | 0 | 0 | 5 |
+| Technical | 6 | 0 | 0 | 6 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 2 | 0 | 1 | 3 |
-| **Total** | **64** | **0** | **39** | **103** |
+| **Total** | **65** | **0** | **39** | **104** |

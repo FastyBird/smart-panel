@@ -26,13 +26,13 @@
 					</el-icon>
 				</el-tooltip>
 
-				{{ formatNumber((systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
+				{{ format((systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
 			</div>
 
 			<div class="color-[var(--el-text-color-secondary)]">
 				{{
 					t('statsModule.fields.memory.total.title', {
-						total: formatNumber((systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }),
+						total: format((systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }),
 						unit: 'MB',
 					})
 				}}
@@ -61,7 +61,7 @@ import { ElCard, ElIcon, ElProgress, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber, formatRelative } from '../../../common';
+import { formatRelative, useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
 import type { IStatsMemoryProps } from './stats-memory.types';
@@ -75,6 +75,7 @@ const props = withDefaults(defineProps<IStatsMemoryProps>(), {
 });
 
 const { t } = useI18n();
+const { format } = useNumberFormat();
 
 const isStale = computed<boolean>((): boolean => {
 	const lu = props.systemModuleSection?.memUsedPct.lastUpdated ? props.systemModuleSection?.memUsedPct.lastUpdated.getTime() : 0;
