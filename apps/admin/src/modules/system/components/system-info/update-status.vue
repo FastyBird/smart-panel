@@ -22,7 +22,7 @@
 						type="warning"
 						class="ml-2"
 					>
-						{{ t('systemModule.texts.update.available') }}
+						{{ t('systemModule.texts.update.available', { version: latestVersion }) }}
 					</el-tag>
 				</div>
 			</template>
