@@ -23,7 +23,6 @@ import { ValidationExceptionFactory } from './common/validation/validation-excep
 import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
-import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
@@ -139,9 +138,8 @@ async function bootstrap() {
 
 	app.enableCors();
 
-	// Setup Swagger UI using SwaggerDocumentService
-	const swaggerService = app.get(SwaggerDocumentService);
-	swaggerService.setup(app);
+	// Swagger UI is not loaded during normal startup — use the CLI command
+	// 'pnpm run cli swagger:serve' to start a standalone Swagger UI server.
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
 	const oauthCallbackService = app.get(OAuthCallbackService);
@@ -164,8 +162,6 @@ async function bootstrap() {
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	fastifyInstance.get('/auth/callback', oauthCallbackHandler as any);
-
-	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 
 	await app.listen(port, '0.0.0.0');
 

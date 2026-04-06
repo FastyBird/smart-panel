@@ -77,6 +77,7 @@
     "generate:openapi": "ts-node --project tsconfig.json src/cli.ts openapi:generate",
     "generate:spec": "ts-node ./tools/build_devices_spec.ts && ts-node ./tools/build_channel_spec.ts",
     "cli": "ts-node --project tsconfig.json src/cli.ts",
+    "swagger": "ts-node --project tsconfig.json src/cli.ts swagger:serve",
     "cli:prod": "node dist/cli"
   },
   "dependencies": {
