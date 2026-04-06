@@ -139,9 +139,16 @@ async function bootstrap() {
 
 	app.enableCors();
 
-	// Setup Swagger UI using SwaggerDocumentService
-	const swaggerService = app.get(SwaggerDocumentService);
-	swaggerService.setup(app);
+	// Swagger UI is disabled in production — the spec is generated via CLI
+	// (pnpm run generate:openapi) and consumed at build time. Enable with FB_SWAGGER_ENABLED=true.
+	const swaggerEnabled = getEnvValue<boolean>(configService, 'FB_SWAGGER_ENABLED', false);
+
+	if (swaggerEnabled) {
+		const swaggerService = app.get(SwaggerDocumentService);
+		swaggerService.setup(app);
+
+		sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
+	}
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
 	const oauthCallbackService = app.get(OAuthCallbackService);
@@ -164,8 +171,6 @@ async function bootstrap() {
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	fastifyInstance.get('/auth/callback', oauthCallbackHandler as any);
-
-	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 
 	await app.listen(port, '0.0.0.0');
 
