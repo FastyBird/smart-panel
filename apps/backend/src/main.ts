@@ -1,7 +1,10 @@
 import { useContainer } from 'class-validator';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { existsSync } from 'fs';
+import path from 'path';
 
 import fastifyMultipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -83,6 +86,20 @@ async function bootstrap() {
 
 	const configService = app.get(NestConfigService);
 	const port = getEnvValue<number>(configService, 'FB_BACKEND_PORT', 3000);
+
+	// Register @fastify/static directly to serve admin UI assets.
+	// We bypass @nestjs/serve-static because its Fastify loader hardcodes
+	// wildcard:false which prevents serving files in subdirectories (/assets/*).
+	const staticRoot = getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../static'));
+
+	if (existsSync(path.join(staticRoot, 'index.html'))) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		await app.register(fastifyStatic as any, {
+			root: staticRoot,
+			wildcard: true,
+			decorateReply: true,
+		});
+	}
 
 	app.useGlobalFilters(
 		new GlobalErrorFilter(),

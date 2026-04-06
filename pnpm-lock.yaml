@@ -22132,7 +22132,7 @@ snapshots:
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
       '@types/long': 4.0.2
-      '@types/node': 24.12.0
+      '@types/node': 24.12.1
       long: 4.0.0
 
   protobufjs@7.5.4:

@@ -6,11 +6,10 @@ import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } 
 import { RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MODULES_PREFIX, PLUGINS_PREFIX } from './app.constants';
-import { getEnvValue, resolveStaticPath } from './common/utils/config.utils';
+import { getEnvValue } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
@@ -412,26 +411,11 @@ export class AppModule {
 				InfluxV1Plugin,
 				InfluxV2Plugin,
 				MemoryStoragePlugin,
-				ServeStaticModule.forRootAsync({
-					imports: [NestConfigModule], // Ensure ConfigModule is available
-					inject: [NestConfigService],
-					useFactory: (configService: NestConfigService) => {
-						const rootPath = resolveStaticPath(
-							getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../static')),
-						);
 
-						return [
-							{
-								rootPath,
-								// Disable the SPA catch-all renderFn from @nestjs/serve-static —
-								// its Fastify loader ignores 'exclude' patterns, so it catches
-								// API routes and serves index.html instead of JSON.
-								// SPA deep link fallback is handled by NotFoundExceptionFilter.
-								renderPath: '/__never_match__',
-							},
-						];
-					},
-				}),
+				// Static file serving is registered directly on the Fastify instance
+				// in main.ts via @fastify/static, bypassing @nestjs/serve-static
+				// which hardcodes wildcard:false and breaks subdirectory serving.
+				// SPA deep link fallback is handled by NotFoundExceptionFilter.
 
 				// Finally import discovered extension modules so DI can wire them
 				...(moduleExtensions || []).map((p) => p.extensionClass),
