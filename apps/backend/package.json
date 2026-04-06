@@ -1,6 +1,6 @@
 {
   "name": "@fastybird/smart-panel-backend",
-  "version": "0.2.0-alpha.2",
+  "version": "0.3.0-alpha.2",
   "description": "Powerful backend for administrating and integrating the FastyBird IoT Smart Panel",
   "keywords": [
     "fastybird",
