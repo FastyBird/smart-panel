@@ -1,6 +1,6 @@
 {
   "name": "@fastybird/smart-panel",
-  "version": "0.1.0-alpha.11",
+  "version": "0.2.0-alpha.2",
   "description": "FastyBird Smart Panel - IoT Dashboard for Linux devices",
   "keywords": [
     "fastybird",
@@ -48,8 +48,8 @@
     "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js"
   },
   "dependencies": {
-    "@fastybird/smart-panel-admin": "0.1.0-alpha.11",
-    "@fastybird/smart-panel-backend": "0.1.0-alpha.11",
+    "@fastybird/smart-panel-admin": "0.2.0-alpha.2",
+    "@fastybird/smart-panel-backend": "0.2.0-alpha.2",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "ora": "^8.2.0"
