@@ -18,7 +18,7 @@
 					</el-icon>
 					{{ t('systemModule.headings.update.title') }}
 					<el-tag
-						v-if="updateAvailable"
+						v-if="updateAvailable && latestVersion"
 						type="warning"
 						class="ml-2"
 					>
