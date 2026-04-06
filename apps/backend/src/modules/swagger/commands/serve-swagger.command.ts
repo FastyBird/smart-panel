@@ -1,12 +1,10 @@
 import { Command, CommandRunner, Option } from 'nest-commander';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { API_PREFIX } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';
 import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { SwaggerDocumentService } from '../services/swagger-document.service';
 import { SWAGGER_MODULE_NAME } from '../swagger.constants';
 
@@ -25,14 +23,13 @@ export class ServeSwaggerCommand extends CommandRunner {
 	constructor(
 		private readonly swaggerService: SwaggerDocumentService,
 		private readonly appHolder: AppInstanceHolder,
-		private readonly configService: NestConfigService,
 	) {
 		super();
 	}
 
 	async run(_passedParams: string[], options?: ServeSwaggerOptions): Promise<void> {
 		const app = this.appHolder.getApp();
-		const port = options?.port ?? getEnvValue<number>(this.configService, 'FB_BACKEND_PORT', 3000);
+		const port = options?.port ?? parseInt(process.env.FB_BACKEND_PORT || '3000', 10);
 
 		console.log('\x1b[36m📖 Starting Swagger UI server...\x1b[0m\n');
 
