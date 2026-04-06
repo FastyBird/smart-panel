@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,11 +6,19 @@ import { useNumberFormat } from './useNumberFormat';
 
 const mockNumberFormat = ref<string | undefined>('comma_dot');
 
-vi.mock('../../modules/config/composables/useConfigModule', () => ({
-	useConfigModule: vi.fn(() => ({
-		configModule: computed(() => (mockNumberFormat.value ? { type: 'system-module', enabled: true, numberFormat: mockNumberFormat.value } : null)),
-		isLoading: computed(() => false),
-		fetchConfigModule: vi.fn(),
+const mockFindByType = vi.fn((type: string) => {
+	if (type === 'system-module' && mockNumberFormat.value) {
+		return { type: 'system-module', enabled: true, numberFormat: mockNumberFormat.value };
+	}
+
+	return null;
+});
+
+vi.mock('../services/store', () => ({
+	injectStoresManager: vi.fn(() => ({
+		getStore: vi.fn(() => ({
+			findByType: mockFindByType,
+		})),
 	})),
 }));
 

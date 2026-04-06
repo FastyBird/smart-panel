@@ -1,17 +1,18 @@
 import { computed } from 'vue';
 
-import { useConfigModule } from '../../modules/config/composables/useConfigModule';
-import { SYSTEM_MODULE_NAME } from '../../modules/system/system.constants';
+import { configModulesStoreKey } from '../../modules/config/store/keys';
 import { formatPercent } from '../utils/format.utils';
 import { type NumberFormatSetting, formatNumber } from '../utils/number.utils';
+import { injectStoresManager } from '../services/store';
 
 import type { IUseNumberFormat } from './types';
 
 export const useNumberFormat = (): IUseNumberFormat => {
-	const { configModule } = useConfigModule({ type: SYSTEM_MODULE_NAME });
+	const storesManager = injectStoresManager();
+	const configModuleStore = storesManager.getStore(configModulesStoreKey);
 
 	const numberFormat = computed<NumberFormatSetting | undefined>((): NumberFormatSetting | undefined => {
-		const mod = configModule.value;
+		const mod = configModuleStore.findByType('system-module');
 
 		if (mod && 'numberFormat' in mod) {
 			return (mod as { numberFormat: NumberFormatSetting }).numberFormat;
