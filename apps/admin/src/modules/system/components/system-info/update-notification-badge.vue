@@ -1,30 +1,34 @@
 <template>
-	<el-badge
-		v-if="showBadge"
-		is-dot
-		type="warning"
-		class="update-badge"
+	<el-tooltip
+		v-if="updateAvailable && latestVersion"
+		:content="t('systemModule.texts.update.available', { version: latestVersion })"
+		placement="bottom"
 	>
 		<el-button
-			circle
-			link
+			type="warning"
+			text
+			bg
+			size="small"
+			class="update-btn"
 			@click="onNavigateToUpdate"
 		>
 			<template #icon>
 				<icon
-					icon="mdi:cellphone-arrow-down"
-					class="w-[18px] h-[18px]"
+					icon="mdi:update"
+					class="w-[16px] h-[16px]"
 				/>
 			</template>
+			<span class="hidden sm:inline">{{ t('systemModule.buttons.update.headerAction') }}</span>
 		</el-button>
-	</el-badge>
+	</el-tooltip>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElBadge, ElButton } from 'element-plus';
+import { ElButton, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -35,51 +39,22 @@ defineOptions({
 	name: 'UpdateNotificationBadge',
 });
 
+const { t } = useI18n();
 const router = useRouter();
-
-const DISMISSED_VERSION_KEY = 'smart-panel:update-dismissed-version';
 
 const { updateAvailable, latestVersion, fetchStatus } = useUpdateStatus();
 
-const dismissedVersion = ref<string | null>(localStorage.getItem(DISMISSED_VERSION_KEY));
-
-const showBadge = computed<boolean>((): boolean => {
-	if (!updateAvailable.value || !latestVersion.value) {
-		return false;
-	}
-
-	return latestVersion.value !== dismissedVersion.value;
-});
-
 const onNavigateToUpdate = (): void => {
-	// Dismiss the notification for this version
-	if (latestVersion.value) {
-		dismissedVersion.value = latestVersion.value;
-		localStorage.setItem(DISMISSED_VERSION_KEY, latestVersion.value);
-	}
-
 	router.push({ name: RouteNames.SYSTEM_INFO });
 };
 
 onMounted((): void => {
 	void fetchStatus();
 });
-
-// Reset dismissal only when a genuinely new version appears.
-// Ignore null transitions (e.g. during re-fetch) to avoid clearing
-// a dismissal the user already made for the current version.
-watch(latestVersion, (newVersion: string | null, oldVersion: string | null): void => {
-	if (newVersion && newVersion !== oldVersion && newVersion !== dismissedVersion.value) {
-		dismissedVersion.value = null;
-		localStorage.removeItem(DISMISSED_VERSION_KEY);
-	}
-});
-
 </script>
 
 <style scoped>
-.update-badge {
-	display: flex;
-	align-items: center;
+.update-btn {
+	font-weight: 500;
 }
 </style>

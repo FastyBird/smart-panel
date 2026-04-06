@@ -18,11 +18,11 @@
 					</el-icon>
 					{{ t('systemModule.headings.update.title') }}
 					<el-tag
-						v-if="updateAvailable"
+						v-if="updateAvailable && latestVersion"
 						type="warning"
 						class="ml-2"
 					>
-						{{ t('systemModule.texts.update.available') }}
+						{{ t('systemModule.texts.update.available', { version: latestVersion }) }}
 					</el-tag>
 				</div>
 			</template>

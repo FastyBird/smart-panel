@@ -122,7 +122,7 @@
 			"systemLogs": "Zobraziť a diagnostikovať aplikačné logy."
 		},
 		"update": {
-			"available": "Dostupná aktualizácia",
+			"available": "Verzia {version} je k dispozícii",
 			"upToDate": "Váš systém je aktuálny.",
 			"checking": "Kontrola aktualizácií...",
 			"installing": "Inštalácia aktualizácie...",
@@ -403,7 +403,8 @@
 		},
 		"update": {
 			"checkForUpdates": "Skontrolovať aktualizácie",
-			"installUpdate": "Inštalovať aktualizáciu"
+			"installUpdate": "Inštalovať aktualizáciu",
+			"headerAction": "Aktualizovať"
 		}
 	},
 	"labels": {

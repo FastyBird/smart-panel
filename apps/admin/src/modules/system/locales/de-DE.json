@@ -122,7 +122,7 @@
       "systemLogs": "Anwendungsprotokolle anzeigen und diagnostizieren."
     },
     "update": {
-      "available": "Update verfügbar",
+      "available": "Version {version} ist verfügbar",
       "upToDate": "Ihr System ist auf dem neuesten Stand.",
       "checking": "Suche nach Updates...",
       "installing": "Update wird installiert...",
@@ -403,7 +403,8 @@
     },
     "update": {
       "checkForUpdates": "Nach Updates suchen",
-      "installUpdate": "Update installieren"
+      "installUpdate": "Update installieren",
+      "headerAction": "Aktualisieren"
     }
   },
   "labels": {
