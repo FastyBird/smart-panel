@@ -261,10 +261,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			// Handle password change
 			if (typeof payload.data.password !== 'undefined') {
-				updateData.password = {
-					current: payload.data.password.current,
-					new: payload.data.password.new,
-				};
+				updateData.password = payload.data.password.new;
+				updateData.current_password = payload.data.password.current;
 			}
 
 			const {
