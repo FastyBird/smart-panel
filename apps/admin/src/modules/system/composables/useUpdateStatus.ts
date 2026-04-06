@@ -258,12 +258,15 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 					if (responseStatus === 'complete') {
 						status.value = 'complete';
+						phase.value = null;
+						error.value = null;
 						progressPercent.value = 100;
 						installing.value = false;
 						waitingForRestart.value = false;
 						stopReconnectPoll();
 					} else if (responseStatus === 'failed') {
 						status.value = 'failed';
+						phase.value = null;
 						installing.value = false;
 						waitingForRestart.value = false;
 						error.value = error.value || 'systemModule.messages.update.updateFailed';
@@ -273,11 +276,13 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 						// Check if current version matches the update target.
 						if (newVersion && targetVersion && newVersion === targetVersion) {
 							status.value = 'complete';
+							error.value = null;
 							progressPercent.value = 100;
 						}
 
 						// Always clean up — whether version matched or not,
 						// the update process is over at this point.
+						phase.value = null;
 						installing.value = false;
 						waitingForRestart.value = false;
 						stopReconnectPoll();
