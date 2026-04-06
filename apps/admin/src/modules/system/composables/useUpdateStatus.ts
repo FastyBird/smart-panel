@@ -223,11 +223,16 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	const startReconnectPoll = (): void => {
 		stopReconnectPoll();
 
-		const startedAt = Date.now();
+		// Capture the version we're updating TO before the poll overwrites it
+		const targetVersion = latestVersion.value;
+
+		let lastSuccessAt = Date.now();
 
 		reconnectPollTimer = setInterval(async () => {
-			// Timeout — give up after 5 minutes
-			if (Date.now() - startedAt > RECONNECT_POLL_TIMEOUT_MS) {
+			// Timeout only applies to the reconnection gap (backend unreachable).
+			// Reset the timer on every successful response so slow-but-active
+			// updates aren't incorrectly marked as failed.
+			if (Date.now() - lastSuccessAt > RECONNECT_POLL_TIMEOUT_MS) {
 				stopReconnectPoll();
 				waitingForRestart.value = false;
 				installing.value = false;
@@ -243,9 +248,13 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
 
 				if (responseData?.data) {
-					applyInfoResponse(responseData.data);
-
 					const responseStatus = responseData.data.status as string | undefined;
+
+					// Capture current_version before applyInfoResponse overwrites latestVersion
+					const newVersion = responseData.data.current_version as string | undefined;
+
+					applyInfoResponse(responseData.data);
+					lastSuccessAt = Date.now();
 
 					if (responseStatus === 'complete') {
 						status.value = 'complete';
@@ -258,9 +267,9 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 						waitingForRestart.value = false;
 						stopReconnectPoll();
 					} else if (!responseStatus || responseStatus === 'idle') {
-						const newVersion = responseData.data.current_version as string | undefined;
-
-						if (newVersion && latestVersion.value && newVersion === latestVersion.value) {
+						// Backend restarted but status was already cleared.
+						// Check if current version matches the update target.
+						if (newVersion && targetVersion && newVersion === targetVersion) {
 							status.value = 'complete';
 							progressPercent.value = 100;
 							installing.value = false;
