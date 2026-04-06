@@ -272,7 +272,7 @@ import { ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElIcon, ElRow, ElTag
 
 import { Icon } from '@iconify/vue';
 
-import { useNumberFormat } from '../../../../common';
+import { useNumberFormat } from '../../../../common/composables/useNumberFormat';
 import { Layout } from '../../system.constants';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';

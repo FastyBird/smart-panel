@@ -38,7 +38,8 @@ import { ElIcon, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatRelative, useNumberFormat } from '../../../common';
+import { formatRelative } from '../../../common';
+import { useNumberFormat } from '../../../common/composables/useNumberFormat';
 import { STALE_MS } from '../stats.constants';
 
 import type { IStatsDevicesCommunicationProps } from './stats-devices-communication.types';
