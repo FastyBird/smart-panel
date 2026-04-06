@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { InternalRuleItem } from 'async-validator';
@@ -164,6 +164,16 @@ const rules = reactive<FormRules<IAccountData>>({
 		},
 	],
 });
+
+// Re-validate confirmPassword when password changes so mismatch is caught immediately
+watch(
+	() => accountData.password,
+	() => {
+		if (accountData.confirmPassword) {
+			formEl.value?.validateField('confirmPassword').catch(() => {});
+		}
+	},
+);
 
 const validate = async (): Promise<boolean> => {
 	if (!formEl.value) return false;

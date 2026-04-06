@@ -159,8 +159,9 @@ export const useAppOnboarding = () => {
 
 			accountCreated.value = true;
 
-			// Clear password from memory — no longer needed after auto-login
+			// Clear passwords from memory — no longer needed after auto-login
 			accountData.password = '';
+			accountData.confirmPassword = '';
 
 			// Invalidate onboarding status cache since owner now exists
 			invalidate();
@@ -429,6 +430,7 @@ export const useAppOnboarding = () => {
 		savedSpacesCount.value = 0;
 		accountData.username = '';
 		accountData.password = '';
+		accountData.confirmPassword = '';
 		accountData.email = '';
 		accountData.firstName = '';
 		accountData.lastName = '';
