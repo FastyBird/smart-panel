@@ -41,14 +41,16 @@
 			"lastName": "Priezvisko",
 			"email": "Email",
 			"username": "Používateľské meno",
-			"password": "Heslo"
+			"password": "Heslo",
+			"confirmPassword": "Potvrdenie hesla"
 		},
 		"placeholders": {
 			"firstName": "Zadajte svoje meno",
 			"lastName": "Zadajte svoje priezvisko",
 			"email": "Zadajte svoju emailovú adresu",
 			"username": "Zvoľte si používateľské meno",
-			"password": "Zvoľte si heslo"
+			"password": "Zvoľte si heslo",
+			"confirmPassword": "Zopakujte heslo"
 		},
 		"validation": {
 			"firstNameRequired": "Meno je povinné",
@@ -56,7 +58,9 @@
 			"emailRequired": "Email je povinný",
 			"emailInvalid": "Prosím zadajte platnú emailovú adresu",
 			"usernameRequired": "Používateľské meno je povinné",
-			"passwordRequired": "Heslo je povinné"
+			"passwordRequired": "Heslo je povinné",
+			"confirmPasswordRequired": "Potvrdenie hesla je povinné",
+			"passwordMismatch": "Heslá sa nezhodujú"
 		},
 		"messages": {
 			"created": "Váš účet bol vytvorený a teraz ste prihlásení.",

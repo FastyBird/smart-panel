@@ -12,6 +12,7 @@ import { useOnboardingStatus } from './useOnboardingStatus';
 export interface IAccountData {
 	username: string;
 	password: string;
+	confirmPassword: string;
 	email: string;
 	firstName: string;
 	lastName: string;
@@ -83,6 +84,7 @@ const savedSpacesCount = ref(0);
 const accountData = reactive<IAccountData>({
 	username: '',
 	password: '',
+	confirmPassword: '',
 	email: '',
 	firstName: '',
 	lastName: '',
@@ -157,8 +159,9 @@ export const useAppOnboarding = () => {
 
 			accountCreated.value = true;
 
-			// Clear password from memory — no longer needed after auto-login
+			// Clear passwords from memory — no longer needed after auto-login
 			accountData.password = '';
+			accountData.confirmPassword = '';
 
 			// Invalidate onboarding status cache since owner now exists
 			invalidate();
@@ -427,6 +430,7 @@ export const useAppOnboarding = () => {
 		savedSpacesCount.value = 0;
 		accountData.username = '';
 		accountData.password = '';
+		accountData.confirmPassword = '';
 		accountData.email = '';
 		accountData.firstName = '';
 		accountData.lastName = '';
