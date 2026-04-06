@@ -94,11 +94,10 @@
 			:closable="false"
 		/>
 
-		<template v-if="isUpdating || status === 'failed'">
+		<template v-if="isUpdating || status === 'failed' || status === 'complete'">
 			<el-progress
-				:percentage="waitingForRestart ? 90 : (progressPercent || 0)"
-				:status="status === 'failed' ? 'exception' : undefined"
-				:indeterminate="waitingForRestart"
+				:percentage="progressPercent || 0"
+				:status="status === 'failed' ? 'exception' : status === 'complete' ? 'success' : undefined"
 				class="mb-2"
 			/>
 			<el-text

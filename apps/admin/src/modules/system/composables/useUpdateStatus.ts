@@ -38,6 +38,11 @@ let reconnectPollTimer: ReturnType<typeof setInterval> | null = null;
 const RECONNECT_POLL_INTERVAL_MS = 4_000;
 const RECONNECT_POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
 
+// Simulated progress ticker during backend restart gap
+let progressTickTimer: ReturnType<typeof setInterval> | null = null;
+const PROGRESS_TICK_INTERVAL_MS = 2_000;
+const PROGRESS_MAX_SIMULATED = 90; // Cap at 90%, leave 90→100% for real completion
+
 const isUpdating = computed<boolean>((): boolean => {
 	return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
 });
@@ -181,7 +186,34 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		}
 	};
 
+	const stopProgressTick = (): void => {
+		if (progressTickTimer !== null) {
+			clearInterval(progressTickTimer);
+			progressTickTimer = null;
+		}
+	};
+
+	const startProgressTick = (): void => {
+		stopProgressTick();
+
+		// Simulate progress advancing from the last known value toward 90%.
+		// Each tick adds a small increment that decelerates as it approaches the cap,
+		// giving the appearance of ongoing work during the backend restart gap.
+		progressTickTimer = setInterval(() => {
+			const current = progressPercent.value ?? 45;
+
+			if (current < PROGRESS_MAX_SIMULATED) {
+				const remaining = PROGRESS_MAX_SIMULATED - current;
+				const step = Math.max(1, Math.floor(remaining * 0.15));
+
+				progressPercent.value = Math.min(PROGRESS_MAX_SIMULATED, current + step);
+			}
+		}, PROGRESS_TICK_INTERVAL_MS);
+	};
+
 	const stopReconnectPoll = (): void => {
+		stopProgressTick();
+
 		if (reconnectPollTimer !== null) {
 			clearInterval(reconnectPollTimer);
 			reconnectPollTimer = null;
@@ -191,11 +223,16 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	const startReconnectPoll = (): void => {
 		stopReconnectPoll();
 
-		const startedAt = Date.now();
+		// Capture the version we're updating TO before the poll overwrites it
+		const targetVersion = latestVersion.value;
+
+		let lastSuccessAt = Date.now();
 
 		reconnectPollTimer = setInterval(async () => {
-			// Timeout — give up after 5 minutes
-			if (Date.now() - startedAt > RECONNECT_POLL_TIMEOUT_MS) {
+			// Timeout only applies to the reconnection gap (backend unreachable).
+			// Reset the timer on every successful response so slow-but-active
+			// updates aren't incorrectly marked as failed.
+			if (Date.now() - lastSuccessAt > RECONNECT_POLL_TIMEOUT_MS) {
 				stopReconnectPoll();
 				waitingForRestart.value = false;
 				installing.value = false;
@@ -211,13 +248,57 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
 
 				if (responseData?.data) {
+					const responseStatus = responseData.data.status as string | undefined;
+
+					// Capture current_version before applyInfoResponse overwrites latestVersion
+					const newVersion = responseData.data.current_version as string | undefined;
+
 					applyInfoResponse(responseData.data);
-					waitingForRestart.value = false;
-					stopReconnectPoll();
+					lastSuccessAt = Date.now();
+
+					if (responseStatus === 'complete') {
+						status.value = 'complete';
+						phase.value = null;
+						error.value = null;
+						progressPercent.value = 100;
+						installing.value = false;
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else if (responseStatus === 'failed') {
+						status.value = 'failed';
+						phase.value = null;
+						installing.value = false;
+						waitingForRestart.value = false;
+						error.value = error.value || 'systemModule.messages.update.updateFailed';
+						stopReconnectPoll();
+					} else if (!responseStatus || responseStatus === 'idle') {
+						// Backend restarted but status was already cleared.
+						// Check if current version matches the update target.
+						if (newVersion && targetVersion && newVersion === targetVersion) {
+							status.value = 'complete';
+							error.value = null;
+							progressPercent.value = 100;
+						}
+
+						// Always clean up — whether version matched or not,
+						// the update process is over at this point.
+						phase.value = null;
+						installing.value = false;
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else {
+						// Still updating — stop simulated progress, use real values
+						stopProgressTick();
+						waitingForRestart.value = false;
+					}
 				}
 			} catch {
-				// Backend still down — keep polling
+				// Backend still down — simulate progress advancement
 				waitingForRestart.value = true;
+
+				if (progressTickTimer === null) {
+					startProgressTick();
+				}
 			}
 		}, RECONNECT_POLL_INTERVAL_MS);
 	};
