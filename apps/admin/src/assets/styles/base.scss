@@ -185,3 +185,10 @@ body {
 .el-collapse-icon-position-right .el-collapse-item__header {
 	box-sizing: border-box;
 }
+
+// Fix Safari clipping the top border of el-radio-group inside
+// el-collapse-item content areas. Safari's overflow handling clips
+// borders that touch the container edge.
+.el-collapse-item__content .el-radio-group {
+	margin-top: 2px;
+}
