@@ -41,14 +41,16 @@
 			"lastName": "Nachname",
 			"email": "E-Mail",
 			"username": "Benutzername",
-			"password": "Passwort"
+			"password": "Passwort",
+			"confirmPassword": "Passwort bestätigen"
 		},
 		"placeholders": {
 			"firstName": "Geben Sie Ihren Vornamen ein",
 			"lastName": "Geben Sie Ihren Nachnamen ein",
 			"email": "Geben Sie Ihre E-Mail-Adresse ein",
 			"username": "Wählen Sie einen Benutzernamen",
-			"password": "Wählen Sie ein Passwort"
+			"password": "Wählen Sie ein Passwort",
+			"confirmPassword": "Passwort wiederholen"
 		},
 		"validation": {
 			"firstNameRequired": "Vorname ist erforderlich",
@@ -56,7 +58,9 @@
 			"emailRequired": "E-Mail ist erforderlich",
 			"emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
 			"usernameRequired": "Benutzername ist erforderlich",
-			"passwordRequired": "Passwort ist erforderlich"
+			"passwordRequired": "Passwort ist erforderlich",
+			"confirmPasswordRequired": "Bitte bestätigen Sie Ihr Passwort",
+			"passwordMismatch": "Passwörter stimmen nicht überein"
 		},
 		"messages": {
 			"created": "Ihr Konto wurde erstellt und Sie sind jetzt angemeldet.",

@@ -41,14 +41,16 @@
 			"lastName": "Last Name",
 			"email": "Email",
 			"username": "Username",
-			"password": "Password"
+			"password": "Password",
+			"confirmPassword": "Confirm Password"
 		},
 		"placeholders": {
 			"firstName": "Enter your first name",
 			"lastName": "Enter your last name",
 			"email": "Enter your email address",
 			"username": "Choose a username",
-			"password": "Choose a password"
+			"password": "Choose a password",
+			"confirmPassword": "Repeat your password"
 		},
 		"validation": {
 			"firstNameRequired": "First name is required",
@@ -56,7 +58,9 @@
 			"emailRequired": "Email is required",
 			"emailInvalid": "Please enter a valid email address",
 			"usernameRequired": "Username is required",
-			"passwordRequired": "Password is required"
+			"passwordRequired": "Password is required",
+			"confirmPasswordRequired": "Please confirm your password",
+			"passwordMismatch": "Passwords do not match"
 		},
 		"messages": {
 			"created": "Your account has been created and you are now logged in.",

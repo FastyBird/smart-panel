@@ -12,6 +12,7 @@ import { useOnboardingStatus } from './useOnboardingStatus';
 export interface IAccountData {
 	username: string;
 	password: string;
+	confirmPassword: string;
 	email: string;
 	firstName: string;
 	lastName: string;
@@ -83,6 +84,7 @@ const savedSpacesCount = ref(0);
 const accountData = reactive<IAccountData>({
 	username: '',
 	password: '',
+	confirmPassword: '',
 	email: '',
 	firstName: '',
 	lastName: '',

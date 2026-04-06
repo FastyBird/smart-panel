@@ -92,6 +92,21 @@
 						name="password"
 						type="password"
 						show-password
+						@keyup.enter="confirmPasswordInputEl?.focus()"
+					/>
+				</el-form-item>
+
+				<el-form-item
+					:label="t('onboardingModule.account.fields.confirmPassword')"
+					prop="confirmPassword"
+				>
+					<el-input
+						ref="confirmPasswordInputEl"
+						v-model="accountData.confirmPassword"
+						:placeholder="t('onboardingModule.account.placeholders.confirmPassword')"
+						name="confirmPassword"
+						type="password"
+						show-password
 						@keyup.enter="emit('submit')"
 					/>
 				</el-form-item>
@@ -104,6 +119,7 @@
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import type { InternalRuleItem } from 'async-validator';
 import { ElAlert, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules, type InputInstance } from 'element-plus';
 
 import { type IAccountData, useAppOnboarding } from '../composables/composables';
@@ -125,6 +141,7 @@ const lastNameInputEl = ref<InputInstance | undefined>(undefined);
 const emailInputEl = ref<InputInstance | undefined>(undefined);
 const usernameInputEl = ref<InputInstance | undefined>(undefined);
 const passwordInputEl = ref<InputInstance | undefined>(undefined);
+const confirmPasswordInputEl = ref<InputInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<IAccountData>>({
 	email: [{ type: 'email', message: t('onboardingModule.account.validation.emailInvalid'), trigger: 'change' }],
@@ -132,6 +149,20 @@ const rules = reactive<FormRules<IAccountData>>({
 	lastName: [{ required: true, message: t('onboardingModule.account.validation.lastNameRequired'), trigger: 'change' }],
 	username: [{ required: true, message: t('onboardingModule.account.validation.usernameRequired'), trigger: 'change' }],
 	password: [{ required: true, message: t('onboardingModule.account.validation.passwordRequired'), trigger: 'change' }],
+	confirmPassword: [
+		{
+			validator: (_rule: InternalRuleItem, value: string, callback: (message?: Error) => void): void => {
+				if (!value) {
+					callback(new Error(t('onboardingModule.account.validation.confirmPasswordRequired')));
+				} else if (value !== accountData.password) {
+					callback(new Error(t('onboardingModule.account.validation.passwordMismatch')));
+				} else {
+					callback();
+				}
+			},
+			trigger: 'change',
+		},
+	],
 });
 
 const validate = async (): Promise<boolean> => {
