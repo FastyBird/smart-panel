@@ -39,6 +39,13 @@ export class ServeSwaggerCommand extends CommandRunner {
 
 		console.log(`\x1b[32m✅ Swagger UI available at http://localhost:${port}/${API_PREFIX}/docs\x1b[0m`);
 		console.log('\x1b[90mPress Ctrl+C to stop\x1b[0m\n');
+
+		// Block until process is killed — without this, CommandFactory.run()
+		// resolves and cli.ts calls app.close(), tearing down the server.
+		await new Promise<void>((resolve) => {
+			process.on('SIGINT', resolve);
+			process.on('SIGTERM', resolve);
+		});
 	}
 
 	@Option({
