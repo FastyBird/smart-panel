@@ -1,7 +1,7 @@
 <template>
 	<el-tooltip
 		v-if="updateAvailable && latestVersion"
-		:content="t('system.texts.update.available', { version: latestVersion })"
+		:content="t('systemModule.texts.update.available', { version: latestVersion })"
 		placement="bottom"
 	>
 		<el-button
@@ -18,7 +18,7 @@
 					class="w-[16px] h-[16px]"
 				/>
 			</template>
-			<span class="hidden sm:inline">{{ t('system.buttons.update.headerAction') }}</span>
+			<span class="hidden sm:inline">{{ t('systemModule.buttons.update.headerAction') }}</span>
 		</el-button>
 	</el-tooltip>
 </template>
