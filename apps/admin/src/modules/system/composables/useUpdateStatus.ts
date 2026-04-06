@@ -212,8 +212,38 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 				if (responseData?.data) {
 					applyInfoResponse(responseData.data);
-					waitingForRestart.value = false;
-					stopReconnectPoll();
+
+					const responseStatus = responseData.data.status as string | undefined;
+
+					if (responseStatus === 'complete') {
+						// Update finished successfully — show 100% and stop polling
+						status.value = 'complete';
+						progressPercent.value = 100;
+						installing.value = false;
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else if (responseStatus === 'failed') {
+						// Update failed — show error and stop polling
+						installing.value = false;
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else if (!responseStatus || responseStatus === 'idle') {
+						// Backend restarted with new version but status was already cleared.
+						// Check if the version changed — if so, the update succeeded.
+						const newVersion = responseData.data.current_version as string | undefined;
+
+						if (newVersion && latestVersion.value && newVersion === latestVersion.value) {
+							status.value = 'complete';
+							progressPercent.value = 100;
+							installing.value = false;
+						}
+
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else {
+						// Still updating (downloading/installing/etc.) — keep polling
+						waitingForRestart.value = false;
+					}
 				}
 			} catch {
 				// Backend still down — keep polling
