@@ -3,10 +3,8 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 import { Injectable } from '@nestjs/common';
 
 import { API_PREFIX } from '../../../app.constants';
-import { createExtensionLogger } from '../../../common/logger';
 import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
 import { SwaggerDocumentService } from '../services/swagger-document.service';
-import { SWAGGER_MODULE_NAME } from '../swagger.constants';
 
 interface ServeSwaggerOptions {
 	port?: number;
@@ -18,8 +16,6 @@ interface ServeSwaggerOptions {
 })
 @Injectable()
 export class ServeSwaggerCommand extends CommandRunner {
-	private readonly logger = createExtensionLogger(SWAGGER_MODULE_NAME, 'ServeSwaggerCommand');
-
 	constructor(
 		private readonly swaggerService: SwaggerDocumentService,
 		private readonly appHolder: AppInstanceHolder,
