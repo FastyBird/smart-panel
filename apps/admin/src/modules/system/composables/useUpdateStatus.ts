@@ -263,8 +263,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 						waitingForRestart.value = false;
 						stopReconnectPoll();
 					} else if (responseStatus === 'failed') {
+						status.value = 'failed';
 						installing.value = false;
 						waitingForRestart.value = false;
+						error.value = error.value || 'systemModule.messages.update.updateFailed';
 						stopReconnectPoll();
 					} else if (!responseStatus || responseStatus === 'idle') {
 						// Backend restarted but status was already cleared.
@@ -272,9 +274,11 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 						if (newVersion && targetVersion && newVersion === targetVersion) {
 							status.value = 'complete';
 							progressPercent.value = 100;
-							installing.value = false;
 						}
 
+						// Always clean up — whether version matched or not,
+						// the update process is over at this point.
+						installing.value = false;
 						waitingForRestart.value = false;
 						stopReconnectPoll();
 					} else {
