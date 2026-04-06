@@ -14,6 +14,9 @@ EnvironmentFile=-/etc/smart-panel/environment
 ExecStart=/usr/local/bin/node /opt/smart-panel/current/dist/main.js
 Restart=on-failure
 RestartSec=5
+# Only kill the main Node.js process on stop — detached update worker
+# must survive the service restart to complete the OTA update.
+KillMode=process
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=smart-panel
