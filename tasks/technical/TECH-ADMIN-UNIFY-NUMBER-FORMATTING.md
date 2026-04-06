@@ -127,11 +127,7 @@ Despite the infrastructure being in place, the actual number formatting calls ne
 
 ### Phase 4: Replace `.toFixed()` with `formatNumber()`
 
-- [x] `plugins/weather-open-meteo/components/open-meteo-location-add-form.vue` — replace `.toFixed(4)` with `formatNumber()` using `{ minimumFractionDigits: 4, maximumFractionDigits: 4 }`
-- [x] `plugins/weather-open-meteo/components/open-meteo-location-edit-form.vue` — same
-- [x] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-add-form.vue` — same
-- [x] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-edit-form.vue` — same
-- [x] `modules/onboarding/components/step-location.vue` — same
+- Skipped: lat/lon coordinates kept as `.toFixed(4)` — these are technical notation (comma-separated pairs), and locale-aware decimal commas would create visual ambiguity like `(48,8566, 2,3522)`
 
 ### Phase 5: Tests
 

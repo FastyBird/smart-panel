@@ -30,7 +30,7 @@
 								<span class="font-medium">{{ item.name }}</span>
 								<span class="text-xs text-gray-500">
 									{{ item.state ? `${item.state}, ` : '' }}{{ item.country }}
-									<span class="ml-2 text-gray-400">({{ format(item.lat, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ format(item.lon, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }})</span>
+									<span class="ml-2 text-gray-400">({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }})</span>
 								</span>
 							</div>
 						</template>
@@ -117,7 +117,7 @@ import { Icon } from '@iconify/vue';
 import 'leaflet/dist/leaflet.css';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { useFlashMessage, useNumberFormat } from '../../../common';
+import { useFlashMessage } from '../../../common';
 import { type IGeolocationCity, useGeolocation } from '../../../plugins/weather-open-meteo/composables/useGeolocation';
 import { useAppOnboarding } from '../composables/composables';
 
@@ -127,7 +127,6 @@ defineOptions({
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const { format } = useNumberFormat();
 const { locationData } = useAppOnboarding();
 const { searchCities, isSearching } = useGeolocation();
 
