@@ -7611,10 +7611,16 @@ export interface components {
             username?: string;
             /**
              * Format: password
-             * @description User's password.
+             * @description User's new password.
              * @example superstrongpassword
              */
             password?: string | null;
+            /**
+             * Format: password
+             * @description Current password for verification when changing password.
+             * @example oldpassword
+             */
+            current_password?: string;
             /**
              * Format: email
              * @description User's email address.
@@ -7798,6 +7804,11 @@ export interface components {
             permissions: DevicesModuleCreateDeviceChannelPropertyPermissions[];
             /** @description Format (enum values or numeric range) */
             format?: (string | number)[] | null;
+            /**
+             * @description Transformer name for value conversion
+             * @example brightness_to_percent
+             */
+            ha_transformer?: string | null;
         };
         DevicesHomeAssistantPluginAdoptHelperChannelDefinition: {
             /**
@@ -9849,94 +9860,6 @@ export interface components {
              * @enum {string}
              */
             type: AuthModuleCreateLongLiveTokenType;
-        };
-        StorageInfluxV1PluginUpdateConfig: {
-            /**
-             * @description Plugin identifier
-             * @example influx-v1-plugin
-             */
-            type: string;
-            /**
-             * @description Enables or disables the plugin.
-             * @example true
-             */
-            enabled?: boolean;
-            /**
-             * @description InfluxDB server host.
-             * @example localhost
-             */
-            host?: string;
-            /**
-             * @description InfluxDB database name.
-             * @example fastybird
-             */
-            database?: string;
-            /**
-             * @description InfluxDB username for authentication.
-             * @example admin
-             */
-            username?: string;
-            /**
-             * @description InfluxDB password for authentication.
-             * @example secret
-             */
-            password?: string;
-        };
-        StorageInfluxV1PluginDataConfig: {
-            /**
-             * @description Plugin type
-             * @example influx-v1-plugin
-             */
-            type: string;
-            /**
-             * @description Whether the plugin is enabled
-             * @example true
-             */
-            enabled: boolean;
-            /**
-             * @description InfluxDB server host
-             * @example 127.0.0.1
-             */
-            host: string;
-            /**
-             * @description InfluxDB database name
-             * @example fastybird
-             */
-            database: string;
-            /**
-             * @description InfluxDB username for authentication
-             * @example admin
-             */
-            username?: string;
-            /**
-             * @description InfluxDB password for authentication
-             * @example secret
-             */
-            password?: string;
-        };
-        StorageMemoryPluginUpdateConfig: {
-            /**
-             * @description Plugin identifier
-             * @example memory-storage-plugin
-             */
-            type: string;
-            /**
-             * @description Enables or disables the plugin.
-             * @example true
-             */
-            enabled?: boolean;
-        };
-        StorageMemoryPluginDataConfig: {
-            /**
-             * @description Plugin type
-             * @example memory-storage-plugin
-             */
-            type: string;
-            /**
-             * @description Whether the plugin is enabled
-             * @example true
-             */
-            enabled: boolean;
         };
         /** @description Stats grouped by module name. Known modules are listed, but additional modules are allowed. */
         StatsModuleDataStats: {
@@ -21760,6 +21683,8 @@ export interface components {
              * @example homeassistant.local
              */
             hostname: string;
+            /** @description Whether the plugin is controlled by the HA Supervisor (read-only, derived from environment) */
+            supervisor_mode: boolean;
         };
         DevicesHomeAssistantPluginDataHaDeviceInfo: {
             /** @description Home Assistant device ID */
@@ -22736,22 +22661,23 @@ export interface components {
         };
         DevicesShellyNgPluginUpdateConfigWebsockets: {
             /**
-             * @description Websocket request timeout in milliseconds
-             * @example 5000
+             * @description Websocket request timeout in seconds
+             * @example 10
              */
             request_timeout?: number;
             /**
-             * @description Websocket ping interval in milliseconds
-             * @example 30000
+             * @description Websocket ping interval in seconds
+             * @example 30
              */
             ping_interval?: number;
             /**
-             * @description Websocket reconnect interval values in milliseconds
+             * @description Websocket reconnect interval values in seconds
              * @example [
-             *       1000,
-             *       2000,
-             *       5000,
-             *       10000
+             *       5,
+             *       10,
+             *       15,
+             *       30,
+             *       60
              *     ]
              */
             reconnect_interval?: number[];
@@ -23082,12 +23008,12 @@ export interface components {
         DevicesShellyNgPluginDataShellyNgWebsocketsConfig: {
             /**
              * @description Request timeout in seconds
-             * @example 60
+             * @example 10
              */
             request_timeout: number;
             /**
              * @description Ping interval in seconds
-             * @example 60
+             * @example 30
              */
             ping_interval: number;
             /**
@@ -23095,10 +23021,10 @@ export interface components {
              * @example [
              *       5,
              *       10,
+             *       15,
              *       30,
              *       60,
-             *       300,
-             *       600
+             *       60
              *     ]
              */
             reconnect_interval: number[];
@@ -30332,6 +30258,158 @@ export interface components {
              */
             value: string | number | boolean;
         };
+        StorageInfluxV1PluginUpdateConfig: {
+            /**
+             * @description Plugin identifier
+             * @example influx-v1-plugin
+             */
+            type: string;
+            /**
+             * @description Enables or disables the plugin.
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description InfluxDB server host.
+             * @example localhost
+             */
+            host?: string;
+            /**
+             * @description InfluxDB database name.
+             * @example fastybird
+             */
+            database?: string;
+            /**
+             * @description InfluxDB username for authentication.
+             * @example admin
+             */
+            username?: string;
+            /**
+             * @description InfluxDB password for authentication.
+             * @example secret
+             */
+            password?: string;
+        };
+        StorageInfluxV1PluginDataConfig: {
+            /**
+             * @description Plugin type
+             * @example influx-v1-plugin
+             */
+            type: string;
+            /**
+             * @description Whether the plugin is enabled
+             * @example true
+             */
+            enabled: boolean;
+            /**
+             * @description InfluxDB server host
+             * @example 127.0.0.1
+             */
+            host: string;
+            /**
+             * @description InfluxDB database name
+             * @example fastybird
+             */
+            database: string;
+            /**
+             * @description InfluxDB username for authentication
+             * @example admin
+             */
+            username?: string;
+            /**
+             * @description InfluxDB password for authentication
+             * @example secret
+             */
+            password?: string;
+        };
+        StorageInfluxV2PluginUpdateConfig: {
+            /**
+             * @description Plugin identifier
+             * @example influx-v2-plugin
+             */
+            type: string;
+            /**
+             * @description Enables or disables the plugin.
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description InfluxDB v2 server URL.
+             * @example http://localhost:8086
+             */
+            url?: string;
+            /**
+             * @description InfluxDB v2 API token for authentication.
+             * @example my-token
+             */
+            token?: string;
+            /**
+             * @description InfluxDB v2 organization name.
+             * @example fastybird
+             */
+            org?: string;
+            /**
+             * @description InfluxDB v2 bucket name.
+             * @example fastybird
+             */
+            bucket?: string;
+        };
+        StorageInfluxV2PluginDataConfig: {
+            /**
+             * @description Plugin type
+             * @example influx-v2-plugin
+             */
+            type: string;
+            /**
+             * @description Whether the plugin is enabled
+             * @example false
+             */
+            enabled: boolean;
+            /**
+             * @description InfluxDB v2 server URL
+             * @example http://127.0.0.1:8086
+             */
+            url: string;
+            /**
+             * @description InfluxDB v2 API token for authentication
+             * @example my-token
+             */
+            token?: string;
+            /**
+             * @description InfluxDB v2 organization name
+             * @example fastybird
+             */
+            org: string;
+            /**
+             * @description InfluxDB v2 bucket name
+             * @example fastybird
+             */
+            bucket: string;
+        };
+        StorageMemoryPluginUpdateConfig: {
+            /**
+             * @description Plugin identifier
+             * @example memory-storage-plugin
+             */
+            type: string;
+            /**
+             * @description Enables or disables the plugin.
+             * @example true
+             */
+            enabled?: boolean;
+        };
+        StorageMemoryPluginDataConfig: {
+            /**
+             * @description Plugin type
+             * @example memory-storage-plugin
+             */
+            type: string;
+            /**
+             * @description Whether the plugin is enabled
+             * @example true
+             */
+            enabled: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -30580,10 +30658,6 @@ export type SchemaAuthModuleResTokens = components['schemas']['AuthModuleResToke
 export type SchemaAuthModuleDataAccessToken = components['schemas']['AuthModuleDataAccessToken'];
 export type SchemaAuthModuleDataRefreshToken = components['schemas']['AuthModuleDataRefreshToken'];
 export type SchemaAuthModuleDataLongLiveToken = components['schemas']['AuthModuleDataLongLiveToken'];
-export type SchemaStorageInfluxV1PluginUpdateConfig = components['schemas']['StorageInfluxV1PluginUpdateConfig'];
-export type SchemaStorageInfluxV1PluginDataConfig = components['schemas']['StorageInfluxV1PluginDataConfig'];
-export type SchemaStorageMemoryPluginUpdateConfig = components['schemas']['StorageMemoryPluginUpdateConfig'];
-export type SchemaStorageMemoryPluginDataConfig = components['schemas']['StorageMemoryPluginDataConfig'];
 export type SchemaStatsModuleDataStats = components['schemas']['StatsModuleDataStats'];
 export type SchemaStatsModuleResStats = components['schemas']['StatsModuleResStats'];
 export type SchemaStatsModuleDataModuleStats = components['schemas']['StatsModuleDataModuleStats'];
@@ -31199,6 +31273,12 @@ export type SchemaScenesLocalPluginUpdateConfig = components['schemas']['ScenesL
 export type SchemaScenesLocalPluginCreateSceneAction = components['schemas']['ScenesLocalPluginCreateSceneAction'];
 export type SchemaScenesLocalPluginUpdateSceneAction = components['schemas']['ScenesLocalPluginUpdateSceneAction'];
 export type SchemaScenesLocalPluginDataSceneAction = components['schemas']['ScenesLocalPluginDataSceneAction'];
+export type SchemaStorageInfluxV1PluginUpdateConfig = components['schemas']['StorageInfluxV1PluginUpdateConfig'];
+export type SchemaStorageInfluxV1PluginDataConfig = components['schemas']['StorageInfluxV1PluginDataConfig'];
+export type SchemaStorageInfluxV2PluginUpdateConfig = components['schemas']['StorageInfluxV2PluginUpdateConfig'];
+export type SchemaStorageInfluxV2PluginDataConfig = components['schemas']['StorageInfluxV2PluginDataConfig'];
+export type SchemaStorageMemoryPluginUpdateConfig = components['schemas']['StorageMemoryPluginUpdateConfig'];
+export type SchemaStorageMemoryPluginDataConfig = components['schemas']['StorageMemoryPluginDataConfig'];
 export type $defs = Record<string, never>;
 export interface operations {
     "create-auth-module-login": {

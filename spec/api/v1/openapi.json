@@ -29966,10 +29966,16 @@
           },
           "password": {
             "type": "string",
-            "description": "User's password.",
+            "description": "User's new password.",
             "format": "password",
             "example": "superstrongpassword",
             "nullable": true
+          },
+          "current_password": {
+            "type": "string",
+            "description": "Current password for verification when changing password.",
+            "format": "password",
+            "example": "oldpassword"
           },
           "email": {
             "type": "string",
@@ -30839,6 +30845,12 @@
                 }
               ]
             },
+            "nullable": true
+          },
+          "ha_transformer": {
+            "type": "string",
+            "description": "Transformer name for value conversion",
+            "example": "brightness_to_percent",
             "nullable": true
           }
         },
@@ -34606,122 +34618,6 @@
           "owner_type",
           "name",
           "description"
-        ]
-      },
-      "StorageInfluxV1PluginUpdateConfig": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Plugin identifier",
-            "example": "influx-v1-plugin"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Enables or disables the plugin.",
-            "example": true
-          },
-          "host": {
-            "type": "string",
-            "description": "InfluxDB server host.",
-            "example": "localhost"
-          },
-          "database": {
-            "type": "string",
-            "description": "InfluxDB database name.",
-            "example": "fastybird"
-          },
-          "username": {
-            "type": "string",
-            "description": "InfluxDB username for authentication.",
-            "example": "admin"
-          },
-          "password": {
-            "type": "string",
-            "description": "InfluxDB password for authentication.",
-            "example": "secret"
-          }
-        },
-        "required": [
-          "type"
-        ]
-      },
-      "StorageInfluxV1PluginDataConfig": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Plugin type",
-            "example": "influx-v1-plugin"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether the plugin is enabled",
-            "example": true
-          },
-          "host": {
-            "type": "string",
-            "description": "InfluxDB server host",
-            "example": "127.0.0.1"
-          },
-          "database": {
-            "type": "string",
-            "description": "InfluxDB database name",
-            "example": "fastybird"
-          },
-          "username": {
-            "type": "string",
-            "description": "InfluxDB username for authentication",
-            "example": "admin"
-          },
-          "password": {
-            "type": "string",
-            "description": "InfluxDB password for authentication",
-            "example": "secret"
-          }
-        },
-        "required": [
-          "type",
-          "enabled",
-          "host",
-          "database"
-        ]
-      },
-      "StorageMemoryPluginUpdateConfig": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Plugin identifier",
-            "example": "memory-storage-plugin"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Enables or disables the plugin.",
-            "example": true
-          }
-        },
-        "required": [
-          "type"
-        ]
-      },
-      "StorageMemoryPluginDataConfig": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Plugin type",
-            "example": "memory-storage-plugin"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether the plugin is enabled",
-            "example": true
-          }
-        },
-        "required": [
-          "type",
-          "enabled"
         ]
       },
       "StatsModuleDataStats": {
@@ -56836,12 +56732,17 @@
             "type": "string",
             "description": "Home Assistant hostname or IP address",
             "example": "homeassistant.local"
+          },
+          "supervisor_mode": {
+            "type": "boolean",
+            "description": "Whether the plugin is controlled by the HA Supervisor (read-only, derived from environment)"
           }
         },
         "required": [
           "type",
           "enabled",
-          "hostname"
+          "hostname",
+          "supervisor_mode"
         ]
       },
       "DevicesHomeAssistantPluginDataHaDeviceInfo": {
@@ -59763,23 +59664,24 @@
         "properties": {
           "request_timeout": {
             "type": "number",
-            "description": "Websocket request timeout in milliseconds",
-            "example": 5000,
+            "description": "Websocket request timeout in seconds",
+            "example": 10,
             "minimum": 1
           },
           "ping_interval": {
             "type": "number",
-            "description": "Websocket ping interval in milliseconds",
-            "example": 30000,
+            "description": "Websocket ping interval in seconds",
+            "example": 30,
             "minimum": 0
           },
           "reconnect_interval": {
-            "description": "Websocket reconnect interval values in milliseconds",
+            "description": "Websocket reconnect interval values in seconds",
             "example": [
-              1000,
-              2000,
-              5000,
-              10000
+              5,
+              10,
+              15,
+              30,
+              60
             ],
             "type": "array",
             "items": {
@@ -60367,12 +60269,12 @@
           "request_timeout": {
             "type": "number",
             "description": "Request timeout in seconds",
-            "example": 60
+            "example": 10
           },
           "ping_interval": {
             "type": "number",
             "description": "Ping interval in seconds",
-            "example": 60
+            "example": 30
           },
           "reconnect_interval": {
             "type": "array",
@@ -60384,10 +60286,10 @@
             "example": [
               5,
               10,
+              15,
               30,
               60,
-              300,
-              600
+              60
             ]
           }
         },
@@ -74097,6 +73999,202 @@
           "device_id",
           "property_id",
           "value"
+        ]
+      },
+      "StorageInfluxV1PluginUpdateConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin identifier",
+            "example": "influx-v1-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enables or disables the plugin.",
+            "example": true
+          },
+          "host": {
+            "type": "string",
+            "description": "InfluxDB server host.",
+            "example": "localhost"
+          },
+          "database": {
+            "type": "string",
+            "description": "InfluxDB database name.",
+            "example": "fastybird"
+          },
+          "username": {
+            "type": "string",
+            "description": "InfluxDB username for authentication.",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "description": "InfluxDB password for authentication.",
+            "example": "secret"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "StorageInfluxV1PluginDataConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin type",
+            "example": "influx-v1-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the plugin is enabled",
+            "example": true
+          },
+          "host": {
+            "type": "string",
+            "description": "InfluxDB server host",
+            "example": "127.0.0.1"
+          },
+          "database": {
+            "type": "string",
+            "description": "InfluxDB database name",
+            "example": "fastybird"
+          },
+          "username": {
+            "type": "string",
+            "description": "InfluxDB username for authentication",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "description": "InfluxDB password for authentication",
+            "example": "secret"
+          }
+        },
+        "required": [
+          "type",
+          "enabled",
+          "host",
+          "database"
+        ]
+      },
+      "StorageInfluxV2PluginUpdateConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin identifier",
+            "example": "influx-v2-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enables or disables the plugin.",
+            "example": true
+          },
+          "url": {
+            "type": "string",
+            "description": "InfluxDB v2 server URL.",
+            "example": "http://localhost:8086"
+          },
+          "token": {
+            "type": "string",
+            "description": "InfluxDB v2 API token for authentication.",
+            "example": "my-token"
+          },
+          "org": {
+            "type": "string",
+            "description": "InfluxDB v2 organization name.",
+            "example": "fastybird"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "InfluxDB v2 bucket name.",
+            "example": "fastybird"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "StorageInfluxV2PluginDataConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin type",
+            "example": "influx-v2-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the plugin is enabled",
+            "example": false
+          },
+          "url": {
+            "type": "string",
+            "description": "InfluxDB v2 server URL",
+            "example": "http://127.0.0.1:8086"
+          },
+          "token": {
+            "type": "string",
+            "description": "InfluxDB v2 API token for authentication",
+            "example": "my-token"
+          },
+          "org": {
+            "type": "string",
+            "description": "InfluxDB v2 organization name",
+            "example": "fastybird"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "InfluxDB v2 bucket name",
+            "example": "fastybird"
+          }
+        },
+        "required": [
+          "type",
+          "enabled",
+          "url",
+          "org",
+          "bucket"
+        ]
+      },
+      "StorageMemoryPluginUpdateConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin identifier",
+            "example": "memory-storage-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enables or disables the plugin.",
+            "example": true
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "StorageMemoryPluginDataConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Plugin type",
+            "example": "memory-storage-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the plugin is enabled",
+            "example": true
+          }
+        },
+        "required": [
+          "type",
+          "enabled"
         ]
       }
     }
