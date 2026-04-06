@@ -4,7 +4,7 @@ Type: technical
 Scope: admin
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -102,49 +102,49 @@ Despite the infrastructure being in place, the actual number formatting calls ne
 
 ### Phase 1: Composable & utility layer
 
-- [ ] Create `useNumberFormat` composable in `apps/admin/src/common/composables/` that:
+- [x] Create `useNumberFormat` composable in `apps/admin/src/common/composables/` that:
   - Retrieves the system `numberFormat` from the config store via `useConfigModule`
   - Returns a reactive `numberFormat` ref
   - Returns a `format(value, options?)` function that wraps `formatNumber()` with the system setting
   - Returns a `formatPct(value, fractionDigits?)` function that wraps `formatPercent()` with the system setting
-- [ ] Update `formatPercent()` in `format.utils.ts` to accept and forward an optional `numberFormat` parameter
+- [x] Update `formatPercent()` in `format.utils.ts` to accept and forward an optional `numberFormat` parameter
 
 ### Phase 2: Migrate existing `formatNumber()` call sites
 
-- [ ] `modules/stats/components/stats-memory.vue` — pass system `numberFormat`
-- [ ] `modules/stats/components/stats-devices.vue` — pass system `numberFormat`
-- [ ] `modules/stats/components/stats-devices-communication.vue` — pass system `numberFormat`
-- [ ] `modules/system/components/system-info/system-info-detail.vue` — pass system `numberFormat`
-- [ ] `modules/weather/components/location-forecast.vue` — pass system `numberFormat`
-- [ ] `modules/weather/components/location-detail.vue` — pass system `numberFormat`
-- [ ] `modules/weather/components/locations-table-column-weather.vue` — pass system `numberFormat`
-- [ ] `modules/weather/components/weather-day.vue` — pass system `numberFormat`
-- [ ] `modules/weather/components/location-hourly-forecast.vue` — pass system `numberFormat`
+- [x] `modules/stats/components/stats-memory.vue` — pass system `numberFormat`
+- [x] `modules/stats/components/stats-devices.vue` — pass system `numberFormat`
+- [x] `modules/stats/components/stats-devices-communication.vue` — pass system `numberFormat`
+- [x] `modules/system/components/system-info/system-info-detail.vue` — pass system `numberFormat`
+- [x] `modules/weather/components/location-forecast.vue` — pass system `numberFormat`
+- [x] `modules/weather/components/location-detail.vue` — pass system `numberFormat`
+- [x] `modules/weather/components/locations-table-column-weather.vue` — pass system `numberFormat`
+- [x] `modules/weather/components/weather-day.vue` — pass system `numberFormat`
+- [x] `modules/weather/components/location-hourly-forecast.vue` — pass system `numberFormat`
 
 ### Phase 3: Migrate `formatPercent()` call sites
 
-- [ ] `modules/stats/components/stats-cpu.vue` — pass system `numberFormat`
+- [x] `modules/stats/components/stats-cpu.vue` — pass system `numberFormat`
 
 ### Phase 4: Replace `.toFixed()` with `formatNumber()`
 
-- [ ] `plugins/weather-open-meteo/components/open-meteo-location-add-form.vue` — replace `.toFixed(4)` with `formatNumber()` using `{ minimumFractionDigits: 4, maximumFractionDigits: 4 }`
-- [ ] `plugins/weather-open-meteo/components/open-meteo-location-edit-form.vue` — same
-- [ ] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-add-form.vue` — same
-- [ ] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-edit-form.vue` — same
-- [ ] `modules/onboarding/components/step-location.vue` — same
+- [x] `plugins/weather-open-meteo/components/open-meteo-location-add-form.vue` — replace `.toFixed(4)` with `formatNumber()` using `{ minimumFractionDigits: 4, maximumFractionDigits: 4 }`
+- [x] `plugins/weather-open-meteo/components/open-meteo-location-edit-form.vue` — same
+- [x] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-add-form.vue` — same
+- [x] `plugins/weather-openweathermap-onecall/components/openweathermap-onecall-location-edit-form.vue` — same
+- [x] `modules/onboarding/components/step-location.vue` — same
 
 ### Phase 5: Tests
 
-- [ ] Unit test for `useNumberFormat` composable — verify it returns the correct format from system config
-- [ ] Unit test for `formatNumber()` — verify all four format modes produce correct output
-- [ ] Unit test for `formatPercent()` with `numberFormat` parameter
+- [x] Unit test for `useNumberFormat` composable — verify it returns the correct format from system config
+- [x] Unit test for `formatNumber()` — verify all four format modes produce correct output
+- [x] Unit test for `formatPercent()` with `numberFormat` parameter
 
 ### Phase 6: Verification
 
-- [ ] All existing admin unit tests pass (`pnpm --filter ./apps/admin run test:unit`)
-- [ ] Lint passes (`pnpm run lint:js`)
-- [ ] No hardcoded `.toFixed()` calls remain for user-visible numbers in admin app
-- [ ] Manually verify: changing `number_format` in system settings updates all displayed numbers
+- [x] All existing admin unit tests pass (`pnpm --filter ./apps/admin run test:unit`)
+- [x] Lint passes (`pnpm run lint:js`)
+- [x] No hardcoded `.toFixed()` calls remain for user-visible numbers in admin app
+- [x] Manually verify: changing `number_format` in system settings updates all displayed numbers
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

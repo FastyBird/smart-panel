@@ -7,7 +7,7 @@
 			<icon :icon="iconType" />
 		</el-icon>
 		<span class="font-medium">
-			{{ temperature !== null ? formatNumber(temperature, { maximumFractionDigits: 1 }) : '-' }}{{ unit }}
+			{{ temperature !== null ? format(temperature, { maximumFractionDigits: 1 }) : '-' }}{{ unit }}
 		</span>
 	</div>
 	<el-tooltip
@@ -41,7 +41,7 @@ import { ElIcon, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import type { ILocationWeatherData } from '../composables/useLocationsWeather';
 import { getWeatherIcon } from '../utils/utils';
 
@@ -54,6 +54,7 @@ defineOptions({
 const props = defineProps<ILocationsTableColumnWeatherProps>();
 
 const { t } = useI18n();
+const { format } = useNumberFormat();
 
 const weatherData = computed<ILocationWeatherData | null>(() => {
 	return props.weatherByLocation[props.locationId] ?? null;

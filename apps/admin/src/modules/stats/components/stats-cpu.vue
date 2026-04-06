@@ -26,7 +26,7 @@
 					</el-icon>
 				</el-tooltip>
 
-				{{ formatPercent(systemModuleSection?.cpuLoad1m.value) }}
+				{{ formatPct(systemModuleSection?.cpuLoad1m.value) }}
 			</div>
 
 			<div class="color-[var(--el-text-color-secondary)]">
@@ -61,7 +61,7 @@ import { ElCard, ElIcon, ElProgress, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatPercent, formatRelative } from '../../../common';
+import { formatRelative, useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
 import type { IStatsCpuProps } from './stats-cpu.types';
@@ -75,6 +75,7 @@ const props = withDefaults(defineProps<IStatsCpuProps>(), {
 });
 
 const { t } = useI18n();
+const { formatPct } = useNumberFormat();
 
 const isStale = computed<boolean>((): boolean => {
 	const lu = props.systemModuleSection?.cpuLoad1m.lastUpdated ? props.systemModuleSection?.cpuLoad1m.lastUpdated.getTime() : 0;

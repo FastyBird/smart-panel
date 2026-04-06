@@ -23,10 +23,10 @@
 					<icon :icon="weatherIcon" />
 				</el-icon>
 				<el-text class="text-xl font-bold">
-					{{ formatNumber(props.current.temperature, { maximumFractionDigits: 1 }) }}{{ temperatureUnit }}
+					{{ format(props.current.temperature, { maximumFractionDigits: 1 }) }}{{ temperatureUnit }}
 				</el-text>
 				<el-text class="text-gray-500">
-					{{ t('weatherModule.texts.locationDetail.feelsLike', { temp: `${formatNumber(props.current.feelsLike, { maximumFractionDigits: 1 })}${temperatureUnit}` }) }}
+					{{ t('weatherModule.texts.locationDetail.feelsLike', { temp: `${format(props.current.feelsLike, { maximumFractionDigits: 1 })}${temperatureUnit}` }) }}
 				</el-text>
 			</div>
 		</dd>
@@ -60,7 +60,7 @@
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
 			<el-text>
-				{{ formatNumber(props.current.wind.speed, { maximumFractionDigits: 1 }) }} m/s
+				{{ format(props.current.wind.speed, { maximumFractionDigits: 1 }) }} m/s
 			</el-text>
 		</dd>
 		<dt
@@ -85,7 +85,7 @@ import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { useConfigModule } from '../../config';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';
@@ -101,6 +101,7 @@ const props = defineProps<ILocationDetailProps>();
 const { t } = useI18n();
 
 const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+const { format } = useNumberFormat();
 
 const temperatureUnit = computed<string>(() => {
 	const config = weatherConfig.value as { unit?: string } | null;

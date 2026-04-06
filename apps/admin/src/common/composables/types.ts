@@ -8,6 +8,7 @@ import type { Socket } from 'socket.io-client';
 import type { OpenApiPaths } from '../../openapi.constants';
 import type { Events } from '../services/event-bus';
 import type { ISortEntry } from '../store/list.query.store.types';
+import type { NumberFormatSetting } from '../utils/number.utils';
 
 export interface IUseBackend<Paths extends object = OpenApiPaths> {
 	pendingRequests: Ref<number>;
@@ -77,6 +78,12 @@ export interface IUseSockets {
 export interface IUseLanguage {
 	currentLocale: import('vue').WritableComputedRef<import('../../locales').AppLocale>;
 	supportedLocales: import('vue').Ref<{ value: import('../../locales').AppLocale; label: string; flag: string }[]>;
+}
+
+export interface IUseNumberFormat {
+	numberFormat: ComputedRef<NumberFormatSetting | undefined>;
+	format: (value: number, options?: Intl.NumberFormatOptions) => string;
+	formatPct: (value?: number | null, fractionDigits?: number) => string;
 }
 
 export interface IUseUuid {

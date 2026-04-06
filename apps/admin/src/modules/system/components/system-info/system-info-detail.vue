@@ -35,11 +35,11 @@
 					</template>
 
 					<el-descriptions-item :label="t('systemModule.systemInfo.cpuLoad')">
-						{{ formatNumber(props.systemInfo?.cpuLoad ?? 0, { maximumFractionDigits: 2 }) }} %
+						{{ format(props.systemInfo?.cpuLoad ?? 0, { maximumFractionDigits: 2 }) }} %
 					</el-descriptions-item>
 					<el-descriptions-item :label="t('systemModule.systemInfo.memoryUsage')">
-						{{ formatNumber((props.systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB /
-						{{ formatNumber((props.systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
+						{{ format((props.systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB /
+						{{ format((props.systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
 					</el-descriptions-item>
 					<el-descriptions-item
 						v-if="props.systemInfo?.temperature.cpu"
@@ -272,7 +272,7 @@ import { ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElIcon, ElRow, ElTag
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber } from '../../../../common';
+import { useNumberFormat } from '../../../../common';
 import { Layout } from '../../system.constants';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';
@@ -287,4 +287,5 @@ const props = withDefaults(defineProps<ISystemInfoDetailProps>(), {
 });
 
 const { t } = useI18n();
+const { format } = useNumberFormat();
 </script>

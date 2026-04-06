@@ -26,7 +26,7 @@
 	</div>
 
 	<div class="text-3xl mt-1 flex flex-row items-center">
-		{{ formatNumber(devicesModuleSection?.updatesToday.value ?? 0, { maximumFractionDigits: 0 }) }}
+		{{ format(devicesModuleSection?.updatesToday.value ?? 0, { maximumFractionDigits: 0 }) }}
 	</div>
 </template>
 
@@ -38,7 +38,7 @@ import { ElIcon, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatNumber, formatRelative } from '../../../common';
+import { formatRelative, useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
 import type { IStatsDevicesCommunicationProps } from './stats-devices-communication.types';
@@ -52,6 +52,7 @@ const props = withDefaults(defineProps<IStatsDevicesCommunicationProps>(), {
 });
 
 const { t } = useI18n();
+const { format } = useNumberFormat();
 
 const isStale = computed<boolean>((): boolean => {
 	const lu = props.devicesModuleSection?.updatesToday.lastUpdated ? props.devicesModuleSection?.updatesToday.lastUpdated.getTime() : 0;

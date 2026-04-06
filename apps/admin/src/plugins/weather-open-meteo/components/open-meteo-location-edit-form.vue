@@ -39,7 +39,7 @@
 							<span class="font-medium">{{ item.name }}</span>
 							<span class="text-xs text-gray-500">
 								{{ item.state ? `${item.state}, ` : '' }}{{ item.country }}
-								<span class="ml-2 text-gray-400"> ({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }}) </span>
+								<span class="ml-2 text-gray-400"> ({{ format(item.lat, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ format(item.lon, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}) </span>
 							</span>
 						</div>
 					</template>
@@ -123,7 +123,7 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { useFlashMessage } from '../../../common';
+import { useFlashMessage, useNumberFormat } from '../../../common';
 import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
 import { WEATHER_OPEN_METEO_PLUGIN_TYPE } from '../weather-open-meteo.constants';
 import { useLocationMap, type ILocationModel } from '../composables/composables';
@@ -150,6 +150,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { format } = useNumberFormat();
 const { edit: editLocation } = useLocationsActions();
 
 const formEl = ref<FormInstance | undefined>(undefined);
