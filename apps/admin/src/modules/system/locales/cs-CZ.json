@@ -122,7 +122,7 @@
 			"systemLogs": "Náhled a diagnostika aplikačních protokolů."
 		},
 		"update": {
-			"available": "Aktualizace k dispozici",
+			"available": "Verze {version} je k dispozici",
 			"upToDate": "Váš systém je aktuální.",
 			"checking": "Kontrola aktualizací...",
 			"installing": "Instalace aktualizace...",
@@ -403,7 +403,8 @@
 		},
 		"update": {
 			"checkForUpdates": "Zkontrolovat aktualizace",
-			"installUpdate": "Nainstalovat aktualizaci"
+			"installUpdate": "Nainstalovat aktualizaci",
+			"headerAction": "Aktualizovat"
 		}
 	},
 	"labels": {

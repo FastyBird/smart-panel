@@ -123,7 +123,7 @@
       "systemLogs": "Preview and diagnose application logs."
     },
     "update": {
-      "available": "Update available",
+      "available": "Version {version} is available",
       "upToDate": "Your system is up to date.",
       "checking": "Checking for updates...",
       "installing": "Installing update...",
@@ -404,7 +404,8 @@
     },
     "update": {
       "checkForUpdates": "Check for Updates",
-      "installUpdate": "Install Update"
+      "installUpdate": "Install Update",
+      "headerAction": "Update"
     }
   },
   "labels": {

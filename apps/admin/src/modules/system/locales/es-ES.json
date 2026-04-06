@@ -122,7 +122,7 @@
 			"systemLogs": "Vista previa y diagnóstico de los registros de la aplicación."
 		},
 		"update": {
-			"available": "Actualización disponible",
+			"available": "Versión {version} disponible",
 			"upToDate": "Tu sistema está actualizado.",
 			"checking": "Verificando actualizaciones...",
 			"installing": "Instalando actualización...",
@@ -403,7 +403,8 @@
 		},
 		"update": {
 			"checkForUpdates": "Buscar actualizaciones",
-			"installUpdate": "Instalar actualización"
+			"installUpdate": "Instalar actualización",
+			"headerAction": "Actualizar"
 		}
 	},
 	"labels": {

@@ -122,7 +122,7 @@
 			"systemLogs": "Podgląd i diagnostyka logów aplikacji."
 		},
 		"update": {
-			"available": "Dostępna aktualizacja",
+			"available": "Wersja {version} jest dostępna",
 			"upToDate": "Twój system jest aktualny.",
 			"checking": "Sprawdzanie aktualizacji...",
 			"installing": "Instalowanie aktualizacji...",
@@ -403,7 +403,8 @@
 		},
 		"update": {
 			"checkForUpdates": "Sprawdź aktualizacje",
-			"installUpdate": "Zainstaluj aktualizację"
+			"installUpdate": "Zainstaluj aktualizację",
+			"headerAction": "Aktualizuj"
 		}
 	},
 	"labels": {
