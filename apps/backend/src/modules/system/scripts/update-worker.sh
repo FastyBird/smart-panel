@@ -60,27 +60,27 @@ trap cleanup EXIT
 # Image-based update (Raspbian image installs)
 # ──────────────────────────────────────────────────────────────
 if [ "$INSTALL_TYPE" = "image" ]; then
+	# Strip leading 'v' prefix if present to avoid double-prefixed dirs like vv1.0.0
+	CLEAN_VERSION="${VERSION#v}"
+	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
+	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
+
 	# Verify passwordless sudo is available for all required commands.
 	# Without -n, sudo may hang waiting for a password on a detached process.
 	SUDO_CMDS=(
 		"/usr/bin/true"
 		"/usr/bin/systemctl stop smart-panel"
 		"/usr/bin/systemctl start smart-panel"
-		"/usr/bin/chown -R smart-panel:smart-panel /opt/smart-panel/v0"
-		"/usr/bin/ln -sfn /opt/smart-panel/v0 /opt/smart-panel/current"
+		"/usr/bin/chown -R smart-panel:smart-panel ${NEW_VERSION_DIR}"
+		"/usr/bin/ln -sfn ${NEW_VERSION_DIR} ${CURRENT_LINK}"
 	)
 
 	for cmd in "${SUDO_CMDS[@]}"; do
-		# Use --list to check if the command is allowed without executing it
 		if ! sudo -n -l $cmd >/dev/null 2>&1; then
 			update_status "failed" "failed" "Passwordless sudo not available for: $cmd"
 			exit 1
 		fi
 	done
-	# Strip leading 'v' prefix if present to avoid double-prefixed dirs like vv1.0.0
-	CLEAN_VERSION="${VERSION#v}"
-	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
-	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
 	PREVIOUS_TARGET=""
 
 	# Save the current version for rollback
