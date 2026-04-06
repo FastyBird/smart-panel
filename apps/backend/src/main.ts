@@ -23,7 +23,6 @@ import { ValidationExceptionFactory } from './common/validation/validation-excep
 import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
-import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
@@ -139,16 +138,8 @@ async function bootstrap() {
 
 	app.enableCors();
 
-	// Swagger UI is disabled in production — the spec is generated via CLI
-	// (pnpm run generate:openapi) and consumed at build time. Enable with FB_SWAGGER_ENABLED=true.
-	const swaggerEnabled = getEnvValue<boolean>(configService, 'FB_SWAGGER_ENABLED', false);
-
-	if (swaggerEnabled) {
-		const swaggerService = app.get(SwaggerDocumentService);
-		swaggerService.setup(app);
-
-		sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
-	}
+	// Swagger UI is not loaded during normal startup — use the CLI command
+	// 'pnpm run cli swagger:serve' to start a standalone Swagger UI server.
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
 	const oauthCallbackService = app.get(OAuthCallbackService);
