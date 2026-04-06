@@ -60,12 +60,23 @@ trap cleanup EXIT
 # Image-based update (Raspbian image installs)
 # ──────────────────────────────────────────────────────────────
 if [ "$INSTALL_TYPE" = "image" ]; then
-	# Verify passwordless sudo is available (required for systemctl, chown, ln).
-	# The sudoers policy must include /usr/bin/true for this check.
-	if ! sudo -n /usr/bin/true 2>/dev/null; then
-		update_status "failed" "failed" "Passwordless sudo is not available for this user"
-		exit 1
-	fi
+	# Verify passwordless sudo is available for all required commands.
+	# Without -n, sudo may hang waiting for a password on a detached process.
+	SUDO_CMDS=(
+		"/usr/bin/true"
+		"/usr/bin/systemctl stop smart-panel"
+		"/usr/bin/systemctl start smart-panel"
+		"/usr/bin/chown -R smart-panel:smart-panel /opt/smart-panel/v0"
+		"/usr/bin/ln -sfn /opt/smart-panel/v0 /opt/smart-panel/current"
+	)
+
+	for cmd in "${SUDO_CMDS[@]}"; do
+		# Use --list to check if the command is allowed without executing it
+		if ! sudo -n -l $cmd >/dev/null 2>&1; then
+			update_status "failed" "failed" "Passwordless sudo not available for: $cmd"
+			exit 1
+		fi
+	done
 	# Strip leading 'v' prefix if present to avoid double-prefixed dirs like vv1.0.0
 	CLEAN_VERSION="${VERSION#v}"
 	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
@@ -138,7 +149,9 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	# Set ownership
-	sudo chown -R smart-panel:smart-panel "$NEW_VERSION_DIR" || {
+	# All sudo calls use -n (non-interactive) to fail fast instead of
+	# hanging on password prompt when running as a detached process.
+	sudo -n chown -R smart-panel:smart-panel "$NEW_VERSION_DIR" || {
 		rm -rf "$NEW_VERSION_DIR"
 		update_status "failed" "failed" "Failed to set ownership on ${NEW_VERSION_DIR}"
 		exit 1
@@ -146,15 +159,15 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	# ── Stop service ──
 	update_status "stopping" "stopping"
-	sudo systemctl stop smart-panel 2>/dev/null || true
+	sudo -n systemctl stop smart-panel 2>/dev/null || true
 
 	# ── Switch symlink (atomic on same filesystem) ──
-	sudo ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
+	sudo -n ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
 		# Revert on failure
 		if [ -n "$PREVIOUS_TARGET" ]; then
-			sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			sudo -n ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
 		fi
-		sudo systemctl start smart-panel 2>/dev/null || true
+		sudo -n systemctl start smart-panel 2>/dev/null || true
 		update_status "failed" "failed" "Failed to switch version symlink"
 		exit 1
 	}
@@ -175,10 +188,10 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		) 2>&1 || {
 			# Migration failed — revert symlink if possible
 			update_status "stopping" "stopping"
-			sudo systemctl stop smart-panel 2>/dev/null || true
+			sudo -n systemctl stop smart-panel 2>/dev/null || true
 
 			if [ -n "$PREVIOUS_TARGET" ]; then
-				if sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"; then
+				if sudo -n ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"; then
 					rm -rf "$NEW_VERSION_DIR"
 					update_status "failed" "failed" "Database migration failed — reverted to previous version"
 				else
@@ -190,18 +203,18 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 				update_status "failed" "failed" "Database migration failed — no previous version to revert to"
 			fi
 
-			sudo systemctl start smart-panel 2>/dev/null || true
+			sudo -n systemctl start smart-panel 2>/dev/null || true
 			exit 1
 		}
 	fi
 
 	# ── Start service ──
 	update_status "starting" "starting"
-	sudo systemctl start smart-panel 2>&1 || {
+	sudo -n systemctl start smart-panel 2>&1 || {
 		# Try to revert if start fails
 		if [ -n "$PREVIOUS_TARGET" ]; then
-			sudo ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
-			sudo systemctl start smart-panel 2>/dev/null || true
+			sudo -n ln -sfn "$PREVIOUS_TARGET" "$CURRENT_LINK"
+			sudo -n systemctl start smart-panel 2>/dev/null || true
 		fi
 		update_status "failed" "failed" "Failed to start service after update"
 		exit 1
@@ -240,7 +253,7 @@ update_status "downloading" "downloading"
 
 # Stop the service
 update_status "stopping" "stopping"
-sudo systemctl stop smart-panel 2>/dev/null || true
+sudo -n systemctl stop smart-panel 2>/dev/null || true
 
 # Install the update
 update_status "installing" "installing"
@@ -248,13 +261,13 @@ update_status "installing" "installing"
 if [ "$VERSION" = "latest" ]; then
 	npm update -g @fastybird/smart-panel 2>&1 || {
 		update_status "failed" "failed" "npm update failed"
-		sudo systemctl start smart-panel 2>/dev/null || true
+		sudo -n systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 else
 	npm install -g "@fastybird/smart-panel@$VERSION" 2>&1 || {
 		update_status "failed" "failed" "npm install failed for version $VERSION"
-		sudo systemctl start smart-panel 2>/dev/null || true
+		sudo -n systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 fi
@@ -270,14 +283,14 @@ if [ -f "$(npm root -g)/@fastybird/smart-panel/dataSource.js" ]; then
 		migration:run \
 		-d "$(npm root -g)/@fastybird/smart-panel/dataSource.js" 2>&1 || {
 		update_status "failed" "failed" "Database migration failed"
-		sudo systemctl start smart-panel 2>/dev/null || true
+		sudo -n systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 fi
 
 # Start the service
 update_status "starting" "starting"
-sudo systemctl start smart-panel 2>&1 || {
+sudo -n systemctl start smart-panel 2>&1 || {
 	update_status "failed" "failed" "Failed to start service after update"
 	exit 1
 }
