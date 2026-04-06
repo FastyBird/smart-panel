@@ -49,6 +49,10 @@ logs/smart-panel-*
 apps/testing/dist/
 **/tsconfig.tsbuildinfo
 
+# Generated files
+spec/api/v1/openapi.json
+apps/admin/src/openapi.ts
+
 # Superpowers brainstorm sessions
 .superpowers/
 
