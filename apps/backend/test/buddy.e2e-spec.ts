@@ -99,8 +99,13 @@ describe('Buddy module (e2e)', () => {
 		await app.close();
 	});
 
-	beforeEach(() => {
-		suggestionEngine.clearAllCooldowns();
+	beforeEach(async () => {
+		// Clear any existing suggestions from previous tests
+		const repo = app.get('BuddySuggestionEntityRepository');
+
+		if (repo?.clear) {
+			await repo.clear();
+		}
 	});
 
 	// Helper to make authenticated requests

@@ -103,7 +103,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 
 			for (const space of enabledSpaces) {
 				const results = await this.evaluateSpace(space.id);
-				const created = this.suggestionEngine.createFromEvaluatorResults(results);
+				const created = await this.suggestionEngine.createFromEvaluatorResults(results);
 
 				totalSuggestions += created.length;
 			}

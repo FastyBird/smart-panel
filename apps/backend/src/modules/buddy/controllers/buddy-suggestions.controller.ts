@@ -53,7 +53,7 @@ export class BuddySuggestionsController {
 
 		await this.suggestionEngine.generateSuggestions();
 
-		const suggestions = this.suggestionEngine.getActiveSuggestions(spaceId);
+		const suggestions = await this.suggestionEngine.getActiveSuggestions(spaceId);
 
 		this.logger.debug(`Retrieved ${suggestions.length} active suggestion(s)`);
 
@@ -85,7 +85,7 @@ export class BuddySuggestionsController {
 	): Promise<SuggestionFeedbackResponseModel> {
 		this.logger.debug(`Submitting feedback "${body.data.feedback}" for suggestion id=${id}`);
 
-		const result = this.suggestionEngine.recordFeedback(id, body.data.feedback);
+		const result = await this.suggestionEngine.recordFeedback(id, body.data.feedback);
 
 		// Create a scene when the user accepts a scene creation suggestion
 		if (

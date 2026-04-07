@@ -59,6 +59,10 @@ export class InitialSetup1000000000000 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "IDX_energy_deltas_room_interval" ON "energy_module_deltas" ("roomId", "sourceType", "intervalStart") `);
         await queryRunner.query(`CREATE TABLE "buddy_module_conversations" ("id" varchar PRIMARY KEY NOT NULL, "title" varchar, "spaceId" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')))`);
         await queryRunner.query(`CREATE TABLE "buddy_module_messages" ("id" varchar PRIMARY KEY NOT NULL, "conversationId" varchar NOT NULL, "role" varchar NOT NULL, "content" text NOT NULL, "metadata" text, "createdAt" datetime NOT NULL DEFAULT (datetime('now')))`);
+        await queryRunner.query(`CREATE TABLE "buddy_module_suggestions" ("id" varchar PRIMARY KEY NOT NULL, "type" varchar NOT NULL, "spaceId" varchar NOT NULL, "title" varchar NOT NULL, "reason" text NOT NULL, "metadata" text, "status" varchar NOT NULL DEFAULT ('active'), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "expiresAt" datetime NOT NULL, "feedbackAt" datetime)`);
+        await queryRunner.query(`CREATE INDEX "idx_suggestion_status" ON "buddy_module_suggestions" ("status")`);
+        await queryRunner.query(`CREATE INDEX "idx_suggestion_expires" ON "buddy_module_suggestions" ("expiresAt")`);
+        await queryRunner.query(`CREATE INDEX "idx_suggestion_space_type" ON "buddy_module_suggestions" ("spaceId", "type")`);
         await queryRunner.query(`CREATE TABLE "auth_module_tokens" ("id" varchar PRIMARY KEY NOT NULL, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "updatedAt" datetime, "hashedToken" varchar NOT NULL, "expiresAt" datetime, "revoked" boolean NOT NULL DEFAULT (0), "ownerId" varchar, "parentId" varchar, "ownerType" varchar DEFAULT ('user'), "tokenOwnerId" varchar, "name" varchar, "description" varchar, "type" varchar NOT NULL)`);
         await queryRunner.query(`CREATE INDEX "IDX_46d748f90ee8ec23f8ae860554" ON "auth_module_tokens" ("hashedToken") `);
         await queryRunner.query(`CREATE INDEX "IDX_73f1acaf851473bc7a97e1f313" ON "auth_module_tokens" ("expiresAt") `);
@@ -367,6 +371,10 @@ export class InitialSetup1000000000000 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "IDX_46d748f90ee8ec23f8ae860554"`);
         await queryRunner.query(`DROP TABLE "auth_module_tokens"`);
         await queryRunner.query(`DROP TABLE "buddy_module_messages"`);
+        await queryRunner.query(`DROP INDEX "idx_suggestion_space_type"`);
+        await queryRunner.query(`DROP INDEX "idx_suggestion_expires"`);
+        await queryRunner.query(`DROP INDEX "idx_suggestion_status"`);
+        await queryRunner.query(`DROP TABLE "buddy_module_suggestions"`);
         await queryRunner.query(`DROP TABLE "buddy_module_conversations"`);
         await queryRunner.query(`DROP INDEX "IDX_energy_deltas_room_interval"`);
         await queryRunner.query(`DROP INDEX "IDX_energy_deltas_device_interval"`);
