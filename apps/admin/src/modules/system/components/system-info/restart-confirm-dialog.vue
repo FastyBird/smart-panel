@@ -2,7 +2,7 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('systemModule.headings.manage.restart')"
-		width="520px"
+		width="460px"
 		@close="emit('close')"
 	>
 		<p class="mb-4">
@@ -21,21 +21,26 @@
 		</ul>
 
 		<template #footer>
-			<div class="flex justify-end gap-2 w-full">
-				<el-button @click="emit('close')">
-					{{ t('systemModule.buttons.cancel.title') }}
-				</el-button>
+			<div class="flex flex-col gap-2 w-full">
 				<el-button
 					type="primary"
+					class="w-full !ml-0"
 					@click="emit('service-restart')"
 				>
 					{{ t('systemModule.buttons.restartService.title') }}
 				</el-button>
 				<el-button
 					type="danger"
+					class="w-full !ml-0"
 					@click="emit('system-reboot')"
 				>
 					{{ t('systemModule.buttons.restartSystem.title') }}
+				</el-button>
+				<el-button
+					class="w-full !ml-0"
+					@click="emit('close')"
+				>
+					{{ t('systemModule.buttons.cancel.title') }}
 				</el-button>
 			</div>
 		</template>
