@@ -124,7 +124,7 @@
 				ref="scrollbarRef"
 				class="grow-1 p-4"
 			>
-				<div ref="messagesContainerRef">
+				<div>
 					<el-empty
 						v-if="messages.length === 0 && !isLoadingMessages"
 						:description="t('buddyModule.texts.startConversation')"
@@ -230,7 +230,6 @@ const router = useRouter();
 
 const inputMessage = ref<string>('');
 const scrollbarRef = ref<InstanceType<typeof ElScrollbar> | null>(null);
-const messagesContainerRef = ref<HTMLDivElement | null>(null);
 const wizardVisible = ref<boolean>(false);
 
 const otherProviders = computed<IProviderStatus[]>(() => {

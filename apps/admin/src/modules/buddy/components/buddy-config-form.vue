@@ -73,7 +73,7 @@
 
 		<el-form-item
 			:label="t('buddyModule.fields.config.personality.title')"
-			:error="personalityOverLimit ? t('buddyModule.fields.config.personality.validation.maxLength') : undefined"
+			:error="personalityOverLimit ? t('buddyModule.fields.config.personality.validation.maxLength') : personalityError ?? undefined"
 		>
 			<el-input
 				v-model="personalityText"
@@ -243,7 +243,7 @@ const flashMessage = useFlashMessage();
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
 const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
-const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
+const { personalityContent, personalityError, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 onBeforeMount(async (): Promise<void> => {
 	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses(), fetchPersonality()]);
