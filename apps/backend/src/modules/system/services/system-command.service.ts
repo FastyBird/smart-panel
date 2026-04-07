@@ -130,15 +130,15 @@ export class SystemCommandService implements OnModuleInit {
 	async restartService(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {
 		this.logger.log('[SYSTEM] Service restart requested — performing graceful shutdown');
 
-		this.eventEmitter.emit(EventType.SYSTEM_SERVICE_RESTART, {
-			triggered_by: user.id,
-			status: 'processing',
-		});
-
-		// Give the WebSocket event time to propagate before shutting down
-		await new Promise((resolve) => setTimeout(resolve, 500));
-
 		try {
+			this.eventEmitter.emit(EventType.SYSTEM_SERVICE_RESTART, {
+				triggered_by: user.id,
+				status: 'processing',
+			});
+
+			// Give the WebSocket event time to propagate before shutting down
+			await new Promise((resolve) => setTimeout(resolve, 500));
+
 			const app = this.appInstanceHolder.getApp();
 
 			await app.close();
