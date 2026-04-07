@@ -18,6 +18,7 @@ import { InternalServerErrorExceptionFilter } from './common/filters/internal-se
 import { NotFoundExceptionFilter } from './common/filters/not-found-exception.filter';
 import { QueryFailedExceptionFilter } from './common/filters/query-failed-exception.filter';
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
+import { AppInstanceHolder } from './common/services/app-instance-holder.service';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
 import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
@@ -74,6 +75,10 @@ async function bootstrap() {
 	await app.register(fastifyMultipart as any, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
+
+	// Make the app instance available for graceful shutdown (e.g. service restart)
+	const appInstanceHolder = app.get(AppInstanceHolder);
+	appInstanceHolder.setApp(app);
 
 	const sysLogger = app.get(SystemLoggerService);
 
