@@ -12,6 +12,7 @@ import { EventType, SuggestionType } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 import { BuddySuggestionEntity } from '../entities/buddy-suggestion.entity';
 
+import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
 import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';
 
@@ -351,6 +352,31 @@ describe('SuggestionEngineService', () => {
 			await expect(service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED)).rejects.toThrow(
 				BuddySuggestionNotFoundException,
 			);
+		});
+	});
+
+	describe('concurrency', () => {
+		it('should not create duplicates when generateSuggestions and createFromEvaluatorResults overlap', async () => {
+			patternDetector.detectPatterns.mockReturnValue([makePattern({ spaceId: 'room-1' })]);
+
+			const evalResult: EvaluatorResult = {
+				type: SuggestionType.PATTERN_SCENE_CREATE,
+				title: 'Create a scene for this?',
+				reason: 'Detected a pattern in room-1',
+				spaceId: 'room-1',
+				metadata: { intentType: IntentType.LIGHT_TOGGLE },
+			};
+
+			// Fire both concurrently — mutex should serialize them
+			const [generated, fromEval] = await Promise.all([
+				service.generateSuggestions(),
+				service.createFromEvaluatorResults([evalResult]),
+			]);
+
+			// Only one should have created a suggestion; the other should see the duplicate
+			const total = generated.length + fromEval.length;
+
+			expect(total).toBe(1);
 		});
 	});
 });

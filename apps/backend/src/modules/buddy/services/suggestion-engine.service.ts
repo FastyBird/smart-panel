@@ -39,6 +39,13 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 	private generationPromise: Promise<BuddySuggestion[]> | null = null;
 
+	/**
+	 * Serialization queue for suggestion creation.
+	 * Both generateSuggestions and createFromEvaluatorResults acquire this
+	 * so their check-then-insert sequences cannot interleave.
+	 */
+	private mutexTail: Promise<void> = Promise.resolve();
+
 	constructor(
 		@InjectRepository(BuddySuggestionEntity)
 		private readonly suggestionRepo: Repository<BuddySuggestionEntity>,
@@ -96,15 +103,31 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
+	 * Serialize an async operation so check-then-insert sequences cannot interleave.
+	 */
+	private withMutex<T>(fn: () => Promise<T>): Promise<T> {
+		const ticket = this.mutexTail.then(fn, fn);
+
+		// Keep the queue moving regardless of success/failure
+		this.mutexTail = ticket.then(
+			() => {},
+			() => {},
+		);
+
+		return ticket;
+	}
+
+	/**
 	 * Generate suggestions from detected patterns.
-	 * Uses a Promise-based lock to prevent concurrent generation.
+	 * Uses a Promise-based lock to prevent concurrent generation,
+	 * and a shared mutex to serialize against heartbeat evaluator results.
 	 */
 	async generateSuggestions(): Promise<BuddySuggestion[]> {
 		if (this.generationPromise !== null) {
 			return this.generationPromise;
 		}
 
-		this.generationPromise = this.doGenerateSuggestions().finally(() => {
+		this.generationPromise = this.withMutex(() => this.doGenerateSuggestions()).finally(() => {
 			this.generationPromise = null;
 		});
 
@@ -238,8 +261,13 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Create suggestions from heartbeat evaluator results.
+	 * Serialized via the shared mutex to prevent duplicates when overlapping with generateSuggestions.
 	 */
 	async createFromEvaluatorResults(results: EvaluatorResult[]): Promise<BuddySuggestion[]> {
+		return this.withMutex(() => this.doCreateFromEvaluatorResults(results));
+	}
+
+	private async doCreateFromEvaluatorResults(results: EvaluatorResult[]): Promise<BuddySuggestion[]> {
 		const created: BuddySuggestion[] = [];
 
 		for (const result of results) {
