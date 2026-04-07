@@ -1,3 +1,4 @@
+import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
 import { SuggestionType } from '../buddy.constants';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
@@ -22,13 +23,13 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
  * Subtracts days using exact millisecond arithmetic (`N * 86_400_000`)
  * to stay consistent with the lookback cutoff in `detectPatterns`
  * (`Date.now() - 7 * 24 * 60 * 60 * 1000`), then sets the local
- * hour/minute so that `getHours()`/`getMinutes()` return the expected
- * values for time-of-day clustering.
+ * hour/minute in UTC so that timezone-aware extraction with mock
+ * timezone 'UTC' returns the expected values.
  */
 function daysAgoAt(daysAgo: number, hour: number, minute: number = 0): Date {
 	const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
-	d.setHours(hour, minute, 0, 0);
+	d.setUTCHours(hour, minute, 0, 0);
 
 	return d;
 }
@@ -85,8 +86,9 @@ describe('PatternDetectorService', () => {
 	let service: PatternDetectorService;
 	let observer: ActionObserverService;
 
-	const mockConfigService = {
-		getModuleConfig: jest.fn().mockReturnValue({ timezone: 'Europe/Prague' }),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const mockConfigService: ConfigService = {
+		getModuleConfig: jest.fn().mockReturnValue({ timezone: 'UTC' }),
 	} as any;
 
 	beforeEach(() => {
