@@ -39,6 +39,8 @@ function matchesOperator(value: unknown, operator: any): boolean {
 		switch (operator._type) {
 			case 'not':
 				return value !== operator._value;
+			case 'in':
+				return Array.isArray(operator._value) && (operator._value as unknown[]).includes(value);
 			case 'moreThan':
 				return value instanceof Date
 					? value.getTime() > new Date(operator._value as string).getTime()
@@ -104,6 +106,7 @@ function createMockRepository() {
 					if (!matchesOperator(e.type, where.type)) return false;
 					if (!matchesOperator(e.status, where.status)) return false;
 					if (!matchesOperator(e.expiresAt, where.expiresAt)) return false;
+					if (!matchesOperator(e.feedbackAt, where.feedbackAt)) return false;
 
 					return true;
 				});

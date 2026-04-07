@@ -1,4 +1,4 @@
-import { LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
+import { In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
@@ -84,7 +84,7 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Check whether a suggestion type is on cooldown for a given space.
-	 * Cooldown is derived from the most recent dismissed/accepted suggestion's feedbackAt.
+	 * Cooldown is derived from the most recent accepted/dismissed suggestion's feedbackAt.
 	 */
 	async isOnCooldown(spaceId: string, type: SuggestionType, now?: number): Promise<boolean> {
 		const cutoff = new Date((now ?? Date.now()) - SUGGESTION_COOLDOWN_MS);
@@ -93,7 +93,7 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			where: {
 				spaceId,
 				type,
-				status: Not(SuggestionStatus.ACTIVE),
+				status: In([SuggestionStatus.ACCEPTED, SuggestionStatus.DISMISSED]),
 				feedbackAt: MoreThan(cutoff),
 			},
 			order: { feedbackAt: 'DESC' },
@@ -198,16 +198,10 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			order: { createdAt: 'DESC' },
 		});
 
-		// Filter out suggestions whose space+type combo is on cooldown
-		const filtered: BuddySuggestionEntity[] = [];
+		// Prefetch all recent feedback rows to check cooldowns in one query (avoids N+1)
+		const cooldownKeys = await this.getCooldownKeys(now);
 
-		for (const entity of entities) {
-			if (await this.isOnCooldown(entity.spaceId, entity.type)) {
-				continue;
-			}
-
-			filtered.push(entity);
-		}
+		const filtered = entities.filter((e) => !cooldownKeys.has(`${e.spaceId}:${e.type}`));
 
 		return filtered.map((e) => this.entityToSuggestion(e));
 	}
@@ -358,6 +352,23 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 		});
 
 		return candidates.some((s) => s.metadata && s.metadata.intentType === pattern.intentType);
+	}
+
+	/**
+	 * Fetch all spaceId+type combos that are currently on cooldown in a single query.
+	 */
+	private async getCooldownKeys(now: Date): Promise<Set<string>> {
+		const cutoff = new Date(now.getTime() - SUGGESTION_COOLDOWN_MS);
+
+		const recentFeedback = await this.suggestionRepo.find({
+			where: {
+				status: In([SuggestionStatus.ACCEPTED, SuggestionStatus.DISMISSED]),
+				feedbackAt: MoreThan(cutoff),
+			},
+			select: ['spaceId', 'type'],
+		});
+
+		return new Set(recentFeedback.map((r) => `${r.spaceId}:${r.type}`));
 	}
 
 	/**
