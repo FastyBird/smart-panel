@@ -46,6 +46,8 @@ export interface IExtensionActionDescriptor {
 	category?: string;
 	mode: 'immediate' | 'interactive';
 	dangerous?: boolean;
+	required_roles?: string[];
+	allowed?: boolean;
 	parameters?: IActionParameter[];
 }
 

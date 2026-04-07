@@ -196,6 +196,7 @@
 			"confirmDangerous": "Tato akce může mít významné dopady. Opravdu chcete pokračovat?",
 			"noActions": "Pro toto rozšíření nejsou k dispozici žádné akce",
 			"interactiveNotAvailable": "Interaktivní akce budou dostupné v budoucí aktualizaci",
+			"insufficientPermissions": "Nemáte oprávnění ke spouštění této akce",
 			"loading": "Načítání akcí..."
 		}
 	},

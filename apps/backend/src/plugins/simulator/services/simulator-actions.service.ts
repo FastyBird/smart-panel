@@ -11,6 +11,7 @@ import {
 	type IActionResult,
 	IExtensionAction,
 } from '../../../modules/extensions/services/extension-action.interface';
+import { UserRole } from '../../../modules/users/users.constants';
 import { GenerateDeviceDto } from '../dto/generate-device.dto';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from '../simulator.constants';
@@ -76,6 +77,7 @@ export class SimulatorActionsService implements OnModuleInit {
 			icon: 'mdi:file-document-outline',
 			category: ActionCategory.DATA,
 			mode: 'immediate',
+			requiredRoles: [UserRole.OWNER],
 			parameters: [
 				{
 					name: 'scenario',
@@ -330,6 +332,7 @@ export class SimulatorActionsService implements OnModuleInit {
 			category: ActionCategory.SIMULATION,
 			mode: 'immediate',
 			dangerous: true,
+			requiredRoles: [UserRole.OWNER],
 			parameters: [
 				{
 					name: 'state',

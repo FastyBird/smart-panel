@@ -196,6 +196,7 @@
 			"confirmDangerous": "Táto akcia môže mať významné dôsledky. Naozaj chcete pokračovať?",
 			"noActions": "Pre toto rozšírenie nie sú dostupné žiadne akcie",
 			"interactiveNotAvailable": "Interaktívne akcie budú dostupné v budúcej aktualizácii",
+			"insufficientPermissions": "Nemáte oprávnenie na spustenie tejto akcie",
 			"loading": "Načítavanie akcií..."
 		}
 	},

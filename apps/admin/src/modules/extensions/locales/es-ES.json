@@ -196,6 +196,7 @@
 			"confirmDangerous": "Esta acción puede tener efectos significativos. ¿Estás seguro de que deseas continuar?",
 			"noActions": "No hay acciones disponibles para esta extensión",
 			"interactiveNotAvailable": "Las acciones interactivas estarán disponibles en una futura actualización",
+			"insufficientPermissions": "No tiene permisos para ejecutar esta acción",
 			"loading": "Cargando acciones..."
 		}
 	},
