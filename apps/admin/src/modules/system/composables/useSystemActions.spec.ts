@@ -34,12 +34,14 @@ vi.mock('element-plus', async () => {
 		...actual,
 		ElMessageBox: {
 			confirm: mocks.confirm,
+			close: vi.fn(),
 		},
 	};
 });
 
 const systemActionsService = {
 	reboot: vi.fn(),
+	serviceRestart: vi.fn(),
 	powerOff: vi.fn(),
 	factoryReset: vi.fn(),
 };
@@ -90,8 +92,8 @@ describe('useSystemActions', () => {
 		vi.clearAllMocks();
 	});
 
-	it('onRestart shows confirm box and navigates', async () => {
-		mocks.confirm.mockResolvedValueOnce(true);
+	it('onRestart shows confirm box', async () => {
+		mocks.confirm.mockRejectedValueOnce('close');
 
 		const { onRestart } = useSystemActions();
 
@@ -100,8 +102,6 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('onPowerOff shows confirm and navigates', async () => {

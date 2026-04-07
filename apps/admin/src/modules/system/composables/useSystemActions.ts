@@ -1,4 +1,4 @@
-import { h, ref } from 'vue';
+import { h } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElMessageBox } from 'element-plus';
@@ -53,8 +53,6 @@ export const useSystemActions = (): IUseSystemActions => {
 			? t('systemModule.messages.manage.confirmRestartGateway')
 			: t('systemModule.messages.manage.confirmRestart');
 
-		const instanceRef = ref<ReturnType<typeof ElMessageBox> | null>(null);
-
 		const messageVNode = h('div', [
 			h('p', { style: 'margin-bottom: 16px' }, confirmMsg),
 			h('div', { style: 'display: flex; justify-content: flex-end; gap: 8px' }, [
@@ -83,9 +81,7 @@ export const useSystemActions = (): IUseSystemActions => {
 			]),
 		]);
 
-		instanceRef.value = ElMessageBox({
-			title: t('systemModule.headings.manage.restart'),
-			message: messageVNode,
+		ElMessageBox.confirm(messageVNode, t('systemModule.headings.manage.restart'), {
 			showConfirmButton: false,
 			showCancelButton: false,
 			showClose: true,

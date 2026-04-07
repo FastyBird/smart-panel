@@ -146,8 +146,9 @@ export class SystemCommandService implements OnModuleInit {
 			this.logger.warn(`Error during graceful shutdown: ${(error as Error).message}`);
 		}
 
-		// Exit with code 0 so the process manager (systemd/PM2/Docker) restarts the process
-		process.exit(0);
+		// Exit with code 1 so systemd (Restart=on-failure) restarts the process.
+		// Code 0 would be treated as a clean exit and systemd would NOT restart.
+		process.exit(1);
 	}
 
 	async factoryReset(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {
