@@ -1,4 +1,3 @@
-import { type VNode } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventHandlerName, EventType } from '../system.constants';
@@ -25,7 +24,6 @@ vi.mock('element-plus', async () => {
 		...actual,
 		ElMessageBox: {
 			confirm: mocks.confirm,
-			close: vi.fn(),
 		},
 	};
 });
@@ -77,29 +75,45 @@ vi.mock('../../../common', async () => {
 	};
 });
 
-/**
- * Extracts VNode button onClick handlers from the ElMessageBox.confirm call.
- * The first argument is a VNode tree: div > [p, div > [ElButton(service), ElButton(system)]]
- */
-const getRestartButtonHandlers = (): { serviceRestart: () => void; systemReboot: () => void } => {
-	const messageVNode = mocks.confirm.mock.calls[0][0] as VNode;
-	const children = messageVNode.children as VNode[];
-	const buttonContainer = children[1];
-	const buttons = buttonContainer.children as VNode[];
-
-	return {
-		serviceRestart: (buttons[0].props as Record<string, () => void>).onClick,
-		systemReboot: (buttons[1].props as Record<string, () => void>).onClick,
-	};
-};
-
 describe('useSystemActions', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
 	});
 
-	it('onRestart shows confirm dialog with restart options', async () => {
+	it('onRestart confirm triggers service restart', async () => {
+		mocks.confirm.mockResolvedValueOnce('confirm');
+
+		const { onRestart } = useSystemActions();
+
+		onRestart();
+
+		await vi.runAllTimersAsync();
+
+		expect(mocks.confirm).toHaveBeenCalled();
+		expect(systemActionsService.serviceRestart).toHaveBeenCalled();
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(
+			EventType.SYSTEM_SERVICE_RESTART_SET,
+			null,
+			EventHandlerName.INTERNAL_PLATFORM_ACTION,
+		);
+	});
+
+	it('onRestart cancel triggers system reboot', async () => {
+		mocks.confirm.mockRejectedValueOnce('cancel');
+
+		const { onRestart } = useSystemActions();
+
+		onRestart();
+
+		await vi.runAllTimersAsync();
+
+		expect(mocks.confirm).toHaveBeenCalled();
+		expect(systemActionsService.reboot).toHaveBeenCalled();
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+	});
+
+	it('onRestart close dismisses without action', async () => {
 		mocks.confirm.mockRejectedValueOnce('close');
 
 		const { onRestart } = useSystemActions();
@@ -109,48 +123,9 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-	});
-
-	it('onRestart service restart button navigates and sends command', async () => {
-		mocks.confirm.mockRejectedValueOnce('close');
-
-		const { onRestart } = useSystemActions();
-
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		const { serviceRestart } = getRestartButtonHandlers();
-
-		serviceRestart();
-
-		await vi.runAllTimersAsync();
-
-		expect(systemActionsService.serviceRestart).toHaveBeenCalled();
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(
-			EventType.SYSTEM_SERVICE_RESTART_SET,
-			null,
-			EventHandlerName.INTERNAL_PLATFORM_ACTION,
-		);
-	});
-
-	it('onRestart system reboot button navigates and sends command', async () => {
-		mocks.confirm.mockRejectedValueOnce('close');
-
-		const { onRestart } = useSystemActions();
-
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		const { systemReboot } = getRestartButtonHandlers();
-
-		systemReboot();
-
-		await vi.runAllTimersAsync();
-
-		expect(systemActionsService.reboot).toHaveBeenCalled();
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		expect(socketClient.sendCommand).not.toHaveBeenCalled();
+		expect(systemActionsService.reboot).not.toHaveBeenCalled();
+		expect(systemActionsService.serviceRestart).not.toHaveBeenCalled();
 	});
 
 	it('onPowerOff shows confirm and navigates', async () => {
@@ -179,21 +154,5 @@ describe('useSystemActions', () => {
 		expect(mocks.confirm).toHaveBeenCalled();
 
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30000);
-	});
-
-	it('closing restart dialog does nothing', async () => {
-		mocks.confirm.mockRejectedValueOnce('close');
-
-		const { onRestart } = useSystemActions();
-
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		expect(mocks.confirm).toHaveBeenCalled();
-
-		expect(socketClient.sendCommand).not.toHaveBeenCalled();
-		expect(systemActionsService.reboot).not.toHaveBeenCalled();
-		expect(systemActionsService.serviceRestart).not.toHaveBeenCalled();
 	});
 });
