@@ -78,6 +78,7 @@ export class OpenAiProvider implements ILlmProvider {
 		return {
 			content: result.content,
 			toolCalls: result.toolCalls,
+			toolErrors: result.toolErrors,
 			meta: {
 				provider: BUDDY_OPENAI_PLUGIN_NAME,
 				model: result.model,

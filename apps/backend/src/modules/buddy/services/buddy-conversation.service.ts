@@ -228,8 +228,11 @@ export class BuddyConversationService {
 
 		let response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
 
-		// If no tool calls, return directly
-		if (!response.toolCalls || response.toolCalls.length === 0) {
+		const hasToolWork = (r: typeof response): boolean =>
+			(r.toolCalls !== undefined && r.toolCalls.length > 0) || (r.toolErrors !== undefined && r.toolErrors.length > 0);
+
+		// If no tool calls or errors, return directly
+		if (!hasToolWork(response)) {
 			return response;
 		}
 
@@ -238,7 +241,7 @@ export class BuddyConversationService {
 
 		// Tool execution loop
 		for (let iteration = 0; iteration < maxIterations; iteration++) {
-			if (!response.toolCalls || response.toolCalls.length === 0) {
+			if (!hasToolWork(response)) {
 				break;
 			}
 
@@ -246,12 +249,25 @@ export class BuddyConversationService {
 			// Execute the tools for their side effects but return the response as-is afterwards.
 			const hasContentWithTools = !!response.content;
 
-			this.logger.debug(`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`);
+			const callCount = response.toolCalls?.length ?? 0;
+			const errorCount = response.toolErrors?.length ?? 0;
 
-			// Execute all tool calls
+			this.logger.debug(`Tool iteration ${iteration + 1}: ${callCount} tool call(s), ${errorCount} parse error(s)`);
+
+			// Execute all tool calls and include parse errors for malformed arguments
 			const toolResults: { success: boolean; summary: string }[] = [];
 
-			for (const toolCall of response.toolCalls) {
+			// Report malformed tool call arguments back to the LLM as failed results
+			if (response.toolErrors && response.toolErrors.length > 0) {
+				for (const toolError of response.toolErrors) {
+					toolResults.push({
+						success: false,
+						summary: `Tool "${toolError.toolName}" (id=${toolError.toolCallId}): FAILED — ${toolError.error}`,
+					});
+				}
+			}
+
+			for (const toolCall of response.toolCalls ?? []) {
 				const result = await this.toolProviderRegistry.executeTool(toolCall);
 
 				toolResults.push({
@@ -267,7 +283,7 @@ export class BuddyConversationService {
 			// If any tool failed, fall through to re-query the LLM so it can
 			// provide an accurate response reflecting the failures.
 			if (hasContentWithTools && allSucceeded) {
-				return { ...response, meta: accumulatedMeta, toolCalls: undefined };
+				return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
 			}
 
 			// Append the assistant's tool call response and tool results as a follow-up user message
@@ -278,7 +294,10 @@ export class BuddyConversationService {
 			if (response.content) {
 				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
 			} else {
-				const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
+				const toolNames = [
+					...(response.toolCalls ?? []).map((tc) => tc.name),
+					...(response.toolErrors ?? []).map((te) => `${te.toolName} (parse error)`),
+				].join(', ');
 
 				workingMessages.push({
 					role: MessageRole.ASSISTANT,
@@ -297,7 +316,7 @@ export class BuddyConversationService {
 		}
 
 		// If loop exhausted and final response has no text content, provide a fallback
-		if (!response.content && response.toolCalls && response.toolCalls.length > 0) {
+		if (!response.content && hasToolWork(response)) {
 			return {
 				...response,
 				meta: accumulatedMeta,
@@ -305,10 +324,11 @@ export class BuddyConversationService {
 					'I attempted to perform the requested actions but reached the maximum number of steps. ' +
 					'Please try again or simplify your request.',
 				toolCalls: undefined,
+				toolErrors: undefined,
 			};
 		}
 
-		return { ...response, meta: accumulatedMeta, toolCalls: undefined };
+		return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
 	}
 
 	/**

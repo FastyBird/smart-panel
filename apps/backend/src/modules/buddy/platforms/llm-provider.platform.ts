@@ -35,9 +35,16 @@ export interface LlmResponseMeta {
  * Structured response from an LLM provider, containing the message content and metadata.
  * When the LLM decides to call tools, `toolCalls` will be populated and `content` may be empty.
  */
+export interface LlmToolError {
+	toolCallId: string;
+	toolName: string;
+	error: string;
+}
+
 export interface LlmResponse {
 	content: string;
 	toolCalls?: LlmToolCall[];
+	toolErrors?: LlmToolError[];
 	meta: LlmResponseMeta;
 }
 

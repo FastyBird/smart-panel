@@ -8,7 +8,7 @@ import {
 	BuddyProviderNotConfiguredException,
 	BuddyProviderTimeoutException,
 } from '../buddy.exceptions';
-import { withServiceTimeout } from '../buddy.utils';
+import { isTimeoutError, withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
@@ -96,23 +96,13 @@ export class LlmProviderService {
 	}
 
 	private handleProviderError(providerName: string, error: unknown, timeout: number): never {
-		const err = error as Error;
-		const name = err.name ?? '';
-		const message = err.message ?? '';
-
-		const isTimeout =
-			name === 'AbortError' ||
-			name.includes('Timeout') ||
-			message.includes('timeout') ||
-			message.includes('timed out') ||
-			message.includes('ETIMEDOUT') ||
-			message.includes('ECONNABORTED');
-
-		if (isTimeout) {
+		if (isTimeoutError(error)) {
 			this.logger.error(`${providerName} provider timeout after ${timeout}ms`);
 
 			throw new BuddyProviderTimeoutException();
 		}
+
+		const message = error instanceof Error ? error.message : 'Unknown provider error';
 
 		this.logger.error(`${providerName} provider error: ${message}`);
 

@@ -39,6 +39,35 @@ export async function withServiceTimeout<T>(
 }
 
 /**
+ * Detect whether an error represents a timeout from any LLM provider SDK.
+ * Prefers structured checks (instanceof, error.name, error.code) over
+ * fragile string matching, but keeps string matching as a fallback.
+ */
+export function isTimeoutError(error: unknown): boolean {
+	if (error instanceof BuddyProviderTimeoutException) {
+		return true;
+	}
+
+	if (error && typeof error === 'object') {
+		const e = error as Record<string, unknown>;
+
+		// Anthropic SDK: APIConnectionTimeoutError
+		if (e.name === 'APIConnectionTimeoutError') return true;
+		// OpenAI SDK: AbortError
+		if (e.name === 'AbortError') return true;
+		// Generic names containing "Timeout"
+		if (typeof e.name === 'string' && e.name.includes('Timeout')) return true;
+		// Node.js network error codes
+		if (e.code === 'ETIMEDOUT' || e.code === 'ECONNABORTED') return true;
+	}
+
+	// Fallback: string matching on message
+	const msg = String((error as Error)?.message ?? '');
+
+	return /timeout|timed?\s*out|ETIMEDOUT|ECONNABORTED/i.test(msg);
+}
+
+/**
  * Interpolate a template string with variable values.
  * Replaces `${key}` placeholders with corresponding values from the vars map.
  * Unknown placeholders are left as-is.
