@@ -109,7 +109,10 @@
 			"personality": {
 				"title": "Osobnost",
 				"description": "Definujte tón, styl a osobnost buddy. Tento text je zahrnut v systémovém promptu AI.",
-				"placeholder": "Jsi nápomocný asistent chytré domácnosti. Buď stručný, přátelský a praktický.\nZaměř se na realizovatelné návrhy. Používej jednoduchý jazyk."
+				"placeholder": "Jsi nápomocný asistent chytré domácnosti. Buď stručný, přátelský a praktický.\nZaměř se na realizovatelné návrhy. Používej jednoduchý jazyk.",
+				"validation": {
+					"maxLength": "Text osobnosti nesmí přesáhnout 2000 znaků"
+				}
 			}
 		},
 		"message": {

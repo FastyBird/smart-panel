@@ -35,8 +35,14 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			} else {
 				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 			}
-		} catch {
-			personalityError.value = t('buddyModule.messages.errors.loadPersonality');
+		} catch (error: unknown) {
+			const apiError = error as { status?: number };
+
+			if (apiError.status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+			} else {
+				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
+			}
 		} finally {
 			personalityLoading.value = false;
 		}
@@ -65,8 +71,14 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			}
 
 			return true;
-		} catch {
-			personalityError.value = t('buddyModule.messages.errors.savePersonality');
+		} catch (error: unknown) {
+			const apiError = error as { status?: number };
+
+			if (apiError.status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+			} else {
+				personalityError.value = t('buddyModule.messages.errors.savePersonality');
+			}
 
 			return false;
 		} finally {

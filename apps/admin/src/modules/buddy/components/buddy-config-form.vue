@@ -406,7 +406,15 @@ const ttsOptions = computed(() => {
 	return options;
 });
 
-const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
+const rules = reactive<FormRules<IBuddyConfigEditForm>>({
+	personality: [
+		{
+			max: 2000,
+			message: t('buddyModule.fields.config.personality.validation.maxLength'),
+			trigger: 'change',
+		},
+	],
+});
 
 watch(
 	(): FormResultType => formResult.value,
