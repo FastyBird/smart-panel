@@ -64,7 +64,7 @@ export function isTimeoutError(error: unknown): boolean {
 	// Fallback: string matching on message
 	const msg = String((error as Error)?.message ?? '');
 
-	return /timeout|timed?\s*out/i.test(msg);
+	return /timeout|timed?\s*out|ETIMEDOUT|ECONNABORTED/i.test(msg);
 }
 
 /**

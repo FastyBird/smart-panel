@@ -81,7 +81,7 @@ export async function sendOpenAiMessage(
 	// Extract tool calls if present — malformed arguments are returned as errors
 	// to the LLM so it can retry, rather than silently dropped.
 	let toolCalls: LlmToolCall[] | undefined;
-	let toolErrors: OpenAiToolError[] | undefined;
+	let toolErrors: LlmToolError[] | undefined;
 
 	if (message?.tool_calls && message.tool_calls.length > 0) {
 		toolCalls = [];

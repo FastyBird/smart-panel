@@ -41,6 +41,8 @@ describe('isTimeoutError', () => {
 	it('should detect timeout via message string matching', () => {
 		expect(isTimeoutError(new Error('Request timed out after 30s'))).toBe(true);
 		expect(isTimeoutError(new Error('Connection timeout'))).toBe(true);
+		expect(isTimeoutError(new Error('ECONNABORTED: socket hang up'))).toBe(true);
+		expect(isTimeoutError(new Error('connect ETIMEDOUT 1.2.3.4:443'))).toBe(true);
 	});
 
 	it('should not match non-timeout errors', () => {
