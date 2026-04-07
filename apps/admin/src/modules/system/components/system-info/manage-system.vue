@@ -2,7 +2,7 @@
 	<el-row
 		justify="center"
 		class="cursor-pointer"
-		@click="onRestart"
+		@click="showRestartDialog = true"
 	>
 		<el-col
 			:span="3"
@@ -184,10 +184,17 @@
 			</div>
 		</el-col>
 	</el-row>
+
+	<restart-confirm-dialog
+		:visible="showRestartDialog"
+		@close="showRestartDialog = false"
+		@service-restart="onServiceRestart"
+		@system-reboot="onSystemReboot"
+	/>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -200,6 +207,8 @@ import { useConfigModule } from '../../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../../displays/store/config.store.types';
 import { useSystemActions } from '../../composables/composables';
 import { RouteNames } from '../../system.constants';
+
+import RestartConfirmDialog from './restart-confirm-dialog.vue';
 
 defineOptions({
 	name: 'ManageSystem',
@@ -220,7 +229,9 @@ const isGateway = computed<boolean>((): boolean => {
 	return config !== null && config.deploymentMode !== 'all-in-one';
 });
 
-const { onRestart, onPowerOff, onFactoryReset } = useSystemActions();
+const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
+
+const showRestartDialog = ref(false);
 
 const onShowLogs = (): void => {
 	emit('close');

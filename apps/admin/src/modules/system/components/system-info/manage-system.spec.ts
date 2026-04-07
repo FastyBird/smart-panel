@@ -8,7 +8,8 @@ import ManageSystem from './manage-system.vue';
 
 type ManageSystemInstance = ComponentPublicInstance;
 
-const onRestart = vi.fn();
+const onServiceRestart = vi.fn();
+const onSystemReboot = vi.fn();
 const onPowerOff = vi.fn();
 const onFactoryReset = vi.fn();
 
@@ -27,7 +28,8 @@ vi.mock('vue-router', () => ({
 
 vi.mock('../../composables/composables', () => ({
 	useSystemActions: () => ({
-		onRestart,
+		onServiceRestart,
+		onSystemReboot,
 		onPowerOff,
 		onFactoryReset,
 	}),
@@ -54,10 +56,10 @@ describe('ManageSystem.vue', () => {
 		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.manage.factoryResetDevice');
 	});
 
-	it('calls onRestart when restart row is clicked', async () => {
+	it('opens restart dialog when restart row is clicked', async () => {
 		await wrapper.findAllComponents({ name: 'ElRow' })[0]?.trigger('click');
 
-		expect(onRestart).toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'RestartConfirmDialog' }).props('visible')).toBe(true);
 	});
 
 	it('calls onPowerOff when power-off row is clicked', async () => {

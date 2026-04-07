@@ -26,42 +26,24 @@ export const useSystemActions = (): IUseSystemActions => {
 		return config !== null && config.deploymentMode !== 'all-in-one';
 	};
 
-	const onRestart = (): void => {
-		const gateway = isGatewayMode();
-		const confirmMsg = gateway
-			? t('systemModule.messages.manage.confirmRestartGateway')
-			: t('systemModule.messages.manage.confirmRestart');
+	const onServiceRestart = async (): Promise<void> => {
+		systemActions.serviceRestart();
 
-		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.restart'), {
-			confirmButtonText: t('systemModule.buttons.restartService.title'),
-			cancelButtonText: t('systemModule.buttons.restartSystem.title'),
-			distinguishCancelAndClose: true,
-			type: 'warning',
-		})
-			.then(async (): Promise<void> => {
-				// Confirm button — "Restart Service" (soft restart, lighter action)
-				systemActions.serviceRestart();
+		try {
+			await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		} catch {
+			// Server going down before ack is expected
+		}
+	};
 
-				try {
-					await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-				} catch {
-					// Server going down before ack is expected
-				}
-			})
-			.catch(async (action: string): Promise<void> => {
-				if (action === 'cancel') {
-					// Cancel button — "Restart System" (full platform reboot)
-					systemActions.reboot();
+	const onSystemReboot = async (): Promise<void> => {
+		systemActions.reboot();
 
-					try {
-						await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-					} catch {
-						// Server going down before ack is expected
-					}
-				}
-
-				// action === 'close' — dialog dismissed via X, Esc, or click outside
-			});
+		try {
+			await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		} catch {
+			// Server going down before ack is expected
+		}
 	};
 
 	const onPowerOff = (): void => {
@@ -117,7 +99,8 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	return {
-		onRestart,
+		onServiceRestart,
+		onSystemReboot,
 		onPowerOff,
 		onFactoryReset,
 	};

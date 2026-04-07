@@ -81,16 +81,11 @@ describe('useSystemActions', () => {
 		vi.clearAllMocks();
 	});
 
-	it('onRestart confirm triggers service restart', async () => {
-		mocks.confirm.mockResolvedValueOnce('confirm');
+	it('onServiceRestart navigates and sends command', async () => {
+		const { onServiceRestart } = useSystemActions();
 
-		const { onRestart } = useSystemActions();
+		await onServiceRestart();
 
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		expect(mocks.confirm).toHaveBeenCalled();
 		expect(systemActionsService.serviceRestart).toHaveBeenCalled();
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(
 			EventType.SYSTEM_SERVICE_RESTART_SET,
@@ -99,33 +94,13 @@ describe('useSystemActions', () => {
 		);
 	});
 
-	it('onRestart cancel triggers system reboot', async () => {
-		mocks.confirm.mockRejectedValueOnce('cancel');
+	it('onSystemReboot navigates and sends command', async () => {
+		const { onSystemReboot } = useSystemActions();
 
-		const { onRestart } = useSystemActions();
+		await onSystemReboot();
 
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		expect(mocks.confirm).toHaveBeenCalled();
 		expect(systemActionsService.reboot).toHaveBeenCalled();
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-	});
-
-	it('onRestart close dismisses without action', async () => {
-		mocks.confirm.mockRejectedValueOnce('close');
-
-		const { onRestart } = useSystemActions();
-
-		onRestart();
-
-		await vi.runAllTimersAsync();
-
-		expect(mocks.confirm).toHaveBeenCalled();
-		expect(socketClient.sendCommand).not.toHaveBeenCalled();
-		expect(systemActionsService.reboot).not.toHaveBeenCalled();
-		expect(systemActionsService.serviceRestart).not.toHaveBeenCalled();
 	});
 
 	it('onPowerOff shows confirm and navigates', async () => {
@@ -154,5 +129,18 @@ describe('useSystemActions', () => {
 		expect(mocks.confirm).toHaveBeenCalled();
 
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30000);
+	});
+
+	it('canceling power off does nothing', async () => {
+		mocks.confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		const { onPowerOff } = useSystemActions();
+
+		onPowerOff();
+
+		await vi.runAllTimersAsync();
+
+		expect(mocks.confirm).toHaveBeenCalled();
+		expect(socketClient.sendCommand).not.toHaveBeenCalled();
 	});
 });
