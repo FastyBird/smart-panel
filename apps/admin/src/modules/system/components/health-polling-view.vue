@@ -62,6 +62,9 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let sawUnhealthy = false;
 const startTime = Date.now();
 
+const pollIntervalMs = 3000;
+const initialPollMs = props.waitForUnhealthy ? 500 : pollIntervalMs;
+
 const checkHealth = async (): Promise<void> => {
 	try {
 		const response = await fetch(`/api/v1/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/health`);
@@ -88,11 +91,14 @@ const checkHealth = async (): Promise<void> => {
 		return;
 	}
 
-	timer = setTimeout(checkHealth, 3000);
+	// Poll faster while waiting for the service to go down, slower once it's down
+	const nextInterval = sawUnhealthy ? pollIntervalMs : 1000;
+
+	timer = setTimeout(checkHealth, nextInterval);
 };
 
 onMounted(() => {
-	timer = setTimeout(checkHealth, 3000);
+	timer = setTimeout(checkHealth, initialPollMs);
 });
 
 onUnmounted(() => {
