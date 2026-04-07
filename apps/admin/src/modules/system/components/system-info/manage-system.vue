@@ -187,6 +187,7 @@
 
 	<restart-confirm-dialog
 		:visible="showRestartDialog"
+		:is-gateway="isGateway"
 		@close="showRestartDialog = false"
 		@service-restart="onHandleServiceRestart"
 		@system-reboot="onHandleSystemReboot"

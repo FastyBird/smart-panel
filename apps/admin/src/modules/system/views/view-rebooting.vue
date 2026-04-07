@@ -4,6 +4,7 @@
 		:timeout-message="t('systemModule.messages.manage.rebootTakesTooLong')"
 		:timeout-ms="2 * 60 * 1000"
 		:on-success="onSuccess"
+		:wait-for-unhealthy="true"
 	/>
 </template>
 

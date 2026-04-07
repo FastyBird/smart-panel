@@ -43,15 +43,13 @@ import { ElButton, ElDialog, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useConfigModule } from '../../../config/composables/composables';
-import type { IDisplaysConfigModule } from '../../../displays/store/config.store.types';
-
 defineOptions({
 	name: 'RestartConfirmDialog',
 });
 
-defineProps<{
+const props = defineProps<{
 	visible: boolean;
+	isGateway: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -62,15 +60,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
-
-const isGateway = computed<boolean>((): boolean => {
-	const config = displaysConfig.value as IDisplaysConfigModule | null;
-
-	return config !== null && config.deploymentMode !== 'all-in-one';
-});
-
 const message = computed<string>(() =>
-	isGateway.value ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart'),
+	props.isGateway ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart'),
 );
 </script>
