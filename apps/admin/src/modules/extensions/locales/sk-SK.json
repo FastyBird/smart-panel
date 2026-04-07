@@ -183,7 +183,8 @@
 			},
 			"required": "Povinné",
 			"dangerous": "Nebezpečné",
-			"comingSoon": "Čoskoro"
+			"comingSoon": "Čoskoro",
+			"history": "História ({count})"
 		},
 		"buttons": {
 			"run": "Spustiť",
