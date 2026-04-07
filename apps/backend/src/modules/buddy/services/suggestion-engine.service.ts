@@ -48,12 +48,17 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		// Expire any suggestions that passed their expiresAt while the service was down
-		await this.cleanupExpired();
+		try {
+			// Expire any suggestions that passed their expiresAt while the service was down
+			await this.cleanupExpired();
 
-		const active = await this.suggestionRepo.count({ where: { status: SuggestionStatus.ACTIVE } });
+			const active = await this.suggestionRepo.count({ where: { status: SuggestionStatus.ACTIVE } });
 
-		this.logger.log(`Loaded ${active} active suggestion(s) from database`);
+			this.logger.log(`Loaded ${active} active suggestion(s) from database`);
+		} catch (error) {
+			// Table may not exist yet during CLI commands (e.g. openapi:generate)
+			this.logger.warn(`Failed to load suggestions on init: ${(error as Error).message}`);
+		}
 
 		this.cleanupTimer = setInterval(() => void this.cleanupExpired(), SUGGESTION_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();

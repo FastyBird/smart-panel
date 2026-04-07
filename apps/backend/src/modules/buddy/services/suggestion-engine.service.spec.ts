@@ -27,54 +27,81 @@ function makePattern(overrides: Partial<DetectedPattern> = {}): DetectedPattern 
  * In-memory mock for TypeORM Repository<BuddySuggestionEntity>.
  * Simulates basic CRUD so the service can be tested without a database.
  */
+function matchesOperator(value: unknown, operator: any): boolean {
+	if (operator === undefined || operator === null) return true;
+
+	if (typeof operator === 'object' && operator._type) {
+		switch (operator._type) {
+			case 'not':
+				return value !== operator._value;
+			case 'moreThan':
+				return value instanceof Date
+					? value.getTime() > new Date(operator._value as string).getTime()
+					: (value as number) > (operator._value as number);
+			case 'lessThanOrEqual':
+				return value instanceof Date
+					? value.getTime() <= new Date(operator._value as string).getTime()
+					: (value as number) <= (operator._value as number);
+			default:
+				return true;
+		}
+	}
+
+	return value === operator;
+}
+
 function createMockRepository() {
 	const store = new Map<string, BuddySuggestionEntity>();
 
 	return {
 		_store: store,
-		create: jest.fn((data: Partial<BuddySuggestionEntity>) => ({ ...data }) as BuddySuggestionEntity),
-		save: jest.fn(async (entity: BuddySuggestionEntity) => {
-			store.set(entity.id, { ...entity, createdAt: entity.createdAt ?? new Date() });
+		create: jest.fn((data: Partial<BuddySuggestionEntity>) => {
+			const entity = { ...data, createdAt: data.createdAt ?? new Date() } as BuddySuggestionEntity;
 
 			return entity;
 		}),
-		findOne: jest.fn(async ({ where }: any) => {
+		save: jest.fn(async (entity: BuddySuggestionEntity) => {
+			// Mutate in-place like TypeORM does
+			if (!entity.createdAt) {
+				entity.createdAt = new Date();
+			}
+
+			store.set(entity.id, entity);
+
+			return entity;
+		}),
+		findOne: jest.fn(async ({ where, order }: any) => {
 			if (where?.id) {
 				return store.get(where.id) ?? null;
 			}
 
-			// Find by spaceId + type + status + feedbackAt (cooldown check)
-			for (const entity of store.values()) {
-				let match = true;
+			const candidates = [...store.values()].filter((entity) => {
+				if (!matchesOperator(entity.spaceId, where?.spaceId)) return false;
+				if (!matchesOperator(entity.type, where?.type)) return false;
+				if (!matchesOperator(entity.status, where?.status)) return false;
+				if (!matchesOperator(entity.feedbackAt, where?.feedbackAt)) return false;
 
-				if (where?.spaceId && entity.spaceId !== where.spaceId) match = false;
-				if (where?.type && entity.type !== where.type) match = false;
+				return true;
+			});
 
-				if (where?.status?._type === 'not' && entity.status === where.status._value) match = false;
-				else if (where?.status && typeof where.status === 'string' && entity.status !== where.status) match = false;
-
-				if (match) return entity;
+			if (order?.feedbackAt === 'DESC') {
+				candidates.sort((a, b) => (b.feedbackAt?.getTime() ?? 0) - (a.feedbackAt?.getTime() ?? 0));
 			}
 
-			return null;
+			return candidates[0] ?? null;
 		}),
 		find: jest.fn(async ({ where, order }: any = {}) => {
 			let results = [...store.values()];
 
 			if (where) {
 				results = results.filter((e) => {
-					if (where.spaceId && e.spaceId !== where.spaceId) return false;
-					if (where.type && e.type !== where.type) return false;
-					if (where.status && typeof where.status === 'string' && e.status !== where.status) return false;
+					if (!matchesOperator(e.spaceId, where.spaceId)) return false;
+					if (!matchesOperator(e.type, where.type)) return false;
+					if (!matchesOperator(e.status, where.status)) return false;
+					if (!matchesOperator(e.expiresAt, where.expiresAt)) return false;
 
 					return true;
 				});
-
-				// Filter active non-expired
-				if (where.expiresAt?._type === 'moreThan') {
-					const cutoff = where.expiresAt._value as Date;
-					results = results.filter((e) => e.expiresAt.getTime() > cutoff.getTime());
-				}
 			}
 
 			if (order?.createdAt === 'DESC') {
@@ -97,12 +124,8 @@ function createMockRepository() {
 			let affected = 0;
 
 			for (const entity of store.values()) {
-				if (criteria.status && entity.status !== criteria.status) continue;
-				if (criteria.expiresAt?._type === 'lessThanOrEqual') {
-					const cutoff = criteria.expiresAt._value as Date;
-
-					if (entity.expiresAt.getTime() > cutoff.getTime()) continue;
-				}
+				if (!matchesOperator(entity.status, criteria.status)) continue;
+				if (!matchesOperator(entity.expiresAt, criteria.expiresAt)) continue;
 
 				Object.assign(entity, update);
 				affected++;
@@ -176,6 +199,18 @@ describe('SuggestionEngineService', () => {
 			const second = await service.generateSuggestions();
 
 			expect(second).toHaveLength(0);
+		});
+
+		it('should skip patterns that are on cooldown', async () => {
+			patternDetector.detectPatterns.mockReturnValue([makePattern()]);
+			const initial = await service.generateSuggestions();
+
+			await service.recordFeedback(initial[0].id, SuggestionFeedback.APPLIED);
+
+			patternDetector.detectPatterns.mockReturnValue([makePattern()]);
+			const suggestions = await service.generateSuggestions();
+
+			expect(suggestions).toHaveLength(0);
 		});
 
 		it('should return empty array when no patterns are detected', async () => {
@@ -273,6 +308,14 @@ describe('SuggestionEngineService', () => {
 			const result = await service.recordFeedback(createdSuggestion.id, SuggestionFeedback.DISMISSED);
 
 			expect(result.success).toBe(true);
+		});
+
+		it('should set cooldown after feedback', async () => {
+			await service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED);
+
+			const onCooldown = await service.isOnCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE);
+
+			expect(onCooldown).toBe(true);
 		});
 
 		it('should throw for non-existent suggestion ID', async () => {
