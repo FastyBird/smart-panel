@@ -10,6 +10,7 @@ import LayoutMaintenance from '../layouts/layout-maintenance.vue';
 import ViewFactoryReset from '../views/view-factory-reset.vue';
 import ViewPowerOff from '../views/view-power-off.vue';
 import ViewRebooting from '../views/view-rebooting.vue';
+import ViewServiceRestarting from '../views/view-service-restarting.vue';
 
 export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 	{
@@ -46,6 +47,15 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 				component: ViewRebooting,
 				meta: {
 					title: 'System reboot',
+					icon: 'mdi:restart',
+				},
+			},
+			{
+				path: 'service-restarting',
+				name: RouteNames.SERVICE_RESTARTING,
+				component: ViewServiceRestarting,
+				meta: {
+					title: 'Service restart',
 					icon: 'mdi:restart',
 				},
 			},

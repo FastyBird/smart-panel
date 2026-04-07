@@ -18,9 +18,12 @@ export enum EventType {
 	SYSTEM_POWER_OFF = 'SystemModule.System.PowerOff',
 	SYSTEM_FACTORY_RESET = 'SystemModule.System.FactoryReset',
 
+	SYSTEM_SERVICE_RESTART = 'SystemModule.System.ServiceRestart',
+
 	SYSTEM_REBOOT_SET = 'SystemModule.System.Reboot.Set',
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
+	SYSTEM_SERVICE_RESTART_SET = 'SystemModule.System.ServiceRestart.Set',
 
 	DISPLAY_REBOOT = 'SystemModule.Display.Reboot',
 	DISPLAY_POWER_OFF = 'SystemModule.Display.PowerOff',

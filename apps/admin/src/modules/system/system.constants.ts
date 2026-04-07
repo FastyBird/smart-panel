@@ -10,9 +10,12 @@ export enum EventType {
 	SYSTEM_POWER_OFF = 'SystemModule.System.PowerOff',
 	SYSTEM_FACTORY_RESET = 'SystemModule.System.FactoryReset',
 
+	SYSTEM_SERVICE_RESTART = 'SystemModule.System.ServiceRestart',
+
 	SYSTEM_REBOOT_SET = 'SystemModule.System.Reboot.Set',
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
+	SYSTEM_SERVICE_RESTART_SET = 'SystemModule.System.ServiceRestart.Set',
 
 	SYSTEM_UPDATE_STATUS = 'SystemModule.System.Update.Status',
 	SYSTEM_UPDATE_PROGRESS = 'SystemModule.System.Update.Progress',
@@ -49,6 +52,7 @@ export const RouteNames = {
 	POWER_OFF: 'system_module-power_off',
 	FACTORY_RESET: 'system_module-factory_reset',
 	REBOOTING: 'system_module-rebooting',
+	SERVICE_RESTARTING: 'system_module-service_restarting',
 };
 
 export enum Layout {

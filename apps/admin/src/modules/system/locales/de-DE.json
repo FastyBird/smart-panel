@@ -80,6 +80,8 @@
       "confirmPowerOffGateway": "Sind Sie sicher, dass Sie das Gateway ausschalten möchten? Alle verbundenen Displays verlieren die Verbindung. Das Gateway muss manuell wieder eingeschaltet werden.",
       "confirmFactoryResetGateway": "Sind Sie sicher, dass Sie das Gateway auf Werkseinstellungen zurücksetzen möchten? Alle Gateway-Daten werden gelöscht und alle verbundenen Displays zurückgesetzt. Diese Aktion ist irreversibel.",
       "waitingToBoot": "Warten auf den Start des Panels...",
+      "waitingServiceToBoot": "Dienst wird neu gestartet, bitte warten...",
+      "serviceRestartTakesTooLong": "Der Neustart des Dienstes dauert länger als erwartet. Bitte überprüfen Sie das Panel manuell.",
       "panelBackOnline": "Smart Panel ist wieder online.",
       "rebootTakesTooLong": "Der Neustart dauert länger als erwartet. Bitte überprüfen Sie das Panel manuell.",
       "rebootFailed": "Neustart des Smart Panels fehlgeschlagen. Bitte versuchen Sie es erneut oder überprüfen Sie das Gerät manuell.",
@@ -370,6 +372,12 @@
     },
     "no": {
       "title": "Nein"
+    },
+    "restartService": {
+      "title": "Dienst neu starten"
+    },
+    "restartSystem": {
+      "title": "System neu starten"
     },
     "reset": {
       "title": "Zurücksetzen"

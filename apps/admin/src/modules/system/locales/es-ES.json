@@ -80,6 +80,8 @@
 			"confirmPowerOffGateway": "¿Estás seguro de que deseas apagar la pasarela? Todas las pantallas conectadas perderán la conectividad. La pasarela deberá encenderse manualmente de nuevo.",
 			"confirmFactoryResetGateway": "¿Estás seguro de que deseas restablecer la pasarela a su configuración de fábrica? Esto borrará todos los datos de la pasarela y restablecerá todas las pantallas conectadas. Esta acción es irreversible.",
 			"waitingToBoot": "Esperando a que el panel se inicie...",
+			"waitingServiceToBoot": "Reiniciando el servicio, por favor espere...",
+			"serviceRestartTakesTooLong": "El reinicio del servicio está tardando más de lo esperado. Verifique el panel manualmente.",
 			"panelBackOnline": "El panel inteligente está de nuevo en línea.",
 			"rebootTakesTooLong": "El reinicio está tardando más de lo esperado. Por favor, verifica el panel manualmente.",
 			"rebootFailed": "No se pudo reiniciar el panel inteligente. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente.",
@@ -370,6 +372,12 @@
 		},
 		"no": {
 			"title": "No"
+		},
+		"restartService": {
+			"title": "Reiniciar servicio"
+		},
+		"restartSystem": {
+			"title": "Reiniciar sistema"
 		},
 		"reset": {
 			"title": "Restablecer"

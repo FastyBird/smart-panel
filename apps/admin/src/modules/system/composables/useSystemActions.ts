@@ -33,12 +33,13 @@ export const useSystemActions = (): IUseSystemActions => {
 			: t('systemModule.messages.manage.confirmRestart');
 
 		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.restart'), {
-			confirmButtonText: t('systemModule.buttons.yes.title'),
-			cancelButtonText: t('systemModule.buttons.no.title'),
+			confirmButtonText: t('systemModule.buttons.restartSystem.title'),
+			cancelButtonText: t('systemModule.buttons.restartService.title'),
+			distinguishCancelAndClose: true,
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				// Navigate first — the backend may go down before the command response
+				// "Restart System" — full platform reboot
 				systemActions.reboot();
 
 				try {
@@ -47,8 +48,19 @@ export const useSystemActions = (): IUseSystemActions => {
 					// Server going down before ack is expected
 				}
 			})
-			.catch((): void => {
-				// Dialog cancelled
+			.catch(async (action: string): Promise<void> => {
+				if (action === 'cancel') {
+					// "Restart Service" — soft restart (service only)
+					systemActions.serviceRestart();
+
+					try {
+						await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+					} catch {
+						// Server going down before ack is expected
+					}
+				}
+
+				// action === 'close' — dialog dismissed, do nothing
 			});
 	};
 

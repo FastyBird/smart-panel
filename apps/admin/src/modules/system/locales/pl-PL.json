@@ -80,6 +80,8 @@
 			"confirmPowerOffGateway": "Czy na pewno chcesz wyłączyć bramę? Wszystkie podłączone wyświetlacze stracą łączność. Bramę trzeba będzie ręcznie włączyć ponownie.",
 			"confirmFactoryResetGateway": "Czy na pewno chcesz przywrócić ustawienia fabryczne bramy? Spowoduje to wymazanie wszystkich danych bramy i reset wszystkich podłączonych wyświetlaczy. Tej operacji nie można cofnąć.",
 			"waitingToBoot": "Oczekiwanie na uruchomienie panelu...",
+			"waitingServiceToBoot": "Restartowanie usługi, proszę czekać...",
+			"serviceRestartTakesTooLong": "Restart usługi trwa dłużej niż oczekiwano. Sprawdź panel ręcznie.",
 			"panelBackOnline": "Smart Panel jest ponownie online.",
 			"rebootTakesTooLong": "Ponowne uruchamianie trwa dłużej niż oczekiwano. Sprawdź panel ręcznie.",
 			"rebootFailed": "Nie udało się ponownie uruchomić Smart Panel. Spróbuj ponownie lub sprawdź urządzenie ręcznie.",
@@ -370,6 +372,12 @@
 		},
 		"no": {
 			"title": "Nie"
+		},
+		"restartService": {
+			"title": "Restartuj usługę"
+		},
+		"restartSystem": {
+			"title": "Restartuj system"
 		},
 		"reset": {
 			"title": "Resetuj"

@@ -80,6 +80,8 @@
 			"confirmPowerOffGateway": "Opravdu chcete vypnout bránu? Všechny připojené displeje ztratí konektivitu. Bránu bude nutné ručně znovu zapnout.",
 			"confirmFactoryResetGateway": "Opravdu chcete provést tovární reset brány? Tím se vymažou všechna data brány a resetují se všechny připojené displeje. Tato akce je nevratná.",
 			"waitingToBoot": "Čekání na spuštění panelu...",
+			"waitingServiceToBoot": "Restartování služby, prosím čekejte...",
+			"serviceRestartTakesTooLong": "Restart služby trvá déle než se očekávalo. Zkontrolujte panel ručně.",
 			"panelBackOnline": "Smart Panel je zpět online.",
 			"rebootTakesTooLong": "Restart trvá déle, než se očekávalo. Zkontrolujte prosím panel ručně.",
 			"rebootFailed": "Nepodařilo se restartovat Smart Panel. Zkuste to znovu nebo zkontrolujte zařízení ručně.",
@@ -370,6 +372,12 @@
 		},
 		"no": {
 			"title": "Ne"
+		},
+		"restartService": {
+			"title": "Restartovat službu"
+		},
+		"restartSystem": {
+			"title": "Restartovat systém"
 		},
 		"reset": {
 			"title": "Reset"

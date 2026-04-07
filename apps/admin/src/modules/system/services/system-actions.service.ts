@@ -29,6 +29,10 @@ export class SystemActionsService {
 		void this.router.push({ name: RouteNames.REBOOTING });
 	}
 
+	serviceRestart(): void {
+		void this.router.push({ name: RouteNames.SERVICE_RESTARTING });
+	}
+
 	powerOff(): void {
 		void this.router.push({ name: RouteNames.POWER_OFF });
 	}

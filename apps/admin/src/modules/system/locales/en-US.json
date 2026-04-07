@@ -81,6 +81,8 @@
       "confirmPowerOffGateway": "Are you sure you want to power off the gateway? All connected displays will lose connectivity. The gateway will need to be manually turned on again.",
       "confirmFactoryResetGateway": "Are you sure you want to factory reset the gateway? This will erase all gateway data and reset all connected displays. This action is irreversible.",
       "waitingToBoot": "Waiting for panel to boot up...",
+      "waitingServiceToBoot": "Restarting service, please wait...",
+      "serviceRestartTakesTooLong": "Service restart is taking longer than expected. Please check the panel manually.",
       "panelBackOnline": "Smart Panel is back online.",
       "rebootTakesTooLong": "Reboot is taking longer than expected. Please check the panel manually.",
       "rebootFailed": "Failed to reboot the Smart Panel. Please try again or check the device manually.",
@@ -371,6 +373,12 @@
     },
     "no": {
       "title": "No"
+    },
+    "restartService": {
+      "title": "Restart Service"
+    },
+    "restartSystem": {
+      "title": "Restart System"
     },
     "reset": {
       "title": "Reset"

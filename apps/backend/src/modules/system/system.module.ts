@@ -120,6 +120,13 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 		);
 
 		this.eventRegistry.register(
+			EventType.SYSTEM_SERVICE_RESTART_SET,
+			EventHandlerName.INTERNAL_PLATFORM_ACTION,
+			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
+				this.systemCommandService.restartService(user),
+		);
+
+		this.eventRegistry.register(
 			EventType.SYSTEM_FACTORY_RESET_SET,
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
