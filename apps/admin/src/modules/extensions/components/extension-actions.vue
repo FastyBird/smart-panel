@@ -441,8 +441,13 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 	void refreshHistory(action.id);
 };
 
-// Initialize form defaults when actions change (parent manages fetching via shared useActions instance)
+// Initialize form defaults and load history when actions change
 watch(actions, () => {
 	initFormDefaults();
+
+	// Load existing history for all actions
+	for (const action of actions.value) {
+		void refreshHistory(action.id);
+	}
 }, { immediate: true });
 </script>

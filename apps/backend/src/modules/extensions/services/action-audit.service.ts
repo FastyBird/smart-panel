@@ -57,11 +57,4 @@ export class ActionAuditService {
 			.slice(-limit)
 			.reverse();
 	}
-
-	getExtensionHistory(extensionType: string, limit = 100): ActionExecutionRecord[] {
-		return this.buffer
-			.filter((r) => r.extensionType === extensionType)
-			.slice(-limit)
-			.reverse();
-	}
 }
