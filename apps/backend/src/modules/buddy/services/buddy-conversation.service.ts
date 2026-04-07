@@ -283,7 +283,7 @@ export class BuddyConversationService {
 			// If any tool failed, fall through to re-query the LLM so it can
 			// provide an accurate response reflecting the failures.
 			if (hasContentWithTools && allSucceeded) {
-				return { ...response, meta: accumulatedMeta, toolCalls: undefined };
+				return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
 			}
 
 			// Append the assistant's tool call response and tool results as a follow-up user message
