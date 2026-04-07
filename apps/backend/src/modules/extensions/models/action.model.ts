@@ -164,6 +164,27 @@ export class ExtensionActionModel {
 	dangerous?: boolean;
 
 	@ApiPropertyOptional({
+		name: 'required_roles',
+		description: 'User roles allowed to execute this action',
+		type: 'array',
+		items: { type: 'string' },
+		example: ['owner', 'admin'],
+	})
+	@Expose({ name: 'required_roles' })
+	@IsArray()
+	@IsOptional()
+	requiredRoles?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Whether the current user is allowed to execute this action',
+		type: 'boolean',
+	})
+	@Expose()
+	@IsBoolean()
+	@IsOptional()
+	allowed?: boolean;
+
+	@ApiPropertyOptional({
 		description: 'Action parameters',
 		type: [ActionParameterModel],
 	})
