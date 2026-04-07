@@ -148,7 +148,11 @@ export class SystemCommandService implements OnModuleInit {
 
 		// Exit with code 1 so systemd (Restart=on-failure) restarts the process.
 		// Code 0 would be treated as a clean exit and systemd would NOT restart.
+		// Note: process.exit() terminates the process — the return below is unreachable
+		// but satisfies the command handler interface contract.
 		process.exit(1);
+
+		return { success: true };
 	}
 
 	async factoryReset(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {

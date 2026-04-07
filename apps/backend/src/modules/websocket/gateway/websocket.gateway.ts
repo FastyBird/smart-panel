@@ -178,11 +178,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		try {
 			const handlers = this.commandEventRegistry.get(event);
 
+			const clientData = client.data as ClientData;
+
 			const results = (
 				await Promise.all(
-					handlers.map(async ({ name, handler }) => {
+					handlers.map(async ({ name, handler, requiredRoles }) => {
 						try {
-							const clientData = client.data as ClientData;
+							if (requiredRoles && !requiredRoles.includes(clientData.user.role)) {
+								return { handler: name, success: false, reason: 'Insufficient permissions' };
+							}
 
 							const response = await handler(clientData.user, payload);
 
