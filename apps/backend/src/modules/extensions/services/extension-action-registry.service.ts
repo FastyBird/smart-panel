@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { UserRole } from '../../users/users.constants';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 import type { IActionParameter, IActionResult, IExtensionAction } from './extension-action.interface';
-import { ActionParameterType } from './extension-action.interface';
+import { ActionParameterType, DEFAULT_ACTION_ROLES } from './extension-action.interface';
 
 /**
  * Serialized action descriptor with resolved options (safe for API responses).
@@ -17,6 +18,8 @@ export interface SerializedAction {
 	category?: string;
 	mode: string;
 	dangerous?: boolean;
+	required_roles?: string[];
+	allowed?: boolean;
 	parameters?: SerializedActionParameter[];
 }
 
@@ -92,8 +95,9 @@ export class ExtensionActionRegistryService {
 	/**
 	 * Get all actions for an extension, with dynamic options resolved.
 	 * Returns serialized descriptors safe for API responses.
+	 * When userRole is provided, each action includes an `allowed` field.
 	 */
-	async getActions(extensionType: string): Promise<SerializedAction[]> {
+	async getActions(extensionType: string, userRole?: UserRole): Promise<SerializedAction[]> {
 		const extensionActions = this.actions.get(extensionType);
 
 		if (!extensionActions) {
@@ -103,10 +107,31 @@ export class ExtensionActionRegistryService {
 		const serialized: SerializedAction[] = [];
 
 		for (const action of extensionActions.values()) {
-			serialized.push(await this.serializeAction(action));
+			serialized.push(await this.serializeAction(action, userRole));
 		}
 
 		return serialized;
+	}
+
+	/**
+	 * Check if a user role is allowed to execute a specific action.
+	 */
+	isAllowed(extensionType: string, actionId: string, userRole: UserRole): boolean {
+		const extensionActions = this.actions.get(extensionType);
+
+		if (!extensionActions) {
+			return false;
+		}
+
+		const action = extensionActions.get(actionId);
+
+		if (!action) {
+			return false;
+		}
+
+		const roles = action.requiredRoles ?? DEFAULT_ACTION_ROLES;
+
+		return roles.includes(userRole);
 	}
 
 	/**
@@ -312,7 +337,9 @@ export class ExtensionActionRegistryService {
 	/**
 	 * Serialize an action for API responses, resolving dynamic options.
 	 */
-	private async serializeAction(action: IExtensionAction): Promise<SerializedAction> {
+	private async serializeAction(action: IExtensionAction, userRole?: UserRole): Promise<SerializedAction> {
+		const roles = action.requiredRoles ?? DEFAULT_ACTION_ROLES;
+
 		const serialized: SerializedAction = {
 			id: action.id,
 			label: action.label,
@@ -321,6 +348,8 @@ export class ExtensionActionRegistryService {
 			category: action.category,
 			mode: action.mode,
 			dangerous: action.dangerous,
+			required_roles: roles,
+			allowed: userRole ? roles.includes(userRole) : undefined,
 		};
 
 		if (action.parameters && action.parameters.length > 0) {

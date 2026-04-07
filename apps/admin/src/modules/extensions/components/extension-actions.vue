@@ -175,8 +175,23 @@
 								</div>
 
 								<div class="shrink-0">
+									<el-tooltip
+										v-if="action.mode === 'immediate' && action.allowed === false"
+										:content="t('extensionsModule.actions.messages.insufficientPermissions')"
+									>
+										<el-button
+											type="primary"
+											disabled
+										>
+											<template #icon>
+												<icon icon="mdi:lock" />
+											</template>
+											{{ t('extensionsModule.actions.buttons.run') }}
+										</el-button>
+									</el-tooltip>
+
 									<el-button
-										v-if="action.mode === 'immediate'"
+										v-else-if="action.mode === 'immediate'"
 										type="primary"
 										:loading="executingActions.has(action.id)"
 										:disabled="executingActions.has(action.id)"

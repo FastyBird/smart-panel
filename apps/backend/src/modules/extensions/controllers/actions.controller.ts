@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
+	ApiForbiddenResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
@@ -27,15 +29,19 @@ export class ActionsController {
 		operationId: 'get-extensions-module-extension-actions',
 		summary: 'List extension actions',
 		description:
-			'Returns available actions for an extension with resolved dynamic parameter options. Requires owner or admin role.',
+			'Returns available actions for an extension with resolved dynamic parameter options. Each action includes an `allowed` field based on the current user role.',
 	})
 	@ApiParam({ name: 'type', type: 'string', description: 'Extension type identifier' })
 	@ApiSuccessResponse(ExtensionActionsResponseModel, 'Returns the list of available actions')
 	@ApiNotFoundResponse('Extension not found')
-	async getActions(@Param('type') type: string): Promise<ExtensionActionsResponseModel> {
+	async getActions(
+		@Param('type') type: string,
+		@Req() req: AuthenticatedRequest,
+	): Promise<ExtensionActionsResponseModel> {
 		this.logger.debug(`Fetching actions for extension '${type}'`);
 
-		const actions = await this.actionRegistry.getActions(type);
+		const userRole = this.getUserRole(req);
+		const actions = await this.actionRegistry.getActions(type, userRole);
 
 		const response = new ExtensionActionsResponseModel();
 		response.data = actions as ExtensionActionsResponseModel['data'];
@@ -49,7 +55,7 @@ export class ActionsController {
 		operationId: 'execute-extensions-module-extension-action',
 		summary: 'Execute an extension action',
 		description:
-			'Executes an immediate action with the provided parameters. Only actions with mode=immediate can be executed via REST. Requires owner or admin role.',
+			"Executes an immediate action with the provided parameters. Requires the user role to match the action's required roles.",
 	})
 	@ApiParam({ name: 'type', type: 'string', description: 'Extension type identifier' })
 	@ApiParam({ name: 'actionId', type: 'string', description: 'Action identifier' })
@@ -57,11 +63,19 @@ export class ActionsController {
 	@ApiSuccessResponse(ActionResultResponseModel, 'Returns the action execution result')
 	@ApiNotFoundResponse('Extension or action not found')
 	@ApiBadRequestResponse('Action is not executable (wrong mode) or invalid parameters')
+	@ApiForbiddenResponse('Insufficient permissions to execute this action')
 	async executeAction(
 		@Param('type') type: string,
 		@Param('actionId') actionId: string,
 		@Body() body: ReqExecuteActionDto,
+		@Req() req: AuthenticatedRequest,
 	): Promise<ActionResultResponseModel> {
+		const userRole = this.getUserRole(req);
+
+		if (!this.actionRegistry.isAllowed(type, actionId, userRole)) {
+			throw new ForbiddenException(`Insufficient permissions to execute action '${actionId}'`);
+		}
+
 		this.logger.log(`Executing action '${actionId}' for extension '${type}'`);
 
 		const result = await this.actionRegistry.execute(type, actionId, body.data.params ?? {});
@@ -70,5 +84,9 @@ export class ActionsController {
 		response.data = result as ActionResultResponseModel['data'];
 
 		return response;
+	}
+
+	private getUserRole(req: AuthenticatedRequest): UserRole {
+		return req.auth?.role ?? UserRole.ADMIN;
 	}
 }

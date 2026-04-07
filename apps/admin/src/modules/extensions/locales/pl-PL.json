@@ -196,6 +196,7 @@
 			"confirmDangerous": "Ta akcja może mieć znaczące konsekwencje. Czy na pewno chcesz kontynuować?",
 			"noActions": "Brak dostępnych akcji dla tego rozszerzenia",
 			"interactiveNotAvailable": "Akcje interaktywne będą dostępne w przyszłej aktualizacji",
+			"insufficientPermissions": "Nie masz uprawnień do wykonania tej akcji",
 			"loading": "Ładowanie akcji..."
 		}
 	},

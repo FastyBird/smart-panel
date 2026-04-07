@@ -1,3 +1,5 @@
+import { UserRole } from '../../users/users.constants';
+
 /**
  * Action execution mode.
  *
@@ -107,6 +109,14 @@ export interface IExtensionAction {
 	dangerous?: boolean;
 	/** Action parameters (rendered as a form in the UI for immediate mode) */
 	parameters?: IActionParameter[];
+	/**
+	 * User roles allowed to execute this action.
+	 * Defaults to [OWNER, ADMIN] if not specified (backward compatible).
+	 */
+	requiredRoles?: UserRole[];
 	/** Handler for immediate mode actions. Receives validated parameters, returns result. */
 	execute?(params: Record<string, unknown>): Promise<IActionResult>;
 }
+
+/** Default roles when an action doesn't specify requiredRoles */
+export const DEFAULT_ACTION_ROLES: UserRole[] = [UserRole.OWNER, UserRole.ADMIN];

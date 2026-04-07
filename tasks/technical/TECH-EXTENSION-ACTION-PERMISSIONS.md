@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-EXTENSION-ACTIONS
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -39,12 +39,12 @@ Currently, the actions controller uses `@Roles(UserRole.OWNER, UserRole.ADMIN)` 
 
 ## 4. Acceptance criteria
 
-- [ ] `IExtensionAction` has optional `requiredRoles?: UserRole[]` field
-- [ ] Actions controller validates user role against action's required roles
-- [ ] Actions API response includes `allowed` field based on current user
-- [ ] Admin UI disables actions the current user cannot execute
-- [ ] Existing actions work without specifying roles (defaults to OWNER + ADMIN)
-- [ ] Dangerous actions default to OWNER only
+- [x] `IExtensionAction` has optional `requiredRoles?: UserRole[]` field
+- [x] Actions controller validates user role against action's required roles
+- [x] Actions API response includes `allowed` field based on current user
+- [x] Admin UI disables actions the current user cannot execute
+- [x] Existing actions work without specifying roles (defaults to OWNER + ADMIN)
+- [x] Dangerous actions default to OWNER only
 
 ## 5. Technical constraints
 
