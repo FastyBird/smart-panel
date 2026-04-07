@@ -1,6 +1,7 @@
+import { h, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { useSockets } from '../../../common';
 import { useConfigModule } from '../../config/composables/composables';
@@ -26,42 +27,73 @@ export const useSystemActions = (): IUseSystemActions => {
 		return config !== null && config.deploymentMode !== 'all-in-one';
 	};
 
+	const doServiceRestart = async (): Promise<void> => {
+		systemActions.serviceRestart();
+
+		try {
+			await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		} catch {
+			// Server going down before ack is expected
+		}
+	};
+
+	const doSystemReboot = async (): Promise<void> => {
+		systemActions.reboot();
+
+		try {
+			await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		} catch {
+			// Server going down before ack is expected
+		}
+	};
+
 	const onRestart = (): void => {
 		const gateway = isGatewayMode();
 		const confirmMsg = gateway
 			? t('systemModule.messages.manage.confirmRestartGateway')
 			: t('systemModule.messages.manage.confirmRestart');
 
-		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.restart'), {
-			confirmButtonText: t('systemModule.buttons.restartSystem.title'),
-			cancelButtonText: t('systemModule.buttons.restartService.title'),
-			distinguishCancelAndClose: true,
-			type: 'warning',
-		})
-			.then(async (): Promise<void> => {
-				// "Restart System" — full platform reboot
-				systemActions.reboot();
+		const instanceRef = ref<ReturnType<typeof ElMessageBox> | null>(null);
 
-				try {
-					await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-				} catch {
-					// Server going down before ack is expected
-				}
-			})
-			.catch(async (action: string): Promise<void> => {
-				if (action === 'cancel') {
-					// "Restart Service" — soft restart (service only)
-					systemActions.serviceRestart();
+		const messageVNode = h('div', [
+			h('p', { style: 'margin-bottom: 16px' }, confirmMsg),
+			h('div', { style: 'display: flex; justify-content: flex-end; gap: 8px' }, [
+				h(
+					ElButton,
+					{
+						type: 'primary',
+						onClick: () => {
+							ElMessageBox.close();
+							void doServiceRestart();
+						},
+					},
+					() => t('systemModule.buttons.restartService.title'),
+				),
+				h(
+					ElButton,
+					{
+						type: 'danger',
+						onClick: () => {
+							ElMessageBox.close();
+							void doSystemReboot();
+						},
+					},
+					() => t('systemModule.buttons.restartSystem.title'),
+				),
+			]),
+		]);
 
-					try {
-						await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-					} catch {
-						// Server going down before ack is expected
-					}
-				}
-
-				// action === 'close' — dialog dismissed, do nothing
-			});
+		instanceRef.value = ElMessageBox({
+			title: t('systemModule.headings.manage.restart'),
+			message: messageVNode,
+			showConfirmButton: false,
+			showCancelButton: false,
+			showClose: true,
+			closeOnClickModal: true,
+			closeOnPressEscape: true,
+		}).catch(() => {
+			// Dialog closed — do nothing
+		});
 	};
 
 	const onPowerOff = (): void => {
