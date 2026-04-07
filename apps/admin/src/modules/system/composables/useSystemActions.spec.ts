@@ -13,18 +13,8 @@ vi.mock('vue-i18n', () => ({
 }));
 
 const mocks = vi.hoisted(() => {
-	let closedCallback: (() => void) | undefined;
-
 	return {
 		confirm: vi.fn(),
-		service: vi.fn((options) => {
-			closedCallback = options.closed;
-			return {
-				close: () => {
-					closedCallback?.();
-				},
-			};
-		}),
 	};
 });
 
