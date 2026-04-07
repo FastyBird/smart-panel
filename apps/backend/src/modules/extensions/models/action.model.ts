@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsDate, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -266,6 +266,6 @@ export class ActionExecutionRecordModel {
 
 	@ApiProperty({ description: 'Execution timestamp', type: 'string', format: 'date-time' })
 	@Expose()
-	@IsString()
+	@IsDate()
 	timestamp: Date;
 }

@@ -379,6 +379,12 @@ const initFormDefaults = (): void => {
 		}
 	}
 
+	for (const key of Object.keys(actionHistory)) {
+		if (!currentActionIds.has(key)) {
+			delete actionHistory[key];
+		}
+	}
+
 	// Initialize defaults for current actions from scratch
 	for (const action of actions.value) {
 		formModels[action.id] = {};
