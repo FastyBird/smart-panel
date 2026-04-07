@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
-import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import {
 	BUDDY_MODULE_NAME,
 	PATTERN_LOOKBACK_DAYS,
@@ -15,6 +14,7 @@ import {
 	clusterByTimeOfDay,
 	formatIntentLabel,
 	formatTimeLabel,
+	getConfigTimezone,
 	interpolateTemplate,
 	toMinuteOfDay,
 } from '../buddy.utils';
@@ -101,13 +101,7 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	) {}
 
 	private getTimezone(): string {
-		try {
-			const config = this.configService.getModuleConfig<{ timezone?: string }>(SYSTEM_MODULE_NAME);
-
-			return config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-		} catch {
-			return Intl.DateTimeFormat().resolvedOptions().timeZone;
-		}
+		return getConfigTimezone(this.configService);
 	}
 
 	/**

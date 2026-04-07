@@ -1,3 +1,7 @@
+import { ConfigService } from '../config/services/config.service';
+import { SystemConfigModel } from '../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../system/system.constants';
+
 import {
 	BuddyProviderTimeoutException,
 	BuddySttProviderTimeoutException,
@@ -113,6 +117,20 @@ export function formatIntentLabel(intentType: string): string {
 }
 
 /**
+ * Get the configured house timezone from system config.
+ * Falls back to the system's default timezone.
+ */
+export function getConfigTimezone(configService: ConfigService): string {
+	try {
+		const config = configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+
+		return config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+	} catch {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone;
+	}
+}
+
+/**
  * Extract the local hour and minute from a Date using a specific timezone.
  * Uses Intl.DateTimeFormat so the result is correct across DST transitions
  * regardless of the server's system timezone.
@@ -122,7 +140,8 @@ export function getLocalTimeOfDay(date: Date, timezone: string): { hour: number;
 		timeZone: timezone,
 		hour: 'numeric',
 		minute: 'numeric',
-		hour12: false,
+		// hourCycle h23 gives 0-23; h24 gives 1-24 (midnight = 24, not 0)
+		hourCycle: 'h23',
 	}).formatToParts(date);
 
 	return {

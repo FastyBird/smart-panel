@@ -68,4 +68,11 @@ describe('toMinuteOfDay', () => {
 		expect(toMinuteOfDay(beforeDST, 'Europe/Prague')).toBe(1380);
 		expect(toMinuteOfDay(afterDST, 'Europe/Prague')).toBe(1380);
 	});
+
+	it('should return 0 at midnight, not 1440', () => {
+		// 2026-03-15T23:00:00Z = 00:00 in Europe/Prague (CET = UTC+1)
+		const midnight = new Date('2026-03-15T23:00:00Z');
+
+		expect(toMinuteOfDay(midnight, 'Europe/Prague')).toBe(0);
+	});
 });
