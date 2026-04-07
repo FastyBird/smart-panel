@@ -85,7 +85,7 @@ describe('HeartbeatService', () => {
 		};
 
 		suggestionEngine = {
-			createFromEvaluatorResults: jest.fn().mockReturnValue([]),
+			createFromEvaluatorResults: jest.fn().mockResolvedValue([]),
 		};
 
 		service = new HeartbeatService(
@@ -201,7 +201,7 @@ describe('HeartbeatService', () => {
 			];
 
 			service.registerEvaluator(makeEvaluator('TestEvaluator', results));
-			suggestionEngine.createFromEvaluatorResults.mockReturnValue([makeSuggestion()]);
+			suggestionEngine.createFromEvaluatorResults.mockResolvedValue([makeSuggestion()]);
 
 			await service.runCycle();
 

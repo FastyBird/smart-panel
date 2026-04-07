@@ -149,11 +149,6 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
 
-			// Re-check after async gap to prevent duplicates
-			if (await this.hasSuggestionForPattern(pattern)) {
-				continue;
-			}
-
 			const result = patternToEvaluatorResult(pattern, spaceName);
 
 			const entity = this.suggestionRepo.create({
@@ -233,30 +228,33 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Record feedback for a suggestion.
 	 * Both 'applied' and 'dismissed' update the status and set feedbackAt for cooldown.
+	 * Serialized via the shared mutex to prevent TOCTOU races on concurrent requests.
 	 */
 	async recordFeedback(
 		id: string,
 		feedback: SuggestionFeedback,
 	): Promise<{ success: boolean; suggestion: BuddySuggestion }> {
-		const entity = await this.suggestionRepo.findOne({ where: { id } });
+		return this.withMutex(async () => {
+			const entity = await this.suggestionRepo.findOne({ where: { id } });
 
-		if (!entity) {
-			throw new BuddySuggestionNotFoundException(id);
-		}
+			if (!entity) {
+				throw new BuddySuggestionNotFoundException(id);
+			}
 
-		// Reject feedback on already-processed suggestions to prevent duplicate side-effects
-		if (entity.status !== SuggestionStatus.ACTIVE) {
-			throw new BuddySuggestionNotFoundException(id);
-		}
+			// Reject feedback on already-processed suggestions to prevent duplicate side-effects
+			if (entity.status !== SuggestionStatus.ACTIVE) {
+				throw new BuddySuggestionNotFoundException(id);
+			}
 
-		entity.status = feedback === SuggestionFeedback.APPLIED ? SuggestionStatus.ACCEPTED : SuggestionStatus.DISMISSED;
-		entity.feedbackAt = new Date();
+			entity.status = feedback === SuggestionFeedback.APPLIED ? SuggestionStatus.ACCEPTED : SuggestionStatus.DISMISSED;
+			entity.feedbackAt = new Date();
 
-		await this.suggestionRepo.save(entity);
+			await this.suggestionRepo.save(entity);
 
-		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}`);
+			this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}`);
 
-		return { success: true, suggestion: this.entityToSuggestion(entity) };
+			return { success: true, suggestion: this.entityToSuggestion(entity) };
+		});
 	}
 
 	/**
