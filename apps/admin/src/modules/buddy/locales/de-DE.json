@@ -109,7 +109,10 @@
 			"personality": {
 				"title": "Persönlichkeit",
 				"description": "Definieren Sie Ton, Stil und Persönlichkeit des Buddys. Dieser Text wird in den KI-Systemprompt eingefügt.",
-				"placeholder": "Du bist ein hilfreicher Smart-Home-Assistent. Sei prägnant, freundlich und praktisch.\nKonzentriere dich auf umsetzbare Vorschläge. Verwende einfache Sprache."
+				"placeholder": "Du bist ein hilfreicher Smart-Home-Assistent. Sei prägnant, freundlich und praktisch.\nKonzentriere dich auf umsetzbare Vorschläge. Verwende einfache Sprache.",
+				"validation": {
+					"maxLength": "Der Persönlichkeitstext darf 2000 Zeichen nicht überschreiten"
+				}
 			}
 		},
 		"message": {

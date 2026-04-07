@@ -28,7 +28,13 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 		try {
 			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality` as never);
 
-			const res = response as { data?: { data: { content: string } }; error?: unknown };
+			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
+
+			if (res.response?.status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+
+				return;
+			}
 
 			if (typeof res.data !== 'undefined') {
 				personalityContent.value = res.data.data.content;
@@ -53,6 +59,12 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 
 			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
 			const status = res.response?.status;
+
+			if (status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+
+				return false;
+			}
 
 			if (status && status >= 400) {
 				personalityError.value = t('buddyModule.messages.errors.savePersonality');

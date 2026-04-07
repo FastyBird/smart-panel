@@ -109,7 +109,10 @@
 			"personality": {
 				"title": "Personalidad",
 				"description": "Define el tono, estilo y personalidad del Buddy. Este texto se incluye en el prompt del sistema de IA.",
-				"placeholder": "Eres un asistente útil para el hogar inteligente. Sé conciso, amigable y práctico.\nCéntrate en sugerencias prácticas. Usa un lenguaje sencillo."
+				"placeholder": "Eres un asistente útil para el hogar inteligente. Sé conciso, amigable y práctico.\nCéntrate en sugerencias prácticas. Usa un lenguaje sencillo.",
+				"validation": {
+					"maxLength": "El texto de personalidad no debe exceder los 2000 caracteres"
+				}
 			}
 		},
 		"message": {

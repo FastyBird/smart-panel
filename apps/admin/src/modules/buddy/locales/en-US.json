@@ -109,7 +109,10 @@
 			"personality": {
 				"title": "Personality",
 				"description": "Define the buddy's tone, style, and personality. This text is included in the AI system prompt.",
-				"placeholder": "You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language."
+				"placeholder": "You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.",
+				"validation": {
+					"maxLength": "Personality text must not exceed 2000 characters"
+				}
 			}
 		},
 		"message": {

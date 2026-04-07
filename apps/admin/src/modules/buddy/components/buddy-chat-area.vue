@@ -124,7 +124,7 @@
 				ref="scrollbarRef"
 				class="grow-1 p-4"
 			>
-				<div ref="messagesContainerRef">
+				<div>
 					<el-empty
 						v-if="messages.length === 0 && !isLoadingMessages"
 						:description="t('buddyModule.texts.startConversation')"
@@ -230,7 +230,6 @@ const router = useRouter();
 
 const inputMessage = ref<string>('');
 const scrollbarRef = ref<InstanceType<typeof ElScrollbar> | null>(null);
-const messagesContainerRef = ref<HTMLDivElement | null>(null);
 const wizardVisible = ref<boolean>(false);
 
 const otherProviders = computed<IProviderStatus[]>(() => {
@@ -238,10 +237,16 @@ const otherProviders = computed<IProviderStatus[]>(() => {
 });
 
 const scrollToBottom = (): void => {
+	// Double nextTick ensures the DOM has fully rendered new messages
+	// before measuring scrollHeight and scrolling.
 	nextTick(() => {
-		if (scrollbarRef.value) {
-			scrollbarRef.value.setScrollTop(messagesContainerRef.value?.scrollHeight ?? 0);
-		}
+		nextTick(() => {
+			const wrapEl = scrollbarRef.value?.wrapRef;
+
+			if (wrapEl) {
+				wrapEl.scrollTo({ top: wrapEl.scrollHeight, behavior: 'smooth' });
+			}
+		});
 	});
 };
 

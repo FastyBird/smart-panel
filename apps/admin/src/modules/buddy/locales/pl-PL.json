@@ -109,7 +109,10 @@
 			"personality": {
 				"title": "Osobowość",
 				"description": "Zdefiniuj ton, styl i osobowość buddy. Ten tekst jest dołączany do systemowego promptu AI.",
-				"placeholder": "Jesteś pomocnym asystentem inteligentnego domu. Bądź zwięzły, przyjazny i praktyczny.\nSkup się na praktycznych sugestiach. Używaj prostego języka."
+				"placeholder": "Jesteś pomocnym asystentem inteligentnego domu. Bądź zwięzły, przyjazny i praktyczny.\nSkup się na praktycznych sugestiach. Używaj prostego języka.",
+				"validation": {
+					"maxLength": "Tekst osobowości nie może przekraczać 2000 znaków"
+				}
 			}
 		},
 		"message": {

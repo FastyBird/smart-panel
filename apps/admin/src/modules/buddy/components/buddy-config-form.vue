@@ -73,7 +73,7 @@
 
 		<el-form-item
 			:label="t('buddyModule.fields.config.personality.title')"
-			prop="personality"
+			:error="personalityOverLimit ? t('buddyModule.fields.config.personality.validation.maxLength') : personalityError ?? undefined"
 		>
 			<el-input
 				v-model="personalityText"
@@ -243,7 +243,7 @@ const flashMessage = useFlashMessage();
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
 const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
-const { personalityContent, fetchPersonality, savePersonality } = useBuddyPersonality();
+const { personalityContent, personalityError, fetchPersonality, savePersonality } = useBuddyPersonality();
 
 onBeforeMount(async (): Promise<void> => {
 	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses(), fetchPersonality()]);
@@ -408,6 +408,8 @@ const ttsOptions = computed(() => {
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
 
+const personalityOverLimit = computed<boolean>(() => personalityText.value.length > 2000);
+
 watch(
 	(): FormResultType => formResult.value,
 	async (val: FormResultType): Promise<void> => {
@@ -429,7 +431,7 @@ watch(
 			}
 
 			// Save personality only after config was saved successfully
-			if (personalityDirty.value) {
+			if (personalityDirty.value && !personalityOverLimit.value) {
 				const success = await savePersonality(personalityText.value);
 
 				if (success) {
