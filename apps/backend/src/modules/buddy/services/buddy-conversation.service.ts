@@ -248,8 +248,18 @@ export class BuddyConversationService {
 
 			this.logger.debug(`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`);
 
-			// Execute all tool calls
+			// Execute all tool calls and include parse errors for malformed arguments
 			const toolResults: { success: boolean; summary: string }[] = [];
+
+			// Report malformed tool call arguments back to the LLM as failed results
+			if (response.toolErrors && response.toolErrors.length > 0) {
+				for (const toolError of response.toolErrors) {
+					toolResults.push({
+						success: false,
+						summary: `Tool "${toolError.toolName}" (id=${toolError.toolCallId}): FAILED — ${toolError.error}`,
+					});
+				}
+			}
 
 			for (const toolCall of response.toolCalls) {
 				const result = await this.toolProviderRegistry.executeTool(toolCall);

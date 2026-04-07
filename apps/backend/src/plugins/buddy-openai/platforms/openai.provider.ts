@@ -78,6 +78,11 @@ export class OpenAiProvider implements ILlmProvider {
 		return {
 			content: result.content,
 			toolCalls: result.toolCalls,
+			toolErrors: result.toolErrors?.map((e) => ({
+				toolCallId: e.toolCallId,
+				toolName: e.toolName,
+				error: e.error,
+			})),
 			meta: {
 				provider: BUDDY_OPENAI_PLUGIN_NAME,
 				model: result.model,
