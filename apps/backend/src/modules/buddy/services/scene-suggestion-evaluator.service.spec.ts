@@ -111,10 +111,15 @@ describe('SceneSuggestionEvaluator', () => {
 			create: jest.fn().mockResolvedValue({ id: 'scene-123', name: 'Test Scene' }),
 		};
 
+		const mockConfigService = {
+			getModuleConfig: jest.fn().mockReturnValue({ timezone: 'Europe/Prague' }),
+		} as any;
+
 		service = new SceneSuggestionEvaluator(
 			actionObserver,
 			scenesService as unknown as ScenesService,
 			makeRulesLoader(),
+			mockConfigService,
 		);
 	});
 

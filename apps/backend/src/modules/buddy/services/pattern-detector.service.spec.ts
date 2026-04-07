@@ -85,9 +85,13 @@ describe('PatternDetectorService', () => {
 	let service: PatternDetectorService;
 	let observer: ActionObserverService;
 
+	const mockConfigService = {
+		getModuleConfig: jest.fn().mockReturnValue({ timezone: 'Europe/Prague' }),
+	} as any;
+
 	beforeEach(() => {
 		observer = new ActionObserverService();
-		service = new PatternDetectorService(observer, makeRulesLoader());
+		service = new PatternDetectorService(observer, makeRulesLoader(), mockConfigService);
 	});
 
 	it('should return no patterns when there are no actions', () => {

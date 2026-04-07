@@ -5,7 +5,13 @@ import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { BUDDY_MODULE_NAME, PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
-import { clusterByTimeOfDay, formatTimeLabel, getConfigTimezone, interpolateTemplate, toMinuteOfDay } from '../buddy.utils';
+import {
+	clusterByTimeOfDay,
+	formatTimeLabel,
+	getConfigTimezone,
+	interpolateTemplate,
+	toMinuteOfDay,
+} from '../buddy.utils';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 import { ResolvedPatternRule } from '../spec/evaluator-rules.types';
 
