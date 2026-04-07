@@ -16,21 +16,23 @@
 		</div>
 
 		<template #footer>
-			<el-button @click="emit('close')">
-				{{ t('systemModule.buttons.cancel.title') }}
-			</el-button>
-			<el-button
-				type="primary"
-				@click="emit('service-restart')"
-			>
-				{{ t('systemModule.buttons.restartService.title') }}
-			</el-button>
-			<el-button
-				type="danger"
-				@click="emit('system-reboot')"
-			>
-				{{ t('systemModule.buttons.restartSystem.title') }}
-			</el-button>
+			<div class="flex flex-wrap justify-end gap-2 w-full">
+				<el-button @click="emit('close')">
+					{{ t('systemModule.buttons.cancel.title') }}
+				</el-button>
+				<el-button
+					type="primary"
+					@click="emit('service-restart')"
+				>
+					{{ t('systemModule.buttons.restartService.title') }}
+				</el-button>
+				<el-button
+					type="danger"
+					@click="emit('system-reboot')"
+				>
+					{{ t('systemModule.buttons.restartSystem.title') }}
+				</el-button>
+			</div>
 		</template>
 	</el-dialog>
 </template>

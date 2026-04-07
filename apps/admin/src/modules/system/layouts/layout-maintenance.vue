@@ -150,6 +150,7 @@ const pageIcon = computed(() => {
 		case RouteNames.FACTORY_RESET:
 			return 'mdi:backup-restore';
 		case RouteNames.REBOOTING:
+		case RouteNames.SERVICE_RESTARTING:
 			return 'mdi:restart';
 		default:
 			return 'mdi:power';
@@ -161,7 +162,8 @@ const pageHeading = computed(() => {
 		case RouteNames.FACTORY_RESET:
 			return t('systemModule.headings.manage.factoryReset');
 		case RouteNames.REBOOTING:
-			return t('systemModule.headings.manage.rebooting');
+		case RouteNames.SERVICE_RESTARTING:
+			return t('systemModule.headings.manage.restart');
 		default:
 			return t('systemModule.headings.manage.poweredOff');
 	}
