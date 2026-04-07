@@ -8,7 +8,11 @@ import {
 	ActionResultModel,
 	ExtensionActionModel,
 } from './models/action.model';
-import { ActionHistoryResponseModel, ActionResultResponseModel, ExtensionActionsResponseModel } from './models/actions-response.model';
+import {
+	ActionHistoryResponseModel,
+	ActionResultResponseModel,
+	ExtensionActionsResponseModel,
+} from './models/actions-response.model';
 import {
 	DiscoveredExtensionAdminModel,
 	DiscoveredExtensionBackendModel,
