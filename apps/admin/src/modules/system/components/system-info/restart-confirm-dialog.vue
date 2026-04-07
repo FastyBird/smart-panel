@@ -2,47 +2,47 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('systemModule.headings.manage.restart')"
-		width="460px"
+		width="420px"
 		@close="emit('close')"
 	>
-		<p class="mb-4">
-			{{ isGateway ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart') }}
-		</p>
-
-		<ul class="list-disc pl-5 mb-2 leading-relaxed">
-			<li>
-				<strong>{{ t('systemModule.buttons.restartService.title') }}</strong>
-				— {{ t('systemModule.texts.manage.restartServiceDescription') }}
-			</li>
-			<li>
-				<strong>{{ t('systemModule.buttons.restartSystem.title') }}</strong>
-				— {{ t('systemModule.texts.manage.restartSystemDescription') }}
-			</li>
-		</ul>
+		<div class="flex gap-3">
+			<el-icon
+				color="var(--el-color-warning)"
+				:size="22"
+				class="flex-shrink-0 mt-[2px]"
+			>
+				<icon icon="mdi:alert-circle-outline" />
+			</el-icon>
+			<div>
+				<p class="mb-3">
+					{{ isGateway ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart') }}
+				</p>
+				<p class="text-xs color-[var(--el-text-color-secondary)]">
+					<strong>{{ t('systemModule.buttons.restartService.title') }}</strong>
+					— {{ t('systemModule.texts.manage.restartServiceDescription') }}
+					<br />
+					<strong>{{ t('systemModule.buttons.restartSystem.title') }}</strong>
+					— {{ t('systemModule.texts.manage.restartSystemDescription') }}
+				</p>
+			</div>
+		</div>
 
 		<template #footer>
-			<div class="flex flex-col gap-2 w-full">
-				<el-button
-					type="primary"
-					class="w-full !ml-0"
-					@click="emit('service-restart')"
-				>
-					{{ t('systemModule.buttons.restartService.title') }}
-				</el-button>
-				<el-button
-					type="danger"
-					class="w-full !ml-0"
-					@click="emit('system-reboot')"
-				>
-					{{ t('systemModule.buttons.restartSystem.title') }}
-				</el-button>
-				<el-button
-					class="w-full !ml-0"
-					@click="emit('close')"
-				>
-					{{ t('systemModule.buttons.cancel.title') }}
-				</el-button>
-			</div>
+			<el-button @click="emit('close')">
+				{{ t('systemModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="emit('service-restart')"
+			>
+				{{ t('systemModule.buttons.restartService.title') }}
+			</el-button>
+			<el-button
+				type="danger"
+				@click="emit('system-reboot')"
+			>
+				{{ t('systemModule.buttons.restartSystem.title') }}
+			</el-button>
 		</template>
 	</el-dialog>
 </template>
@@ -50,7 +50,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog } from 'element-plus';
+import { ElButton, ElDialog, ElIcon } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 defineOptions({
 	name: 'RestartConfirmDialog',
