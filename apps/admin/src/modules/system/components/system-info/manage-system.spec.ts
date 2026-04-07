@@ -50,7 +50,7 @@ describe('ManageSystem.vue', () => {
 		wrapper = mount(ManageSystem);
 	});
 
-	it('renders all three system action rows with correct text', () => {
+	it('renders all system action rows with correct text', () => {
 		expect(wrapper.find('[data-test-id="restart-info"]').text()).toContain('systemModule.texts.manage.rebootDevice');
 		expect(wrapper.find('[data-test-id="power-off-info"]').text()).toContain('systemModule.texts.manage.powerOffDevice');
 		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.manage.factoryResetDevice');

@@ -167,7 +167,7 @@
 			</el-text>
 			<el-text
 				class="block"
-				data-test-id="factory-reset-info"
+				data-test-id="system-logs-info"
 			>
 				{{ t('systemModule.texts.manage.systemLogs') }}
 			</el-text>

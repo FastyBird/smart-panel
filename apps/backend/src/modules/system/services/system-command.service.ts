@@ -61,7 +61,7 @@ export class SystemCommandService implements OnModuleInit {
 				this.eventEmitter.emit(EventType.SYSTEM_REBOOT, {
 					triggered_by: user.id,
 					status: 'err',
-					reason: 'no supported',
+					reason: 'not supported',
 				});
 
 				return {
@@ -105,7 +105,7 @@ export class SystemCommandService implements OnModuleInit {
 				this.eventEmitter.emit(EventType.SYSTEM_POWER_OFF, {
 					triggered_by: user.id,
 					status: 'err',
-					reason: 'no supported',
+					reason: 'not supported',
 				});
 
 				return {

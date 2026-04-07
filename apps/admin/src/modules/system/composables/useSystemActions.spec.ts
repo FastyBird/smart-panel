@@ -33,6 +33,7 @@ const systemActionsService = {
 	serviceRestart: vi.fn(),
 	powerOff: vi.fn(),
 	factoryReset: vi.fn(),
+	handleFactoryResetRedirect: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../services/system-actions.service', () => ({
