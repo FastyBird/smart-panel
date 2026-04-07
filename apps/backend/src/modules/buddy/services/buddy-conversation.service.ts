@@ -294,7 +294,10 @@ export class BuddyConversationService {
 			if (response.content) {
 				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
 			} else {
-				const toolNames = (response.toolCalls ?? []).map((tc) => tc.name).join(', ');
+				const toolNames = [
+					...(response.toolCalls ?? []).map((tc) => tc.name),
+					...(response.toolErrors ?? []).map((te) => `${te.toolName} (parse error)`),
+				].join(', ');
 
 				workingMessages.push({
 					role: MessageRole.ASSISTANT,
@@ -313,7 +316,7 @@ export class BuddyConversationService {
 		}
 
 		// If loop exhausted and final response has no text content, provide a fallback
-		if (!response.content && response.toolCalls && response.toolCalls.length > 0) {
+		if (!response.content && hasToolWork(response)) {
 			return {
 				...response,
 				meta: accumulatedMeta,
@@ -321,10 +324,11 @@ export class BuddyConversationService {
 					'I attempted to perform the requested actions but reached the maximum number of steps. ' +
 					'Please try again or simplify your request.',
 				toolCalls: undefined,
+				toolErrors: undefined,
 			};
 		}
 
-		return { ...response, meta: accumulatedMeta, toolCalls: undefined };
+		return { ...response, meta: accumulatedMeta, toolCalls: undefined, toolErrors: undefined };
 	}
 
 	/**

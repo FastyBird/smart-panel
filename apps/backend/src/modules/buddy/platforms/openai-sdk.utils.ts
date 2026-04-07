@@ -1,7 +1,7 @@
 import type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
 
-import type { ChatMessage } from './llm-provider.platform';
+import type { ChatMessage, LlmToolError } from './llm-provider.platform';
 
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
@@ -9,20 +9,10 @@ const OPENAI_SDK_MODULE = 'openai';
 /**
  * Metadata extracted from an OpenAI API response.
  */
-/**
- * A tool call that failed to parse — returned to the LLM as an error result
- * so it can retry or respond gracefully.
- */
-export interface OpenAiToolError {
-	toolCallId: string;
-	toolName: string;
-	error: string;
-}
-
 export interface OpenAiSdkResult {
 	content: string;
 	toolCalls?: LlmToolCall[];
-	toolErrors?: OpenAiToolError[];
+	toolErrors?: LlmToolError[];
 	model: string | null;
 	inputTokens: number | null;
 	outputTokens: number | null;
