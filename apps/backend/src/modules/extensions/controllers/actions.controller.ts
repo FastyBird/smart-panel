@@ -72,7 +72,11 @@ export class ActionsController {
 	): Promise<ActionResultResponseModel> {
 		const userRole = this.getUserRole(req);
 
-		if (!this.actionRegistry.isAllowed(type, actionId, userRole)) {
+		// null = action not found → let execute() throw proper 404
+		// false = action exists but user lacks permission → 403
+		const allowed = this.actionRegistry.isAllowed(type, actionId, userRole);
+
+		if (allowed === false) {
 			throw new ForbiddenException(`Insufficient permissions to execute action '${actionId}'`);
 		}
 
@@ -87,6 +91,11 @@ export class ActionsController {
 	}
 
 	private getUserRole(req: AuthenticatedRequest): UserRole {
-		return req.auth?.role ?? UserRole.ADMIN;
+		if (!req.auth?.role) {
+			// Fail closed — deny by default if auth data is missing
+			throw new ForbiddenException('Unable to determine user role');
+		}
+
+		return req.auth.role;
 	}
 }

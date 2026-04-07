@@ -115,23 +115,32 @@ export class ExtensionActionRegistryService {
 
 	/**
 	 * Check if a user role is allowed to execute a specific action.
+	 * Returns null if the extension or action doesn't exist (caller should handle as 404).
 	 */
-	isAllowed(extensionType: string, actionId: string, userRole: UserRole): boolean {
+	isAllowed(extensionType: string, actionId: string, userRole: UserRole): boolean | null {
 		const extensionActions = this.actions.get(extensionType);
 
 		if (!extensionActions) {
-			return false;
+			return null;
 		}
 
 		const action = extensionActions.get(actionId);
 
 		if (!action) {
-			return false;
+			return null;
 		}
 
-		const roles = action.requiredRoles ?? DEFAULT_ACTION_ROLES;
+		const roles = action.requiredRoles ?? this.getDefaultRoles(action);
 
 		return roles.includes(userRole);
+	}
+
+	/**
+	 * Get the default roles for an action based on its properties.
+	 * Dangerous actions default to OWNER only; others allow OWNER + ADMIN.
+	 */
+	private getDefaultRoles(action: IExtensionAction): UserRole[] {
+		return action.dangerous ? [UserRole.OWNER] : DEFAULT_ACTION_ROLES;
 	}
 
 	/**
@@ -338,7 +347,7 @@ export class ExtensionActionRegistryService {
 	 * Serialize an action for API responses, resolving dynamic options.
 	 */
 	private async serializeAction(action: IExtensionAction, userRole?: UserRole): Promise<SerializedAction> {
-		const roles = action.requiredRoles ?? DEFAULT_ACTION_ROLES;
+		const roles = action.requiredRoles ?? this.getDefaultRoles(action);
 
 		const serialized: SerializedAction = {
 			id: action.id,
