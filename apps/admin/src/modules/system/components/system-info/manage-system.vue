@@ -188,8 +188,8 @@
 	<restart-confirm-dialog
 		:visible="showRestartDialog"
 		@close="showRestartDialog = false"
-		@service-restart="onServiceRestart"
-		@system-reboot="onSystemReboot"
+		@service-restart="onHandleServiceRestart"
+		@system-reboot="onHandleSystemReboot"
 	/>
 </template>
 
@@ -232,6 +232,16 @@ const isGateway = computed<boolean>((): boolean => {
 const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
 
 const showRestartDialog = ref(false);
+
+const onHandleServiceRestart = (): void => {
+	showRestartDialog.value = false;
+	void onServiceRestart();
+};
+
+const onHandleSystemReboot = (): void => {
+	showRestartDialog.value = false;
+	void onSystemReboot();
+};
 
 const onShowLogs = (): void => {
 	emit('close');
