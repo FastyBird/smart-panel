@@ -4,6 +4,7 @@
 		:timeout-message="t('systemModule.messages.manage.serviceRestartTakesTooLong')"
 		:timeout-ms="30 * 1000"
 		:on-success="onSuccess"
+		:wait-for-unhealthy="true"
 	/>
 </template>
 

@@ -43,16 +43,23 @@ defineOptions({
 	name: 'HealthPollingView',
 });
 
-const props = defineProps<{
-	waitingMessage: string;
-	timeoutMessage: string;
-	timeoutMs: number;
-	onSuccess: () => void;
-}>();
+const props = withDefaults(
+	defineProps<{
+		waitingMessage: string;
+		timeoutMessage: string;
+		timeoutMs: number;
+		onSuccess: () => void;
+		waitForUnhealthy?: boolean;
+	}>(),
+	{
+		waitForUnhealthy: false,
+	},
+);
 
 const timedOut = ref(false);
 
 let timer: ReturnType<typeof setTimeout> | null = null;
+let sawUnhealthy = false;
 const startTime = Date.now();
 
 const checkHealth = async (): Promise<void> => {
@@ -60,12 +67,19 @@ const checkHealth = async (): Promise<void> => {
 		const response = await fetch(`/api/v1/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/health`);
 
 		if (response.ok) {
-			props.onSuccess();
+			if (!props.waitForUnhealthy || sawUnhealthy) {
+				props.onSuccess();
 
-			return;
+				return;
+			}
+
+			// Service hasn't gone down yet — keep polling
+		} else {
+			sawUnhealthy = true;
 		}
 	} catch {
-		// Backend still down — expected
+		// Backend is down — expected
+		sawUnhealthy = true;
 	}
 
 	if (Date.now() - startTime > props.timeoutMs) {
