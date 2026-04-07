@@ -7,6 +7,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
+import { BuddySuggestionEntity } from '../entities/buddy-suggestion.entity';
 
 @Injectable()
 export class BuddyModuleResetService {
@@ -17,6 +18,8 @@ export class BuddyModuleResetService {
 		private readonly messagesRepository: Repository<BuddyMessageEntity>,
 		@InjectRepository(BuddyConversationEntity)
 		private readonly conversationsRepository: Repository<BuddyConversationEntity>,
+		@InjectRepository(BuddySuggestionEntity)
+		private readonly suggestionsRepository: Repository<BuddySuggestionEntity>,
 	) {}
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
@@ -26,6 +29,7 @@ export class BuddyModuleResetService {
 			// Delete messages first (foreign key to conversations)
 			await this.messagesRepository.clear();
 			await this.conversationsRepository.clear();
+			await this.suggestionsRepository.clear();
 
 			this.logger.log('[RESET] Buddy module factory reset completed successfully');
 

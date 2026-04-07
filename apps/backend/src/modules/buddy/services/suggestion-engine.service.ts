@@ -1,10 +1,11 @@
+import { In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
@@ -16,6 +17,7 @@ import {
 	SuggestionType,
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
+import { BuddySuggestionEntity, SuggestionStatus } from '../entities/buddy-suggestion.entity';
 
 import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
@@ -32,34 +34,45 @@ export interface BuddySuggestion {
 }
 
 @Injectable()
-export class SuggestionEngineService implements OnModuleDestroy {
+export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'SuggestionEngineService');
-	private readonly suggestions = new Map<string, BuddySuggestion>();
-	private readonly cooldowns = new CooldownManager<SuggestionType>();
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
-	private generating = false;
+	private generationPromise: Promise<BuddySuggestion[]> | null = null;
+
+	/**
+	 * Serialization queue for suggestion creation.
+	 * Both generateSuggestions and createFromEvaluatorResults acquire this
+	 * so their check-then-insert sequences cannot interleave.
+	 */
+	private mutexTail: Promise<void> = Promise.resolve();
 
 	constructor(
+		@InjectRepository(BuddySuggestionEntity)
+		private readonly suggestionRepo: Repository<BuddySuggestionEntity>,
 		private readonly patternDetector: PatternDetectorService,
 		private readonly spacesService: SpacesService,
 		private readonly eventEmitter: EventEmitter2,
-	) {
-		this.cleanupTimer = setInterval(() => this.cleanupExpired(), SUGGESTION_CLEANUP_INTERVAL_MS);
+	) {}
+
+	async onModuleInit(): Promise<void> {
+		try {
+			// Expire any suggestions that passed their expiresAt while the service was down
+			await this.cleanupExpired();
+
+			const active = await this.suggestionRepo.count({ where: { status: SuggestionStatus.ACTIVE } });
+
+			this.logger.log(`Loaded ${active} active suggestion(s) from database`);
+		} catch (error) {
+			// Table may not exist yet during CLI commands (e.g. openapi:generate)
+			this.logger.warn(`Failed to load suggestions on init: ${(error as Error).message}`);
+		}
+
+		this.cleanupTimer = setInterval(() => {
+			this.cleanupExpired().catch((err: Error) => {
+				this.logger.error(`Suggestion cleanup failed: ${err.message}`);
+			});
+		}, SUGGESTION_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();
-	}
-
-	/**
-	 * Check whether a suggestion type is on cooldown for a given space.
-	 */
-	isOnCooldown(spaceId: string, type: SuggestionType, now?: number): boolean {
-		return this.cooldowns.isOnCooldown(spaceId, type, now);
-	}
-
-	/**
-	 * Clear all cooldowns. Intended for use in tests.
-	 */
-	clearAllCooldowns(): void {
-		this.cooldowns.clearAll();
 	}
 
 	onModuleDestroy(): void {
@@ -70,22 +83,55 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	}
 
 	/**
+	 * Check whether a suggestion type is on cooldown for a given space.
+	 * Cooldown is derived from the most recent accepted/dismissed suggestion's feedbackAt.
+	 */
+	async isOnCooldown(spaceId: string, type: SuggestionType, now?: number): Promise<boolean> {
+		const cutoff = new Date((now ?? Date.now()) - SUGGESTION_COOLDOWN_MS);
+
+		const recent = await this.suggestionRepo.findOne({
+			where: {
+				spaceId,
+				type,
+				status: In([SuggestionStatus.ACCEPTED, SuggestionStatus.DISMISSED]),
+				feedbackAt: MoreThan(cutoff),
+			},
+			order: { feedbackAt: 'DESC' },
+		});
+
+		return recent !== null;
+	}
+
+	/**
+	 * Serialize an async operation so check-then-insert sequences cannot interleave.
+	 */
+	private withMutex<T>(fn: () => Promise<T>): Promise<T> {
+		const ticket = this.mutexTail.then(fn, fn);
+
+		// Keep the queue moving regardless of success/failure
+		this.mutexTail = ticket.then(
+			() => {},
+			() => {},
+		);
+
+		return ticket;
+	}
+
+	/**
 	 * Generate suggestions from detected patterns.
-	 * Creates new suggestions for patterns that are not on cooldown.
-	 * Uses a lock to prevent concurrent calls from creating duplicate suggestions.
+	 * Uses a Promise-based lock to prevent concurrent generation,
+	 * and a shared mutex to serialize against heartbeat evaluator results.
 	 */
 	async generateSuggestions(): Promise<BuddySuggestion[]> {
-		if (this.generating) {
-			return [];
+		if (this.generationPromise !== null) {
+			return this.generationPromise;
 		}
 
-		this.generating = true;
+		this.generationPromise = this.withMutex(() => this.doGenerateSuggestions()).finally(() => {
+			this.generationPromise = null;
+		});
 
-		try {
-			return await this.doGenerateSuggestions();
-		} finally {
-			this.generating = false;
-		}
+		return this.generationPromise;
 	}
 
 	private async doGenerateSuggestions(): Promise<BuddySuggestion[]> {
@@ -93,31 +139,34 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		const newSuggestions: BuddySuggestion[] = [];
 
 		for (const pattern of patterns) {
-			if (this.cooldowns.isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
+			if (await this.isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
 				continue;
 			}
 
-			if (this.hasSuggestionForPattern(pattern)) {
+			if (await this.hasSuggestionForPattern(pattern)) {
 				continue;
 			}
 
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
 
-			// Re-check after async gap to prevent duplicates
-			if (this.hasSuggestionForPattern(pattern)) {
-				continue;
-			}
-
 			const result = patternToEvaluatorResult(pattern, spaceName);
 
-			const suggestion: BuddySuggestion = {
+			const entity = this.suggestionRepo.create({
 				id: uuid(),
-				...result,
-				createdAt: new Date(),
+				type: result.type,
+				title: result.title,
+				reason: result.reason,
+				spaceId: result.spaceId,
+				metadata: result.metadata,
+				status: SuggestionStatus.ACTIVE,
 				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
-			};
+				feedbackAt: null,
+			});
 
-			this.suggestions.set(suggestion.id, suggestion);
+			await this.suggestionRepo.save(entity);
+
+			const suggestion = this.entityToSuggestion(entity);
+
 			newSuggestions.push(suggestion);
 
 			this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
@@ -133,86 +182,111 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	/**
 	 * Get all active (non-expired, non-cooldown) suggestions, optionally filtered by space.
 	 */
-	getActiveSuggestions(spaceId?: string): BuddySuggestion[] {
-		const now = Date.now();
-		const active: BuddySuggestion[] = [];
+	async getActiveSuggestions(spaceId?: string): Promise<BuddySuggestion[]> {
+		const now = new Date();
+		const where: Record<string, unknown> = {
+			status: SuggestionStatus.ACTIVE,
+			expiresAt: MoreThan(now),
+		};
 
-		for (const suggestion of this.suggestions.values()) {
-			if (suggestion.expiresAt.getTime() <= now) {
-				continue;
-			}
-
-			if (this.cooldowns.isOnCooldown(suggestion.spaceId, suggestion.type, now)) {
-				continue;
-			}
-
-			if (spaceId && suggestion.spaceId !== spaceId) {
-				continue;
-			}
-
-			active.push(suggestion);
+		if (spaceId) {
+			where.spaceId = spaceId;
 		}
 
-		return active.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+		const entities = await this.suggestionRepo.find({
+			where,
+			order: { createdAt: 'DESC' },
+		});
+
+		// Prefetch all recent feedback rows to check cooldowns in one query (avoids N+1)
+		const cooldownKeys = await this.getCooldownKeys(now);
+
+		const filtered = entities.filter((e) => !cooldownKeys.has(`${e.spaceId}:${e.type}`));
+
+		return filtered.map((e) => this.entityToSuggestion(e));
 	}
 
 	/**
 	 * Get a suggestion by ID.
 	 */
-	getSuggestionOrThrow(id: string): BuddySuggestion {
-		const suggestion = this.suggestions.get(id);
+	async getSuggestionOrThrow(id: string): Promise<BuddySuggestion> {
+		const entity = await this.suggestionRepo.findOne({ where: { id } });
 
-		if (!suggestion) {
+		if (!entity) {
 			throw new BuddySuggestionNotFoundException(id);
 		}
 
-		return suggestion;
+		return this.entityToSuggestion(entity);
 	}
 
 	/**
 	 * Record feedback for a suggestion.
-	 * Both 'applied' and 'dismissed' set a cooldown to prevent re-showing.
-	 * Returns the suggestion data so callers can act on it (e.g. create a scene).
+	 * Both 'applied' and 'dismissed' update the status and set feedbackAt for cooldown.
+	 * Serialized via the shared mutex to prevent TOCTOU races on concurrent requests.
 	 */
-	recordFeedback(id: string, feedback: SuggestionFeedback): { success: boolean; suggestion: BuddySuggestion } {
-		const suggestion = this.getSuggestionOrThrow(id);
+	async recordFeedback(
+		id: string,
+		feedback: SuggestionFeedback,
+	): Promise<{ success: boolean; suggestion: BuddySuggestion }> {
+		return this.withMutex(async () => {
+			const entity = await this.suggestionRepo.findOne({ where: { id } });
 
-		this.cooldowns.setCooldown(suggestion.spaceId, suggestion.type, SUGGESTION_COOLDOWN_MS);
-		this.suggestions.delete(id);
+			if (!entity) {
+				throw new BuddySuggestionNotFoundException(id);
+			}
 
-		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}, cooldown set`);
+			// Reject feedback on already-processed suggestions to prevent duplicate side-effects
+			if (entity.status !== SuggestionStatus.ACTIVE) {
+				throw new BuddySuggestionNotFoundException(id);
+			}
 
-		return { success: true, suggestion };
+			entity.status = feedback === SuggestionFeedback.APPLIED ? SuggestionStatus.ACCEPTED : SuggestionStatus.DISMISSED;
+			entity.feedbackAt = new Date();
+
+			await this.suggestionRepo.save(entity);
+
+			this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}`);
+
+			return { success: true, suggestion: this.entityToSuggestion(entity) };
+		});
 	}
 
 	/**
 	 * Create suggestions from heartbeat evaluator results.
-	 * Applies cooldown and duplicate checking before creating each suggestion.
+	 * Serialized via the shared mutex to prevent duplicates when overlapping with generateSuggestions.
 	 */
-	createFromEvaluatorResults(results: EvaluatorResult[]): BuddySuggestion[] {
+	async createFromEvaluatorResults(results: EvaluatorResult[]): Promise<BuddySuggestion[]> {
+		return this.withMutex(() => this.doCreateFromEvaluatorResults(results));
+	}
+
+	private async doCreateFromEvaluatorResults(results: EvaluatorResult[]): Promise<BuddySuggestion[]> {
 		const created: BuddySuggestion[] = [];
 
 		for (const result of results) {
-			if (this.cooldowns.isOnCooldown(result.spaceId, result.type)) {
+			if (await this.isOnCooldown(result.spaceId, result.type)) {
 				continue;
 			}
 
-			if (this.hasDuplicateSuggestion(result.spaceId, result.type, result.metadata)) {
+			if (await this.hasDuplicateSuggestion(result.spaceId, result.type, result.metadata)) {
 				continue;
 			}
 
-			const suggestion: BuddySuggestion = {
+			const entity = this.suggestionRepo.create({
 				id: uuid(),
 				type: result.type,
 				title: result.title,
 				reason: result.reason,
 				spaceId: result.spaceId,
 				metadata: result.metadata,
-				createdAt: new Date(),
+				status: SuggestionStatus.ACTIVE,
 				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
-			};
+				feedbackAt: null,
+			});
 
-			this.suggestions.set(suggestion.id, suggestion);
+			await this.suggestionRepo.save(entity);
+
+			const suggestion = this.entityToSuggestion(entity);
+
 			created.push(suggestion);
 
 			this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
@@ -224,82 +298,95 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	}
 
 	/**
-	 * Check if a non-expired duplicate suggestion already exists (same type + space + metadata match).
+	 * Check if a non-expired active duplicate suggestion exists.
 	 */
-	private hasDuplicateSuggestion(spaceId: string, type: SuggestionType, metadata: Record<string, unknown>): boolean {
-		const now = Date.now();
+	private async hasDuplicateSuggestion(
+		spaceId: string,
+		type: SuggestionType,
+		metadata: Record<string, unknown>,
+	): Promise<boolean> {
+		const now = new Date();
 
-		for (const suggestion of this.suggestions.values()) {
-			if (suggestion.expiresAt.getTime() <= now) {
-				continue;
-			}
+		const candidates = await this.suggestionRepo.find({
+			where: {
+				spaceId,
+				type,
+				status: SuggestionStatus.ACTIVE,
+				expiresAt: MoreThan(now),
+			},
+		});
 
-			if (suggestion.spaceId === spaceId && suggestion.type === type) {
-				if (type === SuggestionType.PATTERN_SCENE_CREATE) {
-					// Single-action patterns (from PatternDetector) match by intentType
-					if (suggestion.metadata.intentType !== undefined && suggestion.metadata.intentType === metadata.intentType) {
-						return true;
-					}
+		for (const suggestion of candidates) {
+			if (type === SuggestionType.PATTERN_SCENE_CREATE) {
+				const meta = suggestion.metadata ?? {};
 
-					// Multi-action patterns (from SceneSuggestion) match by sequenceHash
-					if (
-						suggestion.metadata.sequenceHash !== undefined &&
-						suggestion.metadata.sequenceHash === metadata.sequenceHash
-					) {
-						return true;
-					}
-
-					continue;
+				if (meta.intentType !== undefined && meta.intentType === metadata.intentType) {
+					return true;
 				}
 
-				return true;
-			}
-		}
+				if (meta.sequenceHash !== undefined && meta.sequenceHash === metadata.sequenceHash) {
+					return true;
+				}
 
-		return false;
-	}
-
-	/**
-	 * Check if a non-expired suggestion already exists for a given pattern (same intent type + space).
-	 */
-	private hasSuggestionForPattern(pattern: DetectedPattern): boolean {
-		const now = Date.now();
-
-		for (const suggestion of this.suggestions.values()) {
-			if (suggestion.expiresAt.getTime() <= now) {
 				continue;
 			}
 
-			if (suggestion.spaceId === pattern.spaceId && suggestion.metadata.intentType === pattern.intentType) {
-				return true;
-			}
+			return true;
 		}
 
 		return false;
 	}
 
 	/**
-	 * Remove expired suggestions.
+	 * Check if a non-expired active suggestion exists for a given pattern.
 	 */
-	private cleanupExpired(): void {
-		const now = Date.now();
-		let removed = 0;
+	private async hasSuggestionForPattern(pattern: DetectedPattern): Promise<boolean> {
+		const now = new Date();
 
-		for (const [id, suggestion] of this.suggestions) {
-			if (suggestion.expiresAt.getTime() <= now) {
-				this.suggestions.delete(id);
-				removed++;
-			}
-		}
+		const candidates = await this.suggestionRepo.find({
+			where: {
+				spaceId: pattern.spaceId,
+				status: SuggestionStatus.ACTIVE,
+				expiresAt: MoreThan(now),
+			},
+		});
 
-		if (removed > 0) {
-			this.logger.debug(`Cleaned up ${removed} expired suggestion(s)`);
-		}
+		return candidates.some((s) => s.metadata && s.metadata.intentType === pattern.intentType);
 	}
 
 	/**
-	 * Resolve a space ID to a human-readable name.
+	 * Fetch all spaceId+type combos that are currently on cooldown in a single query.
 	 */
+	private async getCooldownKeys(now: Date): Promise<Set<string>> {
+		const cutoff = new Date(now.getTime() - SUGGESTION_COOLDOWN_MS);
+
+		const recentFeedback = await this.suggestionRepo.find({
+			where: {
+				status: In([SuggestionStatus.ACCEPTED, SuggestionStatus.DISMISSED]),
+				feedbackAt: MoreThan(cutoff),
+			},
+			select: ['spaceId', 'type'],
+		});
+
+		return new Set(recentFeedback.map((r) => `${r.spaceId}:${r.type}`));
+	}
+
+	/**
+	 * Mark expired suggestions in the database.
+	 */
+	private async cleanupExpired(): Promise<void> {
+		const now = new Date();
+
+		const result = await this.suggestionRepo.update(
+			{ status: SuggestionStatus.ACTIVE, expiresAt: LessThanOrEqual(now) },
+			{ status: SuggestionStatus.EXPIRED },
+		);
+
+		if (result.affected && result.affected > 0) {
+			this.logger.debug(`Expired ${result.affected} suggestion(s)`);
+		}
+	}
+
 	private async resolveSpaceName(spaceId: string): Promise<string> {
 		try {
 			const space = await this.spacesService.findOne(spaceId);
@@ -308,5 +395,18 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		} catch {
 			return 'unknown space';
 		}
+	}
+
+	private entityToSuggestion(entity: BuddySuggestionEntity): BuddySuggestion {
+		return {
+			id: entity.id,
+			type: entity.type,
+			title: entity.title,
+			reason: entity.reason,
+			spaceId: entity.spaceId,
+			metadata: entity.metadata ?? {},
+			createdAt: entity.createdAt,
+			expiresAt: entity.expiresAt,
+		};
 	}
 }

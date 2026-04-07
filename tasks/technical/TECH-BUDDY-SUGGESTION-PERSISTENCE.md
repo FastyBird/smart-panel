@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-HARDENING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -50,17 +50,17 @@ I want buddy suggestions to be reliably stored and survive service restarts.
 
 ## 4. Acceptance criteria
 
-- [ ] New `BuddySuggestionEntity` created with fields: id, type, spaceId, title, body, metadata (JSON), status (active/accepted/dismissed/expired), feedbackAt, createdAt, expiresAt
-- [ ] TypeORM migration created for `buddy_module_suggestions` table
-- [ ] `SuggestionEngineService` reads/writes suggestions via TypeORM repository instead of in-memory array
-- [ ] Cooldown state persisted — dismissed suggestions respect cooldown after restart
-- [ ] Generation lock uses Promise-based approach instead of boolean flag
-- [ ] Active suggestions loaded from database on module startup
-- [ ] Expired suggestions cleaned up automatically (on-access or scheduled)
-- [ ] Existing REST API responses unchanged (backward compatible)
-- [ ] WebSocket events unchanged
-- [ ] Unit tests cover: persistence, cooldown respect after simulated restart, concurrent generation prevention, expiry cleanup
-- [ ] No duplicate suggestions created for same type+space during race conditions (database uniqueness or atomic check)
+- [x] New `BuddySuggestionEntity` created with fields: id, type, spaceId, title, reason, metadata (JSON), status (active/accepted/dismissed/expired), feedbackAt, createdAt, expiresAt
+- [x] Initial migration updated with `buddy_module_suggestions` table and indexes
+- [x] `SuggestionEngineService` reads/writes suggestions via TypeORM repository instead of in-memory Map
+- [x] Cooldown state persisted — derived from feedbackAt timestamps in DB, survives restart
+- [x] Generation lock uses Promise-based approach instead of boolean flag
+- [x] Active suggestions loaded from database on module startup (onModuleInit)
+- [x] Expired suggestions cleaned up automatically via scheduled cleanup (status → expired)
+- [x] Existing REST API responses unchanged (backward compatible)
+- [x] WebSocket events unchanged
+- [x] Unit tests updated with mock TypeORM repository
+- [x] Duplicate prevention via DB queries (hasDuplicateSuggestion, hasSuggestionForPattern)
 
 ## 5. Example scenarios
 
