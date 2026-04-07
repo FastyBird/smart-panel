@@ -3,9 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
-import { BuddyProviderErrorException, BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
-import { isTimeoutError } from '../buddy.utils';
-import { withServiceTimeout } from '../buddy.utils';
+import {
+	BuddyProviderErrorException,
+	BuddyProviderNotConfiguredException,
+	BuddyProviderTimeoutException,
+} from '../buddy.exceptions';
+import { isTimeoutError, withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
@@ -99,7 +102,7 @@ export class LlmProviderService {
 			throw new BuddyProviderTimeoutException();
 		}
 
-		const message = error instanceof Error ? error.message : String(error);
+		const message = error instanceof Error ? error.message : 'Unknown provider error';
 
 		this.logger.error(`${providerName} provider error: ${message}`);
 
