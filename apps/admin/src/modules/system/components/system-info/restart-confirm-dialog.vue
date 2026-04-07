@@ -2,21 +2,26 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('systemModule.headings.manage.restart')"
-		width="420px"
+		width="520px"
 		@close="emit('close')"
 	>
-		<div class="flex items-center gap-2 mb-4">
-			<el-icon
-				color="var(--el-color-warning)"
-				:size="22"
-			>
-				<icon icon="mdi:alert-circle-outline" />
-			</el-icon>
-			<span>{{ message }}</span>
-		</div>
+		<p class="mb-4">
+			{{ isGateway ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart') }}
+		</p>
+
+		<ul class="list-disc pl-5 mb-2 leading-relaxed">
+			<li>
+				<strong>{{ t('systemModule.buttons.restartService.title') }}</strong>
+				— {{ t('systemModule.texts.manage.restartServiceDescription') }}
+			</li>
+			<li>
+				<strong>{{ t('systemModule.buttons.restartSystem.title') }}</strong>
+				— {{ t('systemModule.texts.manage.restartSystemDescription') }}
+			</li>
+		</ul>
 
 		<template #footer>
-			<div class="flex flex-wrap justify-end gap-2 w-full">
+			<div class="flex justify-end gap-2 w-full">
 				<el-button @click="emit('close')">
 					{{ t('systemModule.buttons.cancel.title') }}
 				</el-button>
@@ -38,18 +43,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElIcon } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElButton, ElDialog } from 'element-plus';
 
 defineOptions({
 	name: 'RestartConfirmDialog',
 });
 
-const props = defineProps<{
+defineProps<{
 	visible: boolean;
 	isGateway: boolean;
 }>();
@@ -61,8 +63,4 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-const message = computed<string>(() =>
-	props.isGateway ? t('systemModule.messages.manage.confirmRestartGateway') : t('systemModule.messages.manage.confirmRestart'),
-);
 </script>

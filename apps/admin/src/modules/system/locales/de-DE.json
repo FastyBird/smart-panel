@@ -115,6 +115,8 @@
       "powerOffGateway": "Schalten Sie das Gateway vollständig aus. Verbundene Displays verlieren die Verbindung.",
       "factoryResetDevice": "Setzen Sie das Gerät auf die ursprünglichen Werkseinstellungen zurück.",
       "factoryResetGateway": "Löschen Sie alle Gateway-Daten und setzen Sie alle verbundenen Displays auf Werkseinstellungen zurück.",
+      "restartServiceDescription": "Schneller Neustart nur der Anwendung. Einstellungen und Verbindungen bleiben erhalten.",
+      "restartSystemDescription": "Vollständiger Geräteneustart einschließlich Betriebssystem. Dauert länger, behebt aber tiefere Probleme.",
       "rebootInProcess": "Smart Panel wird neu gestartet...",
       "powerOffInProcess": "Smart Panel wird ausgeschaltet...",
       "factoryResetInProcess": "Smart Panel wird auf Werkseinstellungen zurückgesetzt...",
