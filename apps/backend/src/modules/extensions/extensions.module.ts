@@ -27,6 +27,7 @@ import {
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
+import { ActionAuditService } from './services/action-audit.service';
 import { ExtensionActionRegistryService } from './services/extension-action-registry.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
@@ -45,6 +46,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 		ModuleResetService,
 		PluginServiceManagerService,
 		ExtensionActionRegistryService,
+		ActionAuditService,
 		ExtensionsStatsProvider,
 		// CLI commands
 		ListServicesCommand,
@@ -52,7 +54,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 		StopServiceCommand,
 		RestartServiceCommand,
 	],
-	exports: [PluginServiceManagerService, ExtensionActionRegistryService],
+	exports: [PluginServiceManagerService, ExtensionActionRegistryService, ActionAuditService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(

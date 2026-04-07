@@ -184,7 +184,8 @@
 			},
 			"required": "Required",
 			"dangerous": "Dangerous",
-			"comingSoon": "Coming soon"
+			"comingSoon": "Coming soon",
+			"history": "History ({count})"
 		},
 		"buttons": {
 			"run": "Run",

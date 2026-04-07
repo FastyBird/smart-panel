@@ -183,7 +183,8 @@
 			},
 			"required": "Wymagane",
 			"dangerous": "Niebezpieczne",
-			"comingSoon": "Wkrótce"
+			"comingSoon": "Wkrótce",
+			"history": "Historia ({count})"
 		},
 		"buttons": {
 			"run": "Uruchom",

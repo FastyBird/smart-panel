@@ -183,7 +183,8 @@
 			},
 			"required": "Erforderlich",
 			"dangerous": "Gefährlich",
-			"comingSoon": "Demnächst"
+			"comingSoon": "Demnächst",
+			"history": "Verlauf ({count})"
 		},
 		"buttons": {
 			"run": "Ausführen",

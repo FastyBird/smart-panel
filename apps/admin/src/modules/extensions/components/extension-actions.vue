@@ -172,6 +172,29 @@
 										class="mb-2"
 										@close="delete actionResults[action.id]"
 									/>
+
+									<!-- Execution history -->
+									<el-collapse
+										v-if="actionHistory[action.id]?.length"
+										class="mt-2"
+									>
+										<el-collapse-item :title="t('extensionsModule.actions.labels.history', { count: actionHistory[action.id].length })">
+											<div
+												v-for="record in actionHistory[action.id]"
+												:key="record.id"
+												class="flex items-center gap-2 py-1 text-xs text-gray-500 border-b border-gray-100 last:border-b-0"
+											>
+												<icon
+													:icon="record.success ? 'mdi:check-circle' : 'mdi:alert-circle'"
+													:class="record.success ? 'text-green-500' : 'text-red-500'"
+													class="w-4 h-4 shrink-0"
+												/>
+												<span class="truncate flex-1">{{ record.message || (record.success ? t('extensionsModule.actions.messages.success') : t('extensionsModule.actions.messages.error')) }}</span>
+												<span class="shrink-0">{{ record.duration_ms }}ms</span>
+												<span class="shrink-0">{{ formatTimestamp(record.timestamp) }}</span>
+											</div>
+										</el-collapse-item>
+									</el-collapse>
 								</div>
 
 								<div class="shrink-0">
@@ -232,6 +255,8 @@ import {
 	ElAlert,
 	ElButton,
 	ElCard,
+	ElCollapse,
+	ElCollapseItem,
 	ElEmpty,
 	ElForm,
 	ElFormItem,
@@ -249,7 +274,7 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import type { IActionResult, IExtensionActionDescriptor } from '../composables/useActions';
+import type { IActionHistoryRecord, IActionResult, IExtensionActionDescriptor } from '../composables/useActions';
 import { useActionsInjection } from '../composables/useActions';
 
 defineOptions({
@@ -261,7 +286,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { actions, isLoading, executingActions, executeAction } = useActionsInjection();
+const { actions, isLoading, executingActions, executeAction, fetchActionHistory } = useActionsInjection();
 
 // Per-action form models
 type FormValue = string | number | boolean | (string | number | boolean)[] | undefined;
@@ -269,6 +294,19 @@ const formModels = reactive<Record<string, Record<string, FormValue>>>({});
 
 // Per-action result display
 const actionResults = reactive<Record<string, IActionResult | undefined>>({});
+
+// Per-action execution history
+const actionHistory = reactive<Record<string, IActionHistoryRecord[]>>({});
+
+const formatTimestamp = (ts: string): string => {
+	const date = new Date(ts);
+
+	return date.toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+};
+
+const refreshHistory = async (actionId: string): Promise<void> => {
+	actionHistory[actionId] = await fetchActionHistory(props.extensionType, actionId);
+};
 
 const getFormModel = (actionId: string): Record<string, FormValue> => {
 	if (!formModels[actionId]) {
@@ -341,6 +379,12 @@ const initFormDefaults = (): void => {
 		}
 	}
 
+	for (const key of Object.keys(actionHistory)) {
+		if (!currentActionIds.has(key)) {
+			delete actionHistory[key];
+		}
+	}
+
 	// Initialize defaults for current actions from scratch
 	for (const action of actions.value) {
 		formModels[action.id] = {};
@@ -398,10 +442,18 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 	const result = await executeAction(props.extensionType, action.id, params);
 
 	actionResults[action.id] = result;
+
+	// Refresh history after execution
+	void refreshHistory(action.id);
 };
 
-// Initialize form defaults when actions change (parent manages fetching via shared useActions instance)
+// Initialize form defaults and load history when actions change
 watch(actions, () => {
 	initFormDefaults();
+
+	// Load existing history for all actions
+	for (const action of actions.value) {
+		void refreshHistory(action.id);
+	}
 }, { immediate: true });
 </script>

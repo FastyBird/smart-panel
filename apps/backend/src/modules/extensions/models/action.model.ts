@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsDate, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -217,4 +217,55 @@ export class ActionResultModel {
 	@IsObject()
 	@IsOptional()
 	data?: Record<string, unknown>;
+}
+
+@ApiSchema({ name: 'ExtensionsModuleDataActionExecutionRecord' })
+export class ActionExecutionRecordModel {
+	@ApiProperty({ description: 'Record ID', type: 'string' })
+	@Expose()
+	@IsString()
+	id: string;
+
+	@ApiProperty({ name: 'extension_type', description: 'Extension type', type: 'string' })
+	@Expose({ name: 'extension_type' })
+	@IsString()
+	extensionType: string;
+
+	@ApiProperty({ name: 'action_id', description: 'Action ID', type: 'string' })
+	@Expose({ name: 'action_id' })
+	@IsString()
+	actionId: string;
+
+	@ApiPropertyOptional({ name: 'user_id', description: 'User who executed the action', type: 'string', nullable: true })
+	@Expose({ name: 'user_id' })
+	@IsString()
+	@IsOptional()
+	userId: string | null;
+
+	@ApiPropertyOptional({ name: 'user_role', description: 'Role of the user', type: 'string', nullable: true })
+	@Expose({ name: 'user_role' })
+	@IsString()
+	@IsOptional()
+	userRole: string | null;
+
+	@ApiProperty({ description: 'Whether the action succeeded', type: 'boolean' })
+	@Expose()
+	@IsBoolean()
+	success: boolean;
+
+	@ApiPropertyOptional({ description: 'Result message', type: 'string', nullable: true })
+	@Expose()
+	@IsString()
+	@IsOptional()
+	message: string | null;
+
+	@ApiProperty({ name: 'duration_ms', description: 'Execution duration in milliseconds', type: 'number' })
+	@Expose({ name: 'duration_ms' })
+	@IsNumber()
+	durationMs: number;
+
+	@ApiProperty({ description: 'Execution timestamp', type: 'string', format: 'date-time' })
+	@Expose()
+	@IsDate()
+	timestamp: Date;
 }

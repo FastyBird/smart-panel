@@ -13,7 +13,12 @@ import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqExecuteActionDto } from '../dto/execute-action.dto';
 import { EXTENSIONS_MODULE_API_TAG_NAME, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
-import { ActionResultResponseModel, ExtensionActionsResponseModel } from '../models/actions-response.model';
+import {
+	ActionHistoryResponseModel,
+	ActionResultResponseModel,
+	ExtensionActionsResponseModel,
+} from '../models/actions-response.model';
+import { ActionAuditService } from '../services/action-audit.service';
 import { ExtensionActionRegistryService } from '../services/extension-action-registry.service';
 
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
@@ -21,7 +26,10 @@ import { ExtensionActionRegistryService } from '../services/extension-action-reg
 export class ActionsController {
 	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ActionsController');
 
-	constructor(private readonly actionRegistry: ExtensionActionRegistryService) {}
+	constructor(
+		private readonly actionRegistry: ExtensionActionRegistryService,
+		private readonly auditService: ActionAuditService,
+	) {}
 
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
@@ -82,10 +90,42 @@ export class ActionsController {
 
 		this.logger.log(`Executing action '${actionId}' for extension '${type}'`);
 
-		const result = await this.actionRegistry.execute(type, actionId, body.data.params ?? {});
+		const startTime = Date.now();
+		const params = body.data.params ?? {};
+		const result = await this.actionRegistry.execute(type, actionId, params);
+
+		this.auditService.record({
+			extensionType: type,
+			actionId,
+			userId: req.auth?.type === 'user' ? req.auth.id : null,
+			userRole: userRole,
+			params,
+			success: result.success,
+			message: result.message ?? null,
+			durationMs: Date.now() - startTime,
+		});
 
 		const response = new ActionResultResponseModel();
 		response.data = result as ActionResultResponseModel['data'];
+
+		return response;
+	}
+
+	@Get(':actionId/history')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'get-extensions-module-extension-action-history',
+		summary: 'Get action execution history',
+		description: 'Returns recent execution records for a specific action.',
+	})
+	@ApiParam({ name: 'type', type: 'string', description: 'Extension type identifier' })
+	@ApiParam({ name: 'actionId', type: 'string', description: 'Action identifier' })
+	@ApiSuccessResponse(ActionHistoryResponseModel, 'Returns the action execution history')
+	getActionHistory(@Param('type') type: string, @Param('actionId') actionId: string): ActionHistoryResponseModel {
+		const records = this.auditService.getHistory(type, actionId);
+
+		const response = new ActionHistoryResponseModel();
+		response.data = records as ActionHistoryResponseModel['data'];
 
 		return response;
 	}

@@ -4,7 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
-import { ActionResultModel, ExtensionActionModel } from './action.model';
+import { ActionExecutionRecordModel, ActionResultModel, ExtensionActionModel } from './action.model';
 
 @ApiSchema({ name: 'ExtensionsModuleResActions' })
 export class ExtensionActionsResponseModel extends BaseSuccessResponseModel<ExtensionActionModel[]> {
@@ -29,4 +29,18 @@ export class ActionResultResponseModel extends BaseSuccessResponseModel<ActionRe
 	@Expose()
 	@Type(() => ActionResultModel)
 	declare data: ActionResultModel;
+}
+
+@ApiSchema({ name: 'ExtensionsModuleResActionHistory' })
+export class ActionHistoryResponseModel extends BaseSuccessResponseModel<ActionExecutionRecordModel[]> {
+	@ApiProperty({
+		description: 'Recent action execution records',
+		type: 'array',
+		items: {
+			$ref: getSchemaPath(ActionExecutionRecordModel),
+		},
+	})
+	@Expose()
+	@Type(() => ActionExecutionRecordModel)
+	declare data: ActionExecutionRecordModel[];
 }

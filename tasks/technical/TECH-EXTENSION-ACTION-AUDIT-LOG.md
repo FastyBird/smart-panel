@@ -5,7 +5,7 @@ Type: technical
 Scope: backend, admin
 Size: small
 Parent: EPIC-EXTENSION-ACTIONS
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -40,12 +40,12 @@ Extension actions can modify system state significantly (load scenarios, change 
 
 ## 4. Acceptance criteria
 
-- [ ] Action executions are recorded with user, params, result, and timing
-- [ ] REST endpoint returns recent execution history per action (last 50)
-- [ ] Admin UI shows collapsible history section on action cards
-- [ ] History entries show: timestamp, user, success/failure, duration, message
-- [ ] Ring buffer limits memory usage (configurable, default 1000 total entries)
-- [ ] Interactive session completions are also recorded
+- [x] Action executions are recorded with user, params, result, and timing
+- [x] REST endpoint returns recent execution history per action (last 50)
+- [x] Admin UI shows collapsible history section on action cards
+- [x] History entries show: timestamp, user, success/failure, duration, message
+- [x] Ring buffer limits memory usage (configurable, default 1000 total entries)
+- [ ] Interactive session completions are also recorded — deferred to interactive sessions feature
 
 ## 5. Technical constraints
 

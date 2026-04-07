@@ -60,12 +60,28 @@ export interface IActionResult {
 	data?: Record<string, unknown>;
 }
 
+/**
+ * A single action execution history record.
+ */
+export interface IActionHistoryRecord {
+	id: string;
+	extension_type: string;
+	action_id: string;
+	user_id: string | null;
+	user_role: string | null;
+	success: boolean;
+	message: string | null;
+	duration_ms: number;
+	timestamp: string;
+}
+
 export interface IUseActions {
 	actions: Ref<IExtensionActionDescriptor[]>;
 	isLoading: Ref<boolean>;
 	executingActions: Ref<Map<string, number>>;
 	fetchActions: (extensionType: string) => Promise<void>;
 	executeAction: (extensionType: string, actionId: string, params?: Record<string, unknown>) => Promise<IActionResult>;
+	fetchActionHistory: (extensionType: string, actionId: string) => Promise<IActionHistoryRecord[]>;
 }
 
 /**
@@ -164,12 +180,31 @@ export const useActions = (): IUseActions => {
 		}
 	};
 
+	const fetchActionHistory = async (extensionType: string, actionId: string): Promise<IActionHistoryRecord[]> => {
+		try {
+			/* eslint-disable @typescript-eslint/no-explicit-any */
+			const { data: responseData } = await (backend.client as any).GET(
+				`/modules/extensions/extensions/${extensionType}/actions/${actionId}/history` as any,
+			);
+			/* eslint-enable @typescript-eslint/no-explicit-any */
+
+			if (responseData?.data) {
+				return responseData.data as IActionHistoryRecord[];
+			}
+
+			return [];
+		} catch {
+			return [];
+		}
+	};
+
 	return {
 		actions,
 		isLoading,
 		executingActions,
 		fetchActions,
 		executeAction,
+		fetchActionHistory,
 	};
 };
 
