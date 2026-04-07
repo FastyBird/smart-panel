@@ -1,5 +1,5 @@
-import { v4 as uuid } from 'uuid';
 import { LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -16,8 +16,8 @@ import {
 	SUGGESTION_EXPIRY_MS,
 	SuggestionType,
 } from '../buddy.constants';
-import { BuddySuggestionEntity, SuggestionStatus } from '../entities/buddy-suggestion.entity';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
+import { BuddySuggestionEntity, SuggestionStatus } from '../entities/buddy-suggestion.entity';
 
 import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
@@ -60,7 +60,11 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			this.logger.warn(`Failed to load suggestions on init: ${(error as Error).message}`);
 		}
 
-		this.cleanupTimer = setInterval(() => void this.cleanupExpired(), SUGGESTION_CLEANUP_INTERVAL_MS);
+		this.cleanupTimer = setInterval(() => {
+			this.cleanupExpired().catch((err: Error) => {
+				this.logger.error(`Suggestion cleanup failed: ${err.message}`);
+			});
+		}, SUGGESTION_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();
 	}
 
@@ -96,7 +100,7 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 	 * Uses a Promise-based lock to prevent concurrent generation.
 	 */
 	async generateSuggestions(): Promise<BuddySuggestion[]> {
-		if (this.generationPromise) {
+		if (this.generationPromise !== null) {
 			return this.generationPromise;
 		}
 
@@ -311,7 +315,9 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			},
 		});
 
-		return candidates.some((s) => s.metadata && (s.metadata as Record<string, unknown>).intentType === pattern.intentType);
+		return candidates.some(
+			(s) => s.metadata && s.metadata.intentType === pattern.intentType,
+		);
 	}
 
 	/**

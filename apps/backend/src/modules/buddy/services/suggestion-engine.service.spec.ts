@@ -1,12 +1,17 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+/*
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call,
+@typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await,
+@typescript-eslint/no-unused-vars
+*/
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { IntentType } from '../../intents/intents.constants';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import { EventType, SuggestionType } from '../buddy.constants';
-import { BuddySuggestionEntity, SuggestionStatus } from '../entities/buddy-suggestion.entity';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
+import { BuddySuggestionEntity } from '../entities/buddy-suggestion.entity';
 
 import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
 import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';

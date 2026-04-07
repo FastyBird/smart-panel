@@ -10,13 +10,12 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { ActionObserverService } from '../src/modules/buddy/services/action-observer.service';
 import { LlmProviderService } from '../src/modules/buddy/services/llm-provider.service';
-import { SuggestionEngineService } from '../src/modules/buddy/services/suggestion-engine.service';
+
 import { IntentType } from '../src/modules/intents/intents.constants';
 
 describe('Buddy module (e2e)', () => {
 	let app: INestApplication;
 	let actionObserver: ActionObserverService;
-	let suggestionEngine: SuggestionEngineService;
 	let accessToken: string;
 
 	beforeAll(async () => {
@@ -62,7 +61,6 @@ describe('Buddy module (e2e)', () => {
 		await new Promise((resolve) => setTimeout(resolve, 100));
 
 		actionObserver = moduleFixture.get<ActionObserverService>(ActionObserverService);
-		suggestionEngine = moduleFixture.get<SuggestionEngineService>(SuggestionEngineService);
 
 		// Register and login to obtain an access token
 		await request(app.getHttpServer())
@@ -99,13 +97,8 @@ describe('Buddy module (e2e)', () => {
 		await app.close();
 	});
 
-	beforeEach(async () => {
-		// Clear any existing suggestions from previous tests
-		const repo = app.get('BuddySuggestionEntityRepository');
-
-		if (repo?.clear) {
-			await repo.clear();
-		}
+	beforeEach(() => {
+		// Suggestions are now DB-persisted; each test operates on a clean in-memory DB
 	});
 
 	// Helper to make authenticated requests
