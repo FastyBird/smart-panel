@@ -180,7 +180,18 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			order: { createdAt: 'DESC' },
 		});
 
-		return entities.map((e) => this.entityToSuggestion(e));
+		// Filter out suggestions whose space+type combo is on cooldown
+		const filtered: BuddySuggestionEntity[] = [];
+
+		for (const entity of entities) {
+			if (await this.isOnCooldown(entity.spaceId, entity.type)) {
+				continue;
+			}
+
+			filtered.push(entity);
+		}
+
+		return filtered.map((e) => this.entityToSuggestion(e));
 	}
 
 	/**
@@ -207,6 +218,11 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 		const entity = await this.suggestionRepo.findOne({ where: { id } });
 
 		if (!entity) {
+			throw new BuddySuggestionNotFoundException(id);
+		}
+
+		// Reject feedback on already-processed suggestions to prevent duplicate side-effects
+		if (entity.status !== SuggestionStatus.ACTIVE) {
 			throw new BuddySuggestionNotFoundException(id);
 		}
 

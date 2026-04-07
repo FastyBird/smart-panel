@@ -275,6 +275,23 @@ describe('SuggestionEngineService', () => {
 
 			expect(active).toHaveLength(0);
 		});
+
+		it('should exclude suggestions whose space+type is on cooldown', async () => {
+			patternDetector.detectPatterns.mockReturnValue([
+				makePattern({ spaceId: 'living-room', intentType: IntentType.LIGHT_TOGGLE }),
+				makePattern({ spaceId: 'bedroom', intentType: IntentType.SCENE_RUN }),
+			]);
+			const created = await service.generateSuggestions();
+
+			// Dismiss one suggestion for living-room — sets cooldown for that space+type
+			await service.recordFeedback(created[0].id, SuggestionFeedback.DISMISSED);
+
+			const active = await service.getActiveSuggestions();
+
+			// Only the bedroom suggestion should remain; living-room is on cooldown
+			expect(active).toHaveLength(1);
+			expect(active[0].spaceId).toBe('bedroom');
+		});
 	});
 
 	describe('getSuggestionOrThrow', () => {
@@ -324,6 +341,14 @@ describe('SuggestionEngineService', () => {
 
 		it('should throw for non-existent suggestion ID', async () => {
 			await expect(service.recordFeedback('nonexistent', SuggestionFeedback.APPLIED)).rejects.toThrow(
+				BuddySuggestionNotFoundException,
+			);
+		});
+
+		it('should reject feedback on already-processed suggestion', async () => {
+			await service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED);
+
+			await expect(service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED)).rejects.toThrow(
 				BuddySuggestionNotFoundException,
 			);
 		});
