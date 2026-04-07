@@ -1,3 +1,4 @@
+import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
@@ -111,10 +112,16 @@ describe('SceneSuggestionEvaluator', () => {
 			create: jest.fn().mockResolvedValue({ id: 'scene-123', name: 'Test Scene' }),
 		};
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const mockConfigService: ConfigService = {
+			getModuleConfig: jest.fn().mockReturnValue({ timezone: 'UTC' }),
+		} as any;
+
 		service = new SceneSuggestionEvaluator(
 			actionObserver,
 			scenesService as unknown as ScenesService,
 			makeRulesLoader(),
+			mockConfigService,
 		);
 	});
 
@@ -144,7 +151,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(23, 0, 0, 0);
+				baseTime.setUTCHours(23, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -167,7 +174,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES + 1; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(23, 0, 0, 0);
+				baseTime.setUTCHours(23, 0, 0, 0);
 
 				actionObserver.recordAction(
 					makeAction({
@@ -194,7 +201,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES - 1; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(23, 0, 0, 0);
+				baseTime.setUTCHours(23, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -212,7 +219,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -227,7 +234,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 
 				actionObserver.recordAction(
 					makeAction({
@@ -261,7 +268,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 
 				const actions =
 					day % 2 === 0
@@ -292,7 +299,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 				recordSession(actionObserver, 'space-2', sessionActions, baseTime);
 			}
 
@@ -321,7 +328,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(7, 0, 0, 0);
+				baseTime.setUTCHours(7, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -341,7 +348,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(19, 0, 0, 0);
+				baseTime.setUTCHours(19, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -361,7 +368,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(14, 0, 0, 0);
+				baseTime.setUTCHours(14, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -390,7 +397,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 
@@ -425,7 +432,7 @@ describe('SceneSuggestionEvaluator', () => {
 			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
 				const baseTime = new Date();
 				baseTime.setDate(baseTime.getDate() - day);
-				baseTime.setHours(22, 0, 0, 0);
+				baseTime.setUTCHours(22, 0, 0, 0);
 				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
 			}
 

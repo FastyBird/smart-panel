@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-HARDENING
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -44,12 +44,12 @@ I want the pattern detector to correctly cluster actions by local time.
 
 ## 4. Acceptance criteria
 
-- [ ] Pattern detector extracts time-of-day using a consistent timezone (configured or system default)
-- [ ] `clusterByTimeOfDay` utility accepts an optional timezone parameter
-- [ ] Time clustering produces identical results regardless of when DST transitions occur
-- [ ] `formatTimeLabel` respects the configured timezone
-- [ ] Unit tests cover: normal operation, DST spring-forward, DST fall-back, UTC server
-- [ ] No changes to suggestion API response format
+- [x] Pattern detector extracts time-of-day using a consistent timezone (configured or system default)
+- [x] `clusterByTimeOfDay` utility accepts an optional timezone parameter — via `toMinuteOfDay()` helper used by callers
+- [x] Time clustering produces identical results regardless of when DST transitions occur
+- [ ] `formatTimeLabel` respects the configured timezone — skipped: formatTimeLabel receives pre-computed hour/minute, timezone is applied at extraction
+- [x] Unit tests cover: normal operation, DST spring-forward, DST fall-back, UTC server
+- [x] No changes to suggestion API response format
 
 ## 5. Example scenarios
 

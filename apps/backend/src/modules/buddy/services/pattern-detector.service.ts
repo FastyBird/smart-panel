@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
 import {
 	BUDDY_MODULE_NAME,
@@ -9,7 +10,14 @@ import {
 	PATTERN_TIME_WINDOW_MINUTES,
 	SuggestionType,
 } from '../buddy.constants';
-import { clusterByTimeOfDay, formatIntentLabel, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
+import {
+	clusterByTimeOfDay,
+	formatIntentLabel,
+	formatTimeLabel,
+	getConfigTimezone,
+	interpolateTemplate,
+	toMinuteOfDay,
+} from '../buddy.utils';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 
 import { ActionObserverService, ActionRecord, ActionTarget } from './action-observer.service';
@@ -89,7 +97,12 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	constructor(
 		private readonly actionObserver: ActionObserverService,
 		private readonly rulesLoader: EvaluatorRulesLoaderService,
+		private readonly configService: ConfigService,
 	) {}
+
+	private getTimezone(): string {
+		return getConfigTimezone(this.configService);
+	}
 
 	/**
 	 * HeartbeatEvaluator implementation.
@@ -243,7 +256,8 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	 * are grouped into the same cluster.
 	 */
 	private clusterActions(actions: ActionRecord[], windowMinutes: number): TimeCluster[] {
-		const actionMinuteOfDay = (a: ActionRecord): number => a.timestamp.getHours() * 60 + a.timestamp.getMinutes();
+		const timezone = this.getTimezone();
+		const actionMinuteOfDay = (a: ActionRecord): number => toMinuteOfDay(a.timestamp, timezone);
 
 		return clusterByTimeOfDay(actions, actionMinuteOfDay, windowMinutes).map((c) => ({
 			actions: c.items,
