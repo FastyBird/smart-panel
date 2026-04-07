@@ -9,9 +9,20 @@ const OPENAI_SDK_MODULE = 'openai';
 /**
  * Metadata extracted from an OpenAI API response.
  */
+/**
+ * A tool call that failed to parse — returned to the LLM as an error result
+ * so it can retry or respond gracefully.
+ */
+export interface OpenAiToolError {
+	toolCallId: string;
+	toolName: string;
+	error: string;
+}
+
 export interface OpenAiSdkResult {
 	content: string;
 	toolCalls?: LlmToolCall[];
+	toolErrors?: OpenAiToolError[];
 	model: string | null;
 	inputTokens: number | null;
 	outputTokens: number | null;
@@ -77,11 +88,14 @@ export async function sendOpenAiMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const usage = response.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
 
-	// Extract tool calls if present
+	// Extract tool calls if present — malformed arguments are returned as errors
+	// to the LLM so it can retry, rather than silently dropped.
 	let toolCalls: LlmToolCall[] | undefined;
+	let toolErrors: OpenAiToolError[] | undefined;
 
 	if (message?.tool_calls && message.tool_calls.length > 0) {
 		toolCalls = [];
+		toolErrors = [];
 
 		for (const tc of message.tool_calls) {
 			try {
@@ -91,18 +105,29 @@ export async function sendOpenAiMessage(
 					arguments: JSON.parse(tc.function.arguments) as Record<string, unknown>,
 				});
 			} catch (parseError) {
-				console.warn(`Skipping tool call "${tc.function.name}" with malformed JSON arguments: ${String(parseError)}`);
+				const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+
+				toolErrors.push({
+					toolCallId: tc.id,
+					toolName: tc.function.name,
+					error: `Failed to parse arguments — ${errorMsg}`,
+				});
 			}
 		}
 
 		if (toolCalls.length === 0) {
 			toolCalls = undefined;
 		}
+
+		if (toolErrors.length === 0) {
+			toolErrors = undefined;
+		}
 	}
 
 	return {
 		content: message?.content ?? '',
 		toolCalls,
+		toolErrors,
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		model: (response.model as string) ?? null,
 		inputTokens: usage?.prompt_tokens ?? null,

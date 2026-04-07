@@ -3,11 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
-import {
-	BuddyProviderErrorException,
-	BuddyProviderNotConfiguredException,
-	BuddyProviderTimeoutException,
-} from '../buddy.exceptions';
+import { BuddyProviderErrorException, BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
+import { isTimeoutError } from '../buddy.utils';
 import { withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
@@ -96,23 +93,13 @@ export class LlmProviderService {
 	}
 
 	private handleProviderError(providerName: string, error: unknown, timeout: number): never {
-		const err = error as Error;
-		const name = err.name ?? '';
-		const message = err.message ?? '';
-
-		const isTimeout =
-			name === 'AbortError' ||
-			name.includes('Timeout') ||
-			message.includes('timeout') ||
-			message.includes('timed out') ||
-			message.includes('ETIMEDOUT') ||
-			message.includes('ECONNABORTED');
-
-		if (isTimeout) {
+		if (isTimeoutError(error)) {
 			this.logger.error(`${providerName} provider timeout after ${timeout}ms`);
 
 			throw new BuddyProviderTimeoutException();
 		}
+
+		const message = error instanceof Error ? error.message : String(error);
 
 		this.logger.error(`${providerName} provider error: ${message}`);
 
