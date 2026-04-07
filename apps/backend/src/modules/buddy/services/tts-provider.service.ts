@@ -10,7 +10,7 @@ import {
 	BuddyTtsProviderErrorException,
 	BuddyTtsProviderTimeoutException,
 } from '../buddy.exceptions';
-import { withServiceTimeout } from '../buddy.utils';
+import { isTimeoutError, withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { TtsProviderRegistryService } from './tts-provider-registry.service';
@@ -232,23 +232,13 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private handleProviderError(providerName: string, error: unknown): never {
-		const err = error as Error;
-		const name = err.name ?? '';
-		const message = err.message ?? '';
-
-		const isTimeout =
-			name === 'AbortError' ||
-			name.includes('Timeout') ||
-			message.includes('timeout') ||
-			message.includes('timed out') ||
-			message.includes('ETIMEDOUT') ||
-			message.includes('ECONNABORTED');
-
-		if (isTimeout) {
+		if (isTimeoutError(error)) {
 			this.logger.error(`${providerName} TTS provider timeout`);
 
 			throw new BuddyTtsProviderTimeoutException();
 		}
+
+		const message = error instanceof Error ? error.message : 'Unknown provider error';
 
 		this.logger.error(`${providerName} TTS provider error: ${message}`);
 

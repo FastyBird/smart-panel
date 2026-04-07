@@ -10,7 +10,7 @@ import {
 	BuddySttProviderErrorException,
 	BuddySttProviderTimeoutException,
 } from '../buddy.exceptions';
-import { withServiceTimeout } from '../buddy.utils';
+import { isTimeoutError, withServiceTimeout } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { SttProviderRegistryService } from './stt-provider-registry.service';
@@ -121,23 +121,13 @@ export class SttProviderService {
 	}
 
 	private handleProviderError(providerName: string, error: unknown): never {
-		const err = error as Error;
-		const name = err.name ?? '';
-		const message = err.message ?? '';
-
-		const isTimeout =
-			name === 'AbortError' ||
-			name.includes('Timeout') ||
-			message.includes('timeout') ||
-			message.includes('timed out') ||
-			message.includes('ETIMEDOUT') ||
-			message.includes('ECONNABORTED');
-
-		if (isTimeout) {
+		if (isTimeoutError(error)) {
 			this.logger.error(`${providerName} STT provider timeout`);
 
 			throw new BuddySttProviderTimeoutException();
 		}
+
+		const message = error instanceof Error ? error.message : 'Unknown provider error';
 
 		this.logger.error(`${providerName} STT provider error: ${message}`);
 
