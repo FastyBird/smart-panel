@@ -113,6 +113,34 @@ export function formatIntentLabel(intentType: string): string {
 }
 
 /**
+ * Extract the local hour and minute from a Date using a specific timezone.
+ * Uses Intl.DateTimeFormat so the result is correct across DST transitions
+ * regardless of the server's system timezone.
+ */
+export function getLocalTimeOfDay(date: Date, timezone: string): { hour: number; minute: number } {
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone: timezone,
+		hour: 'numeric',
+		minute: 'numeric',
+		hour12: false,
+	}).formatToParts(date);
+
+	return {
+		hour: Number(parts.find((p) => p.type === 'hour')?.value ?? 0),
+		minute: Number(parts.find((p) => p.type === 'minute')?.value ?? 0),
+	};
+}
+
+/**
+ * Convert a Date to minute-of-day (0-1439) in a specific timezone.
+ */
+export function toMinuteOfDay(date: Date, timezone: string): number {
+	const { hour, minute } = getLocalTimeOfDay(date, timezone);
+
+	return hour * 60 + minute;
+}
+
+/**
  * Format a time-of-day into a readable string like "11 PM" or "2:30 PM".
  */
 export function formatTimeLabel(hour: number, minute: number): string {

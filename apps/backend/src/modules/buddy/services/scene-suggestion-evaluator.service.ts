@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../config/services/config.service';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
-import { clusterByTimeOfDay, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
+import { clusterByTimeOfDay, formatTimeLabel, interpolateTemplate, toMinuteOfDay } from '../buddy.utils';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 import { ResolvedPatternRule } from '../spec/evaluator-rules.types';
 
@@ -49,7 +51,18 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		private readonly actionObserver: ActionObserverService,
 		private readonly scenesService: ScenesService,
 		private readonly rulesLoader: EvaluatorRulesLoaderService,
+		private readonly configService: ConfigService,
 	) {}
+
+	private getTimezone(): string {
+		try {
+			const config = this.configService.getModuleConfig<{ timezone?: string }>(SYSTEM_MODULE_NAME);
+
+			return config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+		} catch {
+			return Intl.DateTimeFormat().resolvedOptions().timeZone;
+		}
+	}
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
 		const rule = this.rulesLoader.getPatternRule('multi_action_sequence');
@@ -275,10 +288,9 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		sessions: ActionSession[],
 		timeClusterMinutes: number,
 	): { sessions: ActionSession[]; timeOfDay: { hour: number; minute: number } }[] {
+		const timezone = this.getTimezone();
 		const sessionMinuteOfDay = (s: ActionSession): number => {
-			const ts = s.actions[0].timestamp;
-
-			return ts.getHours() * 60 + ts.getMinutes();
+			return toMinuteOfDay(s.actions[0].timestamp, timezone);
 		};
 
 		return clusterByTimeOfDay(sessions, sessionMinuteOfDay, timeClusterMinutes).map((c) => ({
