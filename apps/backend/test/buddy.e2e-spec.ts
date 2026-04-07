@@ -10,7 +10,6 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { ActionObserverService } from '../src/modules/buddy/services/action-observer.service';
 import { LlmProviderService } from '../src/modules/buddy/services/llm-provider.service';
-
 import { IntentType } from '../src/modules/intents/intents.constants';
 
 describe('Buddy module (e2e)', () => {

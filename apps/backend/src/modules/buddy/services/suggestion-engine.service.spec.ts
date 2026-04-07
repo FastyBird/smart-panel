@@ -1,8 +1,7 @@
 /*
 eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
-@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call,
-@typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await,
-@typescript-eslint/no-unused-vars
+@typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await
 */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 

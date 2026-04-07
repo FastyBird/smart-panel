@@ -315,9 +315,7 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			},
 		});
 
-		return candidates.some(
-			(s) => s.metadata && s.metadata.intentType === pattern.intentType,
-		);
+		return candidates.some((s) => s.metadata && s.metadata.intentType === pattern.intentType);
 	}
 
 	/**
