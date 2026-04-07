@@ -28,21 +28,21 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 		try {
 			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality` as never);
 
-			const res = response as { data?: { data: { content: string } }; error?: unknown };
+			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
+
+			if (res.response?.status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+
+				return;
+			}
 
 			if (typeof res.data !== 'undefined') {
 				personalityContent.value = res.data.data.content;
 			} else {
 				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 			}
-		} catch (error: unknown) {
-			const apiError = error as { status?: number };
-
-			if (apiError.status === 503) {
-				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
-			} else {
-				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
-			}
+		} catch {
+			personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 		} finally {
 			personalityLoading.value = false;
 		}
@@ -60,6 +60,12 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
 			const status = res.response?.status;
 
+			if (status === 503) {
+				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
+
+				return false;
+			}
+
 			if (status && status >= 400) {
 				personalityError.value = t('buddyModule.messages.errors.savePersonality');
 
@@ -71,14 +77,8 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 			}
 
 			return true;
-		} catch (error: unknown) {
-			const apiError = error as { status?: number };
-
-			if (apiError.status === 503) {
-				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
-			} else {
-				personalityError.value = t('buddyModule.messages.errors.savePersonality');
-			}
+		} catch {
+			personalityError.value = t('buddyModule.messages.errors.savePersonality');
 
 			return false;
 		} finally {

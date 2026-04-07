@@ -73,7 +73,7 @@
 
 		<el-form-item
 			:label="t('buddyModule.fields.config.personality.title')"
-			prop="personality"
+			:error="personalityOverLimit ? t('buddyModule.fields.config.personality.validation.maxLength') : undefined"
 		>
 			<el-input
 				v-model="personalityText"
@@ -406,15 +406,9 @@ const ttsOptions = computed(() => {
 	return options;
 });
 
-const rules = reactive<FormRules<IBuddyConfigEditForm>>({
-	personality: [
-		{
-			max: 2000,
-			message: t('buddyModule.fields.config.personality.validation.maxLength'),
-			trigger: 'change',
-		},
-	],
-});
+const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
+
+const personalityOverLimit = computed<boolean>(() => personalityText.value.length > 2000);
 
 watch(
 	(): FormResultType => formResult.value,
@@ -437,7 +431,7 @@ watch(
 			}
 
 			// Save personality only after config was saved successfully
-			if (personalityDirty.value) {
+			if (personalityDirty.value && !personalityOverLimit.value) {
 				const success = await savePersonality(personalityText.value);
 
 				if (success) {
