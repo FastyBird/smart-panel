@@ -162,6 +162,7 @@ const pageHeading = computed(() => {
 		case RouteNames.FACTORY_RESET:
 			return t('systemModule.headings.manage.factoryReset');
 		case RouteNames.REBOOTING:
+			return t('systemModule.headings.manage.rebooting');
 		case RouteNames.SERVICE_RESTARTING:
 			return t('systemModule.headings.manage.restart');
 		default:
