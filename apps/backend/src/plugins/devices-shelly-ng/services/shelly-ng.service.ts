@@ -459,7 +459,19 @@ export class ShellyNgService implements IManagedPluginService {
 	 * reconnection instead of waiting for backoff.
 	 */
 	private async processDiscoveredDevice(device: Device): Promise<void> {
+		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+			'identifier',
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		if (sysDevice !== null) {
+			await this.deviceManagerService.createOrUpdate(sysDevice.id);
+		}
+
 		// Check if we already have a delegate — mDNS may re-discover a known device
+		// after a reboot. Trigger immediate reconnection instead of waiting for backoff,
+		// but only after createOrUpdate has refreshed firmware/channel info.
 		const existingDelegate = this.delegatesRegistryService.get(device.id);
 
 		if (existingDelegate && !existingDelegate.connected) {
@@ -470,16 +482,6 @@ export class ShellyNgService implements IManagedPluginService {
 			existingDelegate.forceReconnect();
 
 			return;
-		}
-
-		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			device.id,
-			DEVICES_SHELLY_NG_TYPE,
-		);
-
-		if (sysDevice !== null) {
-			await this.deviceManagerService.createOrUpdate(sysDevice.id);
 		}
 
 		await this.delegatesRegistryService.insert(device);
