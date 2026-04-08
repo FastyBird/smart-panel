@@ -211,28 +211,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * is actually responsive. Resolves to true if the device responds, false otherwise.
 	 */
 	async ping(timeoutMs: number = 5_000): Promise<boolean> {
-		if (!this.shelly.rpcHandler.connected) {
-			return false;
-		}
-
-		let timer: NodeJS.Timeout | undefined;
-
-		try {
-			await Promise.race([
-				this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'),
-				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new Error('Ping timeout')), timeoutMs);
-				}),
-			]);
-
-			return true;
-		} catch {
-			return false;
-		} finally {
-			if (timer) {
-				clearTimeout(timer);
-			}
-		}
+		return this.rpcWithTimeout(this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'), timeoutMs);
 	}
 
 	/**
@@ -242,6 +221,14 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * correctly handling nested values like aenergy ({ total, by_minute, ... }).
 	 */
 	async pollStatus(timeoutMs: number = 10_000): Promise<boolean> {
+		return this.rpcWithTimeout(this.shelly.loadStatus(), timeoutMs);
+	}
+
+	/**
+	 * Runs a promise with a timeout guard. Returns true if it resolves,
+	 * false if it rejects or the device is not connected.
+	 */
+	private async rpcWithTimeout(promise: PromiseLike<unknown>, timeoutMs: number): Promise<boolean> {
 		if (!this.shelly.rpcHandler.connected) {
 			return false;
 		}
@@ -250,9 +237,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 		try {
 			await Promise.race([
-				this.shelly.loadStatus(),
+				promise,
 				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new Error('Poll timeout')), timeoutMs);
+					timer = setTimeout(() => reject(new Error('RPC timeout')), timeoutMs);
 				}),
 			]);
 
