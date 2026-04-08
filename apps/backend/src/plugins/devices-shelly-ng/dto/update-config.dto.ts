@@ -111,7 +111,9 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@IsInt({
 		message: '[{"field":"status_poll_interval","reason":"Status poll interval must be a whole number."}]',
 	})
-	@Min(0, { message: '[{"field":"status_poll_interval","reason":"Status poll interval minimum value must be 0 or greater."}]' })
+	@Min(0, {
+		message: '[{"field":"status_poll_interval","reason":"Status poll interval minimum value must be 0 or greater."}]',
+	})
 	status_poll_interval?: number;
 
 	@ApiPropertyOptional({
