@@ -149,6 +149,10 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	}
 
 	private handleMessage(ws: WebSocket, data: Buffer, ip: string): void {
+		if (this.stopped) {
+			return;
+		}
+
 		let frame: ShellyRpcFrame;
 
 		try {
