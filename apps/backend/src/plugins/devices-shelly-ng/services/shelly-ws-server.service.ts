@@ -34,6 +34,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	private httpServer: HttpServer | null = null;
 	private upgradeHandler: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null;
 	private readonly wsToDeviceId: Map<WebSocket, string> = new Map();
+	private stopped = false;
 
 	constructor(
 		private readonly appInstanceHolder: AppInstanceHolder,
@@ -52,6 +53,8 @@ export class ShellyWsServerService implements OnModuleDestroy {
 			return;
 		}
 
+		this.stopped = false;
+
 		this.wss = new WebSocketServer({ noServer: true });
 
 		this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -67,6 +70,12 @@ export class ShellyWsServerService implements OnModuleDestroy {
 				const closedDeviceId = this.wsToDeviceId.get(ws);
 
 				this.wsToDeviceId.delete(ws);
+
+				// Don't mark as sleeping if the server is shutting down —
+				// doStop() sets all devices to UNKNOWN after closing clients.
+				if (this.stopped) {
+					return;
+				}
 
 				if (closedDeviceId) {
 					this.logger.debug(`Sleeping device=${closedDeviceId} from ${ip} disconnected, marking as sleeping`);
@@ -115,6 +124,9 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	}
 
 	stop(): void {
+		this.stopped = true;
+		this.wsToDeviceId.clear();
+
 		if (this.wss) {
 			// Close all connected clients
 			for (const client of this.wss.clients) {
@@ -160,9 +172,10 @@ export class ShellyWsServerService implements OnModuleDestroy {
 			this.wsToDeviceId.set(ws, deviceId);
 		}
 
-		// Acknowledge the frame if it has an id (JSON-RPC request)
+		// Acknowledge the frame if it has an id (JSON-RPC request).
+		// Per Shelly Gen2 RPC protocol, a valid response needs result or error.
 		if (typeof frame.id === 'number') {
-			const ack = JSON.stringify({ id: frame.id, src: 'fb-smart-panel', dst: deviceId });
+			const ack = JSON.stringify({ id: frame.id, src: 'fb-smart-panel', dst: deviceId, result: null });
 
 			ws.send(ack);
 		}
