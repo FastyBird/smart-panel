@@ -184,7 +184,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				await Promise.all(
 					handlers.map(async ({ name, handler, requiredRoles }) => {
 						try {
-							if (requiredRoles && !requiredRoles.includes(clientData.user.role)) {
+							if (requiredRoles && (!clientData.user || !requiredRoles.includes(clientData.user.role))) {
 								return { handler: name, success: false, reason: 'Insufficient permissions' };
 							}
 

@@ -164,7 +164,7 @@ const pageHeading = computed(() => {
 		case RouteNames.REBOOTING:
 			return t('systemModule.headings.manage.rebooting');
 		case RouteNames.SERVICE_RESTARTING:
-			return t('systemModule.headings.manage.restart');
+			return t('systemModule.headings.manage.serviceRestart');
 		default:
 			return t('systemModule.headings.manage.poweredOff');
 	}

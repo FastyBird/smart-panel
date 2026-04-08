@@ -4,7 +4,6 @@
 		:timeout-message="t('systemModule.texts.manage.factoryResetTimeout')"
 		:timeout-ms="3 * 60 * 1000"
 		:on-success="onSuccess"
-		:wait-for-unhealthy="true"
 	/>
 </template>
 
