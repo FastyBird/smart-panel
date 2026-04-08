@@ -236,23 +236,16 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	/**
-	 * Forcibly terminates the underlying WebSocket to trigger a reconnection cycle.
-	 * Unlike a graceful close (code 1000), terminate() causes a non-1000 close code
-	 * which makes the shellies-ds9 library schedule an automatic reconnection.
+	 * Triggers an immediate reconnection attempt via the library's public API.
+	 * Resets backoff and terminates the current socket.
 	 */
 	forceReconnect(): void {
 		this.logger.warn(`Forcing reconnection for device=${this.shelly.id}`, { resource: this.shelly.id });
 
-		// Access the protected socket to force-terminate it.
-		// TypeScript access modifiers are not enforced at runtime.
-		const rpcHandler = this.shelly.rpcHandler as unknown as { socket?: { terminate?: () => void } };
+		const handler = this.shelly.rpcHandler as unknown as { reconnect?: () => void };
 
-		// Reset reconnect backoff so the library uses the shortest interval
-		// (first entry in reconnectInterval) instead of an escalated delay.
-		this.shelly.rpcHandler.resetReconnectInterval();
-
-		if (rpcHandler.socket?.terminate) {
-			rpcHandler.socket.terminate();
+		if (handler.reconnect) {
+			handler.reconnect();
 		}
 	}
 
