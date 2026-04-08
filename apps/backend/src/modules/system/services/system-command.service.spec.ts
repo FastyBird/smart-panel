@@ -122,7 +122,7 @@ describe('SystemCommandService', () => {
 			jest.useRealTimers();
 		});
 
-		it('should emit processing event, close app, and call process.exit(1)', async () => {
+		it('should emit processing event, close app, and call process.exit(0)', async () => {
 			const promise = service.restartService(makeUser());
 
 			// Advance past the 500ms delay
@@ -135,7 +135,7 @@ describe('SystemCommandService', () => {
 				status: 'processing',
 			});
 			expect(mockApp.close).toHaveBeenCalled();
-			expect(processExitSpy).toHaveBeenCalledWith(1);
+			expect(processExitSpy).toHaveBeenCalledWith(0);
 		});
 
 		it('should still exit even if app.close() throws', async () => {
@@ -147,7 +147,7 @@ describe('SystemCommandService', () => {
 
 			await promise;
 
-			expect(processExitSpy).toHaveBeenCalledWith(1);
+			expect(processExitSpy).toHaveBeenCalledWith(0);
 		});
 	});
 });

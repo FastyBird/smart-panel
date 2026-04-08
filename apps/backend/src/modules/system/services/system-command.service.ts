@@ -146,11 +146,11 @@ export class SystemCommandService implements OnModuleInit {
 			this.logger.warn(`Error during graceful shutdown: ${(error as Error).message}`);
 		}
 
-		// Exit with code 1 so systemd (Restart=on-failure) restarts the process.
-		// Code 0 would be treated as a clean exit and systemd would NOT restart.
+		// Exit with code 0 so systemd (Restart=always) restarts the process
+		// without incrementing the failure counter toward StartLimitBurst.
 		// Note: process.exit() terminates the process — the return below is unreachable
 		// but satisfies the command handler interface contract.
-		process.exit(1);
+		process.exit(0);
 
 		return { success: true };
 	}
