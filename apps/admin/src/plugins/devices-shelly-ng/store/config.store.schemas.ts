@@ -11,7 +11,7 @@ type ApiUpdateConfig = DevicesShellyNgPluginUpdateConfigSchema;
 type ApiConfig = DevicesShellyNgPluginConfigSchema;
 
 export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
-	statusPollInterval: z.number(),
+	statusPollInterval: z.number().optional().default(60),
 	mdns: z.object({
 		enabled: z.boolean(),
 		interface: z.string().nullable(),
