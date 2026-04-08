@@ -92,6 +92,12 @@
 			"factoryResetSuccess": "Všetky dáta boli vymazané. Začnime odznova — prihláste sa na začatie.",
 			"factoryResetFailed": "Nepodarilo sa vykonať továrenský reset Smart Panelu. Skúste to znova alebo skontrolujte zariadenie manuálne."
 		},
+		"networkMode": {
+			"setupTitle": "Režim nastavenia",
+			"setup": "Zariadenie je v režime nastavenia Wi-Fi. Pripojte sa k nastavovacej sieti a nakonfigurujte Wi-Fi.",
+			"offlineTitle": "Sieť offline",
+			"offline": "Zariadenie nemá sieťové pripojenie. Skontrolujte konfiguráciu Wi-Fi alebo kábel."
+		},
 		"misc": {
 			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr."
 		},

@@ -92,6 +92,12 @@
       "factoryResetSuccess": "Alle Daten wurden gelöscht. Beginnen wir von vorn — melden Sie sich an, um zu starten.",
       "factoryResetFailed": "Werksreset des Smart Panels fehlgeschlagen. Bitte versuchen Sie es erneut oder überprüfen Sie das Gerät manuell."
     },
+    "networkMode": {
+      "setupTitle": "Einrichtungsmodus",
+      "setup": "Das Gerät befindet sich im WLAN-Einrichtungsmodus. Verbinden Sie sich mit dem Einrichtungsnetzwerk und konfigurieren Sie WLAN.",
+      "offlineTitle": "Netzwerk offline",
+      "offline": "Das Gerät hat keine Netzwerkverbindung. Überprüfen Sie Ihre WLAN-Konfiguration oder das Kabel."
+    },
     "misc": {
       "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut."
     },

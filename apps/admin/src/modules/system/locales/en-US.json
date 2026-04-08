@@ -92,6 +92,12 @@
       "factoryResetSuccess": "All data has been cleared. Let’s start fresh — sign in to begin.",
       "factoryResetFailed": "Failed to factory reset the Smart Panel. Please try again or check the device manually."
     },
+    "networkMode": {
+      "setupTitle": "Setup Mode",
+      "setup": "The device is in Wi-Fi setup mode. Connect to the setup network and configure Wi-Fi to continue.",
+      "offlineTitle": "Network Offline",
+      "offline": "The device has no network connection. Check your Wi-Fi configuration or cable."
+    },
     "misc": {
       "requestError": "Something went wrong, please try again later."
     },

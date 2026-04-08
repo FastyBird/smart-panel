@@ -110,7 +110,7 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 - [x] It runs before `smart-panel.service` (the backend)
 - [x] Once WiFi is connected, it stops itself and the backend starts
 - [x] System status API exposes current mode: `setup` (AP) / `online` (connected) / `offline` — via `network_mode` in system info response
-- [ ] Admin UI shows a banner when in AP/setup mode — deferred: needs admin UI component
+- [x] Admin UI shows a persistent notification when in setup or offline mode (auto-dismisses on recovery)
 
 ## 5. Example scenarios
 

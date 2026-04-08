@@ -92,6 +92,12 @@
 			"factoryResetSuccess": "Todos los datos han sido borrados. Comencemos de nuevo: inicia sesión para comenzar.",
 			"factoryResetFailed": "No se pudo restablecer el panel inteligente a su configuración de fábrica. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente."
 		},
+		"networkMode": {
+			"setupTitle": "Modo de configuración",
+			"setup": "El dispositivo está en modo de configuración Wi-Fi. Conéctese a la red de configuración y configure el Wi-Fi.",
+			"offlineTitle": "Red desconectada",
+			"offline": "El dispositivo no tiene conexión de red. Verifique la configuración de Wi-Fi o el cable."
+		},
 		"misc": {
 			"requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde."
 		},
