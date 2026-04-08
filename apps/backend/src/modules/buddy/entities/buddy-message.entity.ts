@@ -14,7 +14,7 @@ export class BuddyMessageEntity {
 	@Expose()
 	id: string;
 
-	@ApiProperty({ description: 'Parent conversation ID', example: 'conv-abc123' })
+	@ApiProperty({ name: 'conversation_id', description: 'Parent conversation ID', example: 'conv-abc123' })
 	@Column({ type: 'varchar' })
 	@Expose({ name: 'conversation_id' })
 	conversationId: string;
@@ -34,7 +34,7 @@ export class BuddyMessageEntity {
 	@Expose()
 	metadata: LlmResponseMeta | null;
 
-	@ApiProperty({ description: 'Message creation timestamp' })
+	@ApiProperty({ name: 'created_at', description: 'Message creation timestamp' })
 	@CreateDateColumn({ type: 'datetime' })
 	@Expose({ name: 'created_at' })
 	createdAt: Date;

@@ -110,7 +110,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const { data: responseData, error: apiError, response: res } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations`,
 				{
-					body: { data: { title: title ?? null } },
+					body: { data: { title: title ?? undefined } },
 				},
 			);
 
