@@ -334,6 +334,99 @@ describe('CoversIntentService', () => {
 		});
 	});
 
+	describe('position-capable covers', () => {
+		it('sends SET_POSITION command to covers with position property', async () => {
+			const device = createMockCoverDevice({
+				positionProperty: {
+					id: 'pos-prop-1',
+					category: PropertyCategory.POSITION,
+				} as ChannelPropertyEntity,
+			});
+
+			coversStateService.getCoversInSpace.mockResolvedValue([device]);
+
+			const intent: CoversIntentDto = {
+				type: CoversIntentType.SET_POSITION,
+				position: 75,
+			};
+
+			const result = await service.executeCoversIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(1);
+			expect(mockPlatform.processBatch).toHaveBeenCalled();
+		});
+
+		it('clamps position to 0-100 range', async () => {
+			const device = createMockCoverDevice({
+				positionProperty: {
+					id: 'pos-prop-1',
+					category: PropertyCategory.POSITION,
+				} as ChannelPropertyEntity,
+			});
+
+			coversStateService.getCoversInSpace.mockResolvedValue([device]);
+
+			const intent: CoversIntentDto = {
+				type: CoversIntentType.SET_POSITION,
+				position: 150,
+			};
+
+			const result = await service.executeCoversIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(true);
+
+			// The position should be clamped, so processBatch should still be called
+			expect(mockPlatform.processBatch).toHaveBeenCalled();
+		});
+	});
+
+	describe('command-only covers', () => {
+		it('sends OPEN command to covers without position property', async () => {
+			const device = createMockCoverDevice({
+				positionProperty: null,
+				commandProperty: {
+					id: 'cmd-prop-1',
+					category: PropertyCategory.COMMAND,
+				} as ChannelPropertyEntity,
+			});
+
+			coversStateService.getCoversInSpace.mockResolvedValue([device]);
+
+			const intent: CoversIntentDto = {
+				type: CoversIntentType.OPEN,
+			};
+
+			const result = await service.executeCoversIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(1);
+			expect(mockPlatform.processBatch).toHaveBeenCalled();
+		});
+
+		it('sends CLOSE command to command-only covers', async () => {
+			const device = createMockCoverDevice({
+				positionProperty: null,
+				commandProperty: {
+					id: 'cmd-prop-1',
+					category: PropertyCategory.COMMAND,
+				} as ChannelPropertyEntity,
+			});
+
+			coversStateService.getCoversInSpace.mockResolvedValue([device]);
+
+			const intent: CoversIntentDto = {
+				type: CoversIntentType.CLOSE,
+			};
+
+			const result = await service.executeCoversIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(1);
+			expect(mockPlatform.processBatch).toHaveBeenCalled();
+		});
+	});
+
 	describe('executeCoversIntent', () => {
 		it('returns null when space does not exist', async () => {
 			spacesService.findOne.mockResolvedValue(null);

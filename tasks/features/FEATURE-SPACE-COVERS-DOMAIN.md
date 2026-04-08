@@ -78,10 +78,10 @@ Panel:
 - [x] Position commands are clamped to 0-100 range
 - [x] Admin can assign covers roles to devices in a space
 - [x] Panel shows covers section with position slider and mode buttons
-- [ ] Unit tests cover:
+- [x] Unit tests cover:
   - [x] Space with no covers (no-op)
-  - [ ] Space with position-capable covers
-  - [ ] Space with command-only covers
+  - [x] Space with position-capable covers
+  - [x] Space with command-only covers
   - [x] Role-specific intents
 
 ## 5. Example scenarios
