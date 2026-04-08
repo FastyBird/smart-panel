@@ -236,6 +236,48 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	/**
+	 * Polls Shelly.GetStatus and re-emits each component's values through the
+	 * existing change pipeline. This captures data that isn't pushed via WS
+	 * notifications (energy counters, some sensor readings).
+	 */
+	async pollStatus(timeoutMs: number = 10_000): Promise<boolean> {
+		if (!this.shelly.rpcHandler.connected) {
+			return false;
+		}
+
+		let timer: NodeJS.Timeout | undefined;
+
+		try {
+			const status = await Promise.race([
+				this.shelly.rpcHandler.request<Record<string, Record<string, CharacteristicValue>>>('Shelly.GetStatus'),
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => reject(new Error('Poll timeout')), timeoutMs);
+				}),
+			]);
+
+			// Iterate over each component in the status response and emit changes
+			for (const [key, values] of Object.entries(status)) {
+				// Status keys look like "switch:0", "pm1:0", "temperature:0", etc.
+				if (!this.components.has(key) || typeof values !== 'object' || values === null) {
+					continue;
+				}
+
+				for (const [char, val] of Object.entries(values)) {
+					this.emit('value', key, char, val);
+				}
+			}
+
+			return true;
+		} catch {
+			return false;
+		} finally {
+			if (timer) {
+				clearTimeout(timer);
+			}
+		}
+	}
+
+	/**
 	 * Triggers an immediate reconnection attempt via the library's public API.
 	 * Resets backoff and terminates the current socket.
 	 */

@@ -95,6 +95,7 @@ jest.mock('shellies-ds9', () => {
 
 const pluginConfigEnabled = {
 	enabled: true,
+	statusPollInterval: 60,
 	mdns: { enabled: true, interface: null as string | null },
 	websockets: { requestTimeout: 10, pingInterval: 60, reconnectInterval: [5, 10, 30] },
 };
@@ -106,7 +107,14 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 	}),
 });
 
-const mockDelegates = () => ({ insert: jest.fn(), remove: jest.fn().mockResolvedValue(undefined), detach: jest.fn() });
+const mockDelegates = () => ({
+	insert: jest.fn(),
+	remove: jest.fn().mockResolvedValue(undefined),
+	detach: jest.fn(),
+	get: jest.fn().mockReturnValue(undefined),
+	checkHealth: jest.fn().mockResolvedValue(undefined),
+	pollAllDevices: jest.fn().mockResolvedValue(undefined),
+});
 
 const mockDevicesService = (devices: any[] = []) => ({
 	findAll: jest.fn().mockResolvedValue(devices),

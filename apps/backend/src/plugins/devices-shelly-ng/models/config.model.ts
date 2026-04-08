@@ -75,6 +75,16 @@ export class ShellyNgConfigModel extends PluginConfigModel {
 	type: string = DEVICES_SHELLY_NG_PLUGIN_NAME;
 
 	@ApiProperty({
+		name: 'status_poll_interval',
+		description: 'Interval in seconds for periodic Shelly.GetStatus polling (0 to disable)',
+		example: 60,
+	})
+	@Expose({ name: 'status_poll_interval' })
+	@IsInt()
+	@Min(0)
+	statusPollInterval: number = 60; // seconds
+
+	@ApiProperty({
 		description: 'mDNS configuration',
 		type: () => ShellyNgMdnsConfigModel,
 	})

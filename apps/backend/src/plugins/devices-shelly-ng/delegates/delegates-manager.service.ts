@@ -2304,6 +2304,33 @@ export class DelegatesManagerService {
 	}
 
 	/**
+	 * Polls Shelly.GetStatus on all connected delegates to refresh values
+	 * that aren't pushed via WebSocket notifications (energy counters, etc.).
+	 */
+	async pollAllDevices(timeoutMs: number = 10_000): Promise<void> {
+		const CONCURRENCY = 10;
+		const tasks: Array<() => Promise<void>> = [];
+
+		for (const [id, delegate] of this.delegates.entries()) {
+			if (!delegate.connected) {
+				continue;
+			}
+
+			tasks.push(async () => {
+				const ok = await delegate.pollStatus(timeoutMs);
+
+				if (!ok) {
+					this.logger.warn(`Status poll failed for device=${id}`);
+				}
+			});
+		}
+
+		for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+			await Promise.all(tasks.slice(i, i + CONCURRENCY).map((fn) => fn()));
+		}
+	}
+
+	/**
 	 * Serialize the find-or-create path by canonical MAC.
 	 * If canonicalMac is null (unavailable), the function runs unserialized
 	 * — the per-device lock still provides safety for same-shelly.id calls.
