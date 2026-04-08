@@ -167,10 +167,10 @@ The project already has a basic update mechanism via the CLI:
 - [x] All lint checks pass (`pnpm run lint:js`)
 - [x] Code is formatted (`pnpm run pretty`)
 - [x] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
-- [ ] Unit tests for UpdateService (version comparison, cache logic)
-- [ ] Unit tests for UpdateExecutorService (status file handling)
-- [ ] E2E tests for update API endpoints
-- [ ] Admin composable tests
+- [x] Unit tests for UpdateService (version comparison, cache logic, channel detection, update lock)
+- [x] Unit tests for UpdateExecutorService (status file handling: complete, failed, timeout, interrupted, corrupt)
+- [ ] E2E tests for update API endpoints — deferred: requires mock GitHub/npm responses
+- [ ] Admin composable tests — deferred: requires Vitest setup for update composables
 
 ## 5. Example scenarios
 

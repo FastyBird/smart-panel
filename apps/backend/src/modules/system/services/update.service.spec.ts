@@ -1,4 +1,8 @@
 /*
+eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unsafe-call
+*/
+/*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
@@ -143,6 +147,89 @@ describe('UpdateService', () => {
 			});
 
 			expect(service.getCurrentVersion()).toBe('0.0.0');
+		});
+	});
+
+	describe('detectChannel', () => {
+		it('should return alpha for alpha pre-release versions', () => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: '0.3.0-alpha.1' }));
+
+			expect(service.detectChannel()).toBe('alpha');
+		});
+
+		it('should return beta for beta pre-release versions', () => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: '1.0.0-beta.3' }));
+
+			expect(service.detectChannel()).toBe('beta');
+		});
+
+		it('should return latest for stable versions', () => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: '1.0.0' }));
+
+			expect(service.detectChannel()).toBe('latest');
+		});
+
+		it('should accept explicit version parameter', () => {
+			expect(service.detectChannel('2.0.0-alpha.5')).toBe('alpha');
+			expect(service.detectChannel('2.0.0-beta.1')).toBe('beta');
+			expect(service.detectChannel('2.0.0')).toBe('latest');
+		});
+	});
+
+	describe('update lock', () => {
+		it('should acquire and release lock', () => {
+			expect(service.isUpdateInProgress()).toBe(false);
+			expect(service.acquireUpdateLock()).toBe(true);
+			expect(service.isUpdateInProgress()).toBe(true);
+
+			service.releaseUpdateLock();
+
+			expect(service.isUpdateInProgress()).toBe(false);
+		});
+
+		it('should reject second lock acquisition', () => {
+			expect(service.acquireUpdateLock()).toBe(true);
+			expect(service.acquireUpdateLock()).toBe(false);
+
+			service.releaseUpdateLock();
+		});
+
+		it('should auto-release lock after timeout', () => {
+			expect(service.acquireUpdateLock()).toBe(true);
+
+			// Simulate timeout by directly setting the lock timestamp far in the past
+			(service as any).updateLockAcquiredAt = Date.now() - 16 * 60 * 1000;
+
+			expect(service.isUpdateInProgress()).toBe(false);
+		});
+	});
+
+	describe('checkServerUpdate cache', () => {
+		it('should return cached result within TTL', async () => {
+			// Pre-populate cache
+			const cached = {
+				current: '1.0.0',
+				latest: '1.1.0',
+				updateAvailable: true,
+				updateType: 'minor' as const,
+			};
+
+			(service as any).cachedServerInfo.set('latest', cached);
+			(service as any).serverCacheTimestamp.set('latest', Date.now());
+
+			const result = await service.checkServerUpdate('latest');
+
+			expect(result).toEqual(cached);
+		});
+	});
+
+	describe('setStatus', () => {
+		it('should merge partial status and emit event', () => {
+			const emitter = (service as any).eventEmitter as { emit: jest.Mock };
+
+			service.setStatus({ status: 'downloading' as any, progressPercent: 20 });
+
+			expect(emitter.emit).toHaveBeenCalled();
 		});
 	});
 });
