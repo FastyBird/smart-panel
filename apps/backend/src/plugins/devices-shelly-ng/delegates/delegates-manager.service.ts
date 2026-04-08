@@ -130,6 +130,15 @@ export class DelegatesManagerService {
 	 */
 	private readonly connectedDelegatesPerDevice: Map<string, number> = new Map();
 
+	/**
+	 * Grace period timers for disconnect state changes.
+	 * When a device disconnects, we delay marking it as DISCONNECTED
+	 * to avoid brief offline flicker during normal reconnection cycles.
+	 * If the device reconnects within the grace period, the timer is cancelled.
+	 */
+	private static readonly DISCONNECT_GRACE_MS = 15_000;
+	private readonly disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -1724,6 +1733,14 @@ export class DelegatesManagerService {
 
 				this.delegateConnectedState.set(delegate.id, true);
 
+				// Cancel any pending disconnect grace timer — device reconnected in time
+				const pendingTimer = this.disconnectTimers.get(deviceDbId);
+
+				if (pendingTimer) {
+					clearTimeout(pendingTimer);
+					this.disconnectTimers.delete(deviceDbId);
+				}
+
 				const count = (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) + 1;
 				this.connectedDelegatesPerDevice.set(deviceDbId, count);
 
@@ -1745,15 +1762,31 @@ export class DelegatesManagerService {
 				this.connectedDelegatesPerDevice.set(deviceDbId, count);
 
 				if (count === 0) {
-					this.deviceConnectivityService
-						.setConnectionState(deviceDbId, { state: ConnectionState.DISCONNECTED })
-						.catch((err: Error) => {
-							this.logger.error(`Failed to set state=DISCONNECTED for device=${delegate.id}`, {
-								resource: deviceDbId,
-								message: err.message,
-								stack: err.stack,
-							});
-						});
+					// Delay marking as DISCONNECTED to avoid brief offline flicker
+					// during normal reconnection cycles. If the device reconnects
+					// within the grace period, the timer is cancelled above.
+					if (!this.disconnectTimers.has(deviceDbId)) {
+						const timer = setTimeout(() => {
+							this.disconnectTimers.delete(deviceDbId);
+
+							// Re-check: device may have reconnected via a different delegate
+							if ((this.connectedDelegatesPerDevice.get(deviceDbId) ?? 0) > 0) {
+								return;
+							}
+
+							this.deviceConnectivityService
+								.setConnectionState(deviceDbId, { state: ConnectionState.DISCONNECTED })
+								.catch((err: Error) => {
+									this.logger.error(`Failed to set state=DISCONNECTED for device=${delegate.id}`, {
+										resource: deviceDbId,
+										message: err.message,
+										stack: err.stack,
+									});
+								});
+						}, DelegatesManagerService.DISCONNECT_GRACE_MS);
+
+						this.disconnectTimers.set(deviceDbId, timer);
+					}
 				} else {
 					this.logger.debug(`Device=${delegate.id} disconnected but ${count} other delegate(s) still connected`, {
 						resource: deviceDbId,
@@ -2246,6 +2279,12 @@ export class DelegatesManagerService {
 		this.deviceLocks.clear();
 		this.canonicalMacLocks.clear();
 		this.connectedDelegatesPerDevice.clear();
+
+		for (const timer of this.disconnectTimers.values()) {
+			clearTimeout(timer);
+		}
+
+		this.disconnectTimers.clear();
 		this.delegateToIdentifier.clear();
 		this.identifierToDelegates.clear();
 		this.delegateConnectedState.clear();
