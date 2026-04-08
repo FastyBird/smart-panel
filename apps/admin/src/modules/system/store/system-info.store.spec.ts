@@ -10,6 +10,7 @@ import type { ISystemInfoSetActionPayload } from './system-info.store.types';
 
 const mockSystemInfoRes = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
+	network_mode: 'online',
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -71,6 +72,7 @@ const mockSystemInfoRes = {
 
 const mockSystemInfo = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
+	networkMode: 'online',
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,

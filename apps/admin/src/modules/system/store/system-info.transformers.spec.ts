@@ -22,6 +22,7 @@ vi.mock('../../../common', async () => {
 
 const validSystemInfoResponse: ISystemInfoRes = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
+	network_mode: 'online' as any,
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -87,6 +88,7 @@ describe('System Info Transformers', (): void => {
 
 			expect(result).toEqual({
 				platform: SystemModuleDataSystemInfoPlatform.generic,
+				networkMode: 'online',
 				cpuLoad: 15.3,
 				memory: {
 					total: 8388608000,
