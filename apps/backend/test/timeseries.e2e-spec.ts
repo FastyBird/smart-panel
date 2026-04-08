@@ -263,9 +263,11 @@ describe('Property Timeseries (e2e)', () => {
 
 			expect(response.body.data.bucket).toBe('15m');
 
-			const query = storageMock.query.mock.calls[0][0] as string;
+			const query = storageMock.query.mock.calls
+				.map((c) => c[0] as string)
+				.find((q) => q.includes('GROUP BY time(15m)'));
 
-			expect(query).toContain('GROUP BY time(15m)');
+			expect(query).toBeDefined();
 		});
 
 		it('should use default time range when from/to are not provided', async () => {
