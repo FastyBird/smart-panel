@@ -21,6 +21,7 @@ import { ShellyNgConfigModel } from '../models/config.model';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
 import { DeviceManagerService } from './device-manager.service';
+import { ShellyWsServerService } from './shelly-ws-server.service';
 
 /**
  * Shelly NG device discovery and synchronization service.
@@ -69,6 +70,7 @@ export class ShellyNgService implements IManagedPluginService {
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly wsServer: ShellyWsServerService,
 	) {}
 
 	/**
@@ -316,6 +318,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 			this.startHealthCheck();
 			this.startStatusPoll();
+			this.wsServer.start();
 
 			this.state = 'started';
 		} catch (e) {
@@ -328,6 +331,7 @@ export class ShellyNgService implements IManagedPluginService {
 	private async doStop(): Promise<void> {
 		this.stopHealthCheck();
 		this.stopStatusPoll();
+		this.wsServer.stop();
 
 		if (!this.shellies) {
 			this.state = 'stopped';
@@ -470,16 +474,20 @@ export class ShellyNgService implements IManagedPluginService {
 		}
 
 		// Check if we already have a delegate — mDNS may re-discover a known device
-		// after a reboot. Trigger immediate reconnection instead of waiting for backoff,
-		// but only after createOrUpdate has refreshed firmware/channel info.
+		// after a reboot (possibly with a new IP address). Re-insert with force=true
+		// to recreate the delegate with the current hostname from mDNS, ensuring
+		// the WebSocket connects to the right address.
 		const existingDelegate = this.delegatesRegistryService.get(device.id);
 
 		if (existingDelegate && !existingDelegate.connected) {
-			this.logger.log(`mDNS re-discovered disconnected device=${device.id}, triggering immediate reconnect`, {
-				resource: device.id,
-			});
+			this.logger.log(
+				`mDNS re-discovered disconnected device=${device.id}, re-creating delegate with current address`,
+				{
+					resource: device.id,
+				},
+			);
 
-			existingDelegate.forceReconnect();
+			await this.delegatesRegistryService.insert(device, true);
 
 			return;
 		}

@@ -1,6 +1,11 @@
+import { networkInterfaces } from 'os';
+
 import { Module } from '@nestjs/common';
+import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../common/logger';
+import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -54,6 +59,7 @@ import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
+import { ShellyWsServerService } from './services/shelly-ws-server.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
 @ApiTag({
@@ -71,6 +77,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		]),
 		DevicesModule,
 		ConfigModule,
+		NestConfigModule,
 		SwaggerModule,
 		ExtensionsModule,
 	],
@@ -84,6 +91,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DelegatesManagerService,
 		DeviceManagerService,
 		ShellyNgService,
+		ShellyWsServerService,
 		ShellyNgDevicePlatform,
 		DeviceEntitySubscriber,
 	],
@@ -104,6 +112,8 @@ export class DevicesShellyNgPlugin {
 		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly deviceAddressService: DeviceAddressService,
 		private readonly deviceManagerService: DeviceManagerService,
+		private readonly rpcClient: ShellyRpcClientService,
+		private readonly nestConfigService: NestConfigService,
 	) {}
 
 	onModuleInit() {
@@ -122,11 +132,34 @@ export class DevicesShellyNgPlugin {
 				device: ShellyNgDeviceEntity,
 				createDto?: CreateShellyNgDeviceDto,
 			): Promise<ShellyNgDeviceEntity> => {
+				const logger = createExtensionLogger(DEVICES_SHELLY_NG_PLUGIN_NAME, 'DeviceAfterCreate');
+
 				// Sync address from DTO and provision the device so the API
 				// response already contains channels.
 				if (createDto?.wifiAddress) {
 					await this.deviceAddressService.upsertAddress(device.id, AddressType.WIFI, createDto.wifiAddress);
 					await this.deviceManagerService.createOrUpdate(device.id);
+
+					// Configure the device's outbound WebSocket to point to our
+					// inbound WS server so sleeping devices can push status on wake.
+					// Best-effort: non-sleeping devices will ignore this silently.
+					try {
+						const port = getEnvValue<number>(this.nestConfigService, 'FB_BACKEND_PORT', 3000);
+						const panelIp = this.detectLocalIp(createDto.wifiAddress);
+
+						if (panelIp) {
+							const wsUrl = `ws://${panelIp}:${port}/api/v1/plugins/shelly-ng/ws`;
+
+							await this.rpcClient.setWsOutboundConfig(createDto.wifiAddress, wsUrl, {
+								password: createDto.password ?? null,
+							});
+
+							logger.log(`Configured outbound WS on device=${device.id} → ${wsUrl}`);
+						}
+					} catch (err) {
+						// Non-fatal — device may not support outbound WS
+						logger.debug(`Could not configure outbound WS on device=${device.id}: ${(err as Error).message}`);
+					}
 				}
 
 				return device;
@@ -264,5 +297,26 @@ Uses Shelly's RPC (Remote Procedure Call) API over:
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
 		this.pluginServiceManager.register(this.shellyNgService);
+	}
+
+	/**
+	 * Detect the local IP address on the same subnet as the given device IP.
+	 * Returns the first IPv4 address that shares the same /24 prefix, or null.
+	 */
+	private detectLocalIp(deviceIp: string): string | null {
+		const devicePrefix = deviceIp.split('.').slice(0, 3).join('.');
+		const interfaces = networkInterfaces();
+
+		for (const addrs of Object.values(interfaces)) {
+			if (!addrs) continue;
+
+			for (const addr of addrs) {
+				if (addr.family === 'IPv4' && !addr.internal && addr.address.startsWith(devicePrefix + '.')) {
+					return addr.address;
+				}
+			}
+		}
+
+		return null;
 	}
 }

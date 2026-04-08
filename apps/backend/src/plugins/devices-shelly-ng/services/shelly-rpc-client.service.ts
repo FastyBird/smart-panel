@@ -660,6 +660,18 @@ export class ShellyRpcClientService {
 	}
 
 	/**
+	 * Configure the device's outbound WebSocket to connect to our inbound WS server.
+	 * This is used for sleeping devices that need to push status updates on wake.
+	 */
+	setWsOutboundConfig(
+		host: string,
+		serverUrl: string,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<unknown> {
+		return this.call(host, 'Ws.SetConfig', { config: { server: serverUrl, enable: true } }, options);
+	}
+
+	/**
 	 * Calls Shelly RPC.
 	 * - POST:  URL = http(s)://host/rpc   body = { id, method, params }
 	 * - GET:   URL = http(s)://host/rpc/<Method>?<query>
