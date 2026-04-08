@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -57,23 +57,29 @@ Comparison with Home Assistant's official Shelly integration (aioshelly) reveale
 ## 4. Acceptance criteria
 
 ### Periodic status polling
-- [ ] Connected devices are polled via `Shelly.GetStatus` RPC every 60 seconds
-- [ ] Poll results update device properties (energy counters, sensor values) via the existing delegate value pipeline
-- [ ] Polling is concurrent with batched concurrency (max 10 parallel, like health check)
-- [ ] Polling failures are logged but don't disconnect the device
-- [ ] Polling interval is configurable via the plugin config model
+- [x] Connected devices are polled via `Shelly.GetStatus` RPC every 60 seconds — uses `device.loadStatus()` so nested values (aenergy) flow through component change pipeline
+- [x] Poll results update device properties (energy counters, sensor values) via the existing delegate value pipeline
+- [x] Polling is concurrent with batched concurrency (max 10 parallel, like health check)
+- [x] Polling failures are logged but don't disconnect the device
+- [x] Polling interval is configurable via the plugin config model — `status_poll_interval` (default 60s, 0 to disable, hot-reloadable)
 
 ### mDNS-triggered reconnection
-- [ ] When mDNS discovers a device that already has a delegate, trigger immediate reconnection if the delegate is disconnected
-- [ ] When mDNS reports a new IP for a known device, update the device address and reconnect
-- [ ] Reconnection resets the backoff interval (uses the library's `reconnect()` method)
+- [x] When mDNS discovers a device that already has a delegate, trigger immediate reconnection if the delegate is disconnected
+- [ ] When mDNS reports a new IP for a known device, update the device address and reconnect — deferred: requires DeviceAddressService changes
+- [x] Reconnection resets the backoff interval (uses the library's `reconnect()` method)
 
 ### Sleeping device support
-- [ ] Backend exposes an inbound WebSocket endpoint for Shelly device connections (e.g., `/api/v1/plugins/shelly-ng/ws`)
-- [ ] When a sleeping device connects inbound, its status update is routed to the correct delegate
-- [ ] Adopted sleeping devices are configured with the Smart Panel's inbound WS URL via `Ws.SetConfig` RPC call
-- [ ] Sleeping device wake events update device properties and connectivity state
-- [ ] Sleeping devices show as "online" briefly during wake, then "sleeping" (not "offline")
+- [ ] Backend exposes an inbound WebSocket endpoint for Shelly device connections — deferred to separate task
+- [ ] When a sleeping device connects inbound, its status update is routed to the correct delegate — deferred to separate task
+- [ ] Adopted sleeping devices are configured with the Smart Panel's inbound WS URL via `Ws.SetConfig` RPC call — deferred to separate task
+- [ ] Sleeping device wake events update device properties and connectivity state — deferred to separate task
+- [ ] Sleeping devices show as "online" briefly during wake, then "sleeping" (not "offline") — deferred to separate task
+
+### Additional improvements (not in original criteria)
+- [x] 15-second grace period before marking device as DISCONNECTED to avoid offline flicker during reconnection
+- [x] Grace timer cancelled on reconnect and on delegate removal
+- [x] `rpcWithTimeout` shared helper eliminates duplication between `ping()` and `pollStatus()`
+- [x] Admin Zod schema backward-compatible with `statusPollInterval` defaulting to 60
 
 ## 5. Example scenarios
 
