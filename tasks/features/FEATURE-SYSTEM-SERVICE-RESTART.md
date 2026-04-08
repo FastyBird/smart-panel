@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -52,15 +52,15 @@ I want to restart just the backend service (NestJS) separately from a full platf
 
 ## 4. Acceptance criteria
 
-- [ ] Backend: new event type `SYSTEM_SERVICE_RESTART_SET` triggers service restart
-- [ ] Backend: `restartService()` performs graceful shutdown (close DB, stop plugins) then exits process
-- [ ] Backend: process manager (systemd/PM2) automatically restarts the process after exit
-- [ ] Admin: "Restart" section offers two distinct options (service vs system)
-- [ ] Admin: service restart shows health polling with shorter timeout (~30s vs 2min)
-- [ ] Admin: system reboot behavior unchanged (existing flow preserved)
-- [ ] Admin: confirmation dialogs clearly explain the difference between the two options
-- [ ] WebSocket events propagated for both restart types
-- [ ] Works correctly on Raspbian image (systemd service) and development (PM2/manual)
+- [x] Backend: new event type `SYSTEM_SERVICE_RESTART_SET` triggers service restart
+- [x] Backend: `restartService()` performs graceful shutdown (close DB, stop plugins) then exits process
+- [x] Backend: process manager (systemd/PM2) automatically restarts the process after exit
+- [x] Admin: "Restart" section offers two distinct options (service vs system)
+- [x] Admin: service restart shows health polling with shorter timeout (~30s vs 2min)
+- [x] Admin: system reboot behavior unchanged (existing flow preserved)
+- [x] Admin: confirmation dialogs clearly explain the difference between the two options
+- [x] WebSocket events propagated for both restart types
+- [ ] Works correctly on Raspbian image (systemd service) and development (PM2/manual) *(needs verification on device)*
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

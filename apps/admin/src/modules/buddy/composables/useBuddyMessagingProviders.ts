@@ -31,22 +31,17 @@ export const useBuddyMessagingProviders = (): IUseBuddyMessagingProviders => {
 		messagingProviderFetchFailed.value = false;
 
 		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers/messaging` as never);
+			const { data: responseData, error: apiError } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers/messaging`,
+			);
 
-			const res = response as { data?: { data: IMessagingProviderStatus[] }; error?: unknown; response?: { status?: number } };
-			const status = res.response?.status;
-
-			if (status && status >= 400) {
+			if (apiError || !responseData) {
 				messagingProviderFetchFailed.value = true;
 
 				return;
 			}
 
-			if (typeof res.data !== 'undefined') {
-				messagingProviderStatuses.value = res.data.data;
-			} else {
-				messagingProviderFetchFailed.value = true;
-			}
+			messagingProviderStatuses.value = responseData.data as IMessagingProviderStatus[];
 		} catch {
 			messagingProviderFetchFailed.value = true;
 		} finally {

@@ -81,43 +81,23 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		return activeConversationId.value !== null;
 	});
 
-	const extractApiError = (response: unknown): { status: number; message: string } | null => {
-		const res = response as {
-			response?: { status?: number };
-			error?: { error?: { message?: string }; status?: number };
-		};
-
-		const status = res.response?.status ?? res.error?.status;
-		const message = res.error?.error?.message;
-
-		if (typeof status === 'number' && status >= 400) {
-			return { status, message: message ?? t('buddyModule.messages.errors.unexpectedError') };
-		}
-
-		return null;
-	};
-
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
 
 		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never);
+			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations`,
+			);
 
-			const apiError = extractApiError(response);
-
-			if (apiError) {
-				if (apiError.status !== 503) {
-					flashMessage.error(apiError.message);
+			if (apiError || !responseData) {
+				if (res?.status !== 503) {
+					flashMessage.error(t('buddyModule.messages.errors.loadConversations'));
 				}
 
 				return;
 			}
 
-			const responseData = (response as { data?: { data: IConversation[] } }).data;
-
-			if (typeof responseData !== 'undefined') {
-				conversations.value = responseData.data;
-			}
+			conversations.value = responseData.data as IConversation[];
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
 		} finally {
@@ -127,29 +107,28 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const createConversation = async (title?: string): Promise<IConversation | undefined> => {
 		try {
-			const response = await backend.client.POST(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never, {
-				body: { data: { title: title ?? null } },
-			} as never);
+			const { data: responseData, error: apiError, response: res } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations`,
+				{
+					body: { data: { title: title ?? null } },
+				},
+			);
 
-			const apiError = extractApiError(response);
-
-			if (apiError) {
-				if (apiError.status !== 503) {
-					flashMessage.error(apiError.message);
+			if (apiError || !responseData) {
+				if (res?.status !== 503) {
+					flashMessage.error(t('buddyModule.messages.errors.createConversation'));
 				}
 
 				return undefined;
 			}
 
-			const responseData = (response as { data?: { data: IConversation } }).data;
+			const created = responseData.data as IConversation;
 
-			if (typeof responseData !== 'undefined') {
-				conversations.value.unshift(responseData.data);
-				activeConversationId.value = responseData.data.id;
-				messages.value = [];
+			conversations.value.unshift(created);
+			activeConversationId.value = created.id;
+			messages.value = [];
 
-				return responseData.data;
-			}
+			return created;
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation'));
 		}
@@ -163,29 +142,25 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		}
 
 		try {
-			const response = await backend.client.GET(
-				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
+			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages`,
 				{
 					params: {
 						path: { id: conversationId },
 					},
-				} as never
+				},
 			);
 
-			const apiError = extractApiError(response);
-
-			if (apiError) {
-				if (!quiet && apiError.status !== 503) {
-					flashMessage.error(apiError.message);
+			if (apiError || !responseData) {
+				if (!quiet && res?.status !== 503) {
+					flashMessage.error(t('buddyModule.messages.errors.loadMessages'));
 				}
 
 				return;
 			}
 
-			const responseData = (response as { data?: { data: IMessage[] } }).data;
-
-			if (typeof responseData !== 'undefined' && activeConversationId.value === conversationId) {
-				messages.value = responseData.data;
+			if (activeConversationId.value === conversationId) {
+				messages.value = responseData.data as IMessage[];
 			}
 		} catch (err: unknown) {
 			if (!quiet) {
@@ -234,24 +209,22 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		await nextTick();
 
 		try {
-			const response = await backend.client.POST(
-				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
+			const { error: apiError, response: res } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages`,
 				{
 					params: {
 						path: { id: conversationId },
 					},
 					body: { data: { content: content.trim() } },
-				} as never
+				},
 			);
-
-			const apiError = extractApiError(response);
 
 			if (apiError) {
 				// Remove optimistic message on error
 				messages.value = messages.value.filter((m) => m.id !== pendingId);
 
 				flashMessage.error(
-					apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message
+					res?.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : t('buddyModule.messages.errors.sendMessage'),
 				);
 
 				return;
@@ -283,16 +256,17 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const deleteConversation = async (id: string): Promise<void> => {
 		try {
-			const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}` as never, {
-				params: {
-					path: { id },
+			const { error: apiError } = await backend.client.DELETE(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}`,
+				{
+					params: {
+						path: { id },
+					},
 				},
-			} as never);
-
-			const apiError = extractApiError(response);
+			);
 
 			if (apiError) {
-				flashMessage.error(apiError.message);
+				flashMessage.error(t('buddyModule.messages.errors.deleteConversation'));
 
 				return;
 			}
@@ -376,13 +350,14 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		currentAbortController = abortController;
 
 		try {
-			const { data: blob, error: apiError } = await backend.client.GET(
-				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/${conversationId}/messages/${messageId}/audio` as never,
+			const { data: blob, error: apiError } = (await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages/{messageId}/audio`,
 				{
+					params: { path: { id: conversationId, messageId } },
 					signal: abortController.signal,
 					parseAs: 'blob',
 				} as never,
-			);
+			)) as { data?: Blob; error?: unknown };
 
 			// Discard if a newer request has been started
 			if (requestId !== audioRequestId) return;

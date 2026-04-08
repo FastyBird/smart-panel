@@ -39,26 +39,24 @@ export const useBuddyVoiceProviders = (kind: 'stt' | 'tts'): IUseBuddyVoiceProvi
 	const backend = useBackend();
 	const state = getState(kind);
 
+	const voicePath =
+		kind === 'stt'
+			? (`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers/stt` as const)
+			: (`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers/tts` as const);
+
 	const fetchProviderStatuses = async (): Promise<void> => {
 		state.failed.value = false;
 
 		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers/${kind}` as never);
+			const { data: responseData, error: apiError } = await backend.client.GET(voicePath);
 
-			const res = response as { data?: { data: IVoiceProviderStatus[] }; error?: unknown; response?: { status?: number } };
-			const status = res.response?.status;
-
-			if (status && status >= 400) {
+			if (apiError || !responseData) {
 				state.failed.value = true;
 
 				return;
 			}
 
-			if (typeof res.data !== 'undefined') {
-				state.statuses.value = res.data.data;
-			} else {
-				state.failed.value = true;
-			}
+			state.statuses.value = responseData.data as IVoiceProviderStatus[];
 		} catch {
 			state.failed.value = true;
 		} finally {

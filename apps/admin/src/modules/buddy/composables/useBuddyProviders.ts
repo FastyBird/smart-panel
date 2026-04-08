@@ -33,22 +33,17 @@ export const useBuddyProviders = (): IUseBuddyProviders => {
 		providerFetchFailed.value = false;
 
 		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers` as never);
+			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers`,
+			);
 
-			const res = response as { data?: { data: IProviderStatus[] }; error?: unknown; response?: { status?: number } };
-			const status = res.response?.status;
-
-			if (status && status >= 400) {
+			if (apiError || !responseData) {
 				providerFetchFailed.value = true;
 
 				return;
 			}
 
-			if (typeof res.data !== 'undefined') {
-				providerStatuses.value = res.data.data;
-			} else {
-				providerFetchFailed.value = true;
-			}
+			providerStatuses.value = responseData.data as IProviderStatus[];
 		} catch {
 			providerFetchFailed.value = true;
 		} finally {

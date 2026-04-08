@@ -26,21 +26,23 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 		personalityError.value = null;
 
 		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality` as never);
+			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality`,
+			);
 
-			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
-
-			if (res.response?.status === 503) {
+			if (res?.status === 503) {
 				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
 
 				return;
 			}
 
-			if (typeof res.data !== 'undefined') {
-				personalityContent.value = res.data.data.content;
-			} else {
+			if (apiError || !responseData) {
 				personalityError.value = t('buddyModule.messages.errors.loadPersonality');
+
+				return;
 			}
+
+			personalityContent.value = (responseData.data as { content: string }).content;
 		} catch {
 			personalityError.value = t('buddyModule.messages.errors.loadPersonality');
 		} finally {
@@ -53,28 +55,26 @@ export const useBuddyPersonality = (): IUseBuddyPersonality => {
 		personalityError.value = null;
 
 		try {
-			const response = await backend.client.PATCH(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality` as never, {
-				body: { data: { content } },
-			} as never);
+			const { data: responseData, error: apiError, response: res } = await backend.client.PATCH(
+				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/personality`,
+				{
+					body: { data: { content } },
+				},
+			);
 
-			const res = response as { data?: { data: { content: string } }; error?: unknown; response?: { status?: number } };
-			const status = res.response?.status;
-
-			if (status === 503) {
+			if (res?.status === 503) {
 				personalityError.value = t('buddyModule.messages.errors.providerUnavailable');
 
 				return false;
 			}
 
-			if (status && status >= 400) {
+			if (apiError || !responseData) {
 				personalityError.value = t('buddyModule.messages.errors.savePersonality');
 
 				return false;
 			}
 
-			if (typeof res.data !== 'undefined') {
-				personalityContent.value = res.data.data.content;
-			}
+			personalityContent.value = (responseData.data as { content: string }).content;
 
 			return true;
 		} catch {
