@@ -28,6 +28,7 @@ export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
 export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_NG_PLUGIN_NAME),
+		status_poll_interval: z.number().optional(),
 		mdns: z
 			.object({
 				enabled: z.boolean().optional(),
@@ -47,6 +48,7 @@ export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPlu
 export const ShellyNgConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_NG_PLUGIN_NAME),
+		status_poll_interval: z.number(),
 		mdns: z.object({
 			enabled: z.boolean(),
 			interface: z.string().nullable(),

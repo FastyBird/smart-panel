@@ -1794,6 +1794,15 @@ export class DelegatesManagerService {
 				}
 			} else {
 				// state === null → removing delegate
+				// Cancel any pending disconnect grace timer — removal sets the
+				// definitive state (UNKNOWN), a stale timer must not overwrite it.
+				const removalTimer = this.disconnectTimers.get(deviceDbId);
+
+				if (removalTimer) {
+					clearTimeout(removalTimer);
+					this.disconnectTimers.delete(deviceDbId);
+				}
+
 				const identifier = this.delegateToIdentifier.get(delegate.id);
 				const siblingDelegates = identifier ? this.identifierToDelegates.get(identifier) : undefined;
 				// The current delegate is still in the set at this point (removed later in performRemove)
