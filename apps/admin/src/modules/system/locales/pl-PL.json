@@ -122,8 +122,6 @@
 			"powerOffGateway": "Całkowicie wyłącz bramę. Podłączone wyświetlacze stracą łączność.",
 			"factoryResetDevice": "Przywróć urządzenie do oryginalnych ustawień fabrycznych.",
 			"factoryResetGateway": "Wymaż wszystkie dane bramy i przywróć ustawienia fabryczne wszystkich podłączonych wyświetlaczy.",
-			"restartServiceDescription": "Szybki restart tylko aplikacji. Ustawienia i połączenia są zachowane.",
-			"restartSystemDescription": "Pełny restart urządzenia wraz z systemem operacyjnym. Trwa dłużej, ale rozwiązuje głębsze problemy.",
 			"rebootInProcess": "Smart Panel jest ponownie uruchamiany...",
 			"powerOffInProcess": "Smart Panel jest wyłączany...",
 			"factoryResetInProcess": "Smart Panel jest resetowany do stanu fabrycznego...",
@@ -381,12 +379,6 @@
 		},
 		"no": {
 			"title": "Nie"
-		},
-		"restartService": {
-			"title": "Restartuj usługę"
-		},
-		"restartSystem": {
-			"title": "Restartuj system"
 		},
 		"reset": {
 			"title": "Resetuj"

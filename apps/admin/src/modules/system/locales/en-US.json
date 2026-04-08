@@ -122,8 +122,6 @@
       "powerOffGateway": "Power off the gateway completely. Connected displays will lose connectivity.",
       "factoryResetDevice": "Restore the device to its original factory settings.",
       "factoryResetGateway": "Erase all gateway data and reset all connected displays to factory settings.",
-      "restartServiceDescription": "Quick restart of the application only. Settings and connections are preserved.",
-      "restartSystemDescription": "Full device reboot including the operating system. Takes longer but resolves deeper issues.",
       "rebootInProcess": "Smart Panel is rebooting...",
       "powerOffInProcess": "Smart Panel is powering off...",
       "factoryResetInProcess": "Smart Panel is reset to factory state...",
@@ -381,12 +379,6 @@
     },
     "no": {
       "title": "No"
-    },
-    "restartService": {
-      "title": "Restart Service"
-    },
-    "restartSystem": {
-      "title": "Restart System"
     },
     "reset": {
       "title": "Reset"

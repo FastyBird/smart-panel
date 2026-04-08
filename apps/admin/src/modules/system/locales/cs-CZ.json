@@ -122,8 +122,6 @@
 			"powerOffGateway": "Kompletní vypnutí brány. Připojené displeje ztratí konektivitu.",
 			"factoryResetDevice": "Obnovení zařízení do původního továrního nastavení.",
 			"factoryResetGateway": "Vymazání všech dat brány a reset všech připojených displejů do továrního nastavení.",
-			"restartServiceDescription": "Rychlý restart pouze aplikace. Nastavení a připojení jsou zachována.",
-			"restartSystemDescription": "Úplný restart zařízení včetně operačního systému. Trvá déle, ale vyřeší hlubší problémy.",
 			"rebootInProcess": "Smart Panel se restartuje...",
 			"powerOffInProcess": "Smart Panel se vypíná...",
 			"factoryResetInProcess": "Smart Panel se resetuje do továrního stavu...",
@@ -381,12 +379,6 @@
 		},
 		"no": {
 			"title": "Ne"
-		},
-		"restartService": {
-			"title": "Restartovat službu"
-		},
-		"restartSystem": {
-			"title": "Restartovat systém"
 		},
 		"reset": {
 			"title": "Reset"

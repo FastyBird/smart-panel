@@ -122,8 +122,6 @@
 			"powerOffGateway": "Úplne vypnite bránu. Pripojené displeje stratia konektivitu.",
 			"factoryResetDevice": "Obnovte zariadenie do pôvodného továrenského nastavenia.",
 			"factoryResetGateway": "Vymažte všetky dáta brány a resetujte všetky pripojené displeje do továrenského nastavenia.",
-			"restartServiceDescription": "Rýchly reštart iba aplikácie. Nastavenia a pripojenia sú zachované.",
-			"restartSystemDescription": "Úplný reštart zariadenia vrátane operačného systému. Trvá dlhšie, ale vyrieši hlbšie problémy.",
 			"rebootInProcess": "Smart Panel sa reštartuje...",
 			"powerOffInProcess": "Smart Panel sa vypína...",
 			"factoryResetInProcess": "Smart Panel sa resetuje do továrenského stavu...",
@@ -381,12 +379,6 @@
 		},
 		"no": {
 			"title": "Nie"
-		},
-		"restartService": {
-			"title": "Reštartovať službu"
-		},
-		"restartSystem": {
-			"title": "Reštartovať systém"
 		},
 		"reset": {
 			"title": "Resetovať"

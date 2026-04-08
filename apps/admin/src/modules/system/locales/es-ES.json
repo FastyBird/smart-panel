@@ -122,8 +122,6 @@
 			"powerOffGateway": "Apaga la pasarela completamente. Las pantallas conectadas perderán la conectividad.",
 			"factoryResetDevice": "Restaura el dispositivo a su configuración original de fábrica.",
 			"factoryResetGateway": "Borra todos los datos de la pasarela y restablece todas las pantallas conectadas a la configuración de fábrica.",
-			"restartServiceDescription": "Reinicio rápido solo de la aplicación. Se conservan las configuraciones y conexiones.",
-			"restartSystemDescription": "Reinicio completo del dispositivo incluyendo el sistema operativo. Tarda más pero resuelve problemas más profundos.",
 			"rebootInProcess": "El panel inteligente se está reiniciando...",
 			"powerOffInProcess": "El panel inteligente se está apagando...",
 			"factoryResetInProcess": "El panel inteligente se está restableciendo a su estado de fábrica...",
@@ -381,12 +379,6 @@
 		},
 		"no": {
 			"title": "No"
-		},
-		"restartService": {
-			"title": "Reiniciar servicio"
-		},
-		"restartSystem": {
-			"title": "Reiniciar sistema"
 		},
 		"reset": {
 			"title": "Restablecer"
