@@ -2,8 +2,8 @@ import { validate } from 'class-validator';
 import fs from 'fs/promises';
 import { execFile } from 'node:child_process';
 import os from 'os';
-import { promisify } from 'util';
 import si, { Systeminformation } from 'systeminformation';
+import { promisify } from 'util';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';

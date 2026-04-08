@@ -72,7 +72,7 @@ const mockSystemInfoRes = {
 
 const mockSystemInfo = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
-	networkMode: 'online',
+	networkMode: 'online' as const,
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,
