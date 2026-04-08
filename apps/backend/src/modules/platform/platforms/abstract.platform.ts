@@ -1,7 +1,8 @@
 import { validate } from 'class-validator';
 import fs from 'fs/promises';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import os from 'os';
+import { promisify } from 'util';
 import si, { Systeminformation } from 'systeminformation';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -360,7 +361,7 @@ export abstract class Platform {
 
 		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
-		const networkMode = this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
+		const networkMode = await this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
 
 		const rawData = {
 			networkMode,
@@ -431,18 +432,18 @@ export abstract class Platform {
 	 * - 'setup': captive portal service is active (AP mode)
 	 * - 'offline': no IP and no portal running
 	 */
-	protected detectNetworkMode(ip4: string): string {
+	protected async detectNetworkMode(ip4: string): Promise<string> {
 		if (ip4 && ip4 !== '0.0.0.0') {
 			return 'online';
 		}
 
 		try {
-			const result = execFileSync('systemctl', ['is-active', 'smart-panel-portal.service'], {
-				encoding: 'utf-8',
+			const execFileAsync = promisify(execFile);
+			const { stdout } = await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], {
 				timeout: 2000,
-			}).trim();
+			});
 
-			if (result === 'active') {
+			if (stdout.trim() === 'active') {
 				return 'setup';
 			}
 		} catch {

@@ -32,7 +32,7 @@ export class GenericPlatform extends Platform {
 
 		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
-		const networkMode = this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
+		const networkMode = await this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
 
 		const rawData = {
 			networkMode,

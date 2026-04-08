@@ -37,7 +37,7 @@ export class RaspberryPlatform extends Platform {
 
 		const resolution = await this.getCurrentResolution();
 
-		const networkMode = this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
+		const networkMode = await this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
 
 		const rawData = {
 			networkMode,
