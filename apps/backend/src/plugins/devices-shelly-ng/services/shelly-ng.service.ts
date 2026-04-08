@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
 import { Injectable } from '@nestjs/common';
@@ -252,7 +253,7 @@ export class ShellyNgService implements IManagedPluginService {
 					requestTimeout: this.config.websockets.requestTimeout,
 					pingInterval: this.config.websockets.pingInterval,
 					reconnectInterval: this.config.websockets.reconnectInterval,
-					clientId: 'fb-smart-panel-shelly-ng-' + Math.round(Math.random() * 1000000),
+					clientId: 'fb-smart-panel-' + randomUUID(),
 				},
 				autoLoadStatus: true,
 				autoLoadConfig: true,

@@ -46,6 +46,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	);
 
 	public connected: boolean = false;
+	public disconnectedAt: number | null = null;
 
 	public components: Map<string, SupportedComponent> = new Map();
 
@@ -259,6 +260,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.logger.log(`Device=${this.shelly.id} connected`, { resource: this.shelly.id });
 
 		this.connected = true;
+		this.disconnectedAt = null;
 
 		this.emit('connected', true);
 	};
@@ -287,6 +289,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		}
 
 		this.connected = false;
+		this.disconnectedAt = Date.now();
 
 		this.emit('connected', false);
 	};

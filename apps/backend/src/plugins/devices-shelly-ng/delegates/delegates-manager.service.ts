@@ -2263,6 +2263,7 @@ export class DelegatesManagerService {
 	 */
 	async checkHealth(pingTimeoutMs: number = 5_000): Promise<void> {
 		const CONCURRENCY = 10;
+		const STALE_DISCONNECT_MS = 2 * 60 * 1000; // 2 minutes
 		const tasks: Array<() => Promise<void>> = [];
 
 		for (const [id, delegate] of this.delegates.entries()) {
@@ -2272,6 +2273,13 @@ export class DelegatesManagerService {
 				if (delegate.rpcConnected) {
 					this.logger.warn(
 						`Device=${id} delegate is disconnected but RPC handler reports connected, forcing reconnect`,
+					);
+					delegate.forceReconnect();
+				} else if (delegate.disconnectedAt !== null && Date.now() - delegate.disconnectedAt > STALE_DISCONNECT_MS) {
+					// Library's auto-reconnect should have recovered by now.
+					// Force a reconnect to reset backoff and try again.
+					this.logger.warn(
+						`Device=${id} has been disconnected for ${Math.round((Date.now() - delegate.disconnectedAt) / 1000)}s, forcing reconnect`,
 					);
 					delegate.forceReconnect();
 				}
