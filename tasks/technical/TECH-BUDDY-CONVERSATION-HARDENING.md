@@ -52,14 +52,14 @@ I want the buddy conversation to work correctly regardless of home size and conc
 
 ## 4. Acceptance criteria
 
-- [ ] System prompt is estimated for token count before sending to LLM
-- [ ] When prompt exceeds a configurable threshold (default: 80% of model's context window), devices/properties are truncated with priority: current space > recently active > alphabetical
-- [ ] Truncated prompts include a note: "Some devices omitted for brevity. Ask about specific rooms for details."
-- [ ] Conversation title update uses proper locking to prevent race conditions
-- [ ] `shortIdMapping` is scoped per-conversation (not global) or has a maximum size with eviction
-- [ ] `MAX_TOOL_ITERATIONS` is configurable via `BuddyConfigModel`
-- [ ] Empty or whitespace-only messages are rejected with 400 status
-- [ ] Unit tests cover: small home (no truncation), large home (truncation triggers), very large home (aggressive truncation), empty message rejection
+- [x] System prompt is estimated for token count before sending to LLM
+- [x] When prompt exceeds a configurable threshold (default: 80% of model's context window), devices/properties are truncated with priority: current space > recently active > alphabetical
+- [x] Truncated prompts include a note: "Some devices omitted for brevity. Ask about specific rooms for details."
+- [x] Conversation title update uses proper locking to prevent race conditions
+- [x] `shortIdMapping` is scoped per-conversation (not global) or has a maximum size with eviction
+- [x] `MAX_TOOL_ITERATIONS` is configurable via `BuddyConfigModel`
+- [x] Empty or whitespace-only messages are rejected with 400 status
+- [x] Unit tests cover: small home (no truncation), large home (truncation triggers), very large home (aggressive truncation), empty message rejection
 
 ## 5. Example scenarios
 

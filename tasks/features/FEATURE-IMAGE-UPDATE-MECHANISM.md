@@ -60,7 +60,7 @@ I want the update mechanism to detect the image install and update from GitHub r
 
 ### Install layout
 
-- [ ] Image installs use versioned directory layout:
+- [x] Image installs use versioned directory layout:
   ```
   /opt/smart-panel/
     current -> v1.0.0/          # symlink to active version
@@ -71,34 +71,34 @@ I want the update mechanism to detect the image install and update from GitHub r
       static/
       ...
   ```
-- [ ] Systemd service `ExecStart` points to `/opt/smart-panel/current/dist/main.js`
-- [ ] Data directory remains at `/var/lib/smart-panel/` (shared across versions)
-- [ ] Config remains at `/etc/smart-panel/environment` (shared across versions)
+- [x] Systemd service `ExecStart` points to `/opt/smart-panel/current/dist/main.js`
+- [x] Data directory remains at `/var/lib/smart-panel/` (shared across versions)
+- [x] Config remains at `/etc/smart-panel/environment` (shared across versions)
 
 ### Update process
 
-- [ ] `UpdateService` detects install type via `/opt/smart-panel/current/.image-install` marker
-- [ ] `UpdateService` returns GitHub release download URL for image installs (NPM registry for NPM installs)
-- [ ] Update worker downloads app tarball from GitHub releases
-- [ ] Worker extracts to `/opt/smart-panel/vX.Y.Z/` (new version directory)
-- [ ] Production dependencies installed in new version dir (`pnpm install --prod`)
-- [ ] Native modules (sqlite3, bcrypt) rebuilt from source in new version dir
-- [ ] Version switch: stop service → update `current` symlink → run migrations → start service
-- [ ] On failure: symlink reverted to previous version, failed version dir removed
-- [ ] On success: old versions cleaned up (keep max 2 previous)
-- [ ] Update status tracked in `/var/lib/smart-panel/update-status.json`
-- [ ] Admin UI shows update available with version and release notes
-- [ ] CLI `system:update:server` works for both install types
-- [ ] Existing NPM-based update path continues to work unchanged
+- [x] `UpdateService` detects install type via `/opt/smart-panel/current/.image-install` marker
+- [x] `UpdateService` returns GitHub release download URL for image installs (NPM registry for NPM installs)
+- [x] Update worker downloads app tarball from GitHub releases
+- [x] Worker extracts to `/opt/smart-panel/vX.Y.Z/` (new version directory)
+- [x] Production dependencies installed in new version dir (`pnpm install --prod`)
+- [x] Native modules (sqlite3, bcrypt) rebuilt from source in new version dir
+- [x] Version switch: stop service → update `current` symlink → run migrations → start service
+- [x] On failure: symlink reverted to previous version, failed version dir removed
+- [x] On success: old versions cleaned up (keep max 2 previous)
+- [x] Update status tracked in `/var/lib/smart-panel/update-status.json`
+- [x] Admin UI shows update available with version and release notes
+- [x] CLI `system:update:server` works for both install types
+- [x] Existing NPM-based update path continues to work unchanged
 
 ### First-boot logging
 
-- [ ] First-boot script writes structured log to `/boot/firmware/smart-panel-firstboot.log`
-- [ ] Log format uses `[OK]` / `[ERROR]` / `[WARN]` prefixes for easy scanning
-- [ ] Log includes: partition expand, WiFi config, JWT generation, InfluxDB setup, migration, service start
-- [ ] On success, log ends with `[OK] Smart Panel ready at http://<ip>:3000`
-- [ ] On failure, log includes the error details for diagnostics
-- [ ] User can read the log by mounting SD card boot partition on any computer (FAT32)
+- [x] First-boot script writes structured log to `/boot/firmware/smart-panel-firstboot.log`
+- [x] Log format uses `[OK]` / `[ERROR]` / `[WARN]` prefixes for easy scanning
+- [x] Log includes: partition expand, WiFi config, JWT generation, InfluxDB setup, migration, service start
+- [x] On success, log ends with `[OK] Smart Panel ready at http://<ip>:3000`
+- [x] On failure, log includes the error details for diagnostics
+- [x] User can read the log by mounting SD card boot partition on any computer (FAT32)
 
 ### Manual rollback (CLI)
 

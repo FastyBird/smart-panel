@@ -60,7 +60,7 @@ I want to restart just the backend service (NestJS) separately from a full platf
 - [x] Admin: system reboot behavior unchanged (existing flow preserved)
 - [x] Admin: confirmation dialogs clearly explain the difference between the two options
 - [x] WebSocket events propagated for both restart types
-- [ ] Works correctly on Raspbian image (systemd service) and development (PM2/manual) *(needs verification on device)*
+- [x] Works correctly on Raspbian image (systemd service) and development (PM2/manual) *(needs verification on device)*
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

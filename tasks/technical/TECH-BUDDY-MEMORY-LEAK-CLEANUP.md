@@ -44,12 +44,12 @@ I want evaluator tracker maps to be bounded and automatically cleaned up when de
 
 ## 4. Acceptance criteria
 
-- [ ] `stuckSensorTracker` removes entries for device properties not seen in the last N evaluation cycles (configurable, default: 10 cycles)
-- [ ] `occupancyTracker` removes entries for spaces not seen in the last N evaluation cycles (configurable, default: 10 cycles)
-- [ ] Both trackers have a hard maximum size (e.g., 1000 entries) with LRU eviction
-- [ ] `BuddyContextService` cache eviction is O(n) or better (replace sort with FIFO or insertion-order iteration)
-- [ ] Unit tests verify: stale entries cleaned up, hard limit respected, cache eviction performance
-- [ ] No changes to evaluator detection logic or suggestion output
+- [x] `stuckSensorTracker` removes entries for device properties not seen in the last N evaluation cycles (configurable, default: 10 cycles)
+- [x] `occupancyTracker` removes entries for spaces not seen in the last N evaluation cycles (configurable, default: 10 cycles)
+- [x] Both trackers have a hard maximum size (e.g., 1000 entries) with LRU eviction
+- [x] `BuddyContextService` cache eviction is O(n) or better (replace sort with FIFO or insertion-order iteration)
+- [x] Unit tests verify: stale entries cleaned up, hard limit respected, cache eviction performance
+- [x] No changes to evaluator detection logic or suggestion output
 
 ## 5. Example scenarios
 

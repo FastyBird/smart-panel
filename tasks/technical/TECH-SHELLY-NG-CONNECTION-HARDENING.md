@@ -65,15 +65,15 @@ Comparison with Home Assistant's official Shelly integration (aioshelly) reveale
 
 ### mDNS-triggered reconnection
 - [x] When mDNS discovers a device that already has a delegate, trigger immediate reconnection if the delegate is disconnected
-- [ ] When mDNS reports a new IP for a known device, update the device address and reconnect — deferred: requires DeviceAddressService changes
+- [x] When mDNS reports a new IP for a known device, update the device address and reconnect — uses insert(device, true) to re-create delegate with current hostname
 - [x] Reconnection resets the backoff interval (uses the library's `reconnect()` method)
 
 ### Sleeping device support
-- [ ] Backend exposes an inbound WebSocket endpoint for Shelly device connections — deferred to separate task
-- [ ] When a sleeping device connects inbound, its status update is routed to the correct delegate — deferred to separate task
-- [ ] Adopted sleeping devices are configured with the Smart Panel's inbound WS URL via `Ws.SetConfig` RPC call — deferred to separate task
-- [ ] Sleeping device wake events update device properties and connectivity state — deferred to separate task
-- [ ] Sleeping devices show as "online" briefly during wake, then "sleeping" (not "offline") — deferred to separate task
+- [x] Backend exposes an inbound WebSocket endpoint for Shelly device connections (`/api/v1/plugins/shelly-ng/ws`)
+- [x] When a sleeping device connects inbound, its status update is routed to the correct delegate — with dot-notation flattening for nested values
+- [x] Adopted sleeping devices are configured with the Smart Panel's inbound WS URL via `Ws.SetConfig` RPC call
+- [x] Sleeping device wake events update device properties and connectivity state — serialized per-device queue
+- [x] Sleeping devices show as "online" briefly during wake, then "sleeping" (not "offline") — uses ConnectionState.SLEEPING
 
 ### Additional improvements (not in original criteria)
 - [x] 15-second grace period before marking device as DISCONNECTED to avoid offline flicker during reconnection
