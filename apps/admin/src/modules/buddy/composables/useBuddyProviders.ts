@@ -33,7 +33,7 @@ export const useBuddyProviders = (): IUseBuddyProviders => {
 		providerFetchFailed.value = false;
 
 		try {
-			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
+			const { data: responseData, error: apiError } = await backend.client.GET(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers`,
 			);
 
