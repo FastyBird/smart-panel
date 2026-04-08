@@ -1,7 +1,7 @@
 import { networkInterfaces } from 'os';
 
 import { Module } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
+import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../common/logger';
@@ -77,6 +77,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		]),
 		DevicesModule,
 		ConfigModule,
+		NestConfigModule,
 		SwaggerModule,
 		ExtensionsModule,
 	],

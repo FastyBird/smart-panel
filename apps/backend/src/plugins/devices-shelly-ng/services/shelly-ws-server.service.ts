@@ -106,7 +106,11 @@ export class ShellyWsServerService implements OnModuleDestroy {
 			this.logger.log(`Inbound WebSocket server listening on ${WS_PATH}`);
 		} catch (err) {
 			this.logger.warn(`Failed to start inbound WS server: ${(err as Error).message}`);
-			this.wss = null;
+
+			if (this.wss) {
+				this.wss.close();
+				this.wss = null;
+			}
 		}
 	}
 
@@ -157,7 +161,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		}
 
 		// Acknowledge the frame if it has an id (JSON-RPC request)
-		if (frame.id) {
+		if (typeof frame.id === 'number') {
 			const ack = JSON.stringify({ id: frame.id, src: 'fb-smart-panel', dst: deviceId });
 
 			ws.send(ack);
@@ -176,21 +180,44 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		const delegate = this.delegatesManager.get(deviceId);
 
 		if (delegate) {
-			// Route status values through the delegate's change pipeline
+			// Route status values through the delegate's change pipeline.
+			// Flatten nested objects to dot-notation keys so handlers like
+			// "battery.percent" receive the leaf value, not the parent object.
 			for (const [key, values] of Object.entries(params)) {
 				if (key === 'ts' || typeof values !== 'object' || values === null) {
 					continue;
 				}
 
-				for (const [char, val] of Object.entries(values as Record<string, unknown>)) {
-					delegate.emit('value', key, char, val);
-				}
+				this.emitFlattened(delegate, key, values as Record<string, unknown>);
 			}
 
 			// Briefly mark device as connected during wake
 			this.markDeviceAwake(deviceId);
 		} else {
 			this.logger.debug(`No delegate for sleeping device=${deviceId}, skipping status update`);
+		}
+	}
+
+	/**
+	 * Emit values with dot-notation keys for nested objects.
+	 * e.g., { battery: { percent: 95 } } emits both "battery" (the object)
+	 * and "battery.percent" (the leaf value), matching how the library's
+	 * component change handlers register keys like "battery.percent".
+	 */
+	private emitFlattened(
+		delegate: { emit: (event: string, ...args: unknown[]) => boolean },
+		compKey: string,
+		values: Record<string, unknown>,
+		prefix: string = '',
+	): void {
+		for (const [attr, val] of Object.entries(values)) {
+			const fullKey = prefix ? `${prefix}.${attr}` : attr;
+
+			delegate.emit('value', compKey, fullKey, val);
+
+			if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+				this.emitFlattened(delegate, compKey, val as Record<string, unknown>, fullKey);
+			}
 		}
 	}
 
