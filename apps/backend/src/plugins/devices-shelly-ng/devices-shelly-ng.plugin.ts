@@ -54,6 +54,7 @@ import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
+import { ShellyWsServerService } from './services/shelly-ws-server.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
 @ApiTag({
@@ -84,6 +85,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DelegatesManagerService,
 		DeviceManagerService,
 		ShellyNgService,
+		ShellyWsServerService,
 		ShellyNgDevicePlatform,
 		DeviceEntitySubscriber,
 	],
