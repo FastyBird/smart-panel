@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 import si, { Systeminformation } from 'systeminformation';
 
@@ -240,32 +240,5 @@ export class GenericPlatform extends Platform {
 		}
 
 		return type.startsWith('cgroup');
-	}
-
-	/**
-	 * Detect the current network connectivity mode.
-	 * - 'online': has a valid IP address
-	 * - 'setup': captive portal service is active (AP mode)
-	 * - 'offline': no IP and no portal running
-	 */
-	private detectNetworkMode(ip4: string): string {
-		if (ip4 && ip4 !== '0.0.0.0') {
-			return 'online';
-		}
-
-		try {
-			const result = execFileSync('systemctl', ['is-active', 'smart-panel-portal.service'], {
-				encoding: 'utf-8',
-				timeout: 2000,
-			}).trim();
-
-			if (result === 'active') {
-				return 'setup';
-			}
-		} catch {
-			// systemctl not available or service not found
-		}
-
-		return 'offline';
 	}
 }

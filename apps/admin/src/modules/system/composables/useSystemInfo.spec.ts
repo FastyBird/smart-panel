@@ -12,6 +12,7 @@ import { useSystemInfo } from './useSystemInfo';
 
 const mockAudio: ISystemInfo = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
+	networkMode: 'online',
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,

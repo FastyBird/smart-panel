@@ -1,5 +1,6 @@
 import { validate } from 'class-validator';
 import fs from 'fs/promises';
+import { execFileSync } from 'node:child_process';
 import os from 'os';
 import si, { Systeminformation } from 'systeminformation';
 
@@ -359,7 +360,10 @@ export abstract class Platform {
 
 		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
+		const networkMode = this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
+
 		const rawData = {
+			networkMode,
 			cpuLoad,
 			memory,
 			storage: containerStorage,
@@ -419,5 +423,32 @@ export abstract class Platform {
 		this.logger.debug(`DTO validation passed: ${dtoClass.name}`);
 
 		return instance;
+	}
+
+	/**
+	 * Detect the current network connectivity mode.
+	 * - 'online': has a valid IP address
+	 * - 'setup': captive portal service is active (AP mode)
+	 * - 'offline': no IP and no portal running
+	 */
+	protected detectNetworkMode(ip4: string): string {
+		if (ip4 && ip4 !== '0.0.0.0') {
+			return 'online';
+		}
+
+		try {
+			const result = execFileSync('systemctl', ['is-active', 'smart-panel-portal.service'], {
+				encoding: 'utf-8',
+				timeout: 2000,
+			}).trim();
+
+			if (result === 'active') {
+				return 'setup';
+			}
+		} catch {
+			// systemctl not available or service not found
+		}
+
+		return 'offline';
 	}
 }

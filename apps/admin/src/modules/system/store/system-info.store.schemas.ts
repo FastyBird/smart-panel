@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import type { SystemModuleSystemInfoSchema } from '../../../openapi.constants';
-import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
+import { SystemModuleDataSystemInfoPlatform, SystemModuleDataSystemInfoNetwork_mode } from '../../../openapi';
 
 type ApiSystemInfo = SystemModuleSystemInfoSchema;
 
@@ -149,7 +149,7 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 
 export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 	platform: z.nativeEnum(SystemModuleDataSystemInfoPlatform),
-	network_mode: z.enum(['online', 'offline', 'setup']),
+	network_mode: z.nativeEnum(SystemModuleDataSystemInfoNetwork_mode),
 	cpu_load: z.number(),
 	memory: z.object({
 		total: z.number(),
