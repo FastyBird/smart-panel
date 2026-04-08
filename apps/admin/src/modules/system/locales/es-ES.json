@@ -41,7 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Administrar sistema",
-			"restart": "Reiniciar",
+			"serviceRestart": "Reiniciar servicio",
+			"systemReboot": "Reiniciar sistema",
 			"powerOff": "Apagar",
 			"factoryReset": "Restablecimiento de fábrica",
 			"poweredOff": "Apagado completado",
@@ -73,13 +74,17 @@
 			"notEdited": "No se pudo actualizar la configuración del sistema"
 		},
 		"manage": {
-			"confirmRestart": "¿Estás seguro de que deseas reiniciar el dispositivo? Esta acción interrumpirá temporalmente su funcionamiento.",
+			"confirmServiceRestart": "¿Estás seguro de que deseas reiniciar el servicio? Es un reinicio rápido — se conservan las configuraciones y conexiones.",
+			"confirmServiceRestartGateway": "¿Estás seguro de que deseas reiniciar el servicio de la pasarela? Las pantallas conectadas perderán temporalmente la conectividad.",
+			"confirmReboot": "¿Estás seguro de que deseas reiniciar el dispositivo? Es un reinicio completo del sistema y tarda más.",
+			"confirmRebootGateway": "¿Estás seguro de que deseas reiniciar la pasarela? Las pantallas conectadas perderán temporalmente la conectividad.",
 			"confirmPowerOff": "¿Estás seguro de que deseas apagar el dispositivo? Será necesario encenderlo manualmente de nuevo.",
 			"confirmFactoryReset": "¿Estás seguro de que deseas borrar todos los datos y restaurar el dispositivo a su configuración de fábrica? Esta acción es irreversible.",
-			"confirmRestartGateway": "¿Estás seguro de que deseas reiniciar la pasarela? Las pantallas conectadas perderán temporalmente la conectividad hasta que la pasarela vuelva a estar en línea.",
 			"confirmPowerOffGateway": "¿Estás seguro de que deseas apagar la pasarela? Todas las pantallas conectadas perderán la conectividad. La pasarela deberá encenderse manualmente de nuevo.",
 			"confirmFactoryResetGateway": "¿Estás seguro de que deseas restablecer la pasarela a su configuración de fábrica? Esto borrará todos los datos de la pasarela y restablecerá todas las pantallas conectadas. Esta acción es irreversible.",
 			"waitingToBoot": "Esperando a que el panel se inicie...",
+			"waitingServiceToBoot": "Reiniciando el servicio, por favor espere...",
+			"serviceRestartTakesTooLong": "El reinicio del servicio está tardando más de lo esperado. Verifique el panel manualmente.",
 			"panelBackOnline": "El panel inteligente está de nuevo en línea.",
 			"rebootTakesTooLong": "El reinicio está tardando más de lo esperado. Por favor, verifica el panel manualmente.",
 			"rebootFailed": "No se pudo reiniciar el panel inteligente. Por favor, inténtalo de nuevo o verifica el dispositivo manualmente.",
@@ -107,8 +112,9 @@
 			"about": "FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con tus dispositivos inteligentes, ofreciendo capacidades mejoradas de control y monitorización."
 		},
 		"manage": {
-			"rebootDevice": "Reinicia el dispositivo para aplicar cambios o resolver problemas.",
-			"rebootGateway": "Reinicia la pasarela para aplicar cambios o resolver problemas. Las pantallas conectadas perderán temporalmente la conectividad.",
+			"serviceRestartDevice": "Reinicio rápido del servicio de la aplicación. Se conservan las configuraciones.",
+			"rebootDevice": "Reinicio completo del sistema para aplicar cambios o resolver problemas más profundos.",
+			"rebootGateway": "Reinicio completo de la pasarela. Las pantallas conectadas perderán temporalmente la conectividad.",
 			"powerOffDevice": "Apaga el dispositivo completamente.",
 			"powerOffGateway": "Apaga la pasarela completamente. Las pantallas conectadas perderán la conectividad.",
 			"factoryResetDevice": "Restaura el dispositivo a su configuración original de fábrica.",

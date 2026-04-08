@@ -2,7 +2,7 @@
 	<el-row
 		justify="center"
 		class="cursor-pointer"
-		@click="onRestart"
+		@click="onServiceRestart"
 	>
 		<el-col
 			:span="3"
@@ -22,11 +22,58 @@
 				size="large"
 				class="block font-600 text-lg"
 			>
-				{{ t('systemModule.headings.manage.restart') }}
+				{{ t('systemModule.headings.manage.serviceRestart') }}
 			</el-text>
 			<el-text
 				class="block"
-				data-test-id="restart-info"
+				data-test-id="service-restart-info"
+			>
+				{{ t('systemModule.texts.manage.serviceRestartDevice') }}
+			</el-text>
+		</el-col>
+		<el-col
+			:span="2"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<icon
+					icon="mdi:keyboard-arrow-right"
+					class="w[32px] h[32px]"
+				/>
+			</div>
+		</el-col>
+	</el-row>
+
+	<el-divider />
+
+	<el-row
+		justify="center"
+		class="cursor-pointer"
+		@click="onSystemReboot"
+	>
+		<el-col
+			:span="3"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<el-avatar :size="32">
+					<icon
+						icon="mdi:restart-alert"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
+			</div>
+		</el-col>
+		<el-col :span="19">
+			<el-text
+				size="large"
+				class="block font-600 text-lg"
+			>
+				{{ t('systemModule.headings.manage.systemReboot') }}
+			</el-text>
+			<el-text
+				class="block"
+				data-test-id="system-reboot-info"
 			>
 				{{ isGateway ? t('systemModule.texts.manage.rebootGateway') : t('systemModule.texts.manage.rebootDevice') }}
 			</el-text>
@@ -167,7 +214,7 @@
 			</el-text>
 			<el-text
 				class="block"
-				data-test-id="factory-reset-info"
+				data-test-id="system-logs-info"
 			>
 				{{ t('systemModule.texts.manage.systemLogs') }}
 			</el-text>
@@ -220,7 +267,7 @@ const isGateway = computed<boolean>((): boolean => {
 	return config !== null && config.deploymentMode !== 'all-in-one';
 });
 
-const { onRestart, onPowerOff, onFactoryReset } = useSystemActions();
+const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
 
 const onShowLogs = (): void => {
 	emit('close');

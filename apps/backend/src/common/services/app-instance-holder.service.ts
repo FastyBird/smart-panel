@@ -1,5 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Injectable, OnModuleInit } from '@nestjs/common';
 
 // Global reference to the app instance (set before CommandFactory.run)
 let globalAppInstance: INestApplication | null = null;

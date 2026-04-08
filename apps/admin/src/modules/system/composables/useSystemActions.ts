@@ -26,19 +26,43 @@ export const useSystemActions = (): IUseSystemActions => {
 		return config !== null && config.deploymentMode !== 'all-in-one';
 	};
 
-	const onRestart = (): void => {
+	const onServiceRestart = (): void => {
 		const gateway = isGatewayMode();
 		const confirmMsg = gateway
-			? t('systemModule.messages.manage.confirmRestartGateway')
-			: t('systemModule.messages.manage.confirmRestart');
+			? t('systemModule.messages.manage.confirmServiceRestartGateway')
+			: t('systemModule.messages.manage.confirmServiceRestart');
 
-		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.restart'), {
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.serviceRestart'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				// Navigate first — the backend may go down before the command response
+				systemActions.serviceRestart();
+
+				try {
+					await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+				} catch {
+					// Server going down before ack is expected
+				}
+			})
+			.catch((): void => {
+				// Dialog cancelled
+			});
+	};
+
+	const onSystemReboot = (): void => {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmRebootGateway')
+			: t('systemModule.messages.manage.confirmReboot');
+
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.systemReboot'), {
+			confirmButtonText: t('systemModule.buttons.yes.title'),
+			cancelButtonText: t('systemModule.buttons.no.title'),
+			type: 'warning',
+		})
+			.then(async (): Promise<void> => {
 				systemActions.reboot();
 
 				try {
@@ -105,7 +129,8 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	return {
-		onRestart,
+		onServiceRestart,
+		onSystemReboot,
 		onPowerOff,
 		onFactoryReset,
 	};

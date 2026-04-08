@@ -1,8 +1,8 @@
 <template>
 	<health-polling-view
-		:waiting-message="t('systemModule.messages.manage.waitingToBoot')"
-		:timeout-message="t('systemModule.messages.manage.rebootTakesTooLong')"
-		:timeout-ms="2 * 60 * 1000"
+		:waiting-message="t('systemModule.messages.manage.waitingServiceToBoot')"
+		:timeout-message="t('systemModule.messages.manage.serviceRestartTakesTooLong')"
+		:timeout-ms="30 * 1000"
 		:on-success="onSuccess"
 		:wait-for-unhealthy="true"
 	/>
@@ -16,7 +16,7 @@ import { ElNotification } from 'element-plus';
 import HealthPollingView from '../components/health-polling-view.vue';
 
 defineOptions({
-	name: 'ViewRebooting',
+	name: 'ViewServiceRestarting',
 });
 
 const { t } = useI18n();

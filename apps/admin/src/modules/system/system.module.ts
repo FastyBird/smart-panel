@@ -130,6 +130,14 @@ export default {
 					}
 					break;
 
+				case EventType.SYSTEM_SERVICE_RESTART:
+					if (data.payload && 'status' in data.payload) {
+						if (data.payload.status === 'processing' || data.payload.status === 'ok') {
+							systemActions.serviceRestart();
+						}
+					}
+					break;
+
 				case EventType.SYSTEM_FACTORY_RESET:
 					if (data.payload && 'status' in data.payload) {
 						if (data.payload.status === 'processing') {

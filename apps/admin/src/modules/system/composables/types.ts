@@ -23,7 +23,8 @@ export interface IUseThrottleStatus {
 }
 
 export interface IUseSystemActions {
-	onRestart: () => void;
+	onServiceRestart: () => void;
+	onSystemReboot: () => void;
 	onPowerOff: () => void;
 	onFactoryReset: () => void;
 }

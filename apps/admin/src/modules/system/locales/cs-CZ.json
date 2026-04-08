@@ -41,7 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Správa systému",
-			"restart": "Restartovat",
+			"serviceRestart": "Restart služby",
+			"systemReboot": "Restart systému",
 			"powerOff": "Vypnout",
 			"factoryReset": "Tovární reset",
 			"poweredOff": "Vypnutí dokončeno",
@@ -73,13 +74,17 @@
 			"notEdited": "Nepodařilo se aktualizovat konfiguraci systému"
 		},
 		"manage": {
-			"confirmRestart": "Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.",
+			"confirmServiceRestart": "Opravdu chcete restartovat službu? Jedná se o rychlý restart — nastavení a připojení jsou zachována.",
+			"confirmServiceRestartGateway": "Opravdu chcete restartovat službu brány? Připojené displeje dočasně ztratí konektivitu.",
+			"confirmReboot": "Opravdu chcete restartovat zařízení? Jedná se o úplný restart systému a trvá déle.",
+			"confirmRebootGateway": "Opravdu chcete restartovat bránu? Připojené displeje dočasně ztratí konektivitu, dokud brána nebude zpět online.",
 			"confirmPowerOff": "Opravdu chcete vypnout zařízení? Bude nutné jej ručně znovu zapnout.",
 			"confirmFactoryReset": "Opravdu chcete vymazat všechna data a obnovit zařízení do továrního nastavení? Tato akce je nevratná.",
-			"confirmRestartGateway": "Opravdu chcete restartovat bránu? Připojené displeje dočasně ztratí konektivitu, dokud brána nebude zpět online.",
 			"confirmPowerOffGateway": "Opravdu chcete vypnout bránu? Všechny připojené displeje ztratí konektivitu. Bránu bude nutné ručně znovu zapnout.",
 			"confirmFactoryResetGateway": "Opravdu chcete provést tovární reset brány? Tím se vymažou všechna data brány a resetují se všechny připojené displeje. Tato akce je nevratná.",
 			"waitingToBoot": "Čekání na spuštění panelu...",
+			"waitingServiceToBoot": "Restartování služby, prosím čekejte...",
+			"serviceRestartTakesTooLong": "Restart služby trvá déle než se očekávalo. Zkontrolujte panel ručně.",
 			"panelBackOnline": "Smart Panel je zpět online.",
 			"rebootTakesTooLong": "Restart trvá déle, než se očekávalo. Zkontrolujte prosím panel ručně.",
 			"rebootFailed": "Nepodařilo se restartovat Smart Panel. Zkuste to znovu nebo zkontrolujte zařízení ručně.",
@@ -107,8 +112,9 @@
 			"about": "FastyBird Smart Panel je aplikace pro domácí automatizaci, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí vylepšené ovládání a monitorování."
 		},
 		"manage": {
-			"rebootDevice": "Restartujte zařízení pro aplikaci změn nebo vyřešení problémů.",
-			"rebootGateway": "Restartujte bránu pro aplikaci změn nebo vyřešení problémů. Připojené displeje dočasně ztratí konektivitu.",
+			"serviceRestartDevice": "Rychlý restart služby aplikace. Nastavení jsou zachována.",
+			"rebootDevice": "Úplný restart systému pro aplikaci změn nebo vyřešení hlubších problémů.",
+			"rebootGateway": "Úplný restart brány. Připojené displeje dočasně ztratí konektivitu.",
 			"powerOffDevice": "Kompletní vypnutí zařízení.",
 			"powerOffGateway": "Kompletní vypnutí brány. Připojené displeje ztratí konektivitu.",
 			"factoryResetDevice": "Obnovení zařízení do původního továrního nastavení.",

@@ -15,6 +15,7 @@ import { StatsModule } from '../stats/stats.module';
 import { StorageModule } from '../storage/storage.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { UserRole } from '../users/users.constants';
 import { UsersModule } from '../users/users.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
@@ -105,11 +106,14 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			configDto: UpdateSystemConfigDto,
 		});
 
+		const adminRoles = [UserRole.ADMIN, UserRole.OWNER];
+
 		this.eventRegistry.register(
 			EventType.SYSTEM_REBOOT_SET,
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
 				this.systemCommandService.reboot(user),
+			adminRoles,
 		);
 
 		this.eventRegistry.register(
@@ -117,6 +121,15 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
 				this.systemCommandService.powerOff(user),
+			adminRoles,
+		);
+
+		this.eventRegistry.register(
+			EventType.SYSTEM_SERVICE_RESTART_SET,
+			EventHandlerName.INTERNAL_PLATFORM_ACTION,
+			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
+				this.systemCommandService.restartService(user),
+			adminRoles,
 		);
 
 		this.eventRegistry.register(
@@ -124,6 +137,7 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
 				this.systemCommandService.factoryReset(user),
+			adminRoles,
 		);
 
 		this.eventRegistry.register(

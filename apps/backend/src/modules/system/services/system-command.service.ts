@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { DeploymentMode } from '../../displays/displays.constants';
@@ -30,6 +31,7 @@ export class SystemCommandService implements OnModuleInit {
 		private readonly platformService: PlatformService,
 		private readonly tokensService: TokensService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly appInstanceHolder: AppInstanceHolder,
 	) {}
 
 	onModuleInit() {
@@ -59,7 +61,7 @@ export class SystemCommandService implements OnModuleInit {
 				this.eventEmitter.emit(EventType.SYSTEM_REBOOT, {
 					triggered_by: user.id,
 					status: 'err',
-					reason: 'no supported',
+					reason: 'not supported',
 				});
 
 				return {
@@ -103,7 +105,7 @@ export class SystemCommandService implements OnModuleInit {
 				this.eventEmitter.emit(EventType.SYSTEM_POWER_OFF, {
 					triggered_by: user.id,
 					status: 'err',
-					reason: 'no supported',
+					reason: 'not supported',
 				});
 
 				return {
@@ -123,6 +125,34 @@ export class SystemCommandService implements OnModuleInit {
 				reason: 'Unknown error',
 			};
 		}
+	}
+
+	async restartService(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {
+		this.logger.log('[SYSTEM] Service restart requested — performing graceful shutdown');
+
+		try {
+			this.eventEmitter.emit(EventType.SYSTEM_SERVICE_RESTART, {
+				triggered_by: user.id,
+				status: 'processing',
+			});
+
+			// Give the WebSocket event time to propagate before shutting down
+			await new Promise((resolve) => setTimeout(resolve, 500));
+
+			const app = this.appInstanceHolder.getApp();
+
+			await app.close();
+		} catch (error) {
+			this.logger.warn(`Error during graceful shutdown: ${(error as Error).message}`);
+		}
+
+		// Exit with code 0 so systemd (Restart=always) restarts the process
+		// without incrementing the failure counter toward StartLimitBurst.
+		// Note: process.exit() terminates the process — the return below is unreachable
+		// but satisfies the command handler interface contract.
+		process.exit(0);
+
+		return { success: true };
 	}
 
 	async factoryReset(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {

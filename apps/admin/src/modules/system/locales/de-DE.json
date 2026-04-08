@@ -41,7 +41,8 @@
     },
     "manage": {
       "manageSystem": "System verwalten",
-      "restart": "Neustart",
+      "serviceRestart": "Dienst neu starten",
+      "systemReboot": "System neu starten",
       "powerOff": "Ausschalten",
       "factoryReset": "Werkseinstellungen",
       "poweredOff": "Ausschalten abgeschlossen",
@@ -73,13 +74,17 @@
       "notEdited": "Aktualisierung der Systemkonfiguration fehlgeschlagen"
     },
     "manage": {
-      "confirmRestart": "Sind Sie sicher, dass Sie das Gerät neu starten möchten? Diese Aktion unterbricht vorübergehend die Funktionalität.",
+      "confirmServiceRestart": "Sind Sie sicher, dass Sie den Dienst neu starten möchten? Dies ist ein schneller Neustart — Einstellungen und Verbindungen bleiben erhalten.",
+      "confirmServiceRestartGateway": "Sind Sie sicher, dass Sie den Gateway-Dienst neu starten möchten? Verbundene Displays verlieren vorübergehend die Verbindung.",
+      "confirmReboot": "Sind Sie sicher, dass Sie das Gerät neu starten möchten? Dies ist ein vollständiger Systemneustart und dauert länger.",
+      "confirmRebootGateway": "Sind Sie sicher, dass Sie das Gateway neu starten möchten? Verbundene Displays verlieren vorübergehend die Verbindung.",
       "confirmPowerOff": "Sind Sie sicher, dass Sie das Gerät ausschalten möchten? Es muss manuell wieder eingeschaltet werden.",
       "confirmFactoryReset": "Sind Sie sicher, dass Sie alle Daten löschen und das Gerät auf die Werkseinstellungen zurücksetzen möchten? Diese Aktion ist irreversibel.",
-      "confirmRestartGateway": "Sind Sie sicher, dass Sie das Gateway neu starten möchten? Verbundene Displays verlieren vorübergehend die Verbindung, bis das Gateway wieder online ist.",
       "confirmPowerOffGateway": "Sind Sie sicher, dass Sie das Gateway ausschalten möchten? Alle verbundenen Displays verlieren die Verbindung. Das Gateway muss manuell wieder eingeschaltet werden.",
       "confirmFactoryResetGateway": "Sind Sie sicher, dass Sie das Gateway auf Werkseinstellungen zurücksetzen möchten? Alle Gateway-Daten werden gelöscht und alle verbundenen Displays zurückgesetzt. Diese Aktion ist irreversibel.",
       "waitingToBoot": "Warten auf den Start des Panels...",
+      "waitingServiceToBoot": "Dienst wird neu gestartet, bitte warten...",
+      "serviceRestartTakesTooLong": "Der Neustart des Dienstes dauert länger als erwartet. Bitte überprüfen Sie das Panel manuell.",
       "panelBackOnline": "Smart Panel ist wieder online.",
       "rebootTakesTooLong": "Der Neustart dauert länger als erwartet. Bitte überprüfen Sie das Panel manuell.",
       "rebootFailed": "Neustart des Smart Panels fehlgeschlagen. Bitte versuchen Sie es erneut oder überprüfen Sie das Gerät manuell.",
@@ -107,8 +112,9 @@
       "about": "FastyBird Smart Panel ist eine Hausautomatisierungs-App, die nahtlose Integration mit Ihren Smart-Geräten ermöglicht und erweiterte Steuerungs- und Überwachungsmöglichkeiten bietet."
     },
     "manage": {
-      "rebootDevice": "Starten Sie das Gerät neu, um Änderungen anzuwenden oder Probleme zu beheben.",
-      "rebootGateway": "Starten Sie das Gateway neu, um Änderungen anzuwenden oder Probleme zu beheben. Verbundene Displays verlieren vorübergehend die Verbindung.",
+      "serviceRestartDevice": "Schneller Neustart des Anwendungsdienstes. Einstellungen bleiben erhalten.",
+      "rebootDevice": "Vollständiger Systemneustart, um Änderungen anzuwenden oder tiefere Probleme zu beheben.",
+      "rebootGateway": "Vollständiger Gateway-Neustart. Verbundene Displays verlieren vorübergehend die Verbindung.",
       "powerOffDevice": "Schalten Sie das Gerät vollständig aus.",
       "powerOffGateway": "Schalten Sie das Gateway vollständig aus. Verbundene Displays verlieren die Verbindung.",
       "factoryResetDevice": "Setzen Sie das Gerät auf die ursprünglichen Werkseinstellungen zurück.",

@@ -202,11 +202,10 @@ describe('BuddyContextService', () => {
 			const ctx = await service.buildContext();
 
 			// 5-min delta kWh × 12 = approximate kW
-			expect(ctx.energy).toEqual({
-				solarProduction: 0.4 * 12,
-				gridConsumption: 0.2 * 12,
-				gridExport: 0.1 * 12,
-			});
+			expect(ctx.energy).toBeDefined();
+			expect(ctx.energy?.solarProduction).toBeCloseTo(0.4 * 12, 6);
+			expect(ctx.energy?.gridConsumption).toBeCloseTo(0.2 * 12, 6);
+			expect(ctx.energy?.gridExport).toBeCloseTo(0.1 * 12, 6);
 		});
 
 		it('should include recent intents in context', async () => {

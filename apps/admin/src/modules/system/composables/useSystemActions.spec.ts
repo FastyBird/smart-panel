@@ -12,18 +12,8 @@ vi.mock('vue-i18n', () => ({
 }));
 
 const mocks = vi.hoisted(() => {
-	let closedCallback: (() => void) | undefined;
-
 	return {
 		confirm: vi.fn(),
-		service: vi.fn((options) => {
-			closedCallback = options.closed;
-			return {
-				close: () => {
-					closedCallback?.();
-				},
-			};
-		}),
 	};
 });
 
@@ -40,8 +30,10 @@ vi.mock('element-plus', async () => {
 
 const systemActionsService = {
 	reboot: vi.fn(),
+	serviceRestart: vi.fn(),
 	powerOff: vi.fn(),
 	factoryReset: vi.fn(),
+	handleFactoryResetRedirect: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../services/system-actions.service', () => ({
@@ -54,9 +46,11 @@ vi.mock('../../config/composables/composables', () => ({
 	}),
 }));
 
-const backendClient = {
-	GET: vi.fn(),
-};
+vi.mock('../../onboarding/composables/composables', () => ({
+	useOnboardingStatus: () => ({
+		invalidate: vi.fn(),
+	}),
+}));
 
 const socketClient = {
 	sendCommand: vi.fn(),
@@ -68,7 +62,7 @@ vi.mock('../../../common', async () => {
 	return {
 		...actual,
 		useBackend: () => ({
-			client: backendClient,
+			client: { GET: vi.fn() },
 		}),
 		useFlashMessage: () => ({
 			success: vi.fn(),
@@ -90,17 +84,35 @@ describe('useSystemActions', () => {
 		vi.clearAllMocks();
 	});
 
-	it('onRestart shows confirm box and navigates', async () => {
+	it('onServiceRestart shows confirm and sends command', async () => {
 		mocks.confirm.mockResolvedValueOnce(true);
 
-		const { onRestart } = useSystemActions();
+		const { onServiceRestart } = useSystemActions();
 
-		onRestart();
+		onServiceRestart();
 
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
+		expect(systemActionsService.serviceRestart).toHaveBeenCalled();
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(
+			EventType.SYSTEM_SERVICE_RESTART_SET,
+			null,
+			EventHandlerName.INTERNAL_PLATFORM_ACTION,
+		);
+	});
 
+	it('onSystemReboot shows confirm and sends command', async () => {
+		mocks.confirm.mockResolvedValueOnce(true);
+
+		const { onSystemReboot } = useSystemActions();
+
+		onSystemReboot();
+
+		await vi.runAllTimersAsync();
+
+		expect(mocks.confirm).toHaveBeenCalled();
+		expect(systemActionsService.reboot).toHaveBeenCalled();
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
@@ -132,17 +144,29 @@ describe('useSystemActions', () => {
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION, 30000);
 	});
 
-	it('canceling confirm does nothing', async () => {
+	it('canceling service restart does nothing', async () => {
 		mocks.confirm.mockRejectedValueOnce(new Error('cancel'));
 
-		const { onRestart } = useSystemActions();
+		const { onServiceRestart } = useSystemActions();
 
-		onRestart();
+		onServiceRestart();
 
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
+		expect(socketClient.sendCommand).not.toHaveBeenCalled();
+	});
 
+	it('canceling power off does nothing', async () => {
+		mocks.confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		const { onPowerOff } = useSystemActions();
+
+		onPowerOff();
+
+		await vi.runAllTimersAsync();
+
+		expect(mocks.confirm).toHaveBeenCalled();
 		expect(socketClient.sendCommand).not.toHaveBeenCalled();
 	});
 });
