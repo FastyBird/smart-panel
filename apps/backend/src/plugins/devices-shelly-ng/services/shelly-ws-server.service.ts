@@ -34,6 +34,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	private httpServer: HttpServer | null = null;
 	private upgradeHandler: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null;
 	private readonly wsToDeviceId: Map<WebSocket, string> = new Map();
+	private readonly stateQueue: Map<string, Promise<void>> = new Map();
 	private stopped = false;
 
 	constructor(
@@ -126,6 +127,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	stop(): void {
 		this.stopped = true;
 		this.wsToDeviceId.clear();
+		this.stateQueue.clear();
 
 		if (this.wss) {
 			// Close all connected clients
@@ -239,23 +241,36 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	}
 
 	private markDeviceAwake(shellyId: string): void {
-		void this.setDeviceState(shellyId, ConnectionState.CONNECTED, 'awake');
+		this.enqueueStateChange(shellyId, ConnectionState.CONNECTED, 'awake');
 	}
 
 	private markDeviceSleeping(shellyId: string): void {
-		void this.setDeviceState(shellyId, ConnectionState.SLEEPING, 'sleeping');
+		this.enqueueStateChange(shellyId, ConnectionState.SLEEPING, 'sleeping');
 	}
 
-	private setDeviceState(shellyId: string, state: ConnectionState, label: string): void {
-		void this.devicesService
-			.findOneBy<ShellyNgDeviceEntity>('identifier', shellyId, DEVICES_SHELLY_NG_TYPE)
-			.then((device) => {
+	/**
+	 * Serialize state changes per device so CONNECTED and SLEEPING writes
+	 * always resolve in call order, regardless of async timing.
+	 */
+	private enqueueStateChange(shellyId: string, state: ConnectionState, label: string): void {
+		const prev = this.stateQueue.get(shellyId) ?? Promise.resolve();
+
+		const next = prev
+			.then(async () => {
+				const device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+					'identifier',
+					shellyId,
+					DEVICES_SHELLY_NG_TYPE,
+				);
+
 				if (!device) return;
 
-				return this.deviceConnectivityService.setConnectionState(device.id, { state });
+				await this.deviceConnectivityService.setConnectionState(device.id, { state });
 			})
 			.catch((err: Error) => {
 				this.logger.warn(`Failed to mark sleeping device=${shellyId} as ${label}: ${err.message}`);
 			});
+
+		this.stateQueue.set(shellyId, next);
 	}
 }
