@@ -33,6 +33,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	private wss: WebSocketServer | null = null;
 	private httpServer: HttpServer | null = null;
 	private upgradeHandler: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null;
+	private readonly wsToDeviceId: Map<WebSocket, string> = new Map();
 
 	constructor(
 		private readonly appInstanceHolder: AppInstanceHolder,
@@ -63,7 +64,16 @@ export class ShellyWsServerService implements OnModuleDestroy {
 			});
 
 			ws.on('close', () => {
-				this.logger.debug(`Sleeping device from ${ip} disconnected`);
+				const closedDeviceId = this.wsToDeviceId.get(ws);
+
+				this.wsToDeviceId.delete(ws);
+
+				if (closedDeviceId) {
+					this.logger.debug(`Sleeping device=${closedDeviceId} from ${ip} disconnected, marking as sleeping`);
+					this.markDeviceSleeping(closedDeviceId);
+				} else {
+					this.logger.debug(`Sleeping device from ${ip} disconnected`);
+				}
 			});
 
 			ws.on('error', (err: Error) => {
@@ -141,6 +151,11 @@ export class ShellyWsServerService implements OnModuleDestroy {
 			return;
 		}
 
+		// Track which device is on this WebSocket for sleeping state on close
+		if (!this.wsToDeviceId.has(ws)) {
+			this.wsToDeviceId.set(ws, deviceId);
+		}
+
 		// Acknowledge the frame if it has an id (JSON-RPC request)
 		if (frame.id) {
 			const ack = JSON.stringify({ id: frame.id, src: 'fb-smart-panel', dst: deviceId });
@@ -180,17 +195,23 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	}
 
 	private markDeviceAwake(shellyId: string): void {
+		void this.setDeviceState(shellyId, ConnectionState.CONNECTED, 'awake');
+	}
+
+	private markDeviceSleeping(shellyId: string): void {
+		void this.setDeviceState(shellyId, ConnectionState.SLEEPING, 'sleeping');
+	}
+
+	private setDeviceState(shellyId: string, state: ConnectionState, label: string): void {
 		void this.devicesService
 			.findOneBy<ShellyNgDeviceEntity>('identifier', shellyId, DEVICES_SHELLY_NG_TYPE)
 			.then((device) => {
 				if (!device) return;
 
-				return this.deviceConnectivityService.setConnectionState(device.id, {
-					state: ConnectionState.CONNECTED,
-				});
+				return this.deviceConnectivityService.setConnectionState(device.id, { state });
 			})
 			.catch((err: Error) => {
-				this.logger.warn(`Failed to mark sleeping device=${shellyId} as awake: ${err.message}`);
+				this.logger.warn(`Failed to mark sleeping device=${shellyId} as ${label}: ${err.message}`);
 			});
 	}
 }
