@@ -95,6 +95,7 @@ jest.mock('shellies-ds9', () => {
 
 const pluginConfigEnabled = {
 	enabled: true,
+	statusPollInterval: 60,
 	mdns: { enabled: true, interface: null as string | null },
 	websockets: { requestTimeout: 10, pingInterval: 60, reconnectInterval: [5, 10, 30] },
 };
@@ -106,7 +107,14 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 	}),
 });
 
-const mockDelegates = () => ({ insert: jest.fn(), remove: jest.fn().mockResolvedValue(undefined), detach: jest.fn() });
+const mockDelegates = () => ({
+	insert: jest.fn(),
+	remove: jest.fn().mockResolvedValue(undefined),
+	detach: jest.fn(),
+	get: jest.fn().mockReturnValue(undefined),
+	checkHealth: jest.fn().mockResolvedValue(undefined),
+	pollAllDevices: jest.fn().mockResolvedValue(undefined),
+});
 
 const mockDevicesService = (devices: any[] = []) => ({
 	findAll: jest.fn().mockResolvedValue(devices),
@@ -132,7 +140,15 @@ const mockPluginServiceManager = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('ShellyNgService', () => {
-	afterEach(() => {
+	let svc: ShellyNgService | null = null;
+
+	afterEach(async () => {
+		if (svc && svc.getState() === 'started') {
+			await svc.stop();
+		}
+
+		svc = null;
+
 		const ds9 = require('shellies-ds9');
 		ds9.__testing.shelliesInstances.length = 0;
 		ds9.__testing.mdnsInstances.length = 0;
@@ -153,7 +169,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = moduleRef.get(ShellyNgService);
+		svc = moduleRef.get(ShellyNgService);
 		await svc.start();
 
 		const ds9 = require('shellies-ds9');
@@ -182,7 +198,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 		await svc.start();
 
 		const ds9 = require('shellies-ds9');
@@ -214,7 +230,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 		await svc.start();
 
 		const ds9 = require('shellies-ds9');
@@ -237,7 +253,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 		await svc.start();
 
 		const ds9 = require('shellies-ds9');
@@ -276,7 +292,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 		await svc.start();
 
 		const ds9 = require('shellies-ds9');
@@ -301,7 +317,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 
 		expect(svc.getState()).toBe('stopped');
 
@@ -327,7 +343,7 @@ describe('ShellyNgService', () => {
 			],
 		}).compile();
 
-		const svc = mod.get(ShellyNgService);
+		svc = mod.get(ShellyNgService);
 		await svc.start();
 
 		// Call onConfigChanged to clear cache

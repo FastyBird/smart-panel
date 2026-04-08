@@ -100,6 +100,23 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	type: typeof DEVICES_SHELLY_NG_PLUGIN_NAME;
 
 	@ApiPropertyOptional({
+		description: 'Status poll interval in seconds (0 to disable)',
+		example: 60,
+		minimum: 0,
+		name: 'status_poll_interval',
+	})
+	@Expose({ name: 'status_poll_interval' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsInt({
+		message: '[{"field":"status_poll_interval","reason":"Status poll interval must be a whole number."}]',
+	})
+	@Min(0, {
+		message: '[{"field":"status_poll_interval","reason":"Status poll interval minimum value must be 0 or greater."}]',
+	})
+	status_poll_interval?: number;
+
+	@ApiPropertyOptional({
 		description: 'MDNS configuration',
 		type: () => ShellyNgUpdatePluginConfigMdnsDto,
 	})

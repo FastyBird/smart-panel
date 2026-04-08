@@ -48,6 +48,8 @@ export class ShellyNgService implements IManagedPluginService {
 	private restartTimer: NodeJS.Timeout | null = null;
 	private healthCheckTimer: NodeJS.Timeout | null = null;
 	private healthCheckRunning = false;
+	private statusPollTimer: NodeJS.Timeout | null = null;
+	private statusPollRunning = false;
 
 	/**
 	 * Global sequential queue for processing discovered devices.
@@ -162,6 +164,12 @@ export class ShellyNgService implements IManagedPluginService {
 			if (mdnsChanged || websocketsChanged) {
 				this.logger.log('Config changed, restart required');
 				return Promise.resolve({ restartRequired: true });
+			}
+
+			// Hot-reload status poll interval without full restart
+			if (oldConfig.statusPollInterval !== newConfig.statusPollInterval) {
+				this.pluginConfig = newConfig;
+				this.startStatusPoll();
 			}
 
 			// Config didn't change for this plugin, no restart needed
@@ -307,6 +315,7 @@ export class ShellyNgService implements IManagedPluginService {
 			}
 
 			this.startHealthCheck();
+			this.startStatusPoll();
 
 			this.state = 'started';
 		} catch (e) {
@@ -318,6 +327,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 	private async doStop(): Promise<void> {
 		this.stopHealthCheck();
+		this.stopStatusPoll();
 
 		if (!this.shellies) {
 			this.state = 'stopped';
@@ -443,6 +453,10 @@ export class ShellyNgService implements IManagedPluginService {
 	/**
 	 * Processes a single discovered device: looks it up in the database,
 	 * provisions channels/properties if needed, and attaches the delegate.
+	 *
+	 * If a delegate already exists for this device and is disconnected
+	 * (e.g., device rebooted and reappeared on mDNS), triggers immediate
+	 * reconnection instead of waiting for backoff.
 	 */
 	private async processDiscoveredDevice(device: Device): Promise<void> {
 		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
@@ -453,6 +467,21 @@ export class ShellyNgService implements IManagedPluginService {
 
 		if (sysDevice !== null) {
 			await this.deviceManagerService.createOrUpdate(sysDevice.id);
+		}
+
+		// Check if we already have a delegate — mDNS may re-discover a known device
+		// after a reboot. Trigger immediate reconnection instead of waiting for backoff,
+		// but only after createOrUpdate has refreshed firmware/channel info.
+		const existingDelegate = this.delegatesRegistryService.get(device.id);
+
+		if (existingDelegate && !existingDelegate.connected) {
+			this.logger.log(`mDNS re-discovered disconnected device=${device.id}, triggering immediate reconnect`, {
+				resource: device.id,
+			});
+
+			existingDelegate.forceReconnect();
+
+			return;
 		}
 
 		await this.delegatesRegistryService.insert(device);
@@ -550,6 +579,51 @@ export class ShellyNgService implements IManagedPluginService {
 		if (this.healthCheckTimer) {
 			clearInterval(this.healthCheckTimer);
 			this.healthCheckTimer = null;
+		}
+	}
+
+	/**
+	 * Starts periodic Shelly.GetStatus polling on all connected devices.
+	 * Captures values that aren't pushed via WS notifications (energy counters, etc.).
+	 */
+	private startStatusPoll(): void {
+		this.stopStatusPoll();
+
+		const intervalSec = this.config.statusPollInterval;
+
+		if (intervalSec <= 0) {
+			this.logger.log('Status polling disabled (interval = 0)');
+
+			return;
+		}
+
+		const intervalMs = intervalSec * 1000;
+
+		this.statusPollTimer = setInterval(() => {
+			if (this.state !== 'started' || this.statusPollRunning) {
+				return;
+			}
+
+			this.statusPollRunning = true;
+
+			this.delegatesRegistryService
+				.pollAllDevices()
+				.catch((err: Error) => {
+					this.logger.error('Status poll failed', {
+						message: err.message,
+						stack: err.stack,
+					});
+				})
+				.finally(() => {
+					this.statusPollRunning = false;
+				});
+		}, intervalMs);
+	}
+
+	private stopStatusPoll(): void {
+		if (this.statusPollTimer) {
+			clearInterval(this.statusPollTimer);
+			this.statusPollTimer = null;
 		}
 	}
 

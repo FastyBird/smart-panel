@@ -211,6 +211,24 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * is actually responsive. Resolves to true if the device responds, false otherwise.
 	 */
 	async ping(timeoutMs: number = 5_000): Promise<boolean> {
+		return this.rpcWithTimeout(() => this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'), timeoutMs);
+	}
+
+	/**
+	 * Polls the device by calling the library's loadStatus(), which internally
+	 * fetches Shelly.GetStatus and applies the values to each component.
+	 * Components then emit proper 'change' events through the existing pipeline,
+	 * correctly handling nested values like aenergy ({ total, by_minute, ... }).
+	 */
+	async pollStatus(timeoutMs: number = 10_000): Promise<boolean> {
+		return this.rpcWithTimeout(() => this.shelly.loadStatus(), timeoutMs);
+	}
+
+	/**
+	 * Runs a lazily-created promise with a timeout guard. The factory is only
+	 * called after the connected check, avoiding orphaned in-flight promises.
+	 */
+	private async rpcWithTimeout(factory: () => PromiseLike<unknown>, timeoutMs: number): Promise<boolean> {
 		if (!this.shelly.rpcHandler.connected) {
 			return false;
 		}
@@ -219,9 +237,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 		try {
 			await Promise.race([
-				this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'),
+				factory(),
 				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new Error('Ping timeout')), timeoutMs);
+					timer = setTimeout(() => reject(new Error('RPC timeout')), timeoutMs);
 				}),
 			]);
 
