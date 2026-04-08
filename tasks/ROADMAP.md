@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-04-06. Reflects actual codebase state.
+> Last updated: 2026-04-08. Reflects actual codebase state.
 
 ---
 
@@ -139,8 +139,8 @@ Reliability and correctness fixes identified during code review audit.
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
-| 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :clipboard: Planned |
-| 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :clipboard: Planned |
+| 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :white_check_mark: Done |
+| 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :white_check_mark: Done |
 | 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :white_check_mark: Done |
 
 ### Priority 2 — Medium fixes
@@ -149,17 +149,17 @@ Reliability and correctness fixes identified during code review audit.
 |---|------|-------|--------|
 | 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :white_check_mark: Done |
 | 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :white_check_mark: Done |
-| 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :clipboard: Planned |
+| 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :white_check_mark: Done |
 
 ### Priority 3 — Polish
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
 | 7 | [TECH-BUDDY-PANEL-ROBUSTNESS](technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | panel | :clipboard: Planned |
-| 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :clipboard: Planned |
+| 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :white_check_mark: Done |
 
-**Done:** Timeout enforcement, memory leak cleanup, conversation hardening.
-**Next up:** Suggestion persistence (P1), then timezone safety.
+**Done:** Timeout enforcement, memory leak cleanup, conversation hardening, suggestion persistence, timezone safety, SDK error handling, admin polish.
+**Remaining:** Panel robustness (P3).
 
 ---
 
@@ -262,11 +262,11 @@ Extensions expose callable actions and interactive terminal sessions from the ad
 
 | # | Task | Scope | Status |
 |---|------|-------|--------|
-| 6 | [TECH-EXTENSION-ACTION-PERMISSIONS](technical/TECH-EXTENSION-ACTION-PERMISSIONS.md) | backend | :clipboard: Planned |
-| 7 | [TECH-EXTENSION-ACTION-AUDIT-LOG](technical/TECH-EXTENSION-ACTION-AUDIT-LOG.md) | backend, admin | :clipboard: Planned |
+| 6 | [TECH-EXTENSION-ACTION-PERMISSIONS](technical/TECH-EXTENSION-ACTION-PERMISSIONS.md) | backend | :white_check_mark: Done |
+| 7 | [TECH-EXTENSION-ACTION-AUDIT-LOG](technical/TECH-EXTENSION-ACTION-AUDIT-LOG.md) | backend, admin | :white_check_mark: Done |
 | 8 | [FEATURE-EXTENSION-MARKETPLACE-SESSIONS](features/FEATURE-EXTENSION-MARKETPLACE-SESSIONS.md) | backend, admin | :clipboard: Planned |
 
-**Done:** Immediate actions with flat forms, dynamic parameters, simulator plugin with 6 actions, admin UI with Actions tab.
+**Done:** Immediate actions, role-based permissions, audit trail with history UI.
 **Next up:** Interactive session WebSocket protocol, then terminal UI component.
 
 ---
@@ -321,10 +321,10 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | 3 | [FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE](features/FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE.md) | backend, panel | :white_check_mark: Done |
 | 4 | [FEATURE-CAPTIVE-PORTAL-WIFI-SETUP](features/FEATURE-CAPTIVE-PORTAL-WIFI-SETUP.md) | backend | :white_check_mark: Done |
 | 5 | [FEATURE-PANEL-APP-UPDATES](features/FEATURE-PANEL-APP-UPDATES.md) | backend, admin, panel | :clipboard: Planned |
-| 6 | [FEATURE-SYSTEM-SERVICE-RESTART](features/FEATURE-SYSTEM-SERVICE-RESTART.md) | backend, admin | :clipboard: Planned |
+| 6 | [FEATURE-SYSTEM-SERVICE-RESTART](features/FEATURE-SYSTEM-SERVICE-RESTART.md) | backend, admin | :white_check_mark: Done |
 
-**Done:** Storage module refactored with plugin architecture and in-memory fallback, image-based update mechanism for Raspbian, mDNS discovery proxy for flutter-pi, captive portal WiFi provisioning.
-**Remaining:** Panel display app OTA updates. Service-only soft restart (vs full system reboot).
+**Done:** Storage module, image updates, mDNS discovery, captive portal, service restart.
+**Remaining:** Panel display app OTA updates.
 
 ---
 
@@ -373,7 +373,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Buddy Epic | 9 | 0 | 0 | 9 |
 | Buddy Voice/Channels | 9 | 0 | 0 | 9 |
 | AI Buddy Face | 0 | 0 | 2 | 2 |
-| Buddy Hardening | 3 | 0 | 5 | 8 |
+| Buddy Hardening | 7 | 0 | 1 | 8 |
 | Onboarding Epic | 3 | 0 | 0 | 3 |
 | Onboarding Device Setup | 3 | 0 | 0 | 3 |
 | Space/Climate | 1 | 0 | 0 | 1 |
@@ -381,9 +381,9 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Virtual Devices | 0 | 0 | 2 | 2 |
 | Companion Display | 0 | 0 | 9 | 9 |
 | Plugins | 1 | 0 | 2 | 3 |
-| Extension Actions | 1 | 0 | 7 | 8 |
-| Device & Infrastructure | 4 | 0 | 2 | 6 |
+| Extension Actions | 3 | 0 | 5 | 8 |
+| Device & Infrastructure | 5 | 0 | 1 | 6 |
 | Technical | 6 | 0 | 0 | 6 |
 | Other Features | 4 | 0 | 1 | 5 |
 | Plans | 2 | 0 | 1 | 3 |
-| **Total** | **65** | **0** | **39** | **104** |
+| **Total** | **72** | **0** | **32** | **104** |
