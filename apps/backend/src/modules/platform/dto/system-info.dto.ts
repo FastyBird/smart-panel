@@ -119,6 +119,11 @@ export class ProcessDto {
 
 export class SystemInfoDto {
 	@Expose()
+	@IsOptional()
+	@IsString()
+	network_mode?: string;
+
+	@Expose()
 	@IsNumber()
 	cpu_load: number;
 

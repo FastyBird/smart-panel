@@ -225,6 +225,17 @@ export class SystemInfoModel {
 	@IsString()
 	platform: string;
 
+	@ApiProperty({
+		name: 'network_mode',
+		description: 'Current network connectivity mode',
+		type: 'string',
+		enum: ['online', 'offline', 'setup'],
+		example: 'online',
+	})
+	@Expose({ name: 'network_mode' })
+	@IsString()
+	networkMode: string;
+
 	@ApiProperty({ name: 'cpu_load', description: 'CPU load percentage', type: 'number', example: 45.5 })
 	@Expose({ name: 'cpu_load' })
 	@IsNumber()
