@@ -22,7 +22,7 @@ vi.mock('../../../common', async () => {
 
 const validSystemInfoResponse: ISystemInfoRes = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
-	network_mode: 'online' as any,
+	network_mode: 'online' as ISystemInfoRes['network_mode'],
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
