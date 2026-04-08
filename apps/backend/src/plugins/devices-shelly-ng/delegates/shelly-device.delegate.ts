@@ -236,9 +236,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	/**
-	 * Polls Shelly.GetStatus and re-emits each component's values through the
-	 * existing change pipeline. This captures data that isn't pushed via WS
-	 * notifications (energy counters, some sensor readings).
+	 * Polls the device by calling the library's loadStatus(), which internally
+	 * fetches Shelly.GetStatus and applies the values to each component.
+	 * Components then emit proper 'change' events through the existing pipeline,
+	 * correctly handling nested values like aenergy ({ total, by_minute, ... }).
 	 */
 	async pollStatus(timeoutMs: number = 10_000): Promise<boolean> {
 		if (!this.shelly.rpcHandler.connected) {
@@ -248,24 +249,12 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
-			const status = await Promise.race([
-				this.shelly.rpcHandler.request<Record<string, Record<string, CharacteristicValue>>>('Shelly.GetStatus'),
+			await Promise.race([
+				this.shelly.loadStatus(),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => reject(new Error('Poll timeout')), timeoutMs);
 				}),
 			]);
-
-			// Iterate over each component in the status response and emit changes
-			for (const [key, values] of Object.entries(status)) {
-				// Status keys look like "switch:0", "pm1:0", "temperature:0", etc.
-				if (!this.components.has(key) || typeof values !== 'object' || values === null) {
-					continue;
-				}
-
-				for (const [char, val] of Object.entries(values)) {
-					this.emit('value', key, char, val);
-				}
-			}
 
 			return true;
 		} catch {
