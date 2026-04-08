@@ -18,19 +18,19 @@
 
 > Full energy monitoring: ingestion, aggregation, grid flows, UI
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 1 | [FEATURE-ENERGY-MODULE-MVP](features/FEATURE-ENERGY-MODULE-MVP.md) | backend | :white_check_mark: Done |
-| 2 | [FEATURE-ENERGY-AGGREGATION-API](features/FEATURE-ENERGY-AGGREGATION-API.md) | backend | :white_check_mark: Done |
-| 3 | [FEATURE-ENERGY-RETENTION-OBSERVABILITY](features/FEATURE-ENERGY-RETENTION-OBSERVABILITY.md) | backend | :white_check_mark: Done |
-| 4 | [FEATURE-ENERGY-GRID-FLOWS](features/FEATURE-ENERGY-GRID-FLOWS.md) | backend, admin, panel | :white_check_mark: Done |
-| 5 | [FEATURE-ENERGY-GRID-FLOWS-HARDENING](features/FEATURE-ENERGY-GRID-FLOWS-HARDENING.md) | backend, admin, panel | :white_check_mark: Done |
-| 6 | [FEATURE-ENERGY-HOME-SUMMARY-CACHING](features/FEATURE-ENERGY-HOME-SUMMARY-CACHING.md) | backend | :white_check_mark: Done |
-| 7 | [FEATURE-PANEL-ENERGY-DOMAIN-PAGE](features/FEATURE-PANEL-ENERGY-DOMAIN-PAGE.md) | panel | :white_check_mark: Done |
-| 8 | [FEATURE-PANEL-ENERGY-SCREEN](features/FEATURE-PANEL-ENERGY-SCREEN.md) | panel | :white_check_mark: Done (12/14) |
-| 9 | [FEATURE-ADMIN-ENERGY-HEADER-WIDGET](features/FEATURE-ADMIN-ENERGY-HEADER-WIDGET.md) | backend, admin | :clipboard: Planned |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | [FEATURE-ENERGY-MODULE-MVP](features/FEATURE-ENERGY-MODULE-MVP.md) | backend | :white_check_mark: Done | |
+| 2 | [FEATURE-ENERGY-AGGREGATION-API](features/FEATURE-ENERGY-AGGREGATION-API.md) | backend | :white_check_mark: Done | |
+| 3 | [FEATURE-ENERGY-RETENTION-OBSERVABILITY](features/FEATURE-ENERGY-RETENTION-OBSERVABILITY.md) | backend | :white_check_mark: Done | |
+| 4 | [FEATURE-ENERGY-GRID-FLOWS](features/FEATURE-ENERGY-GRID-FLOWS.md) | backend, admin, panel | :white_check_mark: Done | |
+| 5 | [FEATURE-ENERGY-GRID-FLOWS-HARDENING](features/FEATURE-ENERGY-GRID-FLOWS-HARDENING.md) | backend, admin, panel | :white_check_mark: Done | |
+| 6 | [FEATURE-ENERGY-HOME-SUMMARY-CACHING](features/FEATURE-ENERGY-HOME-SUMMARY-CACHING.md) | backend | :white_check_mark: Done | |
+| 7 | [FEATURE-PANEL-ENERGY-DOMAIN-PAGE](features/FEATURE-PANEL-ENERGY-DOMAIN-PAGE.md) | panel | :white_check_mark: Done | |
+| 8 | [FEATURE-PANEL-ENERGY-SCREEN](features/FEATURE-PANEL-ENERGY-SCREEN.md) | panel | :white_check_mark: Done | 9/11 — missing bottom nav integration, widget test |
+| 9 | [FEATURE-ADMIN-ENERGY-HEADER-WIDGET](features/FEATURE-ADMIN-ENERGY-HEADER-WIDGET.md) | backend, admin | :clipboard: Planned | |
 
-**Remaining work:** Admin header widget configuration for per-space energy display settings. Panel energy screen missing bottom nav/more sheet integration and widget test.
+**Remaining work:** Admin header widget. Panel energy screen missing bottom nav/more sheet integration and widget test.
 
 ---
 
@@ -59,11 +59,11 @@
 
 ### Phase 1: Domain Completion
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 1 | [FEATURE-SPACE-COVERS-DOMAIN](features/FEATURE-SPACE-COVERS-DOMAIN.md) | backend, admin, panel | :white_check_mark: Done (missing 2 unit tests) |
-| 2 | FEATURE-SPACE-MEDIA-DOMAIN (via V2) | backend, admin, panel | :white_check_mark: Done |
-| 3 | [FEATURE-SPACE-SECURITY-DOMAIN](features/FEATURE-SPACE-SECURITY-DOMAIN.md) | backend, admin, panel | :clipboard: Planned |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | [FEATURE-SPACE-COVERS-DOMAIN](features/FEATURE-SPACE-COVERS-DOMAIN.md) | backend, admin, panel | :white_check_mark: Done | 10/12 — missing 2 unit tests (position + command covers) |
+| 2 | FEATURE-SPACE-MEDIA-DOMAIN (via V2) | backend, admin, panel | :white_check_mark: Done | |
+| 3 | [FEATURE-SPACE-SECURITY-DOMAIN](features/FEATURE-SPACE-SECURITY-DOMAIN.md) | backend, admin, panel | :clipboard: Planned | |
 
 ### Phase 2: Unified Room Modes
 
@@ -137,26 +137,26 @@ Reliability and correctness fixes identified during code review audit.
 
 ### Priority 1 — Critical fixes
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :white_check_mark: Done |
-| 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :white_check_mark: Done |
-| 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :white_check_mark: Done |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | [TECH-BUDDY-SUGGESTION-PERSISTENCE](technical/TECH-BUDDY-SUGGESTION-PERSISTENCE.md) | backend | :white_check_mark: Done | |
+| 2 | [TECH-BUDDY-TIMEZONE-SAFETY](technical/TECH-BUDDY-TIMEZONE-SAFETY.md) | backend | :white_check_mark: Done | 5/6 — formatTimeLabel skipped (timezone applied at extraction) |
+| 3 | [TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT](technical/TECH-BUDDY-PROVIDER-TIMEOUT-ENFORCEMENT.md) | backend | :white_check_mark: Done | |
 
 ### Priority 2 — Medium fixes
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :white_check_mark: Done |
-| 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :white_check_mark: Done |
-| 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :white_check_mark: Done |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 4 | [TECH-BUDDY-MEMORY-LEAK-CLEANUP](technical/TECH-BUDDY-MEMORY-LEAK-CLEANUP.md) | backend | :white_check_mark: Done | 2/4 — stale entry cleanup + LRU eviction not implemented |
+| 5 | [TECH-BUDDY-CONVERSATION-HARDENING](technical/TECH-BUDDY-CONVERSATION-HARDENING.md) | backend | :white_check_mark: Done | |
+| 6 | [TECH-BUDDY-SDK-ERROR-HANDLING](technical/TECH-BUDDY-SDK-ERROR-HANDLING.md) | backend | :white_check_mark: Done | 5/7 — SDK type interfaces skipped (dynamic import pattern) |
 
 ### Priority 3 — Polish
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 7 | [TECH-BUDDY-PANEL-ROBUSTNESS](technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | panel | :clipboard: Planned |
-| 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :white_check_mark: Done |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 7 | [TECH-BUDDY-PANEL-ROBUSTNESS](technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | panel | :clipboard: Planned | |
+| 8 | [TECH-BUDDY-ADMIN-POLISH](technical/TECH-BUDDY-ADMIN-POLISH.md) | admin | :white_check_mark: Done | 4/5 — wizard split skipped (well-organized at 1084 lines) |
 
 **Done:** Timeout enforcement, memory leak cleanup, conversation hardening, suggestion persistence, timezone safety, SDK error handling, admin polish.
 **Remaining:** Panel robustness (P3).
@@ -260,11 +260,11 @@ Extensions expose callable actions and interactive terminal sessions from the ad
 
 ### Phase 4: Hardening & Marketplace
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 6 | [TECH-EXTENSION-ACTION-PERMISSIONS](technical/TECH-EXTENSION-ACTION-PERMISSIONS.md) | backend | :white_check_mark: Done |
-| 7 | [TECH-EXTENSION-ACTION-AUDIT-LOG](technical/TECH-EXTENSION-ACTION-AUDIT-LOG.md) | backend, admin | :white_check_mark: Done |
-| 8 | [FEATURE-EXTENSION-MARKETPLACE-SESSIONS](features/FEATURE-EXTENSION-MARKETPLACE-SESSIONS.md) | backend, admin | :clipboard: Planned |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 6 | [TECH-EXTENSION-ACTION-PERMISSIONS](technical/TECH-EXTENSION-ACTION-PERMISSIONS.md) | backend | :white_check_mark: Done | |
+| 7 | [TECH-EXTENSION-ACTION-AUDIT-LOG](technical/TECH-EXTENSION-ACTION-AUDIT-LOG.md) | backend, admin | :white_check_mark: Done | 4/5 — interactive session recording deferred |
+| 8 | [FEATURE-EXTENSION-MARKETPLACE-SESSIONS](features/FEATURE-EXTENSION-MARKETPLACE-SESSIONS.md) | backend, admin | :clipboard: Planned | |
 
 **Done:** Immediate actions, role-based permissions, audit trail with history UI.
 **Next up:** Interactive session WebSocket protocol, then terminal UI component.
@@ -314,14 +314,14 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 > Tasks from real-world device testing sessions — installation, updates, networking, storage resilience.
 
-| # | Task | Scope | Status |
-|---|------|-------|--------|
-| 1 | [FEATURE-INFLUXDB-MEMORY-FALLBACK](features/FEATURE-INFLUXDB-MEMORY-FALLBACK.md) | backend, admin | :white_check_mark: Done |
-| 2 | [FEATURE-IMAGE-UPDATE-MECHANISM](features/FEATURE-IMAGE-UPDATE-MECHANISM.md) | backend | :white_check_mark: Done |
-| 3 | [FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE](features/FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE.md) | backend, panel | :white_check_mark: Done |
-| 4 | [FEATURE-CAPTIVE-PORTAL-WIFI-SETUP](features/FEATURE-CAPTIVE-PORTAL-WIFI-SETUP.md) | backend | :white_check_mark: Done |
-| 5 | [FEATURE-PANEL-APP-UPDATES](features/FEATURE-PANEL-APP-UPDATES.md) | backend, admin, panel | :clipboard: Planned |
-| 6 | [FEATURE-SYSTEM-SERVICE-RESTART](features/FEATURE-SYSTEM-SERVICE-RESTART.md) | backend, admin | :white_check_mark: Done |
+| # | Task | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | [FEATURE-INFLUXDB-MEMORY-FALLBACK](features/FEATURE-INFLUXDB-MEMORY-FALLBACK.md) | backend, admin | :white_check_mark: Done | |
+| 2 | [FEATURE-IMAGE-UPDATE-MECHANISM](features/FEATURE-IMAGE-UPDATE-MECHANISM.md) | backend | :white_check_mark: Done | |
+| 3 | [FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE](features/FEATURE-FLUTTER-PI-MDNS-DISCOVERY-SERVICE.md) | backend, panel | :white_check_mark: Done | |
+| 4 | [FEATURE-CAPTIVE-PORTAL-WIFI-SETUP](features/FEATURE-CAPTIVE-PORTAL-WIFI-SETUP.md) | backend | :white_check_mark: Done | |
+| 5 | [FEATURE-PANEL-APP-UPDATES](features/FEATURE-PANEL-APP-UPDATES.md) | backend, admin, panel | :clipboard: Planned | |
+| 6 | [FEATURE-SYSTEM-SERVICE-RESTART](features/FEATURE-SYSTEM-SERVICE-RESTART.md) | backend, admin | :white_check_mark: Done | 8/9 — Raspbian device verification pending |
 
 **Done:** Storage module, image updates, mDNS discovery, captive portal, service restart.
 **Remaining:** Panel display app OTA updates.
