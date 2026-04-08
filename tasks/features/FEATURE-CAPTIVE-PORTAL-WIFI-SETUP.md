@@ -76,7 +76,7 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 - [x] AP uses WPA2 with a default password printed on the boot log: `smartpanel`
 - [x] AP assigns IPs via DHCP (192.168.4.x range)
 - [x] All DNS queries redirect to the Pi's IP (captive portal detection)
-- [ ] AP mode is indicated in system status API and admin UI (deferred — backend integration)
+- [x] AP mode is indicated in system status API — `network_mode` field: online/offline/setup
 
 ### Captive Portal Web Page
 
@@ -109,8 +109,8 @@ I want the device to create a WiFi hotspot with a setup page where I can enter m
 - [x] The captive portal service is a systemd service: `smart-panel-portal.service`
 - [x] It runs before `smart-panel.service` (the backend)
 - [x] Once WiFi is connected, it stops itself and the backend starts
-- [ ] System status API exposes current mode: `setup` (AP) / `online` (connected) / `offline` (deferred — backend integration)
-- [ ] Admin UI shows a banner when in AP/setup mode (deferred — backend integration)
+- [x] System status API exposes current mode: `setup` (AP) / `online` (connected) / `offline` — via `network_mode` in system info response
+- [ ] Admin UI shows a banner when in AP/setup mode — deferred: needs admin UI component
 
 ## 5. Example scenarios
 
