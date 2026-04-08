@@ -41,6 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Spravovať systém",
+			"serviceRestart": "Reštart služby",
+			"systemReboot": "Reštart systému",
 			"restart": "Reštartovať",
 			"powerOff": "Vypnúť",
 			"factoryReset": "Továrenský reset",
@@ -73,6 +75,10 @@
 			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu systému"
 		},
 		"manage": {
+			"confirmServiceRestart": "Naozaj chcete reštartovať službu? Jedná sa o rýchly reštart — nastavenia a pripojenia sú zachované.",
+			"confirmServiceRestartGateway": "Naozaj chcete reštartovať službu brány? Pripojené displeje dočasne stratia konektivitu.",
+			"confirmReboot": "Naozaj chcete reštartovať zariadenie? Jedná sa o úplný reštart systému a trvá dlhšie.",
+			"confirmRebootGateway": "Naozaj chcete reštartovať bránu? Pripojené displeje dočasne stratia konektivitu.",
 			"confirmRestart": "Naozaj chcete reštartovať zariadenie? Táto akcia dočasne preruší funkčnosť.",
 			"confirmPowerOff": "Naozaj chcete vypnúť zariadenie? Bude potrebné ho manuálne zapnúť.",
 			"confirmFactoryReset": "Naozaj chcete vymazať všetky dáta a obnoviť zariadenie do továrenského nastavenia? Táto akcia je nevratná.",
@@ -109,8 +115,9 @@
 			"about": "FastyBird Smart Panel je aplikácia na automatizáciu domácnosti, ktorá umožňuje bezproblémovú integráciu s vašimi inteligentnými zariadeniami a ponúka vylepšené možnosti ovládania a monitorovania."
 		},
 		"manage": {
-			"rebootDevice": "Reštartujte zariadenie na aplikovanie zmien alebo vyriešenie problémov.",
-			"rebootGateway": "Reštartujte bránu na aplikovanie zmien alebo vyriešenie problémov. Pripojené displeje dočasne stratia konektivitu.",
+			"serviceRestartDevice": "Rýchly reštart služby aplikácie. Nastavenia sú zachované.",
+			"rebootDevice": "Úplný reštart systému pre aplikáciu zmien alebo vyriešenie hlbších problémov.",
+			"rebootGateway": "Úplný reštart brány. Pripojené displeje dočasne stratia konektivitu.",
 			"powerOffDevice": "Úplne vypnite zariadenie.",
 			"powerOffGateway": "Úplne vypnite bránu. Pripojené displeje stratia konektivitu.",
 			"factoryResetDevice": "Obnovte zariadenie do pôvodného továrenského nastavenia.",

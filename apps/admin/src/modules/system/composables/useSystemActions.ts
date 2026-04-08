@@ -26,24 +26,54 @@ export const useSystemActions = (): IUseSystemActions => {
 		return config !== null && config.deploymentMode !== 'all-in-one';
 	};
 
-	const onServiceRestart = async (): Promise<void> => {
-		systemActions.serviceRestart();
+	const onServiceRestart = (): void => {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmServiceRestartGateway')
+			: t('systemModule.messages.manage.confirmServiceRestart');
 
-		try {
-			await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-		} catch {
-			// Server going down before ack is expected
-		}
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.serviceRestart'), {
+			confirmButtonText: t('systemModule.buttons.yes.title'),
+			cancelButtonText: t('systemModule.buttons.no.title'),
+			type: 'warning',
+		})
+			.then(async (): Promise<void> => {
+				systemActions.serviceRestart();
+
+				try {
+					await sendCommand(EventType.SYSTEM_SERVICE_RESTART_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+				} catch {
+					// Server going down before ack is expected
+				}
+			})
+			.catch((): void => {
+				// Dialog cancelled
+			});
 	};
 
-	const onSystemReboot = async (): Promise<void> => {
-		systemActions.reboot();
+	const onSystemReboot = (): void => {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmRebootGateway')
+			: t('systemModule.messages.manage.confirmReboot');
 
-		try {
-			await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
-		} catch {
-			// Server going down before ack is expected
-		}
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.systemReboot'), {
+			confirmButtonText: t('systemModule.buttons.yes.title'),
+			cancelButtonText: t('systemModule.buttons.no.title'),
+			type: 'warning',
+		})
+			.then(async (): Promise<void> => {
+				systemActions.reboot();
+
+				try {
+					await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+				} catch {
+					// Server going down before ack is expected
+				}
+			})
+			.catch((): void => {
+				// Dialog cancelled
+			});
 	};
 
 	const onPowerOff = (): void => {

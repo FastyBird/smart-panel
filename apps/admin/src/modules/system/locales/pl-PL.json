@@ -41,6 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Zarządzaj systemem",
+			"serviceRestart": "Restart usługi",
+			"systemReboot": "Restart systemu",
 			"restart": "Uruchom ponownie",
 			"powerOff": "Wyłącz zasilanie",
 			"factoryReset": "Przywróć ustawienia fabryczne",
@@ -73,6 +75,10 @@
 			"notEdited": "Nie udało się zaktualizować konfiguracji systemu"
 		},
 		"manage": {
+			"confirmServiceRestart": "Czy na pewno chcesz zrestartować usługę? To szybki restart — ustawienia i połączenia są zachowane.",
+			"confirmServiceRestartGateway": "Czy na pewno chcesz zrestartować usługę bramy? Podłączone wyświetlacze tymczasowo stracą łączność.",
+			"confirmReboot": "Czy na pewno chcesz ponownie uruchomić urządzenie? To pełny restart systemu i trwa dłużej.",
+			"confirmRebootGateway": "Czy na pewno chcesz ponownie uruchomić bramę? Podłączone wyświetlacze tymczasowo stracą łączność.",
 			"confirmRestart": "Czy na pewno chcesz ponownie uruchomić urządzenie? Ta operacja tymczasowo przerwie działanie.",
 			"confirmPowerOff": "Czy na pewno chcesz wyłączyć urządzenie? Będzie trzeba je ręcznie włączyć ponownie.",
 			"confirmFactoryReset": "Czy na pewno chcesz wymazać wszystkie dane i przywrócić urządzenie do ustawień fabrycznych? Tej operacji nie można cofnąć.",
@@ -109,8 +115,9 @@
 			"about": "FastyBird Smart Panel to aplikacja automatyzacji domu, która umożliwia bezproblemową integrację z inteligentnymi urządzeniami, oferując zaawansowane możliwości sterowania i monitorowania."
 		},
 		"manage": {
-			"rebootDevice": "Uruchom ponownie urządzenie, aby zastosować zmiany lub rozwiązać problemy.",
-			"rebootGateway": "Uruchom ponownie bramę, aby zastosować zmiany lub rozwiązać problemy. Podłączone wyświetlacze tymczasowo stracą łączność.",
+			"serviceRestartDevice": "Szybki restart usługi aplikacji. Ustawienia są zachowane.",
+			"rebootDevice": "Pełny restart systemu w celu zastosowania zmian lub rozwiązania głębszych problemów.",
+			"rebootGateway": "Pełny restart bramy. Podłączone wyświetlacze tymczasowo stracą łączność.",
 			"powerOffDevice": "Całkowicie wyłącz urządzenie.",
 			"powerOffGateway": "Całkowicie wyłącz bramę. Podłączone wyświetlacze stracą łączność.",
 			"factoryResetDevice": "Przywróć urządzenie do oryginalnych ustawień fabrycznych.",

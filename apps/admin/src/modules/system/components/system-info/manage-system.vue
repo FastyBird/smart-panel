@@ -2,7 +2,7 @@
 	<el-row
 		justify="center"
 		class="cursor-pointer"
-		@click="showRestartDialog = true"
+		@click="onServiceRestart"
 	>
 		<el-col
 			:span="3"
@@ -22,11 +22,58 @@
 				size="large"
 				class="block font-600 text-lg"
 			>
-				{{ t('systemModule.headings.manage.restart') }}
+				{{ t('systemModule.headings.manage.serviceRestart') }}
 			</el-text>
 			<el-text
 				class="block"
-				data-test-id="restart-info"
+				data-test-id="service-restart-info"
+			>
+				{{ t('systemModule.texts.manage.serviceRestartDevice') }}
+			</el-text>
+		</el-col>
+		<el-col
+			:span="2"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<icon
+					icon="mdi:keyboard-arrow-right"
+					class="w[32px] h[32px]"
+				/>
+			</div>
+		</el-col>
+	</el-row>
+
+	<el-divider />
+
+	<el-row
+		justify="center"
+		class="cursor-pointer"
+		@click="onSystemReboot"
+	>
+		<el-col
+			:span="3"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<el-avatar :size="32">
+					<icon
+						icon="mdi:restart-alert"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
+			</div>
+		</el-col>
+		<el-col :span="19">
+			<el-text
+				size="large"
+				class="block font-600 text-lg"
+			>
+				{{ t('systemModule.headings.manage.systemReboot') }}
+			</el-text>
+			<el-text
+				class="block"
+				data-test-id="system-reboot-info"
 			>
 				{{ isGateway ? t('systemModule.texts.manage.rebootGateway') : t('systemModule.texts.manage.rebootDevice') }}
 			</el-text>
@@ -184,18 +231,10 @@
 			</div>
 		</el-col>
 	</el-row>
-
-	<restart-confirm-dialog
-		:visible="showRestartDialog"
-		:is-gateway="isGateway"
-		@close="showRestartDialog = false"
-		@service-restart="onHandleServiceRestart"
-		@system-reboot="onHandleSystemReboot"
-	/>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -208,8 +247,6 @@ import { useConfigModule } from '../../../config/composables/composables';
 import type { IDisplaysConfigModule } from '../../../displays/store/config.store.types';
 import { useSystemActions } from '../../composables/composables';
 import { RouteNames } from '../../system.constants';
-
-import RestartConfirmDialog from './restart-confirm-dialog.vue';
 
 defineOptions({
 	name: 'ManageSystem',
@@ -231,18 +268,6 @@ const isGateway = computed<boolean>((): boolean => {
 });
 
 const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
-
-const showRestartDialog = ref(false);
-
-const onHandleServiceRestart = (): void => {
-	showRestartDialog.value = false;
-	void onServiceRestart();
-};
-
-const onHandleSystemReboot = (): void => {
-	showRestartDialog.value = false;
-	void onSystemReboot();
-};
 
 const onShowLogs = (): void => {
 	emit('close');

@@ -41,6 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Administrar sistema",
+			"serviceRestart": "Reiniciar servicio",
+			"systemReboot": "Reiniciar sistema",
 			"restart": "Reiniciar",
 			"powerOff": "Apagar",
 			"factoryReset": "Restablecimiento de fábrica",
@@ -73,6 +75,10 @@
 			"notEdited": "No se pudo actualizar la configuración del sistema"
 		},
 		"manage": {
+			"confirmServiceRestart": "¿Estás seguro de que deseas reiniciar el servicio? Es un reinicio rápido — se conservan las configuraciones y conexiones.",
+			"confirmServiceRestartGateway": "¿Estás seguro de que deseas reiniciar el servicio de la pasarela? Las pantallas conectadas perderán temporalmente la conectividad.",
+			"confirmReboot": "¿Estás seguro de que deseas reiniciar el dispositivo? Es un reinicio completo del sistema y tarda más.",
+			"confirmRebootGateway": "¿Estás seguro de que deseas reiniciar la pasarela? Las pantallas conectadas perderán temporalmente la conectividad.",
 			"confirmRestart": "¿Estás seguro de que deseas reiniciar el dispositivo? Esta acción interrumpirá temporalmente su funcionamiento.",
 			"confirmPowerOff": "¿Estás seguro de que deseas apagar el dispositivo? Será necesario encenderlo manualmente de nuevo.",
 			"confirmFactoryReset": "¿Estás seguro de que deseas borrar todos los datos y restaurar el dispositivo a su configuración de fábrica? Esta acción es irreversible.",
@@ -109,8 +115,9 @@
 			"about": "FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con tus dispositivos inteligentes, ofreciendo capacidades mejoradas de control y monitorización."
 		},
 		"manage": {
-			"rebootDevice": "Reinicia el dispositivo para aplicar cambios o resolver problemas.",
-			"rebootGateway": "Reinicia la pasarela para aplicar cambios o resolver problemas. Las pantallas conectadas perderán temporalmente la conectividad.",
+			"serviceRestartDevice": "Reinicio rápido del servicio de la aplicación. Se conservan las configuraciones.",
+			"rebootDevice": "Reinicio completo del sistema para aplicar cambios o resolver problemas más profundos.",
+			"rebootGateway": "Reinicio completo de la pasarela. Las pantallas conectadas perderán temporalmente la conectividad.",
 			"powerOffDevice": "Apaga el dispositivo completamente.",
 			"powerOffGateway": "Apaga la pasarela completamente. Las pantallas conectadas perderán la conectividad.",
 			"factoryResetDevice": "Restaura el dispositivo a su configuración original de fábrica.",

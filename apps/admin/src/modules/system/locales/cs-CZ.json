@@ -41,6 +41,8 @@
 		},
 		"manage": {
 			"manageSystem": "Správa systému",
+			"serviceRestart": "Restart služby",
+			"systemReboot": "Restart systému",
 			"restart": "Restartovat",
 			"powerOff": "Vypnout",
 			"factoryReset": "Tovární reset",
@@ -73,6 +75,10 @@
 			"notEdited": "Nepodařilo se aktualizovat konfiguraci systému"
 		},
 		"manage": {
+			"confirmServiceRestart": "Opravdu chcete restartovat službu? Jedná se o rychlý restart — nastavení a připojení jsou zachována.",
+			"confirmServiceRestartGateway": "Opravdu chcete restartovat službu brány? Připojené displeje dočasně ztratí konektivitu.",
+			"confirmReboot": "Opravdu chcete restartovat zařízení? Jedná se o úplný restart systému a trvá déle.",
+			"confirmRebootGateway": "Opravdu chcete restartovat bránu? Připojené displeje dočasně ztratí konektivitu, dokud brána nebude zpět online.",
 			"confirmRestart": "Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.",
 			"confirmPowerOff": "Opravdu chcete vypnout zařízení? Bude nutné jej ručně znovu zapnout.",
 			"confirmFactoryReset": "Opravdu chcete vymazat všechna data a obnovit zařízení do továrního nastavení? Tato akce je nevratná.",
@@ -109,8 +115,9 @@
 			"about": "FastyBird Smart Panel je aplikace pro domácí automatizaci, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí vylepšené ovládání a monitorování."
 		},
 		"manage": {
-			"rebootDevice": "Restartujte zařízení pro aplikaci změn nebo vyřešení problémů.",
-			"rebootGateway": "Restartujte bránu pro aplikaci změn nebo vyřešení problémů. Připojené displeje dočasně ztratí konektivitu.",
+			"serviceRestartDevice": "Rychlý restart služby aplikace. Nastavení jsou zachována.",
+			"rebootDevice": "Úplný restart systému pro aplikaci změn nebo vyřešení hlubších problémů.",
+			"rebootGateway": "Úplný restart brány. Připojené displeje dočasně ztratí konektivitu.",
 			"powerOffDevice": "Kompletní vypnutí zařízení.",
 			"powerOffGateway": "Kompletní vypnutí brány. Připojené displeje ztratí konektivitu.",
 			"factoryResetDevice": "Obnovení zařízení do původního továrního nastavení.",

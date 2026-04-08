@@ -51,25 +51,32 @@ describe('ManageSystem.vue', () => {
 	});
 
 	it('renders all system action rows with correct text', () => {
-		expect(wrapper.find('[data-test-id="restart-info"]').text()).toContain('systemModule.texts.manage.rebootDevice');
+		expect(wrapper.find('[data-test-id="service-restart-info"]').text()).toContain('systemModule.texts.manage.serviceRestartDevice');
+		expect(wrapper.find('[data-test-id="system-reboot-info"]').text()).toContain('systemModule.texts.manage.rebootDevice');
 		expect(wrapper.find('[data-test-id="power-off-info"]').text()).toContain('systemModule.texts.manage.powerOffDevice');
 		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.manage.factoryResetDevice');
 	});
 
-	it('opens restart dialog when restart row is clicked', async () => {
+	it('calls onServiceRestart when service restart row is clicked', async () => {
 		await wrapper.findAllComponents({ name: 'ElRow' })[0]?.trigger('click');
 
-		expect(wrapper.findComponent({ name: 'RestartConfirmDialog' }).props('visible')).toBe(true);
+		expect(onServiceRestart).toHaveBeenCalled();
+	});
+
+	it('calls onSystemReboot when system reboot row is clicked', async () => {
+		await wrapper.findAllComponents({ name: 'ElRow' })[1]?.trigger('click');
+
+		expect(onSystemReboot).toHaveBeenCalled();
 	});
 
 	it('calls onPowerOff when power-off row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[1]?.trigger('click');
+		await wrapper.findAllComponents({ name: 'ElRow' })[2]?.trigger('click');
 
 		expect(onPowerOff).toHaveBeenCalled();
 	});
 
 	it('calls onFactoryReset when factory reset row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[2]?.trigger('click');
+		await wrapper.findAllComponents({ name: 'ElRow' })[3]?.trigger('click');
 
 		expect(onFactoryReset).toHaveBeenCalled();
 	});
