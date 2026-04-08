@@ -148,7 +148,7 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const SystemInfoResSchema = z.object({
+export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 	platform: z.nativeEnum(SystemModuleDataSystemInfoPlatform),
 	network_mode: z.enum(['online', 'offline', 'setup']),
 	cpu_load: z.number(),

@@ -428,15 +428,15 @@ export abstract class Platform {
 
 	/**
 	 * Detect the current network connectivity mode.
-	 * - 'online': has a valid IP address
 	 * - 'setup': captive portal service is active (AP mode)
+	 * - 'online': has a valid IP address (and portal is not running)
 	 * - 'offline': no IP and no portal running
+	 *
+	 * Portal check runs first because in AP mode the AP interface
+	 * (e.g., wlan0) has a valid static IP (192.168.4.1), which would
+	 * cause a premature 'online' return if checked first.
 	 */
 	protected async detectNetworkMode(ip4: string): Promise<string> {
-		if (ip4 && ip4 !== '0.0.0.0') {
-			return 'online';
-		}
-
 		try {
 			const execFileAsync = promisify(execFile);
 			const { stdout } = await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], {
@@ -447,7 +447,11 @@ export abstract class Platform {
 				return 'setup';
 			}
 		} catch {
-			// systemctl not available or service not found
+			// systemctl not available or service not found — not in setup mode
+		}
+
+		if (ip4 && ip4 !== '0.0.0.0') {
+			return 'online';
 		}
 
 		return 'offline';
