@@ -368,6 +368,8 @@ export type DevicesHomeAssistantPluginAdoptHelperOperation = operations['adopt-d
 // =================
 export { AuthModuleRegisterRole as UsersModuleUserRole } from './openapi';
 
+export { UsersModuleCreateUserLanguage as UsersModuleUserLanguage } from './openapi';
+
 // Device Category Enums
 // =====================
 export { DevicesModuleCreateDeviceCategory as DevicesModuleDeviceCategory } from './openapi';

@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import { UsersModuleUserRole } from '../../../openapi.constants';
+import { UsersModuleUserLanguage, UsersModuleUserRole } from '../../../openapi.constants';
 
 export const UserIdSchema = z.string().uuid();
 
@@ -173,7 +173,7 @@ export const UserCreateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.string().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().transform((v) => v ?? undefined).optional(),
 });
 
 export const UserUpdateReqSchema = z.object({
@@ -199,7 +199,7 @@ export const UserUpdateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.string().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().transform((v) => v ?? undefined).optional(),
 });
 
 export const UserResSchema = z.object({
@@ -210,7 +210,7 @@ export const UserResSchema = z.object({
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
 	role: z.nativeEnum(UsersModuleUserRole),
-	language: z.string().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable().optional(),
 });
