@@ -15,7 +15,6 @@ import { ExtensionSchema, ExtensionsUpdateActionPayloadSchema } from './extensio
 import type {
 	ExtensionsStoreSetup,
 	IExtension,
-	IExtensionRes,
 	IExtensionsFetchActionPayload,
 	IExtensionsGetActionPayload,
 	IExtensionsSetActionPayload,
@@ -113,7 +112,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					});
 
 					if (typeof responseData !== 'undefined') {
-						const extension = transformExtensionResponse(responseData.data as unknown as IExtensionRes);
+						const extension = transformExtensionResponse(responseData.data);
 
 						data.value[extension.type] = extension;
 
@@ -170,7 +169,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					}
 
 					if (responseData?.data) {
-						const extensions = responseData.data.map((ext) => transformExtensionResponse(ext as unknown as IExtensionRes));
+						const extensions = responseData.data.map((ext) => transformExtensionResponse(ext));
 
 						// Update store data
 						for (const extension of extensions) {
@@ -235,7 +234,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const extension = transformExtensionResponse(responseData.data as unknown as IExtensionRes);
+					const extension = transformExtensionResponse(responseData.data);
 
 					data.value[extension.type] = extension;
 
