@@ -1,5 +1,9 @@
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
+
+import type { ScenesModuleSceneActionSchema } from '../../../openapi.constants';
+
+type ApiSceneAction = ScenesModuleSceneActionSchema;
 
 import { ItemIdSchema } from './types';
 
@@ -134,7 +138,7 @@ export const SceneActionUpdateReqSchema = z
 	})
 	.catchall(z.unknown());
 
-export const SceneActionResSchema = z
+export const SceneActionResSchema: ZodType<ApiSceneAction> = z
 	.object({
 		id: z.string().uuid(),
 		type: z.string(),

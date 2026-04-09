@@ -140,6 +140,12 @@ export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema = 
 export type DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
 export type DataSourcesDeviceChannelPluginDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginDataDeviceChannelDataSource'];
 
+// Devices Shelly V1 Plugin Schemas
+export type DevicesShellyV1PluginDeviceSchema = components['schemas']['DevicesShellyV1PluginDataDevice'];
+export type DevicesShellyV1PluginChannelSchema = components['schemas']['DevicesShellyV1PluginDataChannel'];
+export type DevicesShellyV1PluginChannelPropertySchema = components['schemas']['DevicesShellyV1PluginDataChannelProperty'];
+export type DevicesShellyV1PluginConfigSchema = components['schemas']['DevicesShellyV1PluginDataConfig'];
+
 // Devices Shelly NG Plugin Schemas
 export type DevicesShellyNgPluginUpdateConfigSchema = components['schemas']['DevicesShellyNgPluginUpdateConfig'];
 export type DevicesShellyNgPluginConfigSchema = components['schemas']['DevicesShellyNgPluginDataShellyNgConfig'];
@@ -203,6 +209,11 @@ export type DevicesThirdPartyPluginChannelSchema = components['schemas']['Device
 export type DevicesThirdPartyPluginCreateChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginCreateChannelProperty'];
 export type DevicesThirdPartyPluginUpdateChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginUpdateChannelProperty'];
 export type DevicesThirdPartyPluginChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
+
+// Simulator Plugin Schemas
+export type SimulatorPluginDeviceSchema = components['schemas']['SimulatorPluginDataDevice'];
+export type SimulatorPluginChannelSchema = components['schemas']['SimulatorPluginDataChannel'];
+export type SimulatorPluginChannelPropertySchema = components['schemas']['SimulatorPluginDataChannelProperty'];
 
 // Pages Cards Plugin Schemas
 export type PagesCardsPluginCreateCardsPageSchema = components['schemas']['PagesCardsPluginCreateCardsPage'];
@@ -427,6 +438,28 @@ export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherMo
 // Extensions Module Service State Enum
 // =====================================
 export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
+
+// Buddy Plugin Config Schemas
+// ===========================
+export type BuddyClaudePluginConfigSchema = components['schemas']['BuddyClaudePluginDataConfig'];
+export type BuddyClaudeSetupTokenPluginConfigSchema = components['schemas']['BuddyClaudeSetupTokenPluginDataConfig'];
+export type BuddyOllamaPluginConfigSchema = components['schemas']['BuddyOllamaPluginDataConfig'];
+export type BuddyOpenaiPluginConfigSchema = components['schemas']['BuddyOpenaiPluginDataConfig'];
+export type BuddyOpenaiCodexPluginConfigSchema = components['schemas']['BuddyOpenaiCodexPluginDataConfig'];
+export type BuddyElevenlabsPluginConfigSchema = components['schemas']['BuddyElevenlabsPluginDataConfig'];
+export type BuddyVoiceaiPluginConfigSchema = components['schemas']['BuddyVoiceaiPluginDataConfig'];
+export type BuddySttWhisperLocalPluginConfigSchema = components['schemas']['BuddySttWhisperLocalPluginDataConfig'];
+export type BuddySystemTtsPluginConfigSchema = components['schemas']['BuddySystemTtsPluginDataConfig'];
+
+// Weather Plugin Config Schemas
+// =============================
+export type WeatherOpenweathermapPluginConfigSchema = components['schemas']['WeatherOpenweathermapPluginDataConfig'];
+export type WeatherOpenweathermapOnecallPluginConfigSchema = components['schemas']['WeatherOpenweathermapOnecallPluginDataConfig'];
+
+// Data Sources Weather Plugin Schemas
+// ====================================
+export type DataSourcesWeatherPluginCurrentWeatherDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataCurrentWeatherDataSource'];
+export type DataSourcesWeatherPluginForecastDayDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataForecastDayDataSource'];
 
 // Spaces Module Role Enums
 // ========================

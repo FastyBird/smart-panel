@@ -4,7 +4,7 @@ Type: technical
 Scope: admin
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -63,15 +63,15 @@ I want the admin app to use strict TypeScript types from the generated OpenAPI s
 
 ## 4. Acceptance criteria
 
-- [ ] Zero `as unknown` casts in non-test admin files (currently 239)
-- [ ] Zero `as never` casts in non-test admin files
-- [ ] Zero `as any` casts in non-test admin files (except documented exceptions)
-- [ ] All enum imports go through `openapi.constants.ts`, not directly from `openapi.ts`
-- [ ] String literals replaced with enum values where a generated enum exists
-- [ ] `pnpm --filter ./apps/admin run test:unit` passes
-- [ ] `pnpm --filter @fastybird/smart-panel-admin lint:js` passes
-- [ ] `pnpm --filter @fastybird/smart-panel-admin type-check` passes
-- [ ] No functional regressions
+- [x] Zero `as unknown` casts in non-test admin files (currently 239) — **Done: 0 remaining**
+- [x] Zero `as never` casts in non-test admin files — **Done: 0 remaining**
+- [x] Zero `as any` casts in non-test admin files (except documented exceptions) — **Done: 0 remaining**
+- [x] All enum imports go through `openapi.constants.ts`, not directly from `openapi.ts` — **Done**
+- [x] String literals replaced with enum values where a generated enum exists — **Done**
+- [x] `pnpm --filter ./apps/admin run test:unit` passes — **Done: 1275/1275 pass**
+- [x] `pnpm --filter @fastybird/smart-panel-admin lint:js` passes — **Done**
+- [x] `pnpm --filter @fastybird/smart-panel-admin type-check` passes — **Done**
+- [x] No functional regressions — **Done**
 
 ## 5. Technical constraints
 

@@ -1,7 +1,10 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import type { DevicesShellyV1PluginConfigSchema } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
+
+type ApiConfig = DevicesShellyV1PluginConfigSchema;
 
 export const ShellyV1ConfigSchema = ConfigPluginSchema.extend({
 	discovery: z.object({
@@ -35,7 +38,7 @@ export const ShellyV1ConfigUpdateReqSchema = ConfigPluginUpdateReqSchema.and(
 	})
 );
 
-export const ShellyV1ConfigResSchema = ConfigPluginResSchema.and(
+export const ShellyV1ConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_V1_PLUGIN_NAME),
 		discovery: z.object({

@@ -1,9 +1,10 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import type { DevicesHomeAssistantPluginUpdateConfigSchema } from '../../../openapi.constants';
+import type { DevicesHomeAssistantPluginConfigSchema, DevicesHomeAssistantPluginUpdateConfigSchema } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
+type ApiConfig = DevicesHomeAssistantPluginConfigSchema;
 type ApiUpdateConfig = DevicesHomeAssistantPluginUpdateConfigSchema;
 
 export const HomeAssistantConfigSchema = ConfigPluginSchema.extend({
@@ -23,7 +24,7 @@ export const HomeAssistantConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Conf
 	})
 );
 
-export const HomeAssistantConfigResSchema = ConfigPluginResSchema.and(
+export const HomeAssistantConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_HOME_ASSISTANT_PLUGIN_NAME),
 		api_key: z.string().trim().nonempty().nullable(),

@@ -1,4 +1,6 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
+
+import type { SimulatorPluginChannelPropertySchema } from '../../../openapi.constants';
 
 import {
 	ChannelPropertyCreateReqSchema,
@@ -7,6 +9,8 @@ import {
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
 import { SIMULATOR_TYPE } from '../simulator.constants';
+
+type ApiChannelProperty = SimulatorPluginChannelPropertySchema;
 
 export const SimulatorChannelPropertySchema = ChannelPropertySchema;
 
@@ -25,7 +29,7 @@ export const SimulatorChannelPropertyUpdateReqSchema= ChannelPropertyUpdateReqSc
 	})
 );
 
-export const SimulatorChannelPropertyResSchema= ChannelPropertyResSchema.and(
+export const SimulatorChannelPropertyResSchema: ZodType<ApiChannelProperty> = ChannelPropertyResSchema.and(
 	z.object({
 		type: z.literal(SIMULATOR_TYPE),
 	})

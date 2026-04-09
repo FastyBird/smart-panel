@@ -1,4 +1,9 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
+
+import type { ExtensionsModuleDiscoveredExtensionAdminSchema, ExtensionsModuleDiscoveredExtensionBackendSchema } from '../../../openapi.constants';
+
+type ApiDiscoveredAdmin = ExtensionsModuleDiscoveredExtensionAdminSchema;
+type ApiDiscoveredBackend = ExtensionsModuleDiscoveredExtensionBackendSchema;
 
 import { ExtensionKind, ExtensionSource, ExtensionSurface } from '../extensions.constants';
 
@@ -47,7 +52,7 @@ export const DiscoveredExtensionsGetActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const DiscoveredExtensionAdminResSchema = z.object({
+export const DiscoveredExtensionAdminResSchema: ZodType<ApiDiscoveredAdmin> = z.object({
 	name: z.string(),
 	kind: z.nativeEnum(ExtensionKind),
 	surface: z.nativeEnum(ExtensionSurface),
@@ -59,7 +64,7 @@ export const DiscoveredExtensionAdminResSchema = z.object({
 	type: z.literal('admin'),
 });
 
-export const DiscoveredExtensionBackendResSchema = z.object({
+export const DiscoveredExtensionBackendResSchema: ZodType<ApiDiscoveredBackend> = z.object({
 	name: z.string(),
 	kind: z.nativeEnum(ExtensionKind),
 	surface: z.nativeEnum(ExtensionSurface),

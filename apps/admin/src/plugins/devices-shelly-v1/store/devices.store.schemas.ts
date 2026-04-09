@@ -1,8 +1,11 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
+import type { DevicesShellyV1PluginDeviceSchema } from '../../../openapi.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+
+type ApiDevice = DevicesShellyV1PluginDeviceSchema;
 
 export const ShellyV1DeviceSchema = DeviceSchema.extend({
 	password: z.string().nullable(),
@@ -29,7 +32,7 @@ export const ShellyV1DeviceUpdateReqSchema = DeviceUpdateReqSchema.and(
 	})
 );
 
-export const ShellyV1DeviceResSchema = DeviceResSchema.and(
+export const ShellyV1DeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_V1_TYPE),
 		password: z.string().nullable(),
