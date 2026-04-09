@@ -232,8 +232,9 @@ export class SystemInfoModel {
 		example: NetworkMode.ONLINE,
 	})
 	@Expose({ name: 'network_mode' })
+	@IsOptional()
 	@IsEnum(NetworkMode)
-	networkMode: NetworkMode;
+	networkMode: NetworkMode = NetworkMode.ONLINE;
 
 	@ApiProperty({ name: 'cpu_load', description: 'CPU load percentage', type: 'number', example: 45.5 })
 	@Expose({ name: 'cpu_load' })
