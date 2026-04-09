@@ -98,6 +98,7 @@ describe('Extensions Transformers', () => {
 				enabled: true,
 				is_core: false,
 				can_toggle_enabled: true,
+				can_remove: true,
 				links: {
 					documentation: 'https://docs.example.com',
 				},
