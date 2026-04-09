@@ -207,8 +207,9 @@ export const useAppOnboarding = () => {
 					longitude: locationData.longitude,
 				};
 
+				// Body cast: locationBody includes latitude/longitude which are weather-plugin-specific
 				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
-					body: { data: locationBody },
+					body: { data: locationBody as Record<string, unknown> },
 				});
 
 				if (error) {
@@ -225,9 +226,10 @@ export const useAppOnboarding = () => {
 			}
 
 			// Set the newly created location as the primary weather location
+			// Body cast: primary_location_id is a weather-module-specific config field
 			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
 				params: { path: { module: 'weather-module' } },
-				body: { data: { primary_location_id: createdLocationId } },
+				body: { data: { primary_location_id: createdLocationId } as Record<string, unknown> },
 			});
 
 			if (configError) {

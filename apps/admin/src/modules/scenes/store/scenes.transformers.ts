@@ -11,7 +11,7 @@ import type {
 	IScenesEditActionPayload,
 } from './scenes.store.types';
 
-export const transformSceneResponse = <T extends IScene = IScene>(response: ISceneRes, schema: typeof SceneSchema): T => {
+export const transformSceneResponse = <T extends IScene = IScene>(response: ISceneRes | Record<string, unknown>, schema: typeof SceneSchema): T => {
 	const camelCaseResponse = snakeToCamel(response);
 
 	const parsed = schema.safeParse(camelCaseResponse);

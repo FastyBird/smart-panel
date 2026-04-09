@@ -16,10 +16,10 @@ import type {
 } from './locations.store.types';
 
 export const transformLocationResponse = <TLocation extends IWeatherLocation = IWeatherLocation>(
-	response: IWeatherLocationRes,
-	schema: ZodType<TLocation> = WeatherLocationSchema as unknown as ZodType<TLocation>
+	response: IWeatherLocationRes | Record<string, unknown>,
+	schema: ZodType<TLocation> = WeatherLocationSchema as unknown as ZodType<TLocation>,
 ): TLocation => {
-	const transformed = snakeToCamel<IWeatherLocationRes>(response);
+	const transformed = snakeToCamel(response);
 
 	const parsed = schema.safeParse({
 		...transformed,

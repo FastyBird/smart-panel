@@ -380,6 +380,10 @@ export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './op
 
 export { SystemModuleDataSystemInfoNetwork_mode as SystemModuleNetworkMode } from './openapi';
 
+// Scenes Module Enums
+// ====================
+export { ScenesModuleCreateSceneCategory as SceneCategory } from './openapi';
+
 // Weather Config Location Types
 // Weather location type enums removed - weather config is now accessed via weather-module
 // ==============================
