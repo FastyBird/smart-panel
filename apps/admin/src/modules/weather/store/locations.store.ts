@@ -147,7 +147,6 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				try {
 					const {
 						data: responseData,
-						error: apiError,
 					} = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 						params: {
 							path: { id: payload.id },
@@ -203,7 +202,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				firstLoad.value = false;
 
 				try {
-					const { data: responseData, error: apiError } = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`);
+					const { data: responseData } = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`);
 
 					if (typeof responseData !== 'undefined') {
 						const locations: IWeatherLocation[] = [];
@@ -289,7 +288,6 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const {
 					data: responseData,
-					error: apiError,
 				} = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
 					body: { data: createReq },
 				});
@@ -359,7 +357,6 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const {
 					data: responseData,
-					error: apiError,
 				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 					params: {
 						path: { id: parsedPayload.id },
@@ -413,7 +410,6 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const {
 					data: responseData,
-					error: apiError,
 				} = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
 					body: { data: createReq },
 				});
@@ -462,7 +458,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			}
 
 			try {
-				const { error: apiError, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
+				const { response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
