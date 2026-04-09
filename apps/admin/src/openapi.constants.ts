@@ -411,11 +411,15 @@ export type ScenesModuleSceneActionSchema = components['schemas']['ScenesModuleD
 export type ScenesModuleCreateSceneActionSchema = components['schemas']['ScenesModuleCreateSceneAction'];
 export type ScenesModuleUpdateSceneActionSchema = components['schemas']['ScenesModuleUpdateSceneAction'];
 
+export type ScenesModuleSceneExecutionResultSchema = components['schemas']['ScenesModuleDataSceneExecutionResult'];
+
 // Scenes Module Enums
 export { ScenesModuleCreateSceneCategory as SceneCategory } from './openapi';
+export { ScenesModuleDataSceneExecutionResultStatus as SceneExecutionResultStatus } from './openapi';
 
 // Weather Module Types
 // ====================
+export type WeatherModuleForecastHourSchema = components['schemas']['WeatherModuleDataForecastHour'];
 export type WeatherModuleLocationSchema = components['schemas']['WeatherModuleDataLocation'];
 export type WeatherModuleCreateLocationSchema = components['schemas']['WeatherModuleCreateLocation'];
 export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherModuleUpdateLocation'];

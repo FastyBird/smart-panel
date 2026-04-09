@@ -1,4 +1,8 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
+
+import type { WeatherModuleForecastHourSchema } from '../../../openapi.constants';
+
+type ApiForecastHour = WeatherModuleForecastHourSchema;
 
 // STORE STATE
 // ===========
@@ -30,7 +34,7 @@ export const WeatherHourlyForecastSchema = z.array(
 // BACKEND API
 // ===========
 
-export const WeatherForecastHourResSchema = z.object({
+export const WeatherForecastHourResSchema: ZodType<ApiForecastHour> = z.object({
 	temperature: z.number(),
 	feels_like: z.number(),
 	pressure: z.number(),
@@ -47,7 +51,7 @@ export const WeatherForecastHourResSchema = z.object({
 		gust: z.number().nullable(),
 	}),
 	clouds: z.number(),
-	rain: z.number().nullable(),
-	snow: z.number().nullable(),
+	rain: z.number().nullable().optional(),
+	snow: z.number().nullable().optional(),
 	date_time: z.string(),
 });

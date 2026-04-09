@@ -1,7 +1,10 @@
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
+import type { UsersModuleUserSchema } from '../../../openapi.constants';
 import { UsersModuleUserLanguage, UsersModuleUserRole } from '../../../openapi.constants';
+
+type ApiUser = UsersModuleUserSchema;
 
 export const UserIdSchema = z.string().uuid();
 
@@ -202,7 +205,7 @@ export const UserUpdateReqSchema = z.object({
 	language: z.nativeEnum(UsersModuleUserLanguage).nullable().transform((v) => v ?? undefined).optional(),
 });
 
-export const UserResSchema = z.object({
+export const UserResSchema: ZodType<ApiUser> = z.object({
 	id: z.string().uuid(),
 	username: z.string().trim().nonempty(),
 	email: z.string().email().trim().nullable(),
@@ -210,7 +213,7 @@ export const UserResSchema = z.object({
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
 	role: z.nativeEnum(UsersModuleUserRole),
-	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
-	created_at: z.string().date(),
-	updated_at: z.string().date().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable(),
+	created_at: z.string(),
+	updated_at: z.string().nullable().optional(),
 });

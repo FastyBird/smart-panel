@@ -5,8 +5,9 @@ import type {
 	ScenesModuleSceneSchema,
 	ScenesModuleCreateSceneSchema,
 	ScenesModuleUpdateSceneSchema,
+	ScenesModuleSceneExecutionResultSchema,
 } from '../../../openapi.constants';
-import { SceneCategory } from '../../../openapi.constants';
+import { SceneCategory, SceneExecutionResultStatus } from '../../../openapi.constants';
 
 import { SceneActionResSchema } from './scenes.actions.store.schemas';
 import { ItemIdSchema } from './types';
@@ -206,12 +207,12 @@ export const SceneTriggerReqSchema = z.object({
 	context: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const SceneExecutionResSchema = z.object({
+export const SceneExecutionResSchema: ZodType<ScenesModuleSceneExecutionResultSchema> = z.object({
 	scene_id: z.string().uuid(),
-	status: z.enum(['pending', 'running', 'completed', 'failed', 'partially_completed']),
-	triggered_by: z.string().nullable(),
+	status: z.nativeEnum(SceneExecutionResultStatus),
 	triggered_at: z.string(),
-	completed_at: z.string().nullable(),
+	completed_at: z.string().nullable().optional(),
+	triggered_by: z.string().nullable().optional(),
 	total_actions: z.number(),
 	successful_actions: z.number(),
 	failed_actions: z.number(),
@@ -223,5 +224,5 @@ export const SceneExecutionResSchema = z.object({
 			execution_time_ms: z.number(),
 		})
 	),
-	error: z.string().nullable(),
+	error: z.string().nullable().optional(),
 });
