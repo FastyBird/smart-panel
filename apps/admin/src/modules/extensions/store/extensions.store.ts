@@ -15,7 +15,6 @@ import { ExtensionSchema, ExtensionsUpdateActionPayloadSchema } from './extensio
 import type {
 	ExtensionsStoreSetup,
 	IExtension,
-	IExtensionRes,
 	IExtensionsFetchActionPayload,
 	IExtensionsGetActionPayload,
 	IExtensionsSetActionPayload,

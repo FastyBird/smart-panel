@@ -15,7 +15,6 @@ import { ExtensionsApiException, ExtensionsValidationException } from '../extens
 import { ServiceSchema } from './services.store.schemas';
 import type {
 	IService,
-	IServiceRes,
 	IServicesGetActionPayload,
 	IServicesRestartActionPayload,
 	IServicesSetActionPayload,

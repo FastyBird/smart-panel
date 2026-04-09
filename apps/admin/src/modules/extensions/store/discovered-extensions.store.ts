@@ -8,7 +8,6 @@ import { ExtensionsApiException } from '../extensions.exceptions';
 import type {
 	DiscoveredExtensionsStoreSetup,
 	IDiscoveredExtension,
-	IDiscoveredExtensionRes,
 	IDiscoveredExtensionsGetActionPayload,
 	IDiscoveredExtensionsStateSemaphore,
 	IDiscoveredExtensionsStoreActions,
