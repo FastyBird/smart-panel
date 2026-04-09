@@ -137,7 +137,7 @@ describe('Weather Locations Transformers', () => {
 
 			const result = transformLocationCreateRequest(createData);
 
-			expect(result).toHaveProperty('apiKey', 'test-api-key');
+			expect(result).toHaveProperty('api_key', 'test-api-key');
 			expect(result).toHaveProperty('latitude', 40.7128);
 		});
 	});
@@ -182,7 +182,7 @@ describe('Weather Locations Transformers', () => {
 
 			const result = transformLocationUpdateRequest(updateData);
 
-			expect(result).toHaveProperty('apiKey', 'new-api-key');
+			expect(result).toHaveProperty('api_key', 'new-api-key');
 		});
 	});
 });

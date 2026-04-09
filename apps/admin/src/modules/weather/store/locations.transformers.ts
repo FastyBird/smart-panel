@@ -1,6 +1,4 @@
-import type { ZodType } from 'zod';
-
-import { snakeToCamel } from '../../../common';
+import { camelToSnake, snakeToCamel } from '../../../common';
 import { WeatherValidationException } from '../weather.exceptions';
 
 import {
@@ -11,18 +9,18 @@ import {
 import type {
 	IWeatherLocation,
 	IWeatherLocationRes,
-	IWeatherLocationCreateReq,
-	IWeatherLocationUpdateReq,
+	IWeatherLocationsAddActionPayload,
+	IWeatherLocationsEditActionPayload,
 } from './locations.store.types';
 
-export const transformLocationResponse = <TLocation extends IWeatherLocation = IWeatherLocation>(
-	response: IWeatherLocationRes | Record<string, unknown>,
-	schema: ZodType<TLocation> = WeatherLocationSchema as unknown as ZodType<TLocation>,
-): TLocation => {
-	const transformed = snakeToCamel(response);
+export const transformLocationResponse = <T extends IWeatherLocation = IWeatherLocation>(
+	response: IWeatherLocationRes,
+	schema: typeof WeatherLocationSchema = WeatherLocationSchema,
+): T => {
+	const camelCaseResponse = snakeToCamel(response);
 
 	const parsed = schema.safeParse({
-		...transformed,
+		...camelCaseResponse,
 		draft: false,
 	});
 
@@ -32,14 +30,14 @@ export const transformLocationResponse = <TLocation extends IWeatherLocation = I
 		throw new WeatherValidationException('Failed to validate location data');
 	}
 
-	return parsed.data;
+	return parsed.data as T;
 };
 
-export const transformLocationCreateRequest = <TRequest extends IWeatherLocationCreateReq = IWeatherLocationCreateReq>(
-	data: TRequest,
-	schema: ZodType<TRequest> = WeatherLocationCreateReqSchema as unknown as ZodType<TRequest>
-): TRequest => {
-	const parsed = schema.safeParse(data);
+export const transformLocationCreateRequest = (
+	data: IWeatherLocationsAddActionPayload['data'],
+	schema: typeof WeatherLocationCreateReqSchema = WeatherLocationCreateReqSchema,
+) => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
 		console.error('[WEATHER_MODULE] Failed to validate location create request:', parsed.error.issues);
@@ -50,11 +48,11 @@ export const transformLocationCreateRequest = <TRequest extends IWeatherLocation
 	return parsed.data;
 };
 
-export const transformLocationUpdateRequest = <TRequest extends IWeatherLocationUpdateReq = IWeatherLocationUpdateReq>(
-	data: TRequest,
-	schema: ZodType<TRequest> = WeatherLocationUpdateReqSchema as unknown as ZodType<TRequest>
-): TRequest => {
-	const parsed = schema.safeParse(data);
+export const transformLocationUpdateRequest = (
+	data: IWeatherLocationsEditActionPayload['data'],
+	schema: typeof WeatherLocationUpdateReqSchema = WeatherLocationUpdateReqSchema,
+) => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
 		console.error('[WEATHER_MODULE] Failed to validate location update request:', parsed.error.issues);

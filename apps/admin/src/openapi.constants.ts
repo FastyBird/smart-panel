@@ -392,9 +392,11 @@ export type ScenesModuleUpdateSceneActionSchema = components['schemas']['ScenesM
 // Scenes Module Enums
 export { ScenesModuleCreateSceneCategory as SceneCategory } from './openapi';
 
-// Weather Config Location Types
-// Weather location type enums removed - weather config is now accessed via weather-module
-// ==============================
+// Weather Module Types
+// ====================
+export type WeatherModuleLocationSchema = components['schemas']['WeatherModuleDataLocation'];
+export type WeatherModuleCreateLocationSchema = components['schemas']['WeatherModuleCreateLocation'];
+export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherModuleUpdateLocation'];
 
 // Extensions Module Service State Enum
 // =====================================
