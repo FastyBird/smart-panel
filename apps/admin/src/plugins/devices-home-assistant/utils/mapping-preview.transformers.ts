@@ -73,7 +73,7 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): DevicesH
 		entity_id: parsed.data.haDeviceId, // haDeviceId contains the entity_id for helpers
 		name: parsed.data.name,
 		category: parsed.data.category,
-		description: parsed.data.description ?? null,
+		description: parsed.data.description ?? undefined,
 		enabled: parsed.data.enabled ?? true,
 		channels: parsed.data.channels.map((channel) => ({
 			category: channel.category,
@@ -83,8 +83,8 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): DevicesH
 				ha_attribute: prop.haAttribute,
 				data_type: prop.dataType,
 				permissions: prop.permissions,
-				format: prop.format ?? null,
-				ha_transformer: prop.haTransformer ?? null,
+				format: prop.format?.filter((v): v is string | number => v !== null) ?? undefined,
+				ha_transformer: prop.haTransformer ?? undefined,
 			})),
 		})),
 	};
