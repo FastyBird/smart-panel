@@ -322,21 +322,21 @@ const tableHeight = computed<number>(() => props.tableHeight);
 
 const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined => {
 	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined> = {
-		[SceneCategory.GENERIC]: undefined,
-		[SceneCategory.LIGHTING]: 'warning',
-		[SceneCategory.CLIMATE]: 'info',
-		[SceneCategory.MEDIA]: 'primary',
-		[SceneCategory.WORK]: undefined,
-		[SceneCategory.RELAX]: 'success',
-		[SceneCategory.NIGHT]: 'info',
-		[SceneCategory.MORNING]: 'warning',
-		[SceneCategory.PARTY]: 'danger',
-		[SceneCategory.MOVIE]: 'primary',
-		[SceneCategory.AWAY]: undefined,
-		[SceneCategory.HOME]: 'success',
-		[SceneCategory.SECURITY]: 'danger',
-		[SceneCategory.ENERGY]: 'warning',
-		[SceneCategory.CUSTOM]: undefined,
+		[SceneCategory.generic]: undefined,
+		[SceneCategory.lighting]: 'warning',
+		[SceneCategory.climate]: 'info',
+		[SceneCategory.media]: 'primary',
+		[SceneCategory.work]: undefined,
+		[SceneCategory.relax]: 'success',
+		[SceneCategory.night]: 'info',
+		[SceneCategory.morning]: 'warning',
+		[SceneCategory.party]: 'danger',
+		[SceneCategory.movie]: 'primary',
+		[SceneCategory.away]: undefined,
+		[SceneCategory.home]: 'success',
+		[SceneCategory.security]: 'danger',
+		[SceneCategory.energy]: 'warning',
+		[SceneCategory.custom]: undefined,
 	};
 	return typeMap[category];
 };

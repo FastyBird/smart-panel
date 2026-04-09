@@ -292,7 +292,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			const createData = transformSceneCreateRequest(sceneData, SceneCreateReqSchema);
 
 			const { data: responseData } = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes`, {
-				body: { data: createData as Record<string, unknown> },
+				body: { data: createData },
 			});
 
 			if (typeof responseData === 'undefined') {
@@ -357,7 +357,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 
 			const { data: responseData } = await backend.client.PATCH(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}`, {
 				params: { path: { id } },
-				body: { data: updateData as Record<string, unknown> },
+				body: { data: updateData },
 			});
 
 			if (typeof responseData === 'undefined') {
@@ -401,7 +401,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			const createData = transformSceneCreateRequest(existingRecord, SceneCreateReqSchema);
 
 			const { data: responseData } = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes`, {
-				body: { data: createData as Record<string, unknown> },
+				body: { data: createData },
 			});
 
 			if (typeof responseData === 'undefined') {

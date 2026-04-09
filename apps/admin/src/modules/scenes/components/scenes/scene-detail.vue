@@ -216,7 +216,7 @@ const categoryIcon = computed<string>(() => {
 	if (props.scene.icon) {
 		return props.scene.icon;
 	}
-	return SCENE_CATEGORY_ICONS[props.scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
+	return SCENE_CATEGORY_ICONS[props.scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.generic];
 });
 
 const spaceName = computed<string>(() => {

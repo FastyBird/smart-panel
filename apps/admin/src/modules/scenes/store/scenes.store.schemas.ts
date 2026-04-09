@@ -22,7 +22,7 @@ export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	primarySpaceId: ItemIdSchema.nullable().default(null),
-	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+	category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	icon: z.string().trim().nullable().default(null),
@@ -68,7 +68,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -100,7 +100,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable().optional(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()

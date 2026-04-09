@@ -90,7 +90,7 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 
 	const model = reactive<TForm>({
 		id,
-		category: SceneCategory.GENERIC,
+		category: SceneCategory.generic,
 		name: '',
 		description: null,
 		icon: null,

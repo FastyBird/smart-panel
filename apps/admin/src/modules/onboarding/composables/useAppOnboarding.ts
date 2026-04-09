@@ -200,16 +200,16 @@ export const useAppOnboarding = () => {
 
 			// Only create the location if we haven't already (avoids duplicates on retry)
 			if (!createdLocationId) {
-				const locationBody: Record<string, unknown> = {
+				const locationBody = {
 					type: 'weather-open-meteo',
 					name: locationData.city || 'Home',
 					latitude: locationData.latitude,
 					longitude: locationData.longitude,
 				};
 
-				// Body cast: locationBody includes latitude/longitude which are weather-plugin-specific
+				// latitude/longitude are plugin-specific fields not in the base generated type
 				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
-					body: { data: locationBody as Record<string, unknown> },
+					body: { data: locationBody as typeof locationBody & { type: string; name: string } },
 				});
 
 				if (error) {
@@ -226,10 +226,10 @@ export const useAppOnboarding = () => {
 			}
 
 			// Set the newly created location as the primary weather location
-			// Body cast: primary_location_id is a weather-module-specific config field
+			// type is required by the base config update schema; primary_location_id is weather-module-specific
 			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
 				params: { path: { module: 'weather-module' } },
-				body: { data: { primary_location_id: createdLocationId } as Record<string, unknown> },
+				body: { data: { type: 'weather-module', primary_location_id: createdLocationId } as { type: string; [k: string]: unknown } },
 			});
 
 			if (configError) {
@@ -322,8 +322,8 @@ export const useAppOnboarding = () => {
 					data: {
 						name: space.name,
 						type: SpaceType.ROOM,
-						// ISpaceToCreate.category is string | null but ISpaceCreateData expects SpaceRoomCategory | SpaceZoneCategory | null
-					category: space.category as never,
+						// ISpaceToCreate.category is string | null but store expects SpaceRoomCategory | SpaceZoneCategory | null
+						category: space.category as never,
 						icon: space.icon,
 					},
 				});
