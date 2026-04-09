@@ -25,8 +25,8 @@ export const WeatherHourlyForecastSchema = z.array(
 			gust: z.number().nullable(),
 		}),
 		clouds: z.number(),
-		rain: z.number().nullable(),
-		snow: z.number().nullable(),
+		rain: z.number().nullable().default(null),
+		snow: z.number().nullable().default(null),
 		dateTime: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	})
 );

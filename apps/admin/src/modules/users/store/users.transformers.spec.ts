@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it } from 'vitest';
 
-import { UsersModuleUserRole } from '../../../openapi.constants';
+import { UsersModuleUserLanguage, UsersModuleUserRole } from '../../../openapi.constants';
 import { UsersValidationException } from '../users.exceptions';
 
 import type { IUserRes, IUsersAddActionPayload, IUsersEditActionPayload } from './users.store.types';
@@ -17,6 +17,7 @@ const validUserResponse: IUserRes = {
 	last_name: 'Doe',
 	is_hidden: false,
 	role: UsersModuleUserRole.user,
+	language: UsersModuleUserLanguage.en,
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
 };
@@ -53,7 +54,7 @@ describe('Users Transformers', (): void => {
 				isHidden: false,
 				draft: false,
 				role: UsersModuleUserRole.user,
-				language: null,
+				language: UsersModuleUserLanguage.en,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
 			});

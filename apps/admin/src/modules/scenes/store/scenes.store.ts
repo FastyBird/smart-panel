@@ -6,6 +6,7 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger, useSockets } from '../../../common';
 import { CommandHandlerName, CommandType, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
+import { SceneExecutionResultStatus } from '../../../openapi.constants';
 
 import { useScenesActionsStore } from './scenes.actions.store';
 import type { ISceneActionRes } from './scenes.actions.store.types';
@@ -498,7 +499,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 
 			return {
 				scene_id: payload.id,
-				status: 'completed',
+				status: SceneExecutionResultStatus.completed,
 				triggered_at: new Date().toISOString(),
 				completed_at: new Date().toISOString(),
 				triggered_by: payload.source || 'websocket',

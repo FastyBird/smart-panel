@@ -176,7 +176,7 @@ export const UserCreateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.nativeEnum(UsersModuleUserLanguage).nullable().transform((v) => v ?? undefined).optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 });
 
 export const UserUpdateReqSchema = z.object({
@@ -202,7 +202,7 @@ export const UserUpdateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.nativeEnum(UsersModuleUserLanguage).nullable().transform((v) => v ?? undefined).optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 });
 
 export const UserResSchema: ZodType<ApiUser> = z.object({
@@ -213,7 +213,7 @@ export const UserResSchema: ZodType<ApiUser> = z.object({
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
 	role: z.nativeEnum(UsersModuleUserRole),
-	language: z.nativeEnum(UsersModuleUserLanguage).nullable(),
+	language: z.nativeEnum(UsersModuleUserLanguage),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });
