@@ -8,6 +8,7 @@ import { ServiceState } from '../services/managed-plugin-service.interface';
 @ApiSchema({ name: 'ExtensionsModuleDataServiceStatus' })
 export class ServiceStatusModel {
 	@ApiProperty({
+		name: 'plugin_name',
 		description: 'Plugin name this service belongs to',
 		example: 'devices-shelly-v1',
 	})
@@ -15,6 +16,7 @@ export class ServiceStatusModel {
 	pluginName: string;
 
 	@ApiProperty({
+		name: 'service_id',
 		description: 'Unique service identifier within the plugin',
 		example: 'main',
 	})
@@ -44,6 +46,7 @@ export class ServiceStatusModel {
 	healthy?: boolean;
 
 	@ApiPropertyOptional({
+		name: 'last_started_at',
 		description: 'ISO 8601 timestamp of when the service was last started',
 		example: '2025-01-15T10:30:00.000Z',
 	})
@@ -51,6 +54,7 @@ export class ServiceStatusModel {
 	lastStartedAt?: string;
 
 	@ApiPropertyOptional({
+		name: 'last_stopped_at',
 		description: 'ISO 8601 timestamp of when the service was last stopped',
 		example: '2025-01-15T09:00:00.000Z',
 	})
@@ -58,6 +62,7 @@ export class ServiceStatusModel {
 	lastStoppedAt?: string;
 
 	@ApiPropertyOptional({
+		name: 'last_error',
 		description: 'Last error message if the service failed to start or stop',
 		example: 'Connection refused',
 	})
@@ -65,6 +70,7 @@ export class ServiceStatusModel {
 	lastError?: string;
 
 	@ApiProperty({
+		name: 'start_count',
 		description: 'Number of times the service has been started',
 		example: 5,
 	})
@@ -72,6 +78,7 @@ export class ServiceStatusModel {
 	startCount: number;
 
 	@ApiPropertyOptional({
+		name: 'uptime_ms',
 		description: 'Current uptime in milliseconds (only available if service is started)',
 		example: 3600000,
 	})

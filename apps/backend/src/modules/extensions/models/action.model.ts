@@ -23,13 +23,13 @@ export class ActionParameterValidationModel {
 	@IsOptional()
 	pattern?: string;
 
-	@ApiPropertyOptional({ description: 'Minimum length (for string parameters)', type: 'number' })
+	@ApiPropertyOptional({ name: 'min_length', description: 'Minimum length (for string parameters)', type: 'number' })
 	@Expose({ name: 'min_length' })
 	@IsNumber()
 	@IsOptional()
 	minLength?: number;
 
-	@ApiPropertyOptional({ description: 'Maximum length (for string parameters)', type: 'number' })
+	@ApiPropertyOptional({ name: 'max_length', description: 'Maximum length (for string parameters)', type: 'number' })
 	@Expose({ name: 'max_length' })
 	@IsNumber()
 	@IsOptional()

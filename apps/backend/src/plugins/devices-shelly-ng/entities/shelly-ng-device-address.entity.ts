@@ -14,6 +14,7 @@ import { ShellyNgDeviceEntity } from './devices-shelly-ng.entity';
 @Unique('UQ_shelly_ng_device_interface', ['deviceId', 'interfaceType'])
 export class ShellyNgDeviceAddressEntity extends BaseEntity {
 	@ApiProperty({
+		name: 'device_id',
 		description: 'Device ID this address belongs to',
 		type: 'string',
 		format: 'uuid',
@@ -28,6 +29,7 @@ export class ShellyNgDeviceAddressEntity extends BaseEntity {
 	device: ShellyNgDeviceEntity;
 
 	@ApiProperty({
+		name: 'interface_type',
 		description: 'Network interface type',
 		enum: AddressType,
 		example: AddressType.ETHERNET,

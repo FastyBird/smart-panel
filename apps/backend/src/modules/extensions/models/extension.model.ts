@@ -18,6 +18,7 @@ export class ExtensionLinksModel {
 	documentation?: string;
 
 	@ApiPropertyOptional({
+		name: 'dev_documentation',
 		description: 'URL to developer documentation',
 		type: 'string',
 		example: 'https://dev.example.com',
@@ -28,6 +29,7 @@ export class ExtensionLinksModel {
 	devDocumentation?: string;
 
 	@ApiPropertyOptional({
+		name: 'bugs_tracking',
 		description: 'URL to bug tracking system',
 		type: 'string',
 		example: 'https://github.com/example/issues',
@@ -127,6 +129,7 @@ export class ExtensionModel {
 	enabled: boolean;
 
 	@ApiProperty({
+		name: 'is_core',
 		description: 'Whether the extension is a core extension (cannot be removed)',
 		type: 'boolean',
 		example: false,
@@ -136,6 +139,7 @@ export class ExtensionModel {
 	isCore: boolean;
 
 	@ApiProperty({
+		name: 'can_toggle_enabled',
 		description: 'Whether the extension can be enabled/disabled (determined by config schema)',
 		type: 'boolean',
 		example: true,
@@ -145,6 +149,7 @@ export class ExtensionModel {
 	canToggleEnabled: boolean;
 
 	@ApiProperty({
+		name: 'can_remove',
 		description: 'Whether the extension can be removed (core extensions cannot be removed)',
 		type: 'boolean',
 		example: false,

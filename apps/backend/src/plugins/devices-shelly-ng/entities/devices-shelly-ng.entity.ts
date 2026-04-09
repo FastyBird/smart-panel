@@ -73,11 +73,23 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	 * pipeline. Not persisted as columns — the subscriber reads them and delegates
 	 * to DeviceAddressService for actual storage in the addresses table.
 	 */
+	@ApiPropertyOptional({
+		name: 'wifi_address',
+		description: 'Transient WiFi address for address updates through the DTO pipeline',
+		type: 'string',
+		nullable: true,
+	})
 	@Expose({ name: 'wifi_address' })
 	@IsOptional()
 	@IsString()
 	wifiAddress?: string | null;
 
+	@ApiPropertyOptional({
+		name: 'ethernet_address',
+		description: 'Transient Ethernet address for address updates through the DTO pipeline',
+		type: 'string',
+		nullable: true,
+	})
 	@Expose({ name: 'ethernet_address' })
 	@IsOptional()
 	@IsString()
