@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MODULES_PREFIX } from '../../../app.constants';
+import { ExtensionsModuleDataExtensionKind } from '../../../openapi';
 import { ExtensionKind, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
@@ -11,7 +12,7 @@ import { useExtensions } from './extensions.store';
 
 const mockExtensionRes: IExtensionRes = {
 	type: 'devices-module',
-	kind: 'module',
+	kind: ExtensionsModuleDataExtensionKind.module,
 	name: 'Devices Module',
 	description: 'Manage devices',
 	version: '1.0.0',
@@ -23,7 +24,7 @@ const mockExtensionRes: IExtensionRes = {
 
 const mockPluginRes: IExtensionRes = {
 	type: 'pages-tiles-plugin',
-	kind: 'plugin',
+	kind: ExtensionsModuleDataExtensionKind.plugin,
 	name: 'Pages Tiles Plugin',
 	enabled: true,
 	is_core: true,

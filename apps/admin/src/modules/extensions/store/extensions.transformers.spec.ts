@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ExtensionsModuleDataExtensionKind } from '../../../openapi';
 import { ExtensionKind } from '../extensions.constants';
 
 import type { IExtensionRes } from './extensions.store.types';
@@ -10,7 +11,7 @@ describe('Extensions Transformers', () => {
 		it('should transform module response correctly', () => {
 			const response: IExtensionRes = {
 				type: 'devices-module',
-				kind: 'module',
+				kind: ExtensionsModuleDataExtensionKind.module,
 				name: 'Devices Module',
 				description: 'Manage devices',
 				version: '1.0.0',
@@ -50,7 +51,7 @@ describe('Extensions Transformers', () => {
 		it('should transform plugin response correctly', () => {
 			const response: IExtensionRes = {
 				type: 'pages-tiles-plugin',
-				kind: 'plugin',
+				kind: ExtensionsModuleDataExtensionKind.plugin,
 				name: 'Pages Tiles Plugin',
 				enabled: true,
 				is_core: true,
@@ -71,7 +72,7 @@ describe('Extensions Transformers', () => {
 		it('should handle optional fields', () => {
 			const response: IExtensionRes = {
 				type: 'test-module',
-				kind: 'module',
+				kind: ExtensionsModuleDataExtensionKind.module,
 				name: 'Test Module',
 				enabled: false,
 				is_core: false,
@@ -89,7 +90,7 @@ describe('Extensions Transformers', () => {
 		it('should handle partial links', () => {
 			const response: IExtensionRes = {
 				type: 'test-plugin',
-				kind: 'plugin',
+				kind: ExtensionsModuleDataExtensionKind.plugin,
 				name: 'Test Plugin',
 				enabled: true,
 				is_core: false,
