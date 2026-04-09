@@ -20,6 +20,7 @@ const mockExtensionRes: IExtensionRes = {
 	enabled: true,
 	is_core: true,
 	can_toggle_enabled: false,
+	can_remove: false,
 };
 
 const mockPluginRes: IExtensionRes = {
@@ -29,6 +30,7 @@ const mockPluginRes: IExtensionRes = {
 	enabled: true,
 	is_core: true,
 	can_toggle_enabled: true,
+	can_remove: false,
 };
 
 const backendClient = {

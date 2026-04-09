@@ -19,6 +19,7 @@ describe('Extensions Transformers', () => {
 				enabled: true,
 				is_core: true,
 				can_toggle_enabled: false,
+				can_remove: false,
 				links: {
 					documentation: 'https://docs.example.com',
 					dev_documentation: 'https://dev.example.com',
@@ -56,6 +57,7 @@ describe('Extensions Transformers', () => {
 				enabled: true,
 				is_core: true,
 				can_toggle_enabled: true,
+				can_remove: false,
 			};
 
 			const result = transformExtensionResponse(response);
@@ -77,6 +79,7 @@ describe('Extensions Transformers', () => {
 				enabled: false,
 				is_core: false,
 				can_toggle_enabled: true,
+				can_remove: false,
 			};
 
 			const result = transformExtensionResponse(response);
