@@ -363,7 +363,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				response,
 			} = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`, {
 				body: {
-					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }),
+					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }) as never,
 				},
 			});
 
