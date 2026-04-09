@@ -229,7 +229,6 @@ export class SystemInfoModel {
 		name: 'network_mode',
 		description: 'Current network connectivity mode',
 		enum: NetworkMode,
-		enumName: 'NetworkMode',
 		example: NetworkMode.ONLINE,
 	})
 	@Expose({ name: 'network_mode' })
