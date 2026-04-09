@@ -222,7 +222,7 @@ const getSceneIcon = (scene: IScene): string => {
 	if (scene.icon) {
 		return scene.icon;
 	}
-	return SCENE_CATEGORY_ICONS[scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
+	return SCENE_CATEGORY_ICONS[scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.generic];
 };
 
 const openAddDialog = (): void => {

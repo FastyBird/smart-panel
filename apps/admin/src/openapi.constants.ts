@@ -380,6 +380,18 @@ export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './op
 
 export { SystemModuleDataSystemInfoNetwork_mode as SystemModuleNetworkMode } from './openapi';
 
+// Scenes Module Types
+// ====================
+export type ScenesModuleSceneSchema = components['schemas']['ScenesModuleDataScene'];
+export type ScenesModuleCreateSceneSchema = components['schemas']['ScenesModuleCreateScene'];
+export type ScenesModuleUpdateSceneSchema = components['schemas']['ScenesModuleUpdateScene'];
+export type ScenesModuleSceneActionSchema = components['schemas']['ScenesModuleDataSceneAction'];
+export type ScenesModuleCreateSceneActionSchema = components['schemas']['ScenesModuleCreateSceneAction'];
+export type ScenesModuleUpdateSceneActionSchema = components['schemas']['ScenesModuleUpdateSceneAction'];
+
+// Scenes Module Enums
+export { ScenesModuleCreateSceneCategory as SceneCategory } from './openapi';
+
 // Weather Config Location Types
 // Weather location type enums removed - weather config is now accessed via weather-module
 // ==============================

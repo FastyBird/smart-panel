@@ -10,13 +10,13 @@ export const SCENES_LOCAL_TYPE = 'scenes-local';
  * null means all device categories are recommended (no filtering).
  */
 export const SCENE_CATEGORY_DEVICE_RECOMMENDATIONS: Record<SceneCategory, DevicesModuleDeviceCategory[] | null> = {
-	[SceneCategory.GENERIC]: null,
-	[SceneCategory.LIGHTING]: [
+	[SceneCategory.generic]: null,
+	[SceneCategory.lighting]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.switcher,
 		DevicesModuleDeviceCategory.outlet,
 	],
-	[SceneCategory.CLIMATE]: [
+	[SceneCategory.climate]: [
 		DevicesModuleDeviceCategory.thermostat,
 		DevicesModuleDeviceCategory.heating_unit,
 		DevicesModuleDeviceCategory.air_conditioner,
@@ -25,53 +25,53 @@ export const SCENE_CATEGORY_DEVICE_RECOMMENDATIONS: Record<SceneCategory, Device
 		DevicesModuleDeviceCategory.air_purifier,
 		DevicesModuleDeviceCategory.fan,
 	],
-	[SceneCategory.MEDIA]: [
+	[SceneCategory.media]: [
 		DevicesModuleDeviceCategory.television,
 		DevicesModuleDeviceCategory.media,
 		DevicesModuleDeviceCategory.speaker,
 	],
-	[SceneCategory.WORK]: [
+	[SceneCategory.work]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.outlet,
 	],
-	[SceneCategory.RELAX]: [
+	[SceneCategory.relax]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.media,
 	],
-	[SceneCategory.NIGHT]: [
+	[SceneCategory.night]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.window_covering,
 	],
-	[SceneCategory.MORNING]: [
+	[SceneCategory.morning]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.window_covering,
 	],
-	[SceneCategory.PARTY]: [
+	[SceneCategory.party]: [
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.speaker,
 		DevicesModuleDeviceCategory.media,
 	],
-	[SceneCategory.MOVIE]: [
+	[SceneCategory.movie]: [
 		DevicesModuleDeviceCategory.television,
 		DevicesModuleDeviceCategory.lighting,
 		DevicesModuleDeviceCategory.speaker,
 	],
-	[SceneCategory.AWAY]: [
+	[SceneCategory.away]: [
 		DevicesModuleDeviceCategory.alarm,
 		DevicesModuleDeviceCategory.lock,
 		DevicesModuleDeviceCategory.camera,
 	],
-	[SceneCategory.HOME]: null,
-	[SceneCategory.SECURITY]: [
+	[SceneCategory.home]: null,
+	[SceneCategory.security]: [
 		DevicesModuleDeviceCategory.camera,
 		DevicesModuleDeviceCategory.alarm,
 		DevicesModuleDeviceCategory.lock,
 		DevicesModuleDeviceCategory.door,
 	],
-	[SceneCategory.ENERGY]: [
+	[SceneCategory.energy]: [
 		DevicesModuleDeviceCategory.outlet,
 		DevicesModuleDeviceCategory.switcher,
 		DevicesModuleDeviceCategory.sensor,
 	],
-	[SceneCategory.CUSTOM]: null,
+	[SceneCategory.custom]: null,
 };

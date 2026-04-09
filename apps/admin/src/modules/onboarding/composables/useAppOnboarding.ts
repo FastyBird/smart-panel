@@ -4,8 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { sessionStoreKey } from '../../auth/store/keys';
+import { CONFIG_MODULE_PREFIX } from '../../config/config.constants';
+import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
 import { spacesStoreKey } from '../../spaces/store/keys';
-import { SpaceType } from '../../spaces/spaces.constants';
+import { SPACES_MODULE_PREFIX, SpaceType } from '../../spaces/spaces.constants';
+import { WEATHER_MODULE_PREFIX } from '../../weather/weather.constants';
 import { OnboardingStep } from '../onboarding.constants';
 import { useOnboardingStatus } from './useOnboardingStatus';
 
@@ -197,16 +200,17 @@ export const useAppOnboarding = () => {
 
 			// Only create the location if we haven't already (avoids duplicates on retry)
 			if (!createdLocationId) {
-				const locationBody: Record<string, unknown> = {
+				const locationBody = {
 					type: 'weather-open-meteo',
 					name: locationData.city || 'Home',
 					latitude: locationData.latitude,
 					longitude: locationData.longitude,
 				};
 
-				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/weather/locations` as never, {
-					body: { data: locationBody },
-				} as never);
+				// latitude/longitude are plugin-specific fields not in the base generated type
+				const { data, error } = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
+					body: { data: locationBody as typeof locationBody & { type: string; name: string } },
+				});
 
 				if (error) {
 					return false;
@@ -222,10 +226,11 @@ export const useAppOnboarding = () => {
 			}
 
 			// Set the newly created location as the primary weather location
-			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/config/config/module/{module}` as never, {
+			// type is required by the base config update schema; primary_location_id is weather-module-specific
+			const { error: configError } = await backend.client.PATCH(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
 				params: { path: { module: 'weather-module' } },
-				body: { data: { primary_location_id: createdLocationId } },
-			} as never);
+				body: { data: { type: 'weather-module', primary_location_id: createdLocationId } as { type: string; [k: string]: unknown } },
+			});
 
 			if (configError) {
 				return false;
@@ -241,7 +246,7 @@ export const useAppOnboarding = () => {
 
 	const fetchDevices = async (): Promise<boolean> => {
 		try {
-			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/devices/devices` as never);
+			const { data, error } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`);
 
 			if (error || !data) return false;
 
@@ -317,6 +322,7 @@ export const useAppOnboarding = () => {
 					data: {
 						name: space.name,
 						type: SpaceType.ROOM,
+						// ISpaceToCreate.category is string | null but store expects SpaceRoomCategory | SpaceZoneCategory | null
 						category: space.category as never,
 						icon: space.icon,
 					},
@@ -353,7 +359,7 @@ export const useAppOnboarding = () => {
 		}
 
 		for (const [spaceId, deviceIds] of Object.entries(spaceDevices)) {
-			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/spaces/spaces/{id}/assign` as never, {
+			const { error } = await backend.client.POST(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/assign`, {
 				params: { path: { id: spaceId } },
 				body: {
 					data: {
@@ -361,7 +367,7 @@ export const useAppOnboarding = () => {
 						display_ids: [],
 					},
 				},
-			} as never);
+			});
 
 			if (error) return false;
 		}

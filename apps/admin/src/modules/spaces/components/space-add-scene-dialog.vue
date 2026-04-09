@@ -192,7 +192,7 @@ const filteredAvailableScenes = computed(() => {
 });
 
 const getSceneIcon = (scene: IScene): string => {
-	return SCENE_CATEGORY_ICONS[scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
+	return SCENE_CATEGORY_ICONS[scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.generic];
 };
 
 const getSpaceName = (spaceId: string): string => {

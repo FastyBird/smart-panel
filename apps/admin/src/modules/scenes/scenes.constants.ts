@@ -25,23 +25,10 @@ export enum EventType {
 	SCENE_ACTION_DELETED = 'ScenesModule.SceneAction.Deleted',
 }
 
-export enum SceneCategory {
-	GENERIC = 'generic',
-	LIGHTING = 'lighting',
-	CLIMATE = 'climate',
-	MEDIA = 'media',
-	WORK = 'work',
-	RELAX = 'relax',
-	NIGHT = 'night',
-	MORNING = 'morning',
-	PARTY = 'party',
-	MOVIE = 'movie',
-	AWAY = 'away',
-	HOME = 'home',
-	SECURITY = 'security',
-	ENERGY = 'energy',
-	CUSTOM = 'custom',
-}
+// Re-export from generated OpenAPI types — canonical definition is on the backend
+import { SceneCategory } from '../../openapi.constants';
+
+export { SceneCategory };
 
 export enum FormResult {
 	NONE = 'none',
@@ -68,19 +55,19 @@ export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
 
 export const SCENE_CATEGORY_ICONS: Record<SceneCategory, string> = {
-	[SceneCategory.GENERIC]: 'mdi:playlist-play',
-	[SceneCategory.LIGHTING]: 'mdi:lightbulb-group',
-	[SceneCategory.CLIMATE]: 'mdi:thermostat',
-	[SceneCategory.MEDIA]: 'mdi:television-play',
-	[SceneCategory.WORK]: 'mdi:briefcase',
-	[SceneCategory.RELAX]: 'mdi:sofa',
-	[SceneCategory.NIGHT]: 'mdi:weather-night',
-	[SceneCategory.MORNING]: 'mdi:weather-sunset-up',
-	[SceneCategory.PARTY]: 'mdi:party-popper',
-	[SceneCategory.MOVIE]: 'mdi:movie-open',
-	[SceneCategory.AWAY]: 'mdi:home-export-outline',
-	[SceneCategory.HOME]: 'mdi:home-import-outline',
-	[SceneCategory.SECURITY]: 'mdi:shield-home',
-	[SceneCategory.ENERGY]: 'mdi:flash',
-	[SceneCategory.CUSTOM]: 'mdi:shape-outline',
+	[SceneCategory.generic]: 'mdi:playlist-play',
+	[SceneCategory.lighting]: 'mdi:lightbulb-group',
+	[SceneCategory.climate]: 'mdi:thermostat',
+	[SceneCategory.media]: 'mdi:television-play',
+	[SceneCategory.work]: 'mdi:briefcase',
+	[SceneCategory.relax]: 'mdi:sofa',
+	[SceneCategory.night]: 'mdi:weather-night',
+	[SceneCategory.morning]: 'mdi:weather-sunset-up',
+	[SceneCategory.party]: 'mdi:party-popper',
+	[SceneCategory.movie]: 'mdi:movie-open',
+	[SceneCategory.away]: 'mdi:home-export-outline',
+	[SceneCategory.home]: 'mdi:home-import-outline',
+	[SceneCategory.security]: 'mdi:shield-home',
+	[SceneCategory.energy]: 'mdi:flash',
+	[SceneCategory.custom]: 'mdi:shape-outline',
 };

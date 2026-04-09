@@ -7,9 +7,9 @@ import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 import type { IUseUpdateStatus } from './types';
 
-const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/status`;
-const UPDATE_CHECK_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/check`;
-const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/install`;
+const UPDATE_STATUS_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/status` as const;
+const UPDATE_CHECK_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/check` as const;
+const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/update/install` as const;
 
 // Deduplication for concurrent fetchStatus calls
 let fetchPromise: Promise<void> | null = null;
@@ -148,12 +148,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 		fetchPromise = (async () => {
 			try {
-				const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
-
-				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
+				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
 				if (responseData?.data) {
-					applyInfoResponse(responseData.data);
+					applyInfoResponse(responseData.data as Record<string, unknown>);
 				}
 			} catch {
 				// Silently fail - endpoint may not exist yet
@@ -170,12 +168,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		loading.value = true;
 
 		try {
-			const response = await backend.client.POST(UPDATE_CHECK_PATH as never);
-
-			const responseData = response.data as { data?: Record<string, unknown> } | undefined;
+			const { data: responseData } = await backend.client.POST(UPDATE_CHECK_PATH);
 
 			if (responseData?.data) {
-				applyInfoResponse(responseData.data);
+				applyInfoResponse(responseData.data as Record<string, unknown>);
 			}
 		} catch (err) {
 			error.value = 'systemModule.messages.update.checkFailed';
@@ -243,17 +239,15 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 			}
 
 			try {
-				const response = await backend.client.GET(UPDATE_STATUS_PATH as never);
-
-				const responseData = response.data as { data?: Record<string, unknown> } | undefined;
+				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
 				if (responseData?.data) {
-					const responseStatus = responseData.data.status as string | undefined;
+					const responseStatus = (responseData.data as Record<string, unknown>).status as string | undefined;
 
 					// Capture current_version before applyInfoResponse overwrites latestVersion
-					const newVersion = responseData.data.current_version as string | undefined;
+					const newVersion = (responseData.data as Record<string, unknown>).current_version as string | undefined;
 
-					applyInfoResponse(responseData.data);
+					applyInfoResponse(responseData.data as Record<string, unknown>);
 					lastSuccessAt = Date.now();
 
 					if (responseStatus === 'complete') {
@@ -309,11 +303,9 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		error.value = null;
 
 		try {
-			const response = await backend.client.POST(UPDATE_INSTALL_PATH as never, {
+			const { error: responseError } = await backend.client.POST(UPDATE_INSTALL_PATH, {
 				body: { allow_major: allowMajor },
-			} as never);
-
-			const responseError = (response as { error?: unknown }).error;
+			});
 
 			if (responseError) {
 				installing.value = false;

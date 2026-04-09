@@ -1,10 +1,19 @@
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
-import { SceneCategory } from '../scenes.constants';
+import type {
+	ScenesModuleSceneSchema,
+	ScenesModuleCreateSceneSchema,
+	ScenesModuleUpdateSceneSchema,
+} from '../../../openapi.constants';
+import { SceneCategory } from '../../../openapi.constants';
 
 import { SceneActionResSchema } from './scenes.actions.store.schemas';
 import { ItemIdSchema } from './types';
+
+type ApiScene = ScenesModuleSceneSchema;
+type ApiCreateScene = ScenesModuleCreateSceneSchema;
+type ApiUpdateScene = ScenesModuleUpdateSceneSchema;
 
 // STORE STATE
 // ===========
@@ -13,7 +22,7 @@ export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	primarySpaceId: ItemIdSchema.nullable().default(null),
-	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+	category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	icon: z.string().trim().nullable().default(null),
@@ -59,7 +68,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -91,7 +100,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			primarySpaceId: ItemIdSchema.nullable().optional(),
-			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+			category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -142,7 +151,7 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const SceneCreateReqSchema = z.object({
+export const SceneCreateReqSchema: ZodType<ApiCreateScene> = z.object({
 	id: z.string().uuid().optional(),
 	primary_space_id: z.string().uuid().nullable().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
@@ -159,7 +168,7 @@ export const SceneCreateReqSchema = z.object({
 	triggerable: z.boolean().optional(),
 });
 
-export const SceneUpdateReqSchema = z.object({
+export const SceneUpdateReqSchema: ZodType<ApiUpdateScene> = z.object({
 	primary_space_id: z.string().uuid().nullable().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
@@ -175,20 +184,20 @@ export const SceneUpdateReqSchema = z.object({
 	triggerable: z.boolean().optional(),
 });
 
-export const SceneResSchema = z.object({
+export const SceneResSchema: ZodType<ApiScene> = z.object({
 	id: z.string().uuid(),
-	primary_space_id: z.string().uuid().nullable(),
+	primary_space_id: z.string().uuid().nullable().optional(),
 	category: z.nativeEnum(SceneCategory),
 	name: z.string().trim().nonempty(),
-	description: z.string().trim().nullable(),
-	icon: z.string().trim().nullable(),
+	description: z.string().trim().nullable().optional(),
+	icon: z.string().trim().nullable().optional(),
 	order: z.number().int().min(0),
 	enabled: z.boolean(),
 	triggerable: z.boolean(),
 	editable: z.boolean(),
-	last_triggered_at: z.string().nullable(),
+	last_triggered_at: z.string().nullable().optional(),
 	created_at: z.string(),
-	updated_at: z.string().nullable(),
+	updated_at: z.string().nullable().optional(),
 	actions: z.array(SceneActionResSchema),
 });
 

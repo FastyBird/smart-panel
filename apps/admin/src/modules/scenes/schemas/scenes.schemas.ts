@@ -31,7 +31,7 @@ export const SceneAddFormSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
+	category: z.nativeEnum(SceneCategory).default(SceneCategory.generic),
 	icon: z.string().nullable().optional(),
 	enabled: z.boolean().default(true),
 	order: z.number().optional(),

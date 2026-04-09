@@ -30,7 +30,7 @@ export const useSceneIcon = ({ id }: IUseSceneIconProps): IUseSceneIcon => {
 		}
 
 		// Default icon
-		return SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
+		return SCENE_CATEGORY_ICONS[SceneCategory.generic];
 	});
 
 	return {
