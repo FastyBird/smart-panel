@@ -145,13 +145,14 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				}
 
 				try {
-					const response = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+					const {
+						data: responseData,
+						error: apiError,
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
-					} as never);
-
-					const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
+					});
 
 					if (typeof responseData !== 'undefined') {
 						const transformed = transformLocationResponse(responseData.data);
@@ -202,9 +203,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				firstLoad.value = false;
 
 				try {
-					const response = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never);
-
-					const responseData = (response as { data?: { data: IWeatherLocationRes[] } }).data;
+					const { data: responseData, error: apiError } = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`);
 
 					if (typeof responseData !== 'undefined') {
 						const locations: IWeatherLocation[] = [];
@@ -288,11 +287,12 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never, {
+				const {
+					data: responseData,
+					error: apiError,
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
 					body: { data: createReq },
-				} as never);
-
-				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
+				});
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -357,14 +357,15 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.PATCH(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+				const {
+					data: responseData,
+					error: apiError,
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 					params: {
 						path: { id: parsedPayload.id },
 					},
 					body: { data: updateReq },
-				} as never);
-
-				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
+				});
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -410,11 +411,12 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					name: existing.name,
 				});
 
-				const response = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never, {
+				const {
+					data: responseData,
+					error: apiError,
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations`, {
 					body: { data: createReq },
-				} as never);
-
-				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
+				});
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -460,13 +462,13 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			}
 
 			try {
-				const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+				const { error: apiError, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
-				} as never);
+				});
 
-				if ((response as { response: { status: number } }).response.status === 204) {
+				if (response.status === 204) {
 					return true;
 				}
 
