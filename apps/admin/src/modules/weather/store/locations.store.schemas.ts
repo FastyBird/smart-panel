@@ -1,7 +1,16 @@
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
+import type {
+	WeatherModuleLocationSchema,
+	WeatherModuleCreateLocationSchema,
+	WeatherModuleUpdateLocationSchema,
+} from '../../../openapi.constants';
 import { ItemIdSchema } from '../../devices/store/types';
+
+type ApiLocation = WeatherModuleLocationSchema;
+type ApiCreateLocation = WeatherModuleCreateLocationSchema;
+type ApiUpdateLocation = WeatherModuleUpdateLocationSchema;
 
 // STORE STATE
 // ===========
@@ -94,31 +103,28 @@ export const WeatherLocationsRemoveActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const WeatherLocationCreateReqSchema = z
+export const WeatherLocationCreateReqSchema: ZodType<ApiCreateLocation> = z
 	.object({
 		id: z.string().uuid().optional(),
 		type: z.string().trim().nonempty(),
 		name: z.string().trim().nonempty(),
 	})
-	.catchall(z.unknown());
+	.passthrough();
 
-export const WeatherLocationUpdateReqSchema = z
+export const WeatherLocationUpdateReqSchema: ZodType<ApiUpdateLocation> = z
 	.object({
 		type: z.string().trim().nonempty(),
 		name: z.string().trim().nonempty().optional(),
 	})
-	.catchall(z.unknown());
+	.passthrough();
 
-export const WeatherLocationResSchema = z
-	.object({
-		id: z.string().uuid(),
-		type: z.string(),
-		name: z.string().trim().nonempty(),
-		order: z.number().int().nonnegative().default(0),
-		created_at: z.string(),
-		updated_at: z.string().nullable(),
-	})
-	.catchall(z.unknown());
+export const WeatherLocationResSchema: ZodType<ApiLocation> = z.object({
+	id: z.string().uuid(),
+	type: z.string(),
+	name: z.string().trim().nonempty(),
+	created_at: z.string(),
+	updated_at: z.string().nullable().optional(),
+});
 
 // FORMS
 // =====
