@@ -15,6 +15,8 @@ import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PLATFORM_MODULE_NAME } from '../platform.constants';
 import { PlatformException } from '../platform.exceptions';
 
+const execFileAsync = promisify(execFile);
+
 interface CacheEntry<T> {
 	data: T;
 	at: number;
@@ -36,6 +38,8 @@ export abstract class Platform {
 		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
 	> | null = null;
 	private siFsSizeCache: CacheEntry<Systeminformation.FsSizeData[]> | null = null;
+	private networkModeCache: CacheEntry<string> | null = null;
+	private static readonly NETWORK_MODE_CACHE_TTL_MS = 30_000; // 30 seconds
 
 	protected async cachedOsInfo(): Promise<Systeminformation.OsData> {
 		if (this.siOsInfoCache && Date.now() - this.siOsInfoCache.at < Platform.SLOW_CACHE_TTL_MS) {
@@ -437,23 +441,29 @@ export abstract class Platform {
 	 * cause a premature 'online' return if checked first.
 	 */
 	protected async detectNetworkMode(ip4: string): Promise<string> {
+		if (this.networkModeCache && Date.now() - this.networkModeCache.at < Platform.NETWORK_MODE_CACHE_TTL_MS) {
+			return this.networkModeCache.data;
+		}
+
+		let mode: string;
+
 		try {
-			const execFileAsync = promisify(execFile);
 			const { stdout } = await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], {
 				timeout: 2000,
 			});
 
 			if (stdout.trim() === 'active') {
-				return 'setup';
+				mode = 'setup';
+			} else {
+				mode = ip4 && ip4 !== '0.0.0.0' ? 'online' : 'offline';
 			}
 		} catch {
 			// systemctl not available or service not found — not in setup mode
+			mode = ip4 && ip4 !== '0.0.0.0' ? 'online' : 'offline';
 		}
 
-		if (ip4 && ip4 !== '0.0.0.0') {
-			return 'online';
-		}
+		this.networkModeCache = { data: mode, at: Date.now() };
 
-		return 'offline';
+		return mode;
 	}
 }
