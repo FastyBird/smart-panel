@@ -18,7 +18,7 @@ import {
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { LogEntrySource, LogEntryType } from '../system.constants';
+import { LogEntrySource, LogEntryType, NetworkMode } from '../system.constants';
 
 type LogArgPrimitive = string | number | boolean | null;
 type EntryLogArg = LogArgPrimitive | Record<string, unknown> | LogArgPrimitive[];
@@ -228,13 +228,13 @@ export class SystemInfoModel {
 	@ApiProperty({
 		name: 'network_mode',
 		description: 'Current network connectivity mode',
-		type: 'string',
-		enum: ['online', 'offline', 'setup'],
-		example: 'online',
+		enum: NetworkMode,
+		enumName: 'NetworkMode',
+		example: NetworkMode.ONLINE,
 	})
 	@Expose({ name: 'network_mode' })
-	@IsString()
-	networkMode: string;
+	@IsEnum(NetworkMode)
+	networkMode: NetworkMode;
 
 	@ApiProperty({ name: 'cpu_load', description: 'CPU load percentage', type: 'number', example: 45.5 })
 	@Expose({ name: 'cpu_load' })

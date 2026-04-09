@@ -2,6 +2,12 @@ export const SYSTEM_MODULE_PREFIX = 'system';
 
 export const SYSTEM_MODULE_NAME = 'system-module';
 
+export enum NetworkMode {
+	ONLINE = 'online',
+	OFFLINE = 'offline',
+	SETUP = 'setup',
+}
+
 export const SYSTEM_MODULE_API_TAG_NAME = 'System module';
 
 export const SYSTEM_MODULE_API_TAG_DESCRIPTION =

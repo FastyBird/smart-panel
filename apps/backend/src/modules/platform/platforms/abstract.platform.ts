@@ -7,6 +7,7 @@ import { promisify } from 'util';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { NetworkMode } from '../../system/system.constants';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
@@ -440,12 +441,12 @@ export abstract class Platform {
 	 * (e.g., wlan0) has a valid static IP (192.168.4.1), which would
 	 * cause a premature 'online' return if checked first.
 	 */
-	protected async detectNetworkMode(ip4: string): Promise<string> {
+	protected async detectNetworkMode(ip4: string): Promise<NetworkMode> {
 		if (this.networkModeCache && Date.now() - this.networkModeCache.at < Platform.NETWORK_MODE_CACHE_TTL_MS) {
-			return this.networkModeCache.data;
+			return this.networkModeCache.data as NetworkMode;
 		}
 
-		let mode: string;
+		let mode: NetworkMode;
 
 		try {
 			const { stdout } = await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], {
@@ -453,13 +454,13 @@ export abstract class Platform {
 			});
 
 			if (stdout.trim() === 'active') {
-				mode = 'setup';
+				mode = NetworkMode.SETUP;
 			} else {
-				mode = ip4 && ip4 !== '0.0.0.0' ? 'online' : 'offline';
+				mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
 			}
 		} catch {
 			// systemctl not available or service not found — not in setup mode
-			mode = ip4 && ip4 !== '0.0.0.0' ? 'online' : 'offline';
+			mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
 		}
 
 		this.networkModeCache = { data: mode, at: Date.now() };
