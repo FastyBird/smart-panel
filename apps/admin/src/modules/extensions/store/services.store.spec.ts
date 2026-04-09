@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ExtensionsModuleDataServiceStatusState } from '../../../openapi';
 import { ExtensionsModuleServiceState } from '../../../openapi.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
@@ -11,7 +12,7 @@ import { useServices } from './services.store';
 const mockServiceRes: IServiceRes = {
 	plugin_name: 'devices-shelly-v1',
 	service_id: 'connector',
-	state: 'started',
+	state: ExtensionsModuleDataServiceStatusState.started,
 	enabled: true,
 	healthy: true,
 	last_started_at: '2025-01-15T10:30:00.000Z',
@@ -22,7 +23,7 @@ const mockServiceRes: IServiceRes = {
 const mockStoppedServiceRes: IServiceRes = {
 	plugin_name: 'devices-home-assistant',
 	service_id: 'connector',
-	state: 'stopped',
+	state: ExtensionsModuleDataServiceStatusState.stopped,
 	enabled: false,
 	start_count: 2,
 };
