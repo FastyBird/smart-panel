@@ -1,4 +1,8 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
+import type {
+	DevicesHomeAssistantPluginAdoptDeviceRequestSchema,
+	DevicesHomeAssistantPluginAdoptHelperRequestSchema,
+} from '../../../openapi.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import {
 	AdoptDeviceRequestSchema,
@@ -38,7 +42,7 @@ export const transformMappingPreviewRequest = (data: IMappingPreviewRequest): ob
 	return camelToSnake(parsed.data);
 };
 
-export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): object => {
+export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): DevicesHomeAssistantPluginAdoptDeviceRequestSchema => {
 	const parsed = AdoptDeviceRequestSchema.safeParse(data);
 
 	if (!parsed.success) {
@@ -54,7 +58,7 @@ export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): object =
  * Transform adopt device request to helper adoption format.
  * Helper adoption uses entity_id instead of ha_device_id and has a single channel.
  */
-export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object => {
+export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): DevicesHomeAssistantPluginAdoptHelperRequestSchema => {
 	const parsed = AdoptDeviceRequestSchema.safeParse(data);
 
 	if (!parsed.success) {

@@ -54,8 +54,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				const requestBody = transformAdoptHelperRequest(request);
 
 				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/adopt`, {
-					// Cast needed: transformer returns generic `object`, not the specific OpenAPI schema type
-					body: requestBody as never,
+					body: requestBody,
 				});
 
 				responseData = result.data;
@@ -66,8 +65,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				const requestBody = transformAdoptDeviceRequest(request);
 
 				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`, {
-					// Cast needed: transformer returns generic `object`, not the specific OpenAPI schema type
-					body: requestBody as never,
+					body: requestBody,
 				});
 
 				responseData = result.data;
