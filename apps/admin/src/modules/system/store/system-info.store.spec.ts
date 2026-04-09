@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SystemModuleNetworkMode } from '../../../openapi.constants';
 import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 
@@ -10,7 +11,7 @@ import type { ISystemInfoSetActionPayload } from './system-info.store.types';
 
 const mockSystemInfoRes = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
-	network_mode: 'online',
+	network_mode: SystemModuleNetworkMode.online,
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -72,7 +73,7 @@ const mockSystemInfoRes = {
 
 const mockSystemInfo = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
-	networkMode: 'online' as const,
+	networkMode: SystemModuleNetworkMode.online,
 	cpuLoad: 15.3,
 	memory: {
 		total: 8388608000,
