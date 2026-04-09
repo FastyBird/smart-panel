@@ -449,17 +449,13 @@ export abstract class Platform {
 		let mode: NetworkMode;
 
 		try {
-			const { stdout } = await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], {
-				timeout: 2000,
-			});
+			// systemctl is-active exits 0 when the unit is active/reloading,
+			// non-zero for inactive/failed/not-found — which rejects into catch.
+			await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], { timeout: 2000 });
 
-			if (stdout.trim() === 'active') {
-				mode = NetworkMode.SETUP;
-			} else {
-				mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
-			}
+			mode = NetworkMode.SETUP;
 		} catch {
-			// systemctl not available or service not found — not in setup mode
+			// systemctl not available, service not found, or service inactive
 			mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
 		}
 
