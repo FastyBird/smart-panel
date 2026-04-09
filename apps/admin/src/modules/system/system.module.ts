@@ -17,6 +17,7 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { SystemModuleNetworkMode } from '../../openapi.constants';
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { SystemConfigForm } from './components/components';
@@ -106,7 +107,7 @@ export default {
 		});
 
 		let networkModeNotification: NotificationHandle | null = null;
-		let lastNetworkMode: string = 'online';
+		let lastNetworkMode: string = SystemModuleNetworkMode.online;
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
@@ -157,7 +158,7 @@ export default {
 						data: data.payload,
 					});
 
-					const networkMode = (data.payload.network_mode as string) ?? 'online';
+					const networkMode = (data.payload.network_mode as string) ?? SystemModuleNetworkMode.online;
 
 					if (networkMode !== lastNetworkMode) {
 						// Dismiss previous notification if mode changed
@@ -166,13 +167,13 @@ export default {
 							networkModeNotification = null;
 						}
 
-						if (networkMode === 'setup') {
+						if (networkMode === SystemModuleNetworkMode.setup) {
 							networkModeNotification = ElNotification.warning({
 								title: (options.i18n.global as Composer).t('systemModule.messages.networkMode.setupTitle'),
 								message: (options.i18n.global as Composer).t('systemModule.messages.networkMode.setup'),
 								duration: 0,
 							});
-						} else if (networkMode === 'offline') {
+						} else if (networkMode === SystemModuleNetworkMode.offline) {
 							networkModeNotification = ElNotification.error({
 								title: (options.i18n.global as Composer).t('systemModule.messages.networkMode.offlineTitle'),
 								message: (options.i18n.global as Composer).t('systemModule.messages.networkMode.offline'),
