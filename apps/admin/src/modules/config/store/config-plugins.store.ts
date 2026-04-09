@@ -307,7 +307,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			}
 
 			const { data: responseData, error } = await backend.client.POST(
-				`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}/validate` as never,
+				`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}/validate`,
 				{
 					params: { path: { plugin: payload.data.type } },
 					body: {
@@ -316,7 +316,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 							element?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema,
 						),
 					},
-				} as never,
+				},
 			);
 
 			if (responseData) {
@@ -326,7 +326,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			}
 
 			if (error) {
-				const errorReason = getErrorReason<ConfigModuleUpdateConfigPluginOperation>(error as never, 'Validation request failed.');
+				const errorReason = getErrorReason<ConfigModuleUpdateConfigPluginOperation>(error, 'Validation request failed.');
 
 				return { valid: false, errors: [{ message: errorReason ?? 'Validation request failed' }] };
 			}

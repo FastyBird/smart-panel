@@ -8,7 +8,6 @@ import { ExtensionsApiException } from '../extensions.exceptions';
 import type {
 	DiscoveredExtensionsStoreSetup,
 	IDiscoveredExtension,
-	IDiscoveredExtensionRes,
 	IDiscoveredExtensionsGetActionPayload,
 	IDiscoveredExtensionsStateSemaphore,
 	IDiscoveredExtensionsStoreActions,
@@ -78,7 +77,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 						merged[payload.name] = {};
 
 						for (const raw of responseData.data) {
-							const transformedExtension = transformDiscoveredExtensionResponse(raw as unknown as IDiscoveredExtensionRes);
+							const transformedExtension = transformDiscoveredExtensionResponse(raw);
 
 							if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
 								throw new ExtensionsApiException('Received extension name is different');
@@ -136,7 +135,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 						const merged: { [name: string]: { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension } } = {};
 
 						for (const raw of responseData.data) {
-							const transformedExtension = transformDiscoveredExtensionResponse(raw as unknown as IDiscoveredExtensionRes);
+							const transformedExtension = transformDiscoveredExtensionResponse(raw);
 
 							if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
 								merged[transformedExtension.name] = {};
