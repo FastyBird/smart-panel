@@ -1,4 +1,8 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
+import type {
+	DevicesHomeAssistantPluginAdoptDeviceRequestSchema,
+	DevicesHomeAssistantPluginAdoptHelperRequestSchema,
+} from '../../../openapi.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import {
 	AdoptDeviceRequestSchema,
@@ -38,7 +42,7 @@ export const transformMappingPreviewRequest = (data: IMappingPreviewRequest): ob
 	return camelToSnake(parsed.data);
 };
 
-export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): object => {
+export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): DevicesHomeAssistantPluginAdoptDeviceRequestSchema => {
 	const parsed = AdoptDeviceRequestSchema.safeParse(data);
 
 	if (!parsed.success) {
@@ -54,7 +58,7 @@ export const transformAdoptDeviceRequest = (data: IAdoptDeviceRequest): object =
  * Transform adopt device request to helper adoption format.
  * Helper adoption uses entity_id instead of ha_device_id and has a single channel.
  */
-export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object => {
+export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): DevicesHomeAssistantPluginAdoptHelperRequestSchema => {
 	const parsed = AdoptDeviceRequestSchema.safeParse(data);
 
 	if (!parsed.success) {
@@ -69,7 +73,7 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object =
 		entity_id: parsed.data.haDeviceId, // haDeviceId contains the entity_id for helpers
 		name: parsed.data.name,
 		category: parsed.data.category,
-		description: parsed.data.description ?? null,
+		description: parsed.data.description ?? undefined,
 		enabled: parsed.data.enabled ?? true,
 		channels: parsed.data.channels.map((channel) => ({
 			category: channel.category,
@@ -79,8 +83,8 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object =
 				ha_attribute: prop.haAttribute,
 				data_type: prop.dataType,
 				permissions: prop.permissions,
-				format: prop.format ?? null,
-				ha_transformer: prop.haTransformer ?? null,
+				format: prop.format?.filter((v): v is string | number => v !== null) ?? undefined,
+				ha_transformer: prop.haTransformer ?? undefined,
 			})),
 		})),
 	};

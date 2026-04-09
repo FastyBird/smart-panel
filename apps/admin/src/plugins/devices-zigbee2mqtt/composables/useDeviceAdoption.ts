@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import type { DevicesZigbee2mqttPluginAdoptDeviceOperation } from '../../../openapi.constants';
 import { devicesStoreKey, type IDevice } from '../../../modules/devices';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
@@ -70,7 +71,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 			let errorReason: string | null = t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
 
 			if (apiError) {
-				errorReason = getErrorReason(apiError as never, errorReason);
+				errorReason = getErrorReason<DevicesZigbee2mqttPluginAdoptDeviceOperation>(apiError, errorReason);
 			}
 
 			throw new DevicesZigbee2mqttApiException(errorReason, response?.status);

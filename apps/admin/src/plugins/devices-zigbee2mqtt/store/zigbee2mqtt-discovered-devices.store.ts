@@ -18,7 +18,7 @@ import type {
 	IZigbee2mqttDiscoveredDevicesUnsetActionPayload,
 	Zigbee2mqttDiscoveredDevicesStoreSetup,
 } from './zigbee2mqtt-discovered-devices.store.types';
-import { transformZigbee2mqttDiscoveredDeviceResponse } from './zigbee2mqtt-discovered-devices.transformers';
+import { type ApiDiscoveredDeviceResponse, transformZigbee2mqttDiscoveredDeviceResponse } from './zigbee2mqtt-discovered-devices.transformers';
 
 const defaultSemaphore: IZigbee2mqttDiscoveredDevicesStateSemaphore = {
 	fetching: {
@@ -105,23 +105,21 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 			semaphore.value.fetching.item.push(payload.id);
 
 			try {
-				const apiResponse = await backend.client.GET(
-					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}` as never,
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(
+					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}`,
 					{
 						params: {
 							path: { ieeeAddress: payload.id },
 						},
-					} as never
+					}
 				);
 
-				const { data: responseData, error, response } = apiResponse as {
-					data?: { data: unknown };
-					error?: unknown;
-					response: { status: number };
-				};
-
 				if (typeof responseData !== 'undefined') {
-					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data as never);
+					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data as ApiDiscoveredDeviceResponse);
 
 					data.value[transformed.id] = transformed;
 
@@ -158,20 +156,18 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 			semaphore.value.fetching.items = true;
 
 			try {
-				const apiResponse = await backend.client.GET(
-					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices` as never
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(
+					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices`
 				);
-
-				const { data: responseData, error, response } = apiResponse as {
-					data?: { data: unknown[] };
-					error?: unknown;
-					response: { status: number };
-				};
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
 						responseData.data.map((device) => {
-							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device as never);
+							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device as ApiDiscoveredDeviceResponse);
 
 							return [transformed.id, transformed];
 						})

@@ -66,7 +66,7 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			const { data, error: apiError } = await backend.client.GET(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery` as never,
+				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`,
 			);
 
 			if (!apiError) {
@@ -91,7 +91,7 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			const { data, error: apiError } = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh` as never,
+				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`,
 			);
 
 			if (!apiError) {

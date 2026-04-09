@@ -3,6 +3,10 @@ import { useI18n } from 'vue-i18n';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
+import type {
+	DevicesHomeAssistantPluginPreviewDeviceMappingOperation,
+	DevicesHomeAssistantPluginPreviewHelperMappingOperation,
+} from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
@@ -70,6 +74,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					params: {
 						path: { entityId: itemId },
 					},
+					// Cast needed: helperRequestBody is a locally built object literal, not the specific OpenAPI schema type
 					body: helperRequestBody as never,
 				});
 
@@ -88,7 +93,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.previewError');
 
 					if (apiError) {
-						errorReason = getErrorReason(apiError as never, errorReason);
+						errorReason = getErrorReason<DevicesHomeAssistantPluginPreviewHelperMappingOperation>(apiError, errorReason);
 					}
 
 					throw new DevicesHomeAssistantApiException(errorReason, response?.status);
@@ -105,6 +110,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					params: {
 						path: { id: itemId },
 					},
+					// Cast needed: transformer returns generic `object`, not the specific OpenAPI schema type
 					body: requestBody as never,
 				});
 
@@ -123,7 +129,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.previewError');
 
 					if (apiError) {
-						errorReason = getErrorReason(apiError as never, errorReason);
+						errorReason = getErrorReason<DevicesHomeAssistantPluginPreviewDeviceMappingOperation>(apiError, errorReason);
 					}
 
 					throw new DevicesHomeAssistantApiException(errorReason, response?.status);

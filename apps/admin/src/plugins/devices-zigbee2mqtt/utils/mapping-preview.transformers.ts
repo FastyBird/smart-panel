@@ -149,7 +149,7 @@ interface ApiMappingWarning {
 	suggestion?: string;
 }
 
-interface ApiMappingPreviewResponse {
+export interface ApiMappingPreviewResponse {
 	z2m_device: ApiZ2mDeviceInfo;
 	suggested_device: ApiSuggestedDevice;
 	exposes: ApiExposeMappingPreview[];

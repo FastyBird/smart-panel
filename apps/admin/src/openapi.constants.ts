@@ -129,6 +129,8 @@ export type DevicesHomeAssistantPluginCreateChannelPropertySchema = components['
 export type DevicesHomeAssistantPluginUpdateChannelPropertySchema = components['schemas']['DevicesHomeAssistantPluginUpdateChannelProperty'];
 export type DevicesHomeAssistantPluginChannelPropertySchema = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
 export type DevicesHomeAssistantPluginDiscoveredDeviceSchema = components['schemas']['DevicesHomeAssistantPluginDataDiscoveredDevice'];
+export type DevicesHomeAssistantPluginAdoptDeviceRequestSchema = components['schemas']['DevicesHomeAssistantPluginAdoptDeviceRequest'];
+export type DevicesHomeAssistantPluginAdoptHelperRequestSchema = components['schemas']['DevicesHomeAssistantPluginAdoptHelperRequest'];
 export type DevicesHomeAssistantPluginStateSchema = components['schemas']['DevicesHomeAssistantPluginDataState'];
 export type DevicesHomeAssistantPluginUpdateConfigSchema = components['schemas']['DevicesHomeAssistantPluginUpdateConfig'];
 export type DevicesHomeAssistantPluginConfigSchema = components['schemas']['DevicesHomeAssistantPluginDataConfig'];
@@ -342,11 +344,25 @@ export type PagesCardsPluginCreatePageCardOperation = operations['create-pages-c
 export type PagesCardsPluginUpdatePageCardOperation = operations['update-pages-cards-plugin-page-card'];
 export type PagesCardsPluginDeletePageCardOperation = operations['delete-pages-cards-plugin-page-card'];
 
+// Devices Zigbee2MQTT Plugin Operations
+export type DevicesZigbee2mqttPluginGetDiscoveredDevicesOperation = operations['get-devices-zigbee2mqtt-plugin-devices'];
+export type DevicesZigbee2mqttPluginGetDiscoveredDeviceOperation = operations['get-devices-zigbee2mqtt-plugin-device'];
+export type DevicesZigbee2mqttPluginPreviewMappingOperation = operations['preview-devices-zigbee2mqtt-plugin-device-mapping'];
+export type DevicesZigbee2mqttPluginAdoptDeviceOperation = operations['adopt-devices-zigbee2mqtt-plugin-device'];
+
 // Devices Home Assistant Plugin Operations
 export type DevicesHomeAssistantPluginGetDeviceOperation = operations['get-devices-home-assistant-plugin-device'];
 export type DevicesHomeAssistantPluginGetDevicesOperation = operations['get-devices-home-assistant-plugin-devices'];
 export type DevicesHomeAssistantPluginGetStateOperation = operations['get-devices-home-assistant-plugin-state'];
 export type DevicesHomeAssistantPluginGetStatesOperation = operations['get-devices-home-assistant-plugin-states'];
+export type DevicesHomeAssistantPluginGetDiscoveryOperation = operations['get-devices-home-assistant-plugin-discovery'];
+export type DevicesHomeAssistantPluginRefreshDiscoveryOperation = operations['post-devices-home-assistant-plugin-discovery-refresh'];
+export type DevicesHomeAssistantPluginPreviewDeviceMappingOperation = operations['preview-devices-home-assistant-plugin-device-mapping'];
+export type DevicesHomeAssistantPluginAdoptDeviceOperation = operations['adopt-devices-home-assistant-plugin-device'];
+export type DevicesHomeAssistantPluginGetHelpersOperation = operations['get-devices-home-assistant-plugin-helpers'];
+export type DevicesHomeAssistantPluginGetHelperOperation = operations['get-devices-home-assistant-plugin-helper'];
+export type DevicesHomeAssistantPluginPreviewHelperMappingOperation = operations['preview-devices-home-assistant-plugin-helper-mapping'];
+export type DevicesHomeAssistantPluginAdoptHelperOperation = operations['adopt-devices-home-assistant-plugin-helper'];
 
 // Auth & User Enums
 // =================

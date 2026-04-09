@@ -6,7 +6,7 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
-import { transformMappingPreviewRequest, transformMappingPreviewResponse } from '../utils/mapping-preview.transformers';
+import { type ApiMappingPreviewResponse, transformMappingPreviewRequest, transformMappingPreviewResponse } from '../utils/mapping-preview.transformers';
 
 export interface IUseMappingPreview {
 	preview: Ref<IMappingPreviewResponse | null>;
@@ -39,21 +39,19 @@ export const useMappingPreview = (): IUseMappingPreview => {
 		try {
 			const requestBody = overrides ? transformMappingPreviewRequest(overrides) : undefined;
 
-			const apiResponse = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}/preview-mapping` as never,
+			const {
+				data: responseData,
+				error: apiError,
+				response,
+			} = await backend.client.POST(
+				`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}/preview-mapping`,
 				{
 					params: {
 						path: { ieeeAddress },
 					},
-					body: requestBody,
-				} as never
+					body: requestBody as never,
+				}
 			);
-
-			const { data: responseData, error: apiError, response } = apiResponse as {
-				data?: { data: unknown };
-				error?: unknown;
-				response?: { status: number };
-			};
 
 			// Sequence guard: ignore response if this request is no longer the current one
 			if (requestId !== currentRequestId) {
@@ -66,7 +64,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.', 0);
 				}
 
-				const transformed = transformMappingPreviewResponse(responseData.data as never);
+				const transformed = transformMappingPreviewResponse(responseData.data as ApiMappingPreviewResponse);
 
 				preview.value = transformed;
 				isLoading.value = false;
