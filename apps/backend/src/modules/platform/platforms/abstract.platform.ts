@@ -39,7 +39,7 @@ export abstract class Platform {
 		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
 	> | null = null;
 	private siFsSizeCache: CacheEntry<Systeminformation.FsSizeData[]> | null = null;
-	private networkModeCache: CacheEntry<string> | null = null;
+	private networkModeCache: (CacheEntry<string> & { ip4: string }) | null = null;
 	private static readonly NETWORK_MODE_CACHE_TTL_MS = 30_000; // 30 seconds
 
 	protected async cachedOsInfo(): Promise<Systeminformation.OsData> {
@@ -442,7 +442,11 @@ export abstract class Platform {
 	 * cause a premature 'online' return if checked first.
 	 */
 	protected async detectNetworkMode(ip4: string): Promise<NetworkMode> {
-		if (this.networkModeCache && Date.now() - this.networkModeCache.at < Platform.NETWORK_MODE_CACHE_TTL_MS) {
+		if (
+			this.networkModeCache &&
+			this.networkModeCache.ip4 === ip4 &&
+			Date.now() - this.networkModeCache.at < Platform.NETWORK_MODE_CACHE_TTL_MS
+		) {
 			return this.networkModeCache.data as NetworkMode;
 		}
 
@@ -459,7 +463,7 @@ export abstract class Platform {
 			mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
 		}
 
-		this.networkModeCache = { data: mode, at: Date.now() };
+		this.networkModeCache = { data: mode, ip4, at: Date.now() };
 
 		return mode;
 	}

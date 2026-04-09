@@ -378,8 +378,6 @@ export { SystemModuleCreateLogEntrySource as SystemModuleLogEntrySource } from '
 
 export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './openapi';
 
-export { SystemModuleDataSystemInfoPlatform as SystemModulePlatformType } from './openapi';
-
 export { SystemModuleDataSystemInfoNetwork_mode as SystemModuleNetworkMode } from './openapi';
 
 // Weather Config Location Types
