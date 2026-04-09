@@ -25,26 +25,8 @@ export interface IExtension {
 	links?: IExtensionLinks;
 }
 
-export interface IExtensionRes {
-	type: string;
-	kind: string;
-	name: string;
-	description?: string;
-	version?: string;
-	author?: string;
-	readme?: string;
-	docs?: string;
-	enabled: boolean;
-	is_core: boolean;
-	can_toggle_enabled: boolean;
-	links?: {
-		documentation?: string;
-		dev_documentation?: string;
-		bugs_tracking?: string;
-		repository?: string;
-		homepage?: string;
-	};
-}
+// Use the generated OpenAPI type for API response data
+export type { ExtensionsModuleExtensionSchema as IExtensionRes } from '../../../openapi.constants';
 
 export interface IExtensionsStateSemaphore {
 	fetching: {

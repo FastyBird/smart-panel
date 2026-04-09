@@ -3,7 +3,7 @@ import { ExtensionsValidationException } from '../extensions.exceptions';
 import { DiscoveredExtensionSchema } from './discovered-extensions.store.schemas';
 import type { IDiscoveredExtension, IDiscoveredExtensionRes } from './discovered-extensions.store.types';
 
-export const transformDiscoveredExtensionResponse = (response: IDiscoveredExtensionRes): IDiscoveredExtension => {
+export const transformDiscoveredExtensionResponse = (response: IDiscoveredExtensionRes | Record<string, unknown>): IDiscoveredExtension => {
 	const parsedExtension = DiscoveredExtensionSchema.safeParse({
 		name: response.name,
 		kind: response.kind,

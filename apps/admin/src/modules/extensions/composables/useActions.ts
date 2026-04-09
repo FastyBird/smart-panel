@@ -105,11 +105,10 @@ export const useActions = (): IUseActions => {
 		isLoading.value = true;
 
 		try {
-			/* eslint-disable @typescript-eslint/no-explicit-any -- action endpoints not yet in generated OpenAPI types */
-			const { data: responseData } = await (backend.client as any).GET(
-				`/modules/extensions/extensions/${extensionType}/actions` as any,
+			const { data: responseData } = await backend.client.GET(
+				'/modules/extensions/extensions/{type}/actions',
+				{ params: { path: { type: extensionType } } },
 			);
-			/* eslint-enable @typescript-eslint/no-explicit-any */
 
 			// Discard stale responses from earlier navigations
 			if (thisSequence !== fetchSequence) {
@@ -143,10 +142,10 @@ export const useActions = (): IUseActions => {
 		executingActions.value.set(actionId, count + 1);
 
 		try {
-			/* eslint-disable @typescript-eslint/no-explicit-any -- action endpoints not yet in generated OpenAPI types */
-			const { data: responseData, error } = await (backend.client as any).POST(
-				`/modules/extensions/extensions/${extensionType}/actions/${actionId}` as any,
+			const { data: responseData, error } = await backend.client.POST(
+				'/modules/extensions/extensions/{type}/actions/{actionId}',
 				{
+					params: { path: { type: extensionType, actionId } },
 					body: {
 						data: {
 							params: params ?? {},
@@ -154,7 +153,6 @@ export const useActions = (): IUseActions => {
 					},
 				},
 			);
-			/* eslint-enable @typescript-eslint/no-explicit-any */
 
 			if (responseData?.data) {
 				return responseData.data as IActionResult;
@@ -182,11 +180,10 @@ export const useActions = (): IUseActions => {
 
 	const fetchActionHistory = async (extensionType: string, actionId: string): Promise<IActionHistoryRecord[]> => {
 		try {
-			/* eslint-disable @typescript-eslint/no-explicit-any */
-			const { data: responseData } = await (backend.client as any).GET(
-				`/modules/extensions/extensions/${extensionType}/actions/${actionId}/history` as any,
+			const { data: responseData } = await backend.client.GET(
+				'/modules/extensions/extensions/{type}/actions/{actionId}/history',
+				{ params: { path: { type: extensionType, actionId } } },
 			);
-			/* eslint-enable @typescript-eslint/no-explicit-any */
 
 			if (responseData?.data) {
 				return responseData.data as IActionHistoryRecord[];
