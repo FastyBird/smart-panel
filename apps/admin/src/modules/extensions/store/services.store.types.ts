@@ -15,8 +15,18 @@ export interface IService {
 	uptimeMs?: number;
 }
 
-// Use the generated OpenAPI type for API response data
-export type { ExtensionsModuleServiceStatusSchema as IServiceRes } from '../../../openapi.constants';
+export interface IServiceRes {
+	plugin_name: string;
+	service_id: string;
+	state: string;
+	enabled: boolean;
+	healthy?: boolean;
+	last_started_at?: string;
+	last_stopped_at?: string;
+	last_error?: string;
+	start_count: number;
+	uptime_ms?: number;
+}
 
 export interface IServicesStateSemaphore {
 	fetching: {

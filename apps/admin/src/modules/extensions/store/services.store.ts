@@ -15,6 +15,7 @@ import { ExtensionsApiException, ExtensionsValidationException } from '../extens
 import { ServiceSchema } from './services.store.schemas';
 import type {
 	IService,
+	IServiceRes,
 	IServicesGetActionPayload,
 	IServicesRestartActionPayload,
 	IServicesSetActionPayload,
@@ -125,7 +126,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					});
 
 					if (typeof responseData !== 'undefined') {
-						const service = transformServiceResponse(responseData.data);
+						const service = transformServiceResponse(responseData.data as unknown as IServiceRes);
 
 						data.value[key] = service;
 
@@ -171,7 +172,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					const { data: responseData, error, response } = await backend.client.GET('/modules/extensions/services');
 
 					if (responseData?.data) {
-						const services = responseData.data.map((svc) => transformServiceResponse(svc));
+						const services = responseData.data.map((svc) => transformServiceResponse(svc as unknown as IServiceRes));
 
 						// Update store data
 						for (const service of services) {
@@ -226,7 +227,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const service = transformServiceResponse(responseData.data);
+					const service = transformServiceResponse(responseData.data as unknown as IServiceRes);
 
 					data.value[key] = service;
 
@@ -266,7 +267,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const service = transformServiceResponse(responseData.data);
+					const service = transformServiceResponse(responseData.data as unknown as IServiceRes);
 
 					data.value[key] = service;
 
@@ -306,7 +307,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const service = transformServiceResponse(responseData.data);
+					const service = transformServiceResponse(responseData.data as unknown as IServiceRes);
 
 					data.value[key] = service;
 

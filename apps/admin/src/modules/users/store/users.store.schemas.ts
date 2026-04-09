@@ -1,10 +1,7 @@
 import { v4 as uuid } from 'uuid';
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
-import type { UsersModuleCreateUserSchema } from '../../../openapi.constants';
 import { UsersModuleUserRole } from '../../../openapi.constants';
-
-type ApiCreateUser = UsersModuleCreateUserSchema;
 
 export const UserIdSchema = z.string().uuid();
 
@@ -152,7 +149,7 @@ export const UsersRemoveActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const UserCreateReqSchema: ZodType<ApiCreateUser> = z.object({
+export const UserCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	username: z.string().trim().nonempty(),
 	password: z.string().trim().nonempty(),
