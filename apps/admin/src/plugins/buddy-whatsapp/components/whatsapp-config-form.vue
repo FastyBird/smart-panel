@@ -149,7 +149,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const fetchStatus = async (): Promise<void> => {
 	try {
-		const { data } = await backend.client.GET(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/status` as never);
+		const { data } = await backend.client.GET(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/status`);
 
 		const result = data as { data: {status: string; qr: string | null } } | undefined;
 
@@ -169,7 +169,7 @@ const fetchStatus = async (): Promise<void> => {
 
 const handleLogout = async (): Promise<void> => {
 	try {
-		await backend.client.POST(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/logout` as never);
+		await backend.client.POST(`/${PLUGINS_PREFIX}/${BUDDY_WHATSAPP_PLUGIN_PREFIX}/logout`);
 
 		startPolling();
 	} catch {

@@ -307,8 +307,8 @@ const handleGetUrl = async (): Promise<void> => {
 		const clientId = model.clientId;
 
 		const response = await backend.client.GET(
-			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize` as never,
-			{ params: { query: { client_id: clientId } } } as never
+			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize`,
+			{ params: { query: { client_id: clientId } } }
 		);
 
 		const responseData = (response as { data?: { data: { authorize_url: string } } }).data;
@@ -348,8 +348,8 @@ const handleExchange = async (): Promise<void> => {
 
 	try {
 		const response = await backend.client.POST(
-			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange` as never,
-			{ body: { callback_url: callbackUrl.value } } as never
+			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange`,
+			{ body: { callback_url: callbackUrl.value } }
 		);
 
 		const responseData = (response as { data?: { data: { success: boolean; error?: string } } }).data;
