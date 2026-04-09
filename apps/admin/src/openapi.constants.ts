@@ -311,7 +311,8 @@ export type ExtensionsModuleRestartServiceOperation = operations['restart-extens
 export type ExtensionsModuleExtensionSchema = components['schemas']['ExtensionsModuleDataExtension'];
 export type ExtensionsModuleUpdateExtensionSchema = components['schemas']['ExtensionsModuleUpdateExtensionData'];
 export type ExtensionsModuleServiceStatusSchema = components['schemas']['ExtensionsModuleDataServiceStatus'];
-export type ExtensionsModuleDiscoveredExtensionSchema = components['schemas']['ExtensionsModuleDataDiscoveredExtensionBackend'];
+export type ExtensionsModuleDiscoveredExtensionBackendSchema = components['schemas']['ExtensionsModuleDataDiscoveredExtensionBackend'];
+export type ExtensionsModuleDiscoveredExtensionAdminSchema = components['schemas']['ExtensionsModuleDataDiscoveredExtensionAdmin'];
 
 // Weather Module Operations
 export type WeatherModuleGetPrimaryWeatherOperation = operations['get-weather-module-primary-weather'];
