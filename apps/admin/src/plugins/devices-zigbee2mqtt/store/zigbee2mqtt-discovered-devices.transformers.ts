@@ -14,7 +14,7 @@ type ApiExposeType = {
 };
 
 // Manual type definition until OpenAPI is regenerated
-type ApiDiscoveredDeviceResponse = {
+export type ApiDiscoveredDeviceResponse = {
 	ieee_address: string;
 	friendly_name: string;
 	type: 'Router' | 'EndDevice';

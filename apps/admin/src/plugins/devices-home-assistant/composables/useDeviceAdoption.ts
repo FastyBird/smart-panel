@@ -4,6 +4,10 @@ import { useI18n } from 'vue-i18n';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { DeviceSchema, type IDevice, devicesStoreKey, transformDeviceResponse, useDevicesPlugins } from '../../../modules/devices';
+import type {
+	DevicesHomeAssistantPluginAdoptDeviceOperation,
+	DevicesHomeAssistantPluginAdoptHelperOperation,
+} from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IAdoptDeviceRequest } from '../schemas/mapping-preview.types';
@@ -50,6 +54,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				const requestBody = transformAdoptHelperRequest(request);
 
 				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/adopt`, {
+					// Cast needed: transformer returns generic `object`, not the specific OpenAPI schema type
 					body: requestBody as never,
 				});
 
@@ -61,6 +66,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				const requestBody = transformAdoptDeviceRequest(request);
 
 				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`, {
+					// Cast needed: transformer returns generic `object`, not the specific OpenAPI schema type
 					body: requestBody as never,
 				});
 
@@ -74,8 +80,11 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				let errorReason: string | null = t('devicesHomeAssistantPlugin.messages.mapping.adoptionError');
 
 				if (apiError) {
-					// OpenAPI operation type will be generated when OpenAPI spec is updated
-					errorReason = getErrorReason(apiError as never, errorReason);
+					// Cast needed: apiError is `unknown` because it merges two different branch results
+					errorReason = getErrorReason<DevicesHomeAssistantPluginAdoptDeviceOperation | DevicesHomeAssistantPluginAdoptHelperOperation>(
+						apiError as never,
+						errorReason,
+					);
 				}
 
 				throw new DevicesHomeAssistantApiException(errorReason, response.status);
@@ -89,6 +98,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				// Use type assertion since we know the API returns the correct structure
 				const deviceData = responseData.data;
 				const element = getPluginElement(deviceData.type);
+				// Cast needed: deviceData is narrowed to `{ type: string } & Record<string, unknown>`, not IDeviceRes
 				const transformed = transformDeviceResponse(deviceData as never, element?.schemas?.deviceSchema || DeviceSchema);
 
 				// Store the device in the store
