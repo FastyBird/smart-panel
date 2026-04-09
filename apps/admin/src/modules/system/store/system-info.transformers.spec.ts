@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { SystemModuleNetworkMode } from '../../../openapi.constants';
 import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
 import { SystemValidationException } from '../system.exceptions';
 
@@ -22,6 +23,7 @@ vi.mock('../../../common', async () => {
 
 const validSystemInfoResponse: ISystemInfoRes = {
 	platform: SystemModuleDataSystemInfoPlatform.generic,
+	network_mode: SystemModuleNetworkMode.online as ISystemInfoRes['network_mode'],
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -87,6 +89,7 @@ describe('System Info Transformers', (): void => {
 
 			expect(result).toEqual({
 				platform: SystemModuleDataSystemInfoPlatform.generic,
+				networkMode: SystemModuleNetworkMode.online,
 				cpuLoad: 15.3,
 				memory: {
 					total: 8388608000,

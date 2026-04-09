@@ -2,6 +2,7 @@ import type { App } from 'vue';
 import type { Composer } from 'vue-i18n';
 import type { RouteRecordRaw } from 'vue-router';
 
+import { ElNotification, type NotificationHandle } from 'element-plus';
 import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
@@ -16,6 +17,7 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { SystemModuleNetworkMode } from '../../openapi.constants';
 import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { SystemConfigForm } from './components/components';
@@ -104,6 +106,9 @@ export default {
 			isCore: true,
 		});
 
+		let networkModeNotification: NotificationHandle | null = null;
+		let lastNetworkMode: string = SystemModuleNetworkMode.online;
+
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
 				return;
@@ -148,11 +153,39 @@ export default {
 					}
 					break;
 
-				case EventType.SYSTEM_INFO:
+				case EventType.SYSTEM_INFO: {
 					systemInfoStore.onEvent({
 						data: data.payload,
 					});
+
+					const networkMode = (data.payload.network_mode as string) ?? SystemModuleNetworkMode.online;
+
+					if (networkMode !== lastNetworkMode) {
+						// Dismiss previous notification if mode changed
+						if (networkModeNotification) {
+							networkModeNotification.close();
+							networkModeNotification = null;
+						}
+
+						if (networkMode === SystemModuleNetworkMode.setup) {
+							networkModeNotification = ElNotification.warning({
+								title: (options.i18n.global as Composer).t('systemModule.messages.networkMode.setupTitle'),
+								message: (options.i18n.global as Composer).t('systemModule.messages.networkMode.setup'),
+								duration: 0,
+							});
+						} else if (networkMode === SystemModuleNetworkMode.offline) {
+							networkModeNotification = ElNotification.error({
+								title: (options.i18n.global as Composer).t('systemModule.messages.networkMode.offlineTitle'),
+								message: (options.i18n.global as Composer).t('systemModule.messages.networkMode.offline'),
+								duration: 0,
+							});
+						}
+
+						lastNetworkMode = networkMode;
+					}
+
 					break;
+				}
 
 				case EventType.SYSTEM_UPDATE_STATUS:
 				case EventType.SYSTEM_UPDATE_PROGRESS:

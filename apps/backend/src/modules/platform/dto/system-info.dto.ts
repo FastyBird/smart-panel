@@ -1,5 +1,7 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+import { NetworkMode } from '../../system/system.constants';
 
 import { NetworkStatsDto } from './network-stats.dto';
 import { TemperatureDto } from './temperature.dto';
@@ -118,6 +120,11 @@ export class ProcessDto {
 }
 
 export class SystemInfoDto {
+	@Expose()
+	@IsOptional()
+	@IsEnum(NetworkMode)
+	network_mode?: NetworkMode;
+
 	@Expose()
 	@IsNumber()
 	cpu_load: number;

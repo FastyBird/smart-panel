@@ -92,6 +92,12 @@
 			"factoryResetSuccess": "Wszystkie dane zostały wyczyszczone. Zacznijmy od nowa — zaloguj się, aby rozpocząć.",
 			"factoryResetFailed": "Nie udało się przywrócić ustawień fabrycznych Smart Panel. Spróbuj ponownie lub sprawdź urządzenie ręcznie."
 		},
+		"networkMode": {
+			"setupTitle": "Tryb konfiguracji",
+			"setup": "Urządzenie jest w trybie konfiguracji Wi-Fi. Połącz się z siecią konfiguracyjną i skonfiguruj Wi-Fi.",
+			"offlineTitle": "Sieć offline",
+			"offline": "Urządzenie nie ma połączenia sieciowego. Sprawdź konfigurację Wi-Fi lub kabel."
+		},
 		"misc": {
 			"requestError": "Coś poszło nie tak, spróbuj ponownie później."
 		},

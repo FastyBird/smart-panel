@@ -1,10 +1,13 @@
 import { validate } from 'class-validator';
 import fs from 'fs/promises';
+import { execFile } from 'node:child_process';
 import os from 'os';
 import si, { Systeminformation } from 'systeminformation';
+import { promisify } from 'util';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { NetworkMode } from '../../system/system.constants';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
@@ -12,6 +15,8 @@ import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PLATFORM_MODULE_NAME } from '../platform.constants';
 import { PlatformException } from '../platform.exceptions';
+
+const execFileAsync = promisify(execFile);
 
 interface CacheEntry<T> {
 	data: T;
@@ -34,6 +39,8 @@ export abstract class Platform {
 		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
 	> | null = null;
 	private siFsSizeCache: CacheEntry<Systeminformation.FsSizeData[]> | null = null;
+	private networkModeCache: (CacheEntry<string> & { ip4: string }) | null = null;
+	private static readonly NETWORK_MODE_CACHE_TTL_MS = 30_000; // 30 seconds
 
 	protected async cachedOsInfo(): Promise<Systeminformation.OsData> {
 		if (this.siOsInfoCache && Date.now() - this.siOsInfoCache.at < Platform.SLOW_CACHE_TTL_MS) {
@@ -359,7 +366,10 @@ export abstract class Platform {
 
 		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
+		const networkMode = await this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
+
 		const rawData = {
+			networkMode,
 			cpuLoad,
 			memory,
 			storage: containerStorage,
@@ -419,5 +429,42 @@ export abstract class Platform {
 		this.logger.debug(`DTO validation passed: ${dtoClass.name}`);
 
 		return instance;
+	}
+
+	/**
+	 * Detect the current network connectivity mode.
+	 * - 'setup': captive portal service is active (AP mode)
+	 * - 'online': has a valid IP address (and portal is not running)
+	 * - 'offline': no IP and no portal running
+	 *
+	 * Portal check runs first because in AP mode the AP interface
+	 * (e.g., wlan0) has a valid static IP (192.168.4.1), which would
+	 * cause a premature 'online' return if checked first.
+	 */
+	protected async detectNetworkMode(ip4: string): Promise<NetworkMode> {
+		if (
+			this.networkModeCache &&
+			this.networkModeCache.ip4 === ip4 &&
+			Date.now() - this.networkModeCache.at < Platform.NETWORK_MODE_CACHE_TTL_MS
+		) {
+			return this.networkModeCache.data as NetworkMode;
+		}
+
+		let mode: NetworkMode;
+
+		try {
+			// systemctl is-active exits 0 when the unit is active/reloading,
+			// non-zero for inactive/failed/not-found — which rejects into catch.
+			await execFileAsync('systemctl', ['is-active', 'smart-panel-portal.service'], { timeout: 2000 });
+
+			mode = NetworkMode.SETUP;
+		} catch {
+			// systemctl not available, service not found, or service inactive
+			mode = ip4 && ip4 !== '0.0.0.0' ? NetworkMode.ONLINE : NetworkMode.OFFLINE;
+		}
+
+		this.networkModeCache = { data: mode, ip4, at: Date.now() };
+
+		return mode;
 	}
 }
