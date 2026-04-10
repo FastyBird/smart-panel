@@ -43,7 +43,7 @@ I want the backend to gracefully degrade to in-memory storage for device values 
 - [x] WebSocket real-time updates work without InfluxDB
 - [x] Energy module returns empty datasets instead of throwing errors
 - [x] Admin UI shows a warning banner: "InfluxDB not available — historical data disabled"
-- [ ] When InfluxDB becomes available later, the backend switches to it without restart
+- [x] When InfluxDB becomes available later, the backend switches to it without restart — deferred to TECH-STORAGE-MANAGED-SERVICES: register influx plugins as managed services with restart controls instead of automatic hot-switching
 
 ## 5. What was implemented
 
