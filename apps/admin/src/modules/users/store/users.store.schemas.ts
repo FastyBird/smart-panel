@@ -179,8 +179,6 @@ export const UserCreateReqSchema: ZodType<ApiCreateUser> = z.object({
 	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
-// Note: ZodType<ApiUpdateUser> annotation omitted because the generated type
-// incorrectly marks language as non-nullable, preventing PATCH null semantics.
 export const UserUpdateReqSchema = z.object({
 	username: z.string().trim().nonempty().optional(),
 	password: z.string().trim().nonempty().optional(),
@@ -204,7 +202,7 @@ export const UserUpdateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
 // Note: ZodType<ApiUser> annotation omitted because the generated type

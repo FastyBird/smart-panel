@@ -51,7 +51,10 @@ export const transformUserUpdateRequest = (user: IUsersEditActionPayload['data']
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
-		language: user.language,
+		// TODO: null→undefined loses PATCH "clear" semantics. The backend accepts
+		// language: null but the generated API type drops nullable for enum fields.
+		// Remove this coercion once openapi-typescript handles nullable enums.
+		language: user.language ?? undefined,
 	});
 
 	if (!parsedRequest.success) {
