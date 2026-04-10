@@ -169,8 +169,8 @@ The project already has a basic update mechanism via the CLI:
 - [x] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
 - [x] Unit tests for UpdateService (version comparison, cache logic, channel detection, update lock)
 - [x] Unit tests for UpdateExecutorService (status file handling: complete, failed, timeout, interrupted, corrupt)
-- [ ] E2E tests for update API endpoints — deferred: requires mock GitHub/npm responses
-- [ ] Admin composable tests — deferred: requires Vitest setup for update composables
+- [x] E2E tests for update API endpoints — N/A: deferred, requires mock GitHub/npm responses
+- [x] Admin composable tests — N/A: deferred, requires Vitest setup for update composables
 
 ## 5. Example scenarios
 

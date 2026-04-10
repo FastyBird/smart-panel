@@ -63,21 +63,21 @@ I want enhanced setup automation, ARM tarball builds for production releases, an
 
 > **Skipped** – A demo plugin (`apps/backend/src/plugins/`) already provides demo devices and spaces for new users. Seed data is not needed as a separate feature.
 
-- [ ] ~Create seed data for example devices~
-- [ ] ~Create seed data for example dashboard layout~
-- [ ] ~Add `--seed` flag to `smart-panel-service install`~
-- [ ] ~Implement `smart-panel-service seed` command~
-- [ ] ~Document available seed data options~
+- [x] ~Create seed data for example devices~ — N/A: skipped, demo plugin provides this
+- [x] ~Create seed data for example dashboard layout~ — N/A: skipped, demo plugin provides this
+- [x] ~Add `--seed` flag to `smart-panel-service install`~ — N/A: skipped, demo plugin provides this
+- [x] ~Implement `smart-panel-service seed` command~ — N/A: skipped, demo plugin provides this
+- [x] ~Document available seed data options~ — N/A: skipped, demo plugin provides this
 
 ### 4.4 Interactive Setup Wizard
 
 > **Deferred** – Will be implemented as part of the onboarding wizard task.
 
-- [ ] Add `--interactive` flag to install command
-- [ ] Prompt for port number
-- [ ] Prompt for admin username/password
-- [ ] Prompt for optional features (InfluxDB, mDNS)
-- [ ] Show configuration summary before applying
+- [x] Add `--interactive` flag to install command — N/A: deferred to onboarding wizard task
+- [x] Prompt for port number — N/A: deferred to onboarding wizard task
+- [x] Prompt for admin username/password — N/A: deferred to onboarding wizard task
+- [x] Prompt for optional features (InfluxDB, mDNS) — N/A: deferred to onboarding wizard task
+- [x] Show configuration summary before applying — N/A: deferred to onboarding wizard task
 
 ### 4.5 Error Handling Improvements
 

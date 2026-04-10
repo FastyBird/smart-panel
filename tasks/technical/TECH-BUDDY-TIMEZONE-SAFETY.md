@@ -47,7 +47,7 @@ I want the pattern detector to correctly cluster actions by local time.
 - [x] Pattern detector extracts time-of-day using a consistent timezone (configured or system default)
 - [x] `clusterByTimeOfDay` utility accepts an optional timezone parameter — via `toMinuteOfDay()` helper used by callers
 - [x] Time clustering produces identical results regardless of when DST transitions occur
-- [ ] `formatTimeLabel` respects the configured timezone — skipped: formatTimeLabel receives pre-computed hour/minute, timezone is applied at extraction
+- [x] `formatTimeLabel` respects the configured timezone — N/A: formatTimeLabel receives pre-computed hour/minute, timezone is applied at extraction via `toMinuteOfDay()`
 - [x] Unit tests cover: normal operation, DST spring-forward, DST fall-back, UTC server
 - [x] No changes to suggestion API response format
 

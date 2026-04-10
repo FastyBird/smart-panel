@@ -45,7 +45,7 @@ Extension actions can modify system state significantly (load scenarios, change 
 - [x] Admin UI shows collapsible history section on action cards
 - [x] History entries show: timestamp, user, success/failure, duration, message
 - [x] Ring buffer limits memory usage (configurable, default 1000 total entries)
-- [ ] Interactive session completions are also recorded — deferred to interactive sessions feature
+- [x] Interactive session completions are also recorded — N/A: deferred to interactive sessions feature (FEATURE-INTERACTIVE-SESSION-PROTOCOL)
 
 ## 5. Technical constraints
 

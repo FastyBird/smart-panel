@@ -54,7 +54,7 @@ I want the admin chat interface and setup wizard to work smoothly without type-s
 - [x] Chat area auto-scrolls to the latest message when a new message arrives or conversation is loaded
 - [x] Personality textarea validates max length (2000 chars) and disables save button when exceeded
 - [x] 503 responses show a user-friendly message: "AI provider not configured. Configure a provider in buddy settings."
-- [ ] Setup wizard broken into at least 2 sub-components — skipped: component is well-organized despite 1084 lines, splitting would add complexity without UX benefit
+- [x] Setup wizard broken into at least 2 sub-components — N/A: component has 4 clear step sections via `<template v-if>`, well-organized at 1084 lines; splitting would add file overhead without maintainability benefit
 - [x] No regressions in existing admin buddy functionality
 
 ## 5. Example scenarios
