@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import {
-	IManagedPluginService,
-	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
@@ -13,14 +10,14 @@ import { MemoryStorage } from './memory-storage.storage';
 /**
  * Managed service for the in-memory storage plugin.
  *
- * Implements IManagedPluginService so the memory storage plugin participates
+ * Extends BaseManagedPluginService so the memory storage plugin participates
  * in the centralized lifecycle management provided by PluginServiceManagerService.
  *
  * Creates and manages the MemoryStorage instance, registering it with
  * StorageService on start and unregistering on stop.
  */
 @Injectable()
-export class MemoryStorageManagedService implements IManagedPluginService {
+export class MemoryStorageManagedService extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		MEMORY_PLUGIN_NAME,
 		'MemoryStorageManagedService',
@@ -30,10 +27,10 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	readonly serviceId = 'storage';
 
 	private storage: MemoryStorage | null = null;
-	private state: ServiceState = 'stopped';
-	private startStopLock: Promise<void> = Promise.resolve();
 
-	constructor(private readonly storageService: StorageService) {}
+	constructor(private readonly storageService: StorageService) {
+		super();
+	}
 
 	/**
 	 * Start the service.
@@ -42,23 +39,14 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
-			switch (this.state) {
-				case 'started':
-					return;
-				case 'starting':
-					return;
-				case 'stopping':
-					await this.waitUntil('stopped');
-					break;
-				case 'stopped':
-				case 'error':
-					// Clean up any leftover storage from a previous failed start
-					if (this.storage) {
-						await this.storage.destroy().catch(() => {});
-						this.storage = null;
-					}
+			if (this.state === 'started') {
+				return;
+			}
 
-					break;
+			// Clean up any leftover storage from a previous failed start
+			if (this.storage) {
+				await this.storage.destroy().catch(() => {});
+				this.storage = null;
 			}
 
 			this.state = 'starting';
@@ -96,21 +84,8 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
-			switch (this.state) {
-				case 'stopped':
-					return;
-				case 'stopping':
-					return;
-				case 'starting':
-					await this.waitUntil('started', 'stopped', 'error');
-
-					if (this.getState() !== 'started') {
-						return;
-					}
-				// fallthrough
-				case 'started':
-				case 'error':
-					break;
+			if (this.state === 'stopped') {
+				return;
 			}
 
 			this.state = 'stopping';
@@ -131,13 +106,6 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	}
 
 	/**
-	 * Get the current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
-	}
-
-	/**
 	 * Start before device plugins (default 100) so storage is available
 	 * when they begin writing data.
 	 */
@@ -150,41 +118,5 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	 */
 	isHealthy(): Promise<boolean> {
 		return Promise.resolve(this.storage?.isAvailable() ?? false);
-	}
-
-	// ─── Private Helpers ──────────────────────────────────────────────
-
-	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const previousLock = this.startStopLock;
-
-		let releaseLock: () => void = () => {};
-
-		this.startStopLock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		try {
-			await previousLock;
-
-			return await fn();
-		} finally {
-			releaseLock();
-		}
-	}
-
-	private async waitUntil(...states: ServiceState[]): Promise<void> {
-		const maxWait = 10000;
-		const interval = 100;
-		let elapsed = 0;
-
-		while (!states.includes(this.state) && elapsed < maxWait) {
-			await new Promise((resolve) => setTimeout(resolve, interval));
-
-			elapsed += interval;
-		}
-
-		if (!states.includes(this.state)) {
-			throw new Error(`Timeout waiting for state ${states.join(' or ')}, current state: ${this.state}`);
-		}
 	}
 }
