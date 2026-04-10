@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SystemModuleNetworkMode } from '../../../openapi.constants';
-import { SystemModuleDataSystemInfoPlatform } from '../../../openapi';
+import { SystemModuleNetworkMode, SystemModulePlatform } from '../../../openapi.constants';
 import { SystemValidationException } from '../system.exceptions';
 
 import type { ISystemInfoRes } from './system-info.store.types';
@@ -22,7 +21,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validSystemInfoResponse: ISystemInfoRes = {
-	platform: SystemModuleDataSystemInfoPlatform.generic,
+	platform: SystemModulePlatform.generic,
 	network_mode: SystemModuleNetworkMode.online as ISystemInfoRes['network_mode'],
 	cpu_load: 15.3,
 	memory: {
@@ -88,7 +87,7 @@ describe('System Info Transformers', (): void => {
 			const result = transformSystemInfoResponse(validSystemInfoResponse);
 
 			expect(result).toEqual({
-				platform: SystemModuleDataSystemInfoPlatform.generic,
+				platform: SystemModulePlatform.generic,
 				networkMode: SystemModuleNetworkMode.online,
 				cpuLoad: 15.3,
 				memory: {
