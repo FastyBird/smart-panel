@@ -486,6 +486,7 @@ export { SpacesModuleClimateIntentType } from './openapi';
 export { SpacesModuleClimateIntentMode } from './openapi';
 export { SpacesModuleDataLightingStateDetected_mode as SpacesModuleLightingDetectedMode } from './openapi';
 export { SpacesModuleSuggestionFeedbackSuggestion_type as SpacesModuleSuggestionType } from './openapi';
+export { SpacesModuleCreateSpaceStatus_widgetsSettingsRange as SpacesModuleEnergyWidgetRange } from './openapi';
 
 // Spaces Module Type Schemas
 // ==========================

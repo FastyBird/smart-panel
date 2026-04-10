@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	SpacesModuleCreateSpaceCategory,
-	SpacesModuleCreateSpaceStatus_widgetsSettingsRange,
 	SpacesModuleCreateSpaceType,
-} from '../../../openapi';
+	SpacesModuleEnergyWidgetRange,
+} from '../../../openapi.constants';
 import {
 	ENERGY_WIDGET_DEFAULTS,
 	EnergyWidgetRange,
@@ -317,7 +317,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
+							range: SpacesModuleEnergyWidgetRange.today,
 							show_production: true,
 						},
 					},
@@ -363,7 +363,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.week,
+							range: SpacesModuleEnergyWidgetRange.week,
 							show_production: false,
 						},
 					},
@@ -500,7 +500,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
+							range: SpacesModuleEnergyWidgetRange.today,
 							show_production: true,
 						},
 					},
