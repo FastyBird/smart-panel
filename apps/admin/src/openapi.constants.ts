@@ -436,9 +436,13 @@ export type WeatherModuleLocationSchema = components['schemas']['WeatherModuleDa
 export type WeatherModuleCreateLocationSchema = components['schemas']['WeatherModuleCreateLocation'];
 export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherModuleUpdateLocation'];
 
-// Extensions Module Service State Enum
-// =====================================
+// Extensions Module Enums
+// =======================
 export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
+export { ExtensionsModuleDataExtensionKind as ExtensionKind } from './openapi';
+export { ExtensionsModuleDataDiscoveredExtensionBaseSurface as ExtensionSurface } from './openapi';
+export { ExtensionsModuleDataDiscoveredExtensionBaseSource as ExtensionSource } from './openapi';
+export { PathsModulesExtensionsDiscoveredGetParametersQuerySurface as ExtensionsDiscoverySurface } from './openapi';
 
 // Buddy Plugin Config Schemas
 // ===========================
@@ -472,5 +476,42 @@ export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './ope
 
 export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openapi';
 
-// Note: Media domain now uses routing-based architecture (V2)
-// Old role-based types have been removed
+// Spaces Module Enums
+// ===================
+export { SpacesModuleCreateSpaceCategory } from './openapi';
+export { SpacesModuleCreateSpaceType } from './openapi';
+export { SpacesModuleLightingIntentType } from './openapi';
+export { SpacesModuleLightingIntentDelta } from './openapi';
+export { SpacesModuleClimateIntentType } from './openapi';
+export { SpacesModuleClimateIntentMode } from './openapi';
+export { SpacesModuleDataLightingStateDetected_mode as SpacesModuleLightingDetectedMode } from './openapi';
+export { SpacesModuleSuggestionFeedbackSuggestion_type as SpacesModuleSuggestionType } from './openapi';
+
+// Spaces Module Type Schemas
+// ==========================
+export type SpacesModuleLightingStateSchema = components['schemas']['SpacesModuleDataLightingState'];
+export type SpacesModuleRoleAggregatedStateSchema = components['schemas']['SpacesModuleDataRoleAggregatedState'];
+export type SpacesModuleCoversStateSchema = components['schemas']['SpacesModuleDataCoversState'];
+export type SpacesModuleClimateStateSchema = components['schemas']['SpacesModuleDataClimateState'];
+export type SpacesModuleLightingIntentSchema = components['schemas']['SpacesModuleLightingIntent'];
+export type SpacesModuleClimateIntentSchema = components['schemas']['SpacesModuleClimateIntent'];
+export type SpacesModuleSensorStateSchema = components['schemas']['SpacesModuleDataSensorState'];
+export type SpacesModuleSensorReadingSchema = components['schemas']['SpacesModuleDataSensorReading'];
+export type SpacesModuleSensorRoleReadingsSchema = components['schemas']['SpacesModuleDataSensorRoleReadings'];
+export type SpacesModuleEnvironmentSummarySchema = components['schemas']['SpacesModuleDataEnvironmentSummary'];
+export type SpacesModuleSafetyAlertSchema = components['schemas']['SpacesModuleDataSafetyAlert'];
+export type SpacesModuleSuggestionFeedbackSchema = components['schemas']['SpacesModuleSuggestionFeedback'];
+export { SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types as SpacesModuleMediaEndpointType } from './openapi';
+export { PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey as SpacesModuleMediaActivityKey } from './openapi';
+
+// Weather Plugin Enums
+// ====================
+export { WeatherOpenweathermapPluginDataLocationLocation_type as WeatherLocationType } from './openapi';
+
+// Zigbee2MQTT Plugin Enums
+// ========================
+export { DevicesZigbee2mqttPluginUpdateConfigConnection_type as Zigbee2mqttConnectionType } from './openapi';
+
+// System Module Enums (additional)
+// ================================
+export { SystemModuleDataSystemInfoPlatform as SystemModulePlatform } from './openapi';

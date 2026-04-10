@@ -5,28 +5,28 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import type { components } from '../../../openapi';
+import type { SpacesModuleLightingIntentSchema, SpacesModuleClimateIntentSchema } from '../../../openapi.constants';
 import {
 	SpacesModuleLightingIntentType,
-	SpacesModuleDataLightingStateDetected_mode,
+	SpacesModuleLightingDetectedMode,
 	SpacesModuleLightingIntentDelta,
-	SpacesModuleDataRoleAggregatedStateRole,
+	SpacesModuleLightingRole,
 	SpacesModuleClimateIntentType,
 	SpacesModuleClimateIntentMode,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
-type LightingIntentBody = components['schemas']['SpacesModuleLightingIntent'];
-type ClimateIntentBody = components['schemas']['SpacesModuleClimateIntent'];
+type LightingIntentBody = SpacesModuleLightingIntentSchema;
+type ClimateIntentBody = SpacesModuleClimateIntentSchema;
 
 // ============================================
 // LIGHTING INTENT TYPES
 // ============================================
 
 export type LightingIntentType = `${SpacesModuleLightingIntentType}`;
-export type LightingMode = `${SpacesModuleDataLightingStateDetected_mode}`;
+export type LightingMode = `${SpacesModuleLightingDetectedMode}`;
 export type BrightnessDelta = `${SpacesModuleLightingIntentDelta}`;
 // Note: LightingRole is also exported from spaces.constants.ts - use type alias here to avoid conflict
-type LightingRole = `${SpacesModuleDataRoleAggregatedStateRole}`;
+type LightingRole = `${SpacesModuleLightingRole}`;
 
 /**
  * Request parameters for a lighting intent.
@@ -200,10 +200,10 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		try {
 			const body = {
 				type: request.type as SpacesModuleLightingIntentType,
-				mode: request.mode as SpacesModuleDataLightingStateDetected_mode | undefined,
+				mode: request.mode as SpacesModuleLightingDetectedMode | undefined,
 				delta: request.delta as SpacesModuleLightingIntentDelta | undefined,
 				increase: request.increase,
-				role: request.role as SpacesModuleDataRoleAggregatedStateRole | undefined,
+				role: request.role as SpacesModuleLightingRole | undefined,
 				on: request.on,
 				brightness: request.brightness,
 				color: request.color,

@@ -2,7 +2,7 @@ import type { operations } from '../../../openapi';
 import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceType,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 import { type IStatusWidget, type SpaceRoomCategory, SpaceType, type SpaceZoneCategory } from '../spaces.constants';
 

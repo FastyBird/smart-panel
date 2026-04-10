@@ -27,11 +27,11 @@ export const useExtensions = (): IUseExtensions => {
 	});
 
 	const modules = computed<IExtension[]>(() => {
-		return Object.values(data.value).filter((ext) => ext.kind === ExtensionKind.MODULE);
+		return Object.values(data.value).filter((ext) => ext.kind === ExtensionKind.module);
 	});
 
 	const plugins = computed<IExtension[]>(() => {
-		return Object.values(data.value).filter((ext) => ext.kind === ExtensionKind.PLUGIN);
+		return Object.values(data.value).filter((ext) => ext.kind === ExtensionKind.plugin);
 	});
 
 	const areLoading = computed<boolean>(() => {

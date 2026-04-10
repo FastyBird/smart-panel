@@ -5,9 +5,9 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import type { components } from '../../../openapi';
+import type { SpacesModuleCoversStateSchema } from '../../../openapi.constants';
 
-type CoversStateData = components['schemas']['SpacesModuleDataCoversState'];
+type CoversStateData = SpacesModuleCoversStateSchema;
 
 /**
  * Covers state for a space, including position and role breakdown.

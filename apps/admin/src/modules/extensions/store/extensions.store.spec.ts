@@ -80,7 +80,7 @@ describe('Extensions Store', () => {
 		it('should set extension data successfully', () => {
 			const extension = {
 				type: 'test-module',
-				kind: ExtensionKind.MODULE,
+				kind: ExtensionKind.module,
 				name: 'Test Module',
 				enabled: true,
 				isCore: false,
@@ -96,7 +96,7 @@ describe('Extensions Store', () => {
 		it('should update existing extension', () => {
 			const extension = {
 				type: 'test-module',
-				kind: ExtensionKind.MODULE,
+				kind: ExtensionKind.module,
 				name: 'Test Module',
 				enabled: true,
 				isCore: false,
@@ -130,7 +130,7 @@ describe('Extensions Store', () => {
 				type: 'module-1',
 				data: {
 					type: 'module-1',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Module 1',
 					enabled: true,
 					isCore: false,
@@ -142,7 +142,7 @@ describe('Extensions Store', () => {
 				type: 'plugin-1',
 				data: {
 					type: 'plugin-1',
-					kind: ExtensionKind.PLUGIN,
+					kind: ExtensionKind.plugin,
 					name: 'Plugin 1',
 					enabled: true,
 					isCore: false,
@@ -162,7 +162,7 @@ describe('Extensions Store', () => {
 				type: 'module-1',
 				data: {
 					type: 'module-1',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Module 1',
 					enabled: true,
 					isCore: false,
@@ -174,7 +174,7 @@ describe('Extensions Store', () => {
 				type: 'plugin-1',
 				data: {
 					type: 'plugin-1',
-					kind: ExtensionKind.PLUGIN,
+					kind: ExtensionKind.plugin,
 					name: 'Plugin 1',
 					enabled: true,
 					isCore: false,
@@ -182,7 +182,7 @@ describe('Extensions Store', () => {
 				},
 			});
 
-			const modules = store.findByKind(ExtensionKind.MODULE);
+			const modules = store.findByKind(ExtensionKind.module);
 
 			expect(modules).toHaveLength(1);
 			expect(modules[0]?.type).toBe('module-1');
@@ -193,7 +193,7 @@ describe('Extensions Store', () => {
 				type: 'module-1',
 				data: {
 					type: 'module-1',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Module 1',
 					enabled: true,
 					isCore: false,
@@ -205,7 +205,7 @@ describe('Extensions Store', () => {
 				type: 'plugin-1',
 				data: {
 					type: 'plugin-1',
-					kind: ExtensionKind.PLUGIN,
+					kind: ExtensionKind.plugin,
 					name: 'Plugin 1',
 					enabled: true,
 					isCore: false,
@@ -213,7 +213,7 @@ describe('Extensions Store', () => {
 				},
 			});
 
-			const plugins = store.findByKind(ExtensionKind.PLUGIN);
+			const plugins = store.findByKind(ExtensionKind.plugin);
 
 			expect(plugins).toHaveLength(1);
 			expect(plugins[0]?.type).toBe('plugin-1');
@@ -226,7 +226,7 @@ describe('Extensions Store', () => {
 				type: 'test-module',
 				data: {
 					type: 'test-module',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Test Module',
 					enabled: true,
 					isCore: false,
@@ -258,7 +258,7 @@ describe('Extensions Store', () => {
 			const result = await store.get({ type: 'devices-module' });
 
 			expect(result.type).toBe('devices-module');
-			expect(result.kind).toBe(ExtensionKind.MODULE);
+			expect(result.kind).toBe(ExtensionKind.module);
 			expect(store.data['devices-module']).toBeDefined();
 			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
 				params: { path: { type: 'devices-module' } },
@@ -314,7 +314,7 @@ describe('Extensions Store', () => {
 				response: { status: 200 },
 			});
 
-			await store.fetch({ kind: ExtensionKind.MODULE });
+			await store.fetch({ kind: ExtensionKind.module });
 
 			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`);
 		});
@@ -326,7 +326,7 @@ describe('Extensions Store', () => {
 				response: { status: 200 },
 			});
 
-			await store.fetch({ kind: ExtensionKind.PLUGIN });
+			await store.fetch({ kind: ExtensionKind.plugin });
 
 			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`);
 		});
@@ -364,7 +364,7 @@ describe('Extensions Store', () => {
 				type: 'devices-module',
 				data: {
 					type: 'devices-module',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Devices Module',
 					enabled: true,
 					isCore: false,
@@ -401,7 +401,7 @@ describe('Extensions Store', () => {
 				type: 'devices-module',
 				data: {
 					type: 'devices-module',
-					kind: ExtensionKind.MODULE,
+					kind: ExtensionKind.module,
 					name: 'Devices Module',
 					enabled: true,
 					isCore: false,

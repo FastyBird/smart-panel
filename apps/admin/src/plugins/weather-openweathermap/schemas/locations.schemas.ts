@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 import { LocationAddFormSchema, LocationEditFormSchema } from '../../../modules/weather';
-import { WeatherOpenweathermapPluginDataLocationLocation_type } from '../../../openapi';
+import { WeatherLocationType } from '../../../openapi.constants';
 
 export const OpenWeatherMapLocationAddFormSchema = LocationAddFormSchema.extend({
-	locationType: z.nativeEnum(WeatherOpenweathermapPluginDataLocationLocation_type),
+	locationType: z.nativeEnum(WeatherLocationType),
 	latitude: z.number().min(-90).max(90).nullable().optional(),
 	longitude: z.number().min(-180).max(180).nullable().optional(),
 	cityName: z.string().nullable().optional(),
@@ -14,7 +14,7 @@ export const OpenWeatherMapLocationAddFormSchema = LocationAddFormSchema.extend(
 });
 
 export const OpenWeatherMapLocationEditFormSchema = LocationEditFormSchema.extend({
-	locationType: z.nativeEnum(WeatherOpenweathermapPluginDataLocationLocation_type).optional(),
+	locationType: z.nativeEnum(WeatherLocationType).optional(),
 	latitude: z.number().min(-90).max(90).nullable().optional(),
 	longitude: z.number().min(-180).max(180).nullable().optional(),
 	cityName: z.string().nullable().optional(),

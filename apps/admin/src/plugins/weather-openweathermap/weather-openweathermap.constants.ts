@@ -1,6 +1,4 @@
-import { WeatherOpenweathermapPluginDataLocationLocation_type } from '../../openapi';
-
-import { TemperatureUnit } from '../../openapi.constants';
+import { TemperatureUnit, WeatherLocationType } from '../../openapi.constants';
 
 export { TemperatureUnit };
 
@@ -11,4 +9,4 @@ export const WEATHER_OPENWEATHERMAP_PLUGIN_NAME = 'weather-openweathermap-plugin
 export const WEATHER_OPENWEATHERMAP_PLUGIN_TYPE = 'weather-openweathermap';
 
 // Re-export the OpenAPI enum for convenience
-export const OpenWeatherMapLocationType = WeatherOpenweathermapPluginDataLocationLocation_type;
+export const OpenWeatherMapLocationType = WeatherLocationType;

@@ -11,24 +11,24 @@ import { useDiscoveredExtensions } from './discovered-extensions.store';
 
 const mockAdminExtensionRes: IDiscoveredExtensionRes = {
 	name: 'test-module',
-	kind: ExtensionKind.MODULE,
-	surface: ExtensionSurface.ADMIN,
+	kind: ExtensionKind.module,
+	surface: ExtensionSurface.admin,
 	display_name: 'Test Module',
 	description: 'A test module',
 	version: '1.0.0',
-	source: ExtensionSource.BUNDLED,
+	source: ExtensionSource.bundled,
 	remote_url: 'http://localhost:3000',
 	type: 'admin',
 };
 
 const mockBackendExtensionRes: IDiscoveredExtensionRes = {
 	name: 'test-module',
-	kind: ExtensionKind.MODULE,
-	surface: ExtensionSurface.BACKEND,
+	kind: ExtensionKind.module,
+	surface: ExtensionSurface.backend,
 	display_name: 'Test Module',
 	description: 'A test module',
 	version: '1.0.0',
-	source: ExtensionSource.BUNDLED,
+	source: ExtensionSource.bundled,
 	route_prefix: '/api/v1/test-module',
 	type: 'backend',
 };

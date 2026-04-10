@@ -32,7 +32,7 @@ describe('Extensions Transformers', () => {
 			const result = transformExtensionResponse(response);
 
 			expect(result.type).toBe('devices-module');
-			expect(result.kind).toBe(ExtensionKind.MODULE);
+			expect(result.kind).toBe(ExtensionKind.module);
 			expect(result.name).toBe('Devices Module');
 			expect(result.description).toBe('Manage devices');
 			expect(result.version).toBe('1.0.0');
@@ -63,7 +63,7 @@ describe('Extensions Transformers', () => {
 			const result = transformExtensionResponse(response);
 
 			expect(result.type).toBe('pages-tiles-plugin');
-			expect(result.kind).toBe(ExtensionKind.PLUGIN);
+			expect(result.kind).toBe(ExtensionKind.plugin);
 			expect(result.name).toBe('Pages Tiles Plugin');
 			expect(result.enabled).toBe(true);
 			expect(result.isCore).toBe(true);
