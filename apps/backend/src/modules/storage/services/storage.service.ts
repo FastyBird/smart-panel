@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
@@ -7,97 +7,68 @@ import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
-/**
- * Factory function that creates a storage plugin instance.
- */
-export type StoragePluginFactory = () => StoragePlugin;
-
 @Injectable()
-export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
+export class StorageService {
 	private readonly logger = createExtensionLogger(STORAGE_MODULE_NAME, 'StorageService');
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
 
 	/**
-	 * Schemas buffered before plugins are created.
-	 * Flushed to plugins during onApplicationBootstrap().
+	 * All schemas registered so far.
+	 * Flushed to each new plugin when it registers.
 	 */
-	private readonly pendingSchemas: StorageMeasurementSchema[] = [];
-	private pluginsCreated = false;
-
-	/**
-	 * Plugin factory registry. Populated by StorageModule during onModuleInit().
-	 */
-	private readonly pluginFactories = new Map<string, StoragePluginFactory>();
+	private readonly schemas: StorageMeasurementSchema[] = [];
 
 	constructor(private readonly configService: ConfigService) {}
 
-	/**
-	 * Register a factory that can create plugin instances by name.
-	 * Called by StorageModule during onModuleInit() — before onApplicationBootstrap().
-	 */
-	registerPluginFactory(name: string, factory: StoragePluginFactory): void {
-		this.pluginFactories.set(name, factory);
-	}
+	// ─── Plugin Registration ─────────────────────────────────────────
 
-	async onApplicationBootstrap(): Promise<void> {
+	/**
+	 * Register an initialized storage plugin.
+	 * Called by managed services after they start their plugin.
+	 *
+	 * The plugin is assigned to primary or fallback role based on the
+	 * current StorageConfigModel settings.
+	 */
+	registerPlugin(name: string, plugin: StoragePlugin): void {
 		const config = this.getConfig();
 
-		// Create plugins
-		this.primary = this.createPlugin(config.primaryStorage);
-		this.fallback = this.createPlugin(config.fallbackStorage);
-		this.pluginsCreated = true;
+		if (name === config.primaryStorage) {
+			this.primary = plugin;
 
-		// Flush buffered schemas to plugins
-		for (const schema of this.pendingSchemas) {
-			this.primary?.registerSchema(schema);
-			this.fallback?.registerSchema(schema);
+			this.logger.log(`Primary storage registered: ${name}`);
 		}
 
-		this.pendingSchemas.length = 0;
+		if (name === config.fallbackStorage) {
+			this.fallback = plugin;
 
-		// Initialize fallback first (always available)
-		if (this.fallback) {
-			try {
-				await this.fallback.initialize();
-				this.logger.log(`Fallback storage initialized: ${this.fallback.name}`);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`Failed to initialize fallback storage: ${err.message}`, { stack: err.stack });
-				this.fallback = null;
-			}
+			this.logger.log(`Fallback storage registered: ${name}`);
 		}
 
-		// Initialize primary
-		if (this.primary) {
-			try {
-				await this.primary.initialize();
-
-				if (this.primary.isAvailable()) {
-					this.logger.log(`Primary storage initialized: ${this.primary.name}`);
-				} else {
-					this.logger.warn(
-						`Primary storage (${this.primary.name}) not available — using fallback (${this.fallback?.name ?? 'none'})`,
-					);
-				}
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`Failed to initialize primary storage: ${err.message}`, { stack: err.stack });
-				this.logger.warn(`Using fallback storage: ${this.fallback?.name ?? 'none'}`);
-			}
+		// Flush buffered schemas to the newly registered plugin
+		for (const schema of this.schemas) {
+			plugin.registerSchema(schema);
 		}
 	}
 
-	async onModuleDestroy(): Promise<void> {
-		if (this.primary) {
-			await this.primary.destroy();
+	/**
+	 * Unregister a storage plugin.
+	 * Called by managed services when they stop their plugin.
+	 */
+	unregisterPlugin(name: string): void {
+		const config = this.getConfig();
+
+		if (name === config.primaryStorage && this.primary?.name === name) {
+			this.primary = null;
+
+			this.logger.log(`Primary storage unregistered: ${name}`);
 		}
 
-		if (this.fallback) {
-			await this.fallback.destroy();
+		if (name === config.fallbackStorage && this.fallback?.name === name) {
+			this.fallback = null;
+
+			this.logger.log(`Fallback storage unregistered: ${name}`);
 		}
 	}
 
@@ -128,14 +99,12 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 	// ─── Schema Registration ──────────────────────────────────────────
 
 	registerSchema(schema: StorageMeasurementSchema): void {
-		if (this.pluginsCreated) {
-			// Plugins already exist — register directly
-			this.primary?.registerSchema(schema);
-			this.fallback?.registerSchema(schema);
-		} else {
-			// Buffer until plugins are created
-			this.pendingSchemas.push(schema);
-		}
+		// Always buffer for late-arriving plugins
+		this.schemas.push(schema);
+
+		// Also register on any existing plugins
+		this.primary?.registerSchema(schema);
+		this.fallback?.registerSchema(schema);
 	}
 
 	// ─── Core Read/Write ──────────────────────────────────────────────
@@ -409,21 +378,5 @@ export class StorageService implements OnApplicationBootstrap, OnModuleDestroy {
 
 			return defaultConfig;
 		}
-	}
-
-	private createPlugin(pluginName: string): StoragePlugin | null {
-		if (!pluginName) {
-			return null;
-		}
-
-		const factory = this.pluginFactories.get(pluginName);
-
-		if (!factory) {
-			this.logger.warn(`Unknown storage plugin: ${pluginName}`);
-
-			return null;
-		}
-
-		return factory();
 	}
 }
