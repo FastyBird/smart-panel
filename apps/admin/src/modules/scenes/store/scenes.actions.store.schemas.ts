@@ -3,9 +3,9 @@ import { type ZodType, z } from 'zod';
 
 import type { ScenesModuleSceneActionSchema } from '../../../openapi.constants';
 
-type ApiSceneAction = ScenesModuleSceneActionSchema;
-
 import { ItemIdSchema } from './types';
+
+type ApiSceneAction = ScenesModuleSceneActionSchema;
 
 // STORE STATE
 // ===========
