@@ -159,8 +159,8 @@ export class InfluxV2ManagedService implements IManagedPluginService {
 	/**
 	 * Health check — reports whether the underlying InfluxDB v2 connection is alive.
 	 */
-	async isHealthy(): Promise<boolean> {
-		return this.storage?.isAvailable() ?? false;
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.storage?.isAvailable() ?? false);
 	}
 
 	/**

@@ -1,11 +1,4 @@
-/*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
-@typescript-eslint/no-unnecessary-type-assertion
-*/
-/*
-Reason: The mocking and test setup requires dynamic assignment and
-handling of Jest mocks, which ESLint rules flag unnecessarily.
-*/
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { StorageService } from '../../../modules/storage/services/storage.service';
@@ -71,7 +64,7 @@ describe('MemoryStorageManagedService', () => {
 			const states: string[] = [];
 			const origStart = MockMemoryStorage.prototype.initialize as jest.Mock;
 
-			origStart.mockImplementation(async () => {
+			origStart.mockImplementation(() => {
 				states.push(svc.getState());
 			});
 

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { IManagedPluginService, ServiceState } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
@@ -136,8 +139,8 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 	/**
 	 * Health check — in-memory storage is always healthy when started.
 	 */
-	async isHealthy(): Promise<boolean> {
-		return this.storage?.isAvailable() ?? false;
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.storage?.isAvailable() ?? false);
 	}
 
 	// ─── Private Helpers ──────────────────────────────────────────────
