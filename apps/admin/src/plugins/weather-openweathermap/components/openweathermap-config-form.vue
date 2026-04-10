@@ -103,11 +103,11 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 
 const unitOptions = computed(() => [
 	{
-		value: TemperatureUnit.CELSIUS,
+		value: TemperatureUnit.celsius,
 		label: t('weatherOpenweathermapPlugin.fields.config.unit.values.celsius'),
 	},
 	{
-		value: TemperatureUnit.FAHRENHEIT,
+		value: TemperatureUnit.fahrenheit,
 		label: t('weatherOpenweathermapPlugin.fields.config.unit.values.fahrenheit'),
 	},
 ]);

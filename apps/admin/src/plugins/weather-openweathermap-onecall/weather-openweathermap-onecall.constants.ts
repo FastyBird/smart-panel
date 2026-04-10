@@ -4,7 +4,6 @@ export const WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME = 'weather-openweatherma
 
 export const WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_TYPE = 'weather-openweathermap-onecall';
 
-export enum TemperatureUnit {
-	CELSIUS = 'celsius',
-	FAHRENHEIT = 'fahrenheit',
-}
+import { TemperatureUnit } from '../../openapi.constants';
+
+export { TemperatureUnit };

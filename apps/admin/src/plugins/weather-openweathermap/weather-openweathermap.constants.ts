@@ -6,10 +6,9 @@ export const WEATHER_OPENWEATHERMAP_PLUGIN_NAME = 'weather-openweathermap-plugin
 
 export const WEATHER_OPENWEATHERMAP_PLUGIN_TYPE = 'weather-openweathermap';
 
-export enum TemperatureUnit {
-	CELSIUS = 'celsius',
-	FAHRENHEIT = 'fahrenheit',
-}
+import { TemperatureUnit } from '../../openapi.constants';
+
+export { TemperatureUnit };
 
 // Re-export the OpenAPI enum for convenience
 export const OpenWeatherMapLocationType = WeatherOpenweathermapPluginDataLocationLocation_type;

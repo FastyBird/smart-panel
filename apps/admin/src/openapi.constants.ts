@@ -456,13 +456,13 @@ export type BuddySystemTtsPluginConfigSchema = components['schemas']['BuddySyste
 // =============================
 export type WeatherOpenweathermapPluginConfigSchema = components['schemas']['WeatherOpenweathermapPluginDataConfig'];
 export type WeatherOpenweathermapOnecallPluginConfigSchema = components['schemas']['WeatherOpenweathermapOnecallPluginDataConfig'];
-export { DisplaysModuleUpdateDisplayTemperature_unit as WeatherTemperatureUnit } from './openapi';
+export { DisplaysModuleUpdateDisplayTemperature_unit as TemperatureUnit } from './openapi';
 
 // Data Sources Weather Plugin Schemas
 // ====================================
 export type DataSourcesWeatherPluginCurrentWeatherDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataCurrentWeatherDataSource'];
 export type DataSourcesWeatherPluginForecastDayDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataForecastDayDataSource'];
-export { DataSourcesWeatherPluginDataCurrentWeatherDataSourceField as WeatherDataSourceField } from './openapi';
+export { DataSourcesWeatherPluginDataCurrentWeatherDataSourceField as WeatherDataField } from './openapi';
 
 // Spaces Module Role Enums
 // ========================
