@@ -1,7 +1,10 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import { type BuddyElevenlabsPluginConfigSchema } from '../../../openapi.constants';
 import { BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
+
+type ApiConfig = BuddyElevenlabsPluginConfigSchema;
 
 export const ElevenlabsConfigSchema = ConfigPluginSchema.extend({
 	apiKey: z.string().trim().nullable(),
@@ -19,7 +22,7 @@ export const ElevenlabsConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	})
 );
 
-export const ElevenlabsConfigResSchema= ConfigPluginResSchema.and(
+export const ElevenlabsConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_ELEVENLABS_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),
