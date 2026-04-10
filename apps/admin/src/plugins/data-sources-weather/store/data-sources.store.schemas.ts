@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
 import {
 	DataSourceCreateReqSchema,
@@ -6,18 +6,11 @@ import {
 	DataSourceSchema,
 	DataSourceUpdateReqSchema,
 } from '../../../modules/dashboard';
-import type {
-	DataSourcesWeatherPluginCurrentWeatherDataSourceSchema,
-	DataSourcesWeatherPluginForecastDayDataSourceSchema,
-} from '../../../openapi.constants';
 import {
 	DATA_SOURCES_WEATHER_CURRENT_TYPE,
 	DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
 	WeatherDataField,
 } from '../data-sources-weather.constants';
-
-type ApiCurrentWeatherDataSource = DataSourcesWeatherPluginCurrentWeatherDataSourceSchema;
-type ApiForecastDayDataSource = DataSourcesWeatherPluginForecastDayDataSourceSchema;
 
 // STORE STATE
 // ===========
@@ -100,7 +93,7 @@ export const CurrentWeatherDataSourceUpdateReqSchema = DataSourceUpdateReqSchema
 	})
 );
 
-export const CurrentWeatherDataSourceResSchema: ZodType<ApiCurrentWeatherDataSource> = DataSourceResSchema.and(
+export const CurrentWeatherDataSourceResSchema = DataSourceResSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_CURRENT_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
@@ -152,7 +145,7 @@ export const ForecastDayDataSourceUpdateReqSchema = DataSourceUpdateReqSchema.an
 	})
 );
 
-export const ForecastDayDataSourceResSchema: ZodType<ApiForecastDayDataSource> = DataSourceResSchema.and(
+export const ForecastDayDataSourceResSchema = DataSourceResSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE),
 		location_id: z.string().uuid().optional().nullable(),

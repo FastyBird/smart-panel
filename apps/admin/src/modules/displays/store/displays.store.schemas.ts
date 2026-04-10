@@ -1,10 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { type ZodType, z } from 'zod';
-
-import type { DisplaysModuleDisplaySchema, DisplaysModuleLongLiveTokenSchema } from '../../../openapi.constants';
-
-type ApiDisplay = DisplaysModuleDisplaySchema;
-type ApiDisplayToken = DisplaysModuleLongLiveTokenSchema;
+import { z } from 'zod';
 
 export const DisplayIdSchema = z.string().uuid();
 
@@ -254,7 +249,7 @@ export const DisplayUpdateReqSchema = z.object({
 	weather_location_id: z.string().uuid().nullable().optional(),
 });
 
-export const DisplayResSchema: ZodType<ApiDisplay> = z.object({
+export const DisplayResSchema = z.object({
 	id: z.string().uuid(),
 	mac_address: z.string().trim().nonempty(),
 	name: z.string().nullable().optional().default(null),
@@ -304,7 +299,7 @@ export const DisplayResSchema: ZodType<ApiDisplay> = z.object({
 });
 
 // Token response schema
-export const DisplayTokenResSchema: ZodType<ApiDisplayToken> = z.object({
+export const DisplayTokenResSchema = z.object({
 	id: z.string().uuid(),
 	owner_type: z.string(),
 	owner_id: z.string().uuid().nullable(),
