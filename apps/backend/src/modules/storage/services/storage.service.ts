@@ -15,10 +15,11 @@ export class StorageService {
 	private fallback: StoragePlugin | null = null;
 
 	/**
-	 * All schemas registered so far.
+	 * All schemas registered so far, keyed by measurement name.
+	 * Deduplicated so plugin restarts don't accumulate duplicates.
 	 * Flushed to each new plugin when it registers.
 	 */
-	private readonly schemas: StorageMeasurementSchema[] = [];
+	private readonly schemas = new Map<string, StorageMeasurementSchema>();
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -47,7 +48,7 @@ export class StorageService {
 		}
 
 		// Flush buffered schemas to the newly registered plugin
-		for (const schema of this.schemas) {
+		for (const schema of this.schemas.values()) {
 			plugin.registerSchema(schema);
 		}
 	}
@@ -99,8 +100,8 @@ export class StorageService {
 	// ─── Schema Registration ──────────────────────────────────────────
 
 	registerSchema(schema: StorageMeasurementSchema): void {
-		// Always buffer for late-arriving plugins
-		this.schemas.push(schema);
+		// Buffer by measurement name — last registration wins, no duplicates
+		this.schemas.set(schema.measurement, schema);
 
 		// Also register on any existing plugins
 		this.primary?.registerSchema(schema);

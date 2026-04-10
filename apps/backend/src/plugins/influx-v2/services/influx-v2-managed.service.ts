@@ -74,8 +74,11 @@ export class InfluxV2ManagedService extends BaseManagedPluginService {
 
 				await this.storage.initialize();
 
+				// InfluxV2Storage.initialize() swallows connection errors and
+				// calls destroy() internally instead of throwing. Detect this
+				// and surface it so the managed service transitions to 'error'.
 				if (!this.storage.isAvailable()) {
-					this.logger.warn('InfluxDB v2 not available after initialization — queries will use fallback');
+					throw new Error('InfluxDB v2 not available after initialization');
 				}
 
 				// Register with StorageService for primary/fallback assignment
