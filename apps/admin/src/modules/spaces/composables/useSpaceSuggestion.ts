@@ -5,10 +5,8 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import {
-	type SchemaSpacesModuleSuggestionFeedback,
-	SpacesModuleSuggestionFeedbackSuggestion_type,
-} from '../../../openapi';
+import type { SpacesModuleSuggestionFeedbackSchema } from '../../../openapi.constants';
+import { SpacesModuleSuggestionType } from '../../../openapi.constants';
 
 
 
@@ -17,9 +15,9 @@ import {
 // ============================================
 
 /** Type of suggestion provided by the backend */
-export type SuggestionType = `${SpacesModuleSuggestionFeedbackSuggestion_type}`;
+export type SuggestionType = `${SpacesModuleSuggestionType}`;
 /** User feedback on a suggestion */
-export type SuggestionFeedback = `${SchemaSpacesModuleSuggestionFeedback['feedback']}`;
+export type SuggestionFeedback = `${SpacesModuleSuggestionFeedbackSchema['feedback']}`;
 
 /**
  * A smart suggestion for the space based on context (time, occupancy, etc.).
@@ -183,8 +181,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 					body: {
 						data: {
 							suggestion_type:
-								suggestionData.value.type as SpacesModuleSuggestionFeedbackSuggestion_type,
-							feedback: feedback as SchemaSpacesModuleSuggestionFeedback['feedback'],
+								suggestionData.value.type as SpacesModuleSuggestionType,
+							feedback: feedback as SpacesModuleSuggestionFeedbackSchema['feedback'],
 						},
 					},
 				}

@@ -5,10 +5,10 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import type { components } from '../../../openapi';
+import type { SpacesModuleLightingStateSchema, SpacesModuleRoleAggregatedStateSchema } from '../../../openapi.constants';
 
-type LightingStateData = components['schemas']['SpacesModuleDataLightingState'];
-type RoleAggregatedState = components['schemas']['SpacesModuleDataRoleAggregatedState'];
+type LightingStateData = SpacesModuleLightingStateSchema;
+type RoleAggregatedState = SpacesModuleRoleAggregatedStateSchema;
 
 /**
  * Lighting state for a space, including mode detection and per-role breakdown.

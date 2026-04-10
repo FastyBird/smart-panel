@@ -131,11 +131,11 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 	});
 
 	const modules = computed<IExtension[]>((): IExtension[] => {
-		return filteredExtensions.value.filter((ext) => ext.kind === ExtensionKind.MODULE);
+		return filteredExtensions.value.filter((ext) => ext.kind === ExtensionKind.module);
 	});
 
 	const plugins = computed<IExtension[]>((): IExtension[] => {
-		return filteredExtensions.value.filter((ext) => ext.kind === ExtensionKind.PLUGIN);
+		return filteredExtensions.value.filter((ext) => ext.kind === ExtensionKind.plugin);
 	});
 
 	const fetchExtensions = async (): Promise<void> => {

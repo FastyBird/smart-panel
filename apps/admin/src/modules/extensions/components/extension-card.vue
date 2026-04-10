@@ -17,10 +17,10 @@
 					<h3 class="extension-card__title">{{ extension.name }}</h3>
 					<div class="extension-card__tags">
 						<el-tag
-							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+							:type="extension.kind === ExtensionKind.module ? 'primary' : 'success'"
 							size="small"
 						>
-							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+							{{ extension.kind === ExtensionKind.module ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
 						</el-tag>
 						<el-tag
 							v-if="extension.isCore"
@@ -199,14 +199,14 @@ const emit = defineEmits<IExtensionCardEmits>();
 const { t } = useI18n();
 
 const extensionIcon = computed<string>(() => {
-	if (props.extension.kind === ExtensionKind.MODULE) {
+	if (props.extension.kind === ExtensionKind.module) {
 		return 'mdi:package-variant';
 	}
 	return 'mdi:toy-brick';
 });
 
 const toggleDisabledReason = computed<string>(() => {
-	if (props.extension.isCore && props.extension.kind === ExtensionKind.MODULE) {
+	if (props.extension.isCore && props.extension.kind === ExtensionKind.module) {
 		return t('extensionsModule.tooltips.coreModuleCannotBeDisabled');
 	}
 	return t('extensionsModule.tooltips.cannotToggleEnabled');

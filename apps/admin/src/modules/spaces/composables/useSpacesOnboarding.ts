@@ -4,7 +4,7 @@ import { injectBackendClient, useUuid } from '../../../common';
 import {
 	SpacesModuleCreateSpaceCategory,
 	SpacesModuleCreateSpaceType,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import {
 	ASSIGNABLE_ZONE_CATEGORIES,
 	SPACE_ALL_CATEGORY_TEMPLATES,

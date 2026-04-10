@@ -5,13 +5,19 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import type { components } from '../../../openapi';
+import type {
+	SpacesModuleSensorStateSchema,
+	SpacesModuleSensorReadingSchema,
+	SpacesModuleSensorRoleReadingsSchema,
+	SpacesModuleEnvironmentSummarySchema,
+	SpacesModuleSafetyAlertSchema,
+} from '../../../openapi.constants';
 
-type SensorStateData = components['schemas']['SpacesModuleDataSensorState'];
-type SensorReadingData = components['schemas']['SpacesModuleDataSensorReading'];
-type SensorRoleReadingsData = components['schemas']['SpacesModuleDataSensorRoleReadings'];
-type EnvironmentSummaryData = components['schemas']['SpacesModuleDataEnvironmentSummary'];
-type SafetyAlertData = components['schemas']['SpacesModuleDataSafetyAlert'];
+type SensorStateData = SpacesModuleSensorStateSchema;
+type SensorReadingData = SpacesModuleSensorReadingSchema;
+type SensorRoleReadingsData = SpacesModuleSensorRoleReadingsSchema;
+type EnvironmentSummaryData = SpacesModuleEnvironmentSummarySchema;
+type SafetyAlertData = SpacesModuleSafetyAlertSchema;
 
 /**
  * Individual sensor reading

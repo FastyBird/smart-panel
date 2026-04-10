@@ -5,7 +5,7 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../../app.types';
 import type { OpenApiPaths } from '../../../openapi.constants';
-import { PathsModulesExtensionsDiscoveredGetParametersQuerySurface } from '../../../openapi';
+import { ExtensionsDiscoverySurface } from '../../../openapi.constants';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
 
@@ -50,7 +50,7 @@ export const installRemoteExtensions = async (
 	} = await backendClient.GET('/modules/extensions/discovered', {
 		params: {
 			query: {
-				surface: PathsModulesExtensionsDiscoveredGetParametersQuerySurface.admin,
+				surface: ExtensionsDiscoverySurface.admin,
 			},
 		},
 	});

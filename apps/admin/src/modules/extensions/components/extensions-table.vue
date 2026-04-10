@@ -109,7 +109,7 @@
 			<template #default="scope">
 				<el-avatar :size="32">
 					<icon
-						:icon="scope.row.kind === ExtensionKind.MODULE ? 'mdi:package-variant' : 'mdi:toy-brick'"
+						:icon="scope.row.kind === ExtensionKind.module ? 'mdi:package-variant' : 'mdi:toy-brick'"
 						class="w[20px] h[20px]"
 					/>
 				</el-avatar>
@@ -175,10 +175,10 @@
 		>
 			<template #default="scope">
 				<el-tag
-					:type="scope.row.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+					:type="scope.row.kind === ExtensionKind.module ? 'primary' : 'success'"
 					size="small"
 				>
-					{{ scope.row.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+					{{ scope.row.kind === ExtensionKind.module ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
 				</el-tag>
 			</template>
 		</el-table-column>

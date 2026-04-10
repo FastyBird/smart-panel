@@ -8,7 +8,7 @@ export const transformExtensionResponse = (response: IExtensionRes): IExtension 
 
 	return {
 		type: response.type,
-		kind: response.kind === 'module' ? ExtensionKind.MODULE : ExtensionKind.PLUGIN,
+		kind: response.kind === 'module' ? ExtensionKind.module : ExtensionKind.plugin,
 		name: response.name,
 		description: response.description,
 		version,

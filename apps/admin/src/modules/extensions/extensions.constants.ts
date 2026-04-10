@@ -1,23 +1,12 @@
+import { ExtensionKind, ExtensionSource, ExtensionSurface } from '../../openapi.constants';
+
+export { ExtensionKind, ExtensionSource, ExtensionSurface };
+
 export const EXTENSIONS_MODULE_PREFIX = 'extensions';
 
 export const EXTENSIONS_MODULE_NAME = 'extensions-module';
 
 export const EXTENSIONS_MODULE_EVENT_PREFIX = 'ExtensionsModule.';
-
-export enum ExtensionKind {
-	MODULE = 'module',
-	PLUGIN = 'plugin',
-}
-
-export enum ExtensionSurface {
-	ADMIN = 'admin',
-	BACKEND = 'backend',
-}
-
-export enum ExtensionSource {
-	BUNDLED = 'bundled',
-	RUNTIME = 'runtime',
-}
 
 export enum FormResult {
 	NONE = 'none',

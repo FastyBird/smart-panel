@@ -268,7 +268,7 @@ const getPluginIcon = (type: string): string => {
 
 const devicePlugins = computed(() => {
 	return Object.values(extensionsStore.data)
-		.filter((ext) => ext.kind === ExtensionKind.PLUGIN && (ext.type.startsWith('devices-') || ext.type === 'simulator-plugin'))
+		.filter((ext) => ext.kind === ExtensionKind.plugin && (ext.type.startsWith('devices-') || ext.type === 'simulator-plugin'))
 		.sort((a, b) => a.name.localeCompare(b.name));
 });
 

@@ -171,6 +171,6 @@ const assignedDevicesCount = computed(() => {
 
 const integrationsCount = computed(() => {
 	return Object.values(extensionsStore.data)
-		.filter((ext) => ext.kind === ExtensionKind.PLUGIN && ext.type.startsWith('devices-') && ext.enabled).length;
+		.filter((ext) => ext.kind === ExtensionKind.plugin && ext.type.startsWith('devices-') && ext.enabled).length;
 });
 </script>

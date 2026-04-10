@@ -159,10 +159,10 @@
 					</dt>
 					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
 						<el-tag
-							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+							:type="extension.kind === ExtensionKind.module ? 'primary' : 'success'"
 							size="small"
 						>
-							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+							{{ extension.kind === ExtensionKind.module ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
 						</el-tag>
 					</dd>
 
@@ -368,10 +368,10 @@
 					</dt>
 					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
 						<el-tag
-							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+							:type="extension.kind === ExtensionKind.module ? 'primary' : 'success'"
 							size="small"
 						>
-							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+							{{ extension.kind === ExtensionKind.module ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
 						</el-tag>
 					</dd>
 
@@ -603,7 +603,7 @@ watch(
 );
 
 const extensionIcon = computed<string>(() => {
-	if (extension.value?.kind === ExtensionKind.MODULE) {
+	if (extension.value?.kind === ExtensionKind.module) {
 		return 'mdi:cube-outline';
 	}
 	return 'mdi:puzzle';
@@ -612,7 +612,7 @@ const extensionIcon = computed<string>(() => {
 const hasConfiguration = computed<boolean>(() => {
 	if (!extension.value) return false;
 
-	if (extension.value.kind === ExtensionKind.MODULE) {
+	if (extension.value.kind === ExtensionKind.module) {
 		return configurableModules.value.some((m) => m.type === props.type);
 	}
 	return configurablePlugins.value.some((p) => p.type === props.type);
@@ -644,7 +644,7 @@ const onToggleEnabled = async (): Promise<void> => {
 };
 
 const onOpenConfiguration = (): void => {
-	if (extension.value?.kind === ExtensionKind.MODULE) {
+	if (extension.value?.kind === ExtensionKind.module) {
 		router.push({
 			name: 'config_module-config_module_edit',
 			params: { module: props.type },

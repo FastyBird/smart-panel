@@ -10,7 +10,7 @@ import { useExtensions } from './useExtensions';
 const mockExtensions: IExtension[] = [
 	{
 		type: 'devices-module',
-		kind: ExtensionKind.MODULE,
+		kind: ExtensionKind.module,
 		name: 'Devices Module',
 		enabled: true,
 		isCore: true,
@@ -18,7 +18,7 @@ const mockExtensions: IExtension[] = [
 	},
 	{
 		type: 'auth-module',
-		kind: ExtensionKind.MODULE,
+		kind: ExtensionKind.module,
 		name: 'Auth Module',
 		enabled: true,
 		isCore: true,
@@ -26,7 +26,7 @@ const mockExtensions: IExtension[] = [
 	},
 	{
 		type: 'pages-tiles-plugin',
-		kind: ExtensionKind.PLUGIN,
+		kind: ExtensionKind.plugin,
 		name: 'Pages Tiles Plugin',
 		enabled: true,
 		isCore: true,
@@ -63,14 +63,14 @@ describe('useExtensions', () => {
 		const { modules } = useExtensions();
 
 		expect(modules.value).toHaveLength(2);
-		expect(modules.value.every((m) => m.kind === ExtensionKind.MODULE)).toBe(true);
+		expect(modules.value.every((m) => m.kind === ExtensionKind.module)).toBe(true);
 	});
 
 	it('should return only plugins', () => {
 		const { plugins } = useExtensions();
 
 		expect(plugins.value).toHaveLength(1);
-		expect(plugins.value[0]?.kind).toBe(ExtensionKind.PLUGIN);
+		expect(plugins.value[0]?.kind).toBe(ExtensionKind.plugin);
 	});
 
 	it('should indicate loading state', () => {

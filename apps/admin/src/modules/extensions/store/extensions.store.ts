@@ -160,9 +160,9 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					let error;
 					let response;
 
-					if (payload?.kind === ExtensionKind.MODULE) {
+					if (payload?.kind === ExtensionKind.module) {
 						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions/modules'));
-					} else if (payload?.kind === ExtensionKind.PLUGIN) {
+					} else if (payload?.kind === ExtensionKind.plugin) {
 						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions/plugins'));
 					} else {
 						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions'));

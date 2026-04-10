@@ -5,9 +5,9 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-import type { components } from '../../../openapi';
+import type { SpacesModuleClimateStateSchema } from '../../../openapi.constants';
 
-type ClimateStateData = components['schemas']['SpacesModuleDataClimateState'];
+type ClimateStateData = SpacesModuleClimateStateSchema;
 
 /**
  * Climate state for a space, including temperature, humidity, and HVAC mode.

@@ -10,7 +10,7 @@ import { defaultExtensionsFilter, defaultExtensionsSort, useExtensionsDataSource
 const mockExtensions: IExtension[] = [
 	{
 		type: 'devices-module',
-		kind: ExtensionKind.MODULE,
+		kind: ExtensionKind.module,
 		name: 'Devices Module',
 		description: 'Device management',
 		enabled: true,
@@ -19,7 +19,7 @@ const mockExtensions: IExtension[] = [
 	},
 	{
 		type: 'auth-module',
-		kind: ExtensionKind.MODULE,
+		kind: ExtensionKind.module,
 		name: 'Auth Module',
 		description: 'Authentication',
 		enabled: false,
@@ -28,7 +28,7 @@ const mockExtensions: IExtension[] = [
 	},
 	{
 		type: 'pages-tiles-plugin',
-		kind: ExtensionKind.PLUGIN,
+		kind: ExtensionKind.plugin,
 		name: 'Pages Tiles Plugin',
 		description: 'Dashboard tiles',
 		enabled: true,
@@ -37,7 +37,7 @@ const mockExtensions: IExtension[] = [
 	},
 	{
 		type: 'external-plugin',
-		kind: ExtensionKind.PLUGIN,
+		kind: ExtensionKind.plugin,
 		name: 'External Plugin',
 		description: 'Third party addon',
 		enabled: true,
@@ -94,21 +94,21 @@ describe('useExtensionsDataSource', () => {
 		});
 
 		it('should return only modules when filtered by MODULE kind', () => {
-			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.MODULE };
+			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.module };
 
 			const { modules } = useExtensionsDataSource();
 
 			expect(modules.value).toHaveLength(2);
-			expect(modules.value.every((m) => m.kind === ExtensionKind.MODULE)).toBe(true);
+			expect(modules.value.every((m) => m.kind === ExtensionKind.module)).toBe(true);
 		});
 
 		it('should return only plugins when filtered by PLUGIN kind', () => {
-			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.PLUGIN };
+			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.plugin };
 
 			const { plugins } = useExtensionsDataSource();
 
 			expect(plugins.value).toHaveLength(2);
-			expect(plugins.value.every((p) => p.kind === ExtensionKind.PLUGIN)).toBe(true);
+			expect(plugins.value.every((p) => p.kind === ExtensionKind.plugin)).toBe(true);
 		});
 	});
 
@@ -193,7 +193,7 @@ describe('useExtensionsDataSource', () => {
 		it('should apply multiple filters together', () => {
 			mockFilters.value = {
 				search: undefined,
-				kind: ExtensionKind.PLUGIN,
+				kind: ExtensionKind.plugin,
 				enabled: 'enabled',
 				isCore: 'core',
 			};
@@ -221,7 +221,7 @@ describe('useExtensionsDataSource', () => {
 		});
 
 		it('should be true when kind filter is changed', () => {
-			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.MODULE };
+			mockFilters.value = { ...defaultExtensionsFilter, kind: ExtensionKind.module };
 
 			const { filtersActive } = useExtensionsDataSource();
 

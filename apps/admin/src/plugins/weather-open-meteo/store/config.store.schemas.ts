@@ -4,7 +4,7 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../module
 import { TemperatureUnit, WEATHER_OPEN_METEO_PLUGIN_NAME } from '../weather-open-meteo.constants';
 
 export const OpenMeteoConfigSchema = ConfigPluginSchema.extend({
-	unit: z.nativeEnum(TemperatureUnit).default(TemperatureUnit.CELSIUS),
+	unit: z.nativeEnum(TemperatureUnit).default(TemperatureUnit.celsius),
 });
 
 // BACKEND API
