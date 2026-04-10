@@ -81,7 +81,7 @@ export class InfluxV1ManagedService extends BaseManagedPluginService {
 				await this.storage.initialize();
 
 				if (!this.storage.isAvailable()) {
-					this.logger.warn('InfluxDB not available after initialization — queries will use fallback');
+					throw new Error('InfluxDB v1 not available after initialization');
 				}
 
 				this.state = 'started';

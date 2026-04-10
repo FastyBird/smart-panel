@@ -164,6 +164,18 @@ describe('InfluxV1ManagedService', () => {
 		});
 	});
 
+	describe('silent initialization failure', () => {
+		it('throws and transitions to error when isAvailable returns false after init', async () => {
+			(MockInfluxV1Storage.prototype.isAvailable as jest.Mock).mockReturnValue(false);
+
+			await expect(svc.start()).rejects.toThrow('InfluxDB v1 not available after initialization');
+
+			expect(svc.getState()).toBe('error');
+			// Plugin was registered before initialize, so it must be unregistered on failure
+			expect(storageService.unregisterPlugin).toHaveBeenCalledWith(INFLUX_V1_PLUGIN_NAME);
+		});
+	});
+
 	describe('stop', () => {
 		it('unregisters plugin and destroys storage', async () => {
 			await svc.start();
