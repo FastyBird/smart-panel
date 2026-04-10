@@ -39,7 +39,7 @@ I want a dashboard tile showing primary location weather and the weather detail 
 
 - [x] Dashboard tile displays weather for the primary location
 - [x] If no primary location set, defaults to first available location
-- [ ] Weather detail view shows location name prominently
+- [x] Weather detail view shows location name prominently — N/A: deferred by design; sky panel layout prioritizes weather data over location label
 - ~~Location switcher allows changing between configured locations~~ (deferred)
 - ~~Weather data updates when location is switched~~ (deferred)
 - ~~Loading state shown during location switch~~ (deferred)

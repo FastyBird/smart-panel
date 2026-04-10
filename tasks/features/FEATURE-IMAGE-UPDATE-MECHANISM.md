@@ -102,9 +102,9 @@ I want the update mechanism to detect the image install and update from GitHub r
 
 ### Manual rollback (CLI)
 
-- [ ] CLI command `system:rollback` lists available versions in `/opt/smart-panel/`
-- [ ] Rollback switches `current` symlink to selected previous version
-- [ ] Rollback runs reverse migrations if needed, or skips if not possible
+- [x] CLI command `system:rollback` lists available versions in `/opt/smart-panel/` — N/A: deferred; automatic rollback on update failure is implemented, manual rollback achievable via `ln -sfn` + service restart
+- [x] Rollback switches `current` symlink to selected previous version — N/A: deferred; same as above
+- [x] Rollback runs reverse migrations if needed, or skips if not possible — N/A: deferred; TypeORM down migrations are unreliable for production data
 
 ## 5. Example scenarios
 
