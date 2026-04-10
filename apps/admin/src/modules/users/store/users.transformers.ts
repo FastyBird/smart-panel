@@ -33,7 +33,7 @@ export const transformUserCreateRequest = (user: IUsersAddActionPayload['data'] 
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
-		language: user.language,
+		language: user.language ?? undefined,
 	});
 
 	if (!parsedRequest.success) {
@@ -51,7 +51,7 @@ export const transformUserUpdateRequest = (user: IUsersEditActionPayload['data']
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
-		language: user.language,
+		language: user.language ?? undefined,
 	});
 
 	if (!parsedRequest.success) {
