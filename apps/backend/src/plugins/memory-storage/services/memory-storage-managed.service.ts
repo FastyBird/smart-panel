@@ -53,6 +53,8 @@ export class MemoryStorageManagedService extends BaseManagedPluginService {
 
 			this.logger.log('Starting in-memory storage service');
 
+			let registered = false;
+
 			try {
 				this.storage = new MemoryStorage();
 
@@ -60,6 +62,7 @@ export class MemoryStorageManagedService extends BaseManagedPluginService {
 
 				// Register with StorageService for primary/fallback assignment
 				this.storageService.registerPlugin(MEMORY_PLUGIN_NAME, this.storage);
+				registered = true;
 
 				this.state = 'started';
 
@@ -67,8 +70,9 @@ export class MemoryStorageManagedService extends BaseManagedPluginService {
 			} catch (error) {
 				const err = error as Error;
 
-				// Unregister in case registerPlugin was already called
-				this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
+				if (registered) {
+					this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
+				}
 
 				this.logger.error(`Failed to start in-memory storage: ${err.message}`, err.stack);
 				this.state = 'error';

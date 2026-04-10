@@ -62,6 +62,8 @@ export class InfluxV2ManagedService extends BaseManagedPluginService {
 
 			this.logger.log('Starting InfluxDB v2 storage service');
 
+			let registered = false;
+
 			try {
 				const config = this.getPluginConfig();
 
@@ -83,6 +85,7 @@ export class InfluxV2ManagedService extends BaseManagedPluginService {
 
 				// Register with StorageService for primary/fallback assignment
 				this.storageService.registerPlugin(INFLUX_V2_PLUGIN_NAME, this.storage);
+				registered = true;
 
 				this.state = 'started';
 
@@ -90,9 +93,9 @@ export class InfluxV2ManagedService extends BaseManagedPluginService {
 			} catch (error) {
 				const err = error as Error;
 
-				// Defensive: unregister in case registerPlugin was called before the error.
-				// No-op if registerPlugin was not reached (e.g., silent init failure).
-				this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
+				if (registered) {
+					this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
+				}
 
 				this.logger.error(`Failed to start InfluxDB v2 storage: ${err.message}`, err.stack);
 				this.state = 'error';

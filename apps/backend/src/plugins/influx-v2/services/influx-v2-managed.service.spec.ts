@@ -130,9 +130,9 @@ describe('InfluxV2ManagedService', () => {
 			await expect(svc.start()).rejects.toThrow('Connection refused');
 
 			expect(svc.getState()).toBe('error');
-			// initialize is called before registerPlugin in V2, so registerPlugin should not be called on failure
+			// initialize is called before registerPlugin in V2, so neither should be called on failure
 			expect(storageService.registerPlugin).not.toHaveBeenCalled();
-			expect(storageService.unregisterPlugin).toHaveBeenCalledWith(INFLUX_V2_PLUGIN_NAME);
+			expect(storageService.unregisterPlugin).not.toHaveBeenCalled();
 		});
 
 		it('is idempotent when already started', async () => {
@@ -287,7 +287,7 @@ describe('InfluxV2ManagedService', () => {
 			expect(svc.getState()).toBe('error');
 			// registerPlugin should NOT have been called because isAvailable check happens before it
 			expect(storageService.registerPlugin).not.toHaveBeenCalled();
-			expect(storageService.unregisterPlugin).toHaveBeenCalledWith(INFLUX_V2_PLUGIN_NAME);
+			expect(storageService.unregisterPlugin).not.toHaveBeenCalled();
 		});
 
 		it('checks isAvailable after initialize and before registerPlugin', async () => {
