@@ -214,6 +214,7 @@ export type DevicesThirdPartyPluginChannelPropertySchema = components['schemas']
 export type SimulatorPluginDeviceSchema = components['schemas']['SimulatorPluginDataDevice'];
 export type SimulatorPluginChannelSchema = components['schemas']['SimulatorPluginDataChannel'];
 export type SimulatorPluginChannelPropertySchema = components['schemas']['SimulatorPluginDataChannelProperty'];
+export { SimulatorPluginGenerateDeviceBehavior_mode as SimulatorPluginBehaviorMode } from './openapi';
 
 // Pages Cards Plugin Schemas
 export type PagesCardsPluginCreateCardsPageSchema = components['schemas']['PagesCardsPluginCreateCardsPage'];
@@ -455,11 +456,13 @@ export type BuddySystemTtsPluginConfigSchema = components['schemas']['BuddySyste
 // =============================
 export type WeatherOpenweathermapPluginConfigSchema = components['schemas']['WeatherOpenweathermapPluginDataConfig'];
 export type WeatherOpenweathermapOnecallPluginConfigSchema = components['schemas']['WeatherOpenweathermapOnecallPluginDataConfig'];
+export { DisplaysModuleUpdateDisplayTemperature_unit as WeatherTemperatureUnit } from './openapi';
 
 // Data Sources Weather Plugin Schemas
 // ====================================
 export type DataSourcesWeatherPluginCurrentWeatherDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataCurrentWeatherDataSource'];
 export type DataSourcesWeatherPluginForecastDayDataSourceSchema = components['schemas']['DataSourcesWeatherPluginDataForecastDayDataSource'];
+export { DataSourcesWeatherPluginDataCurrentWeatherDataSourceField as WeatherDataSourceField } from './openapi';
 
 // Spaces Module Role Enums
 // ========================
