@@ -51,7 +51,7 @@ export const transformUserUpdateRequest = (user: IUsersEditActionPayload['data']
 		first_name: user.firstName,
 		last_name: user.lastName,
 		role: user.role,
-		language: user.language ?? undefined,
+		language: user.language,
 	});
 
 	if (!parsedRequest.success) {

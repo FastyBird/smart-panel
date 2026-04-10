@@ -1,12 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import type { UsersModuleCreateUserSchema, UsersModuleUpdateUserSchema, UsersModuleUserSchema } from '../../../openapi.constants';
+import type { UsersModuleCreateUserSchema } from '../../../openapi.constants';
 import { UsersModuleUserLanguage, UsersModuleUserRole } from '../../../openapi.constants';
 
-type ApiUser = UsersModuleUserSchema;
 type ApiCreateUser = UsersModuleCreateUserSchema;
-type ApiUpdateUser = UsersModuleUpdateUserSchema;
 
 export const UserIdSchema = z.string().uuid();
 
@@ -181,7 +179,9 @@ export const UserCreateReqSchema: ZodType<ApiCreateUser> = z.object({
 	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
-export const UserUpdateReqSchema: ZodType<ApiUpdateUser> = z.object({
+// Note: ZodType<ApiUpdateUser> annotation omitted because the generated type
+// incorrectly marks language as non-nullable, preventing PATCH null semantics.
+export const UserUpdateReqSchema = z.object({
 	username: z.string().trim().nonempty().optional(),
 	password: z.string().trim().nonempty().optional(),
 	email: z
@@ -204,7 +204,7 @@ export const UserUpdateReqSchema: ZodType<ApiUpdateUser> = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 });
 
 // Note: ZodType<ApiUser> annotation omitted because the generated type
