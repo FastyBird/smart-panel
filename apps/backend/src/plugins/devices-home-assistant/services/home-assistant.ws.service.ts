@@ -6,9 +6,9 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
@@ -41,7 +41,7 @@ export interface WsEventService {
  * the IManagedPluginService interface for centralized lifecycle management.
  */
 @Injectable()
-export class HomeAssistantWsService implements IManagedPluginService {
+export class HomeAssistantWsService extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		'WsService',
@@ -55,8 +55,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	private ws: WebSocket | null = null;
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
-
-	private state: ServiceState = 'stopped';
 
 	private nextId = 1;
 
@@ -87,13 +85,13 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 */
 	private intentionalDisconnect = false;
 
-	private startStopLock: Promise<void> = Promise.resolve();
-
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly supervisorService: HaSupervisorService,
-	) {}
+	) {
+		super();
+	}
 
 	registerEventsHandler(event: string, handler: WsEventService) {
 		if (this.eventsHandlers.has(event)) {
@@ -199,13 +197,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 
 			this.state = 'stopped';
 		});
-	}
-
-	/**
-	 * Get the current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
 	}
 
 	/**
@@ -649,24 +640,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		if (this.pingInterval) {
 			clearInterval(this.pingInterval);
 			this.pingInterval = null;
-		}
-	}
-
-	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const previousLock = this.startStopLock;
-
-		let releaseLock: () => void = () => {};
-
-		this.startStopLock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		try {
-			await previousLock;
-
-			return await fn();
-		} finally {
-			releaseLock();
 		}
 	}
 

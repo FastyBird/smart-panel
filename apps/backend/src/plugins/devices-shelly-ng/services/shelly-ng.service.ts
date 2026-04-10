@@ -8,9 +8,9 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
@@ -30,7 +30,7 @@ import { ShellyWsServerService } from './shelly-ws-server.service';
  * the IManagedPluginService interface for centralized lifecycle management.
  */
 @Injectable()
-export class ShellyNgService implements IManagedPluginService {
+export class ShellyNgService extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_NG_PLUGIN_NAME,
 		'ShellyService',
@@ -43,8 +43,6 @@ export class ShellyNgService implements IManagedPluginService {
 
 	private pluginConfig: ShellyNgConfigModel | null = null;
 
-	private state: ServiceState = 'stopped';
-	private startStopLock: Promise<void> = Promise.resolve();
 	private pendingRestart: Promise<void> | null = null;
 	private restartTimer: NodeJS.Timeout | null = null;
 	private healthCheckTimer: NodeJS.Timeout | null = null;
@@ -71,7 +69,9 @@ export class ShellyNgService implements IManagedPluginService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly wsServer: ShellyWsServerService,
-	) {}
+	) {
+		super();
+	}
 
 	/**
 	 * Start the service.
@@ -130,13 +130,6 @@ export class ShellyNgService implements IManagedPluginService {
 					return;
 			}
 		});
-	}
-
-	/**
-	 * Get the current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
 	}
 
 	/**
@@ -227,12 +220,6 @@ export class ShellyNgService implements IManagedPluginService {
 		});
 
 		return this.pendingRestart;
-	}
-
-	private withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const run = async () => fn();
-		this.startStopLock = this.startStopLock.then(run, run) as Promise<void>;
-		return this.startStopLock as unknown as Promise<T>;
 	}
 
 	private async doStart(): Promise<void> {

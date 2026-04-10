@@ -30,7 +30,14 @@ export class StorageService {
 	 * Called by managed services after they start their plugin.
 	 *
 	 * The plugin is assigned to primary or fallback role based on the
-	 * current StorageConfigModel settings.
+	 * current StorageConfigModel settings. All buffered schemas are
+	 * flushed to the plugin upon registration.
+	 *
+	 * **Ordering note:** Some storage backends (e.g., InfluxDB v1) snapshot
+	 * schemas at construction time during initialize(). For those, call
+	 * registerPlugin() BEFORE initialize() so schemas are available.
+	 * Other backends (e.g., InfluxDB v2) use lazy lookup, so
+	 * registerPlugin() can be called AFTER initialize().
 	 */
 	registerPlugin(name: string, plugin: StoragePlugin): void {
 		const config = this.getConfig();
@@ -54,19 +61,20 @@ export class StorageService {
 	}
 
 	/**
-	 * Unregister a storage plugin.
+	 * Unregister a storage plugin by name.
 	 * Called by managed services when they stop their plugin.
+	 *
+	 * Matches by plugin instance name rather than config role to avoid
+	 * stale references when config changes race with service stop.
 	 */
 	unregisterPlugin(name: string): void {
-		const config = this.getConfig();
-
-		if (name === config.primaryStorage && this.primary?.name === name) {
+		if (this.primary?.name === name) {
 			this.primary = null;
 
 			this.logger.log(`Primary storage unregistered: ${name}`);
 		}
 
-		if (name === config.fallbackStorage && this.fallback?.name === name) {
+		if (this.fallback?.name === name) {
 			this.fallback = null;
 
 			this.logger.log(`Fallback storage unregistered: ${name}`);
