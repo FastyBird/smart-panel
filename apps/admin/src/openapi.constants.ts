@@ -501,7 +501,8 @@ export type SpacesModuleSensorRoleReadingsSchema = components['schemas']['Spaces
 export type SpacesModuleEnvironmentSummarySchema = components['schemas']['SpacesModuleDataEnvironmentSummary'];
 export type SpacesModuleSafetyAlertSchema = components['schemas']['SpacesModuleDataSafetyAlert'];
 export type SpacesModuleSuggestionFeedbackSchema = components['schemas']['SpacesModuleSuggestionFeedback'];
-export type SpacesModuleMediaEndpointType = components['schemas']['SpacesModuleDataMediaCapabilitySummary']['suggested_endpoint_types'];
+export { SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types as SpacesModuleMediaEndpointType } from './openapi';
+export { PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey as SpacesModuleMediaActivityKey } from './openapi';
 
 // Weather Plugin Enums
 // ====================
