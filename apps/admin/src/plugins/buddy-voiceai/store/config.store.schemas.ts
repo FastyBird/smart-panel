@@ -1,7 +1,10 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import { type BuddyVoiceaiPluginConfigSchema } from '../../../openapi.constants';
 import { BUDDY_VOICEAI_PLUGIN_NAME } from '../buddy-voiceai.constants';
+
+type ApiConfig = BuddyVoiceaiPluginConfigSchema;
 
 export const VoiceaiConfigSchema = ConfigPluginSchema.extend({
 	apiKey: z.string().trim().nullable(),
@@ -19,7 +22,7 @@ export const VoiceaiConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.and(
 	})
 );
 
-export const VoiceaiConfigResSchema= ConfigPluginResSchema.and(
+export const VoiceaiConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_VOICEAI_PLUGIN_NAME),
 		api_key: z.string().trim().nullable(),

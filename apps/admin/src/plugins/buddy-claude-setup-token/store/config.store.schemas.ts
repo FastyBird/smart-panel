@@ -1,7 +1,10 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import { type BuddyClaudeSetupTokenPluginConfigSchema } from '../../../openapi.constants';
 import { BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME } from '../buddy-claude-setup-token.constants';
+
+type ApiConfig = BuddyClaudeSetupTokenPluginConfigSchema;
 
 export const ClaudeSetupTokenConfigSchema = ConfigPluginSchema.extend({
 	accessToken: z.string().trim().nullable(),
@@ -19,7 +22,7 @@ export const ClaudeSetupTokenConfigUpdateReqSchema= ConfigPluginUpdateReqSchema.
 	})
 );
 
-export const ClaudeSetupTokenConfigResSchema= ConfigPluginResSchema.and(
+export const ClaudeSetupTokenConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME),
 		access_token: z.string().trim().nullable(),

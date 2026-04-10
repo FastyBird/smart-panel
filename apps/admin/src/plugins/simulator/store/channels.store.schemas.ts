@@ -1,7 +1,11 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
+
+import type { SimulatorPluginChannelSchema } from '../../../openapi.constants';
 
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
 import { SIMULATOR_TYPE } from '../simulator.constants';
+
+type ApiChannel = SimulatorPluginChannelSchema;
 
 export const SimulatorChannelSchema = ChannelSchema;
 
@@ -20,7 +24,7 @@ export const SimulatorChannelUpdateReqSchema= ChannelUpdateReqSchema.and(
 	})
 );
 
-export const SimulatorChannelResSchema= ChannelResSchema.and(
+export const SimulatorChannelResSchema: ZodType<ApiChannel> = ChannelResSchema.and(
 	z.object({
 		type: z.literal(SIMULATOR_TYPE),
 	})

@@ -1,7 +1,10 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
+import type { DevicesShellyV1PluginChannelSchema } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+
+type ApiChannel = DevicesShellyV1PluginChannelSchema;
 
 export const ShellyV1ChannelSchema = ChannelSchema;
 
@@ -20,7 +23,7 @@ export const ShellyV1ChannelUpdateReqSchema = ChannelUpdateReqSchema.and(
 	})
 );
 
-export const ShellyV1ChannelResSchema = ChannelResSchema.and(
+export const ShellyV1ChannelResSchema: ZodType<ApiChannel> = ChannelResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_V1_TYPE),
 	})

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import {
 	ChannelPropertyCreateReqSchema,
@@ -6,7 +6,10 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
+import type { DevicesShellyV1PluginChannelPropertySchema } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+
+type ApiChannelProperty = DevicesShellyV1PluginChannelPropertySchema;
 
 export const ShellyV1ChannelPropertySchema = ChannelPropertySchema;
 
@@ -25,7 +28,7 @@ export const ShellyV1ChannelPropertyUpdateReqSchema = ChannelPropertyUpdateReqSc
 	})
 );
 
-export const ShellyV1ChannelPropertyResSchema = ChannelPropertyResSchema.and(
+export const ShellyV1ChannelPropertyResSchema: ZodType<ApiChannelProperty> = ChannelPropertyResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_SHELLY_V1_TYPE),
 	})

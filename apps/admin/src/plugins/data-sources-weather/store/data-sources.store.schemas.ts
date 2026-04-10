@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
 import {
 	DataSourceCreateReqSchema,
@@ -6,18 +6,25 @@ import {
 	DataSourceSchema,
 	DataSourceUpdateReqSchema,
 } from '../../../modules/dashboard';
+import type {
+	DataSourcesWeatherPluginCurrentWeatherDataSourceSchema,
+	DataSourcesWeatherPluginForecastDayDataSourceSchema,
+} from '../../../openapi.constants';
 import {
 	DATA_SOURCES_WEATHER_CURRENT_TYPE,
 	DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
 	WeatherDataField,
 } from '../data-sources-weather.constants';
 
+type ApiCurrentWeatherDataSource = DataSourcesWeatherPluginCurrentWeatherDataSourceSchema;
+type ApiForecastDayDataSource = DataSourcesWeatherPluginForecastDayDataSourceSchema;
+
 // STORE STATE
 // ===========
 
 export const CurrentWeatherDataSourceSchema = DataSourceSchema.extend({
 	locationId: z.string().uuid().optional().nullable().default(null),
-	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.TEMPERATURE),
+	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.temperature),
 	icon: z
 		.string()
 		.trim()
@@ -35,7 +42,7 @@ export const CurrentWeatherDataSourceSchema = DataSourceSchema.extend({
 export const ForecastDayDataSourceSchema = DataSourceSchema.extend({
 	locationId: z.string().uuid().optional().nullable().default(null),
 	dayOffset: z.number().min(0).max(7).default(1),
-	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.TEMPERATURE_MAX),
+	field: z.nativeEnum(WeatherDataField).default(WeatherDataField.temperature_max),
 	icon: z
 		.string()
 		.trim()
@@ -93,7 +100,7 @@ export const CurrentWeatherDataSourceUpdateReqSchema = DataSourceUpdateReqSchema
 	})
 );
 
-export const CurrentWeatherDataSourceResSchema = DataSourceResSchema.and(
+export const CurrentWeatherDataSourceResSchema: ZodType<ApiCurrentWeatherDataSource> = DataSourceResSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_CURRENT_TYPE),
 		location_id: z.string().uuid().optional().nullable(),
@@ -145,7 +152,7 @@ export const ForecastDayDataSourceUpdateReqSchema = DataSourceUpdateReqSchema.an
 	})
 );
 
-export const ForecastDayDataSourceResSchema = DataSourceResSchema.and(
+export const ForecastDayDataSourceResSchema: ZodType<ApiForecastDayDataSource> = DataSourceResSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE),
 		location_id: z.string().uuid().optional().nullable(),

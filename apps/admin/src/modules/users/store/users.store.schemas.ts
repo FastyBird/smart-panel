@@ -1,7 +1,10 @@
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
-import { UsersModuleUserRole } from '../../../openapi.constants';
+import type { UsersModuleCreateUserSchema } from '../../../openapi.constants';
+import { UsersModuleUserLanguage, UsersModuleUserRole } from '../../../openapi.constants';
+
+type ApiCreateUser = UsersModuleCreateUserSchema;
 
 export const UserIdSchema = z.string().uuid();
 
@@ -18,7 +21,7 @@ export const UserSchema = z.object({
 	firstName: z.string().nullable().default(null),
 	lastName: z.string().nullable().default(null),
 	role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
-	language: z.string().nullable().default(null),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -67,7 +70,7 @@ export const UsersSetActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable(),
 		role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
-		language: z.string().nullable().optional(),
+		language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 	}),
 });
 
@@ -105,7 +108,7 @@ export const UsersAddActionPayloadSchema = z.object({
 			.nullable()
 			.optional(),
 		role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
-		language: z.string().nullable().optional(),
+		language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 	}),
 });
 
@@ -134,7 +137,7 @@ export const UsersEditActionPayloadSchema = z.object({
 			.nullable()
 			.optional(),
 		role: z.nativeEnum(UsersModuleUserRole).optional(),
-		language: z.string().nullable().optional(),
+		language: z.nativeEnum(UsersModuleUserLanguage).nullable().optional(),
 	}),
 });
 
@@ -149,7 +152,7 @@ export const UsersRemoveActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const UserCreateReqSchema = z.object({
+export const UserCreateReqSchema: ZodType<ApiCreateUser> = z.object({
 	id: z.string().uuid().optional(),
 	username: z.string().trim().nonempty(),
 	password: z.string().trim().nonempty(),
@@ -173,7 +176,7 @@ export const UserCreateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.string().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
 export const UserUpdateReqSchema = z.object({
@@ -199,9 +202,12 @@ export const UserUpdateReqSchema = z.object({
 		.nullable()
 		.optional(),
 	role: z.nativeEnum(UsersModuleUserRole).optional(),
-	language: z.string().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
+// Note: ZodType<ApiUser> annotation omitted because the generated type
+// incorrectly marks language as non-nullable, but the backend returns null
+// for users who haven't set a language preference (entity has nullable: true).
 export const UserResSchema = z.object({
 	id: z.string().uuid(),
 	username: z.string().trim().nonempty(),
@@ -210,7 +216,7 @@ export const UserResSchema = z.object({
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
 	role: z.nativeEnum(UsersModuleUserRole),
-	language: z.string().nullable().optional(),
-	created_at: z.string().date(),
-	updated_at: z.string().date().nullable().optional(),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable(),
+	created_at: z.string(),
+	updated_at: z.string().nullable().optional(),
 });

@@ -519,8 +519,9 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 					params: { path: { id: spaceId.value } },
 					body: {
 						data: {
+							// activityKey is a runtime string but the generated type expects an enum
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						activity_key: activityKey as any,
+							activity_key: activityKey as any,
 							display_endpoint_id: payload.displayEndpointId ?? undefined,
 							audio_endpoint_id: payload.audioEndpointId ?? undefined,
 							source_endpoint_id: payload.sourceEndpointId ?? undefined,
@@ -652,8 +653,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 		try {
 			const { data: responseData, error } = await backend.client.POST(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/preview` as any,
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/preview`,
 				{
 					params: {
 						path: { id: spaceId.value, activityKey },
