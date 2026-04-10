@@ -251,7 +251,7 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 	};
 
 	const onEvent = (payload: { id: ISpace['id']; data: Record<string, unknown> }): void => {
-		const space = transformSpaceResponse(payload.data as unknown as ApiSpace);
+		const space = transformSpaceResponse(payload.data as ApiSpace);
 		data.value[space.id] = space;
 	};
 

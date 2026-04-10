@@ -73,7 +73,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 			const element = getModuleElement(payload.type);
 
 			return set({
-				data: transformConfigModuleResponse(payload.data as unknown as IConfigModuleRes, element?.schemas?.moduleConfigSchema || ConfigModuleSchema),
+				data: transformConfigModuleResponse(payload.data as IConfigModuleRes, element?.schemas?.moduleConfigSchema || ConfigModuleSchema),
 			});
 		};
 

@@ -151,7 +151,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
 				if (responseData?.data) {
-					applyInfoResponse(responseData.data as Record<string, unknown>);
+					applyInfoResponse(responseData.data);
 				}
 			} catch {
 				// Silently fail - endpoint may not exist yet
@@ -171,7 +171,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 			const { data: responseData } = await backend.client.POST(UPDATE_CHECK_PATH);
 
 			if (responseData?.data) {
-				applyInfoResponse(responseData.data as Record<string, unknown>);
+				applyInfoResponse(responseData.data);
 			}
 		} catch (err) {
 			error.value = 'systemModule.messages.update.checkFailed';
@@ -242,12 +242,13 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
 				if (responseData?.data) {
-					const responseStatus = (responseData.data as Record<string, unknown>).status as string | undefined;
+					const typedData = responseData.data as Record<string, unknown>;
+					const responseStatus = typedData.status as string | undefined;
 
 					// Capture current_version before applyInfoResponse overwrites latestVersion
-					const newVersion = (responseData.data as Record<string, unknown>).current_version as string | undefined;
+					const newVersion = typedData.current_version as string | undefined;
 
-					applyInfoResponse(responseData.data as Record<string, unknown>);
+					applyInfoResponse(typedData);
 					lastSuccessAt = Date.now();
 
 					if (responseStatus === 'complete') {

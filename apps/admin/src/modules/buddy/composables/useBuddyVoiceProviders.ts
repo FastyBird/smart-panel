@@ -56,7 +56,7 @@ export const useBuddyVoiceProviders = (kind: 'stt' | 'tts'): IUseBuddyVoiceProvi
 				return;
 			}
 
-			state.statuses.value = responseData.data as IVoiceProviderStatus[];
+			state.statuses.value = responseData.data;
 		} catch {
 			state.failed.value = true;
 		} finally {

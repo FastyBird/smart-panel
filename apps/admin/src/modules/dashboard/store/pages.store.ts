@@ -98,7 +98,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 		return set({
 			id: payload.id,
-			data: transformPageResponse(payload.data as unknown as IPageRes, element?.schemas?.pageSchema || PageSchema),
+			data: transformPageResponse(payload.data as IPageRes, element?.schemas?.pageSchema || PageSchema),
 		});
 	};
 

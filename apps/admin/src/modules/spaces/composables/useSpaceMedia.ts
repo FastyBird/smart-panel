@@ -419,8 +419,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error('Failed to fetch media endpoints');
 			}
 
-			const result = (responseData.data ?? {}) as Record<string, unknown>;
-			const rawEndpoints = (result.endpoints ?? []) as Record<string, unknown>[];
+			const result = responseData.data ?? {};
+			const rawEndpoints = ((result as Record<string, unknown>).endpoints ?? []) as Record<string, unknown>[];
 			endpointsData.value = rawEndpoints.map(transformEndpoint);
 		} catch (e: unknown) {
 			endpointsError.value = e instanceof Error ? e.message : 'Unknown error';
@@ -445,8 +445,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error('Failed to fetch media bindings');
 			}
 
-			const rawBindings = (responseData.data ?? []) as unknown as Record<string, unknown>[];
-			bindingsData.value = rawBindings.map(transformBinding);
+			const rawBindings = responseData.data ?? [];
+			bindingsData.value = (rawBindings as Record<string, unknown>[]).map(transformBinding);
 		} catch (e: unknown) {
 			bindingsError.value = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
@@ -486,7 +486,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error(message);
 			}
 
-			const updated = transformBinding(responseData.data as unknown as Record<string, unknown>);
+			const updated = transformBinding(responseData.data as Record<string, unknown>);
 
 			// Update local state
 			const idx = bindingsData.value.findIndex((b) => b.id === updated.id);
@@ -541,7 +541,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error(message);
 			}
 
-			const created = transformBinding(responseData.data as unknown as Record<string, unknown>);
+			const created = transformBinding(responseData.data as Record<string, unknown>);
 			bindingsData.value.push(created);
 
 			return created;
@@ -597,8 +597,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error('Failed to apply defaults');
 			}
 
-			const rawBindings = (responseData.data ?? []) as unknown as Record<string, unknown>[];
-			bindingsData.value = rawBindings.map(transformBinding);
+			const rawBindings = responseData.data ?? [];
+			bindingsData.value = (rawBindings as Record<string, unknown>[]).map(transformBinding);
 		} catch (e: unknown) {
 			bindingsError.value = e instanceof Error ? e.message : 'Unknown error';
 			throw e;
@@ -624,8 +624,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error('Failed to fetch active state');
 			}
 
-			const raw = responseData.data as Record<string, unknown> | null;
-			activeState.value = raw ? transformActiveEntity(raw) : null;
+			activeState.value = responseData.data ? transformActiveEntity(responseData.data as Record<string, unknown>) : null;
 		} catch (e: unknown) {
 			activationError.value = e instanceof Error ? e.message : 'Unknown error';
 			activationErrorSource.value = 'fetch';
@@ -667,7 +666,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error(message);
 			}
 
-			return transformDryRunPreview(responseData.data as unknown as Record<string, unknown>);
+			return transformDryRunPreview(responseData.data as Record<string, unknown>);
 		} finally {
 			previewing.value = false;
 		}
@@ -702,7 +701,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error(message);
 			}
 
-			const result = transformActivationResult(responseData.data as unknown as Record<string, unknown>);
+			const result = transformActivationResult(responseData.data as Record<string, unknown>);
 			activeState.value = result;
 
 			// Poll for stable state if still activating
@@ -745,7 +744,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				throw new Error(message);
 			}
 
-			const result = transformActivationResult(responseData.data as unknown as Record<string, unknown>);
+			const result = transformActivationResult(responseData.data as Record<string, unknown>);
 			activeState.value = result;
 
 			return result;

@@ -75,7 +75,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 		const onEvent = (payload: IDevicesControlsOnEventActionPayload): IDeviceControl => {
 			return set({
 				id: payload.id,
-				data: transformDeviceControlResponse(payload.data as unknown as IDeviceControlRes),
+				data: transformDeviceControlResponse(payload.data as IDeviceControlRes),
 			});
 		};
 

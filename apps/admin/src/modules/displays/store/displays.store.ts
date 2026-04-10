@@ -69,7 +69,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 	const onEvent = (payload: IDisplaysOnEventActionPayload): IDisplay => {
 		return set({
 			id: payload.id,
-			data: transformDisplayResponse(payload.data as unknown as IDisplayRes),
+			data: transformDisplayResponse(payload.data as IDisplayRes),
 		});
 	};
 

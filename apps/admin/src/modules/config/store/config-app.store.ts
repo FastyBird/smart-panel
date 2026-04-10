@@ -68,7 +68,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 
 	const onEvent = (payload: IConfigAppOnEventActionPayload): IConfigApp => {
 		return set({
-			data: transformConfigAppResponse(payload.data as unknown as IConfigAppRes),
+			data: transformConfigAppResponse(payload.data as IConfigAppRes),
 		});
 	};
 

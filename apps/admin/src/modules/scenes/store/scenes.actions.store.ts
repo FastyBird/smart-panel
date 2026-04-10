@@ -82,7 +82,7 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 		const onEvent = (payload: IScenesActionsOnEventActionPayload): ISceneAction => {
 			return set({
 				id: payload.id,
-				data: transformSceneActionResponse(payload.data as unknown as ISceneActionRes),
+				data: transformSceneActionResponse(payload.data as ISceneActionRes),
 			});
 		};
 

@@ -43,7 +43,7 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 
 	const onEvent = (payload: ISystemInfoOnEventActionPayload): ISystemInfo => {
 		return set({
-			data: transformSystemInfoResponse(payload.data as unknown as ISystemInfoRes),
+			data: transformSystemInfoResponse(payload.data as ISystemInfoRes),
 		});
 	};
 

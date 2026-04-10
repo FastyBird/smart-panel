@@ -97,7 +97,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			return set({
 				id: payload.id,
 				data: transformChannelPropertyResponse(
-					payload.data as unknown as IChannelPropertyRes,
+					payload.data as IChannelPropertyRes,
 					element?.schemas?.channelPropertySchema || ChannelPropertySchema
 				),
 			});

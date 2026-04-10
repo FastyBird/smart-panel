@@ -43,7 +43,7 @@ export const useBuddyProviders = (): IUseBuddyProviders => {
 				return;
 			}
 
-			providerStatuses.value = responseData.data as IProviderStatus[];
+			providerStatuses.value = responseData.data;
 		} catch {
 			providerFetchFailed.value = true;
 		} finally {

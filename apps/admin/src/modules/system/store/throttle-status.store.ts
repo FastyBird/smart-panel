@@ -45,7 +45,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 
 		const onEvent = (payload: IThrottleStatusOnEventActionPayload): IThrottleStatus => {
 			return set({
-				data: transformThrottleStatusResponse(payload.data as unknown as IThrottleStatusRes),
+				data: transformThrottleStatusResponse(payload.data as IThrottleStatusRes),
 			});
 		};
 

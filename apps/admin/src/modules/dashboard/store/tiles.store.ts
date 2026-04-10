@@ -110,7 +110,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		return set({
 			id: payload.id,
 			parent: payload.parent,
-			data: transformTileResponse(payload.data as unknown as ITileRes, element?.schemas?.tileSchema || TileSchema),
+			data: transformTileResponse(payload.data as ITileRes, element?.schemas?.tileSchema || TileSchema),
 		});
 	};
 

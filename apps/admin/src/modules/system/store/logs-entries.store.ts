@@ -64,7 +64,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 	const onEvent = (payload: ILogsEntriesOnEventActionPayload): ILogEntry => {
 		return set({
 			id: payload.id,
-			data: transformLogEntryResponse(payload.data as unknown as ILogEntryRes),
+			data: transformLogEntryResponse(payload.data as ILogEntryRes),
 		});
 	};
 

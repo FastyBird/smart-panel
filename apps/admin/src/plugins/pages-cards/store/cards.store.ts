@@ -95,7 +95,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 	const onEvent = (payload: ICardsOnEventActionPayload): ICard => {
 		return set({
 			id: payload.id,
-			data: transformCardResponse(payload.data as unknown as ICardRes),
+			data: transformCardResponse(payload.data as ICardRes),
 		});
 	};
 

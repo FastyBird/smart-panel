@@ -75,7 +75,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 		const onEvent = (payload: IChannelsControlsOnEventActionPayload): IChannelControl => {
 			return set({
 				id: payload.id,
-				data: transformChannelControlResponse(payload.data as unknown as IChannelControlRes),
+				data: transformChannelControlResponse(payload.data as IChannelControlRes),
 			});
 		};
 
