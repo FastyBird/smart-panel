@@ -59,6 +59,12 @@ export class InfluxV1ManagedService implements IManagedPluginService {
 					break;
 				case 'stopped':
 				case 'error':
+					// Clean up any leftover storage from a previous failed start
+					if (this.storage) {
+						await this.storage.destroy().catch(() => {});
+						this.storage = null;
+					}
+
 					break;
 			}
 

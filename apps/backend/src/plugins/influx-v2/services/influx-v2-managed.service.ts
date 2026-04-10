@@ -59,6 +59,12 @@ export class InfluxV2ManagedService implements IManagedPluginService {
 					break;
 				case 'stopped':
 				case 'error':
+					// Clean up any leftover storage from a previous failed start
+					if (this.storage) {
+						await this.storage.destroy().catch(() => {});
+						this.storage = null;
+					}
+
 					break;
 			}
 
@@ -92,6 +98,9 @@ export class InfluxV2ManagedService implements IManagedPluginService {
 				this.logger.log('InfluxDB v2 storage service started successfully');
 			} catch (error) {
 				const err = error as Error;
+
+				// Unregister in case registerPlugin was already called
+				this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
 
 				this.logger.error(`Failed to start InfluxDB v2 storage: ${err.message}`, err.stack);
 				this.state = 'error';

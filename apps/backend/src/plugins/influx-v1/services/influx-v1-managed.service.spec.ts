@@ -146,7 +146,7 @@ describe('InfluxV1ManagedService', () => {
 			expect(svc.getState()).toBe('started');
 		});
 
-		it('can restart from error state', async () => {
+		it('can restart from error state and destroys old storage first', async () => {
 			(MockInfluxV1Storage.prototype.initialize as jest.Mock).mockRejectedValueOnce(new Error('fail'));
 
 			await expect(svc.start()).rejects.toThrow('fail');
@@ -154,9 +154,12 @@ describe('InfluxV1ManagedService', () => {
 
 			// Restore normal behavior
 			(MockInfluxV1Storage.prototype.initialize as jest.Mock).mockResolvedValue(undefined);
+			(MockInfluxV1Storage.prototype.destroy as jest.Mock).mockClear();
 
 			await svc.start();
 
+			// Old storage should have been destroyed before creating new one
+			expect(MockInfluxV1Storage.prototype.destroy).toHaveBeenCalledTimes(1);
 			expect(svc.getState()).toBe('started');
 		});
 	});

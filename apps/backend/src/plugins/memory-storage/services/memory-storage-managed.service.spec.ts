@@ -94,16 +94,19 @@ describe('MemoryStorageManagedService', () => {
 			expect(svc.getState()).toBe('started');
 		});
 
-		it('can restart from error state', async () => {
+		it('can restart from error state and destroys old storage first', async () => {
 			(MockMemoryStorage.prototype.initialize as jest.Mock).mockRejectedValueOnce(new Error('fail'));
 
 			await expect(svc.start()).rejects.toThrow('fail');
 			expect(svc.getState()).toBe('error');
 
 			(MockMemoryStorage.prototype.initialize as jest.Mock).mockResolvedValue(undefined);
+			(MockMemoryStorage.prototype.destroy as jest.Mock).mockClear();
 
 			await svc.start();
 
+			// Old storage should have been destroyed before creating new one
+			expect(MockMemoryStorage.prototype.destroy).toHaveBeenCalledTimes(1);
 			expect(svc.getState()).toBe('started');
 		});
 	});

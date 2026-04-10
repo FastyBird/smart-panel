@@ -52,6 +52,12 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 					break;
 				case 'stopped':
 				case 'error':
+					// Clean up any leftover storage from a previous failed start
+					if (this.storage) {
+						await this.storage.destroy().catch(() => {});
+						this.storage = null;
+					}
+
 					break;
 			}
 
@@ -72,6 +78,9 @@ export class MemoryStorageManagedService implements IManagedPluginService {
 				this.logger.log('In-memory storage service started successfully');
 			} catch (error) {
 				const err = error as Error;
+
+				// Unregister in case registerPlugin was already called
+				this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
 
 				this.logger.error(`Failed to start in-memory storage: ${err.message}`, err.stack);
 				this.state = 'error';
