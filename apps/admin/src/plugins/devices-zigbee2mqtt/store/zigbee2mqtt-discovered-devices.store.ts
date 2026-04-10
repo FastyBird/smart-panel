@@ -167,7 +167,7 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
 						responseData.data.map((device) => {
-							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device);
+							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device as ApiDiscoveredDeviceResponse);
 
 							return [transformed.id, transformed];
 						})
