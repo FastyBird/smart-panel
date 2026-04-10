@@ -207,7 +207,10 @@ export const UserUpdateReqSchema: ZodType<ApiUpdateUser> = z.object({
 	language: z.nativeEnum(UsersModuleUserLanguage).optional(),
 });
 
-export const UserResSchema: ZodType<ApiUser> = z.object({
+// Note: ZodType<ApiUser> annotation omitted because the generated type
+// incorrectly marks language as non-nullable, but the backend returns null
+// for users who haven't set a language preference (entity has nullable: true).
+export const UserResSchema = z.object({
 	id: z.string().uuid(),
 	username: z.string().trim().nonempty(),
 	email: z.string().email().trim().nullable(),
@@ -215,7 +218,7 @@ export const UserResSchema: ZodType<ApiUser> = z.object({
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
 	role: z.nativeEnum(UsersModuleUserRole),
-	language: z.nativeEnum(UsersModuleUserLanguage),
+	language: z.nativeEnum(UsersModuleUserLanguage).nullable(),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional(),
 });
