@@ -186,7 +186,7 @@ export const useActions = (): IUseActions => {
 			);
 
 			if (responseData?.data) {
-				return responseData.data;
+				return responseData.data as IActionHistoryRecord[];
 			}
 
 			return [];

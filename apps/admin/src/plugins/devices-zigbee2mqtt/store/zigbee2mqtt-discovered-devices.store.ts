@@ -18,7 +18,7 @@ import type {
 	IZigbee2mqttDiscoveredDevicesUnsetActionPayload,
 	Zigbee2mqttDiscoveredDevicesStoreSetup,
 } from './zigbee2mqtt-discovered-devices.store.types';
-import { transformZigbee2mqttDiscoveredDeviceResponse } from './zigbee2mqtt-discovered-devices.transformers';
+import { type ApiDiscoveredDeviceResponse, transformZigbee2mqttDiscoveredDeviceResponse } from './zigbee2mqtt-discovered-devices.transformers';
 
 const defaultSemaphore: IZigbee2mqttDiscoveredDevicesStateSemaphore = {
 	fetching: {
@@ -119,7 +119,7 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 				);
 
 				if (typeof responseData !== 'undefined') {
-					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data);
+					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data as ApiDiscoveredDeviceResponse);
 
 					data.value[transformed.id] = transformed;
 
