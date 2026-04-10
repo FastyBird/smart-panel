@@ -78,20 +78,26 @@ export class InfluxV1ManagedService implements IManagedPluginService {
 					password: config.password,
 				});
 
+				// Register BEFORE initialize so buffered schemas are flushed
+				// into the storage's schema array. InfluxV1Storage.initialize()
+				// passes this.schemas to the InfluxDB constructor which
+				// snapshots them at construction time.
+				this.storageService.registerPlugin(INFLUX_V1_PLUGIN_NAME, this.storage);
+
 				await this.storage.initialize();
 
 				if (!this.storage.isAvailable()) {
 					this.logger.warn('InfluxDB not available after initialization — queries will use fallback');
 				}
 
-				// Register with StorageService for primary/fallback assignment
-				this.storageService.registerPlugin(INFLUX_V1_PLUGIN_NAME, this.storage);
-
 				this.state = 'started';
 
 				this.logger.log('InfluxDB v1 storage service started successfully');
 			} catch (error) {
 				const err = error as Error;
+
+				// Unregister since we registered before initialize
+				this.storageService.unregisterPlugin(INFLUX_V1_PLUGIN_NAME);
 
 				this.logger.error(`Failed to start InfluxDB v1 storage: ${err.message}`, err.stack);
 				this.state = 'error';

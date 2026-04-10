@@ -78,8 +78,20 @@ describe('InfluxV1ManagedService', () => {
 	});
 
 	describe('start', () => {
-		it('creates InfluxV1Storage, initializes, and registers with StorageService', async () => {
+		it('registers with StorageService before initialize so schemas are flushed first', async () => {
 			expect(svc.getState()).toBe('stopped');
+
+			const callOrder: string[] = [];
+
+			storageService.registerPlugin.mockImplementation(() => {
+				callOrder.push('registerPlugin');
+			});
+
+			(MockInfluxV1Storage.prototype.initialize as jest.Mock).mockImplementation(() => {
+				callOrder.push('initialize');
+
+				return Promise.resolve();
+			});
 
 			await svc.start();
 
@@ -89,11 +101,12 @@ describe('InfluxV1ManagedService', () => {
 				username: undefined,
 				password: undefined,
 			});
-			expect(MockInfluxV1Storage.prototype.initialize).toHaveBeenCalledTimes(1);
 			expect(storageService.registerPlugin).toHaveBeenCalledWith(
 				INFLUX_V1_PLUGIN_NAME,
 				expect.any(MockInfluxV1Storage),
 			);
+			expect(MockInfluxV1Storage.prototype.initialize).toHaveBeenCalledTimes(1);
+			expect(callOrder).toEqual(['registerPlugin', 'initialize']);
 			expect(svc.getState()).toBe('started');
 		});
 
@@ -111,13 +124,15 @@ describe('InfluxV1ManagedService', () => {
 			expect(svc.getState()).toBe('started');
 		});
 
-		it('sets error state when initialization fails', async () => {
+		it('sets error state and unregisters plugin when initialization fails', async () => {
 			(MockInfluxV1Storage.prototype.initialize as jest.Mock).mockRejectedValue(new Error('Connection refused'));
 
 			await expect(svc.start()).rejects.toThrow('Connection refused');
 
 			expect(svc.getState()).toBe('error');
-			expect(storageService.registerPlugin).not.toHaveBeenCalled();
+			// Plugin was registered before initialize, so it must be unregistered on failure
+			expect(storageService.registerPlugin).toHaveBeenCalledTimes(1);
+			expect(storageService.unregisterPlugin).toHaveBeenCalledWith(INFLUX_V1_PLUGIN_NAME);
 		});
 
 		it('is idempotent when already started', async () => {
