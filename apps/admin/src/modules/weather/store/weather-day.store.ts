@@ -44,7 +44,7 @@ export const useWeatherDay = defineStore<'weather_module-weather-day', WeatherDa
 
 		const onEvent = (payload: IWeatherDayOnEventActionPayload): IWeatherDay => {
 			return set({
-				data: transformWeatherDayResponse(payload.data as unknown as IWeatherDayRes),
+				data: transformWeatherDayResponse(payload.data as IWeatherDayRes),
 			});
 		};
 

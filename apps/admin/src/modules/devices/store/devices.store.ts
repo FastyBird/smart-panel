@@ -100,7 +100,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		return set({
 			id: payload.id,
-			data: transformDeviceResponse(payload.data as unknown as IDeviceRes, element?.schemas?.deviceSchema || DeviceSchema),
+			data: transformDeviceResponse(payload.data as IDeviceRes, element?.schemas?.deviceSchema || DeviceSchema),
 		});
 	};
 

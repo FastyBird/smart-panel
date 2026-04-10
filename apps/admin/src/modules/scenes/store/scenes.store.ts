@@ -83,7 +83,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 	const onEvent = (payload: IScenesOnEventActionPayload): IScene => {
 		return set({
 			id: payload.id,
-			data: transformSceneResponse(payload.data as unknown as ISceneRes, SceneSchema),
+			data: transformSceneResponse(payload.data as ISceneRes, SceneSchema),
 		});
 	};
 

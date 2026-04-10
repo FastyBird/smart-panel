@@ -104,7 +104,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			return set({
 				id: payload.id,
 				parent: payload.parent,
-				data: transformDataSourceResponse(payload.data as unknown as IDataSourceRes, element?.schemas?.dataSourceSchema || DataSourceSchema),
+				data: transformDataSourceResponse(payload.data as IDataSourceRes, element?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		};
 

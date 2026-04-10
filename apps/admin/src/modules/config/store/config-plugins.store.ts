@@ -75,7 +75,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			const element = getPluginElement(payload.type);
 
 			return set({
-				data: transformConfigPluginResponse(payload.data as unknown as IConfigPluginRes, element?.schemas?.pluginConfigSchema || ConfigPluginSchema),
+				data: transformConfigPluginResponse(payload.data as IConfigPluginRes, element?.schemas?.pluginConfigSchema || ConfigPluginSchema),
 			});
 		};
 

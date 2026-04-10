@@ -41,7 +41,7 @@ export const useBuddyMessagingProviders = (): IUseBuddyMessagingProviders => {
 				return;
 			}
 
-			messagingProviderStatuses.value = responseData.data as IMessagingProviderStatus[];
+			messagingProviderStatuses.value = responseData.data;
 		} catch {
 			messagingProviderFetchFailed.value = true;
 		} finally {

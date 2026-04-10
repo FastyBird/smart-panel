@@ -6,7 +6,7 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
-import { type ApiMappingPreviewResponse, transformMappingPreviewRequest, transformMappingPreviewResponse } from '../utils/mapping-preview.transformers';
+import { transformMappingPreviewRequest, transformMappingPreviewResponse } from '../utils/mapping-preview.transformers';
 
 export interface IUseMappingPreview {
 	preview: Ref<IMappingPreviewResponse | null>;
@@ -64,7 +64,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.', 0);
 				}
 
-				const transformed = transformMappingPreviewResponse(responseData.data as ApiMappingPreviewResponse);
+				const transformed = transformMappingPreviewResponse(responseData.data);
 
 				preview.value = transformed;
 				isLoading.value = false;

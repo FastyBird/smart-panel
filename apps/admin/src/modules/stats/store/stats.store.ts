@@ -43,7 +43,7 @@ export const useStats = defineStore<'stats_module-stats', StatsStoreSetup>('stat
 
 	const onEvent = (payload: IStatsOnEventActionPayload): IStats => {
 		return set({
-			data: transformStatsResponse(payload.data as unknown as IStatsRes),
+			data: transformStatsResponse(payload.data as IStatsRes),
 		});
 	};
 

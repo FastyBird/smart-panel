@@ -116,7 +116,7 @@ export const useActions = (): IUseActions => {
 			}
 
 			if (responseData?.data) {
-				actions.value = responseData.data as IExtensionActionDescriptor[];
+				actions.value = responseData.data;
 			} else {
 				actions.value = [];
 			}
@@ -155,7 +155,7 @@ export const useActions = (): IUseActions => {
 			);
 
 			if (responseData?.data) {
-				return responseData.data as IActionResult;
+				return responseData.data;
 			}
 
 			return {
@@ -186,7 +186,7 @@ export const useActions = (): IUseActions => {
 			);
 
 			if (responseData?.data) {
-				return responseData.data as IActionHistoryRecord[];
+				return responseData.data;
 			}
 
 			return [];

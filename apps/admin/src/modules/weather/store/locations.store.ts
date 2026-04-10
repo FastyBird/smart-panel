@@ -85,7 +85,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 		const onEvent = (payload: IWeatherLocationsOnEventActionPayload): IWeatherLocation => {
 			return set({
 				id: payload.id,
-				data: transformLocationResponse(payload.data as unknown as IWeatherLocationRes),
+				data: transformLocationResponse(payload.data as IWeatherLocationRes),
 			});
 		};
 

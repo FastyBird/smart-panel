@@ -97,7 +97,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return;
 			}
 
-			conversations.value = responseData.data as IConversation[];
+			conversations.value = responseData.data;
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
 		} finally {
@@ -122,7 +122,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return undefined;
 			}
 
-			const created = responseData.data as IConversation;
+			const created = responseData.data;
 
 			conversations.value.unshift(created);
 			activeConversationId.value = created.id;
@@ -160,7 +160,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			}
 
 			if (activeConversationId.value === conversationId) {
-				messages.value = responseData.data as IMessage[];
+				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
 			if (!quiet) {

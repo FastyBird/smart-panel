@@ -68,7 +68,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 	const onEvent = (payload: IUsersOnEventActionPayload): IUser => {
 		return set({
 			id: payload.id,
-			data: transformUserResponse(payload.data as unknown as IUserRes),
+			data: transformUserResponse(payload.data as IUserRes),
 		});
 	};
 
@@ -127,7 +127,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			});
 
 			if (typeof responseData !== 'undefined') {
-				const user = transformUserResponse(responseData.data as IUserRes);
+				const user = transformUserResponse(responseData.data);
 
 				data.value[user.id] = user;
 
@@ -159,7 +159,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			if (typeof responseData !== 'undefined') {
 				data.value = Object.fromEntries(
 					responseData.data.map((user) => {
-						const transformedUser = transformUserResponse(user as IUserRes);
+						const transformedUser = transformUserResponse(user);
 
 						return [transformedUser.id, transformedUser];
 					})
@@ -231,7 +231,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				});
 
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const user = transformUserResponse(responseData.data as IUserRes);
+					const user = transformUserResponse(responseData.data);
 
 					data.value[user.id] = user;
 
@@ -308,7 +308,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const user = transformUserResponse(responseData.data as IUserRes);
+					const user = transformUserResponse(responseData.data);
 
 					data.value[user.id] = user;
 
@@ -368,7 +368,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			});
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const user = transformUserResponse(responseData.data as IUserRes);
+				const user = transformUserResponse(responseData.data);
 
 				data.value[user.id] = user;
 

@@ -108,7 +108,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		return set({
 			id: payload.id,
-			data: transformChannelResponse(payload.data as unknown as IChannelRes, element?.schemas?.channelSchema || ChannelSchema),
+			data: transformChannelResponse(payload.data as IChannelRes, element?.schemas?.channelSchema || ChannelSchema),
 		});
 	};
 
