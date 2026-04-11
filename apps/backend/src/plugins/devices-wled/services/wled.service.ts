@@ -6,9 +6,9 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
@@ -35,15 +35,13 @@ import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
  * lifecycle management by PluginServiceManagerService.
  */
 @Injectable()
-export class WledService implements IManagedPluginService {
+export class WledService extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'WledService');
 
 	readonly pluginName = DEVICES_WLED_PLUGIN_NAME;
 	readonly serviceId = 'connector';
 
 	private pluginConfig: WledConfigModel | null = null;
-	private state: ServiceState = 'stopped';
-	private startStopLock: Promise<void> = Promise.resolve();
 	private pollingInterval: NodeJS.Timeout | null = null;
 
 	constructor(
@@ -55,6 +53,8 @@ export class WledService implements IManagedPluginService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {
+		super();
+
 		// Set up adapter callbacks
 		this.wledAdapter.setCallbacks({
 			onDeviceConnected: (event) => this.handleDeviceConnected(event),
@@ -123,13 +123,6 @@ export class WledService implements IManagedPluginService {
 					return;
 			}
 		});
-	}
-
-	/**
-	 * Get the current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
 	}
 
 	/**
@@ -516,26 +509,6 @@ export class WledService implements IManagedPluginService {
 		}
 
 		return this.pluginConfig;
-	}
-
-	/**
-	 * Execute function with lock to prevent concurrent start/stop operations
-	 */
-	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const previousLock = this.startStopLock;
-
-		let releaseLock: () => void;
-
-		this.startStopLock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		try {
-			await previousLock;
-			return await fn();
-		} finally {
-			releaseLock();
-		}
 	}
 
 	/**

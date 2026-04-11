@@ -11,9 +11,9 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import {
@@ -51,7 +51,7 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
  * - Periodic device information updates
  */
 @Injectable()
-export class ShellyV1Service implements IManagedPluginService {
+export class ShellyV1Service extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_V1_PLUGIN_NAME,
 		'ShellyV1Service',
@@ -61,9 +61,6 @@ export class ShellyV1Service implements IManagedPluginService {
 	readonly serviceId = 'connector';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
-
-	private state: ServiceState = 'stopped';
-	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -75,6 +72,8 @@ export class ShellyV1Service implements IManagedPluginService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly httpClient: ShellyV1HttpClientService,
 	) {
+		super();
+
 		// Set up adapter callbacks
 		this.shelliesAdapter.setCallbacks({
 			onDeviceDiscovered: (event) => this.handleDeviceDiscovered(event),
@@ -184,13 +183,6 @@ export class ShellyV1Service implements IManagedPluginService {
 				throw error;
 			}
 		});
-	}
-
-	/**
-	 * Get the current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
 	}
 
 	/**
@@ -592,24 +584,6 @@ export class ShellyV1Service implements IManagedPluginService {
 		}
 
 		return this.pluginConfig;
-	}
-
-	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const previousLock = this.startStopLock;
-
-		let releaseLock: () => void;
-
-		this.startStopLock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		try {
-			await previousLock;
-
-			return await fn();
-		} finally {
-			releaseLock();
-		}
 	}
 
 	private async waitUntil(...states: ServiceState[]): Promise<void> {

@@ -1,255 +1,96 @@
-# Task: Register storage plugins as managed services
+# Task: Storage Plugins → Managed Services
 
 ID: TECH-STORAGE-MANAGED-SERVICES
 Type: technical
 Scope: backend
 Size: medium
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
-In order to monitor and control storage backends (InfluxDB v1, InfluxDB v2) the same way as device plugins,
-As a system administrator,
-I want storage plugins to appear as managed services with start/stop/restart controls, health monitoring, and status visibility in the admin UI.
+In order to have consistent lifecycle management across all plugins
+As a developer / system admin
+I want storage plugins (InfluxV1, MemoryStorage) to participate in the centralized `PluginServiceManagerService` lifecycle — just like device, buddy, and logger plugins already do.
 
 ## 2. Context
 
-- Device plugins (Shelly NG, Shelly V1, Home Assistant, Zigbee2MQTT) and messaging bots (Discord, WhatsApp) implement `IManagedPluginService` for centralized lifecycle management.
-- Storage plugins (influx-v1, influx-v2, memory-storage) currently use a factory pattern in `StorageService` — they're initialized once during app bootstrap with no lifecycle management.
-- If InfluxDB crashes or becomes unavailable after startup, there's no way to restart the connection without restarting the entire application.
-- The `PluginServiceManagerService` already provides: dependency-aware startup, config change handling, REST API for start/stop/restart, CLI commands, runtime metrics (uptime, restart count, last error), and health check support.
-- The admin UI already displays services registered through this system.
-
-### Current architecture
-
-```
-StorageService (modules/storage/)
-  ├── registerPluginFactory(name, factory)     ← called by each plugin during onModuleInit
-  ├── onApplicationBootstrap()                 ← creates plugin instances from factories
-  ├── primary: StoragePlugin | null            ← initialized once, never reconnected
-  └── fallback: StoragePlugin | null           ← same
-
-InfluxV1Plugin (plugins/influx-v1/)
-  ├── influx-v1.plugin.ts                      ← registers factory with StorageService
-  └── services/influx-v1.storage.ts            ← implements StoragePlugin interface
-      ├── initialize()                         ← connects to InfluxDB
-      ├── destroy()                            ← cleanup
-      ├── isAvailable()                        ← returns this.connection !== null
-      └── writePoints/query/...                ← actual I/O
-```
-
-### Target architecture
-
-```
-InfluxV1Plugin (plugins/influx-v1/)
-  ├── influx-v1.plugin.ts                      ← registers factory AND managed service
-  ├── services/influx-v1.service.ts            ← NEW: implements IManagedPluginService
-  │   ├── start()                              ← creates & initializes InfluxV1Storage
-  │   ├── stop()                               ← destroys storage, sets unavailable
-  │   ├── getState()                           ← stopped | starting | started | error
-  │   ├── isHealthy()                          ← pings InfluxDB
-  │   └── onConfigChanged()                    ← detects host/db/auth changes → restartRequired
-  └── services/influx-v1.storage.ts            ← unchanged, still implements StoragePlugin
-
-StorageService (modules/storage/)
-  ├── same factory pattern for plugin creation
-  ├── onPluginStarted(pluginName)              ← NEW: reinitializes storage from factory
-  └── onPluginStopped(pluginName)              ← NEW: marks storage as unavailable
-```
+- All long-running plugin services (Shelly V1, Shelly NG, Home Assistant, WLED, Zigbee2MQTT, Telegram, Discord, WhatsApp, FileLogger, Simulator) implement `IManagedPluginService` and register with `PluginServiceManagerService`.
+- Storage plugins use their own factory-based lifecycle (`StorageService.registerPluginFactory()` → `onApplicationBootstrap` creates instances → `initialize()` / `destroy()`).
+- This means storage plugins are **invisible** in the managed services status dashboard, lack health checks, runtime tracking (uptime, start count, last error), and don't respond to enable/disable config changes through the centralized system.
+- Reference implementations: `FileLoggerService`, `WledService`.
 
 ## 3. Scope
 
 **In scope**
 
-- Create `InfluxV1Service` implementing `IManagedPluginService` in `plugins/influx-v1/`
-- Create `InfluxV2Service` implementing `IManagedPluginService` in `plugins/influx-v2/`
-- Register both services with `PluginServiceManagerService` during plugin `onModuleInit()`
-- Implement health check via InfluxDB ping
-- Implement `onConfigChanged()` to detect connection parameter changes
-- Coordinate with `StorageService` — when managed service starts/stops, storage plugin availability updates accordingly
-- Both services appear in admin UI services list with status, uptime, restart controls
-- Memory storage plugin does NOT need managed service (always available, no external dependency)
+- Create `@Injectable()` managed service wrappers for InfluxV1 and MemoryStorage plugins implementing `IManagedPluginService`.
+- Register them with `PluginServiceManagerService` during `onModuleInit()`.
+- Refactor `StorageService` to support dynamic plugin registration (`registerPlugin` / `unregisterPlugin`) instead of the factory pattern.
+- Remove the factory pattern from `StorageService` (`registerPluginFactory`, `pluginFactories`, `createPlugin`).
+- Remove direct lifecycle management from `StorageService` (`onApplicationBootstrap` plugin creation, `onModuleDestroy` plugin cleanup).
+- Add `isHealthy()` and `getPriority()` to storage managed services (priority 10 — start before device plugins).
+- Add `onConfigChanged()` to InfluxV1 managed service (host/database/credentials changes require restart).
+- Unit tests for both managed services.
 
 **Out of scope**
 
-- Automatic reconnection with backoff (service restart is manual or config-triggered)
-- Changes to the `StoragePlugin` interface
-- Changes to the memory storage plugin
-- Multi-instance support (one InfluxDB connection per plugin)
-- Database migration or historical data backfill after reconnection
+- Admin UI changes (storage services will automatically appear in existing service status views).
+- Panel changes.
+- New API endpoints.
 
 ## 4. Acceptance criteria
 
-- [ ] `InfluxV1Service` implements `IManagedPluginService` with start/stop/getState/isHealthy/onConfigChanged
-- [ ] `InfluxV2Service` implements `IManagedPluginService` with the same contract
-- [ ] Both services are registered with `PluginServiceManagerService` during plugin module init
-- [ ] Services appear in `GET /modules/extensions/services` API response
-- [ ] `POST /modules/extensions/services/:pluginName/:serviceId/restart` successfully reconnects to InfluxDB
-- [ ] `isHealthy()` pings InfluxDB and returns connection status
-- [ ] `onConfigChanged()` returns `{ restartRequired: true }` when host, port, database, or auth changes
-- [ ] When managed service is stopped, `StorageService` falls back to the other storage plugin
-- [ ] When managed service is started, `StorageService` uses it as the configured primary/fallback
-- [ ] Admin UI shows influx services with state indicators and start/stop/restart buttons (existing UI, no changes needed)
-- [ ] Unit tests for service lifecycle: start → started, stop → stopped, start failure → error state
-- [ ] No changes to existing `StoragePlugin` interface or memory storage plugin
+- [x] `InfluxV1ManagedService` implements `IManagedPluginService` and is registered with `PluginServiceManagerService`.
+- [x] `MemoryStorageManagedService` implements `IManagedPluginService` and is registered with `PluginServiceManagerService`.
+- [x] `StorageService` no longer uses the factory pattern; plugins register dynamically via `registerPlugin()`.
+- [x] `StorageService` no longer implements `OnApplicationBootstrap` / `OnModuleDestroy` for plugin lifecycle.
+- [x] Schema buffering continues to work — schemas registered before plugins arrive are flushed when plugins register.
+- [x] Storage plugins appear in `PluginServiceManagerService.getStatus()` with correct state, health, and runtime info.
+- [x] InfluxV1 managed service signals `restartRequired: true` when host/database/credentials config changes.
+- [x] Storage managed services use priority 10 (start before default-priority device plugins).
+- [x] Unit tests cover start, stop, state transitions, health checks, and config change handling.
+- [x] Lint and existing tests pass.
 
 ## 5. Example scenarios
 
-### Scenario: InfluxDB becomes available after initial failure
+### Scenario: Storage plugins appear in managed service status
 
-Given the backend started without InfluxDB running
-And the influx-v1 service shows state "error" in the admin UI
-When the administrator starts InfluxDB and clicks "Restart" on the influx-v1 service
-Then the service reconnects and transitions to state "started"
-And `StorageService` begins using InfluxDB as the primary storage
-And writes go to both InfluxDB and the fallback storage
+Given the application is running with InfluxV1 as primary and MemoryStorage as fallback
+When `PluginServiceManagerService.getStatus()` is called
+Then both `influx-v1-plugin:storage` and `memory-storage-plugin:storage` appear with state `started`
 
-### Scenario: InfluxDB crashes during operation
+### Scenario: InfluxDB config change triggers restart
 
-Given the backend is running with InfluxDB as primary storage
-When InfluxDB crashes
-Then the health check reports unhealthy
-And subsequent queries fall back to memory storage
-When the administrator clicks "Restart" on the influx-v1 service
-Then it reconnects to the recovered InfluxDB
-And normal operation resumes
-
-### Scenario: Config change triggers restart
-
-Given the influx-v1 service is running
-When the administrator changes the InfluxDB host in plugin config
+Given the InfluxV1 managed service is running
+When the admin changes the InfluxDB host in plugin config
 Then `onConfigChanged()` returns `{ restartRequired: true }`
-And the `PluginServiceManagerService` stops and restarts the service with new config
-And the service connects to the new InfluxDB host
+And the `PluginServiceManagerService` performs a stop → start cycle
+
+### Scenario: Storage starts before device plugins
+
+Given storage services have priority 10 and device plugins have default priority 100
+When the application bootstraps
+Then storage services start in level 0 and device plugins start in a later level
 
 ## 6. Technical constraints
 
-- Follow the `ShellyNgService` pattern for state machine with start/stop lock
-- Use `Intl` or standard Node.js APIs for health check (no new dependencies)
-- The `StoragePlugin.initialize()` method should be called inside the managed service's `start()`, not by `StorageService` directly
-- Keep the factory pattern in `StorageService` — the managed service uses the factory to create/recreate storage instances
-- Services must be idempotent: calling `start()` when already started is a no-op
-- Do not modify the `PluginServiceManagerService` — it's generic enough to handle storage services as-is
+- Follow the existing `IManagedPluginService` pattern (see `FileLoggerService`, `WledService`).
+- Do not introduce new dependencies.
+- Do not modify generated code.
+- Pre-release migration policy: no new migrations needed.
 
 ## 7. Implementation hints
 
-### InfluxV1Service skeleton
-
-```typescript
-@Injectable()
-export class InfluxV1Service implements IManagedPluginService {
-  readonly pluginName = INFLUX_V1_PLUGIN_NAME;
-  readonly serviceId = 'connection';
-
-  private state: ServiceState = 'stopped';
-  private startStopLock: Promise<void> = Promise.resolve();
-
-  constructor(
-    private readonly storageService: StorageService,
-    private readonly configService: ConfigService,
-    private readonly logger: Logger,
-  ) {}
-
-  async start(): Promise<void> {
-    return this.withLock(async () => {
-      if (this.state === 'started') return;
-      this.state = 'starting';
-
-      try {
-        // Tell StorageService to (re)create the influx-v1 plugin from its factory
-        await this.storageService.initializePlugin(INFLUX_V1_PLUGIN_NAME);
-        this.state = 'started';
-      } catch (error) {
-        this.state = 'error';
-        throw error;
-      }
-    });
-  }
-
-  async stop(): Promise<void> {
-    return this.withLock(async () => {
-      if (this.state === 'stopped') return;
-      this.state = 'stopping';
-
-      await this.storageService.destroyPlugin(INFLUX_V1_PLUGIN_NAME);
-      this.state = 'stopped';
-    });
-  }
-
-  getState(): ServiceState { return this.state; }
-
-  async isHealthy(): Promise<boolean> {
-    return this.storageService.isPluginAvailable(INFLUX_V1_PLUGIN_NAME);
-  }
-
-  async onConfigChanged(): Promise<ConfigChangeResult> {
-    // Compare cached vs current config for host/port/database/auth changes
-    return { restartRequired: true }; // Safe default: always restart on config change
-  }
-
-  private withLock<T>(fn: () => Promise<T>): Promise<T> {
-    const run = async () => fn();
-    this.startStopLock = this.startStopLock.then(run, run);
-    return this.startStopLock as unknown as Promise<T>;
-  }
-}
-```
-
-### StorageService additions needed
-
-```typescript
-// New methods on StorageService:
-async initializePlugin(pluginName: string): Promise<void> {
-  const factory = this.pluginFactories.get(pluginName);
-  if (!factory) throw new Error(`No factory for ${pluginName}`);
-
-  const plugin = factory();
-  await plugin.initialize();
-
-  // Determine if this is primary or fallback based on config
-  const config = this.getStorageConfig();
-  if (config.primaryStorage === pluginName) {
-    this.primary?.destroy();
-    this.primary = plugin;
-  } else if (config.fallbackStorage === pluginName) {
-    this.fallback?.destroy();
-    this.fallback = plugin;
-  }
-}
-
-async destroyPlugin(pluginName: string): Promise<void> {
-  const config = this.getStorageConfig();
-  if (config.primaryStorage === pluginName && this.primary) {
-    await this.primary.destroy();
-    this.primary = null;
-  } else if (config.fallbackStorage === pluginName && this.fallback) {
-    await this.fallback.destroy();
-    this.fallback = null;
-  }
-}
-
-isPluginAvailable(pluginName: string): boolean {
-  const config = this.getStorageConfig();
-  if (config.primaryStorage === pluginName) return this.primary?.isAvailable() ?? false;
-  if (config.fallbackStorage === pluginName) return this.fallback?.isAvailable() ?? false;
-  return false;
-}
-```
-
-### Plugin registration
-
-```typescript
-// In influx-v1.plugin.ts onModuleInit():
-this.pluginServiceManager.register(this.influxV1Service);
-```
+- Use `FileLoggerService` as the closest reference (simple managed service with config).
+- Storage managed services should create the `StoragePlugin` instance in `start()`, register it with `StorageService`, and unregister + destroy in `stop()`.
+- `StorageService.registerPlugin(name, plugin)` assigns to primary or fallback based on `StorageConfigModel.primaryStorage` / `fallbackStorage`.
+- Keep `pendingSchemas` buffer — flush to each new plugin on registration.
+- Priority 10 ensures storage starts before device plugins (default 100) and stops after them.
 
 ## 8. AI instructions
 
 - Read this file entirely before making any code changes.
 - Start by replying with a short implementation plan (max 10 steps).
-- Use `ShellyNgService` as the reference implementation for the state machine pattern.
-- Keep `StorageService` changes minimal — add only the methods needed for managed service coordination.
-- Do NOT modify the `PluginServiceManagerService` or `IManagedPluginService` interface.
-- The memory storage plugin does NOT get a managed service.
-- Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+- Keep changes scoped to this task and its `Scope`.
+- For each acceptance criterion, either implement it or explain why it's skipped.

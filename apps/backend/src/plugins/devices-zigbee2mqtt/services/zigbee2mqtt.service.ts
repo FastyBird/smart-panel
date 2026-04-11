@@ -5,9 +5,9 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
@@ -28,7 +28,7 @@ import { Z2mWsClientAdapterService } from './ws-client-adapter.service';
  * (via MQTT or WebSocket), device synchronization, and event handling.
  */
 @Injectable()
-export class Zigbee2mqttService implements IManagedPluginService {
+export class Zigbee2mqttService extends BaseManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 		'Zigbee2mqttService',
@@ -38,8 +38,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	readonly serviceId = 'connector';
 
 	private pluginConfig: Zigbee2mqttConfigModel | null = null;
-	private state: ServiceState = 'stopped';
-	private startStopLock: Promise<void> = Promise.resolve();
 	private deviceSyncPending = false;
 	private bridgeOnline = false;
 	private pendingDevices: Z2mDevice[] | null = null;
@@ -58,6 +56,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {
+		super();
+
 		// Default to MQTT adapter initially
 		this.activeAdapter = this.mqttAdapter;
 		this.registerCallbacks(this.activeAdapter);
@@ -123,13 +123,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 					return;
 			}
 		});
-	}
-
-	/**
-	 * Get current service state.
-	 */
-	getState(): ServiceState {
-		return this.state;
 	}
 
 	/**
@@ -567,26 +560,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		}
 
 		return this.pluginConfig;
-	}
-
-	/**
-	 * Execute function with lock
-	 */
-	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
-		const previousLock = this.startStopLock;
-
-		let releaseLock: () => void;
-
-		this.startStopLock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		try {
-			await previousLock;
-			return await fn();
-		} finally {
-			releaseLock();
-		}
 	}
 
 	/**

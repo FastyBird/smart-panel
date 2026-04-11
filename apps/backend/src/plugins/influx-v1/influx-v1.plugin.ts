@@ -1,10 +1,8 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
-import { createExtensionLogger } from '../../common/logger';
-import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { StorageService } from '../../modules/storage/services/storage.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
@@ -12,18 +10,19 @@ import { UpdateInfluxV1ConfigDto } from './dto/update-config.dto';
 import { INFLUX_V1_PLUGIN_NAME } from './influx-v1.constants';
 import { INFLUX_V1_SWAGGER_EXTRA_MODELS } from './influx-v1.openapi';
 import { InfluxV1ConfigModel } from './models/config.model';
-import { InfluxV1Storage } from './services/influx-v1.storage';
+import { InfluxV1ManagedService } from './services/influx-v1-managed.service';
 
 @Module({
 	imports: [StorageModule],
+	providers: [InfluxV1ManagedService],
 })
 export class InfluxV1Plugin implements OnModuleInit {
 	constructor(
 		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly configService: ConfigService,
-		private readonly storageService: StorageService,
+		private readonly influxV1ManagedService: InfluxV1ManagedService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -31,17 +30,6 @@ export class InfluxV1Plugin implements OnModuleInit {
 			type: INFLUX_V1_PLUGIN_NAME,
 			class: InfluxV1ConfigModel,
 			configDto: UpdateInfluxV1ConfigDto,
-		});
-
-		this.storageService.registerPluginFactory(INFLUX_V1_PLUGIN_NAME, () => {
-			const pluginConfig = this.getPluginConfig();
-
-			return new InfluxV1Storage({
-				host: pluginConfig.host,
-				database: pluginConfig.database,
-				username: pluginConfig.username,
-				password: pluginConfig.password,
-			});
 		});
 
 		for (const model of INFLUX_V1_SWAGGER_EXTRA_MODELS) {
@@ -67,20 +55,9 @@ Connects to an InfluxDB 1.x server and provides full time-series storage with re
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
-	}
 
-	private readonly logger = createExtensionLogger(INFLUX_V1_PLUGIN_NAME, 'InfluxV1Plugin');
-
-	private getPluginConfig(): InfluxV1ConfigModel {
-		try {
-			return this.configService.getPluginConfig<InfluxV1ConfigModel>(INFLUX_V1_PLUGIN_NAME);
-		} catch (error) {
-			this.logger.warn(
-				'Failed to load InfluxDB plugin configuration, using defaults',
-				error instanceof Error ? error.message : String(error),
-			);
-
-			return new InfluxV1ConfigModel();
-		}
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.influxV1ManagedService);
 	}
 }
