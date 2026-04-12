@@ -1,5 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { createExtensionLogger } from '../../../common/logger';
 import {
@@ -50,6 +51,7 @@ export class AuthController {
 	@ApiBadRequestResponse('Invalid login credentials')
 	@ApiNotFoundResponse('User not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@Post('login')
 	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
@@ -84,6 +86,7 @@ export class AuthController {
 	@ApiBadRequestResponse('Invalid input data')
 	@ApiForbiddenResponse('Owner already exists')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@HttpCode(204)
 	@Post('register')
@@ -145,6 +148,7 @@ export class AuthController {
 	@ApiSuccessResponse(CheckUsernameResponseModel, 'Username availability result')
 	@ApiBadRequestResponse('Invalid username')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@Post('check/username')
 	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckUsernameResponseModel> {
@@ -170,6 +174,7 @@ export class AuthController {
 	@ApiSuccessResponse(CheckEmailResponseModel, 'Email availability result')
 	@ApiBadRequestResponse('Invalid email')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@Post('check/email')
 	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckEmailResponseModel> {

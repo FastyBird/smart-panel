@@ -1,6 +1,5 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { createReadStream, existsSync } from 'fs';
-import os from 'os';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -66,7 +65,6 @@ export class NotFoundExceptionFilter implements ExceptionFilter {
 				},
 				metadata: {
 					server_time: new Date().toISOString(),
-					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
 				},
 			});
 	}

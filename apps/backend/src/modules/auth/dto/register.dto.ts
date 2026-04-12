@@ -1,9 +1,16 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import {
+	IsEmail,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	IsUUID,
+	MinLength,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
-
-import { UserRole } from '../../users/users.constants';
 
 @ApiSchema({ name: 'AuthModuleRegister' })
 export class RegisterDto {
@@ -28,16 +35,6 @@ export class RegisterDto {
 	@IsString({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	username: string;
 
-	@ApiPropertyOptional({
-		description: 'User role',
-		enum: UserRole,
-	})
-	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
-	@IsOptional()
-	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
-	role?: UserRole;
-
 	@ApiProperty({
 		description: "User's password.",
 		type: 'string',
@@ -47,6 +44,7 @@ export class RegisterDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
+	@MinLength(8, { message: '[{"field":"password","reason":"Password must be at least 8 characters long."}]' })
 	password: string;
 
 	@ApiPropertyOptional({

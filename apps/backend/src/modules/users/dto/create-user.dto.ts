@@ -1,5 +1,15 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import {
+	IsEmail,
+	IsEnum,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	IsUUID,
+	MinLength,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -37,6 +47,7 @@ export class CreateUserDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
+	@MinLength(8, { message: '[{"field":"password","reason":"Password must be at least 8 characters long."}]' })
 	password: string;
 
 	@ApiPropertyOptional({

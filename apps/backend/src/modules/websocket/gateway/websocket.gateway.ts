@@ -3,6 +3,7 @@ import { isArray } from 'class-validator';
 import { Server, Socket } from 'socket.io';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -37,6 +38,7 @@ interface ClientData {
 	user?: ClientUserDto;
 }
 
+@SkipThrottle()
 @WebSocketGateway({
 	cors: {
 		origin: '*',

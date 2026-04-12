@@ -163,7 +163,7 @@ export class ConfigService {
 		this.normalizeEmptyStrings(plainAppConfig);
 
 		const yamlContent = yaml.stringify(plainAppConfig);
-		fs.writeFileSync(path.resolve(this.configPath, this.filename), yamlContent, 'utf8');
+		fs.writeFileSync(path.resolve(this.configPath, this.filename), yamlContent, { encoding: 'utf8', mode: 0o600 });
 
 		this.config = null;
 

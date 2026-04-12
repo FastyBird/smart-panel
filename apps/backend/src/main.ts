@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { existsSync } from 'fs';
 import path from 'path';
 
+import helmet from '@fastify/helmet';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
@@ -68,6 +69,12 @@ async function bootstrap() {
 			}
 		},
 	);
+
+	// Add security headers via Helmet. CSP is disabled because the admin SPA
+	// needs inline scripts/styles.
+	await app.register(helmet, {
+		contentSecurityPolicy: false,
+	});
 
 	// Register multipart support for file uploads — this adds the content-type
 	// parser that sets req[kMultipart] = true, which req.file() relies on.

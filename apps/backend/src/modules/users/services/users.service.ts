@@ -66,7 +66,7 @@ export class UsersService {
 		const dtoInstance = await this.validateDto<CreateUserDto>(CreateUserDto, createDto);
 
 		// Hash password before storing it
-		const hashedPassword = await bcrypt.hash(dtoInstance.password, 10);
+		const hashedPassword = await bcrypt.hash(dtoInstance.password, 12);
 
 		const user = this.repository.create(
 			toInstance(
@@ -111,7 +111,7 @@ export class UsersService {
 		const dtoInstance = await this.validateDto<UpdateUserDto>(UpdateUserDto, updateDto);
 
 		// Hash password before storing it
-		const hashedPassword = dtoInstance.password ? await bcrypt.hash(dtoInstance.password, 10) : undefined;
+		const hashedPassword = dtoInstance.password ? await bcrypt.hash(dtoInstance.password, 12) : undefined;
 
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(
