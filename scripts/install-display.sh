@@ -186,7 +186,27 @@ for r in json.load(sys.stdin):
 		echo "v${VERSION}"
 	else
 		# Get latest stable release
-		curl -sL "$api_url/latest" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4
+		local tag
+		tag=$(curl -sL "$api_url/latest" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)
+
+		# If no stable release exists, fall back to latest pre-release
+		if [[ -z "$tag" ]]; then
+			local json
+			json=$(curl -sL "$api_url?per_page=5")
+
+			if command -v jq &>/dev/null; then
+				tag=$(echo "$json" | jq -r '.[0].tag_name // empty')
+			else
+				tag=$(echo "$json" | python3 -c "
+import sys, json
+releases = json.load(sys.stdin)
+if releases:
+    print(releases[0]['tag_name'])
+" 2>/dev/null)
+			fi
+		fi
+
+		echo "$tag"
 	fi
 }
 
