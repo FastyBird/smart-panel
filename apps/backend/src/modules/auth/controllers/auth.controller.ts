@@ -117,6 +117,7 @@ export class AuthController {
 	@ApiBadRequestResponse('Invalid refresh token data')
 	@ApiNotFoundResponse('Refresh token not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@Post('refresh')
 	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshResponseModel> {
