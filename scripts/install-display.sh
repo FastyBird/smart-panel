@@ -14,6 +14,7 @@
 # Options:
 #   --backend <url>   Backend URL (e.g., http://192.168.1.100:3000)
 #   --version <ver>   Install specific version
+#   --alpha           Install alpha (dev) version
 #   --beta            Install beta version
 #   --platform <p>    Force platform: flutter-pi, elinux, linux, android
 #   --kiosk           Enable kiosk mode (auto-start on boot, no desktop)
@@ -37,6 +38,7 @@ SERVICE_NAME="smart-panel-display"
 # Parse arguments
 BACKEND_URL=""
 VERSION=""
+ALPHA=false
 BETA=false
 PLATFORM=""
 KIOSK=false
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
 		--version)
 			VERSION="$2"
 			shift 2
+			;;
+		--alpha)
+			ALPHA=true
+			shift
 			;;
 		--beta)
 			BETA=true
@@ -153,18 +159,26 @@ detect_platform() {
 get_latest_release_tag() {
 	local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases"
 
-	if [[ "$BETA" == true ]]; then
-		# Get latest beta pre-release (filter by prerelease flag AND beta tag pattern)
+	if [[ "$ALPHA" == true ]] || [[ "$BETA" == true ]]; then
+		local tag_filter
+		if [[ "$ALPHA" == true ]]; then
+			tag_filter="alpha"
+		else
+			tag_filter="beta"
+		fi
+
+		# Get latest pre-release matching the tag pattern
 		local json
 		json=$(curl -sL "$api_url?per_page=20")
 
 		if command -v jq &>/dev/null; then
-			echo "$json" | jq -r '[.[] | select(.prerelease == true and (.tag_name | test("-beta")))][0].tag_name // empty'
+			echo "$json" | jq -r --arg pat "$tag_filter" '[.[] | select(.prerelease == true and (.tag_name | test($pat)))][0].tag_name // empty'
 		else
 			echo "$json" | python3 -c "
 import sys, json
+tag_filter = '${tag_filter}'
 for r in json.load(sys.stdin):
-    if r.get('prerelease') and '-beta' in r.get('tag_name', ''):
+    if r.get('prerelease') and tag_filter in r.get('tag_name', ''):
         print(r['tag_name']); break
 " 2>/dev/null
 		fi
