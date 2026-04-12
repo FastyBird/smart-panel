@@ -1,5 +1,4 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
-import os from 'os';
 import { QueryFailedError } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,7 +31,6 @@ export class QueryFailedExceptionFilter implements ExceptionFilter {
 				},
 				metadata: {
 					server_time: new Date().toISOString(),
-					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
 				},
 			});
 	}

@@ -1,6 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsEmail,
+	IsEnum,
 	IsNotEmpty,
 	IsOptional,
 	IsString,
@@ -11,6 +12,8 @@ import {
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { UserRole } from '../../users/users.constants';
 
 @ApiSchema({ name: 'AuthModuleRegister' })
 export class RegisterDto {
@@ -85,6 +88,19 @@ export class RegisterDto {
 	@IsString({ message: '[{"field":"last_name","reason":"Last name must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	last_name?: string | null;
+
+	// Role field kept in DTO for OpenAPI enum generation but ignored by the service —
+	// the service always computes role server-side (OWNER for first user, USER for subsequent).
+	@ApiPropertyOptional({
+		description: 'User role (ignored — computed server-side)',
+		enum: UserRole,
+		default: UserRole.USER,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
+	role?: UserRole;
 }
 
 @ApiSchema({ name: 'AuthModuleReqRegister' })
