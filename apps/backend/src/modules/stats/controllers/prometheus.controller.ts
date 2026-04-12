@@ -2,12 +2,10 @@ import { Controller, Get, Header } from '@nestjs/common';
 import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
-import { Public } from '../../auth/guards/auth.guard';
 import { PrometheusExporterService } from '../services/stats.prometheus.service';
 import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';
 
 @ApiTags(STATS_MODULE_API_TAG_NAME)
-@Public()
 @Controller('/metrics')
 export class PrometheusController {
 	constructor(private readonly exporter: PrometheusExporterService) {}

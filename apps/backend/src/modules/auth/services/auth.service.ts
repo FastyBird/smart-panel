@@ -164,7 +164,7 @@ export class AuthService {
 		const user = await this.usersService.create({
 			...dtoInstance,
 			password,
-			role: dtoInstance.role ?? (ownerExists ? UserRole.USER : UserRole.OWNER),
+			role: ownerExists ? UserRole.USER : UserRole.OWNER,
 		});
 
 		this.logger.debug(`Successfully registered user id=${user.id}`);

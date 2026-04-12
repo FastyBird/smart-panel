@@ -7,6 +7,7 @@ export enum RequestResultState {
 	ERROR = 'error',
 }
 
+// INSECURE DEFAULT — only for development
 export const DEFAULT_TOKEN_SECRET = 'g3xHbkELpMD9LRqW4WmJkHL7kz2bdNYAQJyEuFVzR3k=';
 
 export const DEFAULT_TOKEN_EXPIRATION = '1h';

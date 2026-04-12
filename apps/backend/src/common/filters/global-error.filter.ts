@@ -1,5 +1,4 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
-import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
@@ -42,6 +41,8 @@ export class GlobalErrorFilter implements ExceptionFilter {
 			exception instanceof Error ? exception.stack : undefined,
 		);
 
+		const isProduction = process.env.NODE_ENV === 'production';
+
 		const errorResponse = {
 			status: RequestResultState.ERROR,
 			timestamp: new Date().toISOString(),
@@ -52,13 +53,12 @@ export class GlobalErrorFilter implements ExceptionFilter {
 				code: exception instanceof HttpException ? exception.name : 'InternalServerError',
 				message: errorMessage,
 				details:
-					exception instanceof HttpException
+					!isProduction && exception instanceof HttpException
 						? exception.getResponse()
 						: { reason: 'An unexpected server error occurred.' },
 			},
 			metadata: {
 				server_time: new Date().toISOString(),
-				cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
 			},
 		};
 

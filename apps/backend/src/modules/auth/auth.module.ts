@@ -1,5 +1,7 @@
+import crypto from 'crypto';
+
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -47,8 +49,30 @@ import { TokensService } from './services/tokens.service';
 			imports: [NestConfigModule],
 			inject: [NestConfigService],
 			useFactory: (configService: NestConfigService) => {
+				const logger = new Logger('AuthModule');
+
+				let secret = getEnvValue<string | undefined>(configService, 'FB_TOKEN_SECRET', DEFAULT_TOKEN_SECRET);
+
+				if (!secret || secret === DEFAULT_TOKEN_SECRET) {
+					const nodeEnv = configService.get<string>('NODE_ENV');
+
+					if (nodeEnv === 'production') {
+						logger.error(
+							'CRITICAL: No FB_TOKEN_SECRET configured in production! ' +
+								'Auto-generating a random secret. Sessions will NOT persist across restarts. ' +
+								'Set the FB_TOKEN_SECRET environment variable to fix this.',
+						);
+					}
+
+					secret = crypto.randomBytes(32).toString('base64');
+
+					logger.warn(
+						'No FB_TOKEN_SECRET configured — using auto-generated secret. Sessions will not persist across restarts.',
+					);
+				}
+
 				return {
-					secret: getEnvValue<string | undefined>(configService, 'FB_TOKEN_SECRET', DEFAULT_TOKEN_SECRET),
+					secret,
 					signOptions: { expiresIn: DEFAULT_TOKEN_EXPIRATION },
 				};
 			},

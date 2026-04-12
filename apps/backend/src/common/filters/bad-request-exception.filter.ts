@@ -1,5 +1,4 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
-import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
@@ -45,7 +44,6 @@ export class BadRequestExceptionFilter implements ExceptionFilter {
 					},
 					metadata: {
 						server_time: new Date().toISOString(),
-						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
 					},
 				});
 		} else if (status === HttpStatus.BAD_REQUEST) {
@@ -67,7 +65,6 @@ export class BadRequestExceptionFilter implements ExceptionFilter {
 					},
 					metadata: {
 						server_time: new Date().toISOString(),
-						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
 					},
 				});
 		}

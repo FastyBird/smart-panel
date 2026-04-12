@@ -3,9 +3,10 @@ import path from 'path';
 import { CacheModule } from '@nestjs/cache-manager';
 import { DynamicModule, Module, type Type } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
-import { RouterModule } from '@nestjs/core';
+import { APP_GUARD, RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MODULES_PREFIX, PLUGINS_PREFIX } from './app.constants';
@@ -134,7 +135,9 @@ export class AppModule {
 
 		return {
 			module: AppModule,
+			providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 			imports: [
+				ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
 				NestConfigModule.forRoot({
 					envFilePath: [
 						// Monorepo root (../../../ from src/ or dist/)
