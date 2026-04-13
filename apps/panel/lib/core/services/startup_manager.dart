@@ -259,10 +259,16 @@ class StartupManagerService {
       );
     }
 
-    // Store the backend URL for future use
-    await _storeBackendUrl(backend.baseUrl);
+    final result = await initializeWithUrl(backend.baseUrl);
 
-    return initializeWithUrl(backend.baseUrl);
+    // Only store the backend URL after successful initialization.
+    // If connection fails, don't persist the URL so the app falls back
+    // to discovery on next startup instead of retrying forever.
+    if (result == InitializationResult.success) {
+      await _storeBackendUrl(backend.baseUrl);
+    }
+
+    return result;
   }
 
   /// Try to initialize with stored/configured URL
