@@ -302,6 +302,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.78.0
         version: 0.78.0(zod@4.3.6)
+      '@fastify/helmet':
+        specifier: ^13.0.2
+        version: 13.0.2
       '@fastify/multipart':
         specifier: ^9.4.0
         version: 9.4.0
@@ -1553,6 +1556,9 @@ packages:
 
   '@fastify/forwarded@3.0.0':
     resolution: {integrity: sha512-kJExsp4JCms7ipzg7SJ3y8DwmePaELHxKYtg+tZow+k0znUTf3cb+npgyqm8+ATZOdmfgfydIebPDWM172wfyA==}
+
+  '@fastify/helmet@13.0.2':
+    resolution: {integrity: sha512-tO1QMkOfNeCt9l4sG/FiWErH4QMm+RjHzbMTrgew1DYOQ2vb/6M1G2iNABBrD7Xq6dUk+HLzWW8u+rmmhQHifA==}
 
   '@fastify/merge-json-schemas@0.2.1':
     resolution: {integrity: sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==}
@@ -7397,6 +7403,10 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
+  helmet@8.1.0:
+    resolution: {integrity: sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==}
+    engines: {node: '>=18.0.0'}
+
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
@@ -12652,6 +12662,11 @@ snapshots:
       fastify-plugin: 5.1.0
 
   '@fastify/forwarded@3.0.0': {}
+
+  '@fastify/helmet@13.0.2':
+    dependencies:
+      fastify-plugin: 5.1.0
+      helmet: 8.1.0
 
   '@fastify/merge-json-schemas@0.2.1':
     dependencies:
@@ -19333,6 +19348,8 @@ snapshots:
       hast-util-parse-selector: 4.0.0
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
+
+  helmet@8.1.0: {}
 
   help-me@5.0.0: {}
 

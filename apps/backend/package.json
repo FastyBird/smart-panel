@@ -82,6 +82,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@fastify/helmet": "^13.0.2",
     "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^9.0.0",
     "@fastybird/smart-panel-extension-sdk": "workspace:*",
