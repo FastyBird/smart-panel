@@ -199,7 +199,7 @@
 						/>
 						<el-option
 							:label="t('authModule.tokens.createDialog.expiryNever', 'No expiration')"
-							:value="null"
+							:value="0"
 						/>
 					</el-select>
 				</el-form-item>
@@ -232,17 +232,17 @@
 				type="warning"
 				:closable="false"
 				show-icon
-				class="mb-4"
 			/>
 
-			<div class="flex items-center gap-2">
-				<el-input
-					:model-value="createdTokenValue"
-					readonly
-					class="flex-1 font-mono"
-				/>
+			<el-input
+				:model-value="createdTokenValue"
+				readonly
+				class="font-mono mt-4"
+			/>
+
+			<template #footer>
 				<el-button
-					type="primary"
+					:type="tokenCopied ? 'success' : 'primary'"
 					@click="onCopyToken"
 				>
 					<template #icon>
@@ -250,13 +250,7 @@
 					</template>
 					{{ tokenCopied ? t('authModule.tokens.createdDialog.copied', 'Copied!') : t('authModule.tokens.createdDialog.copy', 'Copy') }}
 				</el-button>
-			</div>
-
-			<template #footer>
-				<el-button
-					type="primary"
-					@click="onTokenValueDialogClose"
-				>
+				<el-button @click="onTokenValueDialogClose">
 					{{ t('authModule.tokens.createdDialog.done', 'Done') }}
 				</el-button>
 			</template>
@@ -296,7 +290,7 @@ import { usePersonalTokens } from '../../composables/usePersonalTokens';
 interface ICreateTokenForm {
 	name: string;
 	description: string;
-	expiresInDays: number | null;
+	expiresInDays: number;
 }
 
 defineOptions({
@@ -369,7 +363,7 @@ const onCreateToken = async (): Promise<void> => {
 			const result = await createToken({
 				name: createForm.name,
 				description: createForm.description || null,
-				expires_in_days: createForm.expiresInDays,
+				expires_in_days: createForm.expiresInDays || null,
 			});
 
 			if (result) {

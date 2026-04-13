@@ -349,14 +349,15 @@ export class TokensController {
 		const user = await this.usersService.getOneOrThrow(auth.id);
 		const dto = body.data;
 
-		// Generate JWT token with long expiry (in seconds for JwtSignOptions compatibility)
-		const expiresInSeconds = (dto.expiresInDays ?? 365) * 24 * 60 * 60;
+		// Generate JWT token — if no expiry, create a 100-year token (effectively never expires)
+		const daysToExpire = dto.expiresInDays ?? 36500;
+		const expiresInSeconds = daysToExpire * 24 * 60 * 60;
 		const rawToken = this.authService.generateToken(user, user.role, { expiresIn: expiresInSeconds });
 
-		// Calculate expiry date from JWT
+		// Calculate expiry date — null means no expiration displayed
 		const expiresAt = dto.expiresInDays
 			? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000)
-			: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+			: null;
 
 		// Create the entity
 		const entity = await this.tokensService.createPersonalToken({
