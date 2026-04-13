@@ -1,26 +1,10 @@
 <template>
-	<div class="mt-6">
-		<div class="flex items-center justify-between mb-4">
-			<h3 class="text-lg font-semibold m-0">
-				{{ t('authModule.tokens.title', 'Personal Access Tokens') }}
-			</h3>
-
-			<el-button
-				type="primary"
-				@click="showCreateDialog = true"
-			>
-				<template #icon>
-					<icon icon="mdi:key-plus" />
-				</template>
-				{{ t('authModule.tokens.create', 'Create Token') }}
-			</el-button>
-		</div>
-
+	<div>
 		<el-alert
 			:title="t('authModule.tokens.description', 'Personal access tokens allow external applications to authenticate with the API on your behalf.')"
 			type="info"
 			:closable="false"
-			class="mb-4"
+			class="m-4"
 		/>
 
 		<div
@@ -467,6 +451,12 @@ const onRevokeToken = (token: IPersonalToken): void => {
 			// Cancelled
 		});
 };
+
+const openCreateDialog = (): void => {
+	showCreateDialog.value = true;
+};
+
+defineExpose({ openCreateDialog });
 
 onMounted(async () => {
 	await fetchTokens();
