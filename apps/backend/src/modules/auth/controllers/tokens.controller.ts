@@ -31,13 +31,17 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
+import { UsersService } from '../../users/services/users.service';
+import { UserRole } from '../../users/users.constants';
+import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_NAME, AUTH_MODULE_PREFIX, TokenOwnerType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
+import { ReqCreatePersonalTokenDto } from '../dto/create-personal-token.dto';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
-import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { AuthenticatedRequest } from '../guards/auth.guard';
 import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
+import { AuthService } from '../services/auth.service';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
@@ -49,6 +53,8 @@ export class TokensController {
 	constructor(
 		private readonly tokensService: TokensService,
 		private readonly tokensMapperService: TokensTypeMapperService,
+		private readonly authService: AuthService,
+		private readonly usersService: UsersService,
 	) {}
 
 	@ApiOperation({
@@ -60,12 +66,22 @@ export class TokensController {
 	@ApiSuccessResponse(TokensResponseModel, 'Tokens retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(): Promise<TokensResponseModel> {
+	async findAll(@Req() req: AuthenticatedRequest): Promise<TokensResponseModel> {
 		this.logger.debug('Fetching all tokens');
 
-		const tokens = await this.tokensService.findAll<TokenEntity>();
+		const { auth } = req;
+		let tokens: LongLiveTokenEntity[];
+
+		if (auth?.type === 'user' && (auth.role === UserRole.OWNER || auth.role === UserRole.ADMIN)) {
+			tokens = await this.tokensService.findAll<LongLiveTokenEntity>(LongLiveTokenEntity);
+		} else if (auth?.type === 'user') {
+			tokens = await this.tokensService.findByOwnerId(auth.id, TokenOwnerType.USER);
+		} else {
+			tokens = [];
+		}
 
 		this.logger.debug(`Retrieved ${tokens.length} tokens`);
+
 		const response = new TokensResponseModel();
 		response.data = tokens;
 
@@ -193,10 +209,24 @@ export class TokensController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
+		@Req() req: AuthenticatedRequest,
 	): Promise<TokenResponseModel> {
 		this.logger.debug(`Incoming update request for token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
+
+		const { auth } = req;
+
+		// Ownership enforcement: non-admin users can only update their own tokens
+		if (auth?.type === 'user' && auth.role !== UserRole.OWNER && auth.role !== UserRole.ADMIN) {
+			if (
+				!(token instanceof LongLiveTokenEntity) ||
+				token.ownerType !== TokenOwnerType.USER ||
+				token.tokenOwnerId !== auth.id
+			) {
+				throw new ForbiddenException('You do not have permission to update this token');
+			}
+		}
 
 		let mapping: TokenTypeMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>;
 
@@ -274,9 +304,77 @@ export class TokensController {
 			throw new ForbiddenException('You cannot delete your own account');
 		}
 
+		// Ownership enforcement: non-admin users can only delete their own tokens
+		if (auth?.type === 'user' && auth.role !== UserRole.OWNER && auth.role !== UserRole.ADMIN) {
+			if (
+				!(token instanceof LongLiveTokenEntity) ||
+				token.ownerType !== TokenOwnerType.USER ||
+				token.tokenOwnerId !== auth.id
+			) {
+				throw new ForbiddenException('You do not have permission to delete this token');
+			}
+		}
+
 		await this.tokensService.remove(token.id);
 
 		this.logger.debug(`Successfully deleted token id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Create personal access token',
+		description:
+			'Create a new personal access token for the authenticated user. The token value is returned once and cannot be retrieved again.',
+		operationId: 'create-auth-module-personal-token',
+	})
+	@ApiBody({
+		description: 'Personal access token creation data',
+		type: ReqCreatePersonalTokenDto,
+	})
+	@ApiCreatedSuccessResponse(TokenResponseModel, 'Personal access token created successfully')
+	@ApiBadRequestResponse('Invalid token data')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('personal')
+	async createPersonalToken(
+		@Body() body: ReqCreatePersonalTokenDto,
+		@Req() req: AuthenticatedRequest,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<TokenResponseModel> {
+		const { auth } = req;
+
+		if (!auth || auth.type !== 'user') {
+			throw new ForbiddenException('Only authenticated users can create personal access tokens');
+		}
+
+		const user = await this.usersService.getOneOrThrow(auth.id);
+		const dto = body.data;
+
+		// Generate JWT token with long expiry (in seconds for JwtSignOptions compatibility)
+		const expiresInSeconds = (dto.expiresInDays ?? 365) * 24 * 60 * 60;
+		const rawToken = this.authService.generateToken(user, user.role, { expiresIn: expiresInSeconds });
+
+		// Calculate expiry date from JWT
+		const expiresAt = dto.expiresInDays
+			? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000)
+			: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+		// Create the entity
+		const entity = await this.tokensService.createPersonalToken({
+			token: rawToken,
+			ownerType: TokenOwnerType.USER,
+			ownerId: auth.id,
+			name: dto.name,
+			description: dto.description ?? null,
+			expiresAt,
+		});
+
+		setLocationHeader(req, res, AUTH_MODULE_PREFIX, 'auth/tokens', entity.id);
+
+		// Return entity with the raw token value (one-time only)
+		const response = new TokenResponseModel();
+		response.data = Object.assign(entity, { token: rawToken });
+
+		return response;
 	}
 
 	private async getOneOrThrow(id: string): Promise<TokenEntity> {
