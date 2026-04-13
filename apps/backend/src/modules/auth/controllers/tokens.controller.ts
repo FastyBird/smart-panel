@@ -72,10 +72,12 @@ export class TokensController {
 		const { auth } = req;
 		let tokens: LongLiveTokenEntity[];
 
-		if (auth?.type === 'user' && (auth.role === UserRole.OWNER || auth.role === UserRole.ADMIN)) {
+		if (auth && (auth.role === UserRole.OWNER || auth.role === UserRole.ADMIN)) {
 			tokens = await this.tokensService.findAll<LongLiveTokenEntity>(LongLiveTokenEntity);
-		} else if (auth?.type === 'user') {
-			tokens = await this.tokensService.findByOwnerId(auth.id, TokenOwnerType.USER);
+		} else if (auth) {
+			const callerId = auth.type === 'user' ? auth.id : auth.type === 'token' ? auth.ownerId : null;
+
+			tokens = callerId ? await this.tokensService.findByOwnerId(callerId, TokenOwnerType.USER) : [];
 		} else {
 			tokens = [];
 		}
