@@ -2,7 +2,7 @@
 	<div>
 		<div class="p-4">
 			<el-alert
-				:title="t('authModule.tokens.description', 'Personal access tokens allow external applications to authenticate with the API on your behalf.')"
+				:title="t('authModule.tokens.description')"
 				type="info"
 				:closable="false"
 			/>
@@ -53,14 +53,14 @@
 							</template>
 
 							<template #title>
-								{{ t('authModule.tokens.noTokens', 'No personal access tokens yet.') }}
+								{{ t('authModule.tokens.noTokens') }}
 							</template>
 						</el-result>
 					</div>
 				</template>
 
 				<el-table-column
-					:label="t('authModule.tokens.columns.name', 'Name')"
+					:label="t('authModule.tokens.columns.name')"
 					prop="name"
 					min-width="150"
 				>
@@ -81,7 +81,7 @@
 				</el-table-column>
 
 				<el-table-column
-					:label="t('authModule.tokens.columns.created', 'Created')"
+					:label="t('authModule.tokens.columns.created')"
 					prop="created_at"
 					width="180"
 				>
@@ -91,17 +91,17 @@
 				</el-table-column>
 
 				<el-table-column
-					:label="t('authModule.tokens.columns.lastUsed', 'Last Used')"
+					:label="t('authModule.tokens.columns.lastUsed')"
 					prop="last_used_at"
 					width="180"
 				>
 					<template #default="{ row }">
-						{{ row.last_used_at ? formatDate(row.last_used_at) : t('authModule.tokens.never', 'Never') }}
+						{{ row.last_used_at ? formatDate(row.last_used_at) : t('authModule.tokens.never') }}
 					</template>
 				</el-table-column>
 
 				<el-table-column
-					:label="t('authModule.tokens.columns.expires', 'Expires')"
+					:label="t('authModule.tokens.columns.expires')"
 					prop="expires_at"
 					width="180"
 				>
@@ -112,13 +112,13 @@
 							</el-text>
 						</template>
 						<template v-else>
-							{{ t('authModule.tokens.never', 'Never') }}
+							{{ t('authModule.tokens.never') }}
 						</template>
 					</template>
 				</el-table-column>
 
 				<el-table-column
-					:label="t('authModule.tokens.columns.actions', 'Actions')"
+					:label="t('authModule.tokens.columns.actions')"
 					width="120"
 					align="right"
 				>
@@ -134,7 +134,7 @@
 								<template #icon>
 									<icon icon="mdi:key-remove" />
 								</template>
-								{{ t('authModule.tokens.revoke', 'Revoke') }}
+								{{ t('authModule.tokens.revoke') }}
 							</el-button>
 						</div>
 					</template>
@@ -145,7 +145,7 @@
 		<!-- Create Token Dialog -->
 		<el-dialog
 			v-model="showCreateDialog"
-			:title="t('authModule.tokens.createDialog.title', 'Create Personal Access Token')"
+			:title="t('authModule.tokens.createDialog.title')"
 			class="max-w-[500px]"
 			@close="onCreateDialogClose"
 		>
@@ -156,29 +156,29 @@
 				label-position="top"
 			>
 				<el-form-item
-					:label="t('authModule.tokens.createDialog.name', 'Token Name')"
+					:label="t('authModule.tokens.createDialog.name')"
 					prop="name"
 				>
 					<el-input
 						v-model="createForm.name"
-						:placeholder="t('authModule.tokens.createDialog.namePlaceholder', 'e.g. CI/CD Pipeline, Home Assistant')"
+						:placeholder="t('authModule.tokens.createDialog.namePlaceholder')"
 					/>
 				</el-form-item>
 
 				<el-form-item
-					:label="t('authModule.tokens.createDialog.description', 'Description (optional)')"
+					:label="t('authModule.tokens.createDialog.description')"
 					prop="description"
 				>
 					<el-input
 						v-model="createForm.description"
 						type="textarea"
 						:rows="2"
-						:placeholder="t('authModule.tokens.createDialog.descriptionPlaceholder', 'What is this token used for?')"
+						:placeholder="t('authModule.tokens.createDialog.descriptionPlaceholder')"
 					/>
 				</el-form-item>
 
 				<el-form-item
-					:label="t('authModule.tokens.createDialog.expiry', 'Expiration')"
+					:label="t('authModule.tokens.createDialog.expiry')"
 					prop="expiresInDays"
 				>
 					<el-select
@@ -186,19 +186,19 @@
 						class="w-full"
 					>
 						<el-option
-							:label="t('authModule.tokens.createDialog.expiry30', '30 days')"
+							:label="t('authModule.tokens.createDialog.expiry30')"
 							:value="30"
 						/>
 						<el-option
-							:label="t('authModule.tokens.createDialog.expiry90', '90 days')"
+							:label="t('authModule.tokens.createDialog.expiry90')"
 							:value="90"
 						/>
 						<el-option
-							:label="t('authModule.tokens.createDialog.expiry365', '1 year')"
+							:label="t('authModule.tokens.createDialog.expiry365')"
 							:value="365"
 						/>
 						<el-option
-							:label="t('authModule.tokens.createDialog.expiryNever', 'No expiration')"
+							:label="t('authModule.tokens.createDialog.expiryNever')"
 							:value="0"
 						/>
 					</el-select>
@@ -207,14 +207,14 @@
 
 			<template #footer>
 				<el-button @click="showCreateDialog = false">
-					{{ t('authModule.tokens.createDialog.cancel', 'Cancel') }}
+					{{ t('authModule.tokens.createDialog.cancel') }}
 				</el-button>
 				<el-button
 					type="primary"
 					:loading="isCreating"
 					@click="onCreateToken"
 				>
-					{{ t('authModule.tokens.createDialog.submit', 'Create Token') }}
+					{{ t('authModule.tokens.createDialog.submit') }}
 				</el-button>
 			</template>
 		</el-dialog>
@@ -222,13 +222,13 @@
 		<!-- Token Created Dialog -->
 		<el-dialog
 			v-model="showTokenValueDialog"
-			:title="t('authModule.tokens.createdDialog.title', 'Token Created Successfully')"
+			:title="t('authModule.tokens.createdDialog.title')"
 			class="max-w-[600px]"
 			:close-on-click-modal="false"
 			:close-on-press-escape="false"
 		>
 			<el-alert
-				:title="t('authModule.tokens.createdDialog.warning', 'Copy this token now. You won\'t be able to see it again.')"
+				:title="t('authModule.tokens.createdDialog.warning')"
 				type="warning"
 				:closable="false"
 				show-icon
@@ -248,10 +248,10 @@
 					<template #icon>
 						<icon :icon="tokenCopied ? 'mdi:check' : 'mdi:content-copy'" />
 					</template>
-					{{ tokenCopied ? t('authModule.tokens.createdDialog.copied', 'Copied!') : t('authModule.tokens.createdDialog.copy', 'Copy') }}
+					{{ tokenCopied ? t('authModule.tokens.createdDialog.copied') : t('authModule.tokens.createdDialog.copy') }}
 				</el-button>
 				<el-button @click="onTokenValueDialogClose">
-					{{ t('authModule.tokens.createdDialog.done', 'Done') }}
+					{{ t('authModule.tokens.createdDialog.done') }}
 				</el-button>
 			</template>
 		</el-dialog>
@@ -321,7 +321,7 @@ const createRules = reactive<FormRules<ICreateTokenForm>>({
 	name: [
 		{
 			required: true,
-			message: t('authModule.tokens.createDialog.nameRequired', 'Token name is required'),
+			message: t('authModule.tokens.createDialog.nameRequired'),
 			trigger: 'change',
 		},
 	],
@@ -376,16 +376,16 @@ const onCreateToken = async (): Promise<void> => {
 				resetCreateForm();
 
 				flashMessage.success(
-					t('authModule.tokens.messages.created', 'Personal access token created successfully.'),
+					t('authModule.tokens.messages.created'),
 				);
 			} else {
 				flashMessage.error(
-					t('authModule.tokens.messages.createError', 'Failed to create personal access token.'),
+					t('authModule.tokens.messages.createError'),
 				);
 			}
 		} catch {
 			flashMessage.error(
-				t('authModule.tokens.messages.createError', 'Failed to create personal access token.'),
+				t('authModule.tokens.messages.createError'),
 			);
 		} finally {
 			isCreating.value = false;
@@ -399,7 +399,7 @@ const onCopyToken = async (): Promise<void> => {
 		tokenCopied.value = true;
 	} catch {
 		flashMessage.error(
-			t('authModule.tokens.messages.copyError', 'Failed to copy token to clipboard.'),
+			t('authModule.tokens.messages.copyError'),
 		);
 	}
 };
@@ -412,11 +412,11 @@ const onTokenValueDialogClose = (): void => {
 
 const onRevokeToken = (token: IPersonalToken): void => {
 	ElMessageBox.confirm(
-		t('authModule.tokens.revokeDialog.message', `Are you sure you want to revoke the token "${token.name}"? This action cannot be undone.`),
-		t('authModule.tokens.revokeDialog.title', 'Revoke Token'),
+		t('authModule.tokens.revokeDialog.message'),
+		t('authModule.tokens.revokeDialog.title'),
 		{
-			confirmButtonText: t('authModule.tokens.revokeDialog.confirm', 'Revoke'),
-			cancelButtonText: t('authModule.tokens.revokeDialog.cancel', 'Cancel'),
+			confirmButtonText: t('authModule.tokens.revokeDialog.confirm'),
+			cancelButtonText: t('authModule.tokens.revokeDialog.cancel'),
 			type: 'warning',
 			confirmButtonClass: 'el-button--danger',
 		},
@@ -429,16 +429,16 @@ const onRevokeToken = (token: IPersonalToken): void => {
 
 				if (result) {
 					flashMessage.success(
-						t('authModule.tokens.messages.revoked', 'Token revoked successfully.'),
+						t('authModule.tokens.messages.revoked'),
 					);
 				} else {
 					flashMessage.error(
-						t('authModule.tokens.messages.revokeError', 'Failed to revoke token.'),
+						t('authModule.tokens.messages.revokeError'),
 					);
 				}
 			} catch {
 				flashMessage.error(
-					t('authModule.tokens.messages.revokeError', 'Failed to revoke token.'),
+					t('authModule.tokens.messages.revokeError'),
 				);
 			} finally {
 				revokingTokenId.value = null;

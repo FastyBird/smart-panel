@@ -32,7 +32,7 @@
 		<template #header>
 			<div class="flex items-center justify-between">
 				<span class="font-semibold">
-					{{ t('authModule.tokens.title', 'Personal Access Tokens') }}
+					{{ t('authModule.tokens.title') }}
 				</span>
 
 				<el-button
@@ -43,7 +43,7 @@
 					<template #icon>
 						<icon icon="mdi:key-plus" />
 					</template>
-					{{ t('authModule.tokens.create', 'Create Token') }}
+					{{ t('authModule.tokens.create') }}
 				</el-button>
 			</div>
 		</template>
@@ -57,7 +57,7 @@
 	>
 		<div class="flex items-center justify-between mb-3">
 			<span class="font-semibold">
-				{{ t('authModule.tokens.title', 'Personal Access Tokens') }}
+				{{ t('authModule.tokens.title') }}
 			</span>
 
 			<el-button
@@ -68,7 +68,7 @@
 				<template #icon>
 					<icon icon="mdi:key-plus" />
 				</template>
-				{{ t('authModule.tokens.create', 'Create Token') }}
+				{{ t('authModule.tokens.create') }}
 			</el-button>
 		</div>
 
