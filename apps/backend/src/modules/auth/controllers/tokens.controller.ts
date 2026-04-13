@@ -218,15 +218,7 @@ export class TokensController {
 		const { auth } = req;
 
 		// Ownership enforcement: non-admin users can only update their own tokens
-		if (auth?.type === 'user' && auth.role !== UserRole.OWNER && auth.role !== UserRole.ADMIN) {
-			if (
-				!(token instanceof LongLiveTokenEntity) ||
-				token.ownerType !== TokenOwnerType.USER ||
-				token.tokenOwnerId !== auth.id
-			) {
-				throw new ForbiddenException('You do not have permission to update this token');
-			}
-		}
+		this.enforceOwnership(auth, token, 'update');
 
 		let mapping: TokenTypeMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>;
 
@@ -305,15 +297,7 @@ export class TokensController {
 		}
 
 		// Ownership enforcement: non-admin users can only delete their own tokens
-		if (auth?.type === 'user' && auth.role !== UserRole.OWNER && auth.role !== UserRole.ADMIN) {
-			if (
-				!(token instanceof LongLiveTokenEntity) ||
-				token.ownerType !== TokenOwnerType.USER ||
-				token.tokenOwnerId !== auth.id
-			) {
-				throw new ForbiddenException('You do not have permission to delete this token');
-			}
-		}
+		this.enforceOwnership(auth, token, 'delete');
 
 		await this.tokensService.remove(token.id);
 
@@ -351,7 +335,7 @@ export class TokensController {
 
 		// Generate JWT token with 'personal' type claim so the auth guard
 		// routes it to validateLongLiveToken instead of validateUserAccessToken
-		const daysToExpire = dto.expiresInDays ?? 36500;
+		const daysToExpire = dto.expiresInDays != null ? dto.expiresInDays : 36500;
 		const expiresInSeconds = daysToExpire * 24 * 60 * 60;
 		const rawToken = this.jwtService.sign(
 			{
@@ -364,7 +348,7 @@ export class TokensController {
 		);
 
 		// Calculate expiry date — null means no expiration displayed
-		const expiresAt = dto.expiresInDays ? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000) : null;
+		const expiresAt = dto.expiresInDays != null ? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000) : null;
 
 		// Create the entity
 		const entity = await this.tokensService.createPersonalToken({
@@ -383,6 +367,29 @@ export class TokensController {
 		response.data = Object.assign(entity, { token: rawToken });
 
 		return response;
+	}
+
+	private enforceOwnership(auth: AuthenticatedRequest['auth'], token: TokenEntity, action: string): void {
+		if (!auth) {
+			throw new ForbiddenException(`You do not have permission to ${action} this token`);
+		}
+
+		// OWNER and ADMIN can manage any token
+		if (auth.role === UserRole.OWNER || auth.role === UserRole.ADMIN) {
+			return;
+		}
+
+		// Get the caller's user ID from either auth type
+		const callerId = auth.type === 'user' ? auth.id : auth.type === 'token' ? auth.ownerId : null;
+
+		// Non-admin users can only manage their own long-live tokens
+		if (
+			!(token instanceof LongLiveTokenEntity) ||
+			token.ownerType !== TokenOwnerType.USER ||
+			token.tokenOwnerId !== callerId
+		) {
+			throw new ForbiddenException(`You do not have permission to ${action} this token`);
+		}
 	}
 
 	private async getOneOrThrow(id: string): Promise<TokenEntity> {

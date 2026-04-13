@@ -46,7 +46,7 @@ export const usePersonalTokens = (): IUsePersonalTokens => {
 		try {
 			const tokensPath = `/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/tokens`;
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: responseData } = await backend.client.GET(tokensPath as any);
+			const { data: responseData } = await backend.client.GET(tokensPath as any, {});
 			if (responseData?.data) {
 				tokens.value = (responseData.data as IPersonalToken[]).filter(
 					(t) => !t.revoked && t.owner_type === 'user',
