@@ -328,8 +328,10 @@ const createRules = reactive<FormRules<ICreateTokenForm>>({
 });
 
 const formatDate = (date: string): string => {
-	const d = new Date(date);
-	return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	}).format(new Date(date));
 };
 
 const isExpired = (date: string): boolean => {
