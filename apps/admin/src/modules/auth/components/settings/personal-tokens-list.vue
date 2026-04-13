@@ -1,11 +1,12 @@
 <template>
 	<div>
-		<el-alert
-			:title="t('authModule.tokens.description', 'Personal access tokens allow external applications to authenticate with the API on your behalf.')"
-			type="info"
-			:closable="false"
-			class="m-4"
-		/>
+		<div class="p-4">
+			<el-alert
+				:title="t('authModule.tokens.description', 'Personal access tokens allow external applications to authenticate with the API on your behalf.')"
+				type="info"
+				:closable="false"
+			/>
+		</div>
 
 		<div
 			v-loading="loading"
