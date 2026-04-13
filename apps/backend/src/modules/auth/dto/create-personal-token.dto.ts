@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -34,6 +34,9 @@ export class CreatePersonalTokenDto {
 	})
 	@Expose({ name: 'expires_in_days' })
 	@IsOptional()
+	@ValidateIf((_, value) => value != null)
+	@IsNumber({}, { message: '[{"field":"expires_in_days","reason":"Expiration must be a number."}]' })
+	@Min(1, { message: '[{"field":"expires_in_days","reason":"Expiration must be at least 1 day."}]' })
 	expiresInDays?: number | null;
 }
 
