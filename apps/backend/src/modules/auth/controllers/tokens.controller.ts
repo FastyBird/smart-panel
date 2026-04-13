@@ -17,6 +17,7 @@ import {
 	Req,
 	Res,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -41,7 +42,6 @@ import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { AuthenticatedRequest } from '../guards/auth.guard';
 import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
-import { AuthService } from '../services/auth.service';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
@@ -53,7 +53,7 @@ export class TokensController {
 	constructor(
 		private readonly tokensService: TokensService,
 		private readonly tokensMapperService: TokensTypeMapperService,
-		private readonly authService: AuthService,
+		private readonly jwtService: JwtService,
 		private readonly usersService: UsersService,
 	) {}
 
@@ -349,10 +349,19 @@ export class TokensController {
 		const user = await this.usersService.getOneOrThrow(auth.id);
 		const dto = body.data;
 
-		// Generate JWT token — if no expiry, create a 100-year token (effectively never expires)
+		// Generate JWT token with 'personal' type claim so the auth guard
+		// routes it to validateLongLiveToken instead of validateUserAccessToken
 		const daysToExpire = dto.expiresInDays ?? 36500;
 		const expiresInSeconds = daysToExpire * 24 * 60 * 60;
-		const rawToken = this.authService.generateToken(user, user.role, { expiresIn: expiresInSeconds });
+		const rawToken = this.jwtService.sign(
+			{
+				sub: user.id,
+				role: user.role,
+				type: 'personal',
+				iat: Math.floor(Date.now() / 1000),
+			},
+			{ expiresIn: expiresInSeconds },
+		);
 
 		// Calculate expiry date — null means no expiration displayed
 		const expiresAt = dto.expiresInDays

@@ -55,6 +55,23 @@
 		v-else
 		class="mt-4"
 	>
+		<div class="flex items-center justify-between mb-3">
+			<span class="font-semibold">
+				{{ t('authModule.tokens.title', 'Personal Access Tokens') }}
+			</span>
+
+			<el-button
+				type="primary"
+				size="small"
+				@click="tokensList?.openCreateDialog()"
+			>
+				<template #icon>
+					<icon icon="mdi:key-plus" />
+				</template>
+				{{ t('authModule.tokens.create', 'Create Token') }}
+			</el-button>
+		</div>
+
 		<personal-tokens-list ref="tokensList" />
 	</div>
 </template>
