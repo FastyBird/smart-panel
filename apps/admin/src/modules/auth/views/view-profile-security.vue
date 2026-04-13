@@ -19,6 +19,20 @@
 			:layout="Layout.PHONE"
 		/>
 	</div>
+
+	<el-card
+		v-if="isMDDevice"
+		class="mt-4"
+	>
+		<personal-tokens-list />
+	</el-card>
+
+	<div
+		v-else
+		class="mt-4"
+	>
+		<personal-tokens-list />
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -30,7 +44,7 @@ import { ElCard } from 'element-plus';
 
 import { useBreakpoints } from '../../../common';
 import { FormResult, type FormResultType, Layout } from '../auth.constants';
-import { SettingsPasswordForm } from '../components/components';
+import { PersonalTokensList, SettingsPasswordForm } from '../components/components';
 import { useSession } from '../composables/composables';
 
 import type { ViewProfileSecurityProps } from './view-profile-security.types';
