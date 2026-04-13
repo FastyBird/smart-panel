@@ -364,9 +364,7 @@ export class TokensController {
 		);
 
 		// Calculate expiry date — null means no expiration displayed
-		const expiresAt = dto.expiresInDays
-			? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000)
-			: null;
+		const expiresAt = dto.expiresInDays ? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000) : null;
 
 		// Create the entity
 		const entity = await this.tokensService.createPersonalToken({
