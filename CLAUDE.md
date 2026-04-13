@@ -185,4 +185,4 @@ When implementing features:
 3. Prefer existing patterns, helpers, and abstractions over inventing new ones.
 4. Do not introduce new dependencies without a strong reason.
 5. Pay special attention to: auth, error handling, timeouts on external calls, data validation.
-6. Pre-release migration policy: always update the initial migration, never create incremental ones before v1.0.
+6. Migration policy: always create incremental migration files for schema changes (e.g., `1000000000002-AddTokenLastUsedAt.ts`). Never modify the initial migration — alpha releases are deployed and existing installations have already run it.
