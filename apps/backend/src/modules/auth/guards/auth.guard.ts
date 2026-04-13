@@ -20,7 +20,7 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { ACCESS_TOKEN_TYPE, AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
-import { AccessTokenEntity, LongLiveTokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
 import { hashToken } from '../utils/token.utils';
 
@@ -173,19 +173,10 @@ export class AuthGuard implements CanActivate {
 	private async validateDisplayToken(
 		request: AuthenticatedRequest,
 		token: string,
-		displayId: string,
+		_displayId: string,
 	): Promise<boolean> {
-		// Find the long-live token for this display
-		const displayTokens = await this.tokensService.findByOwnerId(displayId, TokenOwnerType.DISPLAY);
-
-		let storedToken: LongLiveTokenEntity | null = null;
-
-		for (const displayToken of displayTokens) {
-			if (hashToken(token) === displayToken.hashedToken) {
-				storedToken = displayToken;
-				break;
-			}
-		}
+		const hashedValue = hashToken(token);
+		const storedToken = await this.tokensService.findOneByHashedToken(hashedValue);
 
 		if (!storedToken) {
 			this.logger.warn('Display token not found in database');
@@ -202,6 +193,9 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token expired');
 		}
 
+		// Update lastUsedAt asynchronously
+		void this.tokensService.updateLastUsedAt(storedToken.id);
+
 		request.auth = {
 			type: 'token',
 			tokenId: storedToken.id,
@@ -216,16 +210,8 @@ export class AuthGuard implements CanActivate {
 	}
 
 	private async validateLongLiveToken(request: AuthenticatedRequest, token: string): Promise<boolean> {
-		const storedLongLiveTokens = await this.tokensService.findAll<LongLiveTokenEntity>(LongLiveTokenEntity);
-
-		let storedLongLiveToken: LongLiveTokenEntity | null = null;
-
-		for (const longLiveToken of storedLongLiveTokens) {
-			if (hashToken(token) === longLiveToken.hashedToken) {
-				storedLongLiveToken = longLiveToken;
-				break;
-			}
-		}
+		const hashedValue = hashToken(token);
+		const storedLongLiveToken = await this.tokensService.findOneByHashedToken(hashedValue);
 
 		if (!storedLongLiveToken) {
 			this.logger.warn('Long-live token not found');
@@ -241,6 +227,9 @@ export class AuthGuard implements CanActivate {
 			this.logger.warn('Long-live token is expired');
 			throw new UnauthorizedException('Token expired');
 		}
+
+		// Update lastUsedAt asynchronously (fire-and-forget, don't block the request)
+		void this.tokensService.updateLastUsedAt(storedLongLiveToken.id);
 
 		// Determine the role based on owner type
 		let role = UserRole.USER;

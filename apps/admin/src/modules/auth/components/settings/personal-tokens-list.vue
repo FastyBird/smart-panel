@@ -1,0 +1,461 @@
+<template>
+	<div>
+		<div class="p-4">
+			<el-alert
+				:title="t('authModule.tokens.description')"
+				type="info"
+				:closable="false"
+			/>
+		</div>
+
+		<div
+			v-loading="loading"
+			class="min-h-[100px]"
+		>
+			<el-table
+				:data="tokens"
+				class="w-full"
+				table-layout="fixed"
+			>
+				<template #empty>
+					<div
+						v-if="loading"
+						class="h-full w-full leading-normal"
+					>
+						<el-result class="h-full w-full">
+							<template #icon>
+								<icon-with-child :size="80">
+									<template #primary>
+										<icon icon="mdi:key" />
+									</template>
+									<template #secondary>
+										<icon icon="mdi:database-refresh" />
+									</template>
+								</icon-with-child>
+							</template>
+						</el-result>
+					</div>
+
+					<div
+						v-else
+						class="h-full w-full leading-normal"
+					>
+						<el-result class="h-full w-full">
+							<template #icon>
+								<icon-with-child :size="80">
+									<template #primary>
+										<icon icon="mdi:key" />
+									</template>
+									<template #secondary>
+										<icon icon="mdi:information" />
+									</template>
+								</icon-with-child>
+							</template>
+
+							<template #title>
+								{{ t('authModule.tokens.noTokens') }}
+							</template>
+						</el-result>
+					</div>
+				</template>
+
+				<el-table-column
+					:label="t('authModule.tokens.columns.name')"
+					prop="name"
+					min-width="150"
+				>
+					<template #default="{ row }">
+						<div>
+							<strong class="block">{{ row.name }}</strong>
+							<el-text
+								v-if="row.description"
+								size="small"
+								type="info"
+								class="block leading-4"
+								truncated
+							>
+								{{ row.description }}
+							</el-text>
+						</div>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('authModule.tokens.columns.created')"
+					prop="created_at"
+					width="180"
+				>
+					<template #default="{ row }">
+						{{ formatDate(row.created_at) }}
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('authModule.tokens.columns.lastUsed')"
+					prop="last_used_at"
+					width="180"
+				>
+					<template #default="{ row }">
+						{{ row.last_used_at ? formatDate(row.last_used_at) : t('authModule.tokens.never') }}
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('authModule.tokens.columns.expires')"
+					prop="expires_at"
+					width="180"
+				>
+					<template #default="{ row }">
+						<template v-if="row.expires_at">
+							<el-text :type="isExpired(row.expires_at) ? 'danger' : undefined">
+								{{ formatDate(row.expires_at) }}
+							</el-text>
+						</template>
+						<template v-else>
+							{{ t('authModule.tokens.never') }}
+						</template>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('authModule.tokens.columns.actions')"
+					width="120"
+					align="right"
+				>
+					<template #default="{ row }">
+						<div @click.stop>
+							<el-button
+								size="small"
+								type="danger"
+								plain
+								:loading="revokingTokenId === row.id"
+								@click="onRevokeToken(row)"
+							>
+								<template #icon>
+									<icon icon="mdi:key-remove" />
+								</template>
+								{{ t('authModule.tokens.revoke') }}
+							</el-button>
+						</div>
+					</template>
+				</el-table-column>
+			</el-table>
+		</div>
+
+		<!-- Create Token Dialog -->
+		<el-dialog
+			v-model="showCreateDialog"
+			:title="t('authModule.tokens.createDialog.title')"
+			class="max-w-[500px]"
+			@close="onCreateDialogClose"
+		>
+			<el-form
+				ref="createFormEl"
+				:model="createForm"
+				:rules="createRules"
+				label-position="top"
+			>
+				<el-form-item
+					:label="t('authModule.tokens.createDialog.name')"
+					prop="name"
+				>
+					<el-input
+						v-model="createForm.name"
+						:placeholder="t('authModule.tokens.createDialog.namePlaceholder')"
+					/>
+				</el-form-item>
+
+				<el-form-item
+					:label="t('authModule.tokens.createDialog.description')"
+					prop="description"
+				>
+					<el-input
+						v-model="createForm.description"
+						type="textarea"
+						:rows="2"
+						:placeholder="t('authModule.tokens.createDialog.descriptionPlaceholder')"
+					/>
+				</el-form-item>
+
+				<el-form-item
+					:label="t('authModule.tokens.createDialog.expiry')"
+					prop="expiresInDays"
+				>
+					<el-select
+						v-model="createForm.expiresInDays"
+						class="w-full"
+					>
+						<el-option
+							:label="t('authModule.tokens.createDialog.expiry30')"
+							:value="30"
+						/>
+						<el-option
+							:label="t('authModule.tokens.createDialog.expiry90')"
+							:value="90"
+						/>
+						<el-option
+							:label="t('authModule.tokens.createDialog.expiry365')"
+							:value="365"
+						/>
+						<el-option
+							:label="t('authModule.tokens.createDialog.expiryNever')"
+							:value="0"
+						/>
+					</el-select>
+				</el-form-item>
+			</el-form>
+
+			<template #footer>
+				<el-button @click="showCreateDialog = false">
+					{{ t('authModule.tokens.createDialog.cancel') }}
+				</el-button>
+				<el-button
+					type="primary"
+					:loading="isCreating"
+					@click="onCreateToken"
+				>
+					{{ t('authModule.tokens.createDialog.submit') }}
+				</el-button>
+			</template>
+		</el-dialog>
+
+		<!-- Token Created Dialog -->
+		<el-dialog
+			v-model="showTokenValueDialog"
+			:title="t('authModule.tokens.createdDialog.title')"
+			class="max-w-[600px]"
+			:close-on-click-modal="false"
+			:close-on-press-escape="false"
+		>
+			<el-alert
+				:title="t('authModule.tokens.createdDialog.warning')"
+				type="warning"
+				:closable="false"
+				show-icon
+			/>
+
+			<el-input
+				:model-value="createdTokenValue"
+				readonly
+				class="font-mono mt-4"
+			/>
+
+			<template #footer>
+				<el-button
+					:type="tokenCopied ? 'success' : 'primary'"
+					@click="onCopyToken"
+				>
+					<template #icon>
+						<icon :icon="tokenCopied ? 'mdi:check' : 'mdi:content-copy'" />
+					</template>
+					{{ tokenCopied ? t('authModule.tokens.createdDialog.copied') : t('authModule.tokens.createdDialog.copy') }}
+				</el-button>
+				<el-button @click="onTokenValueDialogClose">
+					{{ t('authModule.tokens.createdDialog.done') }}
+				</el-button>
+			</template>
+		</el-dialog>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import {
+	ElAlert,
+	ElButton,
+	ElDialog,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElMessageBox,
+	ElOption,
+	ElResult,
+	ElSelect,
+	ElTable,
+	ElTableColumn,
+	ElText,
+	type FormInstance,
+	type FormRules,
+	vLoading,
+} from 'element-plus';
+
+import { Icon } from '@iconify/vue';
+
+import { IconWithChild, useFlashMessage } from '../../../../common';
+import type { IPersonalToken } from '../../composables/usePersonalTokens';
+import { usePersonalTokens } from '../../composables/usePersonalTokens';
+
+interface ICreateTokenForm {
+	name: string;
+	description: string;
+	expiresInDays: number;
+}
+
+defineOptions({
+	name: 'PersonalTokensList',
+});
+
+const { t } = useI18n();
+const flashMessage = useFlashMessage();
+
+const { tokens, loading, fetchTokens, createToken, revokeToken } = usePersonalTokens();
+
+const showCreateDialog = ref(false);
+const showTokenValueDialog = ref(false);
+const isCreating = ref(false);
+const revokingTokenId = ref<string | null>(null);
+const createdTokenValue = ref('');
+const tokenCopied = ref(false);
+
+const createFormEl = ref<FormInstance | undefined>(undefined);
+
+const createForm = reactive<ICreateTokenForm>({
+	name: '',
+	description: '',
+	expiresInDays: 90,
+});
+
+const createRules = reactive<FormRules<ICreateTokenForm>>({
+	name: [
+		{
+			required: true,
+			message: t('authModule.tokens.createDialog.nameRequired'),
+			trigger: 'change',
+		},
+	],
+});
+
+const formatDate = (date: string): string => {
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	}).format(new Date(date));
+};
+
+const isExpired = (date: string): boolean => {
+	return new Date(date) < new Date();
+};
+
+const resetCreateForm = (): void => {
+	createForm.name = '';
+	createForm.description = '';
+	createForm.expiresInDays = 90;
+	createFormEl.value?.resetFields();
+};
+
+const onCreateDialogClose = (): void => {
+	resetCreateForm();
+};
+
+const onCreateToken = async (): Promise<void> => {
+	if (!createFormEl.value) {
+		return;
+	}
+
+	createFormEl.value.validate(async (valid: boolean): Promise<void> => {
+		if (!valid) {
+			return;
+		}
+
+		isCreating.value = true;
+
+		try {
+			const result = await createToken({
+				name: createForm.name,
+				description: createForm.description || null,
+				expires_in_days: createForm.expiresInDays || null,
+			});
+
+			if (result) {
+				createdTokenValue.value = result.token;
+				tokenCopied.value = false;
+				showCreateDialog.value = false;
+				showTokenValueDialog.value = true;
+				resetCreateForm();
+
+				flashMessage.success(
+					t('authModule.tokens.messages.created'),
+				);
+			} else {
+				flashMessage.error(
+					t('authModule.tokens.messages.createError'),
+				);
+			}
+		} catch {
+			flashMessage.error(
+				t('authModule.tokens.messages.createError'),
+			);
+		} finally {
+			isCreating.value = false;
+		}
+	});
+};
+
+const onCopyToken = async (): Promise<void> => {
+	try {
+		await navigator.clipboard.writeText(createdTokenValue.value);
+		tokenCopied.value = true;
+	} catch {
+		flashMessage.error(
+			t('authModule.tokens.messages.copyError'),
+		);
+	}
+};
+
+const onTokenValueDialogClose = (): void => {
+	showTokenValueDialog.value = false;
+	createdTokenValue.value = '';
+	tokenCopied.value = false;
+};
+
+const onRevokeToken = (token: IPersonalToken): void => {
+	ElMessageBox.confirm(
+		t('authModule.tokens.revokeDialog.message'),
+		t('authModule.tokens.revokeDialog.title'),
+		{
+			confirmButtonText: t('authModule.tokens.revokeDialog.confirm'),
+			cancelButtonText: t('authModule.tokens.revokeDialog.cancel'),
+			type: 'warning',
+			confirmButtonClass: 'el-button--danger',
+		},
+	)
+		.then(async () => {
+			revokingTokenId.value = token.id;
+
+			try {
+				const result = await revokeToken(token.id);
+
+				if (result) {
+					flashMessage.success(
+						t('authModule.tokens.messages.revoked'),
+					);
+				} else {
+					flashMessage.error(
+						t('authModule.tokens.messages.revokeError'),
+					);
+				}
+			} catch {
+				flashMessage.error(
+					t('authModule.tokens.messages.revokeError'),
+				);
+			} finally {
+				revokingTokenId.value = null;
+			}
+		})
+		.catch(() => {
+			// Cancelled
+		});
+};
+
+const openCreateDialog = (): void => {
+	showCreateDialog.value = true;
+};
+
+defineExpose({ openCreateDialog });
+
+onMounted(async () => {
+	await fetchTokens();
+});
+</script>

@@ -1,5 +1,8 @@
 <template>
-	<el-card v-if="isMDDevice">
+	<el-card
+		v-if="isMDDevice"
+		shadow="never"
+	>
 		<settings-password-form
 			v-if="profile"
 			v-model:remote-form-submit="remoteFormSubmit"
@@ -19,6 +22,58 @@
 			:layout="Layout.PHONE"
 		/>
 	</div>
+
+	<el-card
+		v-if="isMDDevice"
+		shadow="never"
+		class="mt-4"
+		body-class="p-0!"
+	>
+		<template #header>
+			<div class="flex items-center justify-between">
+				<span class="font-semibold">
+					{{ t('authModule.tokens.title') }}
+				</span>
+
+				<el-button
+					type="primary"
+					size="small"
+					@click="tokensList?.openCreateDialog()"
+				>
+					<template #icon>
+						<icon icon="mdi:key-plus" />
+					</template>
+					{{ t('authModule.tokens.create') }}
+				</el-button>
+			</div>
+		</template>
+
+		<personal-tokens-list ref="tokensList" />
+	</el-card>
+
+	<div
+		v-else
+		class="mt-4"
+	>
+		<div class="flex items-center justify-between mb-3">
+			<span class="font-semibold">
+				{{ t('authModule.tokens.title') }}
+			</span>
+
+			<el-button
+				type="primary"
+				size="small"
+				@click="tokensList?.openCreateDialog()"
+			>
+				<template #icon>
+					<icon icon="mdi:key-plus" />
+				</template>
+				{{ t('authModule.tokens.create') }}
+			</el-button>
+		</div>
+
+		<personal-tokens-list ref="tokensList" />
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -26,11 +81,13 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 
-import { ElCard } from 'element-plus';
+import { ElButton, ElCard } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { useBreakpoints } from '../../../common';
 import { FormResult, type FormResultType, Layout } from '../auth.constants';
-import { SettingsPasswordForm } from '../components/components';
+import { PersonalTokensList, SettingsPasswordForm } from '../components/components';
 import { useSession } from '../composables/composables';
 
 import type { ViewProfileSecurityProps } from './view-profile-security.types';
@@ -56,6 +113,8 @@ const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 const { profile } = useSession();
+
+const tokensList = ref<InstanceType<typeof PersonalTokensList> | null>(null);
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResultType>(props.remoteFormResult);

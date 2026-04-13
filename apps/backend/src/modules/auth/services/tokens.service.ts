@@ -134,6 +134,28 @@ export class TokensService {
 		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
+	async findOneByHashedToken(hashedToken: string): Promise<LongLiveTokenEntity | null> {
+		this.logger.debug('Finding long-live token by hashed value');
+
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+
+		const token = await repository.findOne({
+			where: { hashedToken },
+		});
+
+		return token ?? null;
+	}
+
+	async updateLastUsedAt(tokenId: string): Promise<void> {
+		try {
+			const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+			await repository.update(tokenId, { lastUsedAt: new Date() });
+		} catch (error) {
+			// Fire-and-forget: don't let lastUsedAt update failures affect auth
+			this.logger.debug(`Failed to update lastUsedAt for token ${tokenId}: ${(error as Error).message}`);
+		}
+	}
+
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {
 		return this.findByField('id', id, type);
 	}
@@ -366,6 +388,39 @@ export class TokensService {
 		this.logger.debug('Successfully fetched token');
 
 		return token;
+	}
+
+	async createPersonalToken(data: {
+		token: string;
+		ownerType: TokenOwnerType;
+		ownerId: string;
+		name: string;
+		description: string | null;
+		expiresAt: Date;
+	}): Promise<LongLiveTokenEntity> {
+		this.logger.debug('Creating personal access token');
+
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+
+		const entity = new LongLiveTokenEntity();
+		entity.hashedToken = data.token; // Will be hashed by @BeforeInsert
+		entity.ownerType = data.ownerType;
+		entity.tokenOwnerId = data.ownerId;
+		entity.name = data.name;
+		entity.description = data.description;
+		entity.expiresAt = data.expiresAt;
+
+		const saved = await repository.save(entity);
+
+		const result = await repository.findOne({ where: { id: saved.id } });
+
+		if (!result) {
+			throw new AuthException('Failed to create personal token');
+		}
+
+		this.logger.debug(`Created personal access token id=${result.id}`);
+
+		return result;
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

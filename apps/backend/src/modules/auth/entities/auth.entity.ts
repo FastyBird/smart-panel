@@ -268,6 +268,18 @@ export class LongLiveTokenEntity extends TokenEntity {
 	@Column({ nullable: true })
 	description: string | null;
 
+	@ApiPropertyOptional({
+		name: 'last_used_at',
+		description: 'Timestamp when the token was last used for authentication',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'last_used_at' })
+	@Column({ type: 'datetime', nullable: true, default: null })
+	lastUsedAt: Date | null;
+
 	@ApiProperty({
 		description: 'Token type',
 		enum: [TokenType.LONG_LIVE],

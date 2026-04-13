@@ -139,6 +139,8 @@ describe('AuthGuard', () => {
 						findAllByOwner: jest.fn(),
 						findByOwnerId: jest.fn(),
 						findAll: jest.fn(),
+						findOneByHashedToken: jest.fn(),
+						updateLastUsedAt: jest.fn(),
 					},
 				},
 				{
@@ -302,7 +304,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findByOwnerId').mockResolvedValue([mockDisplayLongLiveToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockDisplayLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -323,7 +325,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findByOwnerId').mockResolvedValue([]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -337,7 +339,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findByOwnerId').mockResolvedValue([revokedToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -354,7 +356,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findByOwnerId').mockResolvedValue([expiredToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -371,7 +373,7 @@ describe('AuthGuard', () => {
 			// JWT verify returns a payload that doesn't indicate display or user type
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([mockThirdPartyLongLiveToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockThirdPartyLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -393,7 +395,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -408,7 +410,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([revokedToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -426,7 +428,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([expiredToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 		});
@@ -446,7 +448,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([userLongLiveToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(userLongLiveToken);
 			jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
 
 			const result = await guard.canActivate(context);
@@ -476,7 +478,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([displayLongLiveToken]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(displayLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -505,7 +507,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([displayTokenWithoutOwner]);
+			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(displayTokenWithoutOwner);
 
 			const result = await guard.canActivate(context);
 

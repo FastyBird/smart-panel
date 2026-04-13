@@ -113,6 +113,56 @@
       }
     }
   },
+  "tokens": {
+    "title": "Personal Access Tokens",
+    "create": "Create Token",
+    "revoke": "Revoke",
+    "never": "Never",
+    "description": "Personal access tokens allow external applications to authenticate with the API on your behalf.",
+    "noTokens": "No personal access tokens yet.",
+    "columns": {
+      "name": "Name",
+      "created": "Created",
+      "lastUsed": "Last Used",
+      "expires": "Expires",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Create Personal Access Token",
+      "name": "Token Name",
+      "namePlaceholder": "e.g. CI/CD Pipeline, Home Assistant",
+      "nameRequired": "Token name is required",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "What is this token used for?",
+      "expiry": "Expiration",
+      "expiry30": "30 days",
+      "expiry90": "90 days",
+      "expiry365": "1 year",
+      "expiryNever": "No expiration",
+      "cancel": "Cancel",
+      "submit": "Create Token"
+    },
+    "createdDialog": {
+      "title": "Token Created Successfully",
+      "warning": "Copy this token now. You won't be able to see it again.",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "done": "Done"
+    },
+    "revokeDialog": {
+      "title": "Revoke Token",
+      "message": "Are you sure you want to revoke this token? This action cannot be undone.",
+      "confirm": "Revoke",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "created": "Personal access token created successfully.",
+      "createError": "Failed to create personal access token.",
+      "revoked": "Token revoked successfully.",
+      "revokeError": "Failed to revoke token.",
+      "copyError": "Failed to copy token to clipboard."
+    }
+  },
   "buttons": {
     "signIn": {
       "title": "Sign in"
