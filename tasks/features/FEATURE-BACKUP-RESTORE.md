@@ -38,24 +38,53 @@ I want to create backups of the system, download them, and restore from them whe
 - Systemd service files (recreated during install)
 - Display panel app data (stored on display devices)
 
+### Architecture: Backup Contribution Registry
+
+The backup module does NOT hardcode which files to back up. Instead, each module/plugin registers its own file contributions via a `BackupContributionRegistry`:
+
+```typescript
+interface BackupContribution {
+    source: string;          // 'buddy-plugin', 'config-module', 'spaces-module'
+    label: string;           // 'AI Personality', 'Plugin Configurations'
+    type: 'file' | 'directory';
+    path: string;            // absolute path to back up
+    optional: boolean;       // skip if doesn't exist (default: true)
+}
+```
+
+Each module registers during `onModuleInit()`:
+- **Config module**: registers `FB_CONFIG_PATH/` directory
+- **Buddy plugin**: registers `personality.md`, `whatsapp-auth/`, etc.
+- **Spaces module**: registers custom YAML files
+- **System module**: registers `/etc/smart-panel/environment`
+
+The database (`database.sqlite`) is always included automatically — no registration needed.
+
+On backup: the service collects all registered contributions, copies them into the archive alongside the database and a metadata JSON.
+
+On restore: files are restored to their original paths based on the metadata.
+
 ## 3. Scope
 
 **In scope**
 
 ### Backend
 
-- New BackupService in the system module
-- POST /modules/system/backups — create a new backup (returns backup metadata)
-- GET /modules/system/backups — list available backups
-- GET /modules/system/backups/:id/download — download backup as tar.gz
-- POST /modules/system/backups/upload — upload a backup file
-- POST /modules/system/backups/:id/restore — restore from a backup (restarts service)
-- DELETE /modules/system/backups/:id — delete a backup
-- Backup file format: tar.gz containing database, config files, and metadata JSON
-- Backup metadata: id, name, version, createdAt, size, description
+- `BackupContributionRegistry` service — modules register file/directory paths during onModuleInit
+- `BackupService` in the system module — creates/restores backups using registry contributions
+- `BackupController` with REST endpoints:
+  - POST /modules/system/backups — create a new backup (returns backup metadata)
+  - GET /modules/system/backups — list available backups
+  - GET /modules/system/backups/:id/download — download backup as tar.gz
+  - POST /modules/system/backups/upload — upload a backup file
+  - POST /modules/system/backups/:id/restore — restore from a backup (restarts service)
+  - DELETE /modules/system/backups/:id — delete a backup
+- Backup file format: tar.gz containing database, contributed files, and metadata JSON
+- Backup metadata: id, name, version, createdAt, size, contributions list
 - Store backups in FB_DATA_DIR/backups/
 - Auto-create backup before updates (integrate with update executor)
 - Limit stored backups (configurable, default 5)
+- Module registrations: config, buddy, spaces, system environment
 
 ### Admin UI
 
@@ -78,19 +107,23 @@ I want to create backups of the system, download them, and restore from them whe
 
 ### Backend
 
-- [ ] POST /modules/system/backups creates a tar.gz backup with database + config + metadata
-- [ ] Backup includes: database.sqlite, config/*.yaml, buddy/personality.md, metadata.json
-- [ ] Backup metadata contains: id, name, version, createdAt, sizeBytes
+- [ ] `BackupContributionRegistry` service allows modules to register file/directory paths
+- [ ] Config module registers its config directory
+- [ ] Buddy module registers personality and auth files
+- [ ] Spaces module registers custom YAML files
+- [ ] System module registers environment file
+- [ ] POST /modules/system/backups creates a tar.gz with database + all contributions + metadata
+- [ ] Backup metadata contains: id, name, version, createdAt, sizeBytes, contributions list
 - [ ] GET /modules/system/backups returns list of available backups sorted by date
 - [ ] GET /modules/system/backups/:id/download streams the backup file
 - [ ] POST /modules/system/backups/upload accepts a tar.gz file upload
-- [ ] POST /modules/system/backups/:id/restore stops service, replaces database + config, restarts
+- [ ] POST /modules/system/backups/:id/restore stops service, replaces database + contributed files, restarts
 - [ ] DELETE /modules/system/backups/:id removes the backup file
 - [ ] Database is copied (not moved) during backup to avoid locking issues
 - [ ] Restore validates the backup metadata (version compatibility check)
 - [ ] Old backups are automatically cleaned up when limit is exceeded
 - [ ] Endpoints require OWNER or ADMIN role
-- [ ] Unit tests for backup creation, listing, and metadata parsing
+- [ ] Unit tests for registry, backup creation, listing, and metadata parsing
 
 ### Admin UI
 
@@ -144,26 +177,67 @@ And if the update fails, the admin can restore from the backup
 
 ## 7. Implementation hints
 
+### BackupContributionRegistry
+
+```typescript
+@Injectable()
+export class BackupContributionRegistry {
+    private contributions: BackupContribution[] = [];
+
+    register(contribution: BackupContribution): void {
+        this.contributions.push(contribution);
+    }
+
+    getContributions(): BackupContribution[] {
+        return [...this.contributions];
+    }
+}
+```
+
+Register as a global provider so all modules can inject it.
+
+### Module registration examples
+
+```typescript
+// In ConfigModule.onModuleInit():
+this.backupRegistry.register({
+    source: 'config-module',
+    label: 'Plugin & Module Configurations',
+    type: 'directory',
+    path: this.configPath,
+    optional: false,
+});
+
+// In BuddyPlugin.onModuleInit():
+this.backupRegistry.register({
+    source: 'buddy-plugin',
+    label: 'AI Personality',
+    type: 'file',
+    path: join(this.dataDir, 'buddy', 'personality.md'),
+    optional: true,
+});
+```
+
 ### Backup creation flow
 
 1. Generate UUID for backup
 2. Create temp directory
-3. Copy database.sqlite (file copy, not SQLite backup command)
-4. Copy config directory recursively
-5. Copy buddy files if they exist
-6. Write metadata.json
-7. Create tar.gz using execFile('tar', ['-czf', ...])
-8. Move tar.gz to backups directory
-9. Cleanup temp directory
-10. Return metadata
+3. Copy database.sqlite (file copy, WAL mode safe)
+4. Iterate BackupContributionRegistry.getContributions()
+5. For each contribution: copy file/directory into temp dir under source-named subfolder
+6. Skip optional contributions that don't exist
+7. Write metadata.json with contribution manifest
+8. Create tar.gz using execFile('tar', ['-czf', ...])
+9. Move tar.gz to backups directory
+10. Cleanup temp directory, return metadata
 
 ### Restore flow
 
 1. Extract backup to temp directory
 2. Read and validate metadata.json (version check)
-3. Stop service via process.exit(0) with Restart=always
-4. Before exit: replace database file, replace config files
-5. Service restarts automatically via systemd
+3. Replace database file
+4. Iterate contributions in metadata, restore each to its original path
+5. Stop service via process.exit(0) — systemd Restart=always restarts it
 6. Migrations run on startup if needed
 
 ### Admin UI
