@@ -82,7 +82,7 @@
 						:auto-upload="true"
 						:show-file-list="false"
 						accept=".tar.gz,.gz"
-						:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts)"
+						:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts) ?? Promise.resolve()"
 					>
 						<el-button
 							size="small"
@@ -125,7 +125,7 @@
 					:auto-upload="true"
 					:show-file-list="false"
 					accept=".tar.gz,.gz"
-					:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts)"
+					:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts) ?? Promise.resolve()"
 				>
 					<el-button
 						size="small"

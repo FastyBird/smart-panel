@@ -90,7 +90,7 @@ export class BackupController {
 			const metadata = await this.backupService.create(body?.data?.name);
 
 			const response = new BackupResponseModel();
-			response.data = this.toDataModel(metadata);
+			response.data = this.mapMetadata(metadata);
 
 			return response;
 		} catch (error) {
@@ -177,7 +177,7 @@ export class BackupController {
 			const metadata = await this.backupService.saveUploadedBackup(buffer, file.filename);
 
 			const response = new BackupResponseModel();
-			response.data = this.toDataModel(metadata);
+			response.data = this.mapMetadata(metadata);
 
 			return response;
 		} catch (error) {
@@ -216,7 +216,7 @@ export class BackupController {
 		}
 
 		const response = new BackupResponseModel();
-		response.data = this.toDataModel(metadata);
+		response.data = this.mapMetadata(metadata);
 
 		// Start restore asynchronously — this will exit the process on success
 		this.backupService.restore(id).catch((error: Error) => {
@@ -252,7 +252,7 @@ export class BackupController {
 			this.backupService.delete(id);
 
 			const response = new BackupResponseModel();
-			response.data = this.toDataModel(metadata);
+			response.data = this.mapMetadata(metadata);
 
 			return response;
 		} catch (error) {
@@ -264,8 +264,8 @@ export class BackupController {
 		}
 	}
 
-	private toDataModel(metadata: BackupMetadata): BackupDataModel {
-		return toInstance(BackupDataModel, {
+	private mapMetadata(metadata: BackupMetadata): BackupDataModel {
+		const mapped = toInstance(BackupDataModel, {
 			id: metadata.id,
 			name: metadata.name,
 			version: metadata.version,
@@ -273,5 +273,7 @@ export class BackupController {
 			sizeBytes: metadata.sizeBytes,
 			contributions: metadata.contributions,
 		});
+
+		return mapped;
 	}
 }
