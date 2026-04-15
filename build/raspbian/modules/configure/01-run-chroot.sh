@@ -86,6 +86,12 @@ smart-panel ALL=(ALL) NOPASSWD: /usr/bin/true
 smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
 smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
+# Update operations (symlink switch, service management, ownership)
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v[0-9]* /opt/smart-panel/current
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/chown -R smart-panel\:smart-panel /opt/smart-panel/v[0-9]*
 SUDOERS
 	chmod 0440 /etc/sudoers.d/smart-panel
 
