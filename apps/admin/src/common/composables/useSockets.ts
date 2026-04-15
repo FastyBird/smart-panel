@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { v4 as uuid } from 'uuid';
 
@@ -9,12 +9,31 @@ import type { IUseSockets } from './types';
 export const useSockets = (): IUseSockets => {
 	const sockets = injectSockets();
 
-	const connected = computed<boolean>((): boolean => {
-		return sockets.connected;
+	const connected = ref<boolean>(sockets.connected);
+	const active = ref<boolean>(sockets.active);
+
+	const onConnect = (): void => {
+		connected.value = true;
+		active.value = true;
+	};
+
+	const onDisconnect = (): void => {
+		connected.value = false;
+		active.value = false;
+	};
+
+	onMounted(() => {
+		// Sync initial state (may have changed since ref was created)
+		connected.value = sockets.connected;
+		active.value = sockets.active;
+
+		sockets.on('connect', onConnect);
+		sockets.on('disconnect', onDisconnect);
 	});
 
-	const active = computed<boolean>((): boolean => {
-		return sockets.active;
+	onBeforeUnmount(() => {
+		sockets.off('connect', onConnect);
+		sockets.off('disconnect', onDisconnect);
 	});
 
 	const sendCommand = async <Payload extends object>(

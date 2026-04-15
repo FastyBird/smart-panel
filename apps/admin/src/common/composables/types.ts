@@ -70,8 +70,8 @@ export interface IUseLogger {
 
 export interface IUseSockets {
 	sockets: Socket;
-	connected: ComputedRef<boolean>;
-	active: ComputedRef<boolean>;
+	connected: Ref<boolean>;
+	active: Ref<boolean>;
 	sendCommand: <Payload extends object>(event: string, payload: Payload | null, handler: string, timeout?: number) => Promise<true | string>;
 }
 
