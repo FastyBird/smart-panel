@@ -60,6 +60,8 @@ smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/chown -R smart-panel\:smart-panel /opt/smart-panel/v[0-9]*
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm install *
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm update *
 SUDOERS
 chmod 0440 /etc/sudoers.d/smart-panel
 

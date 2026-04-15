@@ -259,13 +259,13 @@ sudo -n systemctl stop smart-panel 2>/dev/null || true
 update_status "installing" "installing"
 
 if [ "$VERSION" = "latest" ]; then
-	npm update -g @fastybird/smart-panel 2>&1 || {
+	sudo -n npm update -g @fastybird/smart-panel 2>&1 || {
 		update_status "failed" "failed" "npm update failed"
 		sudo -n systemctl start smart-panel 2>/dev/null || true
 		exit 1
 	}
 else
-	npm install -g "@fastybird/smart-panel@$VERSION" 2>&1 || {
+	sudo -n npm install -g "@fastybird/smart-panel@$VERSION" 2>&1 || {
 		update_status "failed" "failed" "npm install failed for version $VERSION"
 		sudo -n systemctl start smart-panel 2>/dev/null || true
 		exit 1

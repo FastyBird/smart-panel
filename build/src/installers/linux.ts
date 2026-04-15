@@ -113,6 +113,9 @@ export class LinuxInstaller implements BaseInstaller {
 		// Install polkit rule for reboot/poweroff authorization
 		this.createPolkitRule(user);
 
+		// Install sudoers for service management and updates
+		this.createSudoersRule(user);
+
 		// Reload systemd
 		exec('systemctl daemon-reload');
 
@@ -503,5 +506,19 @@ polkit.addRule(function (action, subject) {
 `;
 
 		writeFile(join(rulesDir, '50-smart-panel.rules'), content, 0o644);
+	}
+
+	private createSudoersRule(user: string): void {
+		const npmPath = getNodePath().replace(/node$/, 'npm');
+
+		const content = `# Smart Panel service management and update operations
+${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
+${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
+${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
+${user} ALL=(ALL) NOPASSWD: ${npmPath} install *
+${user} ALL=(ALL) NOPASSWD: ${npmPath} update *
+`;
+
+		writeFile('/etc/sudoers.d/smart-panel', content, 0o440);
 	}
 }
