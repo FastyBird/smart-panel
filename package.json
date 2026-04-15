@@ -1,7 +1,7 @@
 {
   "name": "@fastybird/smart-panel",
   "private": true,
-  "version": "0.6.0-alpha.1",
+  "version": "0.7.0-alpha.1",
   "description": "Repository for FastyBird Smart Panel packages development",
   "keywords": [
     "fastybird",
