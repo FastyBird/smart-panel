@@ -26,10 +26,6 @@ export class BackupContributionModel {
 	@ApiProperty({ description: 'Type of the contributed item', enum: ['file', 'directory'], example: 'file' })
 	@Expose()
 	type: string;
-
-	@ApiProperty({ description: 'Original file system path', type: 'string', example: '/var/lib/smart-panel/.env' })
-	@Expose()
-	path: string;
 }
 
 /**

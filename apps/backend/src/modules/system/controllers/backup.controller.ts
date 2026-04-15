@@ -60,7 +60,7 @@ export class BackupController {
 			const backups = await this.backupService.list();
 
 			const response = new BackupsResponseModel();
-			response.data = backups.map((b) => this.toDataModel(b));
+			response.data = backups.map((b) => this.mapMetadata(b));
 
 			return response;
 		} catch (error) {
@@ -271,7 +271,7 @@ export class BackupController {
 			version: metadata.version,
 			createdAt: metadata.createdAt,
 			sizeBytes: metadata.sizeBytes,
-			contributions: metadata.contributions,
+			contributions: metadata.contributions.map(({ source, label, type }) => ({ source, label, type })),
 		});
 
 		return mapped;

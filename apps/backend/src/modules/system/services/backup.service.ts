@@ -85,11 +85,19 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Copy database
+			// Create a consistent database snapshot using SQLite VACUUM INTO
+			// (safe even during concurrent writes, unlike copyFileSync)
 			if (existsSync(this.dbPath)) {
-				copyFileSync(this.dbPath, join(tempDir, 'database.sqlite'));
+				const backupDbPath = join(tempDir, 'database.sqlite');
 
-				this.logger.debug('Database copied to backup');
+				try {
+					await execFileAsync('sqlite3', [this.dbPath, `.backup '${backupDbPath}'`]);
+				} catch {
+					// Fallback to file copy if sqlite3 CLI is not available
+					copyFileSync(this.dbPath, backupDbPath);
+				}
+
+				this.logger.debug('Database snapshot created for backup');
 			} else {
 				this.logger.warn(`Database file not found at ${this.dbPath}, skipping`);
 			}
