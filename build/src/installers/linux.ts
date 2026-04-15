@@ -405,7 +405,7 @@ export class LinuxInstaller implements BaseInstaller {
 		const existingContent = readFile(envPath);
 
 		if (existingContent) {
-			const match = existingContent.match(/^FB_JWT_SECRET=(.+)$/m);
+			const match = existingContent.match(/^FB_TOKEN_SECRET=(.+)$/m);
 			if (match?.[1]) {
 				jwtSecret = match[1];
 			}
@@ -426,7 +426,7 @@ FB_DB_PATH=${dataDir}/data
 FB_CONFIG_PATH=${dataDir}/config
 
 # JWT secret for authentication (auto-generated)
-FB_JWT_SECRET=${jwtSecret}
+FB_TOKEN_SECRET=${jwtSecret}
 
 # Installation settings (used by uninstall/update)
 FB_SERVICE_USER=${user}
