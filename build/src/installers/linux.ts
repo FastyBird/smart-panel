@@ -517,6 +517,7 @@ ${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
 ${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
 ${user} ALL=(ALL) NOPASSWD: ${npmPath} install *
 ${user} ALL=(ALL) NOPASSWD: ${npmPath} update *
+${user} ALL=(ALL) NOPASSWD: /usr/bin/systemd-run *
 `;
 
 		writeFile('/etc/sudoers.d/smart-panel', content, 0o440);

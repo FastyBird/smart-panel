@@ -207,18 +207,42 @@ export class UpdateExecutorService implements OnModuleInit {
 		try {
 			const { spawn } = await import('child_process');
 
-			const child = spawn('bash', [updateScript, targetVersion], {
-				detached: true,
-				stdio: 'ignore',
-				env: {
-					...process.env,
-					UPDATE_VERSION: targetVersion,
-					STATUS_FILE,
-					INSTALL_TYPE: installType,
-					IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
-					DOWNLOAD_URL: downloadUrl ?? '',
+			// Spawn the update worker in its own systemd scope so it survives
+			// when the smart-panel service is stopped during the update.
+			// Without this, systemd kills all processes in the service cgroup.
+			const envVars: Record<string, string> = {
+				UPDATE_VERSION: targetVersion,
+				STATUS_FILE,
+				INSTALL_TYPE: installType,
+				IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
+				DOWNLOAD_URL: downloadUrl ?? '',
+				HOME: process.env.HOME ?? '/root',
+				PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+			};
+
+			if (process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
+			if (process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
+			if (process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
+
+			const setenvArgs = Object.entries(envVars).flatMap(([k, v]) => ['--setenv', `${k}=${v}`]);
+
+			const child = spawn(
+				'sudo',
+				[
+					'-n',
+					'systemd-run',
+					'--scope',
+					'--unit=smart-panel-update',
+					...setenvArgs,
+					'bash',
+					updateScript,
+					targetVersion,
+				],
+				{
+					detached: true,
+					stdio: 'ignore',
 				},
-			});
+			);
 
 			child.unref();
 
