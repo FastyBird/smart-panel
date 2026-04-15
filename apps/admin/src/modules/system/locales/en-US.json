@@ -471,5 +471,49 @@
     "display": "Display application",
     "backend": "Application backend",
     "other": "Other"
+  },
+  "backups": {
+    "title": "Backups",
+    "description": "Create, restore, and manage system backups. Backups include configuration, database, and extension data.",
+    "noBackups": "No backups have been created yet.",
+    "contributions": "contributions",
+    "columns": {
+      "name": "Name",
+      "version": "Version",
+      "created": "Created",
+      "size": "Size",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Create Backup",
+      "name": "Backup name",
+      "namePlaceholder": "Optional backup name",
+      "submit": "Create"
+    },
+    "deleteDialog": {
+      "title": "Delete Backup",
+      "message": "Are you sure you want to delete the backup \"{name}\"? This action cannot be undone."
+    },
+    "restoreDialog": {
+      "title": "Restore Backup",
+      "warning": "Restoring a backup will overwrite your current configuration and data. The system will restart after the restore is complete.",
+      "message": "Are you sure you want to restore from backup \"{name}\"?",
+      "confirm": "Restore"
+    },
+    "messages": {
+      "created": "Backup has been created successfully.",
+      "createError": "Failed to create backup. Please try again.",
+      "deleted": "Backup has been deleted.",
+      "deleteError": "Failed to delete backup. Please try again.",
+      "restored": "Backup restore has been started. The system will restart shortly.",
+      "restoreError": "Failed to restore backup. Please try again.",
+      "downloadError": "Failed to download backup. Please try again.",
+      "uploaded": "Backup has been uploaded successfully.",
+      "uploadError": "Failed to upload backup. Please try again."
+    },
+    "buttons": {
+      "create": "Create Backup",
+      "upload": "Upload Backup"
+    }
   }
 }

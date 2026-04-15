@@ -1,3 +1,4 @@
+export * from './useBackups';
 export * from './useSystemActions';
 export * from './useSystemInfo';
 export * from './useSystemLog';

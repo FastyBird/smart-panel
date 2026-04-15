@@ -65,6 +65,94 @@
 		/>
 	</div>
 
+	<el-card
+		v-if="isMDDevice"
+		shadow="never"
+		class="mt-4"
+		body-class="p-0!"
+	>
+		<template #header>
+			<div class="flex items-center justify-between">
+				<span class="font-semibold">
+					{{ t('systemModule.backups.title') }}
+				</span>
+
+				<div class="flex items-center gap-2">
+					<el-upload
+						:auto-upload="true"
+						:show-file-list="false"
+						accept=".tar.gz,.gz"
+						:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts)"
+					>
+						<el-button
+							size="small"
+						>
+							<template #icon>
+								<icon icon="mdi:upload" />
+							</template>
+							{{ t('systemModule.backups.buttons.upload') }}
+						</el-button>
+					</el-upload>
+
+					<el-button
+						type="primary"
+						size="small"
+						@click="backupsList?.openCreateDialog()"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+						{{ t('systemModule.backups.buttons.create') }}
+					</el-button>
+				</div>
+			</div>
+		</template>
+
+		<system-backups ref="backupsList" />
+	</el-card>
+
+	<div
+		v-else
+		class="mt-4"
+	>
+		<div class="flex items-center justify-between mb-3">
+			<span class="font-semibold">
+				{{ t('systemModule.backups.title') }}
+			</span>
+
+			<div class="flex items-center gap-2">
+				<el-upload
+					:auto-upload="true"
+					:show-file-list="false"
+					accept=".tar.gz,.gz"
+					:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts)"
+				>
+					<el-button
+						size="small"
+					>
+						<template #icon>
+							<icon icon="mdi:upload" />
+						</template>
+						{{ t('systemModule.backups.buttons.upload') }}
+					</el-button>
+				</el-upload>
+
+				<el-button
+					type="primary"
+					size="small"
+					@click="backupsList?.openCreateDialog()"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+					{{ t('systemModule.backups.buttons.create') }}
+				</el-button>
+			</div>
+		</div>
+
+		<system-backups ref="backupsList" />
+	</div>
+
 	<el-dialog
 		v-model="showAboutInfo"
 		:title="t('systemModule.headings.system.about')"
@@ -104,12 +192,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElButton, ElDialog, vLoading } from 'element-plus';
+import { ElButton, ElCard, ElDialog, ElUpload, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, ManageSystem, SystemInfoDetail } from '../components/components';
+import { AboutApplication, ManageSystem, SystemBackups, SystemInfoDetail } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { RouteNames } from '../system.constants';
 import { SystemException } from '../system.exceptions';
@@ -129,6 +217,8 @@ const { throttleStatus, fetchThrottleStatus, isLoading: isLoadingThrottleStatus 
 const showAboutInfo = ref<boolean>(false);
 
 const showManageSystem = ref<boolean>(false);
+
+const backupsList = ref<InstanceType<typeof SystemBackups> | null>(null);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [
