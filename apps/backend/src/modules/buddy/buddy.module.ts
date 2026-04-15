@@ -1,3 +1,5 @@
+import { resolve } from 'path';
+
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -11,11 +13,17 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { BackupContributionRegistry } from '../system/services/backup-contribution-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
-import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
+import {
+	BUDDY_DEFAULT_PERSONALITY_PATH,
+	BUDDY_MODULE_API_TAG_DESCRIPTION,
+	BUDDY_MODULE_API_TAG_NAME,
+	BUDDY_MODULE_NAME,
+} from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
 import { BuddyPersonalityController } from './controllers/buddy-personality.controller';
@@ -134,6 +142,7 @@ export class BuddyModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly moduleReset: BuddyModuleResetService,
+		private readonly backupRegistry: BackupContributionRegistry,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly heartbeatService: HeartbeatService,
 		private readonly patternDetector: PatternDetectorService,
@@ -152,6 +161,15 @@ export class BuddyModule implements OnModuleInit {
 			},
 			310,
 		);
+
+		// Register backup contribution for AI personality file
+		this.backupRegistry.register({
+			source: BUDDY_MODULE_NAME,
+			label: 'AI Personality',
+			type: 'file',
+			path: resolve(__dirname, '../../../../../', BUDDY_DEFAULT_PERSONALITY_PATH),
+			optional: true,
+		});
 
 		this.heartbeatService.registerEvaluator(this.patternDetector);
 		this.heartbeatService.registerEvaluator(this.anomalyDetector);

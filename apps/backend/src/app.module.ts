@@ -14,6 +14,7 @@ import { getEnvValue } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
+import { BackupContributionModule } from './modules/backup-contribution/backup-contribution.module';
 import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
 import { BuddyModule } from './modules/buddy/buddy.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
@@ -354,6 +355,7 @@ export class AppModule {
 				]),
 				ModuleRegistryModule,
 				ExtensionRegistryModule,
+				BackupContributionModule,
 				FactoryResetModule,
 				AuthModule,
 				ApiModule,

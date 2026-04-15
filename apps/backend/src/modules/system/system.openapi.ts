@@ -1,8 +1,11 @@
 /**
  * OpenAPI extra models for System module
  */
+import { ReqCreateBackupDto } from './dto/create-backup.dto';
 import { ReqInstallUpdateDto } from './dto/install-update.dto';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
+import { BackupResponseModel, BackupsResponseModel } from './models/backup-response.model';
+import { BackupContributionModel, BackupDataModel } from './models/backup.model';
 import { SystemConfigModel } from './models/config.model';
 import { OnboardingStatusModel } from './models/onboarding.model';
 import {
@@ -43,6 +46,7 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	SystemConfigModel,
 	UpdateSystemConfigDto,
 	ReqInstallUpdateDto,
+	ReqCreateBackupDto,
 	// Response models
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
@@ -51,6 +55,8 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	SystemInfoResponseModel,
 	ThrottleStatusResponseModel,
 	SystemModuleLogIngestResult,
+	BackupResponseModel,
+	BackupsResponseModel,
 	// Onboarding models
 	OnboardingStatusModel,
 	// Data models
@@ -75,4 +81,7 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	UpdateStatusModel,
 	UpdateInfoResponseModel,
 	UpdateStatusResponseModel,
+	// Backup models
+	BackupDataModel,
+	BackupContributionModel,
 ];

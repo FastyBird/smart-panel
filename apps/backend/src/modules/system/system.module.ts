@@ -24,12 +24,15 @@ import { WebsocketModule } from '../websocket/websocket.module';
 import { UpdateCheckCommand } from './commands/update-check.command';
 import { UpdatePanelCommand } from './commands/update-panel.command';
 import { UpdateServerCommand } from './commands/update-server.command';
+import { BackupController } from './controllers/backup.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { UpdateController } from './controllers/update.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
+import { BackupContributionRegistry } from './services/backup-contribution-registry.service';
+import { BackupService } from './services/backup.service';
 import { DisplayCommandService } from './services/display-command.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { OnboardingService } from './services/onboarding.service';
@@ -80,8 +83,9 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		UpdateCheckCommand,
 		UpdateServerCommand,
 		UpdatePanelCommand,
+		BackupService,
 	],
-	controllers: [SystemController, LogsController, UpdateController],
+	controllers: [SystemController, LogsController, UpdateController, BackupController],
 	exports: [SystemService, SystemLoggerService],
 })
 export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
@@ -96,6 +100,7 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly backupContributionRegistry: BackupContributionRegistry,
 	) {}
 
 	onModuleInit() {
@@ -160,6 +165,18 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
 				this.displayCommandService.displayFactoryReset(user),
 		);
+
+		// Register system module's own backup contribution (environment file)
+		const dataDir = process.env.FB_DATA_DIR || '/var/lib/smart-panel';
+		const envFilePath = `${dataDir}/.env`;
+
+		this.backupContributionRegistry.register({
+			source: SYSTEM_MODULE_NAME,
+			label: 'Environment configuration',
+			type: 'file',
+			path: envFilePath,
+			optional: true,
+		});
 
 		this.statsRegistryService.register(SYSTEM_MODULE_NAME, this.systemStatsProvider);
 
