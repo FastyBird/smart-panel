@@ -57,7 +57,13 @@ export class BackupService {
 		const dataDir = this.configService.get<string>('FB_DATA_DIR', '/var/lib/smart-panel');
 
 		this.backupsDir = join(dataDir, 'backups');
+	}
 
+	/**
+	 * Ensure the backups directory exists. Called lazily on first use
+	 * rather than in the constructor to avoid EACCES in CI/test environments.
+	 */
+	private ensureBackupsDir(): void {
 		if (!existsSync(this.backupsDir)) {
 			mkdirSync(this.backupsDir, { recursive: true });
 
@@ -66,6 +72,8 @@ export class BackupService {
 	}
 
 	async create(name?: string): Promise<BackupMetadata> {
+		this.ensureBackupsDir();
+
 		const id = uuid();
 		const backupName = name || `backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
 		const tempDir = join(this.backupsDir, `temp-${id}`);
@@ -102,16 +110,19 @@ export class BackupService {
 					continue;
 				}
 
-				const contributionDir = join(tempDir, 'contributions', contribution.source);
+				const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
+				const contributionDir = join(tempDir, 'contributions', safeSource);
 
 				mkdirSync(contributionDir, { recursive: true });
 
 				if (contribution.type === 'file') {
-					const fileName = contribution.path.split('/').pop() || 'file';
+					const fileName = (contribution.path.split('/').pop() || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
 
 					copyFileSync(contribution.path, join(contributionDir, fileName));
 				} else {
-					cpSync(contribution.path, join(contributionDir, contribution.path.split('/').pop() || 'dir'), {
+					const dirName = (contribution.path.split('/').pop() || 'dir').replace(/[^a-zA-Z0-9._-]/g, '_');
+
+					cpSync(contribution.path, join(contributionDir, dirName), {
 						recursive: true,
 					});
 				}
@@ -361,6 +372,8 @@ export class BackupService {
 	}
 
 	async saveUploadedBackup(buffer: Buffer, _originalFilename?: string): Promise<BackupMetadata> {
+		this.ensureBackupsDir();
+
 		const tempId = uuid();
 		const tempTarPath = join(this.backupsDir, `upload-${tempId}.tar.gz`);
 		const tempDir = join(this.backupsDir, `upload-meta-${tempId}`);

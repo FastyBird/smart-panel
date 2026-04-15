@@ -215,21 +215,15 @@ export class BackupController {
 			throw new NotFoundException('Backup not found');
 		}
 
-		try {
-			const response = new BackupResponseModel();
-			response.data = this.toDataModel(metadata);
+		const response = new BackupResponseModel();
+		response.data = this.toDataModel(metadata);
 
-			// Start restore - this will exit the process
-			void this.backupService.restore(id);
+		// Start restore asynchronously — this will exit the process on success
+		this.backupService.restore(id).catch((error: Error) => {
+			this.logger.error(`Failed to restore backup: ${error.message}`, error.stack);
+		});
 
-			return response;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to restore backup: ${err.message}`);
-
-			throw new InternalServerErrorException('Failed to restore backup');
-		}
+		return response;
 	}
 
 	@ApiOperation({
