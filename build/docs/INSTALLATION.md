@@ -265,7 +265,7 @@ sudo smart-panel-service restart
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FB_BACKEND_PORT` | `3000` | HTTP server port |
-| `FB_JWT_SECRET` | Auto-generated | JWT authentication secret |
+| `FB_TOKEN_SECRET` | Auto-generated | JWT authentication secret |
 | `FB_DB_PATH` | `/var/lib/smart-panel/data` | Database directory |
 | `FB_CONFIG_PATH` | `/var/lib/smart-panel/config` | Config directory |
 | `FB_MDNS_ENABLED` | `true` | Enable mDNS discovery |

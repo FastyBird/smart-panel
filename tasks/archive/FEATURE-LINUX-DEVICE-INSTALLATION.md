@@ -274,7 +274,7 @@ FB_CONFIG_PATH=/var/lib/smart-panel/config
 FB_SEED_DATA_PATH=/var/lib/smart-panel/seed
 
 # Uncomment to configure
-# FB_JWT_SECRET=your-secure-secret-here
+# FB_TOKEN_SECRET=your-secure-secret-here
 # FB_INFLUXDB_URL=http://localhost:8086
 # FB_INFLUXDB_DATABASE=smart_panel
 ```
