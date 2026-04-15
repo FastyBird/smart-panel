@@ -64,8 +64,7 @@ export class BackupDataModel {
 
 	@ApiProperty({
 		description: 'List of contributions included in the backup',
-		type: 'array',
-		items: { $ref: 'SystemModuleDataBackupContribution' },
+		type: [BackupContributionModel],
 	})
 	@Expose()
 	contributions: BackupContributionModel[];

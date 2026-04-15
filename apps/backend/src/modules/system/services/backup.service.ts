@@ -18,6 +18,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { getEnvValue } from '../../../common/utils/config.utils';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { BackupContributionRegistry } from './backup-contribution-registry.service';
@@ -50,11 +51,11 @@ export class BackupService {
 		private readonly configService: NestConfigService,
 		private readonly contributionRegistry: BackupContributionRegistry,
 	) {
-		const dbDir = this.configService.get<string>('FB_DB_PATH', resolve(__dirname, '../../../../../../var/db'));
+		const dbDir = getEnvValue<string>(this.configService, 'FB_DB_PATH', resolve(__dirname, '../../../../../../var/db'));
 
 		this.dbPath = join(dbDir, 'database.sqlite');
 
-		const dataDir = this.configService.get<string>('FB_DATA_DIR', '/var/lib/smart-panel');
+		const dataDir = getEnvValue<string>(this.configService, 'FB_DATA_DIR', '/var/lib/smart-panel');
 
 		this.backupsDir = join(dataDir, 'backups');
 	}
@@ -287,7 +288,8 @@ export class BackupService {
 					}
 
 					const contributionDir = join(tempDir, 'contributions', contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_'));
-					const itemName = (contribution.path.split('/').pop() || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
+					const fallbackName = contribution.type === 'directory' ? 'dir' : 'file';
+					const itemName = (contribution.path.split('/').pop() || fallbackName).replace(/[^a-zA-Z0-9._-]/g, '_');
 					const sourcePath = join(contributionDir, itemName);
 
 					if (!existsSync(sourcePath)) {
