@@ -174,7 +174,8 @@ export class BackupService {
 			return [];
 		}
 
-		const files = readdirSync(this.backupsDir).filter((f) => f.endsWith('.tar.gz'));
+		// Only list backup files, not temp upload files
+		const files = readdirSync(this.backupsDir).filter((f) => f.endsWith('.tar.gz') && !f.startsWith('upload-'));
 		const backups: BackupMetadata[] = [];
 
 		for (const file of files) {
@@ -258,11 +259,24 @@ export class BackupService {
 				this.logger.log('Database restored from backup');
 			}
 
-			// Restore contributions
+			// Restore contributions — only to paths that are currently registered
+			// to prevent path traversal from crafted backup archives
 			if (metadata.contributions && metadata.contributions.length > 0) {
+				const registeredContributions = this.contributionRegistry.getContributions();
+				const registeredPaths = registeredContributions.map((c) => c.path);
+
 				for (const contribution of metadata.contributions) {
-					const contributionDir = join(tempDir, 'contributions', contribution.source);
-					const itemName = contribution.path.split('/').pop() || 'file';
+					// Security: only restore to paths that match a registered contribution
+					if (!registeredPaths.includes(contribution.path)) {
+						this.logger.warn(
+							`Skipping unregistered contribution path: ${contribution.path} (source: ${contribution.source})`,
+						);
+
+						continue;
+					}
+
+					const contributionDir = join(tempDir, 'contributions', contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_'));
+					const itemName = (contribution.path.split('/').pop() || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
 					const sourcePath = join(contributionDir, itemName);
 
 					if (!existsSync(sourcePath)) {
@@ -370,6 +384,13 @@ export class BackupService {
 
 			if (!metadata.id || !metadata.version) {
 				throw new Error('Invalid backup archive: metadata is missing required fields');
+			}
+
+			// Security: validate that metadata.id is a valid UUID to prevent path traversal
+			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+			if (!uuidRegex.test(metadata.id)) {
+				throw new Error('Invalid backup archive: metadata.id is not a valid UUID');
 			}
 
 			// Move to final location using the ID from metadata
