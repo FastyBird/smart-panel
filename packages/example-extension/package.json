@@ -1,6 +1,6 @@
 {
   "name": "@fastybird/smart-panel-extension-example",
-  "version": "0.5.0-alpha.2",
+  "version": "0.6.0-alpha.1",
   "type": "module",
   "description": "Example Smart Panel extension for demonstration & testing.",
   "main": "dist/index.js",
