@@ -167,7 +167,7 @@ export class BuddyModule implements OnModuleInit {
 			source: BUDDY_MODULE_NAME,
 			label: 'AI Personality',
 			type: 'file',
-			path: resolve(__dirname, '../../../../../', BUDDY_DEFAULT_PERSONALITY_PATH),
+			path: resolve(process.cwd(), BUDDY_DEFAULT_PERSONALITY_PATH),
 			optional: true,
 		});
 

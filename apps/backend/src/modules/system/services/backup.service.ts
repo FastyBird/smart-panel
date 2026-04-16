@@ -276,6 +276,19 @@ export class BackupService {
 
 				copyFileSync(backupDbPath, this.dbPath);
 
+				// Remove WAL and SHM files to prevent stale journal replay
+				// on the restored database after restart
+				const walPath = `${this.dbPath}-wal`;
+				const shmPath = `${this.dbPath}-shm`;
+
+				if (existsSync(walPath)) {
+					rmSync(walPath, { force: true });
+				}
+
+				if (existsSync(shmPath)) {
+					rmSync(shmPath, { force: true });
+				}
+
 				this.logger.log('Database restored from backup');
 			}
 

@@ -10,7 +10,6 @@ export interface IBackupContribution {
 	source: string;
 	label: string;
 	type: string;
-	path: string;
 }
 
 export interface IBackup {

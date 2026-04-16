@@ -82,7 +82,7 @@
 						:auto-upload="true"
 						:show-file-list="false"
 						accept=".tar.gz,.gz"
-						:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts) ?? Promise.resolve()"
+						:http-request="handleUpload"
 					>
 						<el-button
 							size="small"
@@ -125,7 +125,7 @@
 					:auto-upload="true"
 					:show-file-list="false"
 					accept=".tar.gz,.gz"
-					:http-request="(opts: { file: File }) => backupsList?.onUploadBackup(opts) ?? Promise.resolve()"
+					:http-request="handleUpload"
 				>
 					<el-button
 						size="small"
@@ -219,6 +219,10 @@ const showAboutInfo = ref<boolean>(false);
 const showManageSystem = ref<boolean>(false);
 
 const backupsList = ref<InstanceType<typeof SystemBackups> | null>(null);
+
+const handleUpload = (opts: { file: File }): Promise<void> => {
+	return backupsList.value?.onUploadBackup(opts) ?? Promise.resolve();
+};
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [
