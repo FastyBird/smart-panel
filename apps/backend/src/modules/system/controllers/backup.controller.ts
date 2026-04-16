@@ -17,12 +17,13 @@ import {
 	Req,
 	Res,
 } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
+	ApiBinarySuccessResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
@@ -109,11 +110,7 @@ export class BackupController {
 		operationId: 'get-system-module-backup-download',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Backup ID' })
-	@ApiResponse({
-		status: 200,
-		description: 'Backup archive file',
-		content: { 'application/gzip': { schema: { type: 'string', format: 'binary' } } },
-	})
+	@ApiBinarySuccessResponse({ 'application/gzip': { type: 'string', format: 'binary' } }, 'Backup archive file')
 	@ApiNotFoundResponse('Backup not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
