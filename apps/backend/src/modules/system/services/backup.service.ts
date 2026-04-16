@@ -248,8 +248,15 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Extract tar.gz
-			await execFileAsync('tar', ['-xzf', tarPath, '-C', tempDir]);
+			// Extract tar.gz with path traversal protection
+			// List archive contents first and verify no path traversal
+			const { stdout: tarContents } = await execFileAsync('tar', ['-tzf', tarPath]);
+
+			if (tarContents.split('\n').some((entry) => entry.includes('..'))) {
+				throw new Error('Invalid backup: archive contains path traversal entries');
+			}
+
+			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', tarPath, '-C', tempDir]);
 
 			// Validate metadata
 			const metadataPath = join(tempDir, 'metadata.json');
@@ -292,23 +299,26 @@ export class BackupService {
 				this.logger.log('Database restored from backup');
 			}
 
-			// Restore contributions — only to paths that are currently registered
-			// to prevent path traversal from crafted backup archives
+			// Restore contributions — match by source name against currently registered
+			// contributions to resolve the correct target path on this machine
 			if (metadata.contributions && metadata.contributions.length > 0) {
 				const registeredContributions = this.contributionRegistry.getContributions();
-				const registeredPaths = registeredContributions.map((c) => c.path);
+				const registeredBySource = new Map(registeredContributions.map((c) => [c.source, c]));
 
 				for (const contribution of metadata.contributions) {
-					// Security: only restore to paths that match a registered contribution
-					if (!registeredPaths.includes(contribution.path)) {
+					// Match by source name, not absolute path — paths differ between machines
+					const registered = registeredBySource.get(contribution.source);
+
+					if (!registered) {
 						this.logger.warn(
-							`Skipping unregistered contribution path: ${contribution.path} (source: ${contribution.source})`,
+							`Skipping unregistered contribution source: ${contribution.source} (${contribution.label})`,
 						);
 
 						continue;
 					}
 
-					const contributionDir = join(tempDir, 'contributions', contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_'));
+					const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
+					const contributionDir = join(tempDir, 'contributions', safeSource);
 					const fallbackName = contribution.type === 'directory' ? 'dir' : 'file';
 					const itemName = (contribution.path.split('/').pop() || fallbackName).replace(/[^a-zA-Z0-9._-]/g, '_');
 					const sourcePath = join(contributionDir, itemName);
@@ -319,20 +329,21 @@ export class BackupService {
 						continue;
 					}
 
-					// Ensure target directory exists
-					const targetDir = resolve(contribution.path, '..');
+					// Restore to the currently registered path, not the path from the backup
+					const targetPath = registered.path;
+					const targetDir = resolve(targetPath, '..');
 
 					if (!existsSync(targetDir)) {
 						mkdirSync(targetDir, { recursive: true });
 					}
 
 					if (contribution.type === 'directory') {
-						cpSync(sourcePath, contribution.path, { recursive: true });
+						cpSync(sourcePath, targetPath, { recursive: true });
 					} else {
-						copyFileSync(sourcePath, contribution.path);
+						copyFileSync(sourcePath, targetPath);
 					}
 
-					this.logger.debug(`Restored contribution: ${contribution.label} to ${contribution.path}`);
+					this.logger.debug(`Restored contribution: ${contribution.label} to ${targetPath}`);
 				}
 			}
 
@@ -443,6 +454,8 @@ export class BackupService {
 			const stats = statSync(finalPath);
 
 			this.logger.log(`Uploaded backup saved: id=${metadata.id}, size=${stats.size} bytes`);
+
+			await this.cleanupOldBackups();
 
 			return {
 				...metadata,
