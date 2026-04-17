@@ -35,6 +35,19 @@ const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../../../../.
 
 const MAX_BACKUPS = 5;
 
+/**
+ * Thrown by archive validation helpers when an archive is structurally invalid
+ * (traversal entries, symlinks, inconsistent listings). Callers that swallow
+ * generic extraction errors should still propagate these — they indicate a
+ * malicious or corrupt backup the user needs to see.
+ */
+export class BackupArchiveError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'BackupArchiveError';
+	}
+}
+
 export interface BackupMetadata {
 	id: string;
 	name: string;
@@ -90,15 +103,26 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Create a consistent database snapshot using SQLite VACUUM INTO
-			// (safe even during concurrent writes, unlike copyFileSync)
+			// Snapshot the live SQLite file via the `sqlite3` CLI's .backup command so
+			// concurrent writes don't corrupt the copy. copyFileSync races the WAL and is
+			// only safe as a fallback when the CLI isn't installed.
 			if (existsSync(this.dbPath)) {
 				const backupDbPath = join(tempDir, 'database.sqlite');
 
 				try {
 					await execFileAsync('sqlite3', [this.dbPath, `.backup '${backupDbPath}'`]);
-				} catch {
-					// Fallback to file copy if sqlite3 CLI is not available
+				} catch (error) {
+					const err = error as NodeJS.ErrnoException;
+
+					// Only fall back on spawn failures (CLI missing) — any other error
+					// (DB lock, permission denied, disk full) means the snapshot is unsafe
+					// and must propagate instead of being masked by the racy file copy.
+					if (err.code !== 'ENOENT') {
+						throw error;
+					}
+
+					this.logger.warn('sqlite3 CLI not found — falling back to copyFileSync (unsafe under concurrent writes)');
+
 					copyFileSync(this.dbPath, backupDbPath);
 				}
 
@@ -291,7 +315,16 @@ export class BackupService {
 
 			try {
 				linkSync(tarPath, workingArchive);
-			} catch {
+			} catch (error) {
+				const err = error as NodeJS.ErrnoException;
+
+				// Only fall back on cross-filesystem link failure. Other errors (EACCES,
+				// ENOSPC, ENOENT race) would just fail the copy the same way with a more
+				// confusing secondary error — surface the original instead.
+				if (err.code !== 'EXDEV') {
+					throw error;
+				}
+
 				copyFileSync(tarPath, workingArchive);
 			}
 
@@ -338,22 +371,22 @@ export class BackupService {
 					const safeLabel = (contribution.label || 'default').replace(/[^a-zA-Z0-9_-]/g, '_') || 'default';
 					const contributionDir = join(tempDir, 'contributions', safeSource, safeLabel);
 
+					// Metadata claimed a contribution the archive doesn't actually hold — the
+					// archive is corrupt. Throwing is safer than continuing: if the DB swap is
+					// still ahead, PNR isn't set yet and the restore aborts cleanly; if a prior
+					// iteration already flipped PNR, the catch handler exits for restart.
 					if (!existsSync(contributionDir)) {
-						this.logger.warn(`Contribution source not found in backup: ${contribution.label}`);
-
-						continue;
+						throw new Error(`Invalid backup: contribution ${contribution.label} not present in archive`);
 					}
 
-					// Each contribution dir holds exactly one entry (file or directory) — discover it
-					// rather than relying on a stored path, which would leak the source machine's layout
 					const entries = readdirSync(contributionDir);
 
+					// Each contribution dir must hold exactly one entry (file or directory) — a
+					// different count means the archive layout is corrupt or tampered with
 					if (entries.length !== 1) {
-						this.logger.warn(
-							`Unexpected contribution archive layout for ${contribution.label}: ${entries.length} entries`,
+						throw new Error(
+							`Invalid backup: contribution ${contribution.label} has unexpected archive layout (${entries.length} entries)`,
 						);
-
-						continue;
 					}
 
 					const sourcePath = join(contributionDir, entries[0]);
@@ -402,11 +435,11 @@ export class BackupService {
 				if (this.dataSource.isInitialized) {
 					pointOfNoReturn = true;
 
-					try {
-						await this.dataSource.destroy();
-					} catch (error) {
-						this.logger.warn('Failed to cleanly close DataSource before DB restore', { error });
-					}
+					// Let destroy errors propagate — the header comment above this block
+					// explains why a clean close is the WAL-consistency guarantee. If it
+					// fails we must not copy over the DB; PNR is set, so the catch handler
+					// will process.exit(1) and systemd will restart into a clean state.
+					await this.dataSource.destroy();
 				}
 
 				const dbDir = resolve(this.dbPath, '..');
@@ -508,7 +541,13 @@ export class BackupService {
 
 			rmSync(tempDir, { recursive: true, force: true });
 
-			this.writeMetadataSidecar(id, metadata);
+			// Sidecar caching is best-effort here — on create/upload it must succeed, but
+			// for this fallback path the caller only needs the metadata we already parsed
+			try {
+				this.writeMetadataSidecar(id, metadata);
+			} catch (error) {
+				this.logger.warn(`Failed to cache metadata sidecar for backup ${id}`, { error });
+			}
 
 			return {
 				...metadata,
@@ -516,6 +555,14 @@ export class BackupService {
 			};
 		} catch (error) {
 			rmSync(tempDir, { recursive: true, force: true });
+
+			// Propagate archive-integrity/security errors — a malicious archive silently
+			// returning null would hide it from list() and the UI. Swallow ephemeral
+			// problems (tar extraction, JSON parse, missing metadata.json) as null so a
+			// transiently unreadable backup doesn't 500 delete/restore endpoints.
+			if (error instanceof BackupArchiveError) {
+				throw error;
+			}
 
 			this.logger.warn(`Failed to extract metadata from backup ${id}`, { error });
 
@@ -537,20 +584,20 @@ export class BackupService {
 		const verboseLines = tarVerbose.split('\n').filter((line) => line.length > 0);
 
 		if (paths.length !== verboseLines.length) {
-			throw new Error('Invalid backup: archive listing is inconsistent');
+			throw new BackupArchiveError('Invalid backup: archive listing is inconsistent');
 		}
 
 		for (let i = 0; i < paths.length; i++) {
 			const entryPath = paths[i];
 
 			if (entryPath.startsWith('/') || entryPath.split('/').some((segment) => segment === '..')) {
-				throw new Error('Invalid backup: archive contains path traversal entries');
+				throw new BackupArchiveError('Invalid backup: archive contains path traversal entries');
 			}
 
 			const fileType = verboseLines[i][0];
 
 			if (fileType !== '-' && fileType !== 'd') {
-				throw new Error(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
+				throw new BackupArchiveError(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
 			}
 		}
 	}
@@ -559,7 +606,7 @@ export class BackupService {
 	// file that turns out to be a symlink. readFileSync would otherwise follow it.
 	private readExtractedFileSafely(filePath: string): string {
 		if (lstatSync(filePath).isSymbolicLink()) {
-			throw new Error('Invalid backup archive: extracted entry is a symlink');
+			throw new BackupArchiveError('Invalid backup archive: extracted entry is a symlink');
 		}
 
 		return readFileSync(filePath, 'utf-8');
@@ -570,11 +617,10 @@ export class BackupService {
 	}
 
 	private writeMetadataSidecar(id: string, metadata: Omit<BackupMetadata, 'sizeBytes'>): void {
-		try {
-			writeFileSync(this.getMetadataSidecarPath(id), JSON.stringify(metadata, null, 2));
-		} catch (error) {
-			this.logger.warn(`Failed to write metadata sidecar for backup ${id}`, { error });
-		}
+		// Throws to the caller — without the sidecar, list() falls back to tar extraction
+		// which also catches-and-returns-null, so a silent failure here would make the
+		// just-saved backup invisible in the UI and unmanageable through the API.
+		writeFileSync(this.getMetadataSidecarPath(id), JSON.stringify(metadata, null, 2));
 	}
 
 	private readMetadataSidecar(id: string): Omit<BackupMetadata, 'sizeBytes'> | null {
@@ -599,6 +645,7 @@ export class BackupService {
 		const tempId = uuid();
 		const tempTarPath = join(this.backupsDir, `upload-${tempId}.tar.gz`);
 		const tempDir = join(this.backupsDir, `upload-meta-${tempId}`);
+		let finalPath: string | null = null;
 
 		try {
 			// Save uploaded file
@@ -651,11 +698,14 @@ export class BackupService {
 				throw new Error('Invalid backup archive: metadata.id is not a valid UUIDv4');
 			}
 
-			// Move to final location using the ID from metadata
-			const finalPath = this.getBackupPath(metadata.id);
+			// Move to final location using the ID from metadata. Refuse to overwrite an
+			// existing backup — the uploaded metadata.id is attacker-controlled and a forged
+			// collision would otherwise silently replace a real local backup (and its sidecar)
+			// with archive contents chosen by the uploader.
+			finalPath = this.getBackupPath(metadata.id);
 
 			if (existsSync(finalPath)) {
-				rmSync(finalPath, { force: true });
+				throw new Error(`Backup with id=${metadata.id} already exists — refusing to overwrite`);
 			}
 
 			copyFileSync(tempTarPath, finalPath);
@@ -679,12 +729,17 @@ export class BackupService {
 				sizeBytes: stats.size,
 			};
 		} catch (error) {
-			// Cleanup on failure
+			// Cleanup on failure — also unwind finalPath if we copied it before a later
+			// step (sidecar write, retention sweep) failed, otherwise the archive orphans
 			if (existsSync(tempTarPath)) {
 				rmSync(tempTarPath, { force: true });
 			}
 
 			rmSync(tempDir, { recursive: true, force: true });
+
+			if (finalPath && existsSync(finalPath)) {
+				rmSync(finalPath, { force: true });
+			}
 
 			throw error;
 		}
