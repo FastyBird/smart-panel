@@ -225,10 +225,19 @@ export class BackupService {
 			}
 		}
 
-		// Sort by creation date, newest first
-		backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+		// Sort by creation date, newest first. Fall back to 0 for unparsable timestamps —
+		// saveUploadedBackup validates createdAt, but legacy archives or a corrupted
+		// sidecar could still reach this path, and NaN comparisons are never true which
+		// would leave the ordering undefined.
+		backups.sort((a, b) => this.getCreatedAtMs(b.createdAt) - this.getCreatedAtMs(a.createdAt));
 
 		return backups;
+	}
+
+	private getCreatedAtMs(createdAt: string): number {
+		const ms = new Date(createdAt).getTime();
+
+		return Number.isFinite(ms) ? ms : 0;
 	}
 
 	getBackupPath(id: string): string {
@@ -621,8 +630,15 @@ export class BackupService {
 
 			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
 
-			if (!metadata.id || !metadata.version) {
+			if (!metadata.id || !metadata.version || !metadata.createdAt) {
 				throw new Error('Invalid backup archive: metadata is missing required fields');
+			}
+
+			// createdAt must parse to a finite timestamp — cleanupOldBackups and list()
+			// sort by Date.getTime(), and NaN comparisons are never true, which would
+			// silently corrupt retention ordering and risk deleting the wrong backups
+			if (!Number.isFinite(new Date(metadata.createdAt).getTime())) {
+				throw new Error('Invalid backup archive: metadata.createdAt is not a valid ISO date');
 			}
 
 			// Security: validate that metadata.id is a valid UUIDv4 to prevent path traversal.
@@ -685,7 +701,7 @@ export class BackupService {
 		// freshly created/uploaded archive is never deleted by its own retention sweep
 		const candidates = backups
 			.filter((backup) => backup.id !== preserveId)
-			.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+			.sort((a, b) => this.getCreatedAtMs(a.createdAt) - this.getCreatedAtMs(b.createdAt));
 
 		const excessCount = backups.length - MAX_BACKUPS;
 		const toRemove = candidates.slice(0, excessCount);
