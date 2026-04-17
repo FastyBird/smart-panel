@@ -1,6 +1,11 @@
 import { Expose, Type } from 'class-transformer';
+import { IsIn, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
+import { BackupContributionType } from '../services/backup-contribution-registry.service';
+
+const BACKUP_CONTRIBUTION_TYPES: BackupContributionType[] = ['file', 'directory'];
 
 /**
  * Backup contribution data model
@@ -23,9 +28,11 @@ export class BackupContributionModel {
 	@Expose()
 	label: string;
 
-	@ApiProperty({ description: 'Type of the contributed item', enum: ['file', 'directory'], example: 'file' })
+	@ApiProperty({ description: 'Type of the contributed item', enum: BACKUP_CONTRIBUTION_TYPES, example: 'file' })
 	@Expose()
-	type: string;
+	@IsString()
+	@IsIn(BACKUP_CONTRIBUTION_TYPES)
+	type: BackupContributionType;
 }
 
 /**

@@ -25,7 +25,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
-import { BackupContributionRegistry } from './backup-contribution-registry.service';
+import { BackupContributionRegistry, BackupContributionType } from './backup-contribution-registry.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -48,13 +48,89 @@ export class BackupArchiveError extends Error {
 	}
 }
 
+export interface BackupMetadataContribution {
+	source: string;
+	label: string;
+	type: BackupContributionType;
+}
+
 export interface BackupMetadata {
 	id: string;
 	name: string;
 	version: string;
 	createdAt: string;
 	sizeBytes: number;
-	contributions: { source: string; label: string; type: string }[];
+	contributions: BackupMetadataContribution[];
+}
+
+type StoredBackupMetadata = Omit<BackupMetadata, 'sizeBytes'>;
+
+const ALLOWED_CONTRIBUTION_TYPES: readonly BackupContributionType[] = ['file', 'directory'];
+
+/**
+ * Validate a freshly-parsed metadata JSON object. Narrows its `contributions[].type`
+ * from string to the literal union and throws BackupArchiveError on any shape
+ * violation — callers can then rely on a fully-typed result without casts.
+ */
+function parseStoredMetadata(raw: unknown): StoredBackupMetadata {
+	if (typeof raw !== 'object' || raw === null) {
+		throw new BackupArchiveError('Invalid backup archive: metadata is not an object');
+	}
+
+	const candidate = raw as Record<string, unknown>;
+
+	const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+
+	if (
+		!isNonEmptyString(candidate.id) ||
+		!isNonEmptyString(candidate.name) ||
+		!isNonEmptyString(candidate.version) ||
+		!isNonEmptyString(candidate.createdAt)
+	) {
+		throw new BackupArchiveError('Invalid backup archive: metadata is missing required fields');
+	}
+
+	if (!Array.isArray(candidate.contributions)) {
+		throw new BackupArchiveError('Invalid backup archive: metadata.contributions is not an array');
+	}
+
+	const contributions: BackupMetadataContribution[] = candidate.contributions.map((entry, index) => {
+		if (typeof entry !== 'object' || entry === null) {
+			throw new BackupArchiveError(`Invalid backup archive: metadata.contributions[${index}] is not an object`);
+		}
+
+		const contribution = entry as Record<string, unknown>;
+
+		if (
+			typeof contribution.source !== 'string' ||
+			typeof contribution.label !== 'string' ||
+			typeof contribution.type !== 'string'
+		) {
+			throw new BackupArchiveError(
+				`Invalid backup archive: metadata.contributions[${index}] is missing required fields`,
+			);
+		}
+
+		if (!ALLOWED_CONTRIBUTION_TYPES.includes(contribution.type as BackupContributionType)) {
+			throw new BackupArchiveError(
+				`Invalid backup archive: metadata.contributions[${index}].type must be "file" or "directory"`,
+			);
+		}
+
+		return {
+			source: contribution.source,
+			label: contribution.label,
+			type: contribution.type as BackupContributionType,
+		};
+	});
+
+	return {
+		id: candidate.id,
+		name: candidate.name,
+		version: candidate.version,
+		createdAt: candidate.createdAt,
+		contributions,
+	};
 }
 
 @Injectable()
@@ -133,7 +209,7 @@ export class BackupService {
 
 			// Copy contributions
 			const contributions = this.contributionRegistry.getContributions();
-			const includedContributions: { source: string; label: string; type: string }[] = [];
+			const includedContributions: BackupMetadataContribution[] = [];
 
 			for (const contribution of contributions) {
 				if (!existsSync(contribution.path)) {
@@ -181,7 +257,7 @@ export class BackupService {
 			}
 
 			// Write metadata
-			const metadata: Omit<BackupMetadata, 'sizeBytes'> = {
+			const metadata: StoredBackupMetadata = {
 				id,
 				name: backupName,
 				version: packageJson.version,
@@ -335,14 +411,10 @@ export class BackupService {
 			const metadataPath = join(tempDir, 'metadata.json');
 
 			if (!existsSync(metadataPath)) {
-				throw new Error('Invalid backup: metadata.json not found');
+				throw new BackupArchiveError('Invalid backup: metadata.json not found');
 			}
 
-			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
-
-			if (!metadata.id || !metadata.version) {
-				throw new Error('Invalid backup: metadata is missing required fields');
-			}
+			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			return {
 				...metadata,
@@ -403,14 +475,10 @@ export class BackupService {
 			const metadataPath = join(tempDir, 'metadata.json');
 
 			if (!existsSync(metadataPath)) {
-				throw new Error('Invalid backup: metadata.json not found');
+				throw new BackupArchiveError('Invalid backup: metadata.json not found');
 			}
 
-			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as BackupMetadata;
-
-			if (!metadata.id || !metadata.version) {
-				throw new Error('Invalid backup: metadata is missing required fields');
-			}
+			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			// Restore contributions FIRST — overwriting the DB while the app is still
 			// running with open connections can let SQLite recreate a WAL from its cached
@@ -443,7 +511,7 @@ export class BackupService {
 					// still ahead, PNR isn't set yet and the restore aborts cleanly; if a prior
 					// iteration already flipped PNR, the catch handler exits for restart.
 					if (!existsSync(contributionDir)) {
-						throw new Error(`Invalid backup: contribution ${contribution.label} not present in archive`);
+						throw new BackupArchiveError(`Invalid backup: contribution ${contribution.label} not present in archive`);
 					}
 
 					const entries = readdirSync(contributionDir);
@@ -451,7 +519,7 @@ export class BackupService {
 					// Each contribution dir must hold exactly one entry (file or directory) — a
 					// different count means the archive layout is corrupt or tampered with
 					if (entries.length !== 1) {
-						throw new Error(
+						throw new BackupArchiveError(
 							`Invalid backup: contribution ${contribution.label} has unexpected archive layout (${entries.length} entries)`,
 						);
 					}
@@ -604,7 +672,7 @@ export class BackupService {
 				return null;
 			}
 
-			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
+			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			rmSync(tempDir, { recursive: true, force: true });
 
@@ -683,14 +751,14 @@ export class BackupService {
 		return join(this.backupsDir, `${id}.json`);
 	}
 
-	private writeMetadataSidecar(id: string, metadata: Omit<BackupMetadata, 'sizeBytes'>): void {
+	private writeMetadataSidecar(id: string, metadata: StoredBackupMetadata): void {
 		// Throws to the caller — without the sidecar, list() falls back to tar extraction
 		// which also catches-and-returns-null, so a silent failure here would make the
 		// just-saved backup invisible in the UI and unmanageable through the API.
 		writeFileSync(this.getMetadataSidecarPath(id), JSON.stringify(metadata, null, 2));
 	}
 
-	private readMetadataSidecar(id: string): Omit<BackupMetadata, 'sizeBytes'> | null {
+	private readMetadataSidecar(id: string): StoredBackupMetadata | null {
 		const sidecarPath = this.getMetadataSidecarPath(id);
 
 		if (!existsSync(sidecarPath)) {
@@ -698,7 +766,7 @@ export class BackupService {
 		}
 
 		try {
-			return JSON.parse(readFileSync(sidecarPath, 'utf-8')) as Omit<BackupMetadata, 'sizeBytes'>;
+			return parseStoredMetadata(JSON.parse(readFileSync(sidecarPath, 'utf-8')));
 		} catch (error) {
 			this.logger.warn(`Failed to read metadata sidecar for backup ${id}`, { error });
 
@@ -739,30 +807,23 @@ export class BackupService {
 			const metadataPath = join(tempDir, 'metadata.json');
 
 			if (!existsSync(metadataPath)) {
-				throw new Error('Invalid backup archive: metadata.json not found');
+				throw new BackupArchiveError('Invalid backup archive: metadata.json not found');
 			}
 
-			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
+			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
-			if (!metadata.id || !metadata.version || !metadata.createdAt) {
-				throw new Error('Invalid backup archive: metadata is missing required fields');
-			}
-
-			// createdAt must parse to a finite timestamp — cleanupOldBackups and list()
-			// sort by Date.getTime(), and NaN comparisons are never true, which would
-			// silently corrupt retention ordering and risk deleting the wrong backups
+			// createdAt must parse to a finite timestamp — list() and cleanupOldBackups
+			// sort by Date.getTime() and NaN comparisons corrupt the ordering
 			if (!Number.isFinite(new Date(metadata.createdAt).getTime())) {
-				throw new Error('Invalid backup archive: metadata.createdAt is not a valid ISO date');
+				throw new BackupArchiveError('Invalid backup archive: metadata.createdAt is not a valid ISO date');
 			}
 
-			// Security: validate that metadata.id is a valid UUIDv4 to prevent path traversal.
-			// Must be v4 specifically — every other controller endpoint (download, restore,
-			// delete) uses ParseUUIDPipe({ version: '4' }), so accepting v1/v3/v5 here would
-			// leave uploaded backups visible but unmanageable through the API.
+			// UUIDv4 only — download/restore/delete use ParseUUIDPipe({ version: '4' }),
+			// so a v1/v3/v5 id would be stored but unroutable through the controller pipe
 			const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 			if (!uuidV4Regex.test(metadata.id)) {
-				throw new Error('Invalid backup archive: metadata.id is not a valid UUIDv4');
+				throw new BackupArchiveError('Invalid backup archive: metadata.id is not a valid UUIDv4');
 			}
 
 			// Move to final location using the ID from metadata. Refuse to overwrite an

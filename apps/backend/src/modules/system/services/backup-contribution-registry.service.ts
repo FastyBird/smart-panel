@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+export type BackupContributionType = 'file' | 'directory';
+
 /**
  * `path` accepts either a literal string or a callback that resolves the path
  * at backup/restore time. The callback form is required for modules whose
@@ -9,7 +11,7 @@ import { Injectable } from '@nestjs/common';
 export interface BackupContributionRegistration {
 	source: string;
 	label: string;
-	type: 'file' | 'directory';
+	type: BackupContributionType;
 	path: string | (() => string);
 	optional: boolean;
 }
@@ -17,7 +19,7 @@ export interface BackupContributionRegistration {
 export interface BackupContribution {
 	source: string;
 	label: string;
-	type: 'file' | 'directory';
+	type: BackupContributionType;
 	path: string;
 	optional: boolean;
 }
