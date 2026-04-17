@@ -114,9 +114,12 @@ export class BackupService {
 						continue;
 					}
 
-					this.logger.warn(`Required contribution not found: ${contribution.path}`);
-
-					continue;
+					// Fail the backup — silently skipping a required contribution would produce
+					// an archive that looks successful but is missing data the caller declared
+					// mandatory (e.g. the config directory), leading to a broken restore later
+					throw new Error(
+						`Required backup contribution is missing: ${contribution.label} (${contribution.source}) at ${contribution.path}`,
+					);
 				}
 
 				// Use source + label as the archive path so a module that registers
