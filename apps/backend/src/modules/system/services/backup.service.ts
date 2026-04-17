@@ -37,7 +37,7 @@ export interface BackupMetadata {
 	version: string;
 	createdAt: string;
 	sizeBytes: number;
-	contributions: { source: string; label: string; type: string; path: string }[];
+	contributions: { source: string; label: string; type: string }[];
 }
 
 @Injectable()
@@ -104,7 +104,7 @@ export class BackupService {
 
 			// Copy contributions
 			const contributions = this.contributionRegistry.getContributions();
-			const includedContributions: { source: string; label: string; type: string; path: string }[] = [];
+			const includedContributions: { source: string; label: string; type: string }[] = [];
 
 			for (const contribution of contributions) {
 				if (!existsSync(contribution.path)) {
@@ -140,7 +140,6 @@ export class BackupService {
 					source: contribution.source,
 					label: contribution.label,
 					type: contribution.type,
-					path: contribution.path,
 				});
 
 				this.logger.debug(`Copied contribution: ${contribution.label} from ${contribution.source}`);
@@ -166,8 +165,11 @@ export class BackupService {
 			// Cleanup temp dir
 			rmSync(tempDir, { recursive: true, force: true });
 
-			// Cleanup old backups
-			await this.cleanupOldBackups();
+			// Write metadata sidecar so list() can skip tar extraction
+			this.writeMetadataSidecar(id, metadata);
+
+			// Cleanup old backups (preserve the one we just created)
+			await this.cleanupOldBackups(id);
 
 			const fullMetadata: BackupMetadata = {
 				...metadata,
@@ -230,6 +232,12 @@ export class BackupService {
 		}
 
 		rmSync(tarPath, { force: true });
+
+		const sidecarPath = this.getMetadataSidecarPath(id);
+
+		if (existsSync(sidecarPath)) {
+			rmSync(sidecarPath, { force: true });
+		}
 
 		this.logger.log(`Backup deleted: id=${id}`);
 	}
@@ -319,15 +327,26 @@ export class BackupService {
 
 					const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
 					const contributionDir = join(tempDir, 'contributions', safeSource);
-					const fallbackName = contribution.type === 'directory' ? 'dir' : 'file';
-					const itemName = (contribution.path.split('/').pop() || fallbackName).replace(/[^a-zA-Z0-9._-]/g, '_');
-					const sourcePath = join(contributionDir, itemName);
 
-					if (!existsSync(sourcePath)) {
+					if (!existsSync(contributionDir)) {
 						this.logger.warn(`Contribution source not found in backup: ${contribution.label}`);
 
 						continue;
 					}
+
+					// Each contribution dir holds exactly one entry (file or directory) — discover it
+					// rather than relying on a stored path, which would leak the source machine's layout
+					const entries = readdirSync(contributionDir);
+
+					if (entries.length !== 1) {
+						this.logger.warn(
+							`Unexpected contribution archive layout for ${contribution.label}: ${entries.length} entries`,
+						);
+
+						continue;
+					}
+
+					const sourcePath = join(contributionDir, entries[0]);
 
 					// Restore to the currently registered path, not the path from the backup
 					const targetPath = registered.path;
@@ -369,12 +388,22 @@ export class BackupService {
 			return null;
 		}
 
+		const stats = statSync(tarPath);
+
+		// Fast path: read the sidecar written next to the archive on create/upload
+		const sidecar = this.readMetadataSidecar(id);
+
+		if (sidecar) {
+			return { ...sidecar, sizeBytes: stats.size };
+		}
+
+		// Fallback: extract metadata.json from the tar (e.g. legacy archives without a sidecar).
+		// Cache the result as a sidecar so subsequent reads skip the tar subprocess.
 		const tempDir = join(this.backupsDir, `meta-${id}`);
 
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Extract only metadata.json
 			await execFileAsync('tar', ['-xzf', tarPath, '-C', tempDir, './metadata.json']);
 
 			const metadataPath = join(tempDir, 'metadata.json');
@@ -387,10 +416,9 @@ export class BackupService {
 
 			const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8')) as Omit<BackupMetadata, 'sizeBytes'>;
 
-			// Get file size from the archive
-			const stats = statSync(tarPath);
-
 			rmSync(tempDir, { recursive: true, force: true });
+
+			this.writeMetadataSidecar(id, metadata);
 
 			return {
 				...metadata,
@@ -400,6 +428,34 @@ export class BackupService {
 			rmSync(tempDir, { recursive: true, force: true });
 
 			this.logger.warn(`Failed to extract metadata from backup ${id}`, { error });
+
+			return null;
+		}
+	}
+
+	private getMetadataSidecarPath(id: string): string {
+		return join(this.backupsDir, `${id}.json`);
+	}
+
+	private writeMetadataSidecar(id: string, metadata: Omit<BackupMetadata, 'sizeBytes'>): void {
+		try {
+			writeFileSync(this.getMetadataSidecarPath(id), JSON.stringify(metadata, null, 2));
+		} catch (error) {
+			this.logger.warn(`Failed to write metadata sidecar for backup ${id}`, { error });
+		}
+	}
+
+	private readMetadataSidecar(id: string): Omit<BackupMetadata, 'sizeBytes'> | null {
+		const sidecarPath = this.getMetadataSidecarPath(id);
+
+		if (!existsSync(sidecarPath)) {
+			return null;
+		}
+
+		try {
+			return JSON.parse(readFileSync(sidecarPath, 'utf-8')) as Omit<BackupMetadata, 'sizeBytes'>;
+		} catch (error) {
+			this.logger.warn(`Failed to read metadata sidecar for backup ${id}`, { error });
 
 			return null;
 		}
@@ -455,7 +511,13 @@ export class BackupService {
 
 			this.logger.log(`Uploaded backup saved: id=${metadata.id}, size=${stats.size} bytes`);
 
-			await this.cleanupOldBackups();
+			// Persist a sidecar so list() can skip tar extraction
+			this.writeMetadataSidecar(metadata.id, metadata);
+
+			// Preserve the just-uploaded backup from cleanup — its `createdAt` may be older
+			// than existing backups (e.g. imported from another machine), which would otherwise
+			// make it the immediate deletion target and silently discard the user's upload
+			await this.cleanupOldBackups(metadata.id);
 
 			return {
 				...metadata,
@@ -473,15 +535,21 @@ export class BackupService {
 		}
 	}
 
-	private async cleanupOldBackups(): Promise<void> {
+	private async cleanupOldBackups(preserveId?: string): Promise<void> {
 		const backups = await this.list();
 
 		if (backups.length <= MAX_BACKUPS) {
 			return;
 		}
 
-		// Remove oldest backups beyond the limit
-		const toRemove = backups.slice(MAX_BACKUPS);
+		// Pick deletion candidates from oldest-first, excluding the protected backup so a
+		// freshly created/uploaded archive is never deleted by its own retention sweep
+		const candidates = backups
+			.filter((backup) => backup.id !== preserveId)
+			.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+		const excessCount = backups.length - MAX_BACKUPS;
+		const toRemove = candidates.slice(0, excessCount);
 
 		for (const backup of toRemove) {
 			try {
