@@ -35,7 +35,7 @@ import { UserRole } from '../../users/users.constants';
 import { ReqCreateBackupDto } from '../dto/create-backup.dto';
 import { BackupResponseModel, BackupsResponseModel } from '../models/backup-response.model';
 import { BackupDataModel } from '../models/backup.model';
-import { BackupMetadata, BackupService } from '../services/backup.service';
+import { BackupArchiveError, BackupMetadata, BackupService } from '../services/backup.service';
 import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiTags(SYSTEM_MODULE_API_TAG_NAME)
@@ -196,6 +196,15 @@ export class BackupController {
 		} catch (error) {
 			if (error instanceof BadRequestException) {
 				throw error;
+			}
+
+			// Archive-integrity/security failures (bad metadata, UUID, traversal, symlinks,
+			// duplicate id) are client errors — return 400 with the original message so the
+			// admin sees what's wrong with the archive instead of a generic 500.
+			if (error instanceof BackupArchiveError) {
+				this.logger.warn(`Rejected uploaded backup: ${error.message}`);
+
+				throw new BadRequestException(error.message);
 			}
 
 			const err = error as Error;
