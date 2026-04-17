@@ -1,5 +1,19 @@
 import { Injectable } from '@nestjs/common';
 
+/**
+ * `path` accepts either a literal string or a callback that resolves the path
+ * at backup/restore time. The callback form is required for modules whose
+ * paths are user-configurable (e.g. buddy personality) — registering the
+ * default at module init would diverge from the live configured path.
+ */
+export interface BackupContributionRegistration {
+	source: string;
+	label: string;
+	type: 'file' | 'directory';
+	path: string | (() => string);
+	optional: boolean;
+}
+
 export interface BackupContribution {
 	source: string;
 	label: string;
@@ -10,13 +24,19 @@ export interface BackupContribution {
 
 @Injectable()
 export class BackupContributionRegistry {
-	private readonly contributions: BackupContribution[] = [];
+	private readonly contributions: BackupContributionRegistration[] = [];
 
-	register(contribution: BackupContribution): void {
+	register(contribution: BackupContributionRegistration): void {
 		this.contributions.push(contribution);
 	}
 
 	getContributions(): BackupContribution[] {
-		return [...this.contributions];
+		return this.contributions.map((contribution) => ({
+			source: contribution.source,
+			label: contribution.label,
+			type: contribution.type,
+			path: typeof contribution.path === 'function' ? contribution.path() : contribution.path,
+			optional: contribution.optional,
+		}));
 	}
 }

@@ -1,5 +1,3 @@
-import { resolve } from 'path';
-
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -18,12 +16,7 @@ import { FactoryResetRegistryService } from '../system/services/factory-reset-re
 import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
-import {
-	BUDDY_DEFAULT_PERSONALITY_PATH,
-	BUDDY_MODULE_API_TAG_DESCRIPTION,
-	BUDDY_MODULE_API_TAG_NAME,
-	BUDDY_MODULE_NAME,
-} from './buddy.constants';
+import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
 import { BuddyPersonalityController } from './controllers/buddy-personality.controller';
@@ -142,6 +135,7 @@ export class BuddyModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly moduleReset: BuddyModuleResetService,
+		private readonly personalityService: BuddyPersonalityService,
 		private readonly backupRegistry: BackupContributionRegistry,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly heartbeatService: HeartbeatService,
@@ -162,12 +156,15 @@ export class BuddyModule implements OnModuleInit {
 			310,
 		);
 
-		// Register backup contribution for AI personality file
+		// Register backup contribution for AI personality file. Resolve lazily so the
+		// user-configurable personalityPath from BuddyConfig is read at backup/restore
+		// time — a literal path captured here would diverge from the live location and
+		// silently skip/overwrite the wrong file if the config points elsewhere.
 		this.backupRegistry.register({
 			source: BUDDY_MODULE_NAME,
 			label: 'AI Personality',
 			type: 'file',
-			path: resolve(process.cwd(), BUDDY_DEFAULT_PERSONALITY_PATH),
+			path: () => this.personalityService.resolvePersonalityPath(),
 			optional: true,
 		});
 
