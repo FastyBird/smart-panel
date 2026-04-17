@@ -14,9 +14,7 @@ export class CreateBackupDto {
 
 @ApiSchema({ name: 'SystemModuleReqCreateBackup' })
 export class ReqCreateBackupDto {
-	// Creating a backup without a custom name is the primary flow — the client sends
-	// no body at all. The pipe coerces that to {}, so `data` must be optional or
-	// validation rejects the request before the controller can default the name.
+	// Must be optional — empty-body POST coerces to `{}` and would otherwise fail validation
 	@ApiPropertyOptional({ type: () => CreateBackupDto })
 	@Expose()
 	@IsOptional()

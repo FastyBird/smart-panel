@@ -169,11 +169,9 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 				this.displayCommandService.displayFactoryReset(user),
 		);
 
-		// Register system module's own backup contribution (environment file). Go through
-		// getEnvValue so whitespace-only FB_DATA_DIR values fall back to the default —
-		// BackupService resolves the same variable the same way, and a divergence here
-		// would leave the .env contribution pointing at a different base path than the
-		// one backups are stored under.
+		// Resolve FB_DATA_DIR through getEnvValue so whitespace-only values fall back to
+		// the default; BackupService resolves the same variable the same way, and any
+		// divergence would put .env at a different base than where backups are stored
 		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
 		const envFilePath = `${dataDir}/.env`;
 

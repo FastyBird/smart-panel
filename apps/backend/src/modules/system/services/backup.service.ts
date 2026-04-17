@@ -154,10 +154,7 @@ export class BackupService {
 		this.backupsDir = join(dataDir, 'backups');
 	}
 
-	/**
-	 * Ensure the backups directory exists. Called lazily on first use
-	 * rather than in the constructor to avoid EACCES in CI/test environments.
-	 */
+	// Lazy so construction doesn't require write access to backupsDir
 	private ensureBackupsDir(): void {
 		if (!existsSync(this.backupsDir)) {
 			mkdirSync(this.backupsDir, { recursive: true });
@@ -219,16 +216,12 @@ export class BackupService {
 						continue;
 					}
 
-					// Fail the backup — silently skipping a required contribution would produce
-					// an archive that looks successful but is missing data the caller declared
-					// mandatory (e.g. the config directory), leading to a broken restore later
 					throw new Error(
 						`Required backup contribution is missing: ${contribution.label} (${contribution.source}) at ${contribution.path}`,
 					);
 				}
 
-				// Use source + label as the archive path so a module that registers
-				// multiple contributions doesn't have them collide in the same directory
+				// source + label disambiguates multiple contributions from the same module
 				const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
 				const safeLabel = (contribution.label || 'default').replace(/[^a-zA-Z0-9_-]/g, '_') || 'default';
 				const contributionDir = join(tempDir, 'contributions', safeSource, safeLabel);
@@ -436,20 +429,15 @@ export class BackupService {
 
 		this.logger.log(`Restoring backup id=${id}`);
 
-		// Flips once we start mutating live host state (contribution files or the
-		// DataSource). Past this point the app's on-disk state is partially replaced,
-		// so any failure must exit the process — propagating to the caller would leave
-		// a broken app serving requests against a half-restored filesystem or DB.
+		// Once true, any failure must process.exit — live host state is partially
+		// replaced and restart is the only safe recovery
 		let pointOfNoReturn = false;
 
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Pin the archive to a private path inside tempDir so a concurrent rename
-			// or rewrite of the public tarPath between our listing and extraction can't
-			// swap in a malicious archive after our safety checks. A hardlink keeps the
-			// original inode alive even if the public name is replaced; fall back to a
-			// full copy on cross-filesystem errors.
+			// Pin the archive to a private path so concurrent rewrites of the public
+			// tarPath between safety check and extraction can't swap in a different file
 			const workingArchive = join(tempDir, 'archive.tar.gz');
 
 			try {
@@ -480,11 +468,9 @@ export class BackupService {
 
 			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
-			// Restore contributions FIRST — overwriting the DB while the app is still
-			// running with open connections can let SQLite recreate a WAL from its cached
-			// view of the OLD database, which would then replay onto the restored file
-			// after restart and corrupt it. Do the file-only work here; the DB swap
-			// happens last, after the DataSource is closed.
+			// Contributions first — overwriting the DB while the app is still running with
+			// open connections lets SQLite rewrite WAL from its cached view of the OLD DB,
+			// which would replay onto the restored file on next boot and corrupt it
 			if (metadata.contributions && metadata.contributions.length > 0) {
 				const registeredContributions = this.contributionRegistry.getContributions();
 				const contributionKey = (source: string, label: string): string => `${source}\u0000${label}`;
@@ -613,10 +599,7 @@ export class BackupService {
 			rmSync(tempDir, { recursive: true, force: true });
 
 			if (pointOfNoReturn) {
-				// Live host state is already partially mutated (contributions overwritten
-				// and/or DataSource destroyed). Continuing would keep a broken app alive
-				// against a half-restored filesystem/DB. Exit non-zero so systemd restarts
-				// into a clean state; the user can inspect the partial state and retry.
+				// Live state already mutated — exit non-zero so systemd restarts clean
 				this.logger.error(
 					`Backup restore failed after mutating live state: ${(error as Error).message}. Exiting for restart.`,
 					(error as Error).stack,

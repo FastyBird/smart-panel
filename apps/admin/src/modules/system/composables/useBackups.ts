@@ -8,7 +8,7 @@ import { ACCESS_TOKEN_COOKIE_NAME } from '../../auth/auth.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 // Detect Home Assistant ingress prefix so direct fetch() calls resolve behind
-// a path-prefixed reverse proxy, matching the backend client configured in app.main.ts
+// a path-prefixed reverse proxy
 const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
 const ingressBase = ingressMatch ? ingressMatch[1] : '';
 
