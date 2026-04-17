@@ -2,6 +2,7 @@ import { type Ref, ref } from 'vue';
 import { useCookies } from 'vue3-cookies';
 
 import { useBackend } from '../../../common';
+import type { components } from '../../../openapi';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { ACCESS_TOKEN_COOKIE_NAME } from '../../auth/auth.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
@@ -11,20 +12,8 @@ import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
 const ingressBase = ingressMatch ? ingressMatch[1] : '';
 
-export interface IBackupContribution {
-	source: string;
-	label: string;
-	type: string;
-}
-
-export interface IBackup {
-	id: string;
-	name: string;
-	version: string;
-	created_at: string;
-	size_bytes: number;
-	contributions: IBackupContribution[];
-}
+export type IBackupContribution = components['schemas']['SystemModuleDataBackupContribution'];
+export type IBackup = components['schemas']['SystemModuleDataBackup'];
 
 export interface IUseBackups {
 	backups: Ref<IBackup[]>;
@@ -46,18 +35,22 @@ export const useBackups = (): IUseBackups => {
 	const loading = ref(false);
 	const creating = ref(false);
 
-	const backupsBasePath = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/backups`;
+	// Ingress-aware base for the two multipart fetch() calls below that bypass the
+	// openapi-fetch client. The typed API calls use literal paths so openapi-fetch
+	// can infer the correct request/response shapes without `as any` casts.
+	const backupsFetchBase = `${window.location.origin}${ingressBase}/api/v1/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/backups`;
 
 	const fetchBackups = async (): Promise<void> => {
 		loading.value = true;
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: responseData } = await backend.client.GET(backupsBasePath as any, {});
+			const { data: responseData, error } = await backend.client.GET('/modules/system/backups', {});
 
-			if (responseData?.data) {
-				backups.value = responseData.data as IBackup[];
+			if (error || !responseData?.data) {
+				return;
 			}
+
+			backups.value = responseData.data;
 		} catch {
 			// handled by caller
 		} finally {
@@ -71,33 +64,31 @@ export const useBackups = (): IUseBackups => {
 		try {
 			const body = name ? { data: { name } } : undefined;
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: responseData } = await backend.client.POST(backupsBasePath as any, { body });
+			const { data: responseData, error } = await backend.client.POST('/modules/system/backups', { body });
 
-			if (responseData?.data) {
-				const created = responseData.data as IBackup;
-
-				await fetchBackups();
-
-				return created;
+			if (error || !responseData?.data) {
+				return null;
 			}
+
+			const created = responseData.data;
+
+			await fetchBackups();
+
+			return created;
 		} catch {
-			// handled by caller
+			return null;
 		} finally {
 			creating.value = false;
 		}
-
-		return null;
 	};
 
 	const deleteBackup = async (id: string): Promise<boolean> => {
 		try {
-			const deletePath = `${backupsBasePath}/{id}`;
-
 			// openapi-fetch does not throw on HTTP errors — inspect `error` to avoid
 			// silently reporting success on 4xx/5xx responses
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { error } = await backend.client.DELETE(deletePath as any, { params: { path: { id } } });
+			const { error } = await backend.client.DELETE('/modules/system/backups/{id}', {
+				params: { path: { id } },
+			});
 
 			if (error) {
 				return false;
@@ -113,12 +104,11 @@ export const useBackups = (): IUseBackups => {
 
 	const restoreBackup = async (id: string): Promise<boolean> => {
 		try {
-			const restorePath = `${backupsBasePath}/{id}/restore`;
-
 			// openapi-fetch does not throw on HTTP errors — inspect `error` to avoid
 			// silently reporting success on 4xx/5xx responses
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { error } = await backend.client.POST(restorePath as any, { params: { path: { id } } });
+			const { error } = await backend.client.POST('/modules/system/backups/{id}/restore', {
+				params: { path: { id } },
+			});
 
 			if (error) {
 				return false;
@@ -133,7 +123,7 @@ export const useBackups = (): IUseBackups => {
 	const downloadBackup = async (backup: IBackup): Promise<void> => {
 		const accessToken = cookies.get(ACCESS_TOKEN_COOKIE_NAME);
 
-		const url = `${window.location.origin}${ingressBase}/api/v1${backupsBasePath}/${backup.id}/download`;
+		const url = `${backupsFetchBase}/${backup.id}/download`;
 
 		const response = await fetch(url, {
 			headers: {
@@ -158,7 +148,7 @@ export const useBackups = (): IUseBackups => {
 	const uploadBackup = async (file: File): Promise<boolean> => {
 		const accessToken = cookies.get(ACCESS_TOKEN_COOKIE_NAME);
 
-		const url = `${window.location.origin}${ingressBase}/api/v1${backupsBasePath}/upload`;
+		const url = `${backupsFetchBase}/upload`;
 
 		const formData = new FormData();
 		formData.append('file', file);
@@ -184,5 +174,15 @@ export const useBackups = (): IUseBackups => {
 		}
 	};
 
-	return { backups, loading, creating, fetchBackups, createBackup, deleteBackup, restoreBackup, downloadBackup, uploadBackup };
+	return {
+		backups,
+		loading,
+		creating,
+		fetchBackups,
+		createBackup,
+		deleteBackup,
+		restoreBackup,
+		downloadBackup,
+		uploadBackup,
+	};
 };

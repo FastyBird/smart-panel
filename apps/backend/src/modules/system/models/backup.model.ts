@@ -57,11 +57,21 @@ export class BackupDataModel {
 	@Expose()
 	version: string;
 
-	@ApiProperty({ description: 'Timestamp when the backup was created', type: 'string', format: 'date-time' })
+	@ApiProperty({
+		name: 'created_at',
+		description: 'Timestamp when the backup was created',
+		type: 'string',
+		format: 'date-time',
+	})
 	@Expose({ name: 'created_at' })
 	createdAt: string;
 
-	@ApiProperty({ description: 'Size of the backup archive in bytes', type: 'number', example: 1048576 })
+	@ApiProperty({
+		name: 'size_bytes',
+		description: 'Size of the backup archive in bytes',
+		type: 'number',
+		example: 1048576,
+	})
 	@Expose({ name: 'size_bytes' })
 	sizeBytes: number;
 
