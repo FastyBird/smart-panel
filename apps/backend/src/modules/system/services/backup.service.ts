@@ -356,7 +356,9 @@ export class BackupService {
 						mkdirSync(targetDir, { recursive: true });
 					}
 
-					if (contribution.type === 'directory') {
+					// Trust the registry's type (same as path): the currently installed system
+					// defines what this contribution should look like, not the untrusted archive
+					if (registered.type === 'directory') {
 						cpSync(sourcePath, targetPath, { recursive: true });
 					} else {
 						copyFileSync(sourcePath, targetPath);
