@@ -222,10 +222,23 @@ export class BackupController {
 	async restore(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<BackupResponseModel> {
 		this.logger.debug(`Restoring backup id=${id}`);
 
-		const metadata = await this.backupService.getMetadata(id);
+		// Preflight synchronously so archive/safety failures surface as HTTP errors
+		// before we kick off the async restore. The restore itself is fire-and-forget
+		// because it ends in process.exit — errors past preflight can only be logged.
+		let metadata: BackupMetadata;
 
-		if (!metadata) {
-			throw new NotFoundException('Backup not found');
+		try {
+			metadata = await this.backupService.prepareRestore(id);
+		} catch (error) {
+			const err = error as Error;
+
+			if (err.message.startsWith('Backup not found')) {
+				throw new NotFoundException('Backup not found');
+			}
+
+			this.logger.error(`Backup restore preflight failed: ${err.message}`);
+
+			throw new BadRequestException(`Backup cannot be restored: ${err.message}`);
 		}
 
 		const response = new BackupResponseModel();

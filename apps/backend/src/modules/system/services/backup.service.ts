@@ -286,6 +286,73 @@ export class BackupService {
 		this.logger.log(`Backup deleted: id=${id}`);
 	}
 
+	/**
+	 * Validate that an archive is restorable without mutating any live state.
+	 * Hardlinks the archive into a private dir, runs the full safety check, extracts
+	 * metadata.json, and validates its shape — all the failure modes that previously
+	 * hit the controller's fire-and-forget `.catch` after a 200 had already returned.
+	 * The caller should await this before kicking off the asynchronous restore so the
+	 * user sees a real HTTP error on bad/missing archives.
+	 */
+	async prepareRestore(id: string): Promise<BackupMetadata> {
+		const tarPath = this.getBackupPath(id);
+
+		if (!existsSync(tarPath)) {
+			throw new Error(`Backup not found: ${id}`);
+		}
+
+		const tempDir = join(this.backupsDir, `preflight-${id}-${uuid()}`);
+
+		try {
+			mkdirSync(tempDir, { recursive: true });
+
+			const workingArchive = join(tempDir, 'archive.tar.gz');
+
+			try {
+				linkSync(tarPath, workingArchive);
+			} catch (error) {
+				const err = error as NodeJS.ErrnoException;
+
+				if (err.code !== 'EXDEV') {
+					throw error;
+				}
+
+				copyFileSync(tarPath, workingArchive);
+			}
+
+			await this.validateArchiveSafety(workingArchive);
+
+			await execFileAsync('tar', [
+				'--no-same-owner',
+				'--no-same-permissions',
+				'-xzf',
+				workingArchive,
+				'-C',
+				tempDir,
+				'./metadata.json',
+			]);
+
+			const metadataPath = join(tempDir, 'metadata.json');
+
+			if (!existsSync(metadataPath)) {
+				throw new Error('Invalid backup: metadata.json not found');
+			}
+
+			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
+
+			if (!metadata.id || !metadata.version) {
+				throw new Error('Invalid backup: metadata is missing required fields');
+			}
+
+			return {
+				...metadata,
+				sizeBytes: statSync(tarPath).size,
+			};
+		} finally {
+			rmSync(tempDir, { recursive: true, force: true });
+		}
+	}
+
 	async restore(id: string): Promise<void> {
 		const tarPath = this.getBackupPath(id);
 
