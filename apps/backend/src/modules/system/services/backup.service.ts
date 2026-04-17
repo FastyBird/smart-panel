@@ -3,6 +3,7 @@ import {
 	copyFileSync,
 	cpSync,
 	existsSync,
+	linkSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -270,6 +271,19 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
+			// Pin the archive to a private path inside tempDir so a concurrent rename
+			// or rewrite of the public tarPath between our listing and extraction can't
+			// swap in a malicious archive after our safety checks. A hardlink keeps the
+			// original inode alive even if the public name is replaced; fall back to a
+			// full copy on cross-filesystem errors.
+			const workingArchive = join(tempDir, 'archive.tar.gz');
+
+			try {
+				linkSync(tarPath, workingArchive);
+			} catch {
+				copyFileSync(tarPath, workingArchive);
+			}
+
 			// Inspect archive twice to avoid parsing paths out of verbose tar output
 			// (paths can contain spaces, so splitting the verbose line is fragile).
 			//   - `-tzf` gives us clean paths, one per line, which we check for traversal
@@ -279,8 +293,8 @@ export class BackupService {
 			//     a crafted archive could use to redirect writes outside tempDir during
 			//     extraction (--no-same-owner/--no-same-permissions don't help there)
 			const [{ stdout: tarPaths }, { stdout: tarVerbose }] = await Promise.all([
-				execFileAsync('tar', ['-tzf', tarPath]),
-				execFileAsync('tar', ['-tvzf', tarPath]),
+				execFileAsync('tar', ['-tzf', workingArchive]),
+				execFileAsync('tar', ['-tvzf', workingArchive]),
 			]);
 
 			const paths = tarPaths.split('\n').filter((line) => line.length > 0);
@@ -304,7 +318,7 @@ export class BackupService {
 				}
 			}
 
-			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', tarPath, '-C', tempDir]);
+			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', workingArchive, '-C', tempDir]);
 
 			// Validate metadata
 			const metadataPath = join(tempDir, 'metadata.json');
@@ -568,11 +582,14 @@ export class BackupService {
 				throw new Error('Invalid backup archive: metadata is missing required fields');
 			}
 
-			// Security: validate that metadata.id is a valid UUID to prevent path traversal
-			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+			// Security: validate that metadata.id is a valid UUIDv4 to prevent path traversal.
+			// Must be v4 specifically — every other controller endpoint (download, restore,
+			// delete) uses ParseUUIDPipe({ version: '4' }), so accepting v1/v3/v5 here would
+			// leave uploaded backups visible but unmanageable through the API.
+			const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-			if (!uuidRegex.test(metadata.id)) {
-				throw new Error('Invalid backup archive: metadata.id is not a valid UUID');
+			if (!uuidV4Regex.test(metadata.id)) {
+				throw new Error('Invalid backup archive: metadata.id is not a valid UUIDv4');
 			}
 
 			// Move to final location using the ID from metadata
