@@ -6,6 +6,11 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { ACCESS_TOKEN_COOKIE_NAME } from '../../auth/auth.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
+// Detect Home Assistant ingress prefix so direct fetch() calls resolve behind
+// a path-prefixed reverse proxy, matching the backend client configured in app.main.ts
+const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
+const ingressBase = ingressMatch ? ingressMatch[1] : '';
+
 export interface IBackupContribution {
 	source: string;
 	label: string;
@@ -128,7 +133,7 @@ export const useBackups = (): IUseBackups => {
 	const downloadBackup = async (backup: IBackup): Promise<void> => {
 		const accessToken = cookies.get(ACCESS_TOKEN_COOKIE_NAME);
 
-		const url = `${window.location.origin}/api/v1${backupsBasePath}/${backup.id}/download`;
+		const url = `${window.location.origin}${ingressBase}/api/v1${backupsBasePath}/${backup.id}/download`;
 
 		const response = await fetch(url, {
 			headers: {
@@ -153,7 +158,7 @@ export const useBackups = (): IUseBackups => {
 	const uploadBackup = async (file: File): Promise<boolean> => {
 		const accessToken = cookies.get(ACCESS_TOKEN_COOKIE_NAME);
 
-		const url = `${window.location.origin}/api/v1${backupsBasePath}/upload`;
+		const url = `${window.location.origin}${ingressBase}/api/v1${backupsBasePath}/upload`;
 
 		const formData = new FormData();
 		formData.append('file', file);

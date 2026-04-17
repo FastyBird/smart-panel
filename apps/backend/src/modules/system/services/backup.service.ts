@@ -11,11 +11,13 @@ import {
 	writeFileSync,
 } from 'fs';
 import { join, resolve } from 'path';
+import { DataSource } from 'typeorm';
 import { promisify } from 'util';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
@@ -50,6 +52,7 @@ export class BackupService {
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly contributionRegistry: BackupContributionRegistry,
+		@InjectDataSource() private readonly dataSource: DataSource,
 	) {
 		const dbDir = getEnvValue<string>(this.configService, 'FB_DB_PATH', resolve(__dirname, '../../../../../../var/db'));
 
@@ -285,37 +288,11 @@ export class BackupService {
 				throw new Error('Invalid backup: metadata is missing required fields');
 			}
 
-			// Restore database
-			const backupDbPath = join(tempDir, 'database.sqlite');
-
-			if (existsSync(backupDbPath)) {
-				const dbDir = resolve(this.dbPath, '..');
-
-				if (!existsSync(dbDir)) {
-					mkdirSync(dbDir, { recursive: true });
-				}
-
-				copyFileSync(backupDbPath, this.dbPath);
-
-				// Remove WAL and SHM files to prevent stale journal replay
-				// on the restored database after restart
-				const walPath = `${this.dbPath}-wal`;
-				const shmPath = `${this.dbPath}-shm`;
-
-				if (existsSync(walPath)) {
-					rmSync(walPath, { force: true });
-				}
-
-				if (existsSync(shmPath)) {
-					rmSync(shmPath, { force: true });
-				}
-
-				this.logger.log('Database restored from backup');
-			}
-
-			// Restore contributions — match by (source, label) against currently registered
-			// contributions to resolve the correct target path on this machine, and to keep
-			// multiple contributions from the same source separable
+			// Restore contributions FIRST — overwriting the DB while the app is still
+			// running with open connections can let SQLite recreate a WAL from its cached
+			// view of the OLD database, which would then replay onto the restored file
+			// after restart and corrupt it. Do the file-only work here; the DB swap
+			// happens last, after the DataSource is closed.
 			if (metadata.contributions && metadata.contributions.length > 0) {
 				const registeredContributions = this.contributionRegistry.getContributions();
 				const contributionKey = (source: string, label: string): string => `${source}\u0000${label}`;
@@ -382,6 +359,45 @@ export class BackupService {
 
 					this.logger.debug(`Restored contribution: ${contribution.label} to ${targetPath}`);
 				}
+			}
+
+			// Restore database LAST, after contributions are in place. Close the DataSource
+			// first so SQLite flushes its WAL and releases file handles — otherwise the
+			// running engine could rewrite WAL/SHM between our file swap and process.exit,
+			// and those stale entries would replay onto the restored DB at next boot.
+			const backupDbPath = join(tempDir, 'database.sqlite');
+
+			if (existsSync(backupDbPath)) {
+				if (this.dataSource.isInitialized) {
+					try {
+						await this.dataSource.destroy();
+					} catch (error) {
+						this.logger.warn('Failed to cleanly close DataSource before DB restore', { error });
+					}
+				}
+
+				const dbDir = resolve(this.dbPath, '..');
+
+				if (!existsSync(dbDir)) {
+					mkdirSync(dbDir, { recursive: true });
+				}
+
+				copyFileSync(backupDbPath, this.dbPath);
+
+				// Remove any residual WAL/SHM left by the closed connection so SQLite
+				// reopens from a clean state on restart
+				const walPath = `${this.dbPath}-wal`;
+				const shmPath = `${this.dbPath}-shm`;
+
+				if (existsSync(walPath)) {
+					rmSync(walPath, { force: true });
+				}
+
+				if (existsSync(shmPath)) {
+					rmSync(shmPath, { force: true });
+				}
+
+				this.logger.log('Database restored from backup');
 			}
 
 			// Cleanup temp dir
