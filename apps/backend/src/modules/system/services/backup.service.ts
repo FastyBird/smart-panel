@@ -359,6 +359,13 @@ export class BackupService {
 					// Trust the registry's type (same as path): the currently installed system
 					// defines what this contribution should look like, not the untrusted archive
 					if (registered.type === 'directory') {
+						// Remove the existing target before copying so files created after the
+						// backup are cleared — cpSync merges rather than replacing, which would
+						// otherwise leave stale state that can conflict with the restored DB
+						if (existsSync(targetPath)) {
+							rmSync(targetPath, { recursive: true, force: true });
+						}
+
 						cpSync(sourcePath, targetPath, { recursive: true });
 					} else {
 						copyFileSync(sourcePath, targetPath);
