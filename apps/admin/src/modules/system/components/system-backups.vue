@@ -304,8 +304,6 @@ const onCreateDialogClose = (): void => {
 };
 
 const onCreateBackup = async (): Promise<void> => {
-	creating.value = true;
-
 	try {
 		const result = await createBackup(createForm.name || undefined);
 
