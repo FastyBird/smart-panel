@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'SystemModuleCreateBackup' })
 export class CreateBackupDto {
@@ -14,9 +14,13 @@ export class CreateBackupDto {
 
 @ApiSchema({ name: 'SystemModuleReqCreateBackup' })
 export class ReqCreateBackupDto {
-	@ApiProperty({ type: () => CreateBackupDto })
+	// Creating a backup without a custom name is the primary flow — the client sends
+	// no body at all. The pipe coerces that to {}, so `data` must be optional or
+	// validation rejects the request before the controller can default the name.
+	@ApiPropertyOptional({ type: () => CreateBackupDto })
 	@Expose()
+	@IsOptional()
 	@ValidateNested()
 	@Type(() => CreateBackupDto)
-	data: CreateBackupDto;
+	data?: CreateBackupDto;
 }
