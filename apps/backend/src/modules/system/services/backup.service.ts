@@ -4,6 +4,7 @@ import {
 	cpSync,
 	existsSync,
 	linkSync,
+	lstatSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -284,39 +285,7 @@ export class BackupService {
 				copyFileSync(tarPath, workingArchive);
 			}
 
-			// Inspect archive twice to avoid parsing paths out of verbose tar output
-			// (paths can contain spaces, so splitting the verbose line is fragile).
-			//   - `-tzf` gives us clean paths, one per line, which we check for traversal
-			//     per-segment so legitimate filenames like `config..bak` pass while `../x`
-			//     or absolute paths are rejected
-			//   - `-tvzf` gives us file types, so we can reject symlink/hardlink entries
-			//     a crafted archive could use to redirect writes outside tempDir during
-			//     extraction (--no-same-owner/--no-same-permissions don't help there)
-			const [{ stdout: tarPaths }, { stdout: tarVerbose }] = await Promise.all([
-				execFileAsync('tar', ['-tzf', workingArchive]),
-				execFileAsync('tar', ['-tvzf', workingArchive]),
-			]);
-
-			const paths = tarPaths.split('\n').filter((line) => line.length > 0);
-			const verboseLines = tarVerbose.split('\n').filter((line) => line.length > 0);
-
-			if (paths.length !== verboseLines.length) {
-				throw new Error('Invalid backup: archive listing is inconsistent');
-			}
-
-			for (let i = 0; i < paths.length; i++) {
-				const entryPath = paths[i];
-
-				if (entryPath.startsWith('/') || entryPath.split('/').some((segment) => segment === '..')) {
-					throw new Error('Invalid backup: archive contains path traversal entries');
-				}
-
-				const fileType = verboseLines[i][0];
-
-				if (fileType !== '-' && fileType !== 'd') {
-					throw new Error(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
-				}
-			}
+			await this.validateArchiveSafety(workingArchive);
 
 			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', workingArchive, '-C', tempDir]);
 
@@ -327,7 +296,7 @@ export class BackupService {
 				throw new Error('Invalid backup: metadata.json not found');
 			}
 
-			const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8')) as BackupMetadata;
+			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as BackupMetadata;
 
 			if (!metadata.id || !metadata.version) {
 				throw new Error('Invalid backup: metadata is missing required fields');
@@ -497,7 +466,17 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			await execFileAsync('tar', ['-xzf', tarPath, '-C', tempDir, './metadata.json']);
+			await this.validateArchiveSafety(tarPath);
+
+			await execFileAsync('tar', [
+				'--no-same-owner',
+				'--no-same-permissions',
+				'-xzf',
+				tarPath,
+				'-C',
+				tempDir,
+				'./metadata.json',
+			]);
 
 			const metadataPath = join(tempDir, 'metadata.json');
 
@@ -507,7 +486,7 @@ export class BackupService {
 				return null;
 			}
 
-			const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8')) as Omit<BackupMetadata, 'sizeBytes'>;
+			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
 
 			rmSync(tempDir, { recursive: true, force: true });
 
@@ -524,6 +503,48 @@ export class BackupService {
 
 			return null;
 		}
+	}
+
+	// Verify an archive contains only regular files and directories with safe paths.
+	// Rejects symlinks/hardlinks and `..`/absolute paths before any extraction — a
+	// crafted archive could otherwise point metadata.json at an arbitrary host path
+	// (e.g. /etc/passwd) and have a later readFileSync leak its contents.
+	private async validateArchiveSafety(archivePath: string): Promise<void> {
+		const [{ stdout: tarPaths }, { stdout: tarVerbose }] = await Promise.all([
+			execFileAsync('tar', ['-tzf', archivePath]),
+			execFileAsync('tar', ['-tvzf', archivePath]),
+		]);
+
+		const paths = tarPaths.split('\n').filter((line) => line.length > 0);
+		const verboseLines = tarVerbose.split('\n').filter((line) => line.length > 0);
+
+		if (paths.length !== verboseLines.length) {
+			throw new Error('Invalid backup: archive listing is inconsistent');
+		}
+
+		for (let i = 0; i < paths.length; i++) {
+			const entryPath = paths[i];
+
+			if (entryPath.startsWith('/') || entryPath.split('/').some((segment) => segment === '..')) {
+				throw new Error('Invalid backup: archive contains path traversal entries');
+			}
+
+			const fileType = verboseLines[i][0];
+
+			if (fileType !== '-' && fileType !== 'd') {
+				throw new Error(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
+			}
+		}
+	}
+
+	// Defense in depth: even after validateArchiveSafety, refuse to read an extracted
+	// file that turns out to be a symlink. readFileSync would otherwise follow it.
+	private readExtractedFileSafely(filePath: string): string {
+		if (lstatSync(filePath).isSymbolicLink()) {
+			throw new Error('Invalid backup archive: extracted entry is a symlink');
+		}
+
+		return readFileSync(filePath, 'utf-8');
 	}
 
 	private getMetadataSidecarPath(id: string): string {
@@ -568,7 +589,20 @@ export class BackupService {
 			// Extract metadata to validate
 			mkdirSync(tempDir, { recursive: true });
 
-			await execFileAsync('tar', ['-xzf', tempTarPath, '-C', tempDir, './metadata.json']);
+			// Validate entry types/paths before any extraction — an archive whose
+			// metadata.json is a symlink pointing at an arbitrary host file would
+			// otherwise cause the readFileSync below to leak that file's contents.
+			await this.validateArchiveSafety(tempTarPath);
+
+			await execFileAsync('tar', [
+				'--no-same-owner',
+				'--no-same-permissions',
+				'-xzf',
+				tempTarPath,
+				'-C',
+				tempDir,
+				'./metadata.json',
+			]);
 
 			const metadataPath = join(tempDir, 'metadata.json');
 
@@ -576,7 +610,7 @@ export class BackupService {
 				throw new Error('Invalid backup archive: metadata.json not found');
 			}
 
-			const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8')) as Omit<BackupMetadata, 'sizeBytes'>;
+			const metadata = JSON.parse(this.readExtractedFileSafely(metadataPath)) as Omit<BackupMetadata, 'sizeBytes'>;
 
 			if (!metadata.id || !metadata.version) {
 				throw new Error('Invalid backup archive: metadata is missing required fields');
