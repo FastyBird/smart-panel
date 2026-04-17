@@ -264,9 +264,10 @@ export class BackupService {
 
 		this.logger.log(`Restoring backup id=${id}`);
 
-		// Set once we start tearing down the live DataSource — past this point the app
-		// can no longer serve requests, so any failure must exit the process instead of
-		// propagating back to the caller (which would leave a broken app running)
+		// Flips once we start mutating live host state (contribution files or the
+		// DataSource). Past this point the app's on-disk state is partially replaced,
+		// so any failure must exit the process — propagating to the caller would leave
+		// a broken app serving requests against a half-restored filesystem or DB.
 		let pointOfNoReturn = false;
 
 		try {
@@ -356,6 +357,13 @@ export class BackupService {
 						mkdirSync(targetDir, { recursive: true });
 					}
 
+					// About to mutate a live host path — from this point any failure (mid-loop
+					// crash, disk full, permission error) leaves the filesystem in a half-
+					// restored state with some contributions swapped and others untouched, and
+					// a directory contribution's original tree already deleted. The app cannot
+					// keep serving in that state, so treat further errors as fatal and exit.
+					pointOfNoReturn = true;
+
 					// Trust the registry's type (same as path): the currently installed system
 					// defines what this contribution should look like, not the untrusted archive
 					if (registered.type === 'directory') {
@@ -428,11 +436,12 @@ export class BackupService {
 			rmSync(tempDir, { recursive: true, force: true });
 
 			if (pointOfNoReturn) {
-				// DataSource is already destroyed — continuing would keep a broken app alive
-				// with every DB call failing. Exit non-zero so systemd restarts the process
-				// and the user can retry (the backup on disk may be partially swapped).
+				// Live host state is already partially mutated (contributions overwritten
+				// and/or DataSource destroyed). Continuing would keep a broken app alive
+				// against a half-restored filesystem/DB. Exit non-zero so systemd restarts
+				// into a clean state; the user can inspect the partial state and retry.
 				this.logger.error(
-					`Backup restore failed after DataSource teardown: ${(error as Error).message}. Exiting for restart.`,
+					`Backup restore failed after mutating live state: ${(error as Error).message}. Exiting for restart.`,
 					(error as Error).stack,
 				);
 
