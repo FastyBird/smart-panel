@@ -26,6 +26,7 @@ import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.se
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
+import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
 async function bootstrap() {
@@ -58,13 +59,18 @@ async function bootstrap() {
 	// while keeping Fastify's default 1 MiB for JSON endpoints.
 	const fastifyInstance = app.getHttpAdapter().getInstance();
 
+	const multipartRoutes = new Set<string>([
+		`/api/v1/${MODULES_PREFIX}/buddy/conversations/:id/audio`,
+		`/api/v1/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/backups/upload`,
+	]);
+
 	fastifyInstance.addHook(
 		'onRoute',
 		(routeOptions: { url?: string; path?: string; bodyLimit?: number; method?: string | string[] }) => {
 			// Only raise the limit for routes that explicitly consume multipart
 			const path = routeOptions.url ?? routeOptions.path ?? '';
 
-			if (path === `/api/v1/${MODULES_PREFIX}/buddy/conversations/:id/audio`) {
+			if (multipartRoutes.has(path)) {
 				routeOptions.bodyLimit = MULTIPART_MAX_FILE_SIZE_BYTES;
 			}
 		},

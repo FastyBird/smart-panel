@@ -270,12 +270,28 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Extract tar.gz with path traversal protection
-			// List archive contents first and verify no path traversal
-			const { stdout: tarContents } = await execFileAsync('tar', ['-tzf', tarPath]);
+			// Inspect archive with verbose listing so we see file types, then reject:
+			//   - path traversal (`..` in any entry)
+			//   - anything that isn't a regular file (`-`) or directory (`d`)
+			// Symlink/hardlink entries are especially dangerous: a crafted archive can add
+			// a symlink pointing outside tempDir and a later entry that writes through it
+			// would escape the sandbox. --no-same-owner/--no-same-permissions don't help.
+			const { stdout: tarContents } = await execFileAsync('tar', ['-tvzf', tarPath]);
 
-			if (tarContents.split('\n').some((entry) => entry.includes('..'))) {
-				throw new Error('Invalid backup: archive contains path traversal entries');
+			for (const line of tarContents.split('\n')) {
+				if (!line.trim()) {
+					continue;
+				}
+
+				if (line.includes('..')) {
+					throw new Error('Invalid backup: archive contains path traversal entries');
+				}
+
+				const fileType = line[0];
+
+				if (fileType !== '-' && fileType !== 'd') {
+					throw new Error(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
+				}
 			}
 
 			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', tarPath, '-C', tempDir]);
