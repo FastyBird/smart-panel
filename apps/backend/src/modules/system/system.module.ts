@@ -1,6 +1,8 @@
 import { Module, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
+import { getEnvValue } from '../../common/utils/config.utils';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
@@ -97,6 +99,7 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 		private readonly systemStatsProvider: SystemStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly configService: ConfigService,
+		private readonly nestConfigService: NestConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
@@ -166,8 +169,12 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 				this.displayCommandService.displayFactoryReset(user),
 		);
 
-		// Register system module's own backup contribution (environment file)
-		const dataDir = process.env.FB_DATA_DIR || '/var/lib/smart-panel';
+		// Register system module's own backup contribution (environment file). Go through
+		// getEnvValue so whitespace-only FB_DATA_DIR values fall back to the default —
+		// BackupService resolves the same variable the same way, and a divergence here
+		// would leave the .env contribution pointing at a different base path than the
+		// one backups are stored under.
+		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
 		const envFilePath = `${dataDir}/.env`;
 
 		this.backupContributionRegistry.register({
