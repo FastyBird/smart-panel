@@ -89,8 +89,14 @@ export const useBackups = (): IUseBackups => {
 		try {
 			const deletePath = `${backupsBasePath}/{id}`;
 
+			// openapi-fetch does not throw on HTTP errors — inspect `error` to avoid
+			// silently reporting success on 4xx/5xx responses
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await backend.client.DELETE(deletePath as any, { params: { path: { id } } });
+			const { error } = await backend.client.DELETE(deletePath as any, { params: { path: { id } } });
+
+			if (error) {
+				return false;
+			}
 
 			await fetchBackups();
 
@@ -104,8 +110,14 @@ export const useBackups = (): IUseBackups => {
 		try {
 			const restorePath = `${backupsBasePath}/{id}/restore`;
 
+			// openapi-fetch does not throw on HTTP errors — inspect `error` to avoid
+			// silently reporting success on 4xx/5xx responses
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await backend.client.POST(restorePath as any, { params: { path: { id } } });
+			const { error } = await backend.client.POST(restorePath as any, { params: { path: { id } } });
+
+			if (error) {
+				return false;
+			}
 
 			return true;
 		} catch {

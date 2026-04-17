@@ -119,8 +119,11 @@ export class BackupService {
 					continue;
 				}
 
+				// Use source + label as the archive path so a module that registers
+				// multiple contributions doesn't have them collide in the same directory
 				const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
-				const contributionDir = join(tempDir, 'contributions', safeSource);
+				const safeLabel = (contribution.label || 'default').replace(/[^a-zA-Z0-9_-]/g, '_') || 'default';
+				const contributionDir = join(tempDir, 'contributions', safeSource, safeLabel);
 
 				mkdirSync(contributionDir, { recursive: true });
 
@@ -307,26 +310,29 @@ export class BackupService {
 				this.logger.log('Database restored from backup');
 			}
 
-			// Restore contributions — match by source name against currently registered
-			// contributions to resolve the correct target path on this machine
+			// Restore contributions — match by (source, label) against currently registered
+			// contributions to resolve the correct target path on this machine, and to keep
+			// multiple contributions from the same source separable
 			if (metadata.contributions && metadata.contributions.length > 0) {
 				const registeredContributions = this.contributionRegistry.getContributions();
-				const registeredBySource = new Map(registeredContributions.map((c) => [c.source, c]));
+				const contributionKey = (source: string, label: string): string => `${source}\u0000${label}`;
+				const registeredByKey = new Map(
+					registeredContributions.map((c) => [contributionKey(c.source, c.label), c] as const),
+				);
 
 				for (const contribution of metadata.contributions) {
-					// Match by source name, not absolute path — paths differ between machines
-					const registered = registeredBySource.get(contribution.source);
+					// Match by (source, label), not absolute path — paths differ between machines
+					const registered = registeredByKey.get(contributionKey(contribution.source, contribution.label));
 
 					if (!registered) {
-						this.logger.warn(
-							`Skipping unregistered contribution source: ${contribution.source} (${contribution.label})`,
-						);
+						this.logger.warn(`Skipping unregistered contribution: ${contribution.source} (${contribution.label})`);
 
 						continue;
 					}
 
 					const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
-					const contributionDir = join(tempDir, 'contributions', safeSource);
+					const safeLabel = (contribution.label || 'default').replace(/[^a-zA-Z0-9_-]/g, '_') || 'default';
+					const contributionDir = join(tempDir, 'contributions', safeSource, safeLabel);
 
 					if (!existsSync(contributionDir)) {
 						this.logger.warn(`Contribution source not found in backup: ${contribution.label}`);
