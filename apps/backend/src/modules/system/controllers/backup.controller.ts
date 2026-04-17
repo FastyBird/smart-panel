@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -175,7 +176,17 @@ export class BackupController {
 				throw new BadRequestException('No file uploaded');
 			}
 
+			// Must call toBuffer before checking truncated — fastify-multipart sets the
+			// flag while streaming the upload. Without this check, an oversized upload
+			// is silently truncated and the service fails later with a misleading error.
 			const buffer = await file.toBuffer();
+
+			if (file.file.truncated) {
+				const limitMb = Math.round(MULTIPART_MAX_FILE_SIZE_BYTES / (1024 * 1024));
+
+				throw new BadRequestException(`Backup archive exceeds the ${limitMb} MB upload size limit`);
+			}
+
 			const metadata = await this.backupService.saveUploadedBackup(buffer, file.filename);
 
 			const response = new BackupResponseModel();

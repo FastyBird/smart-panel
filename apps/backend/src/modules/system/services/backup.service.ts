@@ -270,24 +270,34 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Inspect archive with verbose listing so we see file types, then reject:
-			//   - path traversal (`..` in any entry)
-			//   - anything that isn't a regular file (`-`) or directory (`d`)
-			// Symlink/hardlink entries are especially dangerous: a crafted archive can add
-			// a symlink pointing outside tempDir and a later entry that writes through it
-			// would escape the sandbox. --no-same-owner/--no-same-permissions don't help.
-			const { stdout: tarContents } = await execFileAsync('tar', ['-tvzf', tarPath]);
+			// Inspect archive twice to avoid parsing paths out of verbose tar output
+			// (paths can contain spaces, so splitting the verbose line is fragile).
+			//   - `-tzf` gives us clean paths, one per line, which we check for traversal
+			//     per-segment so legitimate filenames like `config..bak` pass while `../x`
+			//     or absolute paths are rejected
+			//   - `-tvzf` gives us file types, so we can reject symlink/hardlink entries
+			//     a crafted archive could use to redirect writes outside tempDir during
+			//     extraction (--no-same-owner/--no-same-permissions don't help there)
+			const [{ stdout: tarPaths }, { stdout: tarVerbose }] = await Promise.all([
+				execFileAsync('tar', ['-tzf', tarPath]),
+				execFileAsync('tar', ['-tvzf', tarPath]),
+			]);
 
-			for (const line of tarContents.split('\n')) {
-				if (!line.trim()) {
-					continue;
-				}
+			const paths = tarPaths.split('\n').filter((line) => line.length > 0);
+			const verboseLines = tarVerbose.split('\n').filter((line) => line.length > 0);
 
-				if (line.includes('..')) {
+			if (paths.length !== verboseLines.length) {
+				throw new Error('Invalid backup: archive listing is inconsistent');
+			}
+
+			for (let i = 0; i < paths.length; i++) {
+				const entryPath = paths[i];
+
+				if (entryPath.startsWith('/') || entryPath.split('/').some((segment) => segment === '..')) {
 					throw new Error('Invalid backup: archive contains path traversal entries');
 				}
 
-				const fileType = line[0];
+				const fileType = verboseLines[i][0];
 
 				if (fileType !== '-' && fileType !== 'd') {
 					throw new Error(`Invalid backup: archive contains disallowed entry type "${fileType}"`);
