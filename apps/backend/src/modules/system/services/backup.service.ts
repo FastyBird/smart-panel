@@ -816,7 +816,7 @@ export class BackupService {
 			finalPath = this.getBackupPath(metadata.id);
 
 			if (existsSync(finalPath)) {
-				throw new Error(`Backup with id=${metadata.id} already exists — refusing to overwrite`);
+				throw new BackupArchiveError(`Backup with id=${metadata.id} already exists — refusing to overwrite`);
 			}
 
 			copyFileSync(tempTarPath, finalPath);
