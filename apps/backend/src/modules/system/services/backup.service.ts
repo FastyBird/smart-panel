@@ -262,6 +262,11 @@ export class BackupService {
 
 		this.logger.log(`Restoring backup id=${id}`);
 
+		// Set once we start tearing down the live DataSource — past this point the app
+		// can no longer serve requests, so any failure must exit the process instead of
+		// propagating back to the caller (which would leave a broken app running)
+		let pointOfNoReturn = false;
+
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
@@ -369,6 +374,8 @@ export class BackupService {
 
 			if (existsSync(backupDbPath)) {
 				if (this.dataSource.isInitialized) {
+					pointOfNoReturn = true;
+
 					try {
 						await this.dataSource.destroy();
 					} catch (error) {
@@ -410,6 +417,18 @@ export class BackupService {
 		} catch (error) {
 			// Cleanup on failure
 			rmSync(tempDir, { recursive: true, force: true });
+
+			if (pointOfNoReturn) {
+				// DataSource is already destroyed — continuing would keep a broken app alive
+				// with every DB call failing. Exit non-zero so systemd restarts the process
+				// and the user can retry (the backup on disk may be partially swapped).
+				this.logger.error(
+					`Backup restore failed after DataSource teardown: ${(error as Error).message}. Exiting for restart.`,
+					(error as Error).stack,
+				);
+
+				process.exit(1);
+			}
 
 			throw error;
 		}
