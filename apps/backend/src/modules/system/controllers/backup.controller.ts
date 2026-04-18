@@ -1,5 +1,5 @@
 import { FastifyReply as Reply, FastifyRequest as Request } from 'fastify';
-import { createReadStream, existsSync } from 'fs';
+import { createReadStream, existsSync, statSync } from 'fs';
 
 import {
 	BadRequestException,
@@ -277,17 +277,30 @@ export class BackupController {
 	async delete(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<BackupResponseModel> {
 		this.logger.debug(`Deleting backup id=${id}`);
 
-		const metadata = await this.backupService.getMetadata(id);
+		const backupPath = this.backupService.getBackupPath(id);
 
-		if (!metadata) {
+		if (!existsSync(backupPath)) {
 			throw new NotFoundException('Backup not found');
+		}
+
+		// Try to load metadata for the response envelope but do not fail the delete
+		// if the archive is corrupt or tampered — the admin needs to be able to remove
+		// broken backups through the API. list() handles the same error gracefully.
+		let metadata: BackupMetadata | null = null;
+
+		try {
+			metadata = await this.backupService.getMetadata(id);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Deleting backup ${id} with unreadable metadata: ${err.message}`);
 		}
 
 		try {
 			this.backupService.delete(id);
 
 			const response = new BackupResponseModel();
-			response.data = this.mapMetadata(metadata);
+			response.data = this.mapMetadata(metadata ?? this.stubMetadata(id, backupPath));
 
 			return response;
 		} catch (error) {
@@ -297,6 +310,22 @@ export class BackupController {
 
 			throw new InternalServerErrorException('Failed to delete backup');
 		}
+	}
+
+	// Minimal metadata for the response envelope when the archive is present but its
+	// metadata is unreadable. mtime/size are pulled from the file so the admin still
+	// sees meaningful information about the backup that was deleted.
+	private stubMetadata(id: string, backupPath: string): BackupMetadata {
+		const stats = statSync(backupPath);
+
+		return {
+			id,
+			name: '',
+			version: '',
+			createdAt: stats.mtime.toISOString(),
+			sizeBytes: stats.size,
+			contributions: [],
+		};
 	}
 
 	private mapMetadata(metadata: BackupMetadata): BackupDataModel {
