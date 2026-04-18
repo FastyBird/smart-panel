@@ -28,6 +28,8 @@ import {
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
+import { SpacesTypeMapperService } from './spaces-type-mapper.service';
+
 @Injectable()
 export class SpacesService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesService');
@@ -42,6 +44,7 @@ export class SpacesService {
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly spacesTypeMapper: SpacesTypeMapperService,
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
@@ -121,11 +124,13 @@ export class SpacesService {
 		// Validate parent assignment
 		await this.validateParentAssignment(type, dtoInstance.parent_id ?? null);
 
+		// Instantiate the concrete subtype via the plugin mapper so TableInheritance writes the correct discriminator
+		const mapping = this.spacesTypeMapper.getMapping(type);
 		const space = this.repository.create(
-			toInstance(SpaceEntity, {
+			toInstance(mapping.class, {
 				...dtoInstance,
 				category,
-			}),
+			}) as SpaceEntity,
 		);
 
 		await this.repository.save(space);
@@ -148,7 +153,7 @@ export class SpacesService {
 		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
 
 		// Determine the effective type (new type if provided, otherwise existing)
-		const effectiveType = dtoInstance.type ?? space.type;
+		const effectiveType: SpaceType = dtoInstance.type ?? (space.type as SpaceType);
 
 		// Determine the effective category (new category if provided, otherwise existing)
 		const effectiveCategory = dtoInstance.category !== undefined ? dtoInstance.category : space.category;
@@ -182,7 +187,9 @@ export class SpacesService {
 		};
 
 		// Get the fields to update from DTO (excluding undefined values)
-		const updateFields = omitBy(toInstance(SpaceEntity, updateData), isUndefined);
+		// Use the space's actual concrete subtype so @Expose'd fields include any subtype-specific ones.
+		const mapping = this.spacesTypeMapper.getMapping(space.type);
+		const updateFields = omitBy(toInstance(mapping.class, updateData), isUndefined);
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =
@@ -223,6 +230,25 @@ export class SpacesService {
 		// Explicitly handle parent_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.parent_id === null) {
 			space.parentId = null;
+		}
+
+		// When the space type changes we cannot just save the existing entity instance —
+		// TableInheritance keys off the concrete class (RoomSpaceEntity vs ZoneSpaceEntity),
+		// and the `type` getter is immutable on an already-loaded instance. Update the
+		// discriminator column directly via a raw update, then reload as the new subtype.
+		const typeChanged = effectiveType !== space.type;
+		if (typeChanged) {
+			await this.repository
+				.createQueryBuilder()
+				.update(SpaceEntity)
+				.set({ ...updateFields, type: effectiveType })
+				.where('id = :id', { id })
+				.execute();
+			const reloaded = await this.getOneOrThrow(id);
+			if (entityFieldsChanged) {
+				this.eventEmitter.emit(EventType.SPACE_UPDATED, reloaded);
+			}
+			return reloaded;
 		}
 
 		await this.repository.save(space);

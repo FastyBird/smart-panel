@@ -1,15 +1,16 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceZoneCategory } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
-export class SpaceEntity extends BaseEntity {
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
+export abstract class SpaceEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Space name',
 		type: 'string',
@@ -31,19 +32,6 @@ export class SpaceEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	description: string | null;
-
-	@ApiProperty({
-		description: 'Space type',
-		enum: SpaceType,
-		example: SpaceType.ROOM,
-	})
-	@Expose()
-	@IsEnum(SpaceType)
-	@Column({
-		type: 'varchar',
-		default: SpaceType.ROOM,
-	})
-	type: SpaceType;
 
 	@ApiPropertyOptional({
 		description: 'Space category (room type template)',
@@ -200,4 +188,11 @@ export class SpaceEntity extends BaseEntity {
 	})
 	@Column({ type: 'datetime', nullable: true, default: null })
 	lastActivityAt: Date | string | null;
+
+	@ApiProperty({ description: 'Space type', type: 'string', example: 'room' })
+	@Expose()
+	get type(): string {
+		const constructorName = (this.constructor as { name: string }).name;
+		return constructorName.toLowerCase();
+	}
 }

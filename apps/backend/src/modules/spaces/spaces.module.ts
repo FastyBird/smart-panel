@@ -17,7 +17,10 @@ import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
+import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
+import { UpdateSpaceDto } from './dto/update-space.dto';
+import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
@@ -25,6 +28,7 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
+import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
 import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
@@ -59,7 +63,12 @@ import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
-import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
+import {
+	SPACES_MODULE_API_TAG_DESCRIPTION,
+	SPACES_MODULE_API_TAG_NAME,
+	SPACES_MODULE_NAME,
+	SpaceType,
+} from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 import { IntentSpecLoaderService } from './spec';
 
@@ -72,6 +81,8 @@ import { IntentSpecLoaderService } from './spec';
 	imports: [
 		TypeOrmModule.forFeature([
 			SpaceEntity,
+			RoomSpaceEntity,
+			ZoneSpaceEntity,
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
@@ -154,9 +165,25 @@ export class SpacesModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
+		private readonly spacesTypeMapper: SpacesTypeMapperService,
 	) {}
 
 	onModuleInit() {
+		// Register built-in space types. These will move into the spaces-home-control plugin
+		// once it is extracted; for now they live in the core module.
+		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+			type: SpaceType.ROOM,
+			class: RoomSpaceEntity,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
+		});
+		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+			type: SpaceType.ZONE,
+			class: ZoneSpaceEntity,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
+		});
+
 		// Register factory reset handler
 		this.factoryResetRegistry.register(
 			SPACES_MODULE_NAME,
