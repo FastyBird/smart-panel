@@ -199,6 +199,14 @@ export class SpacesService {
 		const mapping = this.spacesTypeMapper.getMapping(effectiveType);
 		const updateFields = omitBy(toInstance(mapping.class, updateData), isUndefined);
 
+		// Decide type-change BEFORE any in-memory mutation. `space.type` is a
+		// prototype-only getter today, so computing after `Object.assign(space, ...)`
+		// happens to work — but it's fragile: any future change that makes `type` an
+		// own property (e.g. a different serialization library or a `@Column` being
+		// re-introduced) would let Object.assign shadow the getter and make this
+		// comparison silently return `false`, skipping the raw discriminator update.
+		const typeChanged = effectiveType !== space.type;
+
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =
 			Object.keys(updateFields).some((key) => {
@@ -244,12 +252,23 @@ export class SpacesService {
 		// TableInheritance keys off the concrete class (RoomSpaceEntity vs ZoneSpaceEntity),
 		// and the `type` getter is immutable on an already-loaded instance. Update the
 		// discriminator column directly via a raw update, then reload as the new subtype.
-		const typeChanged = effectiveType !== space.type;
 		if (typeChanged) {
+			// `toInstance(mapping.class, ...)` applies every @Expose()'d property on the
+			// entity, including relations (`parent`, `children`) and read-only columns
+			// (`createdAt`, `lastActivityAt`). TypeORM's `QueryBuilder.set()` will reject
+			// relation keys and happily overwrite read-only columns if they sneak in.
+			// Filter to actual @Column property names from the repository metadata so the
+			// raw UPDATE only touches real data columns.
+			const columnPropertyNames = new Set(this.repository.metadata.columns.map((col) => col.propertyName));
+			const rawUpdate: Record<string, unknown> = { type: effectiveType };
+			for (const [key, value] of Object.entries(updateFields)) {
+				if (columnPropertyNames.has(key)) {
+					rawUpdate[key] = value;
+				}
+			}
 			// The `parent_id` transform on the DTO collapses null into undefined, so an
 			// explicit null clear would be dropped by `omitBy(..., isUndefined)` above.
 			// Mirror the in-memory fix-up for the raw update set().
-			const rawUpdate: Record<string, unknown> = { ...updateFields, type: effectiveType };
 			if (dtoInstance.parent_id === null) {
 				rawUpdate.parentId = null;
 			}
