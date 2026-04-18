@@ -551,9 +551,7 @@ describe('SpacesService', () => {
 
 			// First findOne returns the pre-update entity; after the type-change raw update
 			// the service re-fetches to get the entity with the new subtype.
-			spaceRepository.findOne
-				.mockResolvedValueOnce(spaceWithNullCategory)
-				.mockResolvedValueOnce(updatedSpace);
+			spaceRepository.findOne.mockResolvedValueOnce(spaceWithNullCategory).mockResolvedValueOnce(updatedSpace);
 
 			const updateDto = {
 				type: SpaceType.ZONE,
@@ -576,9 +574,7 @@ describe('SpacesService', () => {
 			} as unknown as SpaceEntity;
 
 			// See note above — type changes reload the entity as the new subtype.
-			spaceRepository.findOne
-				.mockResolvedValueOnce(existingRoomSpace)
-				.mockResolvedValueOnce(updatedSpace);
+			spaceRepository.findOne.mockResolvedValueOnce(existingRoomSpace).mockResolvedValueOnce(updatedSpace);
 
 			// Change from room/living_room to zone/floor_ground
 			const updateDto = {

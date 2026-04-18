@@ -206,7 +206,7 @@ export class DisplaysService {
 					throw new DisplaysValidationException('The specified room does not exist.');
 				}
 
-				if (space.type !== SpaceType.ROOM) {
+				if ((space.type as SpaceType) !== SpaceType.ROOM) {
 					throw new DisplaysValidationException(
 						'Display with role "room" can only be assigned to a space of type "room", not a zone.',
 					);

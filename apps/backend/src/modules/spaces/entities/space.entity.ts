@@ -192,7 +192,13 @@ export abstract class SpaceEntity extends BaseEntity {
 	@ApiProperty({ description: 'Space type', type: 'string', example: 'room' })
 	@Expose()
 	get type(): string {
-		const constructorName = (this.constructor as { name: string }).name;
-		return constructorName.toLowerCase();
+		// Subtypes MUST override this getter and return the same discriminator value
+		// they pass to @ChildEntity(...) and register with SpacesTypeMapperService.
+		// Throwing here catches plugin authors who forget, rather than silently
+		// returning a lowercased class name (e.g. "roomspaceentity") that would
+		// mismatch the discriminator and break mapper lookups.
+		throw new Error(
+			`SpaceEntity subclass "${this.constructor.name}" must override the \`type\` getter to return its registered discriminator.`,
+		);
 	}
 }
