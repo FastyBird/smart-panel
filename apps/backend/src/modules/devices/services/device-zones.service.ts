@@ -83,7 +83,7 @@ export class DeviceZonesService {
 			throw new DevicesNotFoundException('Zone not found');
 		}
 
-		if ((zone.type as SpaceType) !== SpaceType.ZONE) {
+		if (zone.type !== SpaceType.ZONE) {
 			this.logger.error(`Space ${zoneId} is not a zone`);
 			throw new DevicesValidationException('Can only add device to a zone, not a room');
 		}
@@ -164,7 +164,7 @@ export class DeviceZonesService {
 				throw new DevicesNotFoundException(`Zone ${zoneId} not found`);
 			}
 
-			if ((zone.type as SpaceType) !== SpaceType.ZONE) {
+			if (zone.type !== SpaceType.ZONE) {
 				this.logger.error(`Space ${zoneId} is not a zone`);
 				throw new DevicesValidationException(`${zone.name} is not a zone`);
 			}
