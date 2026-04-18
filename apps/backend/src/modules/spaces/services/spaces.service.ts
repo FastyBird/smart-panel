@@ -124,16 +124,21 @@ export class SpacesService {
 		// Validate parent assignment
 		await this.validateParentAssignment(type, dtoInstance.parent_id ?? null);
 
-		// Instantiate the concrete subtype via the plugin mapper so TableInheritance writes the correct discriminator
+		// Instantiate the concrete subtype via the plugin mapper so TableInheritance writes the correct discriminator.
+		// We obtain a repository scoped to the subclass — calling `this.repository.create()` on the base
+		// SpaceEntity repo would do `new SpaceEntity()` + Object.assign, which discards the concrete class
+		// (and won't copy the prototype-only `type` getter), so TypeORM would write a null/incorrect
+		// discriminator on save.
 		const mapping = this.spacesTypeMapper.getMapping(type);
-		const space = this.repository.create(
+		const subtypeRepository = this.dataSource.getRepository(mapping.class);
+		const space = subtypeRepository.create(
 			toInstance(mapping.class, {
 				...dtoInstance,
 				category,
 			}),
 		);
 
-		await this.repository.save(space);
+		await subtypeRepository.save(space);
 
 		// Re-fetch to get database default values populated
 		const savedSpace = await this.getOneOrThrow(space.id);
@@ -652,8 +657,13 @@ export class SpacesService {
 			return [];
 		}
 
-		const children = await this.repository.find({
-			where: { parentId: zoneId, type: SpaceType.ROOM },
+		// Use the Room subtype's repository to filter by discriminator. TableInheritance
+		// excludes `type` from ordinary column metadata (see TypeORM #3261), so
+		// `repository.find({ where: { type: ... } })` on the base SpaceEntity repo is a
+		// silent no-op. The subtype repository scopes to the right discriminator.
+		const roomMapping = this.spacesTypeMapper.getMapping(SpaceType.ROOM);
+		const children = await this.dataSource.getRepository(roomMapping.class).find({
+			where: { parentId: zoneId },
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
 
@@ -686,8 +696,10 @@ export class SpacesService {
 	async findAllZones(): Promise<SpaceEntity[]> {
 		this.logger.debug('Fetching all zones');
 
-		const zones = await this.repository.find({
-			where: { type: SpaceType.ZONE },
+		// Same reason as getChildRooms: query via the subtype-specific repository
+		// rather than filtering `type` on the base repo.
+		const zoneMapping = this.spacesTypeMapper.getMapping(SpaceType.ZONE);
+		const zones = await this.dataSource.getRepository(zoneMapping.class).find({
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
 
