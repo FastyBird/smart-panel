@@ -60,9 +60,7 @@ export class SpacesService {
 
 		this.logger.debug(`Found ${spaces.length} spaces`);
 
-		for (const space of spaces) {
-			await this.loadRelations(space);
-		}
+		await Promise.all(spaces.map((space) => this.loadRelations(space)));
 
 		return spaces;
 	}
@@ -102,8 +100,14 @@ export class SpacesService {
 	 * Used for deduplication during creation
 	 */
 	async findByCanonicalName(canonicalName: string): Promise<SpaceEntity | null> {
-		const allSpaces = await this.findAll();
-		return allSpaces.find((space) => canonicalizeSpaceName(space.name) === canonicalName) ?? null;
+		// Bypass findAll() here: relation loaders aren't needed for name matching,
+		// and create() hits this for every insert — avoid the N×M loader fan-out.
+		const candidates = await this.repository.find({ select: ['id', 'name'] });
+		const match = candidates.find((space) => canonicalizeSpaceName(space.name) === canonicalName);
+		if (!match) {
+			return null;
+		}
+		return this.findOne(match.id);
 	}
 
 	async create(createDto: CreateSpaceDto): Promise<SpaceEntity> {
@@ -279,8 +283,6 @@ export class SpacesService {
 		}
 
 		await this.repository.save(space);
-
-		await this.loadRelations(space);
 
 		this.logger.debug(`Successfully updated space with id=${space.id}`);
 
@@ -753,8 +755,8 @@ export class SpacesService {
 			throw new SpacesValidationException('A space cannot be its own parent.');
 		}
 
-		// Parent must exist and be a zone
-		const parent = await this.findOne(parentId);
+		// Parent must exist and be a zone — skip relation loaders, we only need the discriminator.
+		const parent = await this.repository.findOne({ where: { id: parentId }, select: ['id', 'type'] });
 
 		if (!parent) {
 			this.logger.error(`Parent space with id=${parentId} not found`);
