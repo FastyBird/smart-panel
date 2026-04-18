@@ -38,7 +38,7 @@ export class SpaceClimateRoleEntity extends SpaceRoleEntity {
 	@Column({ nullable: true })
 	deviceId: string;
 
-	@ManyToOne(() => DeviceEntity, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => DeviceEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
