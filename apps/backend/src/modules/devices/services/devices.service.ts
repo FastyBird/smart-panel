@@ -430,7 +430,7 @@ export class DevicesService {
 			throw new DevicesNotFoundException(`Room with id=${roomId} not found`);
 		}
 
-		if (space.type !== SpaceType.ROOM) {
+		if ((space.type as SpaceType) !== SpaceType.ROOM) {
 			this.logger.error(`Space with id=${roomId} is not a room, it is a ${space.type}`);
 
 			throw new DevicesValidationException(
