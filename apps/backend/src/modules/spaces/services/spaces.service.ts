@@ -186,9 +186,12 @@ export class SpacesService {
 			...dtoInstance,
 		};
 
-		// Get the fields to update from DTO (excluding undefined values)
-		// Use the space's actual concrete subtype so @Expose'd fields include any subtype-specific ones.
-		const mapping = this.spacesTypeMapper.getMapping(space.type);
+		// Get the fields to update from DTO (excluding undefined values).
+		// Use the *effective* type's mapping so that when a subtype change adds new
+		// @Expose'd fields, those fields survive `toInstance` and land in the raw
+		// update below. Using `space.type` here would use the OLD subtype's class
+		// and silently drop new-subtype-specific fields.
+		const mapping = this.spacesTypeMapper.getMapping(effectiveType);
 		const updateFields = omitBy(toInstance(mapping.class, updateData), isUndefined);
 
 		// Check if any entity fields are actually being changed by comparing with existing values

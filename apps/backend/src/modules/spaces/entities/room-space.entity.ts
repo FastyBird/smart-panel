@@ -10,9 +10,9 @@ import { SpaceEntity } from './space.entity';
 @ApiSchema({ name: 'SpacesModuleDataRoomSpace' })
 @ChildEntity(SpaceType.ROOM)
 export class RoomSpaceEntity extends SpaceEntity {
-	@ApiProperty({ description: 'Space type', type: 'string', default: SpaceType.ROOM, example: SpaceType.ROOM })
+	@ApiProperty({ description: 'Space type', enum: SpaceType, default: SpaceType.ROOM, example: SpaceType.ROOM })
 	@Expose()
-	get type(): string {
+	get type(): SpaceType {
 		return SpaceType.ROOM;
 	}
 }
