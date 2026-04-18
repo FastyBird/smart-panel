@@ -50,19 +50,23 @@ describe('SpacesService', () => {
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
 		} as unknown as UpdateQueryBuilder<any>;
 
+		const spaceRepositoryMock = {
+			find: jest.fn().mockResolvedValue([mockSpace]),
+			findOne: jest.fn().mockResolvedValue(mockSpace),
+			save: jest.fn().mockResolvedValue(mockSpace),
+			create: jest
+				.fn()
+				.mockImplementation((data: Partial<SpaceEntity>) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
+			delete: jest.fn().mockResolvedValue({ affected: 1 }),
+			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpacesService,
 				{
 					provide: getRepositoryToken(SpaceEntity),
-					useValue: {
-						find: jest.fn().mockResolvedValue([mockSpace]),
-						findOne: jest.fn().mockResolvedValue(mockSpace),
-						save: jest.fn().mockResolvedValue(mockSpace),
-						create: jest.fn().mockImplementation((data) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
-						delete: jest.fn().mockResolvedValue({ affected: 1 }),
-						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-					},
+					useValue: spaceRepositoryMock,
 				},
 				{
 					provide: getRepositoryToken(DeviceEntity),
@@ -81,6 +85,17 @@ describe('SpacesService', () => {
 				{
 					provide: DataSource,
 					useValue: {
+						// SpacesService.create now resolves a subtype-specific repository via
+						// dataSource.getRepository(mapping.class). Route those calls back to the
+						// same mocked SpaceEntity repo so the existing assertions still apply.
+						getRepository: jest.fn().mockImplementation(() => spaceRepositoryMock),
+						transaction: jest.fn().mockImplementation(async (cb: (manager: unknown) => Promise<unknown>) =>
+							cb({
+								createQueryBuilder: () => mockQueryBuilder,
+								remove: jest.fn().mockResolvedValue(undefined),
+								save: jest.fn().mockResolvedValue(mockSpace),
+							}),
+						),
 						createQueryRunner: jest.fn().mockReturnValue({
 							connect: jest.fn(),
 							startTransaction: jest.fn(),

@@ -49,8 +49,4 @@ export class SpacesTypeMapperService {
 
 		return mapping as SpaceTypeMapping<TSpace, TCreateDTO, TUpdateDTO>;
 	}
-
-	getRegisteredTypes(): string[] {
-		return Array.from(this.mappings.keys());
-	}
 }
