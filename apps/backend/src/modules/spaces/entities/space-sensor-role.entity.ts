@@ -38,7 +38,7 @@ export class SpaceSensorRoleEntity extends SpaceRoleEntity {
 	@Column({ nullable: true })
 	deviceId: string;
 
-	@ManyToOne(() => DeviceEntity, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => DeviceEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
@@ -57,7 +57,7 @@ export class SpaceSensorRoleEntity extends SpaceRoleEntity {
 	@Column({ nullable: true })
 	channelId: string;
 
-	@ManyToOne(() => ChannelEntity, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => ChannelEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'channelId' })
 	channel: ChannelEntity;
 
