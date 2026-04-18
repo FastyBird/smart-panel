@@ -28,6 +28,8 @@ import {
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
+import { SpaceCreateBuilderRegistryService } from './space-create-builder-registry.service';
+import { SpaceRelationsLoaderRegistryService } from './space-relations-loader-registry.service';
 import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 
 @Injectable()
@@ -45,6 +47,8 @@ export class SpacesService {
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
+		private readonly relationsRegistry: SpaceRelationsLoaderRegistryService,
+		private readonly createBuilderRegistry: SpaceCreateBuilderRegistryService,
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
@@ -55,6 +59,10 @@ export class SpacesService {
 		});
 
 		this.logger.debug(`Found ${spaces.length} spaces`);
+
+		for (const space of spaces) {
+			await this.loadRelations(space);
+		}
 
 		return spaces;
 	}
@@ -71,6 +79,8 @@ export class SpacesService {
 		}
 
 		this.logger.debug('Successfully fetched space');
+
+		await this.loadRelations(space);
 
 		return space;
 	}
@@ -137,6 +147,12 @@ export class SpacesService {
 				category,
 			}),
 		);
+
+		for (const builder of this.createBuilderRegistry.getBuilders()) {
+			if (builder.supports(dtoInstance)) {
+				await builder.build(dtoInstance, space);
+			}
+		}
 
 		await subtypeRepository.save(space);
 
@@ -263,6 +279,8 @@ export class SpacesService {
 		}
 
 		await this.repository.save(space);
+
+		await this.loadRelations(space);
 
 		this.logger.debug(`Successfully updated space with id=${space.id}`);
 
@@ -746,6 +764,14 @@ export class SpacesService {
 		if (parent.type !== SpaceType.ZONE) {
 			this.logger.error(`Parent space ${parentId} is not a zone`);
 			throw new SpacesValidationException('Parent must be a zone. Rooms can only belong to zones.');
+		}
+	}
+
+	private async loadRelations(space: SpaceEntity): Promise<void> {
+		for (const loader of this.relationsRegistry.getLoaders()) {
+			if (loader.supports(space)) {
+				await loader.loadRelations(space);
+			}
 		}
 	}
 

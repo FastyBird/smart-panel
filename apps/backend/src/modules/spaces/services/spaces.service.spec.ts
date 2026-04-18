@@ -15,6 +15,8 @@ import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
+import { SpaceCreateBuilderRegistryService } from './space-create-builder-registry.service';
+import { SpaceRelationsLoaderRegistryService } from './space-relations-loader-registry.service';
 import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 import { SpacesService } from './spaces.service';
 
@@ -123,6 +125,8 @@ describe('SpacesService', () => {
 					},
 				},
 				SpacesTypeMapperService,
+				SpaceRelationsLoaderRegistryService,
+				SpaceCreateBuilderRegistryService,
 			],
 		}).compile();
 
