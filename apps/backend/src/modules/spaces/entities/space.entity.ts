@@ -5,7 +5,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritan
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceZoneCategory } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
@@ -189,9 +189,9 @@ export abstract class SpaceEntity extends BaseEntity {
 	@Column({ type: 'datetime', nullable: true, default: null })
 	lastActivityAt: Date | string | null;
 
-	@ApiProperty({ description: 'Space type', type: 'string', example: 'room' })
+	@ApiProperty({ description: 'Space type', enum: SpaceType, example: SpaceType.ROOM })
 	@Expose()
-	get type(): string {
+	get type(): SpaceType {
 		// Subtypes MUST override this getter and return the same discriminator value
 		// they pass to @ChildEntity(...) and register with SpacesTypeMapperService.
 		// Throwing here catches plugin authors who forget, rather than silently
