@@ -20,8 +20,10 @@ import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
@@ -93,11 +95,11 @@ describe('SpacesController', () => {
 				{
 					provide: SpacesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([toInstance(SpaceEntity, mockSpace)]),
-						findOne: jest.fn().mockResolvedValue(toInstance(SpaceEntity, mockSpace)),
-						getOneOrThrow: jest.fn().mockResolvedValue(toInstance(SpaceEntity, mockSpace)),
-						create: jest.fn().mockResolvedValue(toInstance(SpaceEntity, mockSpace)),
-						update: jest.fn().mockResolvedValue(toInstance(SpaceEntity, mockSpace)),
+						findAll: jest.fn().mockResolvedValue([toInstance(RoomSpaceEntity, mockSpace)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(RoomSpaceEntity, mockSpace)),
+						getOneOrThrow: jest.fn().mockResolvedValue(toInstance(RoomSpaceEntity, mockSpace)),
+						create: jest.fn().mockResolvedValue(toInstance(RoomSpaceEntity, mockSpace)),
+						update: jest.fn().mockResolvedValue(toInstance(RoomSpaceEntity, mockSpace)),
 						remove: jest.fn().mockResolvedValue(undefined),
 						findDevicesBySpace: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
 						findDisplaysBySpace: jest.fn().mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]),
@@ -521,7 +523,7 @@ describe('SpacesController', () => {
 		it('should return all spaces', async () => {
 			const result = await controller.findAll();
 
-			expect(result.data).toEqual([toInstance(SpaceEntity, mockSpace)]);
+			expect(result.data).toEqual([toInstance(RoomSpaceEntity, mockSpace)]);
 			expect(spacesService.findAll).toHaveBeenCalled();
 		});
 	});
@@ -530,7 +532,7 @@ describe('SpacesController', () => {
 		it('should return a single space', async () => {
 			const result = await controller.findOne(mockSpace.id);
 
-			expect(result.data).toEqual(toInstance(SpaceEntity, mockSpace));
+			expect(result.data).toEqual(toInstance(RoomSpaceEntity, mockSpace));
 			expect(spacesService.getOneOrThrow).toHaveBeenCalledWith(mockSpace.id);
 		});
 
@@ -552,7 +554,7 @@ describe('SpacesController', () => {
 
 			const result = await controller.create(createDto as ReqCreateSpaceDto);
 
-			expect(result.data).toEqual(toInstance(SpaceEntity, mockSpace));
+			expect(result.data).toEqual(toInstance(RoomSpaceEntity, mockSpace));
 			expect(spacesService.create).toHaveBeenCalledWith(createDto.data);
 		});
 
@@ -580,7 +582,7 @@ describe('SpacesController', () => {
 
 			const result = await controller.update(mockSpace.id, updateDto as ReqUpdateSpaceDto);
 
-			expect(result.data).toEqual(toInstance(SpaceEntity, mockSpace));
+			expect(result.data).toEqual(toInstance(RoomSpaceEntity, mockSpace));
 			expect(spacesService.update).toHaveBeenCalledWith(mockSpace.id, updateDto.data);
 		});
 
@@ -799,11 +801,11 @@ describe('SpacesController', () => {
 
 	describe('findChildren', () => {
 		it('should return child rooms of a zone', async () => {
-			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([toInstance(SpaceEntity, mockSpace)]);
+			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([toInstance(RoomSpaceEntity, mockSpace)]);
 
 			const result = await controller.findChildren(mockSpace.id);
 
-			expect(result.data).toEqual([toInstance(SpaceEntity, mockSpace)]);
+			expect(result.data).toEqual([toInstance(RoomSpaceEntity, mockSpace)]);
 			expect(spacesService.getChildRooms).toHaveBeenCalledWith(mockSpace.id);
 		});
 
@@ -819,11 +821,11 @@ describe('SpacesController', () => {
 	describe('findParent', () => {
 		it('should return parent zone of a room', async () => {
 			const parentZone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
-			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(toInstance(SpaceEntity, parentZone));
+			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(toInstance(ZoneSpaceEntity, parentZone));
 
 			const result = await controller.findParent(mockSpace.id);
 
-			expect(result.data).toEqual(toInstance(SpaceEntity, parentZone));
+			expect(result.data).toEqual(toInstance(ZoneSpaceEntity, parentZone));
 			expect(spacesService.getParentZone).toHaveBeenCalledWith(mockSpace.id);
 		});
 
@@ -839,7 +841,7 @@ describe('SpacesController', () => {
 	describe('findAllZones', () => {
 		it('should return all zones', async () => {
 			const zone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
-			jest.spyOn(spacesService, 'findAllZones').mockResolvedValue([toInstance(SpaceEntity, zone)]);
+			jest.spyOn(spacesService, 'findAllZones').mockResolvedValue([toInstance(ZoneSpaceEntity, zone)]);
 
 			const result = await controller.findAllZones();
 

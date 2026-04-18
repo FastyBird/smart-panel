@@ -9,10 +9,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
+import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpacesService', () => {
@@ -21,7 +24,7 @@ describe('SpacesService', () => {
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
 
-	const mockSpace: SpaceEntity = {
+	const mockSpace = {
 		id: uuid(),
 		name: 'Living Room',
 		description: 'Main living area',
@@ -37,7 +40,7 @@ describe('SpacesService', () => {
 		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as unknown as SpaceEntity;
 
 	beforeEach(async () => {
 		const mockQueryBuilder = {
@@ -104,6 +107,7 @@ describe('SpacesService', () => {
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
+				SpacesTypeMapperService,
 			],
 		}).compile();
 
@@ -111,6 +115,21 @@ describe('SpacesService', () => {
 		spaceRepository = module.get(getRepositoryToken(SpaceEntity));
 		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
 		displayRepository = module.get(getRepositoryToken(DisplayEntity));
+
+		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit)
+		const typeMapper = module.get<SpacesTypeMapperService>(SpacesTypeMapperService);
+		typeMapper.registerMapping({
+			type: SpaceType.ROOM,
+			class: RoomSpaceEntity,
+			createDto: class {} as never,
+			updateDto: class {} as never,
+		});
+		typeMapper.registerMapping({
+			type: SpaceType.ZONE,
+			class: ZoneSpaceEntity,
+			createDto: class {} as never,
+			updateDto: class {} as never,
+		});
 	});
 
 	describe('proposeSpaces', () => {
@@ -415,21 +434,21 @@ describe('SpacesService', () => {
 	});
 
 	describe('update - type/category validation', () => {
-		const existingRoomSpace: SpaceEntity = {
+		const existingRoomSpace = {
 			...mockSpace,
 			id: uuid(),
 			name: 'Living Room',
 			type: SpaceType.ROOM,
 			category: SpaceRoomCategory.LIVING_ROOM,
-		};
+		} as unknown as SpaceEntity;
 
-		const existingZoneSpace: SpaceEntity = {
+		const existingZoneSpace = {
 			...mockSpace,
 			id: uuid(),
 			name: 'Ground Floor',
 			type: SpaceType.ZONE,
 			category: SpaceZoneCategory.FLOOR_GROUND,
-		};
+		} as unknown as SpaceEntity;
 
 		it('should accept updating ROOM category to another room category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
@@ -441,7 +460,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...existingRoomSpace,
 				category: SpaceRoomCategory.BEDROOM,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
@@ -461,7 +480,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...existingZoneSpace,
 				category: SpaceZoneCategory.FLOOR_FIRST,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
@@ -503,10 +522,10 @@ describe('SpacesService', () => {
 		});
 
 		it('should reject changing type to ZONE when category is null', async () => {
-			const spaceWithNullCategory: SpaceEntity = {
+			const spaceWithNullCategory = {
 				...existingRoomSpace,
 				category: null,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
 
@@ -519,20 +538,24 @@ describe('SpacesService', () => {
 		});
 
 		it('should accept changing type to ZONE when category is provided', async () => {
-			const spaceWithNullCategory: SpaceEntity = {
+			const spaceWithNullCategory = {
 				...existingRoomSpace,
 				category: null,
-			};
-
-			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
-
-			const updateDto = {
-				type: SpaceType.ZONE,
-				category: SpaceZoneCategory.FLOOR_GROUND,
-			};
+			} as unknown as SpaceEntity;
 
 			const updatedSpace = {
 				...spaceWithNullCategory,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity;
+
+			// First findOne returns the pre-update entity; after the type-change raw update
+			// the service re-fetches to get the entity with the new subtype.
+			spaceRepository.findOne
+				.mockResolvedValueOnce(spaceWithNullCategory)
+				.mockResolvedValueOnce(updatedSpace);
+
+			const updateDto = {
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -546,16 +569,19 @@ describe('SpacesService', () => {
 		});
 
 		it('should accept changing type and category together when compatible', async () => {
-			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+			const updatedSpace = {
+				...existingRoomSpace,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity;
+
+			// See note above — type changes reload the entity as the new subtype.
+			spaceRepository.findOne
+				.mockResolvedValueOnce(existingRoomSpace)
+				.mockResolvedValueOnce(updatedSpace);
 
 			// Change from room/living_room to zone/floor_ground
 			const updateDto = {
-				type: SpaceType.ZONE,
-				category: SpaceZoneCategory.FLOOR_GROUND,
-			};
-
-			const updatedSpace = {
-				...existingRoomSpace,
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -570,13 +596,13 @@ describe('SpacesService', () => {
 
 		it('should accept setting category to null for a ROOM', async () => {
 			// Create a fresh room space instance
-			const roomSpace: SpaceEntity = {
+			const roomSpace = {
 				...mockSpace,
 				id: uuid(),
 				name: 'Test Room',
 				type: SpaceType.ROOM,
 				category: SpaceRoomCategory.BEDROOM,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.findOne.mockResolvedValue(roomSpace);
 
@@ -587,7 +613,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...roomSpace,
 				category: null,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
