@@ -284,13 +284,18 @@ export class SpacesService {
 
 		await this.repository.save(space);
 
-		this.logger.debug(`Successfully updated space with id=${space.id}`);
+		// Re-fetch so registered relation loaders reflect post-save entity state
+		// (e.g. loaders keyed on mutable fields like `category`). Matches the
+		// type-change path above and create().
+		const updatedSpace = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Successfully updated space with id=${updatedSpace.id}`);
 
 		if (entityFieldsChanged) {
-			this.eventEmitter.emit(EventType.SPACE_UPDATED, space);
+			this.eventEmitter.emit(EventType.SPACE_UPDATED, updatedSpace);
 		}
 
-		return space;
+		return updatedSpace;
 	}
 
 	async remove(id: string): Promise<void> {
