@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { DataSource, Repository, SelectQueryBuilder, UpdateQueryBuilder, UpdateResult } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder, UpdateResult } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -23,6 +23,12 @@ describe('SpacesService', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
+	let mockQueryBuilder: {
+		update: jest.Mock;
+		set: jest.Mock;
+		where: jest.Mock;
+		execute: jest.Mock;
+	};
 
 	const mockSpace = {
 		id: uuid(),
@@ -43,12 +49,12 @@ describe('SpacesService', () => {
 	} as unknown as SpaceEntity;
 
 	beforeEach(async () => {
-		const mockQueryBuilder = {
+		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
-		} as unknown as UpdateQueryBuilder<any>;
+		};
 
 		const spaceRepositoryMock = {
 			find: jest.fn().mockResolvedValue([mockSpace]),
@@ -595,6 +601,16 @@ describe('SpacesService', () => {
 
 			expect(result.type).toBe(SpaceType.ZONE);
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			// The raw UPDATE path for type changes must emit the discriminator column.
+			// We assert the payload handed to TypeORM's QueryBuilder.set() — TypeORM then
+			// resolves `type` via @TableInheritance's entityMetadata to the discriminator
+			// column and issues `UPDATE ... SET type = 'zone' WHERE id = ?`.
+			expect(mockQueryBuilder.update).toHaveBeenCalled();
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_GROUND }),
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: spaceWithNullCategory.id });
+			expect(mockQueryBuilder.execute).toHaveBeenCalled();
 		});
 
 		it('should accept changing type and category together when compatible', async () => {
@@ -619,6 +635,12 @@ describe('SpacesService', () => {
 
 			expect(result.type).toBe(SpaceType.ZONE);
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			// Same assertion as above — verify the raw UPDATE SET payload includes the
+			// new discriminator alongside the other DTO-sourced fields, and is keyed by id.
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_GROUND }),
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: existingRoomSpace.id });
 		});
 
 		it('should accept setting category to null for a ROOM', async () => {
