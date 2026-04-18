@@ -694,6 +694,8 @@ export class SpacesService {
 
 		this.logger.debug(`Found ${children.length} child rooms for zone`);
 
+		await Promise.all(children.map((child) => this.loadRelations(child)));
+
 		return children;
 	}
 
@@ -729,6 +731,8 @@ export class SpacesService {
 		});
 
 		this.logger.debug(`Found ${zones.length} zones`);
+
+		await Promise.all(zones.map((zone) => this.loadRelations(zone)));
 
 		return zones;
 	}
