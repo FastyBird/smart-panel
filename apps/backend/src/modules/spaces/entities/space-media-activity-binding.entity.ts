@@ -1,40 +1,30 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ChildEntity, Column } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { BaseEntity } from '../../../common/entities/base.entity';
-import { MediaActivityKey } from '../spaces.constants';
+import { MediaActivityKey, SpaceRoleType } from '../spaces.constants';
 
-import { SpaceEntity } from './space.entity';
+import { SpaceRoleEntity } from './space-role.entity';
 
 /**
  * Represents a per-space media activity binding.
  * Maps a predefined activity (watch, listen, gaming, etc.) to concrete derived endpoint IDs.
  */
 @ApiSchema({ name: 'SpacesModuleDataSpaceMediaActivityBinding' })
-@Entity('spaces_module_media_activity_bindings')
-@Unique(['spaceId', 'activityKey'])
-export class SpaceMediaActivityBindingEntity extends BaseEntity {
+@ChildEntity(SpaceRoleType.MEDIA_BINDING)
+export class SpaceMediaActivityBindingEntity extends SpaceRoleEntity {
 	@ApiProperty({
-		name: 'space_id',
-		description: 'ID of the space this binding belongs to',
-		type: 'string',
-		format: 'uuid',
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+		description: 'Role type',
+		enum: SpaceRoleType,
+		default: SpaceRoleType.MEDIA_BINDING,
+		example: SpaceRoleType.MEDIA_BINDING,
 	})
-	@Expose({ name: 'space_id' })
-	@IsUUID('4')
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
-		toClassOnly: true,
-	})
-	@Column({ nullable: false })
-	spaceId: string;
-
-	@ManyToOne(() => SpaceEntity, { nullable: false, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'spaceId' })
-	space: SpaceEntity;
+	@Expose()
+	get type(): SpaceRoleType {
+		return SpaceRoleType.MEDIA_BINDING;
+	}
 
 	@ApiProperty({
 		name: 'activity_key',
@@ -48,7 +38,7 @@ export class SpaceMediaActivityBindingEntity extends BaseEntity {
 		({ obj }: { obj: { activity_key?: string; activityKey?: string } }) => obj.activity_key ?? obj.activityKey,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', nullable: true })
 	activityKey: MediaActivityKey;
 
 	@ApiPropertyOptional({
