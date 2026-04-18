@@ -59,6 +59,22 @@ describe('SpacesService', () => {
 				.mockImplementation((data: Partial<SpaceEntity>) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
 			delete: jest.fn().mockResolvedValue({ affected: 1 }),
 			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+			// The type-change raw UPDATE path whitelists keys against the entity's column
+			// metadata. Supply the set of known column property names the production
+			// entity has so filtering passes through the fields these tests actually send.
+			metadata: {
+				columns: [
+					'name',
+					'description',
+					'category',
+					'parentId',
+					'icon',
+					'displayOrder',
+					'suggestionsEnabled',
+					'statusWidgets',
+					'lastActivityAt',
+				].map((propertyName) => ({ propertyName })),
+			},
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
