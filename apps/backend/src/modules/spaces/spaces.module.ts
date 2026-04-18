@@ -42,6 +42,7 @@ import { SpaceClimateStateService } from './services/space-climate-state.service
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from './services/space-covers-role.service';
 import { SpaceCoversStateService } from './services/space-covers-state.service';
+import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
 import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
@@ -49,12 +50,14 @@ import { SpaceLightingStateService } from './services/space-lighting-state.servi
 import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
+import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
+import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -88,6 +91,9 @@ import { IntentSpecLoaderService } from './spec';
 	controllers: [SpacesController],
 	providers: [
 		SpacesService,
+		SpacesTypeMapperService,
+		SpaceCreateBuilderRegistryService,
+		SpaceRelationsLoaderRegistryService,
 		SpaceIntentBaseService,
 		LightingIntentService,
 		ClimateIntentService,
@@ -121,6 +127,9 @@ import { IntentSpecLoaderService } from './spec';
 	],
 	exports: [
 		SpacesService,
+		SpacesTypeMapperService,
+		SpaceCreateBuilderRegistryService,
+		SpaceRelationsLoaderRegistryService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
 		SpaceClimateRoleService,
