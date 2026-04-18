@@ -130,7 +130,7 @@ export class SpacesService {
 			toInstance(mapping.class, {
 				...dtoInstance,
 				category,
-			}) as SpaceEntity,
+			}),
 		);
 
 		await this.repository.save(space);
@@ -236,14 +236,16 @@ export class SpacesService {
 		// TableInheritance keys off the concrete class (RoomSpaceEntity vs ZoneSpaceEntity),
 		// and the `type` getter is immutable on an already-loaded instance. Update the
 		// discriminator column directly via a raw update, then reload as the new subtype.
-		const typeChanged = effectiveType !== space.type;
+		const typeChanged = effectiveType !== (space.type as SpaceType);
 		if (typeChanged) {
-			await this.repository
-				.createQueryBuilder()
-				.update(SpaceEntity)
-				.set({ ...updateFields, type: effectiveType })
-				.where('id = :id', { id })
-				.execute();
+			// The `parent_id` transform on the DTO collapses null into undefined, so an
+			// explicit null clear would be dropped by `omitBy(..., isUndefined)` above.
+			// Mirror the in-memory fix-up for the raw update set().
+			const rawUpdate: Record<string, unknown> = { ...updateFields, type: effectiveType };
+			if (dtoInstance.parent_id === null) {
+				rawUpdate.parentId = null;
+			}
+			await this.repository.createQueryBuilder().update(SpaceEntity).set(rawUpdate).where('id = :id', { id }).execute();
 			const reloaded = await this.getOneOrThrow(id);
 			if (entityFieldsChanged) {
 				this.eventEmitter.emit(EventType.SPACE_UPDATED, reloaded);
@@ -306,7 +308,7 @@ export class SpacesService {
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
-		if (space.type === SpaceType.ROOM) {
+		if ((space.type as SpaceType) === SpaceType.ROOM) {
 			// Rooms have directly assigned devices via roomId
 			const devices = await this.deviceRepository.find({
 				where: { roomId: spaceId },
@@ -356,7 +358,7 @@ export class SpacesService {
 	async isDeviceInSpace(spaceId: string, deviceId: string): Promise<boolean> {
 		const space = await this.getOneOrThrow(spaceId);
 
-		if (space.type === SpaceType.ROOM) {
+		if ((space.type as SpaceType) === SpaceType.ROOM) {
 			// For rooms, check device.roomId
 			const device = await this.deviceRepository.findOne({
 				where: { id: deviceId, roomId: spaceId },
@@ -401,7 +403,7 @@ export class SpacesService {
 
 		// Assign devices - only to rooms
 		if (dtoInstance.deviceIds && dtoInstance.deviceIds.length > 0) {
-			if (space.type !== SpaceType.ROOM) {
+			if ((space.type as SpaceType) !== SpaceType.ROOM) {
 				throw new SpacesValidationException('Devices can only be assigned to rooms, not zones');
 			}
 
@@ -641,7 +643,7 @@ export class SpacesService {
 
 		const zone = await this.getOneOrThrow(zoneId);
 
-		if (zone.type !== SpaceType.ZONE) {
+		if ((zone.type as SpaceType) !== SpaceType.ZONE) {
 			this.logger.warn(`Space ${zoneId} is not a zone, returning empty list`);
 			return [];
 		}
@@ -725,7 +727,7 @@ export class SpacesService {
 			throw new SpacesNotFoundException('Parent space does not exist.');
 		}
 
-		if (parent.type !== SpaceType.ZONE) {
+		if ((parent.type as SpaceType) !== SpaceType.ZONE) {
 			this.logger.error(`Parent space ${parentId} is not a zone`);
 			throw new SpacesValidationException('Parent must be a zone. Rooms can only belong to zones.');
 		}
