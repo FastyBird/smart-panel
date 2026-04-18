@@ -764,8 +764,12 @@ export class SpacesService {
 			throw new SpacesValidationException('A space cannot be its own parent.');
 		}
 
-		// Parent must exist and be a zone — skip relation loaders, we only need the discriminator.
-		const parent = await this.repository.findOne({ where: { id: parentId }, select: ['id', 'type'] });
+		// Parent must exist and be a zone. Bypass `findOne()` to skip relation loaders;
+		// also avoid `select: ['id', 'type']` because TableInheritance excludes the
+		// discriminator from column metadata (TypeORM #3261), which would prevent
+		// subtype resolution and trigger the base getter's throw. A full row fetch
+		// by primary key is cheap.
+		const parent = await this.repository.findOne({ where: { id: parentId } });
 
 		if (!parent) {
 			this.logger.error(`Parent space with id=${parentId} not found`);
