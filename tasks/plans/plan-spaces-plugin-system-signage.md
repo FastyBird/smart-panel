@@ -22,7 +22,8 @@ Track what has already shipped so a new agent does not redo work.
 - ✅ **Phase 1b** — PR #578, commits `11a6182` → `8e46078`. `SpaceEntity` abstract with `@TableInheritance`; `RoomSpaceEntity` / `ZoneSpaceEntity` as `@ChildEntity('room'|'zone')`; `type` getter pattern; `SpacesService.create/update` routed through `SpacesTypeMapperService` + `dataSource.getRepository(mapping.class)`. `getChildRooms` / `findAllZones` migrated to subtype repos. No DB migration needed (the `type` column already existed in the initial migration). Backend lint, tests (466 spaces + 59 displays), OpenAPI regen all green.
 - ✅ **Phase 1c (wiring)** — PR #579 (`claude/phase-2-continue-3SPZh`, base = PR #578). Consumer-side wiring of the Phase 1a registries: `SpacesService.create` invokes `SpaceCreateBuilderRegistryService` builders after persistence; `findAll` / `findOne` / `findAllZones` / `getChildRooms` invoke `SpaceRelationsLoaderRegistryService` loaders on results. Tests updated to provide mock registries. This lands the infrastructure that Phase 3's plugin will consume.
 - ✅ **Phase 2** — Branch `claude/spaces-plugin-signage-gHDgs`. Unified `SpaceRoleEntity` hierarchy landed: abstract base on `spaces_module_space_roles`; six `@ChildEntity` subtypes (`lighting` / `climate` / `covers` / `sensor` / `media_binding` / `active_media`) with all subtype columns nullable. `SpaceRolesTypeMapperService` registered + six built-in mappings wired in `SpacesModule.onModuleInit`. Lighting/covers services migrated from TypeORM `upsert` to explicit find-then-insert/update to avoid discriminator collisions in `conflictPaths`. Migration `1000000000003-UnifySpaceRoleTables.ts` creates the unified table, copies rows from the six legacy tables with the correct discriminator, and installs partial unique indexes per subtype to preserve the original uniqueness semantics. Legacy tables intentionally retained for rollback (dropped in Phase 7). OpenAPI schema names preserved (`SpacesModuleDataSpace*Role*`); regen yields no diff. All 2,747 unit + 36 e2e tests pass.
-- 🟡 **Phase 3–7** — Not started.
+- 🟡 **Phase 3a** — In progress on branch `claude/spaces-plugin-signage-TRG2E`. Backend plugin extraction. See Phase 3 section below for sub-phase split (3a backend / 3b admin / 3c panel).
+- 🟡 **Phase 3b, 3c, 4–7** — Not started.
 
 ## Patterns & Gotchas (learned from Phase 1)
 
@@ -182,13 +183,21 @@ Each is currently `@InjectRepository(SpaceXRoleEntity) private readonly reposito
 
 **Goal:** Move Room/Zone entities, all role entities, ~30 services, all domain controllers, intent catalog, suggestions, undo history from `modules/spaces/` into `plugins/spaces-home-control/`.
 
+**Sub-phase split.** Phase 3 is the single largest refactor in this plan (~80 file moves, 60+ controller endpoints to split, admin + panel plugin trees). Following the Phase 1a/1b/1c/Phase 2 cadence of shipping each concern as its own PR, Phase 3 is broken into three ship-independent sub-phases. Each is prerequisite for Phase 4+ only once all three land, but 3b and 3c can be worked in parallel with each other once 3a is merged.
+
+- **Phase 3a — Backend plugin extraction.** Create `apps/backend/src/plugins/spaces-home-control/` tree. Relocate Room/Zone + 6 role entities, all 30+ domain services, all domain listeners, intent spec loader + YAML catalog, domain validators, domain response models. Split `spaces.controller.ts`: core keeps generic CRUD + `children/parent/devices/displays`; the ~50 domain endpoints move to new plugin controllers (lighting/climate/covers/sensors/media/suggestions/undo). Register plugin in `app.module.ts` imports + `RouterModule.register` children under `PLUGINS_PREFIX`. Migration `1000000000005-SpacesHomeControlPlugin.ts` — no DDL; seeds plugin row in extensions table. Ship backend lint + unit + e2e green, OpenAPI regen with only namespace additions. **Admin and panel are NOT touched in 3a — admin keeps consuming `/spaces/{id}/lighting` etc. URLs via rename of the admin HTTP client base paths only if the URL prefix changes.** URL decision: preserve the existing `/api/v1/spaces/{id}/...` paths for the domain endpoints so admin + panel clients don't break during the 3a/3b window. Do this by keeping controller route on `spaces/:id/...` inside the plugin controllers (no `plugins/spaces-home-control/` prefix on these specific endpoints). The RouterModule entry is still registered so any FUTURE plugin-prefixed endpoints (e.g. internal diagnostics) work, but the domain endpoints intentionally keep their existing public paths. See "URL stability during sub-phases" below.
+- **Phase 3b — Admin plugin.** Create `apps/admin/src/plugins/spaces-home-control/` with Room/Zone edit forms, roles panels, state tables, intent-catalog viewer, translations, Pinia store. Add `useSpacesPlugin({type})` composable mirroring `usePagesPlugin`. Convert `apps/admin/src/modules/spaces/views/view-space-edit.vue` into a shell that resolves plugin components via the composable. Register in `apps/admin/src/app.main.ts`. Admin type-check + vitest unit suites must stay green.
+- **Phase 3c — Panel plugin.** Create `apps/panel/lib/plugins/spaces-home-control/` owning today's `modules/deck/presentation/system_pages/room_overview.dart`, `domain_pages/*`, `services/room_domain_classifier.dart`, `services/room_overview_model_builder.dart`, `models/lighting/*`. Register in `apps/panel/lib/modules/dashboard/module.dart:_registerPlugins()`. Does NOT yet wire `spaceViewBuilders` (that's Phase 5's `DisplayRole` removal) — for 3c the panel still routes through the existing `system_views_builder.dart` switch, but the widgets now live under the plugin directory.
+
+**URL stability during sub-phases.** Phase 3a ships without admin/panel changes, so the existing HTTP surface (`/api/v1/spaces/{id}/lighting`, `/climate`, `/covers`, `/sensors`, `/intents/lighting`, `/suggestion`, `/undo`, `/media/*`, `/intents/catalog`, `/categories/templates`, `/propose`) must keep working byte-for-byte. Achieve this by keeping plugin controllers at `@Controller('spaces/:spaceId/lighting')` etc. (same paths as today — they just live inside the plugin module). Once admin + panel have migrated (post-3c or Phase 4), a future refactor can move these under `plugins/spaces-home-control/` if desired, but that's out of scope for Phase 3.
+
 **Reference plugin to mirror:**
 - `apps/backend/src/plugins/pages-cards/pages-cards.plugin.ts` — canonical template for `onModuleInit`: registers type mapping, relations loader, nested create builder, OpenAPI extras, discriminator, extension metadata, event-subscription handler.
 - `apps/backend/src/plugins/pages-cards/pages-cards.constants.ts` — plugin constants (name, type string, route prefix, event-type enum).
 - `apps/admin/src/plugins/pages-cards/pages-cards.plugin.ts` — admin template: registers routes, Pinia store, translations, `pluginsManager.addPlugin({elements:[{components, schemas}]})`, socket-event handlers.
 - `apps/backend/src/app.module.ts:253-340` — `RouterModule.register` block showing where to mount the new plugin under `PLUGINS_PREFIX`.
 
-**Route prefix constant:** add to plugin constants — `SPACES_HOME_CONTROL_PLUGIN_PREFIX = 'spaces-home-control'`. Controllers get mounted at `/plugins/spaces-home-control/...` per the RouterModule pattern.
+**Route prefix constant:** add to plugin constants — `SPACES_HOME_CONTROL_PLUGIN_PREFIX = 'spaces-home-control'`. Per the URL-stability note above, the domain controllers (`spaces/:id/lighting`, etc.) keep their existing paths in Phase 3a; the RouterModule entry exists so plugin-prefixed endpoints work in future phases.
 
 **New plugin tree:**
 - `apps/backend/src/plugins/spaces-home-control/spaces-home-control.plugin.ts` — registers Room/Zone + five role mappings, discriminators, OpenAPI extras, extension metadata.
@@ -197,17 +206,19 @@ Each is currently `@InjectRepository(SpaceXRoleEntity) private readonly reposito
 - `apps/backend/src/plugins/spaces-home-control/controllers/` — all domain endpoints (`/lighting-state`, `/climate-state`, `/covers-state`, `/sensor-state`, `/*-intent`, suggestions, undo, media-activity-bindings).
 - `apps/backend/src/plugins/spaces-home-control/spec/` — intent catalog.
 
-**Spaces core retains:** `SpacesService` (generic CRUD), mapper/registry services, seeder, reset, `space-activity.listener.ts` (listens for any space type), controller with only `GET/POST/PATCH/DELETE /spaces`, `GET /spaces/:id/{children,parent,devices,displays}`.
+**Spaces core retains:** `SpacesService` (generic CRUD), mapper/registry services, seeder, reset, `space-activity.listener.ts` (listens for any space type), `websocket-exchange.listener.ts` (generic broadcast), controller with only `GET/POST/PATCH/DELETE /spaces`, `GET /spaces/:id/{children,parent,devices,displays}`, `POST /spaces/:id/assign`, `GET /zones`. Core also retains generic DTOs (`create-space.dto.ts`, `update-space.dto.ts`, `bulk-assign.dto.ts`, `status-widget.dto.ts`, `update-config.dto.ts`), generic response models (`SpaceResponseModel`, `SpacesResponseModel` — split off from the current monolithic `spaces-response.model.ts`), the `config.model.ts`, and `spaces.exceptions.ts` / `spaces.utils.ts`.
 
-**Admin:** `apps/admin/src/plugins/spaces-home-control/` — Room/Zone edit forms, roles panels, state tables, intent catalog viewer. `apps/admin/src/modules/spaces/views/view-space-edit.vue` becomes a shell that resolves plugin components via new `useSpacesPlugin({type})`.
-
-**Panel:** `apps/panel/lib/plugins/spaces-home-control/` — owns today's `modules/deck/presentation/system_pages/room_overview.dart`, `domain_pages/*`, `services/room_domain_classifier.dart`, `services/room_overview_model_builder.dart`, `models/lighting/*`. Registers `RoomSpaceViewBuilder` and `ZoneSpaceViewBuilder` in `spaceViewBuilders` (introduced in Phase 5).
-
-**Cross-module ripple:**
-- `apps/backend/src/modules/devices/entities/devices.entity.ts` — `roomId` FK stays (any space); the "must be room-type" validator moves into the plugin.
+**Cross-module ripple (caller updates required in Phase 3a):**
+- `apps/backend/src/modules/devices/entities/devices.entity.ts` — `roomId` FK stays (any space); the "must be room-type" validator moves into the plugin. If the plugin is uninstalled, the validator silently no-ops — a device can be assigned to any space type in that case (documented limitation).
 - `apps/backend/src/modules/scenes/entities/scenes.entity.ts` — unchanged.
 - `apps/backend/src/modules/intents/` — enum stays; handler registration moves to plugin.
 - `apps/backend/src/app.module.ts` — register plugin in imports + `RouterModule`.
+- `apps/backend/src/plugins/simulator/*` — currently imports several role services + `SpaceType` directly from `modules/spaces/services/*`. Update these imports to the new plugin location. Simulator now explicitly depends on `spaces-home-control` plugin being installed.
+- `apps/backend/src/plugins/buddy-discord/*` and `apps/backend/src/plugins/buddy-telegram/*` — both currently import `SuggestionFeedback` enum from `modules/spaces/spaces.constants.ts`. The enum moves to the plugin's constants; either re-export it from the plugin and update these imports, OR keep `SuggestionFeedback` in core's `spaces.constants.ts` as a shared vocabulary (recommendation: keep in core — it's a tiny enum and decoupling buddy plugins from an optional home-control plugin is worth the minor taxonomic bleed).
+
+**Constants split:** `apps/backend/src/modules/spaces/spaces.constants.ts` — keep `SpaceType` (polymorphism discriminator), `SpaceRoleType` (role discriminator), `MODULE_*` base event types (SPACE_CREATED/UPDATED/DELETED), and `SuggestionFeedback` (see above). Move domain event types (`LIGHT_TARGET_CREATED`, `CLIMATE_TARGET_UPDATED`, `COVERS_TARGET_*`, `SENSOR_TARGET_*`, `MEDIA_*`, `SUGGESTION_*`, `UNDO_*`), category templates, and the `RoomDomain` enum (if present) into the plugin's `spaces-home-control.constants.ts`.
+
+**Response-model split:** `spaces-response.model.ts` today contains `SpaceResponseModel`, `SpacesResponseModel`, `IntentCatalogResponseModel`, `LightingStateDataModel`, `ClimateStateDataModel`, etc. Split into (a) `apps/backend/src/modules/spaces/models/spaces-response.model.ts` with just the generic two; (b) `apps/backend/src/plugins/spaces-home-control/models/*-response.model.ts` with the domain-specific state + intent-catalog models. Schema names stay identical (`SpacesModuleDataSpace`, `SpacesModuleDataLightingState`, etc.) so OpenAPI regen produces no diff in existing client types — verify with `pnpm generate:openapi` and `git diff spec/api/v1/openapi.json`.
 
 **Migration:** `apps/backend/src/migrations/1000000000005-SpacesHomeControlPlugin.ts` — no DDL; seed plugin row in extensions table so admin shows it as installed on existing installs.
 
@@ -515,15 +526,17 @@ Phase 1a (registries)
     └─▶ Phase 1b (polymorphic SpaceEntity)
             └─▶ Phase 1c wiring (PR #579)
                     └─▶ Phase 2 (unified SpaceRoleEntity)
-                            └─▶ Phase 3 (home-control plugin)
-                                    ├─▶ Phase 4 (synthetic master/entry)
-                                    │       └─▶ Phase 5 (DisplayRole removal)
-                                    │               └─▶ Phase 6 (info-panel signage)
-                                    │                       └─▶ Phase 7 (drop legacy tables, after one release)
-                                    └─▶ (Phase 6 can proceed once Phase 5 lands, independent of Phase 4)
+                            └─▶ Phase 3a (backend home-control plugin)
+                                    ├─▶ Phase 3b (admin home-control plugin)
+                                    ├─▶ Phase 3c (panel home-control plugin)
+                                    └─▶ (3b and 3c can ship in parallel after 3a merges)
+                            └─▶ [all of 3a+3b+3c merged] ─▶ Phase 4 (synthetic master/entry)
+                                    └─▶ Phase 5 (DisplayRole removal)
+                                            └─▶ Phase 6 (info-panel signage)
+                                                    └─▶ Phase 7 (drop legacy tables, after one release)
 ```
 
-Phase 4 blocks Phase 5 because the display-role-backfill migration in Phase 5 needs the synthetic space IDs seeded by Phase 4's migration. Phase 6 can run in parallel with Phase 4 once Phase 3 is in — they touch disjoint plugin directories.
+Phase 3a is prerequisite for 3b and 3c. Phase 4 requires all of 3a+3b+3c landed because the synthetic master/entry plugins need the admin/panel plugin-registration infrastructure shipped by 3b/3c (they mirror that tree). Phase 4 blocks Phase 5 because the display-role-backfill migration in Phase 5 needs the synthetic space IDs seeded by Phase 4's migration. Phase 6 can run in parallel with Phase 4 once Phase 3 is fully in — they touch disjoint plugin directories.
 
 ## Critical Files
 
