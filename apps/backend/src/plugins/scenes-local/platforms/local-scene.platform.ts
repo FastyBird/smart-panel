@@ -60,7 +60,7 @@ export class LocalScenePlatform implements IScenePlatform {
 			throw new ScenesSpaceValidationException(`Space with id=${spaceId} not found.`);
 		}
 
-		if ((space.type as SpaceType) !== SpaceType.ROOM) {
+		if (space.type !== SpaceType.ROOM) {
 			throw new ScenesSpaceValidationException(
 				`Space with id=${spaceId} is not a room. Scenes can only be assigned to rooms.`,
 			);
