@@ -247,9 +247,10 @@ export class SpacesService {
 			}
 			await this.repository.createQueryBuilder().update(SpaceEntity).set(rawUpdate).where('id = :id', { id }).execute();
 			const reloaded = await this.getOneOrThrow(id);
-			if (entityFieldsChanged) {
-				this.eventEmitter.emit(EventType.SPACE_UPDATED, reloaded);
-			}
+			// A type change is always a semantically-meaningful update even when no other
+			// field changed: the entity's concrete subtype (and therefore any subscriber
+			// branching on it) has flipped, so downstream listeners must be notified.
+			this.eventEmitter.emit(EventType.SPACE_UPDATED, reloaded);
 			return reloaded;
 		}
 
