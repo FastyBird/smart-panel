@@ -296,11 +296,15 @@ export class BackupController {
 			this.logger.warn(`Deleting backup ${id} with unreadable metadata: ${err.message}`);
 		}
 
+		// Capture the stub before deletion — building it after delete() would statSync
+		// a path that no longer exists and surface as a misleading 500
+		const responseMetadata = metadata ?? this.stubMetadata(id, backupPath);
+
 		try {
 			this.backupService.delete(id);
 
 			const response = new BackupResponseModel();
-			response.data = this.mapMetadata(metadata ?? this.stubMetadata(id, backupPath));
+			response.data = this.mapMetadata(responseMetadata);
 
 			return response;
 		} catch (error) {

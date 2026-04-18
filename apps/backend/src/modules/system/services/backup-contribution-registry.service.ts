@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 export type BackupContributionType = 'file' | 'directory';
 
@@ -26,6 +26,8 @@ export interface BackupContribution {
 
 @Injectable()
 export class BackupContributionRegistry {
+	private readonly logger = new Logger(BackupContributionRegistry.name);
+
 	private readonly contributions: BackupContributionRegistration[] = [];
 
 	register(contribution: BackupContributionRegistration): void {
@@ -33,12 +35,35 @@ export class BackupContributionRegistry {
 	}
 
 	getContributions(): BackupContribution[] {
-		return this.contributions.map((contribution) => ({
-			source: contribution.source,
-			label: contribution.label,
-			type: contribution.type,
-			path: typeof contribution.path === 'function' ? contribution.path() : contribution.path,
-			optional: contribution.optional,
-		}));
+		const resolved: BackupContribution[] = [];
+
+		for (const contribution of this.contributions) {
+			try {
+				const path = typeof contribution.path === 'function' ? contribution.path() : contribution.path;
+
+				resolved.push({
+					source: contribution.source,
+					label: contribution.label,
+					type: contribution.type,
+					path,
+					optional: contribution.optional,
+				});
+			} catch (error) {
+				// Isolate per-contribution resolution so one broken callback (e.g. an
+				// optional module with an invalid user-configured path) doesn't abort
+				// every backup. Propagate only for non-optional entries.
+				if (!contribution.optional) {
+					throw error;
+				}
+
+				const err = error as Error;
+
+				this.logger.warn(
+					`Skipping optional contribution ${contribution.label} (${contribution.source}): ${err.message}`,
+				);
+			}
+		}
+
+		return resolved;
 	}
 }
