@@ -169,8 +169,8 @@ import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElIc
 import { Icon } from '@iconify/vue';
 
 import { MODULES_PREFIX } from '../../../app.constants';
-import { useBackend, useFlashMessage } from '../../../common';
-import { type ISpace, SPACES_MODULE_PREFIX } from '../../../modules/spaces';
+import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { type ISpace, SPACES_MODULE_PREFIX, spacesStoreKey } from '../../../modules/spaces';
 import { useLocations } from '../../../modules/weather';
 import { SignageInfoPanelLayout } from '../spaces-signage-info-panel.constants';
 
@@ -193,6 +193,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const backend = useBackend();
 const flashMessage = useFlashMessage();
+const storesManager = injectStoresManager();
+const spacesStore = storesManager.getStore(spacesStoreKey);
 const { locations: weatherLocations, fetchLocations } = useLocations();
 
 const layoutOptions = Object.values(SignageInfoPanelLayout);
@@ -347,6 +349,14 @@ const onSubmit = async (): Promise<void> => {
 			name: model.name,
 			description: model.description,
 		};
+
+		// Sync the Pinia spaces store so downstream views (list, detail) read
+		// the new name/description immediately instead of the stale cached
+		// values. The core `SpaceEditForm` goes through `spacesStore.edit()`
+		// which writes both the backend and the cache atomically; we PATCH
+		// directly (to send the subtype-specific fields that aren't on
+		// ISpaceEditData) so we update the cache ourselves here.
+		spacesStore.set({ id: props.space.id, data: { name: updated.name, description: updated.description } });
 
 		flashMessage.success(t('spacesModule.messages.edited', { space: updated.name }));
 		emit('saved', updated);
