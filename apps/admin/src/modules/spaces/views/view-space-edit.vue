@@ -146,7 +146,7 @@ import {
 } from '../../../common';
 import { SpaceEditForm } from '../components/components';
 import { useSpace, useSpacesPlugins } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
+import { RouteNames, SpaceRoomCategory, SpaceType, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace } from '../store';
 
@@ -199,25 +199,18 @@ const isDetailRoute = computed<boolean>(
 		route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined
 );
 
-const spaceIcon = computed<string>((): string => {
-	if (space.value?.icon) {
-		return space.value.icon;
-	}
-	switch (space.value?.type) {
-		case SpaceType.ROOM:
-			return 'mdi:door';
-		case SpaceType.ZONE:
-			return 'mdi:home-floor-1';
-		case SpaceType.MASTER:
-			return 'mdi:home-outline';
-		case SpaceType.ENTRY:
-			return 'mdi:shield-home-outline';
-		default:
-			// Plugin-contributed space types fall through to a generic marker.
-			// Plugins should provide a per-space `icon` value to avoid this fallback.
-			return 'mdi:shape-outline';
-	}
-});
+// Defer to the shared `getSpaceIcon` helper so this view's iconography stays
+// consistent with the scenes module and any other consumer (Bugbot flagged
+// inconsistency between the two before they were unified).
+const spaceIcon = computed<string>((): string =>
+	space.value
+		? getSpaceIcon({
+				icon: space.value.icon ?? null,
+				category: (space.value.category ?? null) as SpaceRoomCategory | SpaceZoneCategory | null,
+				type: space.value.type,
+			})
+		: 'mdi:shape-outline',
+);
 
 // The generic `space-edit-form` covers ROOM and ZONE (the only built-in physical
 // types). Synthetic singleton spaces (MASTER, ENTRY) and plugin-contributed
