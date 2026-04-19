@@ -65,9 +65,13 @@ export const transformAnnouncementUpdateRequest = (
 ): ApiAnnouncementUpdate => {
 	const payload: Record<string, unknown> = {};
 
+	// Nullable fields use `'key' in data` so an explicit `null` from the
+	// caller is preserved on the wire (the backend interprets it as "clear
+	// this column"). Non-nullable primitives can stay on `!== undefined`
+	// since the caller has no way to express "clear" for them.
 	if (data.title !== undefined) payload.title = data.title;
-	if (data.body !== undefined) payload.body = data.body;
-	if (data.icon !== undefined) payload.icon = data.icon;
+	if ('body' in data) payload.body = data.body;
+	if ('icon' in data) payload.icon = data.icon;
 	if (data.order !== undefined) payload.order = data.order;
 	if (data.priority !== undefined) payload.priority = data.priority;
 	if ('activeFrom' in data) {

@@ -284,10 +284,17 @@ const fetchSpace = async (): Promise<void> => {
 		}
 
 		applyServerPayload(data.data as Record<string, unknown>);
-	} catch (err) {
+	} catch {
+		// Swallow the error on purpose: `loadFailed` + the flash message
+		// already communicate the failure to the UI, and `canSubmit` guards
+		// the Save button so a stale load cannot be PATCHed back over the
+		// server state. Re-throwing would turn an expected-and-handled
+		// failure into an unhandled promise rejection for the
+		// `Promise.all([...])` caller in onBeforeMount, and would also
+		// short-circuit `fetchLocations()` even when it succeeded on its
+		// own and the weather picker could have been populated.
 		loadFailed.value = true;
 		flashMessage.error(t('spacesModule.messages.notFound'));
-		throw err;
 	}
 };
 
