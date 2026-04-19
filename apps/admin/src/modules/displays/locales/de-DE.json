@@ -417,7 +417,6 @@
 			"assignedSpace": "Zugewiesener Bereich",
 			"notAssigned": "Nicht zugewiesen",
 			"initialView": "Anfangsansicht",
-			"systemViews": "Systemansichten",
 			"selectedPage": "Ausgewählte Seite",
 			"hint": "Die Hauptansichten dieses Displays werden automatisch basierend auf dem Typ des zugewiesenen Bereichs generiert.",
 			"homeModes": {

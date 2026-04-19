@@ -417,7 +417,6 @@
 			"assignedSpace": "Przypisana przestrzeń",
 			"notAssigned": "Nie przypisano",
 			"initialView": "Widok początkowy",
-			"systemViews": "Widoki systemowe",
 			"selectedPage": "Wybrana strona",
 			"hint": "Główne widoki tego wyświetlacza są generowane automatycznie na podstawie typu przypisanej przestrzeni.",
 			"homeModes": {

@@ -417,7 +417,6 @@
 			"assignedSpace": "Priradený priestor",
 			"notAssigned": "Nepriradený",
 			"initialView": "Počiatočné zobrazenie",
-			"systemViews": "Systémové zobrazenia",
 			"selectedPage": "Vybraná stránka",
 			"hint": "Hlavné zobrazenia tohto displeja sú generované automaticky na základe typu priradeného priestoru.",
 			"homeModes": {
