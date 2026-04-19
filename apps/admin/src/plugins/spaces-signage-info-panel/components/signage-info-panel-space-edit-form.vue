@@ -358,7 +358,9 @@ const onSubmit = async (): Promise<void> => {
 		// ISpaceEditData) so we update the cache ourselves here.
 		spacesStore.set({ id: props.space.id, data: { name: updated.name, description: updated.description } });
 
-		flashMessage.success(t('spacesModule.messages.edited', { space: updated.name }));
+		// Parent `view-space-edit.vue::onSaved` shows the success toast — do
+		// not double-flash from here. Keep the error path local because the
+		// parent only hears about successful saves.
 		emit('saved', updated);
 	} finally {
 		submitting.value = false;
