@@ -34,7 +34,7 @@
 	</app-bar-button>
 
 	<app-bar-button
-		v-if="!isMDDevice"
+		v-if="!isMDDevice && hasEditForm"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
@@ -106,6 +106,7 @@
 				</el-button>
 
 				<el-button
+					v-if="hasEditForm"
 					type="primary"
 					@click="onSubmit"
 				>
@@ -177,6 +178,11 @@ const pluginElement = computed<IPluginElement<ISpacePluginsComponents, ISpacePlu
 });
 
 const isLoading = computed<boolean>(() => fetching.value);
+
+// Synthetic space types (e.g. master / entry) intentionally register no
+// spaceEditForm — the view falls back to a read-only placeholder. Gate
+// the Save buttons so they don't render a visible no-op in that case.
+const hasEditForm = computed<boolean>(() => !!pluginElement.value?.components?.spaceEditForm);
 
 // The rendered form is a dynamically-dispatched plugin component — each space
 // type's plugin contributes its own edit form. We only rely on a `submit()`
