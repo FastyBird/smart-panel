@@ -1,0 +1,63 @@
+{
+	"plugin": {
+		"name": "Panel informacyjny (signage)",
+		"description": "Ekran informacyjny tylko do odczytu z zegarem, pogodą, ogłoszeniami i opcjonalnym zewnętrznym źródłem."
+	},
+	"spaceType": {
+		"label": "Panel informacyjny (signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Układ",
+			"options": {
+				"clock_weather": "Zegar + pogoda",
+				"clock_weather_announcements": "Zegar + pogoda + ogłoszenia",
+				"full": "Pełny (wszystkie sekcje)"
+			}
+		},
+		"sections": {
+			"title": "Sekcje",
+			"description": "Włącz lub wyłącz poszczególne sekcje panelu.",
+			"showClock": "Zegar",
+			"showWeather": "Pogoda",
+			"showAnnouncements": "Ogłoszenia",
+			"showFeed": "Zewnętrzne źródło"
+		},
+		"weatherLocation": {
+			"label": "Lokalizacja pogody",
+			"placeholder": "Wybierz lokalizację"
+		},
+		"feedUrl": {
+			"label": "URL źródła",
+			"placeholder": "https://…"
+		}
+	},
+	"announcements": {
+		"heading": "Ogłoszenia",
+		"empty": "Brak ogłoszeń. Dodaj pierwsze poniżej.",
+		"add": "Dodaj ogłoszenie",
+		"fields": {
+			"title": "Tytuł",
+			"body": "Treść",
+			"icon": "Ikona",
+			"priority": "Priorytet",
+			"order": "Kolejność",
+			"activeFrom": "Aktywne od",
+			"activeUntil": "Aktywne do"
+		},
+		"actions": {
+			"save": "Zapisz",
+			"edit": "Edytuj",
+			"delete": "Usuń",
+			"cancel": "Anuluj"
+		},
+		"messages": {
+			"created": "Ogłoszenie utworzone.",
+			"updated": "Ogłoszenie zaktualizowane.",
+			"deleted": "Ogłoszenie usunięte.",
+			"saveFailed": "Nie udało się zapisać ogłoszenia.",
+			"deleteFailed": "Nie udało się usunąć ogłoszenia.",
+			"confirmDelete": "Usunąć to ogłoszenie?"
+		}
+	}
+}

@@ -22,6 +22,8 @@ export const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceT
 			return SpaceType.MASTER;
 		case SpacesModuleCreateSpaceType.entry:
 			return SpaceType.ENTRY;
+		case SpacesModuleCreateSpaceType.signage_info_panel:
+			return SpaceType.SIGNAGE_INFO_PANEL;
 		default:
 			return SpaceType.ROOM;
 	}
@@ -37,6 +39,8 @@ export const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModu
 			return SpacesModuleCreateSpaceType.master;
 		case SpaceType.ENTRY:
 			return SpacesModuleCreateSpaceType.entry;
+		case SpaceType.SIGNAGE_INFO_PANEL:
+			return SpacesModuleCreateSpaceType.signage_info_panel;
 		default:
 			return SpacesModuleCreateSpaceType.room;
 	}
