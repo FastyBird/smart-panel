@@ -40,6 +40,8 @@ export const RouteNames = {
 export enum SpaceType {
 	ROOM = 'room',
 	ZONE = 'zone',
+	MASTER = 'master',
+	ENTRY = 'entry',
 }
 
 /**

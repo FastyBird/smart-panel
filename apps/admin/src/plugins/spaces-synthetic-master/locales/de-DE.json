@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"name": "Hauptraum",
+		"description": "Fügt den Singleton-Master-Synthetikraum hinzu — die Übersichtsoberfläche für das gesamte Haus, die den Zustand aller Räume zusammenfasst."
+	}
+}

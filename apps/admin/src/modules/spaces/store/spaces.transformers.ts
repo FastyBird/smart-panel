@@ -18,6 +18,10 @@ const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => 
 			return SpaceType.ROOM;
 		case SpacesModuleCreateSpaceType.zone:
 			return SpaceType.ZONE;
+		case SpacesModuleCreateSpaceType.master:
+			return SpaceType.MASTER;
+		case SpacesModuleCreateSpaceType.entry:
+			return SpaceType.ENTRY;
 		default:
 			return SpaceType.ROOM;
 	}
@@ -29,6 +33,10 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 			return SpacesModuleCreateSpaceType.room;
 		case SpaceType.ZONE:
 			return SpacesModuleCreateSpaceType.zone;
+		case SpaceType.MASTER:
+			return SpacesModuleCreateSpaceType.master;
+		case SpaceType.ENTRY:
+			return SpacesModuleCreateSpaceType.entry;
 		default:
 			return SpacesModuleCreateSpaceType.room;
 	}
