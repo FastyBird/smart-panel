@@ -1,10 +1,7 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient, useUuid } from '../../../common';
-import {
-	SpacesModuleCreateSpaceCategory,
-	SpacesModuleCreateSpaceType,
-} from '../../../openapi.constants';
+import { SpacesModuleCreateSpaceCategory } from '../../../openapi.constants';
 import {
 	ASSIGNABLE_ZONE_CATEGORIES,
 	SPACE_ALL_CATEGORY_TEMPLATES,
@@ -15,7 +12,7 @@ import {
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
-import { type ApiSpace, transformSpaceResponse } from '../store/spaces.transformers';
+import { type ApiSpace, apiTypeToSpaceType, spaceTypeToApiType, transformSpaceResponse } from '../store/spaces.transformers';
 
 interface ProposedSpace {
 	name: string;
@@ -82,28 +79,6 @@ interface WizardState {
 	isLoading: boolean;
 	error: string | null;
 }
-
-const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
-	switch (apiType) {
-		case SpacesModuleCreateSpaceType.room:
-			return SpaceType.ROOM;
-		case SpacesModuleCreateSpaceType.zone:
-			return SpaceType.ZONE;
-		default:
-			return SpaceType.ROOM;
-	}
-};
-
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
-	switch (spaceType) {
-		case SpaceType.ROOM:
-			return SpacesModuleCreateSpaceType.room;
-		case SpaceType.ZONE:
-			return SpacesModuleCreateSpaceType.zone;
-		default:
-			return SpacesModuleCreateSpaceType.room;
-	}
-};
 
 const apiCategoryToSpaceCategory = (
 	apiCategory: SpacesModuleCreateSpaceCategory | null | undefined

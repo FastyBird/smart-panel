@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"name": "Eingangsbereich",
+		"description": "Fügt den Singleton-Eingangs-Synthetikraum hinzu — die Sicherheits- / Eingangsoberfläche, die den Scharfschaltzustand und die Zugriffskontrolle anzeigt."
+	}
+}
