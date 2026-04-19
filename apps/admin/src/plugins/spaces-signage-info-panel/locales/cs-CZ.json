@@ -29,7 +29,10 @@
 		},
 		"feedUrl": {
 			"label": "URL zdroje",
-			"placeholder": "https://…"
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Zadejte prosím platnou adresu URL (včetně protokolu, např. https://)."
+			}
 		}
 	},
 	"announcements": {

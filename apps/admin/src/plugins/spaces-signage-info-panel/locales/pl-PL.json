@@ -29,7 +29,10 @@
 		},
 		"feedUrl": {
 			"label": "URL źródła",
-			"placeholder": "https://…"
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Wprowadź prawidłowy adres URL (wraz z protokołem, np. https://)."
+			}
 		}
 	},
 	"announcements": {

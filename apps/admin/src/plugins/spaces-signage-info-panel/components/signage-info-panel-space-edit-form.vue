@@ -2,6 +2,7 @@
 	<el-form
 		ref="formRef"
 		:model="model"
+		:rules="rules"
 		label-position="top"
 		@submit.prevent="onSubmit"
 	>
@@ -164,7 +165,21 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, ElSwitch, type FormInstance } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElForm,
+	ElFormItem,
+	ElIcon,
+	ElInput,
+	ElOption,
+	ElSelect,
+	ElSwitch,
+	type FormInstance,
+	type FormRules,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -233,6 +248,14 @@ const formRef = ref<FormInstance | null>(null);
 const submitting = ref(false);
 const baseline = ref<SignageFormModel | null>(null);
 const loadFailed = ref(false);
+
+// Element Plus validation rules. Mirrors the core Room/Zone edit form's
+// required-name rule so the signage form catches empty/whitespace-only names
+// inline instead of bouncing off a backend validation exception.
+const rules = computed<FormRules<SignageFormModel>>(() => ({
+	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
+	feedUrl: [{ type: 'url', message: t('spacesSignageInfoPanelPlugin.fields.feedUrl.validation.invalid'), trigger: 'blur' }],
+}));
 
 // `baseline` stays null until `fetchSpace` succeeds. Submitting before then
 // would PATCH the server with the form's hardcoded defaults — silently
@@ -313,6 +336,20 @@ const onSubmit = async (): Promise<void> => {
 	// `defineExpose({ submit: onSubmit })` makes the parent able to invoke
 	// us directly, so the runtime guard stays.
 	if (!canSubmit.value) return;
+
+	// Validate before PATCH. Without this an empty name (or malformed feed
+	// URL) would round-trip to the backend and surface as a 4xx error toast
+	// instead of an inline field message. Mirrors the core Room/Zone form's
+	// validate-then-submit contract.
+	if (formRef.value) {
+		try {
+			await formRef.value.validate();
+		} catch {
+			// Element Plus rejects with the list of invalid fields; the
+			// <el-form-item> messages are already shown inline, so just abort.
+			return;
+		}
+	}
 
 	submitting.value = true;
 

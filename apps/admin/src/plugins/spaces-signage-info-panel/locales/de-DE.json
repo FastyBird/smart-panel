@@ -29,7 +29,10 @@
 		},
 		"feedUrl": {
 			"label": "Feed-URL",
-			"placeholder": "https://…"
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Bitte geben Sie eine gültige URL ein (einschließlich Schema, z. B. https://)."
+			}
 		}
 	},
 	"announcements": {
