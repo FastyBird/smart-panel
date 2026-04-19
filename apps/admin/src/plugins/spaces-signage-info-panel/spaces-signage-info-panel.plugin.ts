@@ -27,6 +27,7 @@ import {
 	SPACES_SIGNAGE_INFO_PANEL_PLUGIN_NAME,
 	SPACES_SIGNAGE_INFO_PANEL_PLUGIN_SOURCE,
 	SPACES_SIGNAGE_INFO_PANEL_TYPES,
+	SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS,
 } from './spaces-signage-info-panel.constants';
 import { registerAnnouncementsStore } from './store/announcements.store';
 import type { IAnnouncement } from './store/announcements.store.types';
@@ -79,7 +80,7 @@ export default {
 			},
 			elements: SPACES_SIGNAGE_INFO_PANEL_TYPES.map((type) => ({
 				type,
-				name: type,
+				name: SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS[type],
 				components: {
 					spaceEditForm: SignageInfoPanelSpaceEditForm,
 				},

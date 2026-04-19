@@ -188,7 +188,10 @@
 			"spaceId": {
 				"title": "Zugewiesener Bereich",
 				"placeholder": "Bereich auswählen",
-				"description": "Der Bereich, dem dieses Display zugewiesen ist. Der Typ des Bereichs bestimmt, was das Panel darstellt."
+				"description": "Der Bereich, dem dieses Display zugewiesen ist. Der Typ des Bereichs bestimmt, was das Panel darstellt.",
+				"validation": {
+					"required": "Ein Bereich muss zugewiesen sein, wenn die Startseite automatisch aus dem Bereich ermittelt wird."
+				}
 			},
 			"numberFormat": {
 				"title": "Zahlenformat",

@@ -188,7 +188,10 @@
 			"spaceId": {
 				"title": "Přiřazený prostor",
 				"placeholder": "Vyberte prostor",
-				"description": "Prostor, ke kterému je tento displej přiřazen. Typ prostoru určuje, co panel zobrazuje."
+				"description": "Prostor, ke kterému je tento displej přiřazen. Typ prostoru určuje, co panel zobrazuje.",
+				"validation": {
+					"required": "Prostor musí být přiřazen, když se domovská stránka odvozuje z prostoru."
+				}
 			},
 			"numberFormat": {
 				"title": "Formát čísel",

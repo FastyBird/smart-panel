@@ -12,6 +12,7 @@ import {
 	SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
 	SPACES_SYNTHETIC_MASTER_PLUGIN_SOURCE,
 	SPACES_SYNTHETIC_MASTER_TYPES,
+	SPACES_SYNTHETIC_MASTER_TYPE_LABELS,
 } from './spaces-synthetic-master.constants';
 
 export const spacesSyntheticMasterPluginKey: PluginInjectionKey<
@@ -52,7 +53,7 @@ export default {
 			},
 			elements: SPACES_SYNTHETIC_MASTER_TYPES.map((type) => ({
 				type,
-				name: type,
+				name: SPACES_SYNTHETIC_MASTER_TYPE_LABELS[type],
 				components: {},
 				schemas: {
 					spaceSchema: SpaceSchema,

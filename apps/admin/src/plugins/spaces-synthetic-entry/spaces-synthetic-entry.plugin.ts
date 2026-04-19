@@ -12,6 +12,7 @@ import {
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_SOURCE,
 	SPACES_SYNTHETIC_ENTRY_TYPES,
+	SPACES_SYNTHETIC_ENTRY_TYPE_LABELS,
 } from './spaces-synthetic-entry.constants';
 
 export const spacesSyntheticEntryPluginKey: PluginInjectionKey<
@@ -52,7 +53,7 @@ export default {
 			},
 			elements: SPACES_SYNTHETIC_ENTRY_TYPES.map((type) => ({
 				type,
-				name: type,
+				name: SPACES_SYNTHETIC_ENTRY_TYPE_LABELS[type],
 				components: {},
 				schemas: {
 					spaceSchema: SpaceSchema,

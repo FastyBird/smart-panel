@@ -16,7 +16,12 @@ import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from '../../modules/s
 
 import { SpaceAddForm, SpaceDetail, SpaceEditForm } from './components/components';
 import { locales } from './locales';
-import { SPACES_HOME_CONTROL_PLUGIN_NAME, SPACES_HOME_CONTROL_PLUGIN_SOURCE, SPACES_HOME_CONTROL_TYPES } from './spaces-home-control.constants';
+import {
+	SPACES_HOME_CONTROL_PLUGIN_NAME,
+	SPACES_HOME_CONTROL_PLUGIN_SOURCE,
+	SPACES_HOME_CONTROL_TYPES,
+	SPACES_HOME_CONTROL_TYPE_LABELS,
+} from './spaces-home-control.constants';
 
 export const spacesHomeControlPluginKey: PluginInjectionKey<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>> =
 	Symbol('FB-Plugin-SpacesHomeControl');
@@ -43,9 +48,12 @@ export default {
 				devDocumentation: 'https://smart-panel.fastybird.com',
 				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
+			// Human-readable labels per space type — the `name` field surfaces
+			// in `useSpacesPlugins.options` dropdown-style UI and shouldn't be a
+			// raw enum value (`'room'`, `'zone'`).
 			elements: SPACES_HOME_CONTROL_TYPES.map((type) => ({
 				type,
-				name: type,
+				name: SPACES_HOME_CONTROL_TYPE_LABELS[type],
 				components: {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,

@@ -188,7 +188,10 @@
 			"spaceId": {
 				"title": "Przypisana przestrzeń",
 				"placeholder": "Wybierz przestrzeń",
-				"description": "Przestrzeń, do której jest przypisany ten wyświetlacz. Typ przestrzeni decyduje o tym, co panel wyświetla."
+				"description": "Przestrzeń, do której jest przypisany ten wyświetlacz. Typ przestrzeni decyduje o tym, co panel wyświetla.",
+				"validation": {
+					"required": "Gdy strona startowa jest ustalana automatycznie na podstawie przestrzeni, przestrzeń musi być przypisana."
+				}
 			},
 			"numberFormat": {
 				"title": "Format liczb",

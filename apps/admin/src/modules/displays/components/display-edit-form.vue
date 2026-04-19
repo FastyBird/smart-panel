@@ -716,6 +716,18 @@ const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 			trigger: 'blur',
 		},
 	],
+	// When `homeMode` is `auto_space`, HomeResolutionService looks up the home
+	// page via the selected space — without a spaceId the display has nothing
+	// to resolve and the panel lands on a fallback. Phase 5 dropped the old
+	// role=room conditional; restore an analogous required-when-auto_space rule
+	// so the user can't save a broken configuration.
+	spaceId: [
+		{
+			required: model.homeMode === 'auto_space',
+			message: t('displaysModule.fields.displays.spaceId.validation.required'),
+			trigger: 'change',
+		},
+	],
 	speakerVolume: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.speakerVolume.validation.range'), trigger: 'blur' }],
 	microphoneVolume: [
 		{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.microphoneVolume.validation.range'), trigger: 'blur' },

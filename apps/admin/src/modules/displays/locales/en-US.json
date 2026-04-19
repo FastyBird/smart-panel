@@ -188,7 +188,10 @@
 			"spaceId": {
 				"title": "Assigned space",
 				"placeholder": "Select a space",
-				"description": "The space this display is assigned to. The space's type decides what the panel renders."
+				"description": "The space this display is assigned to. The space's type decides what the panel renders.",
+				"validation": {
+					"required": "A space must be assigned when the home page is auto-resolved from the space."
+				}
 			},
 			"numberFormat": {
 				"title": "Number Format",

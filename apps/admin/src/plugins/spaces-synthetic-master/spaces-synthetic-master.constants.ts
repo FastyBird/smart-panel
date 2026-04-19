@@ -11,3 +11,8 @@ export const SPACES_SYNTHETIC_MASTER_PLUGIN_SOURCE = 'com.fastybird.smart-panel.
  * backend discriminator value declared on `MasterSpaceEntity`.
  */
 export const SPACES_SYNTHETIC_MASTER_TYPES = [SpaceType.MASTER] as const;
+
+/** Human-readable label surfaced in admin plugin UI selectors. */
+export const SPACES_SYNTHETIC_MASTER_TYPE_LABELS: Record<(typeof SPACES_SYNTHETIC_MASTER_TYPES)[number], string> = {
+	[SpaceType.MASTER]: 'Master',
+};

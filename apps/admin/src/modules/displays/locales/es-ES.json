@@ -188,7 +188,10 @@
 			"spaceId": {
 				"title": "Espacio asignado",
 				"placeholder": "Seleccionar un espacio",
-				"description": "El espacio al que está asignada esta pantalla. El tipo del espacio determina lo que muestra el panel."
+				"description": "El espacio al que está asignada esta pantalla. El tipo del espacio determina lo que muestra el panel.",
+				"validation": {
+					"required": "Debe asignarse un espacio cuando la página de inicio se resuelve automáticamente desde el espacio."
+				}
 			},
 			"numberFormat": {
 				"title": "Formato de números",
