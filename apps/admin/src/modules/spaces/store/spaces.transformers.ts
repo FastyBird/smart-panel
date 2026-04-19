@@ -12,7 +12,7 @@ export type ApiSpace = NonNullable<operations['get-spaces-module-spaces']['respo
 type ApiSpaceCreate = operations['create-spaces-module-space']['requestBody']['content']['application/json']['data'];
 type ApiSpaceUpdate = NonNullable<operations['update-spaces-module-space']['requestBody']>['content']['application/json']['data'];
 
-const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
+export const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
 	switch (apiType) {
 		case SpacesModuleCreateSpaceType.room:
 			return SpaceType.ROOM;
@@ -27,7 +27,7 @@ const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => 
 	}
 };
 
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
+export const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
 	switch (spaceType) {
 		case SpaceType.ROOM:
 			return SpacesModuleCreateSpaceType.room;
