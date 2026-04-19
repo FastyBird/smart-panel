@@ -77,11 +77,6 @@ export interface IUseSpaceEditForm<TForm extends ISpaceEditForm = ISpaceEditForm
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUseSpacesPlugin {
-	plugin: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined>;
-	element: ComputedRef<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>;
-}
-
 export interface IUseSpacesPlugins {
 	plugins: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
