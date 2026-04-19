@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';

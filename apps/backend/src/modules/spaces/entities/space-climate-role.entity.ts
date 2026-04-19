@@ -1,37 +1,27 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import { ChildEntity, Column, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { BaseEntity } from '../../../common/entities/base.entity';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { ClimateRole } from '../spaces.constants';
+import { ClimateRole, SpaceRoleType } from '../spaces.constants';
 
-import { SpaceEntity } from './space.entity';
+import { SpaceRoleEntity } from './space-role.entity';
 
 @ApiSchema({ name: 'SpacesModuleDataSpaceClimateRole' })
-@Entity('spaces_module_climate_roles')
-@Unique(['spaceId', 'deviceId', 'channelId'])
-export class SpaceClimateRoleEntity extends BaseEntity {
+@ChildEntity(SpaceRoleType.CLIMATE)
+export class SpaceClimateRoleEntity extends SpaceRoleEntity {
 	@ApiProperty({
-		name: 'space_id',
-		description: 'ID of the space this role assignment belongs to',
-		type: 'string',
-		format: 'uuid',
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+		description: 'Role type',
+		enum: SpaceRoleType,
+		default: SpaceRoleType.CLIMATE,
+		example: SpaceRoleType.CLIMATE,
 	})
-	@Expose({ name: 'space_id' })
-	@IsUUID('4')
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
-		toClassOnly: true,
-	})
-	@Column({ nullable: false })
-	spaceId: string;
-
-	@ManyToOne(() => SpaceEntity, { nullable: false, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'spaceId' })
-	space: SpaceEntity;
+	@Expose()
+	get type(): SpaceRoleType {
+		return SpaceRoleType.CLIMATE;
+	}
 
 	@ApiProperty({
 		name: 'device_id',
@@ -45,10 +35,10 @@ export class SpaceClimateRoleEntity extends BaseEntity {
 	@Transform(({ obj }: { obj: { device_id?: string; deviceId?: string } }) => obj.device_id ?? obj.deviceId, {
 		toClassOnly: true,
 	})
-	@Column({ nullable: false })
+	@Column({ nullable: true })
 	deviceId: string;
 
-	@ManyToOne(() => DeviceEntity, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => DeviceEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
@@ -81,6 +71,7 @@ export class SpaceClimateRoleEntity extends BaseEntity {
 	@IsEnum(ClimateRole)
 	@Column({
 		type: 'varchar',
+		nullable: true,
 		default: ClimateRole.AUTO,
 	})
 	role: ClimateRole;
@@ -94,6 +85,6 @@ export class SpaceClimateRoleEntity extends BaseEntity {
 	@IsOptional()
 	@IsInt()
 	@Min(0)
-	@Column({ type: 'int', default: 0 })
+	@Column({ type: 'int', nullable: true, default: 0 })
 	priority: number;
 }

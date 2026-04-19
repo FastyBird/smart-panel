@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_glass_card.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:weather_icons/weather_icons.dart';
 

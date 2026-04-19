@@ -1,14 +1,13 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsDate, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import { IsDate, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ChildEntity, Column } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { BaseEntity } from '../../../common/entities/base.entity';
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
-import { MediaActivationState, MediaActivityKey } from '../spaces.constants';
+import { MediaActivationState, MediaActivityKey, SpaceRoleType } from '../spaces.constants';
 
-import { SpaceEntity } from './space.entity';
+import { SpaceRoleEntity } from './space-role.entity';
 
 const jsonToSnakeCaseTransformer = ({ value }: { value: string | null }): Record<string, unknown> | null => {
 	if (!value) return null;
@@ -23,31 +22,23 @@ const jsonToSnakeCaseTransformer = ({ value }: { value: string | null }): Record
 
 /**
  * Represents the currently active media activity for a space.
- * Only ONE active activity per space is allowed at any time.
+ * Only ONE active activity per space is allowed at any time (enforced by a partial
+ * unique index on `spaceId` where `type='active_media'`).
  * Tracks activation state, resolved devices, and execution results.
  */
 @ApiSchema({ name: 'SpacesModuleDataSpaceActiveMediaActivity' })
-@Entity('spaces_module_active_media_activities')
-@Unique(['spaceId'])
-export class SpaceActiveMediaActivityEntity extends BaseEntity {
+@ChildEntity(SpaceRoleType.ACTIVE_MEDIA)
+export class SpaceActiveMediaActivityEntity extends SpaceRoleEntity {
 	@ApiProperty({
-		name: 'space_id',
-		description: 'ID of the space this active activity belongs to',
-		type: 'string',
-		format: 'uuid',
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+		description: 'Role type',
+		enum: SpaceRoleType,
+		default: SpaceRoleType.ACTIVE_MEDIA,
+		example: SpaceRoleType.ACTIVE_MEDIA,
 	})
-	@Expose({ name: 'space_id' })
-	@IsUUID('4')
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
-		toClassOnly: true,
-	})
-	@Column({ nullable: false })
-	spaceId: string;
-
-	@ManyToOne(() => SpaceEntity, { nullable: false, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'spaceId' })
-	space: SpaceEntity;
+	@Expose()
+	get type(): SpaceRoleType {
+		return SpaceRoleType.ACTIVE_MEDIA;
+	}
 
 	@ApiPropertyOptional({
 		name: 'activity_key',
@@ -73,6 +64,7 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@IsEnum(MediaActivationState)
 	@Column({
 		type: 'varchar',
+		nullable: true,
 		default: MediaActivationState.DEACTIVATED,
 	})
 	state: MediaActivationState;

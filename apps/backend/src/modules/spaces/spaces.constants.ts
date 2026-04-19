@@ -51,6 +51,20 @@ export enum SpaceType {
 }
 
 /**
+ * Discriminator values for the unified `spaces_module_space_roles` inheritance table.
+ * Each subtype persists its domain-specific columns on the same table; see
+ * `SpaceRoleEntity` + the `@ChildEntity` subclasses.
+ */
+export enum SpaceRoleType {
+	LIGHTING = 'lighting',
+	CLIMATE = 'climate',
+	COVERS = 'covers',
+	SENSOR = 'sensor',
+	MEDIA_BINDING = 'media_binding',
+	ACTIVE_MEDIA = 'active_media',
+}
+
+/**
  * Room categories for SpaceType.ROOM
  * Represents physical rooms within a building
  */

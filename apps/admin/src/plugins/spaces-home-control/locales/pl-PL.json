@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"name": "Przestrzenie sterowania domem",
+		"description": "Dodaje fizyczne pokoje i strefy ze sterowaniem oświetleniem, klimatem, osłonami, czujnikami i mediami."
+	}
+}

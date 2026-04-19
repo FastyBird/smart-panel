@@ -146,7 +146,10 @@ export class SpaceCoversRoleService {
 		const newRole = dto.role;
 		const newPriority = dto.priority ?? 0;
 
-		// Use a transaction to atomically check existence and upsert
+		// Use a transaction to atomically check existence and insert/update.
+		// Explicit find-then-insert/update (not TypeORM upsert) because the roles
+		// now live on a single-table-inheritance table and upsert does not inject
+		// the discriminator into conflictPaths.
 		await this.repository.manager.transaction(async (transactionalManager) => {
 			// Check if this is an update or create within the transaction
 			const existingRole = await transactionalManager.findOne(SpaceCoversRoleEntity, {
@@ -161,26 +164,20 @@ export class SpaceCoversRoleService {
 				hasChanges = true; // New record is always a change
 			}
 
-			// Upsert within the same transaction to maintain atomicity
-			await transactionalManager.upsert(
-				SpaceCoversRoleEntity,
-				{
+			if (existingRole) {
+				existingRole.role = newRole;
+				existingRole.priority = newPriority;
+				roleEntity = await transactionalManager.save(existingRole);
+			} else {
+				const newEntity = transactionalManager.create(SpaceCoversRoleEntity, {
 					spaceId,
 					deviceId: dto.deviceId,
 					channelId: dto.channelId,
 					role: newRole,
 					priority: newPriority,
-				},
-				{
-					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
-					skipUpdateIfNoValuesChanged: true,
-				},
-			);
-
-			// Fetch the saved entity within the transaction
-			roleEntity = await transactionalManager.findOne(SpaceCoversRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
-			});
+				});
+				roleEntity = await transactionalManager.save(newEntity);
+			}
 		});
 
 		if (!roleEntity) {

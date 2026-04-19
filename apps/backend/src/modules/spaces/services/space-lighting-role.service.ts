@@ -144,9 +144,15 @@ export class SpaceLightingRoleService {
 		const newRole = dto.role;
 		const newPriority = dto.priority ?? 0;
 
-		// Use a transaction to atomically check existence and upsert
+		// Use a transaction to atomically check existence and insert/update.
 		// This prevents race conditions where concurrent requests could both see
-		// existingRole = null, causing both to emit LIGHT_TARGET_CREATED
+		// existingRole = null, causing both to emit LIGHT_TARGET_CREATED.
+		//
+		// We use an explicit find-then-insert/update pattern (rather than TypeORM's
+		// `upsert`) because the roles now live on a single-table-inheritance table
+		// and TypeORM's upsert does not inject the discriminator into conflictPaths,
+		// so it could otherwise match rows of other role subtypes sharing the same
+		// (spaceId, deviceId, channelId) tuple.
 		await this.repository.manager.transaction(async (transactionalManager) => {
 			// Check if this is an update or create within the transaction
 			const existingRole = await transactionalManager.findOne(SpaceLightingRoleEntity, {
@@ -161,26 +167,20 @@ export class SpaceLightingRoleService {
 				hasChanges = true; // New record is always a change
 			}
 
-			// Upsert within the same transaction to maintain atomicity
-			await transactionalManager.upsert(
-				SpaceLightingRoleEntity,
-				{
+			if (existingRole) {
+				existingRole.role = newRole;
+				existingRole.priority = newPriority;
+				roleEntity = await transactionalManager.save(existingRole);
+			} else {
+				const newEntity = transactionalManager.create(SpaceLightingRoleEntity, {
 					spaceId,
 					deviceId: dto.deviceId,
 					channelId: dto.channelId,
 					role: newRole,
 					priority: newPriority,
-				},
-				{
-					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
-					skipUpdateIfNoValuesChanged: true,
-				},
-			);
-
-			// Fetch the saved entity within the transaction
-			roleEntity = await transactionalManager.findOne(SpaceLightingRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
-			});
+				});
+				roleEntity = await transactionalManager.save(newEntity);
+			}
 		});
 
 		if (!roleEntity) {
