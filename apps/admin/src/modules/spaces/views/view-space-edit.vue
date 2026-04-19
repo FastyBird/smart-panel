@@ -203,7 +203,20 @@ const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
 		return space.value.icon;
 	}
-	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
+	switch (space.value?.type) {
+		case SpaceType.ROOM:
+			return 'mdi:door';
+		case SpaceType.ZONE:
+			return 'mdi:home-floor-1';
+		case SpaceType.MASTER:
+			return 'mdi:home-outline';
+		case SpaceType.ENTRY:
+			return 'mdi:shield-home-outline';
+		default:
+			// Plugin-contributed space types fall through to a generic marker.
+			// Plugins should provide a per-space `icon` value to avoid this fallback.
+			return 'mdi:shape-outline';
+	}
 });
 
 // The generic `space-edit-form` covers ROOM and ZONE (the only built-in physical
