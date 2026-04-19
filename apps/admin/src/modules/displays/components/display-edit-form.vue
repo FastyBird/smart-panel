@@ -695,10 +695,32 @@ const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ 
 // Collapse state - only General open by default
 const activeCollapses = ref<string[]>(['general']);
 
-// Handle homeMode change - clear homePageId if switching away from explicit
+// Handle homeMode change - clear homePageId if switching away from explicit,
+// and re-evaluate the spaceId rule since its `required` flag flips with
+// homeMode. Element Plus caches rules at render time and only re-runs
+// validators on user interaction with the bound field, so without an
+// explicit validate/clear call here the user could (a) set homeMode to
+// `auto_space` with an empty spaceId and submit without seeing the
+// required-error inline, or (b) switch back to `explicit` and keep a
+// stale required-error on spaceId.
 const onHomeModeChange = (newMode: string): void => {
 	if (newMode !== 'explicit') {
 		model.homePageId = null;
+	}
+
+	if (!formEl.value) return;
+
+	if (newMode === 'auto_space') {
+		// Surface the required-error inline as soon as the mode flips, so
+		// the user sees the missing-spaceId warning before hitting Save.
+		formEl.value.validateField('spaceId').catch(() => {
+			// validate rejects when the field is invalid; the <el-form-item>
+			// already renders the message inline, so just swallow.
+		});
+	} else {
+		// No longer required — clear any pending error from a previous
+		// `auto_space` selection so it doesn't linger.
+		formEl.value.clearValidate(['spaceId']);
 	}
 };
 
