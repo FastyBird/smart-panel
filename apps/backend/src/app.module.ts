@@ -104,6 +104,8 @@ import { SIMULATOR_PLUGIN_PREFIX } from './plugins/simulator/simulator.constants
 import { SimulatorPlugin } from './plugins/simulator/simulator.plugin';
 import { SPACES_HOME_CONTROL_PLUGIN_PREFIX } from './plugins/spaces-home-control/spaces-home-control.constants';
 import { SpacesHomeControlPlugin } from './plugins/spaces-home-control/spaces-home-control.plugin';
+import { SPACES_SIGNAGE_INFO_PANEL_PLUGIN_PREFIX } from './plugins/spaces-signage-info-panel/spaces-signage-info-panel.constants';
+import { SpacesSignageInfoPanelPlugin } from './plugins/spaces-signage-info-panel/spaces-signage-info-panel.plugin';
 import { SPACES_SYNTHETIC_ENTRY_PLUGIN_PREFIX } from './plugins/spaces-synthetic-entry/spaces-synthetic-entry.constants';
 import { SpacesSyntheticEntryPlugin } from './plugins/spaces-synthetic-entry/spaces-synthetic-entry.plugin';
 import { SPACES_SYNTHETIC_MASTER_PLUGIN_PREFIX } from './plugins/spaces-synthetic-master/spaces-synthetic-master.constants';
@@ -275,6 +277,10 @@ export class AppModule {
 								module: SpacesSyntheticEntryPlugin,
 							},
 							{
+								path: SPACES_SIGNAGE_INFO_PANEL_PLUGIN_PREFIX,
+								module: SpacesSignageInfoPanelPlugin,
+							},
+							{
 								path: DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX,
 								module: DevicesHomeAssistantPlugin,
 							},
@@ -407,6 +413,7 @@ export class AppModule {
 				SpacesHomeControlPlugin,
 				SpacesSyntheticMasterPlugin,
 				SpacesSyntheticEntryPlugin,
+				SpacesSignageInfoPanelPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,
 				TilesDevicePreviewPlugin,
