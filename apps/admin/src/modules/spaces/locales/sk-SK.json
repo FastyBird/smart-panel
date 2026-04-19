@@ -368,7 +368,7 @@
 		"noSpaces": "Nemáte nakonfigurovaný žiadny priestor",
 		"noFilteredSpaces": "Žiadne priestory nezodpovedajú vašim filtrom",
 		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
-		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
+		"noEditFormForSpaceType": "Priestory typu „{type}\" nie je možné priamo upravovať z tohto zobrazenia."
 	},
 	"dialogs": {
 		"lightingRoles": {

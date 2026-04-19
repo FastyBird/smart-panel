@@ -368,7 +368,7 @@
 		"noSpaces": "Nie masz skonfigurowanych zadnych przestrzeni",
 		"noFilteredSpaces": "Zadne przestrzenie nie pasuja do kryteriow filtra",
 		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucic?",
-		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
+		"noEditFormForSpaceType": "Przestrzeni typu „{type}\" nie można edytować bezpośrednio z tego widoku."
 	},
 	"dialogs": {
 		"lightingRoles": {
