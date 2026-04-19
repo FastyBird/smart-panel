@@ -141,11 +141,14 @@ class DeckService extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // For displays assigned to a room, fetch device categories and prefetch
-    // domain data asynchronously. Non-room spaces don't have domain data; the
-    // plugin that owns the space type handles its own prefetch if needed.
+    // For any assigned space, fetch device categories and prefetch domain
+    // data asynchronously. We intentionally don't gate on "space is a room"
+    // here: at `initialize()` time the SpacesService cache may still be cold,
+    // so `_assignedSpace` can be null even for room displays. The prefetch
+    // calls are safe on non-room spaces — the backend just returns empty
+    // results, which the deck builder handles as "no domain views".
     final spaceId = display.spaceId;
-    if (spaceId != null && _isAssignedToRoom) {
+    if (spaceId != null) {
       if (kDebugMode) {
         debugPrint(
           '[DECK SERVICE] Will fetch devices for spaceId: $spaceId',
@@ -155,7 +158,7 @@ class DeckService extends ChangeNotifier {
       _prefetchDomainData(spaceId);
     } else if (kDebugMode) {
       debugPrint(
-        '[DECK SERVICE] NOT fetching domain data. spaceId: $spaceId',
+        '[DECK SERVICE] NOT fetching domain data — display has no space assignment',
       );
     }
   }
@@ -440,8 +443,11 @@ class DeckService extends ChangeNotifier {
     _display = display;
 
     final spaceId = display.spaceId;
-    // If space changed to a room, reset device categories and config counts, then refetch
-    if (spaceId != null && spaceId != oldSpaceId && _isAssignedToRoom) {
+    // If the assigned space changed, reset cached domain data and refetch.
+    // Non-room spaces just return empty results — no room-type gate here,
+    // since the SpacesService cache may be cold when the display first
+    // flips to a new space (see initialize() for the same rationale).
+    if (spaceId != null && spaceId != oldSpaceId) {
       _deviceCategories = [];
       _energyDeviceCount = 0;
       _sensorReadingsCount = 0;
