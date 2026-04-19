@@ -63,6 +63,7 @@ export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 			class: EntrySpaceEntity,
 			createDto: CreateEntrySpaceDto,
 			updateDto: UpdateEntrySpaceDto,
+			singleton: true,
 		});
 
 		for (const model of SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS) {

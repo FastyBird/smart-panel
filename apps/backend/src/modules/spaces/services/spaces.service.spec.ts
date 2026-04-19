@@ -111,9 +111,15 @@ describe('SpacesService', () => {
 						// dataSource.getRepository(mapping.class). Route those calls back to the
 						// same mocked SpaceEntity repo so the existing assertions still apply.
 						getRepository: jest.fn().mockImplementation(() => spaceRepositoryMock),
+						// The type-change raw UPDATE path wraps the QueryBuilder.update() and
+						// the subsequent reload in a DataSource.transaction(...). The
+						// transactional manager exposes `createQueryBuilder` and `findOne` —
+						// delegate both back to the same mocked repository so existing
+						// findOne.mockResolvedValueOnce(...) chains continue to drive the reload.
 						transaction: jest.fn().mockImplementation(async (cb: (manager: unknown) => Promise<unknown>) =>
 							cb({
 								createQueryBuilder: () => mockQueryBuilder,
+								findOne: (...args: unknown[]): unknown => spaceRepositoryMock.findOne(...(args as [never])),
 								remove: jest.fn().mockResolvedValue(undefined),
 								save: jest.fn().mockResolvedValue(mockSpace),
 							}),
@@ -166,6 +172,17 @@ describe('SpacesService', () => {
 			class: ZoneSpaceEntity,
 			createDto: class {} as never,
 			updateDto: class {} as never,
+		});
+		// A synthetic singleton type used in the singleton-enforcement test below.
+		// Mirrors how spaces-synthetic-master / spaces-synthetic-entry plugins
+		// register their mappings, but scoped to the test suite so the core spec
+		// doesn't need to import plugin code.
+		typeMapper.registerMapping({
+			type: 'master' as SpaceType,
+			class: RoomSpaceEntity, // subtype class doesn't matter for the guard
+			createDto: class {} as never,
+			updateDto: class {} as never,
+			singleton: true,
 		});
 	});
 
@@ -467,6 +484,31 @@ describe('SpacesService', () => {
 			};
 
 			await expect(service.create(createDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject creating a second instance of a singleton space type', async () => {
+			// The in-suite 'master' mapping is registered with `singleton: true`.
+			// The first row is seeded by the plugin on boot — simulate that by
+			// having the subtype repository's findOne (which SpacesService.create
+			// consults before writing) return an already-existing row.
+			const existingMaster = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Home',
+				type: 'master' as SpaceType,
+				category: null,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.find.mockResolvedValue([]);
+			spaceRepository.findOne.mockResolvedValueOnce(existingMaster);
+
+			await expect(
+				service.create({
+					name: 'Another Home',
+					type: 'master' as SpaceType,
+					category: null,
+				}),
+			).rejects.toThrow(SpacesValidationException);
 		});
 	});
 

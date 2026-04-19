@@ -131,6 +131,21 @@ export class SpacesService {
 		// discriminator on save.
 		const mapping = this.spacesTypeMapper.getMapping(type);
 		const subtypeRepository = this.dataSource.getRepository(mapping.class);
+
+		// Singleton space types (master, entry, and any future plugin-contributed
+		// singleton) are seeded once per install and must not be duplicatable via
+		// `POST /spaces`. The seeder handles first-boot creation; reject any
+		// subsequent attempt.
+		if (mapping.singleton) {
+			const existing = await subtypeRepository.findOne({ where: {} });
+			if (existing) {
+				this.logger.error(`Cannot create a second space of singleton type '${type}' (existing id=${existing.id})`);
+				throw new SpacesValidationException(
+					`Space type '${type}' is a singleton and already exists. Edit the existing space instead of creating a new one.`,
+				);
+			}
+		}
+
 		const space = subtypeRepository.create(
 			toInstance(mapping.class, {
 				...dtoInstance,
@@ -272,8 +287,23 @@ export class SpacesService {
 			if (dtoInstance.parent_id === null) {
 				rawUpdate.parentId = null;
 			}
-			await this.repository.createQueryBuilder().update(SpaceEntity).set(rawUpdate).where('id = :id', { id }).execute();
-			const reloaded = await this.getOneOrThrow(id);
+			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
+			// transaction so a concurrent update or delete cannot wedge us into a state
+			// where the UPDATE committed but the reload observes stale / missing data.
+			const reloaded = await this.dataSource.transaction(async (transactionalManager) => {
+				await transactionalManager
+					.createQueryBuilder()
+					.update(SpaceEntity)
+					.set(rawUpdate)
+					.where('id = :id', { id })
+					.execute();
+				const fresh = await transactionalManager.findOne(SpaceEntity, { where: { id } });
+				if (!fresh) {
+					this.logger.error(`Space with id=${id} disappeared during type-change UPDATE`);
+					throw new SpacesNotFoundException('Requested space does not exist');
+				}
+				return fresh;
+			});
 			// A type change is always a semantically-meaningful update even when no other
 			// field changed: the entity's concrete subtype (and therefore any subscriber
 			// branching on it) has flipped, so downstream listeners must be notified.
