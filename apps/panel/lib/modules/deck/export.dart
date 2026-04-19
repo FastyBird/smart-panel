@@ -49,6 +49,7 @@ export 'package:fastybird_smart_panel/modules/deck/mappers/system_view.dart';
 
 // Presentation
 export 'package:fastybird_smart_panel/modules/deck/presentation/deck.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-signage-info-panel/presentation/system_pages/signage_info_panel_overview.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-synthetic-entry/presentation/system_pages/entry_overview.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-synthetic-master/presentation/system_pages/master_overview.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/climate_domain_view.dart';
