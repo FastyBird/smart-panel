@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_data_display_home_mode.dart';
-import 'package:fastybird_smart_panel/api/models/displays_module_data_display_role.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_req_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_distance_unit.dart';
@@ -9,7 +8,6 @@ import 'package:fastybird_smart_panel/api/models/displays_module_update_display_
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_number_format.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_precipitation_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_pressure_unit.dart';
-import 'package:fastybird_smart_panel/api/models/displays_module_update_display_role.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_temperature_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_wind_speed_unit.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -374,19 +372,6 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
-  /// Convert API display role enum to local DisplayRole
-  static DisplayRole _fromApiRole(DisplaysModuleDataDisplayRole role) {
-    switch (role) {
-      case DisplaysModuleDataDisplayRole.master:
-        return DisplayRole.master;
-      case DisplaysModuleDataDisplayRole.entry:
-        return DisplayRole.entry;
-      case DisplaysModuleDataDisplayRole.room:
-      default:
-        return DisplayRole.room;
-    }
-  }
-
   /// Convert API home mode enum to local HomeMode
   static HomeMode _fromApiHomeMode(DisplaysModuleDataDisplayHomeMode mode) {
     switch (mode) {
@@ -422,8 +407,7 @@ class DisplayRepository extends ChangeNotifier {
       speakerVolume: data.speakerVolume,
       microphone: data.microphone,
       microphoneVolume: data.microphoneVolume,
-      role: _fromApiRole(data.role),
-      roomId: data.roomId,
+      spaceId: data.spaceId,
       homeMode: _fromApiHomeMode(data.homeMode),
       homePageId: data.homePageId,
       resolvedHomePageId: data.resolvedHomePageId,
@@ -449,18 +433,6 @@ class DisplayRepository extends ChangeNotifier {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     );
-  }
-
-  /// Convert local DisplayRole to API DisplaysModuleUpdateDisplayRole
-  DisplaysModuleUpdateDisplayRole _toApiRole(DisplayRole role) {
-    switch (role) {
-      case DisplayRole.room:
-        return DisplaysModuleUpdateDisplayRole.room;
-      case DisplayRole.master:
-        return DisplaysModuleUpdateDisplayRole.master;
-      case DisplayRole.entry:
-        return DisplaysModuleUpdateDisplayRole.entry;
-    }
   }
 
   /// Convert local HomeMode to API DisplaysModuleUpdateDisplayHomeMode
@@ -529,7 +501,7 @@ class DisplayRepository extends ChangeNotifier {
     Object? precipitationUnit = _unset,
     Object? distanceUnit = _unset,
     Object? weatherLocationId = _unset,
-    Object? roomId = _unset,
+    Object? spaceId = _unset,
   }) {
     return DisplaysModuleUpdateDisplay(
       version: _display!.version,
@@ -548,10 +520,9 @@ class DisplayRepository extends ChangeNotifier {
       screenSaver: screenSaver ?? _display!.screenSaver,
       // Display configuration
       name: _display!.name,
-      role: _toApiRole(_display!.role),
-      roomId: identical(roomId, _unset)
-          ? _display!.roomId
-          : roomId as String?,
+      spaceId: identical(spaceId, _unset)
+          ? _display!.spaceId
+          : spaceId as String?,
       homeMode: _toApiHomeMode(_display!.homeMode),
       homePageId: _display!.homePageId,
       // Audio settings
@@ -994,19 +965,19 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
-  /// Update the room assignment for this display
-  Future<bool> setDisplayRoom(String roomId) async {
+  /// Update the space assignment for this display
+  Future<bool> setDisplaySpace(String? spaceId) async {
     if (_display == null) return false;
 
     try {
       final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
         body: DisplaysModuleReqUpdateDisplay(
-          data: _buildUpdateData(roomId: roomId),
+          data: _buildUpdateData(spaceId: spaceId),
         ),
       );
 
       if (response.response.statusCode == 200) {
-        _display = _display!.copyWith(roomId: roomId);
+        _display = _display!.copyWith(spaceId: spaceId);
         notifyListeners();
         return true;
       }
@@ -1014,7 +985,7 @@ class DisplayRepository extends ChangeNotifier {
       return false;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[DISPLAYS MODULE] Failed to update room assignment: $e');
+        debugPrint('[DISPLAYS MODULE] Failed to update space assignment: $e');
       }
       return false;
     }
