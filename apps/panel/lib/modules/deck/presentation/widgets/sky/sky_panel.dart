@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_content_overlay.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_gradient_background.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_weather_overlays.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sky_condition.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';

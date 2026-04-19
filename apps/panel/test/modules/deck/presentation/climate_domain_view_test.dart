@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/climate_domain_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 

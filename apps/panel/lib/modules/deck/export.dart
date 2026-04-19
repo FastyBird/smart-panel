@@ -25,9 +25,9 @@ export 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 export 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
 
 // Models - Lighting
-export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_control_state.dart';
-export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_group.dart';
-export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_mixed_state.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting/role_control_state.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting/role_group.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting/role_mixed_state.dart';
 
 // Utils
 export 'package:fastybird_smart_panel/modules/deck/utils/covers.dart';
@@ -39,9 +39,9 @@ export 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_noti
 export 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/intents_service.dart';
-export 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
-export 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 
 // Mappers
 export 'package:fastybird_smart_panel/modules/deck/mappers/deck_item.dart';
@@ -49,15 +49,15 @@ export 'package:fastybird_smart_panel/modules/deck/mappers/system_view.dart';
 
 // Presentation
 export 'package:fastybird_smart_panel/modules/deck/presentation/deck.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/lights_domain_view.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/media_domain_view.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/shading_domain_view.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/sensors_domain_view.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/energy_domain_view.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/entry_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/master_overview.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/climate_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/media_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/shading_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/sensors_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/energy_domain_view.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/system_pages/room_overview.dart';
 
 // Presentation - Widgets
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_bottom_nav_bar.dart';
