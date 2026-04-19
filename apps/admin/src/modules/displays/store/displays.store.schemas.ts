@@ -115,6 +115,12 @@ export const DisplaysSetActionPayloadSchema = z.object({
 		speakerVolume: z.number().min(0).max(100).optional(),
 		microphone: z.boolean().optional(),
 		microphoneVolume: z.number().min(0).max(100).optional(),
+		// Home page configuration
+		homeMode: HomeModeSchema.optional(),
+		homePageId: z.string().uuid().nullable().optional(),
+		// Space assignment (formerly `roomId` — Phase 5 drops DisplayRole and
+		// the space's own type now decides what the panel renders).
+		spaceId: z.string().uuid().nullable().optional(),
 		// Unit overrides
 		numberFormat: NumberFormatSchema.nullable().optional(),
 		temperatureUnit: TemperatureUnitSchema.nullable().optional(),
