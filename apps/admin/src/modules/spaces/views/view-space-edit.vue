@@ -54,7 +54,19 @@
 			v-if="space !== null"
 			class="grow-1 p-2 md:px-4"
 		>
+			<component
+				:is="pluginElement.components.spaceEditForm"
+				v-if="pluginElement && pluginElement.components?.spaceEditForm"
+				ref="formRef"
+				v-model:remote-form-changed="remoteFormChanged"
+				:hide-actions="isMDDevice"
+				:space="space"
+				@saved="onSaved"
+				@cancel="onCancel"
+			/>
+
 			<space-edit-form
+				v-else
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
@@ -113,12 +125,14 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	type IPluginElement,
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
 import { SpaceEditForm } from '../components/components';
-import { useSpace } from '../composables';
+import { useSpace, useSpacesPlugins } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
+import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace } from '../store';
 
 const props = withDefaults(
@@ -147,6 +161,15 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const spaceId = computed(() => (props.id ?? route.params.id) as string | undefined);
 
 const { space, fetching, fetchSpace } = useSpace(spaceId);
+
+const { getElement } = useSpacesPlugins();
+
+const pluginElement = computed<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>(() => {
+	if (!space.value) {
+		return undefined;
+	}
+	return getElement(space.value.type);
+});
 
 const isLoading = computed<boolean>(() => fetching.value);
 

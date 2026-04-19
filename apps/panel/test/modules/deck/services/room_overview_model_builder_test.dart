@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_catego
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
