@@ -1,12 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-/// Space type discriminator owned by this plugin.
-///
-/// Matches the backend `SpaceType.ROOM` / `SpaceType.ZONE` discriminator
-/// strings persisted in `spaces_module_spaces.type`.
-const String spacesHomeControlRoomType = 'room';
-const String spacesHomeControlZoneType = 'zone';
-
 /// Registers the `spaces-home-control` panel plugin.
 ///
 /// Phase 3c lands the widgets, services, and models under this plugin
