@@ -43,7 +43,6 @@
 	"table": {
 		"columns": {
 			"name": "Name",
-			"role": "Role",
 			"macAddress": "MAC address",
 			"version": "Version",
 			"resolution": "Resolution",
@@ -96,16 +95,6 @@
 				"validation": {
 					"maxLength": "Name must be less than 100 characters"
 				}
-			},
-			"role": {
-				"title": "Display role",
-				"description": "The purpose of this display in your smart home setup",
-				"options": {
-					"room": "Room (Single room control)",
-					"master": "Master (Whole-house overview)",
-					"entry": "Entry (House modes and security)"
-				},
-				"comingSoon": "Soon"
 			},
 			"unitSize": {
 				"title": "Unit size",
@@ -196,13 +185,10 @@
 					"required": "Home page is required when Home Page Mode is Explicit"
 				}
 			},
-			"roomId": {
-				"title": "Assigned room",
-				"placeholder": "Select a room",
-				"description": "The room this display controls. Required for displays with Room role.",
-				"validation": {
-					"required": "Room assignment is required for displays with Room role"
-				}
+			"spaceId": {
+				"title": "Assigned space",
+				"placeholder": "Select a space",
+				"description": "The space this display is assigned to. The space's type decides what the panel renders."
 			},
 			"numberFormat": {
 				"title": "Number Format",
@@ -297,11 +283,6 @@
 		"lost": "Lost",
 		"unknown": "Unknown"
 	},
-	"roles": {
-		"room": "Room",
-		"master": "Master",
-		"entry": "Entry"
-	},
 	"texts": {
 		"loadingDisplays": "Loading displays...",
 		"loadingDisplay": "Loading display...",
@@ -364,7 +345,7 @@
 			},
 			"homePage": {
 				"title": "Home page",
-				"autoRoomHint": "In <strong>Auto mode</strong>, the display opens the default system view based on its role and assignment."
+				"autoSpaceHint": "In <strong>Auto mode</strong>, the display opens the default system view for the assigned space type."
 			},
 			"weather": {
 				"title": "Weather location",
@@ -384,7 +365,6 @@
 		"title": "Display detail",
 		"info": {
 			"title": "Display information",
-			"role": "Role",
 			"macAddress": "MAC address",
 			"version": "Version",
 			"build": "Build",
@@ -433,27 +413,18 @@
 		},
 		"spaceContext": {
 			"title": "Space context",
-			"role": "Display role",
 			"homeMode": "Home page mode",
-			"assignedRoom": "Assigned room",
+			"assignedSpace": "Assigned space",
 			"notAssigned": "Not assigned",
 			"initialView": "Initial view",
-			"systemViews": "System views",
 			"selectedPage": "Selected page",
-			"hint": "This display's main views are generated automatically based on its role and assigned space.",
+			"hint": "This display's main views are generated automatically based on the assigned space type.",
 			"homeModes": {
 				"auto_space": "Auto",
 				"explicit": "Explicit"
 			},
 			"initialViews": {
-				"roomOverview": "Room overview",
-				"houseOverview": "House overview",
-				"entryOverview": "Entry overview"
-			},
-			"views": {
-				"overview": "Overview",
-				"lights": "Lights",
-				"climate": "Climate"
+				"spaceOverview": "Space overview"
 			}
 		}
 	},

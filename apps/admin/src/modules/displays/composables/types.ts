@@ -51,8 +51,6 @@ export interface IUseDisplaysActions {
 
 export type HomeMode = 'auto_space' | 'explicit';
 
-export type DisplayRole = 'room' | 'master' | 'entry';
-
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 export type WindSpeedUnit = 'ms' | 'kmh' | 'mph' | 'knots';
@@ -63,9 +61,8 @@ export type DistanceUnit = 'km' | 'miles' | 'meters' | 'feet';
 export interface IDisplayEditForm {
 	id: string;
 	name: string | null;
-	role: DisplayRole;
-	// Room assignment (only for role=room displays)
-	roomId: string | null;
+	// Space assignment (the space's type decides what the panel renders)
+	spaceId: string | null;
 	unitSize: number;
 	rows: number;
 	cols: number;

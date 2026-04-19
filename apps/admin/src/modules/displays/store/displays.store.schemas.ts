@@ -8,8 +8,6 @@ export const DisplayIdSchema = z.string().uuid();
 
 export const HomeModeSchema = z.enum(['auto_space', 'explicit']);
 
-export const DisplayRoleSchema = z.enum(['room', 'master', 'entry']);
-
 export const NumberFormatSchema = z.enum(['comma_dot', 'dot_comma', 'space_comma', 'none']);
 export const TemperatureUnitSchema = z.enum(['celsius', 'fahrenheit']);
 export const WindSpeedUnitSchema = z.enum(['ms', 'kmh', 'mph', 'knots']);
@@ -22,7 +20,6 @@ export const DisplaySchema = z.object({
 	draft: z.boolean().default(false),
 	macAddress: z.string().trim().nonempty(),
 	name: z.string().nullable().default(null),
-	role: DisplayRoleSchema.default('room'),
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nullable().default(null),
 	screenWidth: z.number().default(0),
@@ -48,8 +45,8 @@ export const DisplaySchema = z.object({
 	homeMode: HomeModeSchema.default('auto_space'),
 	homePageId: z.string().uuid().nullable().default(null),
 	resolvedHomePageId: z.string().uuid().nullable().optional().default(null),
-	// Room assignment (only for role=room displays)
-	roomId: z.string().uuid().nullable().default(null),
+	// Space assignment (the space's type decides what the panel renders)
+	spaceId: z.string().uuid().nullable().default(null),
 	// Unit overrides (null = use system default)
 	numberFormat: NumberFormatSchema.nullable().default(null),
 	temperatureUnit: TemperatureUnitSchema.nullable().default(null),
@@ -97,7 +94,6 @@ export const DisplaysSetActionPayloadSchema = z.object({
 	data: z.object({
 		macAddress: z.string().trim().nonempty().optional(),
 		name: z.string().nullable().optional(),
-		role: DisplayRoleSchema.optional(),
 		version: z.string().trim().nonempty().optional(),
 		build: z.string().trim().nullable().optional(),
 		screenWidth: z.number().optional(),
@@ -159,7 +155,6 @@ export const DisplaysEditActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
 	data: z.object({
 		name: z.string().nullable().optional(),
-		role: DisplayRoleSchema.optional(),
 		unitSize: z.number().min(1).optional(),
 		rows: z.number().min(1).optional(),
 		cols: z.number().min(1).optional(),
@@ -176,8 +171,8 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		// Home page configuration
 		homeMode: HomeModeSchema.optional(),
 		homePageId: z.string().uuid().nullable().optional(),
-		// Room assignment (only for role=room displays)
-		roomId: z.string().uuid().nullable().optional(),
+		// Space assignment (the space's type decides what the panel renders)
+		spaceId: z.string().uuid().nullable().optional(),
 		// Unit overrides (null = use system default)
 		numberFormat: NumberFormatSchema.nullable().optional(),
 		temperatureUnit: TemperatureUnitSchema.nullable().optional(),
@@ -219,7 +214,6 @@ export const DisplayCreateReqSchema = z.object({
 
 export const DisplayUpdateReqSchema = z.object({
 	name: z.string().nullable().optional(),
-	role: DisplayRoleSchema.optional(),
 	unit_size: z.number().min(1).optional(),
 	rows: z.number().min(1).optional(),
 	cols: z.number().min(1).optional(),
@@ -236,8 +230,8 @@ export const DisplayUpdateReqSchema = z.object({
 	// Home page configuration
 	home_mode: HomeModeSchema.optional(),
 	home_page_id: z.string().uuid().nullable().optional(),
-	// Room assignment (only for role=room displays)
-	room_id: z.string().uuid().nullable().optional(),
+	// Space assignment (the space's type decides what the panel renders)
+	space_id: z.string().uuid().nullable().optional(),
 	// Unit overrides (null = use system default)
 	number_format: NumberFormatSchema.nullable().optional(),
 	temperature_unit: TemperatureUnitSchema.nullable().optional(),
@@ -253,7 +247,6 @@ export const DisplayResSchema = z.object({
 	id: z.string().uuid(),
 	mac_address: z.string().trim().nonempty(),
 	name: z.string().nullable().optional().default(null),
-	role: DisplayRoleSchema.optional().default('room'),
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nullable().optional().default(null),
 	screen_width: z.number(),
@@ -279,8 +272,8 @@ export const DisplayResSchema = z.object({
 	home_mode: HomeModeSchema.optional().default('auto_space'),
 	home_page_id: z.string().uuid().nullable().optional().default(null),
 	resolved_home_page_id: z.string().uuid().nullable().optional().default(null),
-	// Room assignment (only for role=room displays)
-	room_id: z.string().uuid().nullable().optional().default(null),
+	// Space assignment (the space's type decides what the panel renders)
+	space_id: z.string().uuid().nullable().optional().default(null),
 	// Unit overrides (null = use system default)
 	number_format: NumberFormatSchema.nullable().optional().default(null),
 	temperature_unit: TemperatureUnitSchema.nullable().optional().default(null),

@@ -268,44 +268,19 @@
 							</div>
 						</template>
 
-						<!-- Display Role -->
-						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.role')">
-							{{ t(`displaysModule.roles.${display.role}`) }}
-						</el-descriptions-item>
-
 						<!-- Home Page Mode -->
 						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.homeMode')">
 							{{ t(`displaysModule.detail.spaceContext.homeModes.${display.homeMode}`) }}
 						</el-descriptions-item>
 
-						<!-- Assigned Room (only for room role) -->
-						<el-descriptions-item
-							v-if="display.role === 'room'"
-							:label="t('displaysModule.detail.spaceContext.assignedRoom')"
-						>
-							{{ assignedRoomName || t('displaysModule.detail.spaceContext.notAssigned') }}
+						<!-- Assigned Space -->
+						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.assignedSpace')">
+							{{ assignedSpaceName || t('displaysModule.detail.spaceContext.notAssigned') }}
 						</el-descriptions-item>
 
 						<!-- Initial View -->
 						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.initialView')">
 							{{ initialViewLabel }}
-						</el-descriptions-item>
-
-						<!-- System Views (only for room role) -->
-						<el-descriptions-item
-							v-if="display.role === 'room'"
-							:label="t('displaysModule.detail.spaceContext.systemViews')"
-						>
-							<div class="flex flex-wrap gap-1">
-								<el-tag
-									v-for="view in systemViews"
-									:key="view"
-									size="small"
-									type="info"
-								>
-									{{ view }}
-								</el-tag>
-							</div>
 						</el-descriptions-item>
 					</el-descriptions>
 
@@ -380,9 +355,7 @@ import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { usePages } from '../../dashboard/composables/composables';
-import { useDevices } from '../../devices/composables/useDevices';
 import { useSpaces } from '../../spaces/composables';
 import { useDisplay } from '../composables/composables';
 import { RouteNames, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
@@ -409,38 +382,11 @@ const { display, isLoading } = useDisplay(displayId);
 // Space context data
 const { findById: findSpaceById, fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
 const { pages, fetchPages, loaded: pagesLoaded } = usePages();
-const { devices, fetchDevices, loaded: devicesLoaded } = useDevices();
 
-// Climate device categories
-const climateCategories = [
-	DevicesModuleDeviceCategory.thermostat,
-	DevicesModuleDeviceCategory.air_conditioner,
-	DevicesModuleDeviceCategory.heating_unit,
-	DevicesModuleDeviceCategory.air_humidifier,
-	DevicesModuleDeviceCategory.air_dehumidifier,
-	DevicesModuleDeviceCategory.air_purifier,
-];
-
-const assignedRoomName = computed<string | null>(() => {
-	if (!display.value?.roomId) return null;
-	const room = findSpaceById(display.value.roomId);
-	return room?.name ?? null;
-});
-
-// Get devices in the assigned room
-const roomDevices = computed(() => {
-	if (!display.value?.roomId) return [];
-	return devices.value.filter((device) => device.roomId === display.value?.roomId);
-});
-
-// Check if the room has lighting devices
-const hasLightingDevices = computed(() => {
-	return roomDevices.value.some((device) => device.category === DevicesModuleDeviceCategory.lighting);
-});
-
-// Check if the room has climate devices
-const hasClimateDevices = computed(() => {
-	return roomDevices.value.some((device) => climateCategories.includes(device.category));
+const assignedSpaceName = computed<string | null>(() => {
+	if (!display.value?.spaceId) return null;
+	const space = findSpaceById(display.value.spaceId);
+	return space?.name ?? null;
 });
 
 const initialViewLabel = computed<string>(() => {
@@ -452,34 +398,8 @@ const initialViewLabel = computed<string>(() => {
 		return page?.title ?? t('displaysModule.detail.spaceContext.selectedPage');
 	}
 
-	// Auto mode - depends on role
-	switch (display.value.role) {
-		case 'room':
-			return t('displaysModule.detail.spaceContext.initialViews.roomOverview');
-		case 'master':
-			return t('displaysModule.detail.spaceContext.initialViews.houseOverview');
-		case 'entry':
-			return t('displaysModule.detail.spaceContext.initialViews.entryOverview');
-		default:
-			return '-';
-	}
-});
-
-// System views - only for room role, with conditional lights/climate
-const systemViews = computed<string[]>(() => {
-	if (!display.value || display.value.role !== 'room') return [];
-
-	const views = [t('displaysModule.detail.spaceContext.views.overview')];
-
-	if (hasLightingDevices.value) {
-		views.push(t('displaysModule.detail.spaceContext.views.lights'));
-	}
-
-	if (hasClimateDevices.value) {
-		views.push(t('displaysModule.detail.spaceContext.views.climate'));
-	}
-
-	return views;
+	// Auto_space mode — the panel opens the default view for the space's type.
+	return t('displaysModule.detail.spaceContext.initialViews.spaceOverview');
 });
 
 // Track if display was previously loaded to detect deletion
@@ -576,9 +496,6 @@ onBeforeMount(async (): Promise<void> => {
 	}
 	if (!pagesLoaded.value) {
 		fetchPages();
-	}
-	if (!devicesLoaded.value) {
-		fetchDevices();
 	}
 });
 
