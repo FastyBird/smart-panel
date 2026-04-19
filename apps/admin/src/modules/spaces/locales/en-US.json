@@ -365,6 +365,7 @@
 	"texts": {
 		"loadingSpaces": "Loading spaces...",
 		"loadingSpace": "Loading space...",
+		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view.",
 		"noSpaces": "You don't have configured any space",
 		"noFilteredSpaces": "No spaces match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"

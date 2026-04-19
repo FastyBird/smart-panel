@@ -367,7 +367,8 @@
 		"loadingSpace": "Cargando espacio...",
 		"noSpaces": "No tiene ningún espacio configurado",
 		"noFilteredSpaces": "Ningún espacio coincide con los criterios de filtro",
-		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?"
+		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
+		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
 	},
 	"dialogs": {
 		"lightingRoles": {

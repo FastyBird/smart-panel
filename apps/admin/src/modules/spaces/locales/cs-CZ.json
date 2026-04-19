@@ -367,7 +367,8 @@
 		"loadingSpace": "Načítání prostoru...",
 		"noSpaces": "Nemáte nakonfigurovaný žádný prostor",
 		"noFilteredSpaces": "Žádné prostory neodpovídají kritériím filtru",
-		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
+		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
 	},
 	"dialogs": {
 		"lightingRoles": {

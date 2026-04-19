@@ -742,10 +742,16 @@ export class SpacesService {
 			return;
 		}
 
-		// Zones cannot have a parent
-		if (spaceType === SpaceType.ZONE) {
-			this.logger.error('Zones cannot have a parent');
-			throw new SpacesValidationException('Zones cannot have a parent. Only rooms can belong to a zone.');
+		// Only rooms participate in the zone→room hierarchy. Zones are root-level,
+		// and synthetic singletons (master, entry) — as well as any future
+		// plugin-contributed space types — are also always root-level unless they
+		// opt in to the hierarchy. Using an allowlist here means new space types
+		// default to the safe "no parent allowed" behavior.
+		if (spaceType !== SpaceType.ROOM) {
+			this.logger.error(`Spaces of type '${spaceType}' cannot have a parent`);
+			throw new SpacesValidationException(
+				`Spaces of type '${spaceType}' cannot have a parent. Only rooms can belong to a zone.`,
+			);
 		}
 
 		// Cannot assign self as parent
