@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_view_builders.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-signage-info-panel/services/space_view_builder.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-synthetic-entry/services/space_view_builder.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-synthetic-master/services/space_view_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,6 +71,8 @@ void main() {
       spaceViewBuilders[SpacesModuleDataSpaceType.zone] = ZoneSpaceViewBuilder();
       spaceViewBuilders[SpacesModuleDataSpaceType.master] = MasterSpaceViewBuilder();
       spaceViewBuilders[SpacesModuleDataSpaceType.entry] = EntrySpaceViewBuilder();
+      spaceViewBuilders[SpacesModuleDataSpaceType.signageInfoPanel] =
+          SignageInfoPanelSpaceViewBuilder();
     });
 
     tearDown(() {
@@ -480,6 +483,68 @@ void main() {
           display: display,
           space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
+        ));
+
+        expect(result.items, isEmpty);
+        expect(result.indexByViewKey, isEmpty);
+        expect(result.domainCounts, isNull);
+      });
+    });
+
+    group('SIGNAGE_INFO_PANEL space type', () {
+      const _signageUuid = 'a0000000-0000-4000-8000-000000000050';
+
+      test('should create signage overview only', () {
+        final display = createDisplay(spaceId: _signageUuid);
+        final space = createMockSpace(
+          id: _signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
+
+        expect(result.items.length, 1);
+        expect(result.items[0], isA<SystemViewItem>());
+
+        final signageOverview = result.items[0] as SystemViewItem;
+        expect(signageOverview.viewType, SystemViewType.signageInfoPanel);
+        expect(signageOverview.roomId, _signageUuid);
+        expect(result.domainCounts, isNull);
+      });
+
+      test('should register signage overview in indexByViewKey', () {
+        final display = createDisplay(spaceId: _signageUuid);
+        final space = createMockSpace(
+          id: _signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
+
+        expect(
+          result.indexByViewKey['signage-info-panel:$_signageUuid'],
+          0,
+        );
+      });
+
+      test('should return empty when builder is not registered', () {
+        spaceViewBuilders.remove(SpacesModuleDataSpaceType.signageInfoPanel);
+
+        final display = createDisplay(spaceId: _signageUuid);
+        final space = createMockSpace(
+          id: _signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
         ));
 
         expect(result.items, isEmpty);

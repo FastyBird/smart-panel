@@ -6,6 +6,8 @@ Map<SystemViewType, Widget Function(SystemViewItem)> systemViewWidgetMappers = {
   SystemViewType.room: (viewItem) => RoomOverviewPage(viewItem: viewItem),
   SystemViewType.master: (viewItem) => MasterOverviewPage(viewItem: viewItem),
   SystemViewType.entry: (viewItem) => EntryOverviewPage(viewItem: viewItem),
+  SystemViewType.signageInfoPanel: (viewItem) =>
+      SignageInfoPanelOverviewPage(viewItem: viewItem),
 };
 
 /// Builds the appropriate widget for a system view item.
