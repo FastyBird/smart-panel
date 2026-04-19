@@ -65,15 +65,30 @@
 				@cancel="onCancel"
 			/>
 
+			<!--
+				The generic Room/Zone edit form includes a type dropdown, category picker
+				and parent-zone selector — none of which apply to synthetic singleton
+				space types (master, entry) or plugin-contributed surfaces. Only fall back
+				to it for the built-in physical types; anything else gets a placeholder
+				until its owning plugin registers a proper spaceEditForm component.
+			-->
 			<space-edit-form
-				v-else
+				v-else-if="isPhysicalSpaceType"
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"
-				/>
+			/>
+
+			<el-alert
+				v-else
+				type="info"
+				:closable="false"
+				:title="t('spacesModule.texts.noEditFormForSpaceType', { type: space.type })"
+				show-icon
+			/>
 		</el-scrollbar>
 
 		<div
@@ -190,6 +205,14 @@ const spaceIcon = computed<string>((): string => {
 	}
 	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
 });
+
+// The generic `space-edit-form` covers ROOM and ZONE (the only built-in physical
+// types). Synthetic singleton spaces (MASTER, ENTRY) and plugin-contributed
+// types should either register their own spaceEditForm or fall into the
+// read-only placeholder.
+const isPhysicalSpaceType = computed<boolean>(
+	(): boolean => space.value?.type === SpaceType.ROOM || space.value?.type === SpaceType.ZONE,
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

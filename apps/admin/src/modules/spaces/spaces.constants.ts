@@ -169,6 +169,11 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORIES.includes(category as SpaceZoneCategory);
 	}
+	// Synthetic singletons (master, entry) don't accept categories — explicit
+	// branch to make the intent obvious rather than falling through.
+	if (type === SpaceType.MASTER || type === SpaceType.ENTRY) {
+		return false;
+	}
 	return false;
 }
 
