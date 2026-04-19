@@ -31,7 +31,6 @@ export enum EventType {
 	ANNOUNCEMENT_CREATED = 'SpacesSignageInfoPanelPlugin.Announcement.Created',
 	ANNOUNCEMENT_UPDATED = 'SpacesSignageInfoPanelPlugin.Announcement.Updated',
 	ANNOUNCEMENT_DELETED = 'SpacesSignageInfoPanelPlugin.Announcement.Deleted',
-	SIGNAGE_SPACE_CREATED = 'SpacesSignageInfoPanelPlugin.SignageSpace.Created',
 }
 
 /**

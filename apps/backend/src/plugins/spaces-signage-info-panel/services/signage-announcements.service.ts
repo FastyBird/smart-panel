@@ -77,9 +77,16 @@ export class SignageAnnouncementsService {
 
 		const space = await this.getSignageSpaceOrThrow(spaceId);
 
-		this.ensureActiveWindow(createDto.active_from ?? null, createDto.active_until ?? null);
-
+		// Validate (and class-transform) the DTO BEFORE checking the active
+		// window — class-validator+class-transformer is what coerces
+		// `active_from`/`active_until` from ISO strings into real `Date`s.
+		// Calling `ensureActiveWindow` on the raw payload first would crash
+		// if the service is invoked outside the controller's validation pipe
+		// (e.g. from another service or a test) and the dates arrive as
+		// strings. Mirror the order the `update` method already uses.
 		const dtoInstance = await this.validateDto(CreateAnnouncementDto, createDto);
+
+		this.ensureActiveWindow(dtoInstance.active_from ?? null, dtoInstance.active_until ?? null);
 
 		const order = dtoInstance.order ?? (await this.nextOrderFor(space.id));
 
