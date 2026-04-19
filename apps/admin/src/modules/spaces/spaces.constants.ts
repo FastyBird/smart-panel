@@ -427,7 +427,11 @@ export function getTemplatesForType(
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORY_TEMPLATES;
 	}
-	return SPACE_ALL_CATEGORY_TEMPLATES;
+	// Synthetic singletons (master, entry) and plugin-contributed types
+	// (signage_info_panel, etc.) don't accept categories — return no templates
+	// so UI onboarding pickers don't surface invalid options. Mirrors
+	// `getCategoriesForType` / `isValidCategoryForType`.
+	return {};
 }
 
 /**
