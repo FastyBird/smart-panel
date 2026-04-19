@@ -63,6 +63,7 @@ export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 			class: MasterSpaceEntity,
 			createDto: CreateMasterSpaceDto,
 			updateDto: UpdateMasterSpaceDto,
+			singleton: true,
 		});
 
 		for (const model of SPACES_SYNTHETIC_MASTER_PLUGIN_SWAGGER_EXTRA_MODELS) {

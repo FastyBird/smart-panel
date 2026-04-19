@@ -16,6 +16,14 @@ export interface SpaceTypeMapping<
 	class: new (...args: any[]) => TSpace;
 	createDto: new (...args: any[]) => TCreateDTO;
 	updateDto: new (...args: any[]) => TUpdateDTO;
+	/**
+	 * When true, the core `SpacesService.create` flow refuses to produce a
+	 * second row of this type — at most one such space may exist per install.
+	 * Used by synthetic singleton plugins (master, entry) whose seeders provide
+	 * the one and only row on first boot; without this flag a caller could
+	 * `POST /spaces` with `{ type: 'master', ... }` and duplicate the singleton.
+	 */
+	singleton?: boolean;
 }
 
 @Injectable()
