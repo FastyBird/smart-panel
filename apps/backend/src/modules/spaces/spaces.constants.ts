@@ -185,14 +185,9 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 		return SPACE_ZONE_CATEGORIES.includes(category as SpaceZoneCategory);
 	}
 
-	// Synthetic singleton space types (master, entry) — and any future
-	// plugin-contributed singleton type — do not accept a category. Reject
-	// explicitly so the caller gets a clear error instead of a silent
-	// fallthrough-false.
-	if (type === SpaceType.MASTER || type === SpaceType.ENTRY) {
-		return false;
-	}
-
+	// Synthetic singleton space types (master, entry) and any future plugin-
+	// contributed type do not accept a category. Returning false here rejects
+	// a non-null category on anything that isn't ROOM or ZONE.
 	return false;
 }
 

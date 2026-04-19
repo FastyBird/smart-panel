@@ -417,7 +417,6 @@
 			"assignedSpace": "Espacio asignado",
 			"notAssigned": "No asignado",
 			"initialView": "Vista inicial",
-			"systemViews": "Vistas del sistema",
 			"selectedPage": "Página seleccionada",
 			"hint": "Las vistas principales de esta pantalla se generan automáticamente según el tipo del espacio asignado.",
 			"homeModes": {

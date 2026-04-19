@@ -103,23 +103,35 @@ export default {
 
 			switch (data.event) {
 				case EventType.ANNOUNCEMENT_CREATED:
-				case EventType.ANNOUNCEMENT_UPDATED:
+				case EventType.ANNOUNCEMENT_UPDATED: {
+					// Resolve the parent space id from the event payload. An event
+					// without a space id cannot be keyed into the per-space cache,
+					// so we skip rather than insert a row with an empty key that
+					// `listForSpace(id)` would never find.
+					const rawSpaceId = payload.space_id ?? payload.spaceId;
+					if (typeof rawSpaceId !== 'string' || rawSpaceId.length === 0) {
+						logger.warn(
+							'spaces-signage-info-panel event missing space id, dropping:',
+							data.event,
+						);
+						return;
+					}
+
 					announcementsStore.onEvent({
 						id: payload.id,
-						spaceId: (payload.space_id as string) ?? (payload.spaceId as string) ?? '',
-						order: (payload.order as number) ?? 0,
-						title: (payload.title as string) ?? '',
-						body: (payload.body as string | null) ?? null,
-						icon: (payload.icon as string | null) ?? null,
-						activeFrom: payload.active_from ? new Date(payload.active_from as string) : null,
-						activeUntil: payload.active_until ? new Date(payload.active_until as string) : null,
-						priority: (payload.priority as number) ?? 0,
-						createdAt: payload.created_at
-							? new Date(payload.created_at as string)
-							: new Date(),
-						updatedAt: payload.updated_at ? new Date(payload.updated_at as string) : null,
+						spaceId: rawSpaceId,
+						order: typeof payload.order === 'number' ? payload.order : 0,
+						title: typeof payload.title === 'string' ? payload.title : '',
+						body: typeof payload.body === 'string' ? payload.body : null,
+						icon: typeof payload.icon === 'string' ? payload.icon : null,
+						activeFrom: typeof payload.active_from === 'string' ? new Date(payload.active_from) : null,
+						activeUntil: typeof payload.active_until === 'string' ? new Date(payload.active_until) : null,
+						priority: typeof payload.priority === 'number' ? payload.priority : 0,
+						createdAt: typeof payload.created_at === 'string' ? new Date(payload.created_at) : new Date(),
+						updatedAt: typeof payload.updated_at === 'string' ? new Date(payload.updated_at) : null,
 					} as IAnnouncement);
 					break;
+				}
 
 				case EventType.ANNOUNCEMENT_DELETED:
 					announcementsStore.unset(payload.id);
