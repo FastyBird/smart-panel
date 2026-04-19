@@ -377,17 +377,7 @@ export class BackupService {
 
 			const workingArchive = join(tempDir, 'archive.tar.gz');
 
-			try {
-				linkSync(tarPath, workingArchive);
-			} catch (error) {
-				const err = error as NodeJS.ErrnoException;
-
-				if (err.code !== 'EXDEV') {
-					throw error;
-				}
-
-				copyFileSync(tarPath, workingArchive);
-			}
+			this.pinArchive(tarPath, workingArchive);
 
 			await this.validateArchiveSafety(workingArchive);
 
@@ -436,24 +426,9 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			// Pin the archive to a private path so concurrent rewrites of the public
-			// tarPath between safety check and extraction can't swap in a different file
 			const workingArchive = join(tempDir, 'archive.tar.gz');
 
-			try {
-				linkSync(tarPath, workingArchive);
-			} catch (error) {
-				const err = error as NodeJS.ErrnoException;
-
-				// Only fall back on cross-filesystem link failure. Other errors (EACCES,
-				// ENOSPC, ENOENT race) would just fail the copy the same way with a more
-				// confusing secondary error — surface the original instead.
-				if (err.code !== 'EXDEV') {
-					throw error;
-				}
-
-				copyFileSync(tarPath, workingArchive);
-			}
+			this.pinArchive(tarPath, workingArchive);
 
 			await this.validateArchiveSafety(workingArchive);
 
@@ -635,13 +610,19 @@ export class BackupService {
 		try {
 			mkdirSync(tempDir, { recursive: true });
 
-			await this.validateArchiveSafety(tarPath);
+			// Pin the archive before validation + extraction to match restore/prepareRestore
+			// and close the TOCTOU window on the public tarPath
+			const workingArchive = join(tempDir, 'archive.tar.gz');
+
+			this.pinArchive(tarPath, workingArchive);
+
+			await this.validateArchiveSafety(workingArchive);
 
 			await execFileAsync('tar', [
 				'--no-same-owner',
 				'--no-same-permissions',
 				'-xzf',
-				tarPath,
+				workingArchive,
 				'-C',
 				tempDir,
 				'./metadata.json',
@@ -685,6 +666,24 @@ export class BackupService {
 			this.logger.warn(`Failed to extract metadata from backup ${id}`, { error });
 
 			return null;
+		}
+	}
+
+	// Pin an archive into our private working dir so a concurrent rewrite of the
+	// public path between our safety checks and extraction can't swap in a different
+	// file. A hardlink keeps the original inode alive even if the public name is
+	// replaced; cross-filesystem hosts fall back to a full copy.
+	private pinArchive(sourcePath: string, destPath: string): void {
+		try {
+			linkSync(sourcePath, destPath);
+		} catch (error) {
+			const err = error as NodeJS.ErrnoException;
+
+			if (err.code !== 'EXDEV') {
+				throw error;
+			}
+
+			copyFileSync(sourcePath, destPath);
 		}
 	}
 
@@ -764,6 +763,7 @@ export class BackupService {
 		const tempTarPath = join(this.backupsDir, `upload-${tempId}.tar.gz`);
 		const tempDir = join(this.backupsDir, `upload-meta-${tempId}`);
 		let finalPath: string | null = null;
+		let sidecarPath: string | null = null;
 
 		try {
 			// Save uploaded file
@@ -829,6 +829,7 @@ export class BackupService {
 
 			// Persist a sidecar so list() can skip tar extraction
 			this.writeMetadataSidecar(metadata.id, metadata);
+			sidecarPath = this.getMetadataSidecarPath(metadata.id);
 
 			// Preserve the just-uploaded backup from cleanup — its `createdAt` may be older
 			// than existing backups (e.g. imported from another machine), which would otherwise
@@ -840,8 +841,8 @@ export class BackupService {
 				sizeBytes: stats.size,
 			};
 		} catch (error) {
-			// Cleanup on failure — also unwind finalPath if we copied it before a later
-			// step (sidecar write, retention sweep) failed, otherwise the archive orphans
+			// Cleanup on failure — unwind both finalPath and the sidecar if we got that
+			// far, otherwise a later step (cleanupOldBackups) throwing would orphan them
 			if (existsSync(tempTarPath)) {
 				rmSync(tempTarPath, { force: true });
 			}
@@ -850,6 +851,10 @@ export class BackupService {
 
 			if (finalPath && existsSync(finalPath)) {
 				rmSync(finalPath, { force: true });
+			}
+
+			if (sidecarPath && existsSync(sidecarPath)) {
+				rmSync(sidecarPath, { force: true });
 			}
 
 			throw error;
