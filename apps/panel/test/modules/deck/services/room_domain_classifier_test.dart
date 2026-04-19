@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:flutter_test/flutter_test.dart';

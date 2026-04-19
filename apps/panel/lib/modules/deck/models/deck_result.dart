@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
 
 /// Result of building a navigation deck.
 ///
