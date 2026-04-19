@@ -132,6 +132,15 @@
 			</el-collapse-item>
 		</el-collapse>
 
+		<el-alert
+			v-if="loadFailed"
+			type="error"
+			:closable="false"
+			:title="t('spacesModule.messages.notFound')"
+			show-icon
+			class="!my-2"
+		/>
+
 		<div
 			v-if="!props.hideActions"
 			class="flex flex-row gap-2 justify-end items-center mt-4"
@@ -142,6 +151,7 @@
 			<el-button
 				type="primary"
 				:loading="submitting"
+				:disabled="!canSubmit"
 				@click="onSubmit"
 			>
 				{{ t('spacesModule.buttons.save.title') }}
@@ -154,7 +164,7 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, ElSwitch, type FormInstance } from 'element-plus';
+import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, ElSwitch, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -220,6 +230,14 @@ const model = reactive<SignageFormModel>({
 const formRef = ref<FormInstance | null>(null);
 const submitting = ref(false);
 const baseline = ref<SignageFormModel | null>(null);
+const loadFailed = ref(false);
+
+// `baseline` stays null until `fetchSpace` succeeds. Submitting before then
+// would PATCH the server with the form's hardcoded defaults — silently
+// overwriting any saved configuration the fetch never managed to load — so
+// the Save button (and the whole `submit()` call exposed via defineExpose)
+// must wait until we know what the server actually has.
+const canSubmit = computed<boolean>(() => baseline.value !== null && !loadFailed.value);
 
 const formChanged = computed<boolean>(() => {
 	if (!baseline.value) return false;
@@ -251,18 +269,36 @@ const applyServerPayload = (raw: Record<string, unknown>): void => {
 };
 
 const fetchSpace = async (): Promise<void> => {
-	const { data, error } = await backend.client.GET(
-		`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`,
-		{ params: { path: { id: props.space.id } } },
-	);
+	loadFailed.value = false;
 
-	if (error || !data) return;
+	try {
+		const { data, error } = await backend.client.GET(
+			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`,
+			{ params: { path: { id: props.space.id } } },
+		);
 
-	applyServerPayload(data.data as Record<string, unknown>);
+		if (error || !data) {
+			loadFailed.value = true;
+			flashMessage.error(t('spacesModule.messages.notFound'));
+			return;
+		}
+
+		applyServerPayload(data.data as Record<string, unknown>);
+	} catch (err) {
+		loadFailed.value = true;
+		flashMessage.error(t('spacesModule.messages.notFound'));
+		throw err;
+	}
 };
 
 const onSubmit = async (): Promise<void> => {
 	if (submitting.value) return;
+	// Refuse to PATCH until the initial fetch succeeded — otherwise we'd
+	// overwrite the server's saved configuration with the form's hardcoded
+	// defaults. The Save button is also disabled in this state, but
+	// `defineExpose({ submit: onSubmit })` makes the parent able to invoke
+	// us directly, so the runtime guard stays.
+	if (!canSubmit.value) return;
 
 	submitting.value = true;
 

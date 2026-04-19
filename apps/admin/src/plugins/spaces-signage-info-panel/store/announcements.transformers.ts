@@ -36,15 +36,28 @@ export const transformAnnouncementResponse = (response: ApiAnnouncement): IAnnou
 export const transformAnnouncementCreateRequest = (
 	data: IAnnouncementCreateData,
 ): ApiAnnouncementCreate => {
-	return {
+	const payload: Record<string, unknown> = {
 		title: data.title,
-		body: data.body ?? undefined,
-		icon: data.icon ?? undefined,
-		order: data.order,
-		priority: data.priority,
-		active_from: data.activeFrom ? data.activeFrom.toISOString() : undefined,
-		active_until: data.activeUntil ? data.activeUntil.toISOString() : undefined,
-	} as ApiAnnouncementCreate;
+	};
+
+	// Explicit null is preserved so a caller that opts to clear body / icon
+	// up-front (rather than omitting the key) actually sends `null` over the
+	// wire. `?? undefined` would JSON-omit those keys and the backend would
+	// fall back to the column default — surprising for a Create request that
+	// went out of its way to specify `null`. Only `undefined` (i.e. the key
+	// genuinely wasn't supplied) is allowed to drop out.
+	if ('body' in data) payload.body = data.body;
+	if ('icon' in data) payload.icon = data.icon;
+	if (data.order !== undefined) payload.order = data.order;
+	if (data.priority !== undefined) payload.priority = data.priority;
+	if ('activeFrom' in data) {
+		payload.active_from = data.activeFrom ? data.activeFrom.toISOString() : null;
+	}
+	if ('activeUntil' in data) {
+		payload.active_until = data.activeUntil ? data.activeUntil.toISOString() : null;
+	}
+
+	return payload as ApiAnnouncementCreate;
 };
 
 export const transformAnnouncementUpdateRequest = (
