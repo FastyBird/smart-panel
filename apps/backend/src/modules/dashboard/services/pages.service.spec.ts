@@ -16,7 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, DisplayRole, HomeMode } from '../../displays/displays.constants';
+import { ConnectionState, HomeMode } from '../../displays/displays.constants';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DisplaysService } from '../../displays/services/displays.service';
 import { DisplayExistsConstraint } from '../../displays/validators/display-exists-constraint.validator';
@@ -73,7 +73,6 @@ describe('PagesService', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
-		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: 'test',
 		screenWidth: 1280,
@@ -96,7 +95,7 @@ describe('PagesService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -104,7 +103,7 @@ describe('PagesService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,

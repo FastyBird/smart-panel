@@ -406,7 +406,7 @@ export class SpacesService {
 		await this.getOneOrThrow(spaceId);
 
 		const displays = await this.displayRepository.find({
-			where: { roomId: spaceId },
+			where: { spaceId },
 			order: { name: 'ASC' },
 		});
 
@@ -464,7 +464,7 @@ export class SpacesService {
 			const result = await this.displayRepository
 				.createQueryBuilder()
 				.update()
-				.set({ roomId: spaceId })
+				.set({ spaceId })
 				.where('id IN (:...ids)', { ids: dtoInstance.displayIds })
 				.execute();
 
@@ -509,7 +509,7 @@ export class SpacesService {
 	}
 
 	async unassignDisplays(displayIds: string[]): Promise<number> {
-		this.logger.debug(`Unassigning ${displayIds.length} displays from their rooms`);
+		this.logger.debug(`Unassigning ${displayIds.length} displays from their spaces`);
 
 		if (displayIds.length === 0) {
 			return 0;
@@ -518,7 +518,7 @@ export class SpacesService {
 		const result = await this.displayRepository
 			.createQueryBuilder()
 			.update()
-			.set({ roomId: null })
+			.set({ spaceId: null })
 			.where('id IN (:...ids)', { ids: displayIds })
 			.execute();
 

@@ -26,7 +26,7 @@ import {
 	TemperatureUnitType,
 	WindSpeedUnitType,
 } from '../../system/system.constants';
-import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
 @Entity('displays_module_displays')
@@ -247,46 +247,30 @@ export class DisplayEntity extends BaseEntity {
 	@Column({ nullable: true, default: null })
 	name: string | null;
 
+	// === Space Assignment ===
+
 	@ApiPropertyOptional({
+		name: 'space_id',
 		description:
-			'Display role defining its purpose (room: single room control, master: whole-house overview, entry: house modes and security)',
-		type: 'string',
-		enum: DisplayRole,
-		nullable: false,
-		default: DisplayRole.ROOM,
-		example: DisplayRole.ROOM,
-	})
-	@Expose()
-	@IsOptional()
-	@IsEnum(DisplayRole, {
-		message: '[{"field":"role","reason":"Role must be one of: room, master, entry."}]',
-	})
-	@Column({ type: 'varchar', length: 20, default: DisplayRole.ROOM })
-	role: DisplayRole;
-
-	// === Room Assignment (only for role=room displays) ===
-
-	@ApiPropertyOptional({
-		name: 'room_id',
-		description: 'Room this display is assigned to (required for room role, must be null for master/entry roles)',
+			'Space this display is assigned to. The space type (room, zone, master, entry, signage_*) decides what the panel renders.',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'room_id' })
+	@Expose({ name: 'space_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { room_id?: string; roomId?: string } }) => obj.room_id ?? obj.roomId, {
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
 		toClassOnly: true,
 	})
 	@Index()
 	@Column({ nullable: true, default: null })
-	roomId: string | null;
+	spaceId: string | null;
 
 	@ManyToOne(() => SpaceEntity, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'roomId' })
-	room: SpaceEntity | null;
+	@JoinColumn({ name: 'spaceId' })
+	space: SpaceEntity | null;
 
 	// === Home Page Configuration ===
 

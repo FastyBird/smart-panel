@@ -16,7 +16,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
-import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -33,7 +33,6 @@ describe('RegistrationService', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
-		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,
@@ -56,7 +55,7 @@ describe('RegistrationService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -64,7 +63,7 @@ describe('RegistrationService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,

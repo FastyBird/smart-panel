@@ -1,10 +1,14 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { DisplaysModule } from '../../modules/displays/displays.module';
+import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { SpaceType } from '../../modules/spaces/spaces.constants';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import {
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
@@ -20,11 +24,12 @@ import { SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-home-c
  * intent catalog, suggestions, and undo history once those files are
  * relocated out of `modules/spaces/` in subsequent commits on this branch.
  *
- * For now it is an empty shell: the providers, controllers, and entity
- * registrations still live in `SpacesModule`. Registering the skeleton
- * ahead of the relocation lets us wire the route prefix and extension
- * metadata without disrupting existing clients. See Phase 3a in
- * `tasks/plans/plan-spaces-plugin-system-signage.md`.
+ * Phase 5 adds the first real wiring: the home-page resolver for Room /
+ * Zone space types — when a display is assigned to a room/zone and uses
+ * `home_mode = auto_space`, this resolver decides which dashboard page is
+ * the home page. Today that's always `null` (fall through to first-page
+ * fallback), but the indirection is ready for a future "preferred page"
+ * column without touching core.
  */
 @ApiTag({
 	tagName: SPACES_HOME_CONTROL_PLUGIN_NAME,
@@ -32,8 +37,8 @@ import { SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-home-c
 	description: SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule],
-	providers: [],
+	imports: [SwaggerModule, DisplaysModule],
+	providers: [HomeControlHomePageResolver],
 	controllers: [],
 	exports: [],
 })
@@ -41,12 +46,17 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
+		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
 	) {}
 
 	onModuleInit() {
 		for (const model of SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		this.spaceHomePageResolverRegistry.register(SpaceType.ROOM, this.homeControlHomePageResolver);
+		this.spaceHomePageResolverRegistry.register(SpaceType.ZONE, this.homeControlHomePageResolver);
 
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_HOME_CONTROL_PLUGIN_NAME,

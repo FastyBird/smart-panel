@@ -15,7 +15,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { StorageService } from '../../storage/services/storage.service';
-import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { DisplaysModuleResetService } from './module-reset.service';
@@ -29,7 +29,6 @@ describe('DisplaysModuleResetService', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
-		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,
@@ -52,7 +51,7 @@ describe('DisplaysModuleResetService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -60,7 +59,7 @@ describe('DisplaysModuleResetService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
@@ -73,7 +72,6 @@ describe('DisplaysModuleResetService', () => {
 		id: uuid().toString(),
 		macAddress: '11:22:33:44:55:66',
 		name: 'Second Display',
-		role: DisplayRole.MASTER,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1280,
@@ -96,7 +94,7 @@ describe('DisplaysModuleResetService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -104,7 +102,7 @@ describe('DisplaysModuleResetService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,

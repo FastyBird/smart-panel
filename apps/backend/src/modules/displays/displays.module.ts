@@ -33,6 +33,8 @@ import { HomeResolutionService } from './services/home-resolution.service';
 import { DisplaysModuleResetService } from './services/module-reset.service';
 import { PermitJoinService } from './services/permit-join.service';
 import { RegistrationService } from './services/registration.service';
+import { SpaceHomePageResolverRegistryService } from './services/space-home-page-resolver-registry.service';
+import { SpaceSelectionValidatorRegistryService } from './services/space-selection-validator-registry.service';
 import { DisplayEntitySubscriber } from './subscribers/display-entity.subscriber';
 import { DisplayExistsConstraint } from './validators/display-exists-constraint.validator';
 
@@ -60,6 +62,8 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		DisplayEntitySubscriber,
 		WebsocketExchangeListener,
 		HomeResolutionService,
+		SpaceHomePageResolverRegistryService,
+		SpaceSelectionValidatorRegistryService,
 	],
 	exports: [
 		DisplaysService,
@@ -67,6 +71,8 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		DisplayExistsConstraint,
 		PermitJoinService,
 		HomeResolutionService,
+		SpaceHomePageResolverRegistryService,
+		SpaceSelectionValidatorRegistryService,
 	],
 })
 export class DisplaysModule implements OnModuleInit {

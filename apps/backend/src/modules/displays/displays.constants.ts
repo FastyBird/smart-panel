@@ -39,12 +39,6 @@ export enum HomeMode {
 	EXPLICIT = 'explicit',
 }
 
-export enum DisplayRole {
-	ROOM = 'room',
-	MASTER = 'master',
-	ENTRY = 'entry',
-}
-
 export const OnlineDisplayState = [ConnectionState.CONNECTED];
 
 export const DisplayStatusStorageSchema: StorageMeasurementSchema = {

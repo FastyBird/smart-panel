@@ -11,7 +11,7 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { RegistrationGuard } from '../guards/registration.guard';
@@ -28,7 +28,6 @@ describe('RegistrationController', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
-		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,
@@ -51,7 +50,7 @@ describe('RegistrationController', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -59,7 +58,7 @@ describe('RegistrationController', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
