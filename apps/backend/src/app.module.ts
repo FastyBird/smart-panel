@@ -105,6 +105,10 @@ import { SIMULATOR_PLUGIN_PREFIX } from './plugins/simulator/simulator.constants
 import { SimulatorPlugin } from './plugins/simulator/simulator.plugin';
 import { SPACES_HOME_CONTROL_PLUGIN_PREFIX } from './plugins/spaces-home-control/spaces-home-control.constants';
 import { SpacesHomeControlPlugin } from './plugins/spaces-home-control/spaces-home-control.plugin';
+import { SPACES_SYNTHETIC_ENTRY_PLUGIN_PREFIX } from './plugins/spaces-synthetic-entry/spaces-synthetic-entry.constants';
+import { SpacesSyntheticEntryPlugin } from './plugins/spaces-synthetic-entry/spaces-synthetic-entry.plugin';
+import { SPACES_SYNTHETIC_MASTER_PLUGIN_PREFIX } from './plugins/spaces-synthetic-master/spaces-synthetic-master.constants';
+import { SpacesSyntheticMasterPlugin } from './plugins/spaces-synthetic-master/spaces-synthetic-master.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesScenePlugin } from './plugins/tiles-scene/tiles-scene.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
@@ -264,6 +268,14 @@ export class AppModule {
 								module: SpacesHomeControlPlugin,
 							},
 							{
+								path: SPACES_SYNTHETIC_MASTER_PLUGIN_PREFIX,
+								module: SpacesSyntheticMasterPlugin,
+							},
+							{
+								path: SPACES_SYNTHETIC_ENTRY_PLUGIN_PREFIX,
+								module: SpacesSyntheticEntryPlugin,
+							},
+							{
 								path: DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX,
 								module: DevicesHomeAssistantPlugin,
 							},
@@ -395,6 +407,8 @@ export class AppModule {
 				SimulatorPlugin,
 				PagesCardsPlugin,
 				SpacesHomeControlPlugin,
+				SpacesSyntheticMasterPlugin,
+				SpacesSyntheticEntryPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,
 				TilesDevicePreviewPlugin,

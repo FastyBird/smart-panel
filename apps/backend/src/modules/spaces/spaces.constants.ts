@@ -45,9 +45,20 @@ export enum EventType {
 	SENSOR_TARGET_DELETED = 'SpacesModule.SensorTarget.Deleted',
 }
 
+/**
+ * Discriminator values for the polymorphic `spaces_module_spaces` table.
+ * Core declares all known values (including those contributed by built-in
+ * plugins such as spaces-synthetic-master / spaces-synthetic-entry) so the
+ * generated OpenAPI schema keeps the enum shape. The plugin supplies the
+ * concrete `@ChildEntity` class and service layer; when a plugin is not
+ * installed, attempting to create a space of its type throws from
+ * `SpacesTypeMapperService` (no registered mapping).
+ */
 export enum SpaceType {
 	ROOM = 'room',
 	ZONE = 'zone',
+	MASTER = 'master',
+	ENTRY = 'entry',
 }
 
 /**
