@@ -297,14 +297,19 @@ import {
 	SpaceType,
 	type SpaceZoneCategory,
 } from '../spaces.constants';
+import type { ISpace } from '../store';
 
-import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
+import { type ISpaceEditFormProps } from './space-edit-form.types';
 
 const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
 	hideActions: false,
 });
 
-const emit = defineEmits(spaceEditFormEmits);
+const emit = defineEmits<{
+	(e: 'saved', space: ISpace): void;
+	(e: 'cancel'): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+}>();
 
 const { t } = useI18n();
 
