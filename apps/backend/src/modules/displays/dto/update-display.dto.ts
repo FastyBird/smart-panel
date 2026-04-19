@@ -23,7 +23,7 @@ import {
 	TemperatureUnitType,
 	WindSpeedUnitType,
 } from '../../system/system.constants';
-import { DisplayRole, HomeMode } from '../displays.constants';
+import { HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleUpdateDisplay' })
 export class UpdateDisplayDto {
@@ -201,26 +201,12 @@ export class UpdateDisplayDto {
 	@ValidateIf((_, value) => value !== null)
 	name?: string | null;
 
+	// === Space Assignment ===
+
 	@ApiPropertyOptional({
+		name: 'space_id',
 		description:
-			'Display role defining its purpose (room: single room control, master: whole-house overview, entry: house modes and security)',
-		type: 'string',
-		enum: DisplayRole,
-		example: DisplayRole.ROOM,
-	})
-	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
-	@IsOptional()
-	@IsEnum(DisplayRole, {
-		message: '[{"field":"role","reason":"Role must be one of: room, master, entry."}]',
-	})
-	role?: DisplayRole;
-
-	// === Room Assignment (only for role=room displays) ===
-
-	@ApiPropertyOptional({
-		name: 'room_id',
-		description: 'Room this display is assigned to (required for room role, must be null for master/entry roles)',
+			'Space this display is assigned to. The space type (room, zone, master, entry, signage_*) decides what the panel renders.',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
@@ -228,9 +214,9 @@ export class UpdateDisplayDto {
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value !== null)
-	room_id?: string | null;
+	space_id?: string | null;
 
 	// === Home Page Configuration ===
 

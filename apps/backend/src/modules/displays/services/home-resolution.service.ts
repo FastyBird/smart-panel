@@ -5,12 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { DISPLAYS_MODULE_NAME, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
+import { SpaceHomePageResolverRegistryService } from './space-home-page-resolver-registry.service';
+
 export interface ResolvedHomePage {
 	pageId: string | null;
-	resolutionMode: 'explicit' | 'fallback';
+	resolutionMode: 'explicit' | 'auto_space' | 'fallback';
 	reason: string;
 }
 
@@ -21,6 +24,9 @@ export class HomeResolutionService {
 	constructor(
 		@InjectRepository(PageEntity)
 		private readonly pagesRepository: Repository<PageEntity>,
+		@InjectRepository(SpaceEntity)
+		private readonly spacesRepository: Repository<SpaceEntity>,
+		private readonly resolverRegistry: SpaceHomePageResolverRegistryService,
 	) {}
 
 	/**
@@ -28,17 +34,17 @@ export class HomeResolutionService {
 	 *
 	 * Resolution precedence:
 	 * 1. If homeMode is 'explicit' and homePageId is set and page exists -> use it
-	 * 2. Final fallback -> first page or null
+	 * 2. If homeMode is 'auto_space' and the display has a spaceId, ask the
+	 *    plugin that owns the space's type for its home page (if any).
+	 * 3. Final fallback -> first page or null
 	 */
 	async resolveHomePage(display: DisplayEntity): Promise<ResolvedHomePage> {
-		this.logger.debug(
-			`Resolving home page for display id=${display.id}, role=${display.role}, homeMode=${display.homeMode}`,
-		);
+		this.logger.debug(`Resolving home page for display id=${display.id}, homeMode=${display.homeMode}`);
 
-		// Get pages visible to this display (empty displays array means visible to all)
 		const visiblePages = await this.getVisiblePages(display.id);
+		const space = await this.loadDisplaySpace(display);
 
-		return this.resolveHomePageWithPages(display, visiblePages);
+		return this.resolveHomePageWithPages(display, visiblePages, space);
 	}
 
 	/**
@@ -50,14 +56,23 @@ export class HomeResolutionService {
 			return new Map();
 		}
 
-		// Fetch all pages once with their display assignments
 		const allPages = await this.getAllPagesWithDisplays();
 
-		// Resolve for each display using cached data
+		const spaceIds = [...new Set(displays.map((d) => d.spaceId).filter((id): id is string => !!id))];
+		const spacesById = new Map<string, SpaceEntity>();
+
+		if (spaceIds.length > 0) {
+			const spaces = await this.spacesRepository.createQueryBuilder('space').whereInIds(spaceIds).getMany();
+			for (const space of spaces) {
+				spacesById.set(space.id, space);
+			}
+		}
+
 		const results = new Map<string, ResolvedHomePage>();
 		for (const display of displays) {
 			const visiblePages = this.filterVisiblePages(allPages, display.id);
-			const resolved = this.resolveHomePageWithPages(display, visiblePages);
+			const space = display.spaceId ? (spacesById.get(display.spaceId) ?? null) : null;
+			const resolved = await this.resolveHomePageWithPages(display, visiblePages, space);
 			results.set(display.id, resolved);
 		}
 
@@ -67,7 +82,11 @@ export class HomeResolutionService {
 	/**
 	 * Internal resolution logic that works with pre-fetched pages.
 	 */
-	private resolveHomePageWithPages(display: DisplayEntity, visiblePages: PageEntity[]): ResolvedHomePage {
+	private async resolveHomePageWithPages(
+		display: DisplayEntity,
+		visiblePages: PageEntity[],
+		space: SpaceEntity | null,
+	): Promise<ResolvedHomePage> {
 		if (visiblePages.length === 0) {
 			this.logger.debug(`No pages visible to display id=${display.id}`);
 			return {
@@ -91,7 +110,29 @@ export class HomeResolutionService {
 			this.logger.warn(`Explicit home page id=${display.homePageId} not found or not visible, falling back`);
 		}
 
-		// 2. Fallback - use first visible page by order
+		// 2. Auto-space mode - ask the plugin that owns the space type
+		if (display.homeMode === HomeMode.AUTO_SPACE && space) {
+			const resolver = this.resolverRegistry.getResolverFor(space.type);
+			if (resolver) {
+				const resolvedPageId = await resolver.resolve(space);
+				if (resolvedPageId) {
+					const autoPage = visiblePages.find((p) => p.id === resolvedPageId);
+					if (autoPage) {
+						this.logger.debug(`Auto-space resolver for type=${space.type} returned pageId=${resolvedPageId}`);
+						return {
+							pageId: resolvedPageId,
+							resolutionMode: 'auto_space',
+							reason: `Auto-space resolver for space type "${space.type}" resolved home page`,
+						};
+					}
+					this.logger.warn(
+						`Auto-space resolver for type=${space.type} returned pageId=${resolvedPageId} but it is not visible to display`,
+					);
+				}
+			}
+		}
+
+		// 3. Fallback - use first visible page by order
 		const firstPage = this.getFirstPage(visiblePages);
 		if (firstPage) {
 			this.logger.debug(`Using first page id=${firstPage.id} as fallback`);
@@ -102,7 +143,7 @@ export class HomeResolutionService {
 			};
 		}
 
-		// 3. No pages available
+		// 4. No pages available
 		return {
 			pageId: null,
 			resolutionMode: 'fallback',
@@ -154,5 +195,22 @@ export class HomeResolutionService {
 		}
 		// Pages are already sorted by order and createdAt from the query
 		return pages[0];
+	}
+
+	/**
+	 * Loads the space entity a display is assigned to, or returns null if
+	 * unassigned. Prefers an already-hydrated `display.space` relation to
+	 * avoid an extra query.
+	 */
+	private async loadDisplaySpace(display: DisplayEntity): Promise<SpaceEntity | null> {
+		if (!display.spaceId) {
+			return null;
+		}
+
+		if (display.space) {
+			return display.space;
+		}
+
+		return this.spacesRepository.findOne({ where: { id: display.spaceId } });
 	}
 }

@@ -15,12 +15,12 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { SpaceType } from '../../spaces/spaces.constants';
-import { ConnectionState, DisplayRole, EventType, HomeMode } from '../displays.constants';
+import { ConnectionState, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { DisplaysService } from './displays.service';
+import { SpaceSelectionValidatorRegistryService } from './space-selection-validator-registry.service';
 
 describe('DisplaysService', () => {
 	let service: DisplaysService;
@@ -28,13 +28,12 @@ describe('DisplaysService', () => {
 	let spaceRepository: Repository<SpaceEntity>;
 	let eventEmitter: EventEmitter2;
 
-	const mockRoomId = uuid().toString();
+	const mockSpaceId = uuid().toString();
 
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
-		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,
@@ -57,7 +56,7 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: mockRoomId,
+		spaceId: mockSpaceId,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -65,7 +64,7 @@ describe('DisplaysService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
@@ -78,7 +77,6 @@ describe('DisplaysService', () => {
 		id: uuid().toString(),
 		macAddress: '11:22:33:44:55:66',
 		name: 'Second Display',
-		role: DisplayRole.MASTER,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1280,
@@ -101,7 +99,7 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		roomId: null,
+		spaceId: null,
 		numberFormat: null,
 		temperatureUnit: null,
 		windSpeedUnit: null,
@@ -109,7 +107,7 @@ describe('DisplaysService', () => {
 		precipitationUnit: null,
 		distanceUnit: null,
 		weatherLocationId: null,
-		room: null,
+		space: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
@@ -152,6 +150,7 @@ describe('DisplaysService', () => {
 						emit: jest.fn(() => {}),
 					},
 				},
+				SpaceSelectionValidatorRegistryService,
 			],
 		}).compile();
 
@@ -274,11 +273,11 @@ describe('DisplaysService', () => {
 			const updateDto = { brightness: 80 };
 			const updatedDisplay = { ...mockDisplay, brightness: 80 };
 
-			// Mock the room to exist for validation
-			const mockRoom = { id: mockRoomId, type: SpaceType.ROOM } as SpaceEntity;
+			// Mock the space to exist for validation
+			const mockSpace = { id: mockSpaceId } as SpaceEntity;
 
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
-			jest.spyOn(spaceRepository, 'findOne').mockResolvedValue(mockRoom);
+			jest.spyOn(spaceRepository, 'findOne').mockResolvedValue(mockSpace);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(DisplayEntity, updatedDisplay));
 
 			const result = await service.update(mockDisplay.id, updateDto);

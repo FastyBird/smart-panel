@@ -305,7 +305,7 @@ describe('SpacesService', () => {
 			expect(result.devicesAssigned).toBe(2);
 			expect(result.displaysAssigned).toBe(1);
 			expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId });
-			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ roomId: roomId });
+			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ spaceId: roomId });
 		});
 
 		it('should handle empty device and display arrays', async () => {
