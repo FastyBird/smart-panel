@@ -11,12 +11,12 @@ import { SpaceType } from '../../../modules/spaces/spaces.constants';
 export class EntrySpaceEntity extends SpaceEntity {
 	@ApiProperty({
 		description: 'Space type',
-		enum: SpaceType,
+		enum: [SpaceType.ENTRY],
 		default: SpaceType.ENTRY,
 		example: SpaceType.ENTRY,
 	})
 	@Expose()
-	get type(): SpaceType {
+	get type(): SpaceType.ENTRY {
 		return SpaceType.ENTRY;
 	}
 }
