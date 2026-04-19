@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"name": "Priestory domáceho ovládania",
+		"description": "Pridáva fyzické miestnosti a zóny s ovládaním osvetlenia, klímy, tienenia, senzorov a médií."
+	}
+}
