@@ -11,12 +11,12 @@ import { SpaceType } from '../../../modules/spaces/spaces.constants';
 export class MasterSpaceEntity extends SpaceEntity {
 	@ApiProperty({
 		description: 'Space type',
-		enum: SpaceType,
+		enum: [SpaceType.MASTER],
 		default: SpaceType.MASTER,
 		example: SpaceType.MASTER,
 	})
 	@Expose()
-	get type(): SpaceType {
+	get type(): SpaceType.MASTER {
 		return SpaceType.MASTER;
 	}
 }
