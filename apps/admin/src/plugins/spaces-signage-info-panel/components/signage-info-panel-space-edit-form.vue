@@ -187,7 +187,17 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { type ISpace, SPACES_MODULE_PREFIX, spacesStoreKey } from '../../../modules/spaces';
 import { useLocations } from '../../../modules/weather';
+import type { components } from '../../../openapi';
 import { SignageInfoPanelLayout } from '../spaces-signage-info-panel.constants';
+
+// The PATCH endpoint's generated request body type resolves to the base
+// `SpacesModuleUpdateSpace` schema, which does NOT include the subtype-
+// specific signage fields (layout, show_clock, feed_url, …). The backend
+// accepts the plugin's subtype DTO at runtime, but the generated client
+// type is flat. We borrow the plugin's dedicated update schema so renames
+// or removals on the backend surface as type errors here instead of
+// silently shipping an empty body.
+type SignageInfoPanelUpdateBody = components['schemas']['SpacesSignageInfoPanelPluginUpdateSignageInfoPanelSpace'];
 
 import AnnouncementsSection from './announcements-section.vue';
 import {
@@ -354,23 +364,30 @@ const onSubmit = async (): Promise<void> => {
 	submitting.value = true;
 
 	try {
+		const payload: SignageInfoPanelUpdateBody = {
+			name: model.name,
+			description: model.description ?? undefined,
+			// The local `SignageInfoPanelLayout` enum and the generated
+			// `SpacesSignageInfoPanelPluginDataSignageInfoPanelSpaceLayout`
+			// enum share string values but are nominally distinct; cast at
+			// the boundary so the rest of the body stays type-checked.
+			layout: model.layout as unknown as SignageInfoPanelUpdateBody['layout'],
+			show_clock: model.showClock,
+			show_weather: model.showWeather,
+			show_announcements: model.showAnnouncements,
+			show_feed: model.showFeed,
+			weather_location_id: model.weatherLocationId ?? null,
+			feed_url: model.feedUrl ?? null,
+		};
+
 		const { data, error } = await backend.client.PATCH(
 			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`,
 			{
 				params: { path: { id: props.space.id } },
-				body: {
-					data: {
-						name: model.name,
-						description: model.description ?? undefined,
-						layout: model.layout,
-						show_clock: model.showClock,
-						show_weather: model.showWeather,
-						show_announcements: model.showAnnouncements,
-						show_feed: model.showFeed,
-						weather_location_id: model.weatherLocationId ?? null,
-						feed_url: model.feedUrl ?? null,
-					} as unknown as Parameters<typeof backend.client.PATCH>[1] extends { body?: infer B } ? (B extends { data: infer D } ? D : never) : never,
-				},
+				// The endpoint is typed with the base `SpacesModuleUpdateSpace`
+				// DTO but the backend accepts the plugin subtype DTO. Cast at
+				// the boundary so the subtype fields above stay type-checked.
+				body: { data: payload as components['schemas']['SpacesModuleUpdateSpace'] },
 			},
 		);
 
