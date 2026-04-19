@@ -34,15 +34,19 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 				return false;
 			}
 
-			// When pluginRoutes is empty we do NOT want hasRoute to short-circuit the
-			// filter to true — otherwise the hasComponent/hasSchema checks below
-			// become ineffective and every module-eligible plugin would pass
-			// regardless of whether it contributes space components or schemas.
-			// Space plugins currently declare no plugin-level routes, so this is
-			// always false today; keep the lookup so future route contributions
-			// still participate in the filter.
+			// Routes are a plugin-level contract — the map of named routes lives on the
+			// plugin, not on each element. When pluginRoutes is empty this check is a
+			// no-op (space plugins currently declare no routes); the lookup stays so
+			// future route contributions short-circuit the include-this-plugin decision
+			// regardless of whether any element contributes components or schemas.
 			const hasRoute = pluginRoutes.length > 0 && pluginRoutes.some((key) => plugin.routes && key in plugin.routes);
 
+			if (hasRoute) {
+				return true;
+			}
+
+			// Otherwise the plugin is included iff at least one of its elements is
+			// module-eligible AND contributes a requested component or schema.
 			return (plugin.elements ?? []).some((el) => {
 				const elementModuleEligible = el.modules === undefined || el.modules.includes(SPACES_MODULE_NAME);
 
@@ -55,7 +59,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 
 				const hasSchema = pluginSchemas.length === 0 || (!!el.schemas && pluginSchemas.some((key) => el.schemas && key in el.schemas));
 
-				return hasComponent || hasSchema || hasRoute;
+				return hasComponent || hasSchema;
 			});
 		});
 	});
