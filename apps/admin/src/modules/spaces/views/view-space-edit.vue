@@ -54,26 +54,17 @@
 			v-if="space !== null"
 			class="grow-1 p-2 md:px-4"
 		>
+			<!--
+				Every space type is rendered via its plugin's registered spaceEditForm
+				(home-control provides Room/Zone; synthetic master/entry currently
+				register no form; signage plugins provide their own). If no plugin
+				registers one we show a read-only placeholder rather than falling back
+				to the generic Room/Zone form — that form has type/category/parent
+				controls that don't apply to synthetic or plugin-contributed types.
+			-->
 			<component
 				:is="pluginElement.components.spaceEditForm"
 				v-if="pluginElement && pluginElement.components?.spaceEditForm"
-				ref="formRef"
-				v-model:remote-form-changed="remoteFormChanged"
-				:hide-actions="isMDDevice"
-				:space="space"
-				@saved="onSaved"
-				@cancel="onCancel"
-			/>
-
-			<!--
-				The generic Room/Zone edit form includes a type dropdown, category picker
-				and parent-zone selector — none of which apply to synthetic singleton
-				space types (master, entry) or plugin-contributed surfaces. Only fall back
-				to it for the built-in physical types; anything else gets a placeholder
-				until its owning plugin registers a proper spaceEditForm component.
-			-->
-			<space-edit-form
-				v-else-if="isPhysicalSpaceType"
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
@@ -144,9 +135,8 @@ import {
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
-import { SpaceEditForm } from '../components/components';
 import { useSpace, useSpacesPlugins } from '../composables';
-import { RouteNames, SpaceRoomCategory, SpaceType, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
+import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace } from '../store';
 
@@ -188,7 +178,13 @@ const pluginElement = computed<IPluginElement<ISpacePluginsComponents, ISpacePlu
 
 const isLoading = computed<boolean>(() => fetching.value);
 
-const formRef = ref<InstanceType<typeof SpaceEditForm> | null>(null);
+// The rendered form is a dynamically-dispatched plugin component — each space
+// type's plugin contributes its own edit form. We only rely on a `submit()`
+// method on the exposed instance; anything else is plugin-private.
+interface ISpaceEditFormHandle {
+	submit: () => void | Promise<unknown>;
+}
+const formRef = ref<ISpaceEditFormHandle | null>(null);
 const remoteFormChanged = ref(props.remoteFormChanged);
 
 // Track if space was previously loaded to detect deletion
@@ -210,14 +206,6 @@ const spaceIcon = computed<string>((): string =>
 				type: space.value.type,
 			})
 		: 'mdi:shape-outline',
-);
-
-// The generic `space-edit-form` covers ROOM and ZONE (the only built-in physical
-// types). Synthetic singleton spaces (MASTER, ENTRY) and plugin-contributed
-// types should either register their own spaceEditForm or fall into the
-// read-only placeholder.
-const isPhysicalSpaceType = computed<boolean>(
-	(): boolean => space.value?.type === SpaceType.ROOM || space.value?.type === SpaceType.ZONE,
 );
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
