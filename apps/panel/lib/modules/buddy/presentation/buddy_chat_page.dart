@@ -87,7 +87,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final buddyService = context.read<BuddyService>();
 
 		if (!buddyService.hasActiveConversation) {
-			final spaceId = locator<DisplayRepository>().display?.roomId;
+			final spaceId = locator<DisplayRepository>().display?.spaceId;
 			final conversation = await buddyService.startNewConversation(
 				spaceId: spaceId,
 			);
@@ -267,7 +267,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	Future<void> _startNewConversation() async {
 		final buddyService = context.read<BuddyService>();
-		final spaceId = locator<DisplayRepository>().display?.roomId;
+		final spaceId = locator<DisplayRepository>().display?.spaceId;
 
 		await buddyService.createNewConversation(spaceId: spaceId);
 	}
