@@ -368,7 +368,7 @@
 		"noSpaces": "No tiene ningún espacio configurado",
 		"noFilteredSpaces": "Ningún espacio coincide con los criterios de filtro",
 		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
-		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
+		"noEditFormForSpaceType": "Los espacios de tipo «{type}» no se pueden editar directamente desde esta vista."
 	},
 	"dialogs": {
 		"lightingRoles": {

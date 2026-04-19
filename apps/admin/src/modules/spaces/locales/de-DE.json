@@ -368,7 +368,7 @@
 		"noSpaces": "Sie haben noch keine Bereiche konfiguriert",
 		"noFilteredSpaces": "Keine Bereiche entsprechen Ihren Filterkriterien",
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
-		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view."
+		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden."
 	},
 	"dialogs": {
 		"lightingRoles": {
