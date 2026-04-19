@@ -5,14 +5,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
-import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpaceType } from '../../spaces/spaces.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { HomeResolutionService } from './home-resolution.service';
+import { SpaceHomePageResolverRegistryService } from './space-home-page-resolver-registry.service';
 
 describe('HomeResolutionService', () => {
 	let service: HomeResolutionService;
 	let pagesRepository: Repository<PageEntity>;
+	let spacesRepository: Repository<SpaceEntity>;
+	let resolverRegistry: SpaceHomePageResolverRegistryService;
 
 	const displayId = uuid();
 	const pageId1 = uuid();
@@ -23,7 +28,6 @@ describe('HomeResolutionService', () => {
 			id: displayId,
 			macAddress: 'AA:BB:CC:DD:EE:FF',
 			name: 'Test Display',
-			role: DisplayRole.ROOM,
 			version: '1.0.0',
 			build: '42',
 			screenWidth: 1920,
@@ -46,8 +50,8 @@ describe('HomeResolutionService', () => {
 			registeredFromIp: null,
 			currentIpAddress: null,
 			online: false,
-			roomId: null,
-			room: null,
+			spaceId: null,
+			space: null,
 			homeMode: HomeMode.AUTO_SPACE,
 			homePageId: null,
 			homePage: null,
@@ -71,8 +75,15 @@ describe('HomeResolutionService', () => {
 			updatedAt: null,
 		}) as unknown as PageEntity;
 
+	const createMockSpace = (id: string, type: SpaceType): SpaceEntity =>
+		({
+			id,
+			type,
+			name: `Space ${id}`,
+		}) as unknown as SpaceEntity;
+
 	beforeEach(async () => {
-		const mockQueryBuilder: Partial<SelectQueryBuilder<PageEntity>> = {
+		const mockPagesQueryBuilder: Partial<SelectQueryBuilder<PageEntity>> = {
 			leftJoinAndSelect: jest.fn().mockReturnThis(),
 			orderBy: jest.fn().mockReturnThis(),
 			addOrderBy: jest.fn().mockReturnThis(),
@@ -80,15 +91,32 @@ describe('HomeResolutionService', () => {
 		};
 
 		const mockPagesRepository = {
-			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+			createQueryBuilder: jest.fn().mockReturnValue(mockPagesQueryBuilder),
+		};
+
+		const mockSpacesQueryBuilder: Partial<SelectQueryBuilder<SpaceEntity>> = {
+			whereInIds: jest.fn().mockReturnThis(),
+			getMany: jest.fn().mockResolvedValue([]),
+		};
+
+		const mockSpacesRepository = {
+			createQueryBuilder: jest.fn().mockReturnValue(mockSpacesQueryBuilder),
+			findOne: jest.fn().mockResolvedValue(null),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [HomeResolutionService, { provide: getRepositoryToken(PageEntity), useValue: mockPagesRepository }],
+			providers: [
+				HomeResolutionService,
+				SpaceHomePageResolverRegistryService,
+				{ provide: getRepositoryToken(PageEntity), useValue: mockPagesRepository },
+				{ provide: getRepositoryToken(SpaceEntity), useValue: mockSpacesRepository },
+			],
 		}).compile();
 
 		service = module.get<HomeResolutionService>(HomeResolutionService);
 		pagesRepository = module.get<Repository<PageEntity>>(getRepositoryToken(PageEntity));
+		spacesRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
+		resolverRegistry = module.get<SpaceHomePageResolverRegistryService>(SpaceHomePageResolverRegistryService);
 	});
 
 	afterEach(() => {
@@ -154,9 +182,7 @@ describe('HomeResolutionService', () => {
 
 		describe('fallback behavior', () => {
 			it('should fallback to first page when no explicit home page is set', async () => {
-				const display = createMockDisplay({
-					role: DisplayRole.ROOM,
-				});
+				const display = createMockDisplay();
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
@@ -169,26 +195,8 @@ describe('HomeResolutionService', () => {
 				expect(result.resolutionMode).toBe('fallback');
 			});
 
-			it('should fallback to first page for master role', async () => {
-				const display = createMockDisplay({
-					role: DisplayRole.MASTER,
-				});
-
-				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
-
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
-				mockQueryBuilder.getMany.mockResolvedValue(pages);
-
-				const result = await service.resolveHomePage(display);
-
-				expect(result.pageId).toBe(pageId1);
-				expect(result.resolutionMode).toBe('fallback');
-			});
-
-			it('should fallback to first page for entry role', async () => {
-				const display = createMockDisplay({
-					role: DisplayRole.ENTRY,
-				});
+			it('should fallback to first page for unassigned display (no spaceId)', async () => {
+				const display = createMockDisplay({ spaceId: null });
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
@@ -202,13 +210,109 @@ describe('HomeResolutionService', () => {
 			});
 		});
 
-		describe('explicit home overrides role', () => {
-			it('should use explicit home page even for master role', async () => {
+		describe('auto_space mode', () => {
+			it('should use resolver-provided page when the resolver returns a visible page id', async () => {
+				const spaceId = uuid();
+				const space = createMockSpace(spaceId, SpaceType.ROOM);
 				const display = createMockDisplay({
-					role: DisplayRole.MASTER,
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId,
+					space,
+				});
+
+				resolverRegistry.register(SpaceType.ROOM, { resolve: () => pageId2 });
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId2);
+				expect(result.resolutionMode).toBe('auto_space');
+			});
+
+			it('should fall back when the resolver returns null', async () => {
+				const spaceId = uuid();
+				const space = createMockSpace(spaceId, SpaceType.ROOM);
+				const display = createMockDisplay({
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId,
+					space,
+				});
+
+				resolverRegistry.register(SpaceType.ROOM, { resolve: () => null });
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('fallback');
+			});
+
+			it('should fall back when no resolver is registered for the space type', async () => {
+				const spaceId = uuid();
+				const space = createMockSpace(spaceId, 'signage_info_panel' as SpaceType);
+				const display = createMockDisplay({
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId,
+					space,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('fallback');
+			});
+
+			it('should load the space via repository when display.space is not hydrated', async () => {
+				const spaceId = uuid();
+				const space = createMockSpace(spaceId, SpaceType.ROOM);
+				const display = createMockDisplay({
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId,
+					space: null,
+				});
+
+				jest.spyOn(spacesRepository, 'findOne').mockResolvedValue(space);
+				resolverRegistry.register(SpaceType.ROOM, { resolve: () => pageId2 });
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId2);
+				expect(result.resolutionMode).toBe('auto_space');
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				expect(spacesRepository.findOne).toHaveBeenCalledWith({ where: { id: spaceId } });
+			});
+		});
+
+		describe('explicit home overrides auto_space', () => {
+			it('should use explicit home page even when a resolver is registered', async () => {
+				const spaceId = uuid();
+				const space = createMockSpace(spaceId, SpaceType.ROOM);
+				const display = createMockDisplay({
 					homeMode: HomeMode.EXPLICIT,
 					homePageId: pageId1,
+					spaceId,
+					space,
 				});
+
+				resolverRegistry.register(SpaceType.ROOM, { resolve: () => pageId2 });
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
@@ -257,49 +361,6 @@ describe('HomeResolutionService', () => {
 				expect(result.pageId).toBe(pageId1);
 			});
 		});
-
-		describe('default values (backward compatibility)', () => {
-			it('should work with default role (ROOM) and default homeMode (AUTO_SPACE)', async () => {
-				// Display with default values should resolve correctly
-				const roomId = uuid();
-				const display = createMockDisplay({
-					// Using defaults from entity: role = ROOM, homeMode = AUTO_SPACE
-					roomId: roomId,
-				});
-
-				expect(display.role).toBe(DisplayRole.ROOM);
-				expect(display.homeMode).toBe(HomeMode.AUTO_SPACE);
-
-				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
-
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
-				mockQueryBuilder.getMany.mockResolvedValue(pages);
-
-				const result = await service.resolveHomePage(display);
-
-				// Should fallback to first page
-				expect(result.pageId).toBe(pageId1);
-				expect(result.resolutionMode).toBe('fallback');
-			});
-
-			it('should fallback gracefully for display with no roomId (legacy scenario)', async () => {
-				const display = createMockDisplay({
-					// Default role and homeMode, no roomId
-					roomId: null,
-				});
-
-				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
-
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
-				mockQueryBuilder.getMany.mockResolvedValue(pages);
-
-				const result = await service.resolveHomePage(display);
-
-				// Should fallback to first page
-				expect(result.pageId).toBe(pageId1);
-				expect(result.resolutionMode).toBe('fallback');
-			});
-		});
 	});
 
 	describe('resolveHomePagesBatch', () => {
@@ -312,15 +373,8 @@ describe('HomeResolutionService', () => {
 		});
 
 		it('should resolve home pages for multiple displays in batch', async () => {
-			const display1 = createMockDisplay({
-				id: displayId,
-				role: DisplayRole.ROOM,
-			});
-
-			const display2 = createMockDisplay({
-				id: displayId2,
-				role: DisplayRole.ROOM,
-			});
+			const display1 = createMockDisplay({ id: displayId });
+			const display2 = createMockDisplay({ id: displayId2 });
 
 			const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
@@ -336,27 +390,31 @@ describe('HomeResolutionService', () => {
 			expect(result.get(displayId2)?.resolutionMode).toBe('fallback');
 		});
 
-		it('should handle mixed roles in batch', async () => {
-			const roomDisplay = createMockDisplay({
-				id: displayId,
-				role: DisplayRole.ROOM,
-			});
+		it('should dispatch to the per-space-type resolver in batch', async () => {
+			const roomSpaceId = uuid();
+			const entrySpaceId = uuid();
+			const roomSpace = createMockSpace(roomSpaceId, SpaceType.ROOM);
+			const entrySpace = createMockSpace(entrySpaceId, SpaceType.ENTRY);
 
-			const masterDisplay = createMockDisplay({
-				id: displayId2,
-				role: DisplayRole.MASTER,
-			});
+			const roomDisplay = createMockDisplay({ id: displayId, spaceId: roomSpaceId });
+			const entryDisplay = createMockDisplay({ id: displayId2, spaceId: entrySpaceId });
+
+			resolverRegistry.register(SpaceType.ROOM, { resolve: () => pageId2 });
+			resolverRegistry.register(SpaceType.ENTRY, { resolve: () => null });
 
 			const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
 			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 			mockQueryBuilder.getMany.mockResolvedValue(pages);
 
-			const result = await service.resolveHomePagesBatch([roomDisplay, masterDisplay]);
+			const mockSpacesQb = spacesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<SpaceEntity>>;
+			mockSpacesQb.getMany.mockResolvedValue([roomSpace, entrySpace]);
+
+			const result = await service.resolveHomePagesBatch([roomDisplay, entryDisplay]);
 
 			expect(result.size).toBe(2);
-			expect(result.get(displayId)?.pageId).toBe(pageId1);
-			expect(result.get(displayId)?.resolutionMode).toBe('fallback');
+			expect(result.get(displayId)?.pageId).toBe(pageId2);
+			expect(result.get(displayId)?.resolutionMode).toBe('auto_space');
 			expect(result.get(displayId2)?.pageId).toBe(pageId1);
 			expect(result.get(displayId2)?.resolutionMode).toBe('fallback');
 		});
@@ -368,10 +426,7 @@ describe('HomeResolutionService', () => {
 				homePageId: pageId1,
 			});
 
-			const roomDisplay = createMockDisplay({
-				id: displayId2,
-				role: DisplayRole.ROOM,
-			});
+			const roomDisplay = createMockDisplay({ id: displayId2 });
 
 			const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
@@ -387,39 +442,12 @@ describe('HomeResolutionService', () => {
 			expect(result.get(displayId2)?.resolutionMode).toBe('fallback');
 		});
 
-		it('should fallback gracefully when no matching pages exist', async () => {
-			const roomId = uuid();
-			const display = createMockDisplay({
-				id: displayId,
-				role: DisplayRole.ROOM,
-				roomId: roomId,
-			});
-
-			const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
-
-			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
-			mockQueryBuilder.getMany.mockResolvedValue(pages);
-
-			const result = await service.resolveHomePagesBatch([display]);
-
-			expect(result.size).toBe(1);
-			expect(result.get(displayId)?.pageId).toBe(pageId1);
-			expect(result.get(displayId)?.resolutionMode).toBe('fallback');
-		});
-
 		it('should respect page visibility in batch operations', async () => {
 			const displayEntity1 = { id: displayId } as DisplayEntity;
 			const displayEntity2 = { id: displayId2 } as DisplayEntity;
 
-			const display1 = createMockDisplay({
-				id: displayId,
-				role: DisplayRole.ROOM,
-			});
-
-			const display2 = createMockDisplay({
-				id: displayId2,
-				role: DisplayRole.ROOM,
-			});
+			const display1 = createMockDisplay({ id: displayId });
+			const display2 = createMockDisplay({ id: displayId2 });
 
 			// Page 1 visible only to display1, page 2 visible only to display2
 			const page1 = createMockPage(pageId1, 0, [displayEntity1]);

@@ -8,7 +8,6 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		id: response.id,
 		macAddress: response.mac_address,
 		name: response.name ?? null, // Handle undefined by converting to null
-		role: response.role ?? 'room',
 		version: response.version,
 		build: response.build ?? null,
 		screenWidth: response.screen_width ?? 0,
@@ -34,8 +33,8 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		homeMode: response.home_mode ?? 'auto_space',
 		homePageId: response.home_page_id ?? null,
 		resolvedHomePageId: response.resolved_home_page_id ?? null,
-		// Room assignment (only for role=room displays)
-		roomId: response.room_id ?? null,
+		// Space assignment (the space's type decides what the panel renders)
+		spaceId: response.space_id ?? null,
 		// Unit overrides (null = use system default)
 		numberFormat: response.number_format ?? null,
 		temperatureUnit: response.temperature_unit ?? null,
@@ -83,7 +82,6 @@ export const transformDisplayCreateRequest = (display: IDisplaysAddActionPayload
 export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayload['data']): IDisplayUpdateReq => {
 	const baseData: Record<string, unknown> = {
 		name: display.name,
-		role: display.role,
 		unit_size: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
@@ -116,9 +114,9 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 		baseData.home_page_id = display.homePageId;
 	}
 
-	// Room assignment - explicitly include null to unassign
-	if ('roomId' in display) {
-		baseData.room_id = display.roomId ?? null;
+	// Space assignment - explicitly include null to unassign
+	if ('spaceId' in display) {
+		baseData.space_id = display.spaceId ?? null;
 	}
 
 	// Unit overrides - explicitly include null to reset to system default

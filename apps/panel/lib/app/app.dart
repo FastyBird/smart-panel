@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/discovery.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/room_selection.dart';
-import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
@@ -190,20 +189,21 @@ class _MyAppState extends State<MyApp> {
     _appState.value = AppState.discovery;
   }
 
-  /// Check if room selection is needed and transition to the appropriate state
+  /// Check if space selection is needed and transition to the appropriate state.
+  ///
+  /// Phase 5: displays no longer carry a `DisplayRole`. An unassigned
+  /// display (`spaceId == null`) is the signal to open the space picker.
   bool _needsRoomSelection() {
     try {
       final displayRepo = locator<DisplayRepository>();
       final display = displayRepo.display;
 
-      if (display != null &&
-          display.role == DisplayRole.room &&
-          display.roomId == null) {
+      if (display != null && display.spaceId == null) {
         return true;
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[APP] Could not check room selection: $e');
+        debugPrint('[APP] Could not check space selection: $e');
       }
     }
 

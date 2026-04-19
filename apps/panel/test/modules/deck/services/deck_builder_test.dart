@@ -1,18 +1,29 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_view_builders.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-synthetic-entry/services/space_view_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-synthetic-master/services/space_view_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // Valid UUIDs for testing (v4 format with variant bits)
 const _uuid1 = 'a0000000-0000-4000-8000-000000000001';
 const _uuid2 = 'a0000000-0000-4000-8000-000000000002';
 const _uuid3 = 'a0000000-0000-4000-8000-000000000003';
+
+const _roomUuid = 'b0000000-0000-4000-8000-000000000001';
+const _masterUuid = 'b0000000-0000-4000-8000-000000000002';
+const _entryUuid = 'b0000000-0000-4000-8000-000000000003';
 
 const String _testPageType = 'test-page';
 
@@ -44,8 +55,7 @@ class TestPageView extends DashboardPageView {
 
 DisplayModel createTestDisplay({
   String id = 'test-display-id',
-  DisplayRole role = DisplayRole.room,
-  String? roomId,
+  String? spaceId,
   HomeMode homeMode = HomeMode.autoSpace,
   String? homePageId,
   String? resolvedHomePageId,
@@ -70,8 +80,7 @@ DisplayModel createTestDisplay({
     speakerVolume: 50,
     microphone: false,
     microphoneVolume: 50,
-    role: role,
-    roomId: roomId,
+    spaceId: spaceId,
     homeMode: homeMode,
     homePageId: homePageId,
     resolvedHomePageId: resolvedHomePageId,
@@ -79,16 +88,46 @@ DisplayModel createTestDisplay({
   );
 }
 
+// Helper to create a mock space for testing
+SpaceView createMockSpace({
+  required String id,
+  required SpacesModuleDataSpaceType type,
+}) {
+  return SpaceView(
+    model: SpaceModel(
+      id: id,
+      type: type,
+      name: 'Test Space',
+      displayOrder: 0,
+      suggestionsEnabled: true,
+      parentId: null,
+    ),
+  );
+}
+
 void main() {
+  setUp(() {
+    spaceViewBuilders[SpacesModuleDataSpaceType.room] = RoomSpaceViewBuilder();
+    spaceViewBuilders[SpacesModuleDataSpaceType.zone] = ZoneSpaceViewBuilder();
+    spaceViewBuilders[SpacesModuleDataSpaceType.master] = MasterSpaceViewBuilder();
+    spaceViewBuilders[SpacesModuleDataSpaceType.entry] = EntrySpaceViewBuilder();
+  });
+
+  tearDown(() {
+    spaceViewBuilders.clear();
+  });
+
   group('buildDeck', () {
     group('system view generation', () {
-      test('should create room system view for room role', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'space-123',
+      test('should create room system view for room space', () {
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           roomViewTitle: 'Room Overview',
         );
@@ -99,15 +138,20 @@ void main() {
         expect(result.items.first, isA<SystemViewItem>());
         final systemView = result.items.first as SystemViewItem;
         expect(systemView.viewType, SystemViewType.room);
-        expect(systemView.roomId, 'space-123');
+        expect(systemView.roomId, _roomUuid);
         expect(systemView.title, 'Room Overview');
         expect(result.items[1], isA<SecurityViewItem>());
       });
 
-      test('should create master system view for master role', () {
-        final display = createTestDisplay(role: DisplayRole.master);
+      test('should create master system view for master space', () {
+        final display = createTestDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           masterViewTitle: 'Home Overview',
         );
@@ -120,10 +164,15 @@ void main() {
         expect(systemView.title, 'Home Overview');
       });
 
-      test('should create entry system view for entry role', () {
-        final display = createTestDisplay(role: DisplayRole.entry);
+      test('should create entry system view for entry space', () {
+        final display = createTestDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           entryViewTitle: 'Entry',
         );
@@ -138,13 +187,15 @@ void main() {
     });
 
     group('domain view generation', () {
-      test('should create domain views for ROOM role with devices', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+      test('should create domain views for ROOM space with devices', () {
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -174,10 +225,15 @@ void main() {
         expect(climateView.deviceCount, 1);
       });
 
-      test('should not create domain views for MASTER role', () {
-        final display = createTestDisplay(role: DisplayRole.master);
+      test('should not create domain views for MASTER space', () {
+        final display = createTestDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -192,10 +248,15 @@ void main() {
         expect(result.domainCounts, isNull);
       });
 
-      test('should not create domain views for ENTRY role', () {
-        final display = createTestDisplay(role: DisplayRole.entry);
+      test('should not create domain views for ENTRY space', () {
+        final display = createTestDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -210,15 +271,17 @@ void main() {
       });
 
       test('should place domain views between system view and pages', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1'),
         ];
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: pages,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         );
@@ -233,13 +296,15 @@ void main() {
         expect(result.items[3], isA<DashboardPageItem>());
       });
 
-      test('should include domainCounts for ROOM role', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+      test('should include domainCounts for ROOM space', () {
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -259,13 +324,15 @@ void main() {
     });
 
     group('energy view deduplication', () {
-      test('should not add EnergyViewItem when energy domain view exists for ROOM role', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+      test('should not add EnergyViewItem when energy domain view exists for ROOM space', () {
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.sensor,
@@ -287,10 +354,15 @@ void main() {
         expect(energyDomainViews, hasLength(1));
       });
 
-      test('should add EnergyViewItem for MASTER role when energy supported', () {
-        final display = createTestDisplay(role: DisplayRole.master);
+      test('should add EnergyViewItem for MASTER space when energy supported', () {
+        final display = createTestDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           energySupported: true,
         );
@@ -301,10 +373,15 @@ void main() {
         expect(energyViewItems, hasLength(1));
       });
 
-      test('should add EnergyViewItem for ENTRY role when energy supported', () {
-        final display = createTestDisplay(role: DisplayRole.entry);
+      test('should add EnergyViewItem for ENTRY space when energy supported', () {
+        final display = createTestDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           energySupported: true,
         );
@@ -315,13 +392,15 @@ void main() {
         expect(energyViewItems, hasLength(1));
       });
 
-      test('should add EnergyViewItem for ROOM role without sensor devices', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+      test('should add EnergyViewItem for ROOM space without sensor devices', () {
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting, // no sensors → no energy domain view
@@ -338,24 +417,27 @@ void main() {
 
     group('indexByViewKey', () {
       test('should populate indexByViewKey for system view', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
-        final input = DeckBuildInput(display: display, pages: []);
+        final input = DeckBuildInput(display: display, space: space, pages: []);
 
         final result = buildDeck(input);
 
-        expect(result.indexByViewKey['room-overview:room-1'], 0);
+        expect(result.indexByViewKey['room-overview:$_roomUuid'], 0);
       });
 
       test('should populate indexByViewKey for domain views', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final input = DeckBuildInput(
           display: display,
+          space: space,
           pages: [],
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -365,21 +447,22 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.indexByViewKey['room-overview:room-1'], 0);
-        expect(result.indexByViewKey['domain:room-1:lights'], 1);
-        expect(result.indexByViewKey['domain:room-1:media'], 2);
+        expect(result.indexByViewKey['room-overview:$_roomUuid'], 0);
+        expect(result.indexByViewKey['domain:$_roomUuid:lights'], 1);
+        expect(result.indexByViewKey['domain:$_roomUuid:media'], 2);
       });
 
       test('should populate indexByViewKey for pages', () {
-        final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1'),
           TestPageView(id: _uuid2, title: 'Page 2'),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -388,8 +471,12 @@ void main() {
       });
 
       test('getIndexByViewKey should return -1 for unknown key', () {
-        final display = createTestDisplay(role: DisplayRole.room);
-        final input = DeckBuildInput(display: display, pages: []);
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
+        final input = DeckBuildInput(display: display, space: space, pages: []);
 
         final result = buildDeck(input);
 
@@ -399,13 +486,17 @@ void main() {
 
     group('page ordering', () {
       test('should sort pages by order', () {
-        final display = createTestDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createTestDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
         final pages = [
           TestPageView(id: _uuid3, title: 'Page 3', order: 3),
           TestPageView(id: _uuid1, title: 'Page 1', order: 1),
           TestPageView(id: _uuid2, title: 'Page 2', order: 2),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -421,14 +512,17 @@ void main() {
     group('start index', () {
       test('should start on system view for homeMode=auto', () {
         final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+          spaceId: _roomUuid,
           homeMode: HomeMode.autoSpace,
+        );
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1'),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -439,16 +533,19 @@ void main() {
 
       test('should start on explicit page for homeMode=explicit', () {
         final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+          spaceId: _roomUuid,
           homeMode: HomeMode.explicit,
           homePageId: _uuid2,
+        );
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1', order: 1),
           TestPageView(id: _uuid2, title: 'Page 2', order: 2),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -459,15 +556,18 @@ void main() {
 
       test('should fallback to system view when explicit page not found', () {
         final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+          spaceId: _roomUuid,
           homeMode: HomeMode.explicit,
           homePageId: 'nonexistent-page',
+        );
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1'),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -479,15 +579,18 @@ void main() {
 
       test('should fallback when explicit mode but no homePageId', () {
         final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+          spaceId: _roomUuid,
           homeMode: HomeMode.explicit,
           homePageId: null,
+        );
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1'),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -498,17 +601,20 @@ void main() {
 
       test('should use resolvedHomePageId when homePageId is null', () {
         final display = createTestDisplay(
-          role: DisplayRole.room,
-          roomId: 'room-1',
+          spaceId: _roomUuid,
           homeMode: HomeMode.explicit,
           homePageId: null,
           resolvedHomePageId: _uuid1,
+        );
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
         );
         final pages = [
           TestPageView(id: _uuid1, title: 'Page 1', order: 1),
           TestPageView(id: _uuid2, title: 'Page 2', order: 2),
         ];
-        final input = DeckBuildInput(display: display, pages: pages);
+        final input = DeckBuildInput(display: display, space: space, pages: pages);
 
         final result = buildDeck(input);
 
@@ -543,12 +649,16 @@ void main() {
     });
 
     test('dashboardPages should return only page items', () {
-      final display = createTestDisplay(role: DisplayRole.room, roomId: 'room-1');
+      final display = createTestDisplay(spaceId: _roomUuid);
+      final space = createMockSpace(
+        id: _roomUuid,
+        type: SpacesModuleDataSpaceType.room,
+      );
       final pages = [
         TestPageView(id: _uuid1, title: 'Page 1'),
         TestPageView(id: _uuid2, title: 'Page 2'),
       ];
-      final input = DeckBuildInput(display: display, pages: pages);
+      final input = DeckBuildInput(display: display, space: space, pages: pages);
       final deck = buildDeck(input);
 
       final dashboardPages = deck.dashboardPages;
@@ -559,8 +669,12 @@ void main() {
     });
 
     test('systemView should return first item when it is SystemViewItem', () {
-      final display = createTestDisplay(role: DisplayRole.room, roomId: 'room-1');
-      final input = DeckBuildInput(display: display, pages: []);
+      final display = createTestDisplay(spaceId: _roomUuid);
+      final space = createMockSpace(
+        id: _roomUuid,
+        type: SpacesModuleDataSpaceType.room,
+      );
+      final input = DeckBuildInput(display: display, space: space, pages: []);
       final deck = buildDeck(input);
 
       expect(deck.systemView, isNotNull);
@@ -568,15 +682,17 @@ void main() {
     });
 
     test('domainViews should return only DomainViewItem items', () {
-      final display = createTestDisplay(
-        role: DisplayRole.room,
-        roomId: 'room-1',
+      final display = createTestDisplay(spaceId: _roomUuid);
+      final space = createMockSpace(
+        id: _roomUuid,
+        type: SpacesModuleDataSpaceType.room,
       );
       final pages = [
         TestPageView(id: _uuid1, title: 'Page 1'),
       ];
       final input = DeckBuildInput(
         display: display,
+        space: space,
         pages: pages,
         deviceCategories: [
           DevicesModuleDeviceCategory.lighting,
@@ -595,8 +711,12 @@ void main() {
     });
 
     test('domainViews should return empty list when no domain views', () {
-      final display = createTestDisplay(role: DisplayRole.master);
-      final input = DeckBuildInput(display: display, pages: []);
+      final display = createTestDisplay(spaceId: _masterUuid);
+      final space = createMockSpace(
+        id: _masterUuid,
+        type: SpacesModuleDataSpaceType.master,
+      );
+      final input = DeckBuildInput(display: display, space: space, pages: []);
       final deck = buildDeck(input);
 
       expect(deck.domainViews, isEmpty);

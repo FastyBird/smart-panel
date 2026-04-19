@@ -43,70 +43,18 @@
 						/>
 					</el-form-item>
 
+					<!-- Space Assignment -->
 					<el-form-item
-						:label="t('displaysModule.fields.displays.role.title')"
-						:prop="['role']"
-					>
-						<el-select
-							v-model="model.role"
-							name="role"
-							@change="onRoleChange"
-						>
-							<el-option
-								value="room"
-								:label="t('displaysModule.fields.displays.role.options.room')"
-							/>
-							<el-option
-								value="master"
-								:label="t('displaysModule.fields.displays.role.options.master')"
-								disabled
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ t('displaysModule.fields.displays.role.options.master') }}</span>
-									<el-tag
-										size="small"
-										type="info"
-										class="ml-2"
-									>
-										{{ t('displaysModule.fields.displays.role.comingSoon') }}
-									</el-tag>
-								</div>
-							</el-option>
-							<el-option
-								value="entry"
-								:label="t('displaysModule.fields.displays.role.options.entry')"
-								disabled
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ t('displaysModule.fields.displays.role.options.entry') }}</span>
-									<el-tag
-										size="small"
-										type="info"
-										class="ml-2"
-									>
-										{{ t('displaysModule.fields.displays.role.comingSoon') }}
-									</el-tag>
-								</div>
-							</el-option>
-						</el-select>
-						<div class="text-gray-500 text-sm mt-1">
-							{{ t('displaysModule.fields.displays.role.description') }}
-						</div>
-					</el-form-item>
-
-					<!-- Room Assignment (only for role=room) -->
-					<el-form-item
-						v-if="model.role === 'room'"
-						:label="t('displaysModule.fields.displays.roomId.title')"
-						:prop="['roomId']"
+						:label="t('displaysModule.fields.displays.spaceId.title')"
+						:prop="['spaceId']"
 					>
 						<space-select
-							v-model="model.roomId"
-							:placeholder="t('displaysModule.fields.displays.roomId.placeholder')"
-							filter="room"
+							v-model="model.spaceId"
+							:placeholder="t('displaysModule.fields.displays.spaceId.placeholder')"
+							filter="all"
 						/>
 						<div class="text-gray-500 text-sm mt-1">
-							{{ t('displaysModule.fields.displays.roomId.description') }}
+							{{ t('displaysModule.fields.displays.spaceId.description') }}
 						</div>
 					</el-form-item>
 				</div>
@@ -170,16 +118,16 @@
 						</div>
 					</el-form-item>
 
-					<!-- Helper text for auto mode when role=room -->
+					<!-- Helper text for auto_space mode -->
 					<el-alert
-						v-if="model.homeMode === 'auto_space' && model.role === 'room'"
+						v-if="model.homeMode === 'auto_space' && model.spaceId"
 						type="info"
 						:closable="false"
 						show-icon
 					>
 						<template #title>
 							<!-- eslint-disable-next-line vue/no-v-html -- trusted i18n string -->
-							<span v-html="t('displaysModule.edit.sections.homePage.autoRoomHint')" />
+							<span v-html="t('displaysModule.edit.sections.homePage.autoSpaceHint')" />
 						</template>
 					</el-alert>
 				</div>
@@ -747,13 +695,6 @@ const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ 
 // Collapse state - only General open by default
 const activeCollapses = ref<string[]>(['general']);
 
-// Handle role change - clear roomId if switching away from room role
-const onRoleChange = (newRole: string): void => {
-	if (newRole !== 'room') {
-		model.roomId = null;
-	}
-};
-
 // Handle homeMode change - clear homePageId if switching away from explicit
 const onHomeModeChange = (newMode: string): void => {
 	if (newMode !== 'explicit') {
@@ -763,13 +704,6 @@ const onHomeModeChange = (newMode: string): void => {
 
 const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],
-	roomId: [
-		{
-			required: model.role === 'room',
-			message: t('displaysModule.fields.displays.roomId.validation.required'),
-			trigger: 'blur',
-		},
-	],
 	unitSize: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.unitSize.validation.min'), trigger: 'blur' }],
 	rows: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.rows.validation.min'), trigger: 'blur' }],
 	cols: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.cols.validation.min'), trigger: 'blur' }],

@@ -81,12 +81,12 @@ describe('SpacesController', () => {
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
 		name: 'Living Room Panel',
-		roomId: mockSpace.id,
+		spaceId: mockSpace.id,
 		numberFormat: null,
 		weatherLocationId: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-	} as DisplayEntity;
+	} as unknown as DisplayEntity;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({

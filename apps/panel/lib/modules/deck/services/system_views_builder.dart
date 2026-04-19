@@ -1,16 +1,23 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_domain_classifier.dart';
 
 /// Input for building system views.
+///
+/// Phase 5: drops the previous `DisplayRole`/`roomId` inputs in favor of a
+/// single `space` parameter. The space's type (contributed by a plugin via
+/// `spaceViewBuilders`) decides which builder runs.
 class SystemViewsBuildInput {
   /// The display configuration.
   final DisplayModel display;
 
-  /// Device categories for the room (for ROOM role only).
+  /// The space this display is assigned to (or null if unassigned).
+  final SpaceView? space;
+
+  /// Device categories for the room (for ROOM space type only).
   /// Used to determine which domain views to create.
   final List<DevicesModuleDeviceCategory> deviceCategories;
 
@@ -41,6 +48,7 @@ class SystemViewsBuildInput {
 
   const SystemViewsBuildInput({
     required this.display,
+    this.space,
     this.deviceCategories = const [],
     this.energyDeviceCount = 0,
     this.sensorReadingsCount = 0,
@@ -77,128 +85,45 @@ class SystemViewsResult {
     required this.indexByViewKey,
     this.domainCounts,
   });
+
+  /// Empty result used when no builder is registered for a space type or
+  /// the display is unassigned.
+  static const SystemViewsResult empty = SystemViewsResult(
+    items: [],
+    indexByViewKey: {},
+    domainCounts: null,
+  );
 }
 
-/// Builds system views based on display role.
+/// Contract a space-type plugin implements to contribute system views.
 ///
-/// This is a pure function - same input always produces same output.
+/// A builder is selected by [SpaceModel.type] — see [spaceViewBuilders].
+abstract class SpaceViewBuilder {
+  SystemViewsResult build(SystemViewsBuildInput input);
+}
+
+/// Registry of [SpaceViewBuilder]s keyed by the space-type discriminator
+/// string (matching the backend's `SpaceType` enum values). Each panel
+/// plugin fills in its entry during plugin registration
+/// (see `apps/panel/lib/plugins/spaces-*/mapper.dart`).
+final Map<SpacesModuleDataSpaceType, SpaceViewBuilder> spaceViewBuilders = {};
+
+/// Builds system views by dispatching to the space-type plugin registered
+/// for `input.space?.type`.
 ///
-/// For ROOM role:
-/// - Creates RoomOverview as first item
-/// - Creates domain views (lights, climate, media, sensors) for domains with count > 0
-///
-/// For MASTER role:
-/// - Creates MasterOverview only
-///
-/// For ENTRY role:
-/// - Creates EntryOverview only
+/// Returns an empty result if no space is assigned or no builder is
+/// registered for the space's type — the deck builder handles that as a
+/// config state (no system view, start on first page).
 SystemViewsResult buildSystemViews(SystemViewsBuildInput input) {
-  final display = input.display;
-  final role = display.role;
-  final roomId = display.roomId;
-
-  final List<DeckItem> items = [];
-  final Map<String, int> indexByViewKey = {};
-
-  switch (role) {
-    case DisplayRole.room:
-      // Room role requires roomId
-      if (roomId == null || roomId.isEmpty) {
-        // Return empty result - deck builder should handle this as config error
-        return const SystemViewsResult(
-          items: [],
-          indexByViewKey: {},
-          domainCounts: null,
-        );
-      }
-
-      // Build domain counts
-      final domainCounts = buildDomainCounts(
-        input.deviceCategories,
-        energyDeviceCount: input.energyDeviceCount,
-        sensorReadingsCount: input.sensorReadingsCount,
-        lightTargetsCount: input.lightTargetsCount,
-        climateTargetsCount: input.climateTargetsCount,
-        coversTargetsCount: input.coversTargetsCount,
-        mediaBindingsCount: input.mediaBindingsCount,
-      );
-
-      // 1. Add room overview
-      final roomOverview = SystemViewItem(
-        id: SystemViewItem.generateId(SystemViewType.room, roomId),
-        viewType: SystemViewType.room,
-        roomId: roomId,
-        title: input.roomViewTitle,
-      );
-      items.add(roomOverview);
-      indexByViewKey['room-overview:$roomId'] = 0;
-
-      // 2. Add domain views for present domains
-      for (final domain in domainCounts.presentDomains) {
-        final domainView = DomainViewItem(
-          id: DomainViewItem.generateId(domain, roomId),
-          domainType: domain,
-          roomId: roomId,
-          title: _getDomainTitle(domain, input),
-          deviceCount: domainCounts.getCount(domain),
-        );
-        indexByViewKey['domain:$roomId:${domain.name}'] = items.length;
-        items.add(domainView);
-      }
-
-      return SystemViewsResult(
-        items: items,
-        indexByViewKey: indexByViewKey,
-        domainCounts: domainCounts,
-      );
-
-    case DisplayRole.master:
-      final masterOverview = SystemViewItem(
-        id: SystemViewItem.generateId(SystemViewType.master),
-        viewType: SystemViewType.master,
-        roomId: null,
-        title: input.masterViewTitle,
-      );
-      items.add(masterOverview);
-      indexByViewKey['master-overview'] = 0;
-
-      return SystemViewsResult(
-        items: items,
-        indexByViewKey: indexByViewKey,
-        domainCounts: null,
-      );
-
-    case DisplayRole.entry:
-      final entryOverview = SystemViewItem(
-        id: SystemViewItem.generateId(SystemViewType.entry),
-        viewType: SystemViewType.entry,
-        roomId: null,
-        title: input.entryViewTitle,
-      );
-      items.add(entryOverview);
-      indexByViewKey['entry-overview'] = 0;
-
-      return SystemViewsResult(
-        items: items,
-        indexByViewKey: indexByViewKey,
-        domainCounts: null,
-      );
+  final space = input.space;
+  if (space == null) {
+    return SystemViewsResult.empty;
   }
-}
 
-String _getDomainTitle(DomainType domain, SystemViewsBuildInput input) {
-  switch (domain) {
-    case DomainType.lights:
-      return input.lightsViewTitle;
-    case DomainType.climate:
-      return input.climateViewTitle;
-    case DomainType.media:
-      return input.mediaViewTitle;
-    case DomainType.sensors:
-      return input.sensorsViewTitle;
-    case DomainType.shading:
-      return input.shadingViewTitle;
-    case DomainType.energy:
-      return input.energyViewTitle;
+  final builder = spaceViewBuilders[space.type];
+  if (builder == null) {
+    return SystemViewsResult.empty;
   }
+
+  return builder.build(input);
 }

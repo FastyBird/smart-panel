@@ -42,9 +42,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 	const model = reactive<IDisplayEditForm>({
 		id: display.id,
 		name: display.name,
-		role: display.role,
-		// Room assignment (only for role=room displays)
-		roomId: display.roomId,
+		// Space assignment (the space's type decides what the panel renders)
+		spaceId: display.spaceId,
 		unitSize: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
@@ -97,8 +96,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		try {
 			const updateData: {
 				name: string | null;
-				role: 'room' | 'master' | 'entry';
-				roomId: string | null;
+				spaceId: string | null;
 				unitSize?: number;
 				rows?: number;
 				cols?: number;
@@ -122,9 +120,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				weatherLocationId: string | null;
 			} = {
 				name: model.name || null,
-				role: model.role,
-				// Room assignment: clear if not room role
-				roomId: model.role === 'room' ? model.roomId : null,
+				spaceId: model.spaceId,
 				unitSize: model.unitSize,
 				rows: model.rows,
 				cols: model.cols,

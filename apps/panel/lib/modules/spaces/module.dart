@@ -142,9 +142,9 @@ class SpacesModuleService {
 
     // Refresh media activity data for the display's space
     try {
-      final displayRoomId = locator<DisplayRepository>().display?.roomId;
-      if (displayRoomId != null) {
-        await _mediaActivityRepository.fetchAllForSpace(displayRoomId);
+      final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
+      if (displaySpaceId != null) {
+        await _mediaActivityRepository.fetchAllForSpace(displaySpaceId);
       }
     } catch (_) {
       // DisplayRepository not available
@@ -333,12 +333,12 @@ class SpacesModuleService {
 
       // Only process suggestions for the space this display is assigned to
       try {
-        final displayRoomId = locator<DisplayRepository>().display?.roomId;
-        if (displayRoomId != null && displayRoomId != spaceId) {
+        final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
+        if (displaySpaceId != null && displaySpaceId != spaceId) {
           if (kDebugMode) {
             debugPrint(
               '[SPACES MODULE] Ignoring suggestion for space $spaceId '
-              '(display is assigned to $displayRoomId)',
+              '(display is assigned to $displaySpaceId)',
             );
           }
           return;
@@ -424,11 +424,11 @@ class SpacesModuleService {
       // our space.  When room_id is null the device was unassigned and
       // may have just LEFT our space, so we must also refresh.
       try {
-        final displayRoomId = locator<DisplayRepository>().display?.roomId;
-        if (displayRoomId != null) {
+        final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
+        if (displaySpaceId != null) {
           final roomId = payload['room_id'] as String?;
-          if (roomId == null || roomId == displayRoomId) {
-            _mediaActivityRepository.refreshEndpoints(displayRoomId);
+          if (roomId == null || roomId == displaySpaceId) {
+            _mediaActivityRepository.refreshEndpoints(displaySpaceId);
           }
         }
       } catch (_) {
@@ -438,9 +438,9 @@ class SpacesModuleService {
       // A device was removed — refresh endpoints for the display's space
       // since we don't know which space the device belonged to.
       try {
-        final displayRoomId = locator<DisplayRepository>().display?.roomId;
-        if (displayRoomId != null) {
-          _mediaActivityRepository.refreshEndpoints(displayRoomId);
+        final displaySpaceId = locator<DisplayRepository>().display?.spaceId;
+        if (displaySpaceId != null) {
+          _mediaActivityRepository.refreshEndpoints(displaySpaceId);
         }
       } catch (_) {
         // DisplayRepository not available

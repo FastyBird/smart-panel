@@ -4,16 +4,21 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 
 /// Input parameters for deck building.
 class DeckBuildInput {
   /// The display configuration.
   final DisplayModel display;
 
+  /// The space the display is assigned to (or null if unassigned). The
+  /// space's type decides which system-view builder runs.
+  final SpaceView? space;
+
   /// Available dashboard pages (already filtered for this display).
   final List<DashboardPageView> pages;
 
-  /// Device categories for the room (only needed for ROOM role).
+  /// Device categories for the room (only needed for ROOM space type).
   /// Used to determine which domain views to create.
   final List<DevicesModuleDeviceCategory> deviceCategories;
 
@@ -66,6 +71,7 @@ class DeckBuildInput {
 
   const DeckBuildInput({
     required this.display,
+    this.space,
     required this.pages,
     this.deviceCategories = const [],
     this.energyDeviceCount = 0,
@@ -107,6 +113,7 @@ DeckResult buildDeck(DeckBuildInput input) {
   // Build system views (includes domain views for ROOM role)
   final systemViewsInput = SystemViewsBuildInput(
     display: display,
+    space: input.space,
     deviceCategories: input.deviceCategories,
     energyDeviceCount: input.energyDeviceCount,
     sensorReadingsCount: input.sensorReadingsCount,
@@ -139,10 +146,10 @@ DeckResult buildDeck(DeckBuildInput input) {
   items.add(securityView);
 
   // Add standalone energy view (after security, before dashboard pages) if
-  // energy is supported. For ROOM displays that already have an energy
+  // energy is supported. For ROOM-space displays that already have an energy
   // domain view (energyDeviceCount > 0), skip it to avoid duplication.
-  final isRoomDisplay = display.role == DisplayRole.room;
-  final hasEnergyDomainView = isRoomDisplay && input.energyDeviceCount > 0;
+  final isRoomSpace = input.space?.isRoom ?? false;
+  final hasEnergyDomainView = isRoomSpace && input.energyDeviceCount > 0;
 
   if (input.energySupported && !hasEnergyDomainView) {
     final energyView = EnergyViewItem(
