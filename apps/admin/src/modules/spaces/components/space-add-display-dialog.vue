@@ -97,8 +97,8 @@
 
 			<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="150">
 				<template #default="{ row }">
-					<el-tag v-if="row.roomId" size="small" type="warning">
-						{{ getSpaceName(row.roomId) }}
+					<el-tag v-if="row.spaceId" size="small" type="warning">
+						{{ getSpaceName(row.spaceId) }}
 					</el-tag>
 					<span v-else class="text-gray-400 text-sm">-</span>
 				</template>
@@ -107,16 +107,16 @@
 			<el-table-column label="" width="150" align="right">
 				<template #default="{ row }">
 					<el-button
-						:type="row.roomId ? 'warning' : 'default'"
+						:type="row.spaceId ? 'warning' : 'default'"
 						plain
 						size="small"
 						:loading="assigningDisplayId === row.id"
 						@click="onAssignDisplay(row)"
 					>
 						<template #icon>
-							<icon :icon="row.roomId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
+							<icon :icon="row.spaceId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
 						</template>
-						{{ row.roomId ? t('spacesModule.detail.displays.reassign') : t('spacesModule.detail.displays.assign') }}
+						{{ row.spaceId ? t('spacesModule.detail.displays.reassign') : t('spacesModule.detail.displays.assign') }}
 					</el-button>
 				</template>
 			</el-table-column>
@@ -169,17 +169,10 @@ const {
 	reassignDisplay,
 } = useSpaceDisplays(computed(() => props.spaceId));
 
-// Get available displays (not assigned to current space, and only 'room' role displays)
+// Get available displays (not already assigned to the current space)
 const availableDisplays = computed(() => {
 	return allDisplays.value
-		.filter((display) => {
-			// Only show displays with 'room' role - master/entry displays shouldn't be assigned to rooms
-			if (display.role !== 'room') {
-				return false;
-			}
-			// Show displays that are not in the current space
-			return display.roomId !== props.spaceId;
-		})
+		.filter((display) => display.spaceId !== props.spaceId)
 		.sort((a, b) => {
 			const nameA = a.name || a.macAddress;
 			const nameB = b.name || b.macAddress;
