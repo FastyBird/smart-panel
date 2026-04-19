@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -29,7 +30,7 @@ class DeckService extends ChangeNotifier {
   /// The current display configuration.
   DisplayModel? _display;
 
-  /// Device categories for the current room (ROOM role only).
+  /// Device categories for the current room (ROOM space type only).
   List<DevicesModuleDeviceCategory> _deviceCategories = [];
 
   /// Number of devices with energy-related channels in the current room.
@@ -76,7 +77,7 @@ class DeckService extends ChangeNotifier {
   /// Returns the start item.
   DeckItem? get startItem => _deck?.startItem;
 
-  /// Returns device categories for the current room (ROOM role only).
+  /// Returns device categories for the current room (ROOM space type only).
   List<DevicesModuleDeviceCategory> get deviceCategories => _deviceCategories;
 
   /// Returns the number of devices with energy-related channels.
@@ -88,6 +89,16 @@ class DeckService extends ChangeNotifier {
   /// Returns true if device data is currently being loaded.
   bool get isLoadingDevices => _isLoadingDevices;
 
+  /// Returns the space the display is currently assigned to, or null if
+  /// the display has no space or the spaces service isn't available yet.
+  SpaceView? get _assignedSpace {
+    final spaceId = _display?.spaceId;
+    if (spaceId == null) return null;
+    return _spacesService?.getSpace(spaceId);
+  }
+
+  bool get _isAssignedToRoom => _assignedSpace?.isRoom ?? false;
+
   /// Initializes the deck with display settings.
   ///
   /// Call this during app hydration after display settings are loaded.
@@ -96,12 +107,21 @@ class DeckService extends ChangeNotifier {
 
     if (kDebugMode) {
       debugPrint(
-        '[DECK SERVICE] Initialize called. '
-        'role: ${display.role}, roomId: ${display.roomId}',
+        '[DECK SERVICE] Initialize called. spaceId: ${display.spaceId}',
       );
     }
 
-    // Build initial deck (may not have device categories yet for ROOM role)
+    // Listen for spaces changes (sensor roles assigned/removed, targets changed)
+    // — done BEFORE initial buildDeck so the assigned space (if already cached)
+    // can participate in the first render.
+    try {
+      if (locator.isRegistered<SpacesService>()) {
+        _spacesService = locator<SpacesService>();
+        _spacesService?.addListener(_onSpacesChanged);
+      }
+    } catch (_) {}
+
+    // Build initial deck
     if (_buildDeck()) {
       _isInitialized = true;
     }
@@ -113,14 +133,6 @@ class DeckService extends ChangeNotifier {
     // Listen for device changes (devices added/removed from space)
     _devicesService?.addListener(_onDevicesChanged);
 
-    // Listen for spaces changes (sensor roles assigned/removed, targets changed)
-    try {
-      if (locator.isRegistered<SpacesService>()) {
-        _spacesService = locator<SpacesService>();
-        _spacesService?.addListener(_onSpacesChanged);
-      }
-    } catch (_) {}
-
     // Listen for media activity changes (bindings added/removed)
     try {
       if (locator.isRegistered<MediaActivityService>()) {
@@ -129,19 +141,21 @@ class DeckService extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // For ROOM role, fetch device categories and prefetch domain data asynchronously
-    if (display.role == DisplayRole.room && display.roomId != null) {
+    // For displays assigned to a room, fetch device categories and prefetch
+    // domain data asynchronously. Non-room spaces don't have domain data; the
+    // plugin that owns the space type handles its own prefetch if needed.
+    final spaceId = display.spaceId;
+    if (spaceId != null && _isAssignedToRoom) {
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
+          '[DECK SERVICE] Will fetch devices for spaceId: $spaceId',
         );
       }
-      _fetchDeviceCategoriesAsync(display.roomId!);
-      _prefetchDomainData(display.roomId!);
+      _fetchDeviceCategoriesAsync(spaceId);
+      _prefetchDomainData(spaceId);
     } else if (kDebugMode) {
       debugPrint(
-        '[DECK SERVICE] NOT fetching devices. '
-        'role: ${display.role}, roomId: ${display.roomId}',
+        '[DECK SERVICE] NOT fetching domain data. spaceId: $spaceId',
       );
     }
   }
@@ -163,7 +177,7 @@ class DeckService extends ChangeNotifier {
 
     try {
       if (kDebugMode) {
-        debugPrint('[DECK SERVICE] Fetching devices for roomId: $roomId');
+        debugPrint('[DECK SERVICE] Fetching devices for spaceId: $roomId');
       }
 
       // Get devices for the room from DevicesService
@@ -171,11 +185,11 @@ class DeckService extends ChangeNotifier {
 
       // Verify the room hasn't changed during the operation
       // to avoid race conditions when switching rooms quickly
-      if (_display?.roomId != roomId) {
+      if (_display?.spaceId != roomId) {
         if (kDebugMode) {
           debugPrint(
-            '[DECK SERVICE] Room changed during fetch '
-            '(was: $roomId, now: ${_display?.roomId}), discarding result',
+            '[DECK SERVICE] Space changed during fetch '
+            '(was: $roomId, now: ${_display?.spaceId}), discarding result',
           );
         }
         return;
@@ -198,7 +212,7 @@ class DeckService extends ChangeNotifier {
       try {
         if (locator.isRegistered<SpacesService>()) {
           final sensorState = await locator<SpacesService>().fetchSensorState(roomId);
-          if (_display?.roomId == roomId) {
+          if (_display?.spaceId == roomId) {
             _sensorReadingsCount = sensorState?.totalSensors ?? 0;
           }
         }
@@ -248,10 +262,10 @@ class DeckService extends ChangeNotifier {
   /// Re-reads device categories and energy device count from cache.
   /// Only rebuilds the deck if domain-relevant data actually changed.
   void _onDevicesChanged() {
-    final roomId = _display?.roomId;
-    if (roomId == null || _display?.role != DisplayRole.room) return;
+    final spaceId = _display?.spaceId;
+    if (spaceId == null || !_isAssignedToRoom) return;
 
-    final devices = _devicesService?.getDevicesForRoom(roomId) ?? [];
+    final devices = _devicesService?.getDevicesForRoom(spaceId) ?? [];
     final newCategories = devices.map((d) => d.category).toList();
     final newEnergyCount = countEnergyDevices(devices);
 
@@ -280,15 +294,15 @@ class DeckService extends ChangeNotifier {
   ///
   /// Re-reads cached sensor state and target counts. Only rebuilds if changed.
   void _onSpacesChanged() {
-    final roomId = _display?.roomId;
-    if (roomId == null || _display?.role != DisplayRole.room) return;
+    final spaceId = _display?.spaceId;
+    if (spaceId == null || !_isAssignedToRoom) return;
 
-    final sensorState = _spacesService?.getSensorState(roomId);
+    final sensorState = _spacesService?.getSensorState(spaceId);
     final newSensorCount = sensorState?.totalSensors ?? 0;
 
-    final newLightTargets = _countConfiguredLights(roomId);
-    final newClimateTargets = _countConfiguredClimate(roomId);
-    final newCoversTargets = _countConfiguredCovers(roomId);
+    final newLightTargets = _countConfiguredLights(spaceId);
+    final newClimateTargets = _countConfiguredClimate(spaceId);
+    final newCoversTargets = _countConfiguredCovers(spaceId);
 
     final changed = newSensorCount != _sensorReadingsCount ||
         newLightTargets != _lightTargetsCount ||
@@ -319,10 +333,10 @@ class DeckService extends ChangeNotifier {
   ///
   /// Re-reads cached bindings count. Only rebuilds if changed.
   void _onMediaChanged() {
-    final roomId = _display?.roomId;
-    if (roomId == null || _display?.role != DisplayRole.room) return;
+    final spaceId = _display?.spaceId;
+    if (spaceId == null || !_isAssignedToRoom) return;
 
-    final newMediaBindings = _mediaService?.getBindings(roomId).length;
+    final newMediaBindings = _mediaService?.getBindings(spaceId).length;
 
     if (newMediaBindings != _mediaBindingsCount) {
       _mediaBindingsCount = newMediaBindings;
@@ -378,6 +392,7 @@ class DeckService extends ChangeNotifier {
     // Build the deck
     final input = DeckBuildInput(
       display: _display!,
+      space: _assignedSpace,
       pages: pages,
       deviceCategories: _deviceCategories,
       energyDeviceCount: _energyDeviceCount,
@@ -421,13 +436,12 @@ class DeckService extends ChangeNotifier {
 
   /// Updates the display settings and rebuilds the deck.
   void updateDisplay(DisplayModel display) {
-    final oldRoomId = _display?.roomId;
+    final oldSpaceId = _display?.spaceId;
     _display = display;
 
-    // If room changed, reset device categories and config counts, then refetch
-    if (display.role == DisplayRole.room &&
-        display.roomId != null &&
-        display.roomId != oldRoomId) {
+    final spaceId = display.spaceId;
+    // If space changed to a room, reset device categories and config counts, then refetch
+    if (spaceId != null && spaceId != oldSpaceId && _isAssignedToRoom) {
       _deviceCategories = [];
       _energyDeviceCount = 0;
       _sensorReadingsCount = 0;
@@ -436,8 +450,8 @@ class DeckService extends ChangeNotifier {
       _coversTargetsCount = null;
       _mediaBindingsCount = null;
       _buildDeck();
-      _fetchDeviceCategoriesAsync(display.roomId!);
-      _prefetchDomainData(display.roomId!);
+      _fetchDeviceCategoriesAsync(spaceId);
+      _prefetchDomainData(spaceId);
     } else {
       _buildDeck();
     }
@@ -456,8 +470,8 @@ class DeckService extends ChangeNotifier {
   ///
   /// Returns the index to navigate to, or -1 if not found.
   int getDomainViewIndex(DomainType domain) {
-    if (_display == null || _display!.roomId == null) return -1;
-    final viewKey = 'domain:${_display!.roomId}:${domain.name}';
+    if (_display == null || _display!.spaceId == null) return -1;
+    final viewKey = 'domain:${_display!.spaceId}:${domain.name}';
     return getIndexByViewKey(viewKey);
   }
 
@@ -534,7 +548,7 @@ class DeckService extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Prefetching domain data for roomId: $roomId',
+          '[DECK SERVICE] Prefetching domain data for spaceId: $roomId',
         );
       }
 
@@ -619,7 +633,7 @@ class DeckService extends ChangeNotifier {
       Future.wait(futures).then((_) {
         if (kDebugMode) {
           debugPrint(
-            '[DECK SERVICE] Domain data prefetch complete for roomId: $roomId',
+            '[DECK SERVICE] Domain data prefetch complete for spaceId: $roomId',
           );
         }
 
@@ -627,7 +641,7 @@ class DeckService extends ChangeNotifier {
         // SpacesService uses comparison-based notifications — if the cache was
         // empty before fetch and empty after (unconfigured room), it won't
         // notify listeners. So we must proactively read the counts here.
-        if (_display?.roomId != roomId) return;
+        if (_display?.spaceId != roomId) return;
 
         final newLightTargets = _countConfiguredLights(roomId);
         final newClimateTargets = _countConfiguredClimate(roomId);

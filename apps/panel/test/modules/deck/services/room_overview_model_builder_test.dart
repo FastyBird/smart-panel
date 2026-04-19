@@ -15,7 +15,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 // Helper to create a display with minimum required fields
 DisplayModel createDisplay({
-  String? roomId = 'room-1',
+  String? spaceId = _roomUuid,
 }) {
   return DisplayModel(
     id: 'display-1',
@@ -37,8 +37,7 @@ DisplayModel createDisplay({
     speakerVolume: 50,
     microphone: true,
     microphoneVolume: 50,
-    role: DisplayRole.room,
-    roomId: roomId,
+    spaceId: spaceId,
     createdAt: DateTime(2024, 1, 1),
   );
 }
@@ -184,7 +183,7 @@ void main() {
     group('domain cards', () {
       test('should create domain cards for present domains', () {
         final input = RoomOverviewBuildInput(
-          display: createDisplay(roomId: 'room-1'),
+          display: createDisplay(spaceId: _roomUuid),
           room: createRoom(),
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -220,7 +219,7 @@ void main() {
 
       test('should create cards for multiple domains with correct counts', () {
         final input = RoomOverviewBuildInput(
-          display: createDisplay(roomId: 'room-1'),
+          display: createDisplay(spaceId: _roomUuid),
           room: createRoom(),
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,

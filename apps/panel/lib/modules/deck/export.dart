@@ -49,8 +49,8 @@ export 'package:fastybird_smart_panel/modules/deck/mappers/system_view.dart';
 
 // Presentation
 export 'package:fastybird_smart_panel/modules/deck/presentation/deck.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/entry_overview.dart';
-export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/master_overview.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-synthetic-entry/presentation/system_pages/entry_overview.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-synthetic-master/presentation/system_pages/master_overview.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/climate_domain_view.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/media_domain_view.dart';
