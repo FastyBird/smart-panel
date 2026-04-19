@@ -121,6 +121,14 @@ export class SpacesService {
 			throw new SpacesValidationException('Category is required for zones.');
 		}
 
+		// Validate that the category matches the space type (blocks e.g. creating a
+		// ROOM with a zone category, or a MASTER/ENTRY singleton with any category).
+		// `update()` has this check; `create()` was missing it.
+		if (category !== null && !isValidCategoryForType(category, type)) {
+			this.logger.error(`Category '${category}' is not valid for type '${type}'`);
+			throw new SpacesValidationException(`Category '${category}' is not valid for space type '${type}'.`);
+		}
+
 		// Validate parent assignment
 		await this.validateParentAssignment(type, dtoInstance.parent_id ?? null);
 
@@ -221,6 +229,28 @@ export class SpacesService {
 		// re-introduced) would let Object.assign shadow the getter and make this
 		// comparison silently return `false`, skipping the raw discriminator update.
 		const typeChanged = effectiveType !== space.type;
+
+		// Singleton space types (master, entry, future plugin-contributed singletons)
+		// must not be reachable via a type change in either direction — flipping a
+		// room into a master would violate the "exactly one per install" invariant
+		// the seeders and reset handlers depend on, and flipping an existing singleton
+		// away would destroy it outright. The only supported lifecycle for a singleton
+		// is: seeder creates once, admin edits in place.
+		if (typeChanged) {
+			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
+			if (oldMapping.singleton) {
+				this.logger.error(`Cannot change type away from singleton '${space.type}' (space id=${id})`);
+				throw new SpacesValidationException(
+					`Space type '${space.type}' is a singleton and cannot be converted to another type.`,
+				);
+			}
+			if (mapping.singleton) {
+				this.logger.error(`Cannot change type to singleton '${effectiveType}' (space id=${id})`);
+				throw new SpacesValidationException(
+					`Space type '${effectiveType}' is a singleton and cannot be assigned via a type change. The singleton is created by its seeder.`,
+				);
+			}
+		}
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =

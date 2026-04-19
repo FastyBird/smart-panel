@@ -510,6 +510,18 @@ describe('SpacesService', () => {
 				}),
 			).rejects.toThrow(SpacesValidationException);
 		});
+
+		it('should reject creating a ROOM with a zone category', async () => {
+			spaceRepository.find.mockResolvedValue([]);
+
+			await expect(
+				service.create({
+					name: 'Oddly-shaped room',
+					type: SpaceType.ROOM,
+					category: SpaceZoneCategory.FLOOR_GROUND, // zone category on room
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
 	});
 
 	describe('update - type/category validation', () => {
@@ -614,6 +626,33 @@ describe('SpacesService', () => {
 
 			// Zones require a category, so this should fail
 			await expect(service.update(spaceWithNullCategory.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject changing a room into a singleton type', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+			await expect(
+				service.update(existingRoomSpace.id, {
+					type: 'master' as SpaceType,
+					category: null,
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject changing a singleton type into a room', async () => {
+			const existingMaster = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Home',
+				type: 'master' as SpaceType,
+				category: null,
+			} as unknown as SpaceEntity;
+			spaceRepository.findOne.mockResolvedValue(existingMaster);
+			await expect(
+				service.update(existingMaster.id, {
+					type: SpaceType.ROOM,
+					category: SpaceRoomCategory.LIVING_ROOM,
+				}),
+			).rejects.toThrow(SpacesValidationException);
 		});
 
 		it('should accept changing type to ZONE when category is provided', async () => {
