@@ -1,0 +1,63 @@
+{
+	"plugin": {
+		"name": "Informations-Signage",
+		"description": "Nur-Lese-Vollbild-Signage mit Uhr, Wetter, Ankündigungen und optionalem externen Feed."
+	},
+	"spaceType": {
+		"label": "Informationspanel (Signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Layout",
+			"options": {
+				"clock_weather": "Uhr + Wetter",
+				"clock_weather_announcements": "Uhr + Wetter + Ankündigungen",
+				"full": "Vollständig (alle Bereiche)"
+			}
+		},
+		"sections": {
+			"title": "Bereiche",
+			"description": "Einzelne Bereiche des Panels aktivieren oder deaktivieren.",
+			"showClock": "Uhr",
+			"showWeather": "Wetter",
+			"showAnnouncements": "Ankündigungen",
+			"showFeed": "Externer Feed"
+		},
+		"weatherLocation": {
+			"label": "Wetterstandort",
+			"placeholder": "Wetterstandort auswählen"
+		},
+		"feedUrl": {
+			"label": "Feed-URL",
+			"placeholder": "https://…"
+		}
+	},
+	"announcements": {
+		"heading": "Ankündigungen",
+		"empty": "Noch keine Ankündigungen. Unten hinzufügen.",
+		"add": "Ankündigung hinzufügen",
+		"fields": {
+			"title": "Titel",
+			"body": "Inhalt",
+			"icon": "Symbol",
+			"priority": "Priorität",
+			"order": "Reihenfolge",
+			"activeFrom": "Aktiv ab",
+			"activeUntil": "Aktiv bis"
+		},
+		"actions": {
+			"save": "Speichern",
+			"edit": "Bearbeiten",
+			"delete": "Löschen",
+			"cancel": "Abbrechen"
+		},
+		"messages": {
+			"created": "Ankündigung erstellt.",
+			"updated": "Ankündigung aktualisiert.",
+			"deleted": "Ankündigung gelöscht.",
+			"saveFailed": "Ankündigung konnte nicht gespeichert werden.",
+			"deleteFailed": "Ankündigung konnte nicht gelöscht werden.",
+			"confirmDelete": "Diese Ankündigung löschen?"
+		}
+	}
+}

@@ -11,4 +11,9 @@ enum SystemViewType {
 
   /// Entry overview: shows house modes, security status, and quick actions.
   entry,
+
+  /// Information-panel signage: read-only, full-screen surface composed of
+  /// clock, weather, announcements, and optional external feed sections.
+  /// Contributed by the `spaces-signage-info-panel` plugin.
+  signageInfoPanel,
 }

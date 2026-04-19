@@ -42,6 +42,7 @@ export enum SpaceType {
 	ZONE = 'zone',
 	MASTER = 'master',
 	ENTRY = 'entry',
+	SIGNAGE_INFO_PANEL = 'signage_info_panel',
 }
 
 /**
