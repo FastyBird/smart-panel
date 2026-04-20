@@ -200,10 +200,7 @@ import { SignageInfoPanelLayout } from '../spaces-signage-info-panel.constants';
 type SignageInfoPanelUpdateBody = components['schemas']['SpacesSignageInfoPanelPluginUpdateSignageInfoPanelSpace'];
 
 import AnnouncementsSection from './announcements-section.vue';
-import {
-	type ISignageInfoPanelSpaceEditFormProps,
-	signageInfoPanelSpaceEditFormEmits,
-} from './signage-info-panel-space-edit-form.types';
+import type { ISignageInfoPanelSpaceEditFormProps } from './signage-info-panel-space-edit-form.types';
 
 const props = withDefaults(defineProps<ISignageInfoPanelSpaceEditFormProps>(), {
 	hideActions: false,
@@ -431,7 +428,4 @@ onBeforeMount(async () => {
 defineExpose({
 	submit: onSubmit,
 });
-
-// Keep emit declaration visible to the runtime emits contract.
-void signageInfoPanelSpaceEditFormEmits;
 </script>
