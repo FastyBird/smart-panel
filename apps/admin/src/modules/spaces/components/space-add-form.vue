@@ -243,7 +243,13 @@ const {
 watch(
 	(): typeof props.type => props.type,
 	(newType): void => {
-		if (newType) {
+		// `model.type` is narrowed to `ROOM | ZONE` by the internal add-form
+		// schema. The prop, by design, is the full `SpaceType` union to match
+		// the dispatch-boundary contract — any plugin-contributed type other
+		// than ROOM / ZONE here would indicate a misconfigured picker (this
+		// component is only registered under home-control's room / zone
+		// elements). Runtime-guard defensively rather than silently assigning.
+		if (newType === SpaceType.ROOM || newType === SpaceType.ZONE) {
 			model.type = newType;
 		}
 	},

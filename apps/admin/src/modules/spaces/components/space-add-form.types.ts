@@ -8,11 +8,13 @@ export interface ISpaceAddFormProps {
 	 * dashboard-style plugin-picker flow where the parent view chooses the
 	 * type before dispatching the plugin's `spaceAddForm` component.
 	 *
-	 * Narrowed to ROOM/ZONE because the generic add form validates against
-	 * the Room/Zone add-form schema. Plugin-contributed types (signage,
-	 * master, entry) register their own `spaceAddForm` component.
+	 * Declared as the full `SpaceType` union because this is the dispatch
+	 * boundary — the view passes whatever the picker produced. Internally,
+	 * this form only wires up ROOM / ZONE; the home-control plugin
+	 * registers it only against those element types, so any other value
+	 * here would indicate a bug in the picker's filter.
 	 */
-	type?: SpaceType.ROOM | SpaceType.ZONE;
+	type?: SpaceType;
 	hideActions?: boolean;
 }
 

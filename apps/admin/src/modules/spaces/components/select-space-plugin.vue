@@ -78,6 +78,18 @@ const element = computed<IPluginElement<ISpacePluginsComponents, ISpacePluginsSc
 	return (plugin.value?.elements ?? []).find((element) => element.type === selectedType.value);
 });
 
+// Keep the local ref in sync with parent-driven changes (v-model contract).
+// Without this a parent reset — e.g. clearing the picker after save — would
+// be invisible in the dropdown.
+watch(
+	(): IPluginElement['type'] | undefined => props.modelValue,
+	(val: IPluginElement['type'] | undefined): void => {
+		if (val !== selectedType.value) {
+			selectedType.value = val;
+		}
+	},
+);
+
 watch(
 	(): IPluginElement['type'] | undefined => selectedType.value,
 	(val: IPluginElement['type'] | undefined) => {

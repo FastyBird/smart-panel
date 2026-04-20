@@ -182,14 +182,13 @@ const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
 
 const element = computed(() => (selectedType.value ? getElement(selectedType.value) : undefined));
 
-// The generic Room/Zone add form (home-control's `spaceAddForm`) declares
-// its `type` prop narrowed to `SpaceType.ROOM | SpaceType.ZONE`. Cast the
-// picker's dynamically-selected plugin type to that union at the dispatch
-// boundary — the picker itself only surfaces types whose plugin registers
-// a `spaceAddForm`, so at runtime this stays within the contributing
-// plugin's accepted values.
-const addFormType = computed<SpaceType.ROOM | SpaceType.ZONE | undefined>(
-	() => selectedType.value as SpaceType.ROOM | SpaceType.ZONE | undefined,
+// Pass the picker's raw value through as a plain `SpaceType | undefined`.
+// Each plugin's `spaceAddForm` component declares its own narrower prop
+// shape (home-control: ROOM | ZONE; signage / future plugins: their own
+// types) and the dispatched `<component :is>` receives whichever value
+// the user actually picked — no artificial narrowing here.
+const addFormType = computed<SpaceType | undefined>(
+	() => selectedType.value as SpaceType | undefined,
 );
 
 // The dispatched add form exposes a `submit()` method — mirrors the edit-view
