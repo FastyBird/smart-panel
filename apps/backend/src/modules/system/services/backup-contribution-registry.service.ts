@@ -7,6 +7,11 @@ export type BackupContributionType = 'file' | 'directory';
  * at backup/restore time. The callback form is required for modules whose
  * paths are user-configurable (e.g. buddy personality) — registering the
  * default at module init would diverge from the live configured path.
+ *
+ * `exclude` is an optional list of top-level child names to skip when copying
+ * a directory contribution. Useful when a registered directory mixes user
+ * data with shipped artifacts that shouldn't ride along (e.g. seed files).
+ * Only meaningful for `type: 'directory'` contributions.
  */
 export interface BackupContributionRegistration {
 	source: string;
@@ -14,6 +19,7 @@ export interface BackupContributionRegistration {
 	type: BackupContributionType;
 	path: string | (() => string);
 	optional: boolean;
+	exclude?: readonly string[];
 }
 
 export interface BackupContribution {
@@ -22,6 +28,7 @@ export interface BackupContribution {
 	type: BackupContributionType;
 	path: string;
 	optional: boolean;
+	exclude?: readonly string[];
 }
 
 @Injectable()
@@ -58,6 +65,7 @@ export class BackupContributionRegistry {
 					type: contribution.type,
 					path,
 					optional: contribution.optional,
+					exclude: contribution.exclude,
 				});
 			} catch (error) {
 				// Isolate per-contribution resolution so one broken callback (e.g. an

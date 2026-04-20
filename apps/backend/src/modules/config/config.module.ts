@@ -60,7 +60,10 @@ export class ConfigModule implements OnModuleInit {
 			500,
 		);
 
-		// Register backup contribution for config directory
+		// Register backup contribution for config directory. Exclude the seed
+		// subdirectory — those are factory JSONs shipped with the app, not user data;
+		// backing them up would bloat the archive and restoring would clobber the
+		// live seed set any new install depends on.
 		this.backupRegistry.register({
 			source: CONFIG_MODULE_NAME,
 			label: 'Plugin & Module Configurations',
@@ -71,6 +74,7 @@ export class ConfigModule implements OnModuleInit {
 				path.resolve(__dirname, '../../../../../var/data'),
 			),
 			optional: false,
+			exclude: ['seed'],
 		});
 
 		for (const model of CONFIG_SWAGGER_EXTRA_MODELS) {

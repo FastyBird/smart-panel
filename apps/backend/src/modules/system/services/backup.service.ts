@@ -12,7 +12,7 @@ import {
 	statSync,
 	writeFileSync,
 } from 'fs';
-import { join, resolve } from 'path';
+import { join, relative, resolve, sep } from 'path';
 import { DataSource } from 'typeorm';
 import { promisify } from 'util';
 import { v4 as uuid } from 'uuid';
@@ -241,9 +241,23 @@ export class BackupService {
 					copyFileSync(contribution.path, join(contributionDir, fileName));
 				} else {
 					const dirName = (contribution.path.split('/').pop() || 'dir').replace(/[^a-zA-Z0-9._-]/g, '_');
+					const sourceRoot = contribution.path;
+					const excludeSet = new Set(contribution.exclude ?? []);
 
 					cpSync(contribution.path, join(contributionDir, dirName), {
 						recursive: true,
+						// Skip top-level entries named in the exclude list (e.g. shipped
+						// seed data that belongs to the app, not the user's backup)
+						filter: (src) => {
+							if (excludeSet.size === 0 || src === sourceRoot) {
+								return true;
+							}
+
+							const rel = relative(sourceRoot, src);
+							const firstSegment = rel.split(sep)[0];
+
+							return !excludeSet.has(firstSegment);
+						},
 					});
 				}
 
@@ -535,14 +549,35 @@ export class BackupService {
 					// Trust the registry's type (same as path): the currently installed system
 					// defines what this contribution should look like, not the untrusted archive
 					if (registration.type === 'directory') {
-						// Remove the existing target before copying so files created after the
-						// backup are cleared — cpSync merges rather than replacing, which would
-						// otherwise leave stale state that can conflict with the restored DB
-						if (existsSync(targetPath)) {
-							rmSync(targetPath, { recursive: true, force: true });
-						}
+						const excludeSet = new Set(registration.exclude ?? []);
 
-						cpSync(sourcePath, targetPath, { recursive: true });
+						if (excludeSet.size === 0) {
+							// Remove the existing target before copying so files created after the
+							// backup are cleared — cpSync merges rather than replacing, which would
+							// otherwise leave stale state that can conflict with the restored DB
+							if (existsSync(targetPath)) {
+								rmSync(targetPath, { recursive: true, force: true });
+							}
+
+							cpSync(sourcePath, targetPath, { recursive: true });
+						} else {
+							// Preserve excluded top-level entries on the target: create() skipped
+							// them so the archive doesn't contain them, and wiping the target would
+							// also remove the live copy (e.g. shipped seeds the app still needs).
+							mkdirSync(targetPath, { recursive: true });
+
+							for (const entry of readdirSync(targetPath)) {
+								if (excludeSet.has(entry)) {
+									continue;
+								}
+
+								rmSync(join(targetPath, entry), { recursive: true, force: true });
+							}
+
+							for (const entry of readdirSync(sourcePath)) {
+								cpSync(join(sourcePath, entry), join(targetPath, entry), { recursive: true });
+							}
+						}
 					} else {
 						copyFileSync(sourcePath, targetPath);
 					}
