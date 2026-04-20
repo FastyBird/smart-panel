@@ -64,8 +64,7 @@ export interface BackupMetadataContribution {
  * describe a different backup than the one actually applied.
  *
  * Ownership transfers to `restore()`, which cleans up tempDir on completion
- * (success or failure). Callers that abandon the prepared state must call
- * `discardPreparedRestore(prepared)` to avoid leaking the temp dir.
+ * (success or failure).
  */
 export interface PreparedRestore {
 	metadata: BackupMetadata;
@@ -474,7 +473,9 @@ export class BackupService {
 			return {
 				metadata: {
 					...storedMetadata,
-					sizeBytes: statSync(tarPath).size,
+					// Stat the pinned copy, not the public tarPath — a concurrent delete
+					// between pinArchive and here would ENOENT an otherwise valid restore
+					sizeBytes: statSync(workingArchive).size,
 				},
 				workingArchive,
 				tempDir,
@@ -485,12 +486,6 @@ export class BackupService {
 
 			throw error;
 		}
-	}
-
-	// Abandon a prepared restore without applying it (controller should call this
-	// if it decides not to proceed after a successful prepareRestore).
-	discardPreparedRestore(prepared: PreparedRestore): void {
-		rmSync(prepared.tempDir, { recursive: true, force: true });
 	}
 
 	async restore(prepared: PreparedRestore): Promise<void> {
