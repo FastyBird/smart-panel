@@ -358,7 +358,7 @@ const onSubmit = async (): Promise<void> => {
 	try {
 		const payload: SignageInfoPanelUpdateBody = {
 			name: model.name,
-			description: model.description ?? undefined,
+			description: model.description ?? null,
 			// The local `SignageInfoPanelLayout` enum and the generated
 			// `SpacesSignageInfoPanelPluginDataSignageInfoPanelSpaceLayout`
 			// enum share string values but are nominally distinct; cast at
