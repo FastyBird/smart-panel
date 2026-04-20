@@ -11,6 +11,7 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { BackupContributionRegistry } from '../system/services/backup-contribution-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
@@ -134,6 +135,8 @@ export class BuddyModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly moduleReset: BuddyModuleResetService,
+		private readonly personalityService: BuddyPersonalityService,
+		private readonly backupRegistry: BackupContributionRegistry,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly heartbeatService: HeartbeatService,
 		private readonly patternDetector: PatternDetectorService,
@@ -152,6 +155,18 @@ export class BuddyModule implements OnModuleInit {
 			},
 			310,
 		);
+
+		// Register backup contribution for AI personality file. Resolve lazily so the
+		// user-configurable personalityPath from BuddyConfig is read at backup/restore
+		// time — a literal path captured here would diverge from the live location and
+		// silently skip/overwrite the wrong file if the config points elsewhere.
+		this.backupRegistry.register({
+			source: BUDDY_MODULE_NAME,
+			label: 'AI Personality',
+			type: 'file',
+			path: () => this.personalityService.resolvePersonalityPath(),
+			optional: true,
+		});
 
 		this.heartbeatService.registerEvaluator(this.patternDetector);
 		this.heartbeatService.registerEvaluator(this.anomalyDetector);

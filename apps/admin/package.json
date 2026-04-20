@@ -58,7 +58,7 @@
     "test:cov": "vitest --run --coverage",
     "test:cov:watch": "vitest --watch --coverage",
     "test:e2e": "playwright test",
-    "type-check": "vue-tsc --build",
+    "type-check": "node --max-old-space-size=8192 ./node_modules/vue-tsc/bin/vue-tsc.js --build",
     "generate:openapi": "openapi-typescript ../../spec/api/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false",
     "generate:spec": "node ./tools/build_devices_spec.mjs && node ./tools/build_channel_spec.mjs && node ./tools/build_weather_cities.mjs"
   },

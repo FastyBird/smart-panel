@@ -74,7 +74,12 @@ export class BuddyPersonalityService {
 		return this.cachedPersonality;
 	}
 
-	private resolvePersonalityPath(): string {
+	/**
+	 * Public accessor for the currently configured personality file path. Exposed so
+	 * code outside the service (e.g. backup contribution registration) can target the
+	 * live path chosen by the user instead of hardcoding the default.
+	 */
+	resolvePersonalityPath(): string {
 		const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME) ?? new BuddyConfigModel();
 		const configuredPath = config.personalityPath;
 

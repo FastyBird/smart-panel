@@ -1,12 +1,16 @@
-import { Global, Module, OnModuleInit } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import * as path from 'path';
 
+import { Global, Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
+
+import { getEnvValue } from '../../common/utils/config.utils';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { PlatformModule } from '../platform/platform.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { BackupContributionRegistry } from '../system/services/backup-contribution-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 
 import { GenerateAdminExtensionsCommand } from './commands/generate-admin-extensions.command';
@@ -34,6 +38,8 @@ import { PluginConfigValidatorService } from './services/plugin-config-validator
 export class ConfigModule implements OnModuleInit {
 	constructor(
 		private readonly configService: ConfigService,
+		private readonly nestConfigService: NestConfigService,
+		private readonly backupRegistry: BackupContributionRegistry,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
@@ -53,6 +59,23 @@ export class ConfigModule implements OnModuleInit {
 			},
 			500,
 		);
+
+		// Register backup contribution for config directory. Exclude the seed
+		// subdirectory — those are factory JSONs shipped with the app, not user data;
+		// backing them up would bloat the archive and restoring would clobber the
+		// live seed set any new install depends on.
+		this.backupRegistry.register({
+			source: CONFIG_MODULE_NAME,
+			label: 'Plugin & Module Configurations',
+			type: 'directory',
+			path: getEnvValue<string>(
+				this.nestConfigService,
+				'FB_CONFIG_PATH',
+				path.resolve(__dirname, '../../../../../var/data'),
+			),
+			optional: false,
+			exclude: ['seed'],
+		});
 
 		for (const model of CONFIG_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);

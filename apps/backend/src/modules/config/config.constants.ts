@@ -10,4 +10,6 @@ export const CONFIG_MODULE_API_TAG_DESCRIPTION =
 export enum EventType {
 	CONFIG_UPDATED = 'ConfigModule.Configuration.Changed',
 	CONFIG_RESET = 'ConfigModule.Configuration.Reset',
+	/** Emit to force ConfigService to drop its in-memory cache and re-read config.yaml on next access. */
+	CONFIG_RELOAD = 'ConfigModule.Configuration.Reload',
 }

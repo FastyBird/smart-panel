@@ -48,6 +48,7 @@ export const RouteNames = {
 	SYSTEM_INFO: 'system_module-system_info',
 	SYSTEM_LOGS: 'system_module-system_logs',
 	SYSTEM_LOG_DETAIL: 'system_module-system_log_detail',
+	SYSTEM_BACKUPS: 'system_module-system_backups',
 	THROTTLE_STATUS: 'system_module-throttle_status',
 	POWER_OFF: 'system_module-power_off',
 	FACTORY_RESET: 'system_module-factory_reset',
