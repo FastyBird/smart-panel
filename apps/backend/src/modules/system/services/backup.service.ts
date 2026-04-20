@@ -69,6 +69,8 @@ type StoredBackupMetadata = Omit<BackupMetadata, 'sizeBytes'>;
 
 const ALLOWED_CONTRIBUTION_TYPES: readonly BackupContributionType[] = ['file', 'directory'];
 
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Validate a freshly-parsed metadata JSON object. Narrows its `contributions[].type`
  * from string to the literal union and throws BackupArchiveError on any shape
@@ -90,6 +92,14 @@ function parseStoredMetadata(raw: unknown): StoredBackupMetadata {
 		!isNonEmptyString(candidate.createdAt)
 	) {
 		throw new BackupArchiveError('Invalid backup archive: metadata is missing required fields');
+	}
+
+	// Enforce UUIDv4 on the id to prevent path-traversal: the id flows through
+	// getBackupPath(id) -> join(backupsDir, `${id}.tar.gz`) and into delete()/rmSync.
+	// A tampered sidecar with `../../etc/passwd` would otherwise traverse outside
+	// the backups dir. UUIDv4 leaves no room for separators or `..`.
+	if (!UUID_V4_REGEX.test(candidate.id)) {
+		throw new BackupArchiveError('Invalid backup archive: metadata.id is not a valid UUIDv4');
 	}
 
 	if (!Array.isArray(candidate.contributions)) {
@@ -631,9 +641,13 @@ export class BackupService {
 			const backupDbPath = join(tempDir, 'database.sqlite');
 
 			if (existsSync(backupDbPath)) {
-				if (this.dataSource.isInitialized) {
-					pointOfNoReturn = true;
+				// Flip PNR before ANY DB mutation — including the case where the
+				// DataSource wasn't initialized (so destroy() is skipped). A later
+				// copyFileSync failure (disk full, EACCES) otherwise propagates as a
+				// regular error and leaves the live DB file in an undefined state.
+				pointOfNoReturn = true;
 
+				if (this.dataSource.isInitialized) {
 					// Let destroy errors propagate — the header comment above this block
 					// explains why a clean close is the WAL-consistency guarantee. If it
 					// fails we must not copy over the DB; PNR is set, so the catch handler
@@ -703,6 +717,16 @@ export class BackupService {
 		const sidecar = this.readMetadataSidecar(id);
 
 		if (sidecar) {
+			// Defense in depth against a tampered sidecar: the parsed id must match
+			// the filename-derived id. Even with UUIDv4 enforced by parseStoredMetadata,
+			// a sidecar claiming a different backup's id would still let list() hand
+			// that id to downstream callers (delete/restore) against the wrong target.
+			if (sidecar.id !== id) {
+				throw new BackupArchiveError(
+					`Invalid backup sidecar for ${id}: metadata.id "${sidecar.id}" does not match filename`,
+				);
+			}
+
 			return { ...sidecar, sizeBytes: stats.size };
 		}
 
@@ -742,6 +766,14 @@ export class BackupService {
 			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			rmSync(tempDir, { recursive: true, force: true });
+
+			// Same defense as the sidecar path — a tampered archive whose metadata.id
+			// differs from the filename could otherwise have delete() aimed elsewhere
+			if (metadata.id !== id) {
+				throw new BackupArchiveError(
+					`Invalid backup archive ${id}: metadata.id "${metadata.id}" does not match filename`,
+				);
+			}
 
 			// Sidecar caching is best-effort here — on create/upload it must succeed, but
 			// for this fallback path the caller only needs the metadata we already parsed
@@ -904,14 +936,6 @@ export class BackupService {
 			// sort by Date.getTime() and NaN comparisons corrupt the ordering
 			if (!Number.isFinite(new Date(metadata.createdAt).getTime())) {
 				throw new BackupArchiveError('Invalid backup archive: metadata.createdAt is not a valid ISO date');
-			}
-
-			// UUIDv4 only — download/restore/delete use ParseUUIDPipe({ version: '4' }),
-			// so a v1/v3/v5 id would be stored but unroutable through the controller pipe
-			const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-			if (!uuidV4Regex.test(metadata.id)) {
-				throw new BackupArchiveError('Invalid backup archive: metadata.id is not a valid UUIDv4');
 			}
 
 			// Move to final location using the ID from metadata. Refuse to overwrite an
