@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 import { Module, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
@@ -172,7 +174,11 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 		// Resolve FB_DATA_DIR through getEnvValue so whitespace-only values fall back to
 		// the default; BackupService resolves the same variable the same way, and any
 		// divergence would put .env at a different base than where backups are stored
-		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
+		const dataDir = getEnvValue<string>(
+			this.nestConfigService,
+			'FB_DATA_DIR',
+			path.resolve(__dirname, '../../../../../var/lib/smart-panel'),
+		);
 		const envFilePath = `${dataDir}/.env`;
 
 		this.backupContributionRegistry.register({
