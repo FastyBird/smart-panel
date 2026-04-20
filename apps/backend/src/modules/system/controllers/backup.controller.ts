@@ -35,7 +35,7 @@ import { UserRole } from '../../users/users.constants';
 import { ReqCreateBackupDto } from '../dto/create-backup.dto';
 import { BackupResponseModel, BackupsResponseModel } from '../models/backup-response.model';
 import { BackupDataModel } from '../models/backup.model';
-import { BackupArchiveError, BackupMetadata, BackupService } from '../services/backup.service';
+import { BackupArchiveError, BackupMetadata, BackupService, PreparedRestore } from '../services/backup.service';
 import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiTags(SYSTEM_MODULE_API_TAG_NAME)
@@ -232,12 +232,14 @@ export class BackupController {
 		this.logger.debug(`Restoring backup id=${id}`);
 
 		// Preflight synchronously so archive/safety failures surface as HTTP errors
-		// before we kick off the actual restore. Any throw here aborts without touching
-		// live state.
-		let metadata: BackupMetadata;
+		// before we kick off the actual restore. prepareRestore pins the archive into
+		// a private temp dir and extracts its metadata; ownership of that dir then
+		// transfers to the subsequent restore() call so both operations see the same
+		// validated file even if the public tarPath is swapped out.
+		let prepared: PreparedRestore;
 
 		try {
-			metadata = await this.backupService.prepareRestore(id);
+			prepared = await this.backupService.prepareRestore(id);
 		} catch (error) {
 			const err = error as Error;
 
@@ -251,12 +253,12 @@ export class BackupController {
 		}
 
 		// Run the restore inline so the caller gets a real answer. A pre-PNR failure
-		// (disk full during extraction, archive deleted between preflight and restore,
-		// permission error) propagates here as an HTTP error instead of silently
-		// landing in a fire-and-forget .catch. A post-PNR failure inside restore()
-		// calls process.exit(1) itself so the handler never returns in that case.
+		// (disk full during extraction, permission error) propagates here as an HTTP
+		// error instead of silently landing in a fire-and-forget .catch. A post-PNR
+		// failure inside restore() calls process.exit(1) itself so the handler never
+		// returns in that case.
 		try {
-			await this.backupService.restore(id);
+			await this.backupService.restore(prepared);
 		} catch (error) {
 			const err = error as Error;
 
@@ -266,7 +268,7 @@ export class BackupController {
 		}
 
 		const response = new BackupResponseModel();
-		response.data = this.mapMetadata(metadata);
+		response.data = this.mapMetadata(prepared.metadata);
 
 		// Schedule the clean exit after Fastify has flushed the success envelope.
 		// The restore body has already mutated disk state — systemd/the supervisor

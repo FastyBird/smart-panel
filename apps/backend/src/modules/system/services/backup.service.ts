@@ -56,6 +56,23 @@ export interface BackupMetadataContribution {
 	type: BackupContributionType;
 }
 
+/**
+ * Result of `prepareRestore()`. The pinned archive and its temp dir are
+ * kept alive so the subsequent `restore()` consumes the same file that was
+ * validated here — if we re-read the public tarPath in restore(), the archive
+ * could have been replaced between the two calls and the response would
+ * describe a different backup than the one actually applied.
+ *
+ * Ownership transfers to `restore()`, which cleans up tempDir on completion
+ * (success or failure). Callers that abandon the prepared state must call
+ * `discardPreparedRestore(prepared)` to avoid leaking the temp dir.
+ */
+export interface PreparedRestore {
+	metadata: BackupMetadata;
+	workingArchive: string;
+	tempDir: string;
+}
+
 export interface BackupMetadata {
 	id: string;
 	name: string;
@@ -416,14 +433,16 @@ export class BackupService {
 	 * The caller should await this before kicking off the asynchronous restore so the
 	 * user sees a real HTTP error on bad/missing archives.
 	 */
-	async prepareRestore(id: string): Promise<BackupMetadata> {
+	async prepareRestore(id: string): Promise<PreparedRestore> {
 		const tarPath = this.getBackupPath(id);
 
 		if (!existsSync(tarPath)) {
 			throw new Error(`Backup not found: ${id}`);
 		}
 
-		const tempDir = join(this.backupsDir, `preflight-${id}-${uuid()}`);
+		// UUID suffix ensures two concurrent restore requests get isolated temp dirs;
+		// also matches what restore() will consume so no second pin is needed
+		const tempDir = join(this.backupsDir, `restore-${id}-${uuid()}`);
 
 		try {
 			mkdirSync(tempDir, { recursive: true });
@@ -450,51 +469,44 @@ export class BackupService {
 				throw new BackupArchiveError('Invalid backup: metadata.json not found');
 			}
 
-			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
+			const storedMetadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			return {
-				...metadata,
-				sizeBytes: statSync(tarPath).size,
+				metadata: {
+					...storedMetadata,
+					sizeBytes: statSync(tarPath).size,
+				},
+				workingArchive,
+				tempDir,
 			};
-		} finally {
+		} catch (error) {
+			// Clean up only on failure — success transfers ownership of tempDir to restore()
 			rmSync(tempDir, { recursive: true, force: true });
+
+			throw error;
 		}
 	}
 
-	async restore(id: string): Promise<void> {
-		const tarPath = this.getBackupPath(id);
+	// Abandon a prepared restore without applying it (controller should call this
+	// if it decides not to proceed after a successful prepareRestore).
+	discardPreparedRestore(prepared: PreparedRestore): void {
+		rmSync(prepared.tempDir, { recursive: true, force: true });
+	}
 
-		if (!existsSync(tarPath)) {
-			throw new Error(`Backup not found: ${id}`);
-		}
+	async restore(prepared: PreparedRestore): Promise<void> {
+		const { workingArchive, tempDir, metadata } = prepared;
 
-		const tempDir = join(this.backupsDir, `restore-${id}`);
-
-		this.logger.log(`Restoring backup id=${id}`);
+		this.logger.log(`Restoring backup id=${metadata.id}`);
 
 		// Once true, any failure must process.exit — live host state is partially
 		// replaced and restart is the only safe recovery
 		let pointOfNoReturn = false;
 
 		try {
-			mkdirSync(tempDir, { recursive: true });
-
-			const workingArchive = join(tempDir, 'archive.tar.gz');
-
-			this.pinArchive(tarPath, workingArchive);
-
-			await this.validateArchiveSafety(workingArchive);
-
+			// The archive and metadata were already pinned and validated by
+			// prepareRestore(); just extract the full contents into the shared tempDir.
+			// metadata.json will be overwritten with identical content — ignore.
 			await execFileAsync('tar', ['--no-same-owner', '--no-same-permissions', '-xzf', workingArchive, '-C', tempDir]);
-
-			// Validate metadata
-			const metadataPath = join(tempDir, 'metadata.json');
-
-			if (!existsSync(metadataPath)) {
-				throw new BackupArchiveError('Invalid backup: metadata.json not found');
-			}
-
-			const metadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
 			// Contributions first — overwriting the DB while the app is still running with
 			// open connections lets SQLite rewrite WAL from its cached view of the OLD DB,
@@ -686,7 +698,7 @@ export class BackupService {
 			// Cleanup temp dir
 			rmSync(tempDir, { recursive: true, force: true });
 
-			this.logger.log(`Backup restored successfully: id=${id}. Ready for process restart.`);
+			this.logger.log(`Backup restored successfully: id=${metadata.id}. Ready for process restart.`);
 
 			// The controller schedules the clean process.exit(0) after flushing the HTTP
 			// response so the caller actually sees the success envelope before we die
