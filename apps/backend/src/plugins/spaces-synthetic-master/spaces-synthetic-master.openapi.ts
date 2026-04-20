@@ -1,8 +1,10 @@
 import { Type } from '@nestjs/common';
 
 import { CreateMasterSpaceDto } from './dto/create-master-space.dto';
+import { SpacesSyntheticMasterUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateMasterSpaceDto } from './dto/update-master-space.dto';
 import { MasterSpaceEntity } from './entities/master-space.entity';
+import { SpacesSyntheticMasterConfigModel } from './models/config.model';
 
 /**
  * OpenAPI extra models for the Spaces Synthetic Master plugin.
@@ -14,4 +16,10 @@ import { MasterSpaceEntity } from './entities/master-space.entity';
 export const SPACES_SYNTHETIC_MASTER_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	| Type<unknown>
 	| (abstract new (...args: unknown[]) => unknown)
-)[] = [MasterSpaceEntity, CreateMasterSpaceDto, UpdateMasterSpaceDto];
+)[] = [
+	MasterSpaceEntity,
+	CreateMasterSpaceDto,
+	UpdateMasterSpaceDto,
+	SpacesSyntheticMasterConfigModel,
+	SpacesSyntheticMasterUpdatePluginConfigDto,
+];

@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
@@ -8,6 +9,8 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { SpacesHomeControlConfigModel } from './models/config.model';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import {
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
@@ -44,6 +47,7 @@ import { SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-home-c
 })
 export class SpacesHomeControlPlugin implements OnModuleInit {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
@@ -51,6 +55,16 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 	) {}
 
 	onModuleInit() {
+		// Register with PluginsTypeMapperService so the Extensions module lists
+		// this plugin alongside the other module- and plugin-level extensions
+		// (enable/disable toggle, metadata view). Without this call the
+		// plugin is invisible to `/extensions/plugins`.
+		this.configMapper.registerMapping<SpacesHomeControlConfigModel, SpacesHomeControlUpdatePluginConfigDto>({
+			type: SPACES_HOME_CONTROL_PLUGIN_NAME,
+			class: SpacesHomeControlConfigModel,
+			configDto: SpacesHomeControlUpdatePluginConfigDto,
+		});
+
 		for (const model of SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}

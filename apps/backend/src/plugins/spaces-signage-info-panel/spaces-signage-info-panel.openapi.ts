@@ -8,9 +8,11 @@ import {
 	ReqReorderAnnouncementsDto,
 } from './dto/reorder-announcements.dto';
 import { ReqUpdateAnnouncementDto, UpdateAnnouncementDto } from './dto/update-announcement.dto';
+import { SpacesSignageInfoPanelUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateSignageInfoPanelSpaceDto } from './dto/update-signage-info-panel-space.dto';
 import { SignageAnnouncementEntity } from './entities/signage-announcement.entity';
 import { SignageInfoPanelSpaceEntity } from './entities/signage-info-panel-space.entity';
+import { SpacesSignageInfoPanelConfigModel } from './models/config.model';
 import {
 	SignageAnnouncementResponseModel,
 	SignageAnnouncementsResponseModel,
@@ -40,4 +42,6 @@ export const SPACES_SIGNAGE_INFO_PANEL_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	ReqReorderAnnouncementsDto,
 	SignageAnnouncementResponseModel,
 	SignageAnnouncementsResponseModel,
+	SpacesSignageInfoPanelConfigModel,
+	SpacesSignageInfoPanelUpdatePluginConfigDto,
 ];

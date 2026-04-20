@@ -1,5 +1,8 @@
 import { Type } from '@nestjs/common';
 
+import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { SpacesHomeControlConfigModel } from './models/config.model';
+
 /**
  * OpenAPI extra models for the Spaces Home Control plugin.
  *
@@ -12,4 +15,4 @@ import { Type } from '@nestjs/common';
 export const SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	| Type<unknown>
 	| (abstract new (...args: unknown[]) => unknown)
-)[] = [];
+)[] = [SpacesHomeControlConfigModel, SpacesHomeControlUpdatePluginConfigDto];

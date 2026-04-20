@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
 import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
@@ -14,8 +15,10 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { CreateEntrySpaceDto } from './dto/create-entry-space.dto';
+import { SpacesSyntheticEntryUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateEntrySpaceDto } from './dto/update-entry-space.dto';
 import { EntrySpaceEntity } from './entities/entry-space.entity';
+import { SpacesSyntheticEntryConfigModel } from './models/config.model';
 import { EntrySpaceResetService } from './services/entry-space-reset.service';
 import { EntrySpaceSeederService } from './services/entry-space-seeder.service';
 import {
@@ -48,6 +51,7 @@ import { SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-syn
 })
 export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
 		private readonly seeder: EntrySpaceSeederService,
 		private readonly resetService: EntrySpaceResetService,
@@ -58,6 +62,12 @@ export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 	) {}
 
 	async onModuleInit(): Promise<void> {
+		this.configMapper.registerMapping<SpacesSyntheticEntryConfigModel, SpacesSyntheticEntryUpdatePluginConfigDto>({
+			type: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
+			class: SpacesSyntheticEntryConfigModel,
+			configDto: SpacesSyntheticEntryUpdatePluginConfigDto,
+		});
+
 		this.spacesTypeMapper.registerMapping<EntrySpaceEntity, CreateEntrySpaceDto, UpdateEntrySpaceDto>({
 			type: SPACES_SYNTHETIC_ENTRY_TYPE,
 			class: EntrySpaceEntity,

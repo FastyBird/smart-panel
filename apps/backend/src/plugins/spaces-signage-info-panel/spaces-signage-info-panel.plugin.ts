@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
@@ -17,9 +18,11 @@ import { FactoryResetRegistryService } from '../../modules/system/services/facto
 
 import { SignageAnnouncementsController } from './controllers/signage-announcements.controller';
 import { CreateSignageInfoPanelSpaceDto } from './dto/create-signage-info-panel-space.dto';
+import { SpacesSignageInfoPanelUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateSignageInfoPanelSpaceDto } from './dto/update-signage-info-panel-space.dto';
 import { SignageAnnouncementEntity } from './entities/signage-announcement.entity';
 import { SignageInfoPanelSpaceEntity } from './entities/signage-info-panel-space.entity';
+import { SpacesSignageInfoPanelConfigModel } from './models/config.model';
 import { SignageAnnouncementsService } from './services/signage-announcements.service';
 import { SignageHomePageResolver } from './services/signage-home-page.resolver';
 import { SignageInfoPanelResetService } from './services/signage-info-panel-reset.service';
@@ -58,6 +61,7 @@ import { SPACES_SIGNAGE_INFO_PANEL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-
 })
 export class SpacesSignageInfoPanelPlugin implements OnModuleInit {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
 		private readonly resetService: SignageInfoPanelResetService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
@@ -69,6 +73,12 @@ export class SpacesSignageInfoPanelPlugin implements OnModuleInit {
 	) {}
 
 	onModuleInit(): void {
+		this.configMapper.registerMapping<SpacesSignageInfoPanelConfigModel, SpacesSignageInfoPanelUpdatePluginConfigDto>({
+			type: SPACES_SIGNAGE_INFO_PANEL_PLUGIN_NAME,
+			class: SpacesSignageInfoPanelConfigModel,
+			configDto: SpacesSignageInfoPanelUpdatePluginConfigDto,
+		});
+
 		this.spacesTypeMapper.registerMapping<
 			SignageInfoPanelSpaceEntity,
 			CreateSignageInfoPanelSpaceDto,

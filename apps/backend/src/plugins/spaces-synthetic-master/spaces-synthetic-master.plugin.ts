@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
 import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
@@ -14,8 +15,10 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { CreateMasterSpaceDto } from './dto/create-master-space.dto';
+import { SpacesSyntheticMasterUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateMasterSpaceDto } from './dto/update-master-space.dto';
 import { MasterSpaceEntity } from './entities/master-space.entity';
+import { SpacesSyntheticMasterConfigModel } from './models/config.model';
 import { MasterSpaceResetService } from './services/master-space-reset.service';
 import { MasterSpaceSeederService } from './services/master-space-seeder.service';
 import {
@@ -48,6 +51,7 @@ import { SPACES_SYNTHETIC_MASTER_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-sy
 })
 export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
 		private readonly seeder: MasterSpaceSeederService,
 		private readonly resetService: MasterSpaceResetService,
@@ -58,6 +62,12 @@ export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 	) {}
 
 	async onModuleInit(): Promise<void> {
+		this.configMapper.registerMapping<SpacesSyntheticMasterConfigModel, SpacesSyntheticMasterUpdatePluginConfigDto>({
+			type: SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
+			class: SpacesSyntheticMasterConfigModel,
+			configDto: SpacesSyntheticMasterUpdatePluginConfigDto,
+		});
+
 		this.spacesTypeMapper.registerMapping<MasterSpaceEntity, CreateMasterSpaceDto, UpdateMasterSpaceDto>({
 			type: SPACES_SYNTHETIC_MASTER_TYPE,
 			class: MasterSpaceEntity,
