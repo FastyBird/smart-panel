@@ -576,6 +576,9 @@ export class BackupService {
 							// Preserve excluded top-level entries on the target: create() skipped
 							// them so the archive doesn't contain them, and wiping the target would
 							// also remove the live copy (e.g. shipped seeds the app still needs).
+							// Also refuse to overwrite excluded targets with entries that happen to
+							// match the excluded names in the archive — uploaded archives from
+							// another system or version can't bypass the exclude guard.
 							mkdirSync(targetPath, { recursive: true });
 
 							for (const entry of readdirSync(targetPath)) {
@@ -587,6 +590,14 @@ export class BackupService {
 							}
 
 							for (const entry of readdirSync(sourcePath)) {
+								if (excludeSet.has(entry)) {
+									this.logger.warn(
+										`Skipping excluded entry "${entry}" found in archive for contribution ${contribution.label}`,
+									);
+
+									continue;
+								}
+
 								cpSync(join(sourcePath, entry), join(targetPath, entry), { recursive: true });
 							}
 						}
