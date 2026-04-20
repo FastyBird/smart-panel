@@ -137,12 +137,16 @@ export const useBackups = (): IUseBackups => {
 
 		const blob = await response.blob();
 		const link = document.createElement('a');
+		const objectUrl = URL.createObjectURL(blob);
 
-		link.href = URL.createObjectURL(blob);
+		link.href = objectUrl;
 		link.download = `smart-panel-backup-${backup.name || backup.id}.tar.gz`;
 		link.click();
 
-		URL.revokeObjectURL(link.href);
+		// Defer revocation — Safari in particular may not have captured a reference
+		// to the blob by the time click() returns synchronously, and revoking in the
+		// same tick can produce an empty download
+		setTimeout(() => URL.revokeObjectURL(objectUrl), 2_000);
 	};
 
 	const uploadBackup = async (file: File): Promise<boolean> => {

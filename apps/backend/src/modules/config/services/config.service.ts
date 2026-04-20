@@ -6,7 +6,7 @@ import * as yaml from 'yaml';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
@@ -45,6 +45,16 @@ export class ConfigService {
 
 			this.config = null;
 		});
+	}
+
+	// Drop the in-memory cache so the next getter re-reads config.yaml from disk.
+	// Fired during backup restore between the static-path pass (which rewrites the
+	// file on disk) and the lazy-callback pass (which reads live config values).
+	@OnEvent(EventType.CONFIG_RELOAD)
+	reload(): void {
+		this.logger.log('[REFRESH] External reload requested. Dropping in-memory configuration cache');
+
+		this.config = null;
 	}
 
 	private get appConfig(): AppConfigModel {

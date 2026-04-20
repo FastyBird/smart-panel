@@ -19,10 +19,12 @@ import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectDataSource } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { EventType as ConfigEventType } from '../../config/config.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { BackupContributionRegistry, BackupContributionType } from './backup-contribution-registry.service';
@@ -143,6 +145,7 @@ export class BackupService {
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly contributionRegistry: BackupContributionRegistry,
+		private readonly eventEmitter: EventEmitter2,
 		@InjectDataSource() private readonly dataSource: DataSource,
 	) {
 		const dbDir = getEnvValue<string>(this.configService, 'FB_DB_PATH', resolve(__dirname, '../../../../../../var/db'));
@@ -171,6 +174,7 @@ export class BackupService {
 		const tempDir = join(this.backupsDir, `temp-${id}`);
 		const tarPath = join(this.backupsDir, `${id}.tar.gz`);
 		let sidecarPath: string | null = null;
+		let fullMetadata: BackupMetadata;
 
 		this.logger.debug(`Creating backup id=${id} name=${backupName}`);
 
@@ -294,17 +298,12 @@ export class BackupService {
 			this.writeMetadataSidecar(id, metadata);
 			sidecarPath = this.getMetadataSidecarPath(id);
 
-			// Cleanup old backups (preserve the one we just created)
-			await this.cleanupOldBackups(id);
-
-			const fullMetadata: BackupMetadata = {
+			fullMetadata = {
 				...metadata,
 				sizeBytes: stats.size,
 			};
 
 			this.logger.log(`Backup created successfully: id=${id}, size=${stats.size} bytes`);
-
-			return fullMetadata;
 		} catch (error) {
 			// Cleanup on failure — also unwind the sidecar if we got that far, otherwise
 			// a later cleanupOldBackups throw would orphan the {id}.json on disk
@@ -320,6 +319,19 @@ export class BackupService {
 
 			throw error;
 		}
+
+		// Retention sweep runs AFTER the backup is fully committed. Any failure here
+		// (e.g. list() hitting a permission error on a sibling archive) would have
+		// previously landed in the catch above and deleted the backup we just made.
+		try {
+			await this.cleanupOldBackups(id);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Retention sweep failed after creating backup ${id}: ${err.message}`);
+		}
+
+		return fullMetadata;
 	}
 
 	async list(): Promise<BackupMetadata[]> {
@@ -496,14 +508,14 @@ export class BackupService {
 					}
 				}
 
-				for (const contribution of [...staticPass, ...lazyPass]) {
+				const restoreContribution = (contribution: BackupMetadataContribution): void => {
 					// Match by (source, label), not absolute path — paths differ between machines
 					const registration = registrationByKey.get(contributionKey(contribution.source, contribution.label));
 
 					if (!registration) {
 						this.logger.warn(`Skipping unregistered contribution: ${contribution.source} (${contribution.label})`);
 
-						continue;
+						return;
 					}
 
 					const safeSource = contribution.source.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -583,6 +595,21 @@ export class BackupService {
 					}
 
 					this.logger.debug(`Restored contribution: ${contribution.label} to ${targetPath}`);
+				};
+
+				for (const contribution of staticPass) {
+					restoreContribution(contribution);
+				}
+
+				if (lazyPass.length > 0) {
+					// Invalidate in-memory caches that lazy callbacks will read from — pass 1
+					// rewrote files on disk, but services like ConfigService hold their parsed
+					// state in memory and would otherwise return pre-restore values.
+					this.eventEmitter.emit(ConfigEventType.CONFIG_RELOAD);
+
+					for (const contribution of lazyPass) {
+						restoreContribution(contribution);
+					}
 				}
 			}
 
@@ -829,6 +856,8 @@ export class BackupService {
 		const tempDir = join(this.backupsDir, `upload-meta-${tempId}`);
 		let finalPath: string | null = null;
 		let sidecarPath: string | null = null;
+		let savedMetadata: BackupMetadata;
+		let savedId: string;
 
 		try {
 			// Save uploaded file
@@ -896,12 +925,8 @@ export class BackupService {
 			this.writeMetadataSidecar(metadata.id, metadata);
 			sidecarPath = this.getMetadataSidecarPath(metadata.id);
 
-			// Preserve the just-uploaded backup from cleanup — its `createdAt` may be older
-			// than existing backups (e.g. imported from another machine), which would otherwise
-			// make it the immediate deletion target and silently discard the user's upload
-			await this.cleanupOldBackups(metadata.id);
-
-			return {
+			savedId = metadata.id;
+			savedMetadata = {
 				...metadata,
 				sizeBytes: stats.size,
 			};
@@ -924,6 +949,22 @@ export class BackupService {
 
 			throw error;
 		}
+
+		// Retention sweep runs AFTER the upload is fully committed. A failure here
+		// (list() permission error, etc.) would have previously landed in the catch
+		// above and deleted the freshly uploaded archive.
+		try {
+			// Preserve the just-uploaded backup from cleanup — its `createdAt` may be older
+			// than existing backups (e.g. imported from another machine), which would otherwise
+			// make it the immediate deletion target and silently discard the user's upload
+			await this.cleanupOldBackups(savedId);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Retention sweep failed after uploading backup ${savedId}: ${err.message}`);
+		}
+
+		return savedMetadata;
 	}
 
 	private async cleanupOldBackups(preserveId?: string): Promise<void> {
