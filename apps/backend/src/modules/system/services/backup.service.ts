@@ -470,6 +470,15 @@ export class BackupService {
 
 			const storedMetadata = parseStoredMetadata(JSON.parse(this.readExtractedFileSafely(metadataPath)));
 
+			// Same defense-in-depth as getMetadata — a tampered archive whose
+			// metadata.id differs from the filename would otherwise have restore()
+			// drive the contribution loop from metadata the admin didn't ask for
+			if (storedMetadata.id !== id) {
+				throw new BackupArchiveError(
+					`Invalid backup archive ${id}: metadata.id "${storedMetadata.id}" does not match filename`,
+				);
+			}
+
 			return {
 				metadata: {
 					...storedMetadata,
