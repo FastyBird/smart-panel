@@ -31,7 +31,7 @@
 	</app-bar-button>
 
 	<app-bar-button
-		v-if="!isMDDevice"
+		v-if="!isMDDevice && selectedType"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
@@ -44,12 +44,46 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<space-add-form
-				ref="formRef"
-				v-model:remote-form-changed="remoteFormChanged"
-				:hide-actions="isMDDevice"
-				@saved="onSaved"
-				@cancel="onCancel"
+			<!--
+				Plugin-picker flow mirrors the dashboard's page-add experience:
+				the user picks a space type first, and the plugin registered for
+				that type contributes the add form via `element.components.spaceAddForm`.
+				Singleton types (master/entry) and types without a registered
+				add form are hidden by the picker itself.
+			-->
+			<select-space-plugin v-model="selectedType" />
+
+			<el-divider v-if="selectedType" />
+
+			<template v-if="selectedType">
+				<component
+					:is="element?.components?.spaceAddForm"
+					v-if="element?.components?.spaceAddForm"
+					ref="formRef"
+					v-model:remote-form-changed="remoteFormChanged"
+					:type="addFormType"
+					:hide-actions="isMDDevice"
+					@saved="onSaved"
+					@cancel="onCancel"
+				/>
+
+				<el-alert
+					v-else
+					type="info"
+					:closable="false"
+					:title="t('spacesModule.texts.noAddFormForSpaceType', { type: selectedType })"
+					show-icon
+				/>
+			</template>
+
+			<el-alert
+				v-else
+				:title="t('spacesModule.headings.selectPlugin')"
+				:description="t('spacesModule.texts.selectPlugin')"
+				:closable="false"
+				show-icon
+				type="info"
+				class="mt-2"
 			/>
 		</el-scrollbar>
 
@@ -77,6 +111,7 @@
 				</el-button>
 
 				<el-button
+					v-if="selectedType"
 					type="primary"
 					@click="onSubmit"
 				>
@@ -93,7 +128,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -102,10 +137,12 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	type IPluginElement,
 	useBreakpoints,
 } from '../../../common';
-import { SpaceAddForm } from '../components/components';
-import { RouteNames } from '../spaces.constants';
+import SelectSpacePlugin from '../components/select-space-plugin.vue';
+import { useSpacesPlugins } from '../composables';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store';
 
 const props = withDefaults(
@@ -130,7 +167,30 @@ useMeta({
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const formRef = ref<InstanceType<typeof SpaceAddForm> | null>(null);
+const { getElement } = useSpacesPlugins();
+
+const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
+
+const element = computed(() => (selectedType.value ? getElement(selectedType.value) : undefined));
+
+// The generic Room/Zone add form (home-control's `spaceAddForm`) declares
+// its `type` prop narrowed to `SpaceType.ROOM | SpaceType.ZONE`. Cast the
+// picker's dynamically-selected plugin type to that union at the dispatch
+// boundary — the picker itself only surfaces types whose plugin registers
+// a `spaceAddForm`, so at runtime this stays within the contributing
+// plugin's accepted values.
+const addFormType = computed<SpaceType.ROOM | SpaceType.ZONE | undefined>(
+	() => selectedType.value as SpaceType.ROOM | SpaceType.ZONE | undefined,
+);
+
+// The dispatched add form exposes a `submit()` method — mirrors the edit-view
+// contract (see view-space-edit.vue). All plugin-contributed add forms must
+// implement this or the Save button is a silent no-op.
+interface ISpaceAddFormHandle {
+	submit: () => void | Promise<unknown>;
+}
+const formRef = ref<ISpaceAddFormHandle | null>(null);
+
 const remoteFormChanged = ref(props.remoteFormChanged);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

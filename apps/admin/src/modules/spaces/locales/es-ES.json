@@ -13,7 +13,8 @@
 		"removeSpace": "Eliminar espacio",
 		"bulkRemoveSpace": "Eliminar espacios",
 		"discard": "Descartar cambios",
-		"adjustFilters": "Filtrar espacios"
+		"adjustFilters": "Filtrar espacios",
+		"selectPlugin": "Seleccionar tipo de espacio"
 	},
 	"edit": {
 		"sections": {
@@ -126,6 +127,10 @@
 				"validation": {
 					"required": "El tipo es obligatorio"
 				}
+			},
+			"plugin": {
+				"title": "Tipo de espacio",
+				"placeholder": "Seleccionar tipo de espacio"
 			},
 			"category": {
 				"title": "Categoría",
@@ -368,7 +373,9 @@
 		"noSpaces": "No tiene ningún espacio configurado",
 		"noFilteredSpaces": "Ningún espacio coincide con los criterios de filtro",
 		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
-		"noEditFormForSpaceType": "Los espacios de tipo «{type}» no se pueden editar directamente desde esta vista."
+		"noEditFormForSpaceType": "Los espacios de tipo «{type}» no se pueden editar directamente desde esta vista.",
+		"noAddFormForSpaceType": "Los espacios de tipo «{type}» no se pueden crear desde esta vista.",
+		"selectPlugin": "Elija un tipo de espacio para configurar. El formulario siguiente cambia según el tipo elegido."
 	},
 	"dialogs": {
 		"lightingRoles": {

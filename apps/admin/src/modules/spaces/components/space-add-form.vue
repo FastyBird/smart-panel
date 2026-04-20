@@ -17,7 +17,7 @@
 						<el-input v-model="model.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
 					</el-form-item>
 
-					<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
+					<el-form-item v-if="!props.type" :label="t('spacesModule.fields.spaces.type.title')" prop="type">
 						<el-select v-model="model.type">
 							<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
 							<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
@@ -231,6 +231,13 @@ const {
 	formResult,
 	createdSpace,
 } = useSpaceAddForm({ id: uuid().toString() });
+
+// When rendered via the plugin-picker flow the parent passes a fixed type
+// and the internal dropdown is hidden (`v-if="!props.type"`). Seed the
+// model so category/parent validation keys off the correct subtype.
+if (props.type) {
+	model.type = props.type;
+}
 
 // Local ref for template, synced with composable's formEl
 const formElRef = ref<FormInstance>();

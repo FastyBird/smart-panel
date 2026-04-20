@@ -13,7 +13,8 @@
 		"removeSpace": "Usun przestrzen",
 		"bulkRemoveSpace": "Usun przestrzenie",
 		"discard": "Odrzuc zmiany",
-		"adjustFilters": "Filtruj przestrzenie"
+		"adjustFilters": "Filtruj przestrzenie",
+		"selectPlugin": "Wybierz typ przestrzeni"
 	},
 	"edit": {
 		"sections": {
@@ -126,6 +127,10 @@
 				"validation": {
 					"required": "Typ jest wymagany"
 				}
+			},
+			"plugin": {
+				"title": "Typ przestrzeni",
+				"placeholder": "Wybierz typ przestrzeni"
 			},
 			"category": {
 				"title": "Kategoria",
@@ -368,7 +373,9 @@
 		"noSpaces": "Nie masz skonfigurowanych zadnych przestrzeni",
 		"noFilteredSpaces": "Zadne przestrzenie nie pasuja do kryteriow filtra",
 		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucic?",
-		"noEditFormForSpaceType": "Przestrzeni typu „{type}\" nie można edytować bezpośrednio z tego widoku."
+		"noEditFormForSpaceType": "Przestrzeni typu „{type}\" nie można edytować bezpośrednio z tego widoku.",
+		"noAddFormForSpaceType": "Przestrzeni typu „{type}\" nie można utworzyć z tego widoku.",
+		"selectPlugin": "Wybierz typ przestrzeni do skonfigurowania. Formularz poniżej zmieni się zgodnie z wybranym typem."
 	},
 	"dialogs": {
 		"lightingRoles": {

@@ -13,7 +13,8 @@
 		"removeSpace": "Bereich entfernen",
 		"bulkRemoveSpace": "Bereiche entfernen",
 		"discard": "Änderungen verwerfen",
-		"adjustFilters": "Bereiche filtern"
+		"adjustFilters": "Bereiche filtern",
+		"selectPlugin": "Bereichstyp auswählen"
 	},
 	"edit": {
 		"sections": {
@@ -126,6 +127,10 @@
 				"validation": {
 					"required": "Typ ist erforderlich"
 				}
+			},
+			"plugin": {
+				"title": "Bereichstyp",
+				"placeholder": "Bereichstyp auswählen"
 			},
 			"category": {
 				"title": "Kategorie",
@@ -368,7 +373,9 @@
 		"noSpaces": "Sie haben noch keine Bereiche konfiguriert",
 		"noFilteredSpaces": "Keine Bereiche entsprechen Ihren Filterkriterien",
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
-		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden."
+		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden.",
+		"noAddFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht erstellt werden.",
+		"selectPlugin": "Wählen Sie einen Bereichstyp zur Konfiguration. Das Formular unten passt sich dem gewählten Typ an."
 	},
 	"dialogs": {
 		"lightingRoles": {

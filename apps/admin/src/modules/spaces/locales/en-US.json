@@ -13,7 +13,8 @@
 		"removeSpace": "Remove space",
 		"bulkRemoveSpace": "Remove spaces",
 		"discard": "Discard changes",
-		"adjustFilters": "Filter spaces"
+		"adjustFilters": "Filter spaces",
+		"selectPlugin": "Select a space type"
 	},
 	"edit": {
 		"sections": {
@@ -126,6 +127,10 @@
 				"validation": {
 					"required": "Type is required"
 				}
+			},
+			"plugin": {
+				"title": "Space type",
+				"placeholder": "Select a space type"
 			},
 			"category": {
 				"title": "Category",
@@ -366,6 +371,8 @@
 		"loadingSpaces": "Loading spaces...",
 		"loadingSpace": "Loading space...",
 		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view.",
+		"noAddFormForSpaceType": "Spaces of type \"{type}\" cannot be created from this view.",
+		"selectPlugin": "Pick a space type to configure. The form below changes to match the chosen type.",
 		"noSpaces": "You don't have configured any space",
 		"noFilteredSpaces": "No spaces match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"

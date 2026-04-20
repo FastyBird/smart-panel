@@ -13,7 +13,8 @@
 		"removeSpace": "Odstrániť priestor",
 		"bulkRemoveSpace": "Odstrániť priestory",
 		"discard": "Zahodiť zmeny",
-		"adjustFilters": "Filtrovať priestory"
+		"adjustFilters": "Filtrovať priestory",
+		"selectPlugin": "Vyberte typ priestoru"
 	},
 	"edit": {
 		"sections": {
@@ -126,6 +127,10 @@
 				"validation": {
 					"required": "Typ je povinný"
 				}
+			},
+			"plugin": {
+				"title": "Typ priestoru",
+				"placeholder": "Vyberte typ priestoru"
 			},
 			"category": {
 				"title": "Kategória",
@@ -368,7 +373,9 @@
 		"noSpaces": "Nemáte nakonfigurovaný žiadny priestor",
 		"noFilteredSpaces": "Žiadne priestory nezodpovedajú vašim filtrom",
 		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
-		"noEditFormForSpaceType": "Priestory typu „{type}\" nie je možné priamo upravovať z tohto zobrazenia."
+		"noEditFormForSpaceType": "Priestory typu „{type}\" nie je možné priamo upravovať z tohto zobrazenia.",
+		"noAddFormForSpaceType": "Priestory typu „{type}\" nie je možné vytvoriť z tohto zobrazenia.",
+		"selectPlugin": "Vyberte typ priestoru na konfiguráciu. Formulár nižšie sa prispôsobí zvolenému typu."
 	},
 	"dialogs": {
 		"lightingRoles": {
