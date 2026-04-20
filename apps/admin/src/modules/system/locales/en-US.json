@@ -490,8 +490,11 @@
   },
   "backups": {
     "title": "Backups",
-    "description": "Create, restore, and manage system backups. Backups include configuration, database, and extension data.",
     "noBackups": "No backups have been created yet.",
+    "noMatches": "No backups match your search.",
+    "search": {
+      "placeholder": "Search backups..."
+    },
     "contributions": "contributions",
     "columns": {
       "name": "Name",

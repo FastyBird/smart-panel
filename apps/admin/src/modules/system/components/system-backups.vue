@@ -4,11 +4,20 @@
 		class="px-1 py-2 shrink-0"
 		body-class="p-0!"
 	>
-		<el-alert
-			:title="t('systemModule.backups.description')"
-			type="info"
-			:closable="false"
-		/>
+		<div class="flex w-full">
+			<el-input
+				v-model="searchQuery"
+				:placeholder="t('systemModule.backups.search.placeholder')"
+				class="max-w[280px] p-1"
+				clearable
+			>
+				<template #suffix>
+					<el-icon>
+						<icon icon="mdi:magnify" />
+					</el-icon>
+				</template>
+			</el-input>
+		</div>
 	</el-card>
 
 	<div class="flex-grow overflow-hidden">
@@ -22,7 +31,7 @@
 				class="min-h-[100px] overflow-auto"
 			>
 				<el-table
-					:data="backups"
+					:data="filteredBackups"
 					class="w-full"
 					table-layout="fixed"
 				>
@@ -62,7 +71,7 @@
 								</template>
 
 								<template #title>
-									{{ t('systemModule.backups.noBackups') }}
+									{{ backups.length === 0 ? t('systemModule.backups.noBackups') : t('systemModule.backups.noMatches') }}
 								</template>
 							</el-result>
 						</div>
@@ -234,16 +243,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
-	ElAlert,
 	ElButton,
 	ElCard,
 	ElDialog,
 	ElForm,
 	ElFormItem,
+	ElIcon,
 	ElInput,
 	ElMessageBox,
 	ElResult,
@@ -279,6 +288,24 @@ const deletingId = ref<string | null>(null);
 const restoringId = ref<string | null>(null);
 const downloadingId = ref<string | null>(null);
 const restoreTarget = ref<IBackup | null>(null);
+
+const searchQuery = ref<string>('');
+
+const filteredBackups = computed<IBackup[]>((): IBackup[] => {
+	const query = searchQuery.value.trim().toLowerCase();
+
+	if (query === '') {
+		return backups.value;
+	}
+
+	return backups.value.filter((backup) => {
+		return (
+			(backup.name ?? '').toLowerCase().includes(query) ||
+			backup.id.toLowerCase().includes(query) ||
+			backup.version.toLowerCase().includes(query)
+		);
+	});
+});
 
 const createFormEl = ref<FormInstance | undefined>(undefined);
 
