@@ -93,6 +93,20 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'backups',
+				name: RouteNames.SYSTEM_BACKUPS,
+				component: () => import('../views/view-system-backups.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'System backups',
+					icon: 'mdi:backup-restore',
+				},
+			},
+			{
 				path: 'logs',
 				name: RouteNames.SYSTEM_LOGS,
 				component: () => import('../views/view-system-logs.vue'),

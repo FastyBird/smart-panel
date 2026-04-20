@@ -189,6 +189,53 @@
 
 	<el-row
 		justify="center"
+		class="cursor-pointer"
+		@click="onShowBackups"
+	>
+		<el-col
+			:span="3"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<el-avatar :size="32">
+					<icon
+						icon="mdi:backup-restore"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
+			</div>
+		</el-col>
+		<el-col :span="19">
+			<el-text
+				size="large"
+				class="block font-600 text-lg"
+			>
+				{{ t('systemModule.headings.manage.systemBackups') }}
+			</el-text>
+			<el-text
+				class="block"
+				data-test-id="system-backups-info"
+			>
+				{{ t('systemModule.texts.manage.systemBackups') }}
+			</el-text>
+		</el-col>
+		<el-col
+			:span="2"
+			class="text-center"
+		>
+			<div class="flex justify-center items-center h-full">
+				<icon
+					icon="mdi:keyboard-arrow-right"
+					class="w[32px] h[32px]"
+				/>
+			</div>
+		</el-col>
+	</el-row>
+
+	<el-divider />
+
+	<el-row
+		justify="center"
 		class="mb-4 cursor-pointer"
 		@click="onShowLogs"
 	>
@@ -268,6 +315,12 @@ const isGateway = computed<boolean>((): boolean => {
 });
 
 const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
+
+const onShowBackups = (): void => {
+	emit('close');
+
+	router.push({ name: RouteNames.SYSTEM_BACKUPS });
+};
 
 const onShowLogs = (): void => {
 	emit('close');

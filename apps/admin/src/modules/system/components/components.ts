@@ -10,7 +10,6 @@ export { default as SystemInfoDetail } from './system-info/system-info-detail.vu
 export { default as UpdateNotificationBadge } from './system-info/update-notification-badge.vue';
 export { default as UpdateStatus } from './system-info/update-status.vue';
 
-export { default as ResponsiveCardSection } from './responsive-card-section.vue';
 export { default as SystemBackups } from './system-backups.vue';
 export { default as SystemConfigForm } from './system-config-form.vue';
 

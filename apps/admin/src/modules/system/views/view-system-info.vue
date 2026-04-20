@@ -65,48 +65,6 @@
 		/>
 	</div>
 
-	<responsive-card-section
-		:is-m-d-device="isMDDevice"
-		class="mt-4"
-	>
-		<template #header>
-			<div class="flex items-center justify-between">
-				<span class="font-semibold">
-					{{ t('systemModule.backups.title') }}
-				</span>
-
-				<div class="flex items-center gap-2">
-					<el-upload
-						:auto-upload="true"
-						:show-file-list="false"
-						accept=".tar.gz,.gz"
-						:http-request="handleUpload"
-					>
-						<el-button size="small">
-							<template #icon>
-								<icon icon="mdi:upload" />
-							</template>
-							{{ t('systemModule.backups.buttons.upload') }}
-						</el-button>
-					</el-upload>
-
-					<el-button
-						type="primary"
-						size="small"
-						@click="backupsList?.openCreateDialog()"
-					>
-						<template #icon>
-							<icon icon="mdi:plus" />
-						</template>
-						{{ t('systemModule.backups.buttons.create') }}
-					</el-button>
-				</div>
-			</div>
-		</template>
-
-		<system-backups ref="backupsList" />
-	</responsive-card-section>
-
 	<el-dialog
 		v-model="showAboutInfo"
 		:title="t('systemModule.headings.system.about')"
@@ -146,12 +104,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElButton, ElDialog, ElUpload, vLoading } from 'element-plus';
+import { ElButton, ElDialog, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, ManageSystem, ResponsiveCardSection, SystemBackups, SystemInfoDetail } from '../components/components';
+import { AboutApplication, ManageSystem, SystemInfoDetail } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { RouteNames } from '../system.constants';
 import { SystemException } from '../system.exceptions';
@@ -171,12 +129,6 @@ const { throttleStatus, fetchThrottleStatus, isLoading: isLoadingThrottleStatus 
 const showAboutInfo = ref<boolean>(false);
 
 const showManageSystem = ref<boolean>(false);
-
-const backupsList = ref<InstanceType<typeof SystemBackups> | null>(null);
-
-const handleUpload = (opts: { file: File }): Promise<void> => {
-	return backupsList.value?.onUploadBackup(opts) ?? Promise.resolve();
-};
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [
