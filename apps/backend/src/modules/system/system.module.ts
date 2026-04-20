@@ -177,7 +177,7 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 		const dataDir = getEnvValue<string>(
 			this.nestConfigService,
 			'FB_DATA_DIR',
-			path.resolve(__dirname, '../../../../../var/lib/smart-panel'),
+			path.resolve(__dirname, '../../../../../var'),
 		);
 		const envFilePath = `${dataDir}/.env`;
 

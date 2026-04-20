@@ -149,11 +149,7 @@ export class BackupService {
 
 		this.dbPath = join(dbDir, 'database.sqlite');
 
-		const dataDir = getEnvValue<string>(
-			this.configService,
-			'FB_DATA_DIR',
-			resolve(__dirname, '../../../../../../var/lib/smart-panel'),
-		);
+		const dataDir = getEnvValue<string>(this.configService, 'FB_DATA_DIR', resolve(__dirname, '../../../../../../var'));
 
 		this.backupsDir = join(dataDir, 'backups');
 	}
