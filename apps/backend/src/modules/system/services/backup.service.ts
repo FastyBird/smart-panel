@@ -170,6 +170,7 @@ export class BackupService {
 		const backupName = name || `backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
 		const tempDir = join(this.backupsDir, `temp-${id}`);
 		const tarPath = join(this.backupsDir, `${id}.tar.gz`);
+		let sidecarPath: string | null = null;
 
 		this.logger.debug(`Creating backup id=${id} name=${backupName}`);
 
@@ -183,7 +184,13 @@ export class BackupService {
 				const backupDbPath = join(tempDir, 'database.sqlite');
 
 				try {
-					await execFileAsync('sqlite3', [this.dbPath, `.backup '${backupDbPath}'`]);
+					// Escape embedded single quotes using SQLite's shell convention (two
+					// consecutive quotes represent a literal quote inside a quoted string),
+					// so a FB_DATA_DIR containing `'` doesn't produce a .backup parse error
+					// that would then propagate past the CLI-missing fallback as a hard failure.
+					const escapedBackupPath = backupDbPath.replace(/'/g, "''");
+
+					await execFileAsync('sqlite3', [this.dbPath, `.backup '${escapedBackupPath}'`]);
 				} catch (error) {
 					const err = error as NodeJS.ErrnoException;
 
@@ -271,6 +278,7 @@ export class BackupService {
 
 			// Write metadata sidecar so list() can skip tar extraction
 			this.writeMetadataSidecar(id, metadata);
+			sidecarPath = this.getMetadataSidecarPath(id);
 
 			// Cleanup old backups (preserve the one we just created)
 			await this.cleanupOldBackups(id);
@@ -284,11 +292,16 @@ export class BackupService {
 
 			return fullMetadata;
 		} catch (error) {
-			// Cleanup on failure
+			// Cleanup on failure — also unwind the sidecar if we got that far, otherwise
+			// a later cleanupOldBackups throw would orphan the {id}.json on disk
 			rmSync(tempDir, { recursive: true, force: true });
 
 			if (existsSync(tarPath)) {
 				rmSync(tarPath, { force: true });
+			}
+
+			if (sidecarPath && existsSync(sidecarPath)) {
+				rmSync(sidecarPath, { force: true });
 			}
 
 			throw error;
