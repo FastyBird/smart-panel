@@ -232,8 +232,8 @@ export class BackupController {
 		this.logger.debug(`Restoring backup id=${id}`);
 
 		// Preflight synchronously so archive/safety failures surface as HTTP errors
-		// before we kick off the async restore. The restore itself is fire-and-forget
-		// because it ends in process.exit — errors past preflight can only be logged.
+		// before we kick off the actual restore. Any throw here aborts without touching
+		// live state.
 		let metadata: BackupMetadata;
 
 		try {
@@ -250,17 +250,28 @@ export class BackupController {
 			throw new BadRequestException(`Backup cannot be restored: ${err.message}`);
 		}
 
+		// Run the restore inline so the caller gets a real answer. A pre-PNR failure
+		// (disk full during extraction, archive deleted between preflight and restore,
+		// permission error) propagates here as an HTTP error instead of silently
+		// landing in a fire-and-forget .catch. A post-PNR failure inside restore()
+		// calls process.exit(1) itself so the handler never returns in that case.
+		try {
+			await this.backupService.restore(id);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to restore backup: ${err.message}`, err.stack);
+
+			throw new InternalServerErrorException(`Failed to restore backup: ${err.message}`);
+		}
+
 		const response = new BackupResponseModel();
 		response.data = this.mapMetadata(metadata);
 
-		// Defer the restore so Fastify has time to flush the response. restore() ends in
-		// process.exit(0) and a fast path (tiny DB) could otherwise terminate the worker
-		// mid-flush, leaving the client with a network error despite a successful restore.
-		setTimeout(() => {
-			this.backupService.restore(id).catch((error: Error) => {
-				this.logger.error(`Failed to restore backup: ${error.message}`, error.stack);
-			});
-		}, 1000);
+		// Schedule the clean exit after Fastify has flushed the success envelope.
+		// The restore body has already mutated disk state — systemd/the supervisor
+		// restarts the process and migrations run on boot.
+		setTimeout(() => process.exit(0), 1000);
 
 		return response;
 	}

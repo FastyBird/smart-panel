@@ -344,7 +344,10 @@ const onCreateDialogClose = (): void => {
 
 const onCreateBackup = async (): Promise<void> => {
 	try {
-		const result = await createBackup(createForm.name || undefined);
+		// Treat whitespace-only input as empty so the backend generates a default name
+		// instead of persisting a blank-looking entry that still passes non-empty validation
+		const trimmedName = createForm.name.trim();
+		const result = await createBackup(trimmedName.length > 0 ? trimmedName : undefined);
 
 		if (result) {
 			showCreateDialog.value = false;

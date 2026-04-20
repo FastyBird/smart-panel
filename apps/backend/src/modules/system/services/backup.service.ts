@@ -180,7 +180,11 @@ export class BackupService {
 		this.ensureBackupsDir();
 
 		const id = uuid();
-		const backupName = name || `backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+		// Trim and fall back to a timestamped default so whitespace-only names don't
+		// produce blank-looking entries in the UI and download filenames
+		const trimmedName = name?.trim() ?? '';
+		const backupName =
+			trimmedName.length > 0 ? trimmedName : `backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
 		const tempDir = join(this.backupsDir, `temp-${id}`);
 		const tarPath = join(this.backupsDir, `${id}.tar.gz`);
 		let sidecarPath: string | null = null;
@@ -682,10 +686,10 @@ export class BackupService {
 			// Cleanup temp dir
 			rmSync(tempDir, { recursive: true, force: true });
 
-			this.logger.log(`Backup restored successfully: id=${id}. Exiting process for restart.`);
+			this.logger.log(`Backup restored successfully: id=${id}. Ready for process restart.`);
 
-			// Exit process - systemd will restart, migrations run on boot
-			process.exit(0);
+			// The controller schedules the clean process.exit(0) after flushing the HTTP
+			// response so the caller actually sees the success envelope before we die
 		} catch (error) {
 			// Cleanup on failure
 			rmSync(tempDir, { recursive: true, force: true });
