@@ -286,15 +286,7 @@ watch(formChanged, (changed) => {
 	emit('update:remote-form-changed', changed);
 });
 
-const fetchSpace = async (): Promise<void> => {
-	const { data, error } = await backend.client.GET(
-		`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`,
-		{ params: { path: { id: props.space.id } } },
-	);
-
-	if (error || !data) return;
-
-	const raw = data.data as Record<string, unknown>;
+const applyServerPayload = (raw: Record<string, unknown>): void => {
 	model.name = (raw.name as string | undefined) ?? props.space.name;
 	model.description = (raw.description as string | null | undefined) ?? null;
 	model.layout = ((raw.layout as SignageInfoPanelLayout | undefined) ?? SignageInfoPanelLayout.CLOCK_WEATHER_ANNOUNCEMENTS);
@@ -305,6 +297,9 @@ const fetchSpace = async (): Promise<void> => {
 	model.weatherLocationId = (raw.weather_location_id as string | null | undefined) ?? null;
 	model.feedUrl = (raw.feed_url as string | null | undefined) ?? null;
 
+	// Capture a plain snapshot (spread of a reactive proxy yields a fresh
+	// non-reactive object) so `formChanged` keeps comparing against the
+	// values the server returned — not the live `model` reference.
 	baseline.value = { ...model };
 };
 
@@ -396,7 +391,11 @@ const onSubmit = async (): Promise<void> => {
 			return;
 		}
 
-		baseline.value = { ...model };
+		// Re-seed both the form model and the baseline from the server
+		// response so any server-side normalisation (e.g. `feed_url` trim)
+		// is reflected in the form — otherwise `formChanged` would flag
+		// the form as dirty immediately after a successful save.
+		applyServerPayload(data.data as Record<string, unknown>);
 
 		const updated: ISpace = {
 			...props.space,
