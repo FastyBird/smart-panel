@@ -7,7 +7,7 @@ import { type ISpaceAddFormProps, spaceAddFormEmits } from './components/space-a
 import { type ISpaceDetailProps } from './components/space-detail.types';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './components/space-edit-form.types';
 import type { SpaceAddFormSchema, SpaceEditFormSchema } from './composables/schemas';
-import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from './store/spaces.store.schemas';
+import type { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from './store/spaces.store.schemas';
 
 export type ISpacePluginsComponents = {
 	spaceDetail?: DefineComponent<ISpaceDetailProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
