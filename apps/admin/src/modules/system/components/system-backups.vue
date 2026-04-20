@@ -1,159 +1,170 @@
 <template>
-	<div>
-		<div class="p-4">
-			<el-alert
-				:title="t('systemModule.backups.description')"
-				type="info"
-				:closable="false"
-			/>
-		</div>
+	<el-card
+		shadow="never"
+		class="px-1 py-2 shrink-0"
+		body-class="p-0!"
+	>
+		<el-alert
+			:title="t('systemModule.backups.description')"
+			type="info"
+			:closable="false"
+		/>
+	</el-card>
 
-		<div
-			v-loading="loading"
-			class="min-h-[100px]"
+	<div class="flex-grow overflow-hidden">
+		<el-card
+			shadow="never"
+			class="max-h-full flex flex-col overflow-hidden box-border"
+			body-class="p-0! max-h-full overflow-hidden flex flex-col"
 		>
-			<el-table
-				:data="backups"
-				class="w-full"
-				table-layout="fixed"
+			<div
+				v-loading="loading"
+				class="min-h-[100px] overflow-auto"
 			>
-				<template #empty>
-					<div
-						v-if="loading"
-						class="h-full w-full leading-normal"
-					>
-						<el-result class="h-full w-full">
-							<template #icon>
-								<icon-with-child :size="80">
-									<template #primary>
-										<icon icon="mdi:backup-restore" />
-									</template>
-									<template #secondary>
-										<icon icon="mdi:database-refresh" />
-									</template>
-								</icon-with-child>
-							</template>
-						</el-result>
-					</div>
-
-					<div
-						v-else
-						class="h-full w-full leading-normal"
-					>
-						<el-result class="h-full w-full">
-							<template #icon>
-								<icon-with-child :size="80">
-									<template #primary>
-										<icon icon="mdi:backup-restore" />
-									</template>
-									<template #secondary>
-										<icon icon="mdi:information" />
-									</template>
-								</icon-with-child>
-							</template>
-
-							<template #title>
-								{{ t('systemModule.backups.noBackups') }}
-							</template>
-						</el-result>
-					</div>
-				</template>
-
-				<el-table-column
-					:label="t('systemModule.backups.columns.name')"
-					prop="name"
-					min-width="150"
+				<el-table
+					:data="backups"
+					class="w-full"
+					table-layout="fixed"
 				>
-					<template #default="{ row }">
-						<div>
-							<strong class="block">{{ row.name || row.id }}</strong>
-							<el-text
-								v-if="row.contributions && row.contributions.length"
-								size="small"
-								type="info"
-								class="block leading-4"
-								truncated
-							>
-								{{ row.contributions.length }} {{ t('systemModule.backups.contributions') }}
-							</el-text>
+					<template #empty>
+						<div
+							v-if="loading"
+							class="h-full w-full leading-normal"
+						>
+							<el-result class="h-full w-full">
+								<template #icon>
+									<icon-with-child :size="80">
+										<template #primary>
+											<icon icon="mdi:backup-restore" />
+										</template>
+										<template #secondary>
+											<icon icon="mdi:database-refresh" />
+										</template>
+									</icon-with-child>
+								</template>
+							</el-result>
+						</div>
+
+						<div
+							v-else
+							class="h-full w-full leading-normal"
+						>
+							<el-result class="h-full w-full">
+								<template #icon>
+									<icon-with-child :size="80">
+										<template #primary>
+											<icon icon="mdi:backup-restore" />
+										</template>
+										<template #secondary>
+											<icon icon="mdi:information" />
+										</template>
+									</icon-with-child>
+								</template>
+
+								<template #title>
+									{{ t('systemModule.backups.noBackups') }}
+								</template>
+							</el-result>
 						</div>
 					</template>
-				</el-table-column>
 
-				<el-table-column
-					:label="t('systemModule.backups.columns.version')"
-					prop="version"
-					width="120"
-				/>
+					<el-table-column
+						:label="t('systemModule.backups.columns.name')"
+						prop="name"
+						min-width="150"
+					>
+						<template #default="{ row }">
+							<div>
+								<strong class="block">{{ row.name || row.id }}</strong>
+								<el-text
+									v-if="row.contributions && row.contributions.length"
+									size="small"
+									type="info"
+									class="block leading-4"
+									truncated
+								>
+									{{ row.contributions.length }} {{ t('systemModule.backups.contributions') }}
+								</el-text>
+							</div>
+						</template>
+					</el-table-column>
 
-				<el-table-column
-					:label="t('systemModule.backups.columns.created')"
-					prop="created_at"
-					width="180"
-				>
-					<template #default="{ row }">
-						{{ formatDate(row.created_at) }}
-					</template>
-				</el-table-column>
+					<el-table-column
+						:label="t('systemModule.backups.columns.version')"
+						prop="version"
+						width="120"
+					/>
 
-				<el-table-column
-					:label="t('systemModule.backups.columns.size')"
-					prop="size_bytes"
-					width="120"
-				>
-					<template #default="{ row }">
-						{{ formatSize(row.size_bytes) }}
-					</template>
-				</el-table-column>
+					<el-table-column
+						:label="t('systemModule.backups.columns.created')"
+						prop="created_at"
+						width="180"
+					>
+						<template #default="{ row }">
+							{{ formatDate(row.created_at) }}
+						</template>
+					</el-table-column>
 
-				<el-table-column
-					:label="t('systemModule.backups.columns.actions')"
-					width="240"
-					align="right"
-				>
-					<template #default="{ row }">
-						<div @click.stop>
-							<el-button
-								size="small"
-								plain
-								:loading="downloadingId === row.id"
-								@click="onDownloadBackup(row)"
-							>
-								<template #icon>
-									<icon icon="mdi:download" />
-								</template>
-							</el-button>
+					<el-table-column
+						:label="t('systemModule.backups.columns.size')"
+						prop="size_bytes"
+						width="120"
+					>
+						<template #default="{ row }">
+							{{ formatSize(row.size_bytes) }}
+						</template>
+					</el-table-column>
 
-							<el-button
-								size="small"
-								type="warning"
-								plain
-								:loading="restoringId === row.id"
-								@click="onRestoreBackup(row)"
-							>
-								<template #icon>
-									<icon icon="mdi:backup-restore" />
-								</template>
-							</el-button>
+					<el-table-column
+						:label="t('systemModule.backups.columns.actions')"
+						width="240"
+						align="right"
+					>
+						<template #default="{ row }">
+							<div @click.stop>
+								<el-button
+									size="small"
+									plain
+									:loading="downloadingId === row.id"
+									@click="onDownloadBackup(row)"
+								>
+									<template #icon>
+										<icon icon="mdi:download" />
+									</template>
+								</el-button>
 
-							<el-button
-								size="small"
-								type="danger"
-								plain
-								:loading="deletingId === row.id"
-								@click="onDeleteBackup(row)"
-							>
-								<template #icon>
-									<icon icon="mdi:delete" />
-								</template>
-							</el-button>
-						</div>
-					</template>
-				</el-table-column>
-			</el-table>
-		</div>
+								<el-button
+									size="small"
+									type="warning"
+									plain
+									:loading="restoringId === row.id"
+									@click="onRestoreBackup(row)"
+								>
+									<template #icon>
+										<icon icon="mdi:backup-restore" />
+									</template>
+								</el-button>
 
-		<!-- Create Backup Dialog -->
+								<el-button
+									size="small"
+									type="danger"
+									plain
+									:loading="deletingId === row.id"
+									@click="onDeleteBackup(row)"
+								>
+									<template #icon>
+										<icon icon="mdi:delete" />
+									</template>
+								</el-button>
+							</div>
+						</template>
+					</el-table-column>
+				</el-table>
+			</div>
+		</el-card>
+	</div>
+
+	<!-- Create Backup Dialog -->
 		<el-dialog
 			v-model="showCreateDialog"
 			:title="t('systemModule.backups.createDialog.title')"
@@ -220,7 +231,6 @@
 				</el-button>
 			</template>
 		</el-dialog>
-	</div>
 </template>
 
 <script setup lang="ts">
@@ -230,6 +240,7 @@ import { useI18n } from 'vue-i18n';
 import {
 	ElAlert,
 	ElButton,
+	ElCard,
 	ElDialog,
 	ElForm,
 	ElFormItem,

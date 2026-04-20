@@ -56,7 +56,9 @@
 		</template>
 	</view-header>
 
-	<system-backups ref="backupsList" />
+	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
+		<system-backups ref="backupsList" />
+	</div>
 </template>
 
 <script setup lang="ts">
