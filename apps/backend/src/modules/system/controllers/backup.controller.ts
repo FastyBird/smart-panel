@@ -253,10 +253,14 @@ export class BackupController {
 		const response = new BackupResponseModel();
 		response.data = this.mapMetadata(metadata);
 
-		// Start restore asynchronously — this will exit the process on success
-		this.backupService.restore(id).catch((error: Error) => {
-			this.logger.error(`Failed to restore backup: ${error.message}`, error.stack);
-		});
+		// Defer the restore so Fastify has time to flush the response. restore() ends in
+		// process.exit(0) and a fast path (tiny DB) could otherwise terminate the worker
+		// mid-flush, leaving the client with a network error despite a successful restore.
+		setTimeout(() => {
+			this.backupService.restore(id).catch((error: Error) => {
+				this.logger.error(`Failed to restore backup: ${error.message}`, error.stack);
+			});
+		}, 1000);
 
 		return response;
 	}

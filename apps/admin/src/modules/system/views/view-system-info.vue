@@ -65,11 +65,9 @@
 		/>
 	</div>
 
-	<el-card
-		v-if="isMDDevice"
-		shadow="never"
+	<responsive-card-section
+		:is-m-d-device="isMDDevice"
 		class="mt-4"
-		body-class="p-0!"
 	>
 		<template #header>
 			<div class="flex items-center justify-between">
@@ -84,9 +82,7 @@
 						accept=".tar.gz,.gz"
 						:http-request="handleUpload"
 					>
-						<el-button
-							size="small"
-						>
+						<el-button size="small">
 							<template #icon>
 								<icon icon="mdi:upload" />
 							</template>
@@ -109,49 +105,7 @@
 		</template>
 
 		<system-backups ref="backupsList" />
-	</el-card>
-
-	<div
-		v-else
-		class="mt-4"
-	>
-		<div class="flex items-center justify-between mb-3">
-			<span class="font-semibold">
-				{{ t('systemModule.backups.title') }}
-			</span>
-
-			<div class="flex items-center gap-2">
-				<el-upload
-					:auto-upload="true"
-					:show-file-list="false"
-					accept=".tar.gz,.gz"
-					:http-request="handleUpload"
-				>
-					<el-button
-						size="small"
-					>
-						<template #icon>
-							<icon icon="mdi:upload" />
-						</template>
-						{{ t('systemModule.backups.buttons.upload') }}
-					</el-button>
-				</el-upload>
-
-				<el-button
-					type="primary"
-					size="small"
-					@click="backupsList?.openCreateDialog()"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
-					{{ t('systemModule.backups.buttons.create') }}
-				</el-button>
-			</div>
-		</div>
-
-		<system-backups ref="backupsList" />
-	</div>
+	</responsive-card-section>
 
 	<el-dialog
 		v-model="showAboutInfo"
@@ -192,12 +146,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDialog, ElUpload, vLoading } from 'element-plus';
+import { ElButton, ElDialog, ElUpload, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, ManageSystem, SystemBackups, SystemInfoDetail } from '../components/components';
+import { AboutApplication, ManageSystem, ResponsiveCardSection, SystemBackups, SystemInfoDetail } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { RouteNames } from '../system.constants';
 import { SystemException } from '../system.exceptions';
