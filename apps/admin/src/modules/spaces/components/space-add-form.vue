@@ -222,7 +222,13 @@ const { t } = useI18n();
 
 const { zoneSpaces: availableZones } = useSpaces();
 
-// Use the form composable
+// Use the form composable. Seed it with the picker-chosen `type` (if any)
+// so the composable's `initialModel` snapshot captures the correct subtype
+// up front — otherwise the internal `formChanged` watcher would immediately
+// flag ZONE as dirty against a ROOM baseline and prompt "Discard changes?"
+// before the user edits anything. The view re-mounts this form via
+// `:key="selectedType"` whenever the picker changes type, so this one-shot
+// seed per mount is sufficient — no runtime `watch(props.type)` needed.
 const {
 	model,
 	formEl,
@@ -230,31 +236,7 @@ const {
 	submit,
 	formResult,
 	createdSpace,
-} = useSpaceAddForm({ id: uuid().toString() });
-
-// When rendered via the plugin-picker flow the parent passes a fixed type
-// and the internal dropdown is hidden (`v-if="!props.type"`). Seed the
-// model so category/parent validation keys off the correct subtype.
-//
-// Watch (not a one-shot assign) because Vue reuses this component instance
-// when the picker switches between ROOM and ZONE — both types dispatch to
-// the same registered component reference, so `setup()` runs once and we
-// need to track subsequent prop changes to keep `model.type` in sync.
-watch(
-	(): typeof props.type => props.type,
-	(newType): void => {
-		// `model.type` is narrowed to `ROOM | ZONE` by the internal add-form
-		// schema. The prop, by design, is the full `SpaceType` union to match
-		// the dispatch-boundary contract — any plugin-contributed type other
-		// than ROOM / ZONE here would indicate a misconfigured picker (this
-		// component is only registered under home-control's room / zone
-		// elements). Runtime-guard defensively rather than silently assigning.
-		if (newType === SpaceType.ROOM || newType === SpaceType.ZONE) {
-			model.type = newType;
-		}
-	},
-	{ immediate: true },
-);
+} = useSpaceAddForm({ id: uuid().toString(), type: props.type });
 
 // Local ref for template, synced with composable's formEl
 const formElRef = ref<FormInstance>();

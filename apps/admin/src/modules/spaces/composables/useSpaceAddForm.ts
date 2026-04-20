@@ -13,10 +13,19 @@ import type { ISpaceAddForm, IUseSpaceAddForm } from './types';
 
 interface IUseSpaceAddFormProps {
 	id: string;
+	/**
+	 * Seed `model.type` (and the captured `initialModel` snapshot) with this
+	 * value. Used by the plugin-picker flow: when the parent view passes a
+	 * chosen space type, we need it baked into the snapshot so the
+	 * subsequent deep-equal check doesn't immediately flag `formChanged=true`
+	 * before the user has edited anything.
+	 */
+	type?: SpaceType;
 }
 
 export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 	id,
+	type,
 }: IUseSpaceAddFormProps): IUseSpaceAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 	const spacesStore = storesManager.getStore(spacesStoreKey);
@@ -31,7 +40,7 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 
 	const model = reactive<TForm>({
 		id,
-		type: SpaceType.ROOM,
+		type: type ?? SpaceType.ROOM,
 		name: '',
 		description: null,
 		category: null,
