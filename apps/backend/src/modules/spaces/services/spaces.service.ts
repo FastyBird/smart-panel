@@ -374,12 +374,14 @@ export class SpacesService {
 				.where('roomId = :id', { id })
 				.execute();
 
-			// Set roomId to null for all displays in this space
+			// Unassign any displays pointing at this space. Displays now point
+			// at any space type (Phase 5 dropped the role=room constraint), so
+			// cleanup is not room-specific.
 			await manager
 				.createQueryBuilder()
 				.update(DisplayEntity)
-				.set({ roomId: null })
-				.where('roomId = :id', { id })
+				.set({ spaceId: null })
+				.where('spaceId = :id', { id })
 				.execute();
 
 			await manager.remove(space);
