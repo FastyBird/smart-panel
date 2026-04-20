@@ -56,9 +56,18 @@
 			<el-divider v-if="selectedType" />
 
 			<template v-if="selectedType">
+				<!--
+					`:key` forces the form to unmount + remount whenever the
+					picker switches types. Without it, two types that register
+					the *same* component reference (home-control uses one
+					`SpaceAddForm` for both ROOM and ZONE) would reuse the
+					instance, carrying stale `model.type`, category, parent,
+					and other subtype-specific fields across the switch.
+				-->
 				<component
 					:is="element?.components?.spaceAddForm"
 					v-if="element?.components?.spaceAddForm"
+					:key="selectedType"
 					ref="formRef"
 					v-model:remote-form-changed="remoteFormChanged"
 					:type="addFormType"

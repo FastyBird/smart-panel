@@ -235,9 +235,20 @@ const {
 // When rendered via the plugin-picker flow the parent passes a fixed type
 // and the internal dropdown is hidden (`v-if="!props.type"`). Seed the
 // model so category/parent validation keys off the correct subtype.
-if (props.type) {
-	model.type = props.type;
-}
+//
+// Watch (not a one-shot assign) because Vue reuses this component instance
+// when the picker switches between ROOM and ZONE — both types dispatch to
+// the same registered component reference, so `setup()` runs once and we
+// need to track subsequent prop changes to keep `model.type` in sync.
+watch(
+	(): typeof props.type => props.type,
+	(newType): void => {
+		if (newType) {
+			model.type = newType;
+		}
+	},
+	{ immediate: true },
+);
 
 // Local ref for template, synced with composable's formEl
 const formElRef = ref<FormInstance>();
