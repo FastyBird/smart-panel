@@ -460,17 +460,33 @@ export class BackupService {
 			// open connections lets SQLite rewrite WAL from its cached view of the OLD DB,
 			// which would replay onto the restored file on next boot and corrupt it
 			if (metadata.contributions && metadata.contributions.length > 0) {
-				const registeredContributions = this.contributionRegistry.getContributions();
+				const registrations = this.contributionRegistry.getRegistrations();
 				const contributionKey = (source: string, label: string): string => `${source}\u0000${label}`;
-				const registeredByKey = new Map(
-					registeredContributions.map((c) => [contributionKey(c.source, c.label), c] as const),
-				);
+				const registrationByKey = new Map(registrations.map((r) => [contributionKey(r.source, r.label), r] as const));
+
+				// Two-pass ordering: contributions registered with a literal path first
+				// (e.g. config dir), then lazy-callback paths (e.g. buddy personality).
+				// A lazy callback reads live state — if a config-dir contribution swaps
+				// that state, running the callback in pass 2 resolves against the
+				// post-restore filesystem instead of the pre-restore one.
+				const staticPass: BackupMetadataContribution[] = [];
+				const lazyPass: BackupMetadataContribution[] = [];
 
 				for (const contribution of metadata.contributions) {
-					// Match by (source, label), not absolute path — paths differ between machines
-					const registered = registeredByKey.get(contributionKey(contribution.source, contribution.label));
+					const registration = registrationByKey.get(contributionKey(contribution.source, contribution.label));
 
-					if (!registered) {
+					if (registration && typeof registration.path === 'function') {
+						lazyPass.push(contribution);
+					} else {
+						staticPass.push(contribution);
+					}
+				}
+
+				for (const contribution of [...staticPass, ...lazyPass]) {
+					// Match by (source, label), not absolute path — paths differ between machines
+					const registration = registrationByKey.get(contributionKey(contribution.source, contribution.label));
+
+					if (!registration) {
 						this.logger.warn(`Skipping unregistered contribution: ${contribution.source} (${contribution.label})`);
 
 						continue;
@@ -500,8 +516,9 @@ export class BackupService {
 
 					const sourcePath = join(contributionDir, entries[0]);
 
-					// Restore to the currently registered path, not the path from the backup
-					const targetPath = registered.path;
+					// Resolve the target path right now — for lazy callbacks this runs
+					// after pass-1 restored the config, so they see the post-restore layout
+					const targetPath = typeof registration.path === 'function' ? registration.path() : registration.path;
 					const targetDir = resolve(targetPath, '..');
 
 					if (!existsSync(targetDir)) {
@@ -517,7 +534,7 @@ export class BackupService {
 
 					// Trust the registry's type (same as path): the currently installed system
 					// defines what this contribution should look like, not the untrusted archive
-					if (registered.type === 'directory') {
+					if (registration.type === 'directory') {
 						// Remove the existing target before copying so files created after the
 						// backup are cleared — cpSync merges rather than replacing, which would
 						// otherwise leave stale state that can conflict with the restored DB

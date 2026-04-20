@@ -34,6 +34,17 @@ export class BackupContributionRegistry {
 		this.contributions.push(contribution);
 	}
 
+	/**
+	 * Raw registrations (with lazy callbacks unresolved) — for callers that need to
+	 * resolve paths at a specific moment rather than all at once. Used by restore()
+	 * so lazy callbacks read the filesystem AFTER any preceding static-path
+	 * contributions have been written (e.g. buddy's personality path reading from
+	 * the already-restored config file, not the pre-restore one).
+	 */
+	getRegistrations(): readonly BackupContributionRegistration[] {
+		return this.contributions;
+	}
+
 	getContributions(): BackupContribution[] {
 		const resolved: BackupContribution[] = [];
 
