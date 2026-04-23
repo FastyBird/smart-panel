@@ -83,15 +83,15 @@ describe('usePlugins', () => {
 		]);
 	});
 
-	it('getByName returns correct plugin', () => {
-		const { getByName } = useDataSourcesPlugins();
-		const plugin = getByName('test-plugin');
+	it('getByPluginType returns correct plugin', () => {
+		const { getByPluginType } = useDataSourcesPlugins();
+		const plugin = getByPluginType('test-plugin');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 
-	it('getByName returns undefined for unknown plugin', () => {
-		const { getByName } = useDataSourcesPlugins();
-		const plugin = getByName('nonexistent');
+	it('getByPluginType returns undefined for unknown plugin', () => {
+		const { getByPluginType } = useDataSourcesPlugins();
+		const plugin = getByPluginType('nonexistent');
 		expect(plugin).toBeUndefined();
 	});
 

@@ -80,7 +80,7 @@ export interface IUseSpaceEditForm<TForm extends ISpaceEditForm = ISpaceEditForm
 export interface IUseSpacesPlugins {
 	plugins: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
-	getByName: (type: IPlugin['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
+	getByPluginType: (type: IPlugin['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined;
 }

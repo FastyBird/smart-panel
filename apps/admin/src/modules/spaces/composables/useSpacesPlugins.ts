@@ -80,7 +80,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 		}
 	);
 
-	const getByName = (type: IPlugin['type']): IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined => {
+	const getByPluginType = (type: IPlugin['type']): IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
@@ -107,7 +107,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 	return {
 		plugins,
 		options,
-		getByName,
+		getByPluginType,
 		getByType,
 		getElement,
 	};

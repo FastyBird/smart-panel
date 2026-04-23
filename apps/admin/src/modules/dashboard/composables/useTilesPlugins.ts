@@ -65,7 +65,7 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 		}
 	);
 
-	const getByName = (type: IPlugin['type']): IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined => {
+	const getByPluginType = (type: IPlugin['type']): IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
@@ -92,7 +92,7 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 	return {
 		plugins,
 		options,
-		getByName,
+		getByPluginType,
 		getByType,
 		getElement,
 	};

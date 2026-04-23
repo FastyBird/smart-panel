@@ -65,7 +65,7 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 		}
 	);
 
-	const getByName = (type: IPlugin['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
+	const getByPluginType = (type: IPlugin['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
@@ -92,7 +92,7 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 	return {
 		plugins,
 		options,
-		getByName,
+		getByPluginType,
 		getByType,
 		getElement,
 	};
