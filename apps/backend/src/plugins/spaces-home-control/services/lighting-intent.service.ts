@@ -10,7 +10,6 @@ import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../..
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
-import { LightingStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	BrightnessDelta,
@@ -22,6 +21,7 @@ import {
 	SPACES_MODULE_NAME,
 } from '../../../modules/spaces/spaces.constants';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingStateDataModel } from '../models/spaces-response.model';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';

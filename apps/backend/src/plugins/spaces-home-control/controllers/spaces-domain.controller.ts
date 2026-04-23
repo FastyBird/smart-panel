@@ -21,6 +21,37 @@ import {
 	MediaActivityDryRunPreviewResponseModel,
 	MediaActivityDryRunWarningModel,
 } from '../../../modules/spaces/models/media-activity.model';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import {
+	CoversMode,
+	EventType,
+	IntentCategory,
+	LightingMode,
+	LightingRole,
+	MediaActivityKey,
+	QUICK_ACTION_CATALOG,
+	SUGGESTION_EXPIRY_MS,
+	SuggestionType,
+} from '../../../modules/spaces/spaces.constants';
+import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
+import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
+import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
+import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
+import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
+import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
+import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
+import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import {
 	BulkClimateRoleResultItemModel,
 	BulkClimateRolesResponseModel,
@@ -96,38 +127,7 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
-} from '../../../modules/spaces/models/spaces-response.model';
-import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	CoversMode,
-	EventType,
-	IntentCategory,
-	LightingMode,
-	LightingRole,
-	MediaActivityKey,
-	QUICK_ACTION_CATALOG,
-	SUGGESTION_EXPIRY_MS,
-	SuggestionType,
-} from '../../../modules/spaces/spaces.constants';
-import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
-import {
-	ApiBadRequestResponse,
-	ApiCreatedSuccessResponse,
-	ApiNotFoundResponse,
-	ApiSuccessResponse,
-	ApiUnprocessableEntityResponse,
-} from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { Roles } from '../../../modules/users/guards/roles.guard';
-import { UserRole } from '../../../modules/users/users.constants';
-import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
-import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
-import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
-import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
-import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
-import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
-import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
-import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
-import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
+} from '../models/spaces-response.model';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';

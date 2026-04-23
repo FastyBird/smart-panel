@@ -9,7 +9,6 @@ import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../..
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
-import { ClimateStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	ClimateIntentType,
@@ -21,6 +20,7 @@ import {
 	SPACES_MODULE_NAME,
 } from '../../../modules/spaces/spaces.constants';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { ClimateStateDataModel } from '../models/spaces-response.model';
 import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateState, PrimaryClimateDevice, SpaceClimateStateService } from './space-climate-state.service';

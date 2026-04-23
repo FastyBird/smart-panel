@@ -8,8 +8,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { LightingStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
 import { EventType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { LightingStateDataModel } from '../models/spaces-response.model';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 
 /**
