@@ -295,13 +295,17 @@ watch(formChanged, (changed) => {
 });
 
 const applyServerPayload = (raw: Record<string, unknown>): void => {
+	// Mark the fetch as resolved regardless of whether we actually apply
+	// the payload — `canSubmit` gates Save on `loaded && !loadFailed`, and
+	// staying un-loaded forever would permanently disable Save for any
+	// user who typed during the fetch window.
+	loaded.value = true;
+
 	// If the user edited the form while the fetch was in flight, the
 	// baseline and the live model already diverge. Overwriting the model
 	// with the server payload at this point would silently lose the user's
 	// in-progress edits. Keep their input intact — they can cancel and
-	// refresh if they want the server copy. `canSubmit` still gates Save
-	// on `baseline.value !== null`, so the initial defaults baseline keeps
-	// that active even without the server payload.
+	// refresh if they want the server copy.
 	if (formChanged.value) {
 		return;
 	}
@@ -320,7 +324,6 @@ const applyServerPayload = (raw: Record<string, unknown>): void => {
 	// non-reactive object) so `formChanged` keeps comparing against the
 	// values the server returned — not the live `model` reference.
 	baseline.value = { ...model };
-	loaded.value = true;
 };
 
 const fetchSpace = async (): Promise<void> => {
