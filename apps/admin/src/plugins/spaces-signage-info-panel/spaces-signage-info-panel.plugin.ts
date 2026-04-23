@@ -19,6 +19,7 @@ import {
 } from '../../modules/spaces';
 import { SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
+import SignageInfoPanelSpaceAddForm from './components/signage-info-panel-space-add-form.vue';
 import SignageInfoPanelSpaceEditForm from './components/signage-info-panel-space-edit-form.vue';
 import { locales } from './locales';
 import {
@@ -82,6 +83,7 @@ export default {
 				type,
 				name: SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS[type],
 				components: {
+					spaceAddForm: SignageInfoPanelSpaceAddForm,
 					spaceEditForm: SignageInfoPanelSpaceEditForm,
 				},
 				schemas: {
