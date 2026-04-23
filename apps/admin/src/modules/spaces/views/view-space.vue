@@ -43,7 +43,16 @@
 		>
 			<template #extra>
 				<div class="flex items-center">
+					<!--
+						Add-device / add-scene are home-control affordances
+						(lighting/climate roles, device binding, scene linkage)
+						— they only make sense for ROOM / ZONE. Add-display is
+						room-only (displays are assigned to rooms specifically,
+						not zones). MASTER / ENTRY / SIGNAGE have no add-*
+						button visible here; their Edit button stays.
+					-->
 					<el-button
+						v-if="isHomeControlSpace"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -56,6 +65,7 @@
 						{{ t('spacesModule.detail.devices.add') }}
 					</el-button>
 					<el-button
+						v-if="isHomeControlSpace"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
