@@ -1,13 +1,7 @@
-import { BaseEntity } from '../../../common/entities/base.entity';
+import { IRelationLoader } from '../../../common/plugin-relations/relation-loader.interface';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 
 import { SpaceEntity } from './space.entity';
-
-export interface IRelationLoader {
-	supports(entity: BaseEntity): boolean;
-
-	loadRelations(entity: BaseEntity): Promise<void>;
-}
 
 export interface ISpaceRelationsLoader extends IRelationLoader {
 	supports(entity: SpaceEntity): boolean;
