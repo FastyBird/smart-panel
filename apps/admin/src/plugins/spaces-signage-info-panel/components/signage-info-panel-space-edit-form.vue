@@ -412,6 +412,12 @@ const onSubmit = async (): Promise<void> => {
 		// not double-flash from here. Keep the error path local because the
 		// parent only hears about successful saves.
 		emit('saved', updated);
+	} catch {
+		// Guard against unhandled rejections from applyServerPayload / store
+		// sync after a successful API call — the parent view invokes submit()
+		// without `await`, so these would otherwise escape to the console
+		// with no user-facing indication.
+		flashMessage.error(t('spacesModule.messages.editFailed', { space: props.space.name }));
 	} finally {
 		submitting.value = false;
 	}

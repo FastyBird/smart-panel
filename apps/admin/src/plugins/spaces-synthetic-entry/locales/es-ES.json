@@ -2,5 +2,8 @@
 	"plugin": {
 		"name": "Espacio de entrada",
 		"description": "Contribuye el espacio sintético único Entrada, la superficie de seguridad / puerta de entrada que muestra el estado de armado y el control de acceso."
+	},
+	"typeLabels": {
+		"entry": "Entrada / seguridad"
 	}
 }

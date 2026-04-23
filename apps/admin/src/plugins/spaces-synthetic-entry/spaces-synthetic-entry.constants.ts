@@ -11,8 +11,3 @@ export const SPACES_SYNTHETIC_ENTRY_PLUGIN_SOURCE = 'com.fastybird.smart-panel.p
  * backend discriminator value declared on `EntrySpaceEntity`.
  */
 export const SPACES_SYNTHETIC_ENTRY_TYPES = [SpaceType.ENTRY] as const;
-
-/** Human-readable label surfaced in admin plugin UI selectors. */
-export const SPACES_SYNTHETIC_ENTRY_TYPE_LABELS: Record<(typeof SPACES_SYNTHETIC_ENTRY_TYPES)[number], string> = {
-	[SpaceType.ENTRY]: 'Entry',
-};

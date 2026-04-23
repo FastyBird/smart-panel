@@ -11,6 +11,7 @@ import {
 	injectSockets,
 	injectStoresManager,
 } from '../../common';
+import i18n from '../../locales';
 import {
 	type ISpacePluginRoutes,
 	type ISpacePluginsComponents,
@@ -28,7 +29,6 @@ import {
 	SPACES_SIGNAGE_INFO_PANEL_PLUGIN_NAME,
 	SPACES_SIGNAGE_INFO_PANEL_PLUGIN_SOURCE,
 	SPACES_SIGNAGE_INFO_PANEL_TYPES,
-	SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS,
 } from './spaces-signage-info-panel.constants';
 import { registerAnnouncementsStore } from './store/announcements.store';
 import type { IAnnouncement } from './store/announcements.store.types';
@@ -79,9 +79,12 @@ export default {
 				devDocumentation: 'https://smart-panel.fastybird.com',
 				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
+			// Surface the translated `spaceType.label` from the plugin's
+			// locale messages so the space-type picker dropdown renders a
+			// localized label instead of a hardcoded English constant.
 			elements: SPACES_SIGNAGE_INFO_PANEL_TYPES.map((type) => ({
 				type,
-				name: SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS[type],
+				name: i18n.global.t('spacesSignageInfoPanelPlugin.spaceType.label'),
 				components: {
 					spaceAddForm: SignageInfoPanelSpaceAddForm,
 					spaceEditForm: SignageInfoPanelSpaceEditForm,

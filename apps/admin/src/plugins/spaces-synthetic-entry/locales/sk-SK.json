@@ -2,5 +2,8 @@
 	"plugin": {
 		"name": "Vstupný priestor",
 		"description": "Pridáva jedinečný syntetický priestor Vstup — plochu pre zabezpečenie / vstupné dvere, ktorá zobrazuje stav zabezpečenia a kontrolu prístupu."
+	},
+	"typeLabels": {
+		"entry": "Vstup / zabezpečenie"
 	}
 }

@@ -315,6 +315,13 @@ const onSubmit = async (): Promise<void> => {
 		flashMessage.success(t('spacesModule.messages.created', { space: model.name }));
 
 		emit('saved', created);
+	} catch {
+		// Flash the generic error so the user sees a failure indicator even if
+		// something downstream of the API call throws (transformSpaceResponse,
+		// spacesStore.onEvent, etc.). The parent view invokes `submit()` from
+		// its button handler without `await`, so unhandled rejections here
+		// would otherwise surface only in the console.
+		flashMessage.error(t('spacesModule.messages.notCreated', { space: model.name }));
 	} finally {
 		submitting.value = false;
 	}

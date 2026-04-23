@@ -93,23 +93,29 @@ import { IntentSpecLoaderService } from './spec';
 @Global()
 @Module({
 	imports: [
+		// Repositories for the plugin's own entities + the Devices entities
+		// the listeners / role services inject. Repeating the registrations
+		// from SpacesModule is fine — TypeORM scopes per-module and both
+		// owners get their own repository instance.
 		TypeOrmModule.forFeature([
-			ChannelEntity,
-			DeviceEntity,
-			SpaceActiveMediaActivityEntity,
+			RoomSpaceEntity,
+			ZoneSpaceEntity,
+			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
-			SpaceLightingRoleEntity,
-			SpaceMediaActivityBindingEntity,
 			SpaceSensorRoleEntity,
+			SpaceMediaActivityBindingEntity,
+			SpaceActiveMediaActivityEntity,
+			DeviceEntity,
+			ChannelEntity,
 		]),
 		SwaggerModule,
+		DevicesModule,
 		DisplaysModule,
+		IntentsModule,
 		SpacesModule,
 		SeedModule,
 		ToolsModule,
-		DevicesModule,
-		IntentsModule,
 	],
 	providers: [
 		// Resolvers + loader

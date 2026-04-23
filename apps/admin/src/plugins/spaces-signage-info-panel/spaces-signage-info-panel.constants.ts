@@ -12,11 +12,6 @@ export const SPACES_SIGNAGE_INFO_PANEL_PLUGIN_SOURCE = 'com.fastybird.smart-pane
  */
 export const SPACES_SIGNAGE_INFO_PANEL_TYPES = [SpaceType.SIGNAGE_INFO_PANEL] as const;
 
-/** Human-readable label surfaced in admin plugin UI selectors. */
-export const SPACES_SIGNAGE_INFO_PANEL_TYPE_LABELS: Record<(typeof SPACES_SIGNAGE_INFO_PANEL_TYPES)[number], string> = {
-	[SpaceType.SIGNAGE_INFO_PANEL]: 'Information panel (signage)',
-};
-
 /**
  * Layout presets for the information-panel surface.
  */

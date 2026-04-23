@@ -2,5 +2,9 @@
 	"plugin": {
 		"name": "Home Control Spaces",
 		"description": "Adds physical Room and Zone spaces with lighting, climate, covers, sensor and media controls."
+	},
+	"typeLabels": {
+		"room": "Room",
+		"zone": "Zone"
 	}
 }

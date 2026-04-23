@@ -4,6 +4,7 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import i18n from '../../locales';
 import { type ISpacePluginRoutes, type ISpacePluginsComponents, type ISpacePluginsSchemas, SPACES_MODULE_NAME } from '../../modules/spaces';
 import { SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
@@ -12,7 +13,6 @@ import {
 	SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
 	SPACES_SYNTHETIC_MASTER_PLUGIN_SOURCE,
 	SPACES_SYNTHETIC_MASTER_TYPES,
-	SPACES_SYNTHETIC_MASTER_TYPE_LABELS,
 } from './spaces-synthetic-master.constants';
 
 export const spacesSyntheticMasterPluginKey: PluginInjectionKey<
@@ -53,7 +53,10 @@ export default {
 			},
 			elements: SPACES_SYNTHETIC_MASTER_TYPES.map((type) => ({
 				type,
-				name: SPACES_SYNTHETIC_MASTER_TYPE_LABELS[type],
+				// Translate the type label at install time from the plugin's
+				// own locale messages instead of a hardcoded English constant
+				// so non-English admin locales render the localized name.
+				name: i18n.global.t(`spacesSyntheticMasterPlugin.typeLabels.${type}`),
 				components: {},
 				schemas: {
 					spaceSchema: SpaceSchema,

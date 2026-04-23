@@ -2,5 +2,9 @@
 	"plugin": {
 		"name": "Espacios de control doméstico",
 		"description": "Añade habitaciones y zonas físicas con controles de iluminación, clima, persianas, sensores y medios."
+	},
+	"typeLabels": {
+		"room": "Habitación",
+		"zone": "Zona"
 	}
 }

@@ -2,5 +2,9 @@
 	"plugin": {
 		"name": "Prostory domácí ovládání",
 		"description": "Přidává fyzické místnosti a zóny s ovládáním osvětlení, klimatu, stínění, senzorů a médií."
+	},
+	"typeLabels": {
+		"room": "Místnost",
+		"zone": "Zóna"
 	}
 }

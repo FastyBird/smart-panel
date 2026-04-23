@@ -2,5 +2,9 @@
 	"plugin": {
 		"name": "Heimsteuerungs-Räume",
 		"description": "Fügt physische Räume und Zonen mit Steuerung für Beleuchtung, Klima, Beschattung, Sensoren und Medien hinzu."
+	},
+	"typeLabels": {
+		"room": "Raum",
+		"zone": "Zone"
 	}
 }

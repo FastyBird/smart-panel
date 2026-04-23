@@ -2,5 +2,8 @@
 	"plugin": {
 		"name": "Master Space",
 		"description": "Contributes the singleton Master synthetic space — the whole-house overview surface that aggregates state across all rooms."
+	},
+	"typeLabels": {
+		"master": "Home overview (master)"
 	}
 }

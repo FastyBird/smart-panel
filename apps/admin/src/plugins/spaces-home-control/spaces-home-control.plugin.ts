@@ -4,6 +4,7 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import i18n from '../../locales';
 import {
 	type ISpacePluginRoutes,
 	type ISpacePluginsComponents,
@@ -20,7 +21,6 @@ import {
 	SPACES_HOME_CONTROL_PLUGIN_NAME,
 	SPACES_HOME_CONTROL_PLUGIN_SOURCE,
 	SPACES_HOME_CONTROL_TYPES,
-	SPACES_HOME_CONTROL_TYPE_LABELS,
 } from './spaces-home-control.constants';
 
 export const spacesHomeControlPluginKey: PluginInjectionKey<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>> =
@@ -50,10 +50,12 @@ export default {
 			},
 			// Human-readable labels per space type — the `name` field surfaces
 			// in `useSpacesPlugins.options` dropdown-style UI and shouldn't be a
-			// raw enum value (`'room'`, `'zone'`).
+			// raw enum value (`'room'`, `'zone'`). Translate at install time
+			// from the plugin's own locale messages (added just above via
+			// `setLocaleMessage`).
 			elements: SPACES_HOME_CONTROL_TYPES.map((type) => ({
 				type,
-				name: SPACES_HOME_CONTROL_TYPE_LABELS[type],
+				name: i18n.global.t(`spacesHomeControlPlugin.typeLabels.${type}`),
 				components: {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,

@@ -2,5 +2,8 @@
 	"plugin": {
 		"name": "Espacio principal",
 		"description": "Contribuye el espacio sintético único Principal, la superficie de visión general de toda la casa que agrega el estado de todas las habitaciones."
+	},
+	"typeLabels": {
+		"master": "Resumen del hogar (master)"
 	}
 }

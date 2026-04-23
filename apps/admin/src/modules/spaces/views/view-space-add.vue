@@ -31,7 +31,7 @@
 	</app-bar-button>
 
 	<app-bar-button
-		v-if="!isMDDevice && selectedType"
+		v-if="!isMDDevice && hasAddForm"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
@@ -120,7 +120,7 @@
 				</el-button>
 
 				<el-button
-					v-if="selectedType"
+					v-if="hasAddForm"
 					type="primary"
 					@click="onSubmit"
 				>
@@ -181,6 +181,12 @@ const { getElement } = useSpacesPlugins();
 const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
 
 const element = computed(() => (selectedType.value ? getElement(selectedType.value) : undefined));
+
+// The Save button should only surface when the selected type's plugin
+// actually contributes an add form — otherwise clicking it calls
+// `formRef.value?.submit()` on a null ref and silently no-ops. Mirrors
+// `hasEditForm` on `view-space-edit.vue`.
+const hasAddForm = computed<boolean>(() => !!element.value?.components?.spaceAddForm);
 
 // Pass the picker's raw value through as a plain `SpaceType | undefined`.
 // Each plugin's `spaceAddForm` component declares its own narrower prop

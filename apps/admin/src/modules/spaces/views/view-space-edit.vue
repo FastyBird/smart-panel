@@ -63,8 +63,8 @@
 				controls that don't apply to synthetic or plugin-contributed types.
 			-->
 			<component
-				:is="pluginElement.components.spaceEditForm"
-				v-if="pluginElement && pluginElement.components?.spaceEditForm"
+				:is="pluginElement?.components?.spaceEditForm"
+				v-if="pluginElement?.components?.spaceEditForm"
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"

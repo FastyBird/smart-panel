@@ -2,5 +2,8 @@
 	"plugin": {
 		"name": "Przestrzeń wejścia",
 		"description": "Udostępnia syntetyczną przestrzeń Wejście — powierzchnię bezpieczeństwa / drzwi wejściowych, która pokazuje stan uzbrojenia i kontrolę dostępu."
+	},
+	"typeLabels": {
+		"entry": "Wejście / bezpieczeństwo"
 	}
 }
