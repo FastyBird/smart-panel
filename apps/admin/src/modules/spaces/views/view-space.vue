@@ -328,16 +328,14 @@ import {
 import { useDevices } from '../../devices/composables/useDevices';
 import { useDisplays } from '../../displays/composables/useDisplays';
 import { useScenes } from '../../scenes/composables/useScenes';
+import { SpaceDetail, SpaceDevicesSection, SpaceDisplaysSection } from '../components/components';
 import {
 	SpaceAddDeviceDialog,
 	SpaceAddDisplayDialog,
 	SpaceAddSceneDialog,
-	SpaceDetail,
-	SpaceDevicesSection,
-	SpaceDisplaysSection,
 	SpaceDomainsSection,
 	SpaceScenesSection,
-} from '../components/components';
+} from '../../../plugins/spaces-home-control/components/components';
 import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
