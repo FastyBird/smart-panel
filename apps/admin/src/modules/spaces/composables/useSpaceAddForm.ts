@@ -19,8 +19,14 @@ interface IUseSpaceAddFormProps {
 	 * chosen space type, we need it baked into the snapshot so the
 	 * subsequent deep-equal check doesn't immediately flag `formChanged=true`
 	 * before the user has edited anything.
+	 *
+	 * Narrowed to ROOM / ZONE because `SpaceAddFormSchema` — consulted by
+	 * `submit()` below — only accepts those two. Passing any other value
+	 * would let the form mount but throw at save-time. Plugin-contributed
+	 * space types (signage, master, entry) have their own add-form
+	 * components and don't route through this composable.
 	 */
-	type?: SpaceType;
+	type?: SpaceType.ROOM | SpaceType.ZONE;
 }
 
 export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({

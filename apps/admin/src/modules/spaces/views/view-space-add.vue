@@ -188,13 +188,17 @@ const element = computed(() => (selectedType.value ? getElement(selectedType.val
 // `hasEditForm` on `view-space-edit.vue`.
 const hasAddForm = computed<boolean>(() => !!element.value?.components?.spaceAddForm);
 
-// Pass the picker's raw value through as a plain `SpaceType | undefined`.
-// Each plugin's `spaceAddForm` component declares its own narrower prop
-// shape (home-control: ROOM | ZONE; signage / future plugins: their own
-// types) and the dispatched `<component :is>` receives whichever value
-// the user actually picked — no artificial narrowing here.
-const addFormType = computed<SpaceType | undefined>(
-	() => selectedType.value as SpaceType | undefined,
+// Pass the picker's raw value through to the dispatched component.
+// Each plugin's `spaceAddForm` declares its own narrower prop shape
+// (home-control: ROOM | ZONE; signage / future plugins: their own
+// types). The `<component :is>` dispatch is dynamic at runtime, but
+// vue-tsc static-checks against whichever component type it can infer
+// — cast the value up to what home-control's form accepts so the
+// binding type-checks. Runtime safety: the picker only surfaces types
+// whose plugin actually registered a `spaceAddForm`, so home-control's
+// form is only ever mounted with ROOM / ZONE here.
+const addFormType = computed<SpaceType.ROOM | SpaceType.ZONE | undefined>(
+	() => selectedType.value as SpaceType.ROOM | SpaceType.ZONE | undefined,
 );
 
 // The dispatched add form exposes a `submit()` method — mirrors the edit-view
