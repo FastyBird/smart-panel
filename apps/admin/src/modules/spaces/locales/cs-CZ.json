@@ -832,6 +832,7 @@
 	},
 	"labels": {
 		"rooms": "Místnosti",
-		"zones": "Zóny"
+		"zones": "Zóny",
+		"others": "Ostatní prostory"
 	}
 }

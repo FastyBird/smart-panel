@@ -832,6 +832,7 @@
 	},
 	"labels": {
 		"rooms": "Habitaciones",
-		"zones": "Zonas"
+		"zones": "Zonas",
+		"others": "Otros espacios"
 	}
 }
