@@ -1,12 +1,14 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { RoomSpaceEntity } from '../../plugins/spaces-home-control/entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../../plugins/spaces-home-control/entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from '../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from '../../plugins/spaces-home-control/entities/space-sensor-role.entity';
+import { ZoneSpaceEntity } from '../../plugins/spaces-home-control/entities/zone-space.entity';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
@@ -23,13 +25,9 @@ import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
-import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
-import { UpdateSpaceDto } from './dto/update-space.dto';
-import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceRoleEntity } from './entities/space-role.entity';
 import { SpaceEntity } from './entities/space.entity';
-import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
 import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
@@ -65,12 +63,7 @@ import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
-import {
-	SPACES_MODULE_API_TAG_DESCRIPTION,
-	SPACES_MODULE_API_TAG_NAME,
-	SPACES_MODULE_NAME,
-	SpaceType,
-} from './spaces.constants';
+import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 
 @ApiTag({
@@ -167,25 +160,9 @@ export class SpacesModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
-		private readonly spacesTypeMapper: SpacesTypeMapperService,
 	) {}
 
 	onModuleInit() {
-		// Register built-in space types. These will move into the spaces-home-control plugin
-		// once it is extracted; for now they live in the core module.
-		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
-			type: SpaceType.ROOM,
-			class: RoomSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
-		});
-		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
-			type: SpaceType.ZONE,
-			class: ZoneSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
-		});
-
 		// Register factory reset handler
 		this.factoryResetRegistry.register(
 			SPACES_MODULE_NAME,

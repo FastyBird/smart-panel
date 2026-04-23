@@ -3,9 +3,8 @@ import { ChildEntity } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { SpaceType } from '../spaces.constants';
-
-import { SpaceEntity } from './space.entity';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataRoomSpace' })
 @ChildEntity(SpaceType.ROOM)

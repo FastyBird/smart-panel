@@ -4,7 +4,10 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
+import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
 import { SpaceRolesTypeMapperService } from '../../modules/spaces/services/space-roles-type-mapper.service';
+import { SpacesTypeMapperService } from '../../modules/spaces/services/spaces-type-mapper.service';
 import { SpaceRoleType, SpaceType } from '../../modules/spaces/spaces.constants';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
@@ -12,12 +15,14 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
+import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import {
@@ -68,6 +73,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
 		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
+		private readonly spacesTypeMapper: SpacesTypeMapperService,
 		private readonly spaceRolesTypeMapper: SpaceRolesTypeMapperService,
 	) {}
 
@@ -88,6 +94,21 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 
 		this.spaceHomePageResolverRegistry.register(SpaceType.ROOM, this.homeControlHomePageResolver);
 		this.spaceHomePageResolverRegistry.register(SpaceType.ZONE, this.homeControlHomePageResolver);
+
+		// Room/Zone space type mappings — entity files moved into this plugin
+		// in Phase 3a step 4.
+		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+			type: SpaceType.ROOM,
+			class: RoomSpaceEntity,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
+		});
+		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+			type: SpaceType.ZONE,
+			class: ZoneSpaceEntity,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
+		});
 
 		// Role subtype mappings — entities live in this plugin; mapping calls
 		// moved here from SpacesModule.onModuleInit as part of Phase 3a step 3.
