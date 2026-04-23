@@ -113,8 +113,21 @@
 		<template v-if="space">
 			<space-detail :space="space" />
 
-			<!-- Tabs -->
+			<!--
+				The domain tabs below (Domains / Devices / Scenes / Displays)
+				and the matching add-dialogs at the bottom of this view are
+				home-control concepts — lighting/climate/covers roles, device
+				assignment, scene linkage, and display binding are only
+				meaningful for ROOM and ZONE spaces. MASTER, ENTRY, and
+				SIGNAGE_INFO_PANEL spaces have no devices, no scenes, no
+				domain configuration, so rendering these sections for them
+				produced incorrect UI. Phase 3b will relocate these sections
+				into `plugins/spaces-home-control/` and dispatch via
+				`getElement(space.type).components.spaceDetail`; until then,
+				gate on the home-control space types directly.
+			-->
 			<el-tabs
+				v-if="isHomeControlSpace"
 				v-model="activeTab"
 				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 			>
@@ -216,24 +229,26 @@
 		<component :is="Component" />
 	</router-view>
 
-	<!-- Add Device Dialog -->
+	<!--
+		Add-device / add-scene / add-display dialogs are triggered from the
+		home-control tab panes above, so they only need to mount for ROOM /
+		ZONE spaces. MASTER / ENTRY / SIGNAGE don't surface those triggers.
+	-->
 	<space-add-device-dialog
-		v-if="space"
+		v-if="space && isHomeControlSpace"
 		v-model:visible="showAddDeviceDialog"
 		:space-id="space.id"
 		:space-type="space.type"
 		@device-added="onDeviceAdded"
 	/>
 
-	<!-- Add Scene Dialog -->
 	<space-add-scene-dialog
-		v-if="space"
+		v-if="space && isHomeControlSpace"
 		v-model:visible="showAddSceneDialog"
 		:space-id="space.id"
 		@scene-added="onSceneAdded"
 	/>
 
-	<!-- Add Display Dialog -->
 	<space-add-display-dialog
 		v-if="space && space.type === SpaceType.ROOM"
 		v-model:visible="showAddDisplayDialog"
@@ -371,6 +386,15 @@ const { fetchScenes, loaded: scenesLoaded } = useScenes();
 const { fetchDisplays, isLoaded: displaysLoaded } = useDisplays();
 
 const isLoading = computed<boolean>(() => fetching.value);
+
+// The domain tabs + add-dialogs rendered below are home-control concepts
+// (lighting / climate / covers roles, device assignment, scenes, displays).
+// Synthetic (master / entry) and plugin-contributed types (signage) get a
+// simpler detail view without those sections. Phase 3b will replace this
+// gate with proper plugin dispatch via `getElement(type).components.spaceDetail`.
+const isHomeControlSpace = computed<boolean>(
+	(): boolean => space.value?.type === SpaceType.ROOM || space.value?.type === SpaceType.ZONE,
+);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
