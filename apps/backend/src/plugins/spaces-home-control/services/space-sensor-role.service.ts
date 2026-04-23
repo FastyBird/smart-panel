@@ -8,6 +8,10 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
+import { SetSensorRoleDto } from '../dto/sensor-role.dto';
+import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
 	EventType,
 	SENSOR_AIR_QUALITY_CHANNEL_CATEGORIES,
@@ -16,12 +20,8 @@ import {
 	SENSOR_ENVIRONMENT_CHANNEL_CATEGORIES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
 	SENSOR_SECURITY_CHANNEL_CATEGORIES,
-	SPACES_MODULE_NAME,
 	SensorRole,
-} from '../../../modules/spaces/spaces.constants';
-import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
-import { SetSensorRoleDto } from '../dto/sensor-role.dto';
-import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
+} from '../spaces-home-control.constants';
 
 export interface SensorTargetInfo {
 	deviceId: string;

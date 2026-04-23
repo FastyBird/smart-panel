@@ -8,10 +8,11 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { EventType, LightingRole, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
 import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { EventType, LightingRole } from '../spaces-home-control.constants';
 
 export interface LightTargetInfo {
 	deviceId: string;

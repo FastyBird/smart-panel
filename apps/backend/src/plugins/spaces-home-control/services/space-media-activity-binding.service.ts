@@ -7,17 +7,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
+import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
+import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
+import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import {
 	CONFIGURABLE_ACTIVITY_KEYS,
 	EventType,
 	MediaActivityKey,
 	MediaEndpointType,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
-import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
-import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
-import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
-import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
+} from '../spaces-home-control.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { MediaCapabilityService } from './media-capability.service';

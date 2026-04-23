@@ -9,6 +9,8 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
 	ClimateIntentType,
 	ClimateMode,
@@ -18,9 +20,7 @@ import {
 	LightingMode,
 	LightingRole,
 	SetpointDelta,
-} from '../../../modules/spaces/spaces.constants';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
+} from '../spaces-home-control.constants';
 import { ResolvedModeOrchestration } from '../spec';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';

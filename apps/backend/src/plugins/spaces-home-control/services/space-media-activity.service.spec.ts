@@ -6,13 +6,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	EventType,
-	MediaActivationState,
-	MediaActivityKey,
-	MediaEndpointType,
-} from '../../../modules/spaces/spaces.constants';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
+import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces-home-control.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';

@@ -11,6 +11,9 @@ import { IntentTarget, IntentTargetResult } from '../../../modules/intents/model
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingStateDataModel } from '../models/spaces-response.model';
 import {
 	BrightnessDelta,
 	EventType,
@@ -18,10 +21,7 @@ import {
 	LightingMode,
 	LightingRole,
 	RoleBrightnessRule,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
-import { LightingStateDataModel } from '../models/spaces-response.model';
+} from '../spaces-home-control.constants';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';

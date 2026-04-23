@@ -8,10 +8,11 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { CoversRole, EventType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
 import { SetCoversRoleDto } from '../dto/covers-role.dto';
 import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
+import { CoversRole, EventType } from '../spaces-home-control.constants';
 
 export interface CoversTargetInfo {
 	deviceId: string;

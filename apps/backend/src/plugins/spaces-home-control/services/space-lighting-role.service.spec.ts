@@ -10,9 +10,10 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { LightingRole, SpaceType } from '../../../modules/spaces/spaces.constants';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { LightingRole } from '../spaces-home-control.constants';
 
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 

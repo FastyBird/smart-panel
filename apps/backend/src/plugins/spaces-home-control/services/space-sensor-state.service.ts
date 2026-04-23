@@ -4,15 +4,15 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
 	SAFETY_SENSOR_THRESHOLDS,
 	SENSOR_CHANNEL_CATEGORIES,
 	SENSOR_PRIMARY_PROPERTY_CANDIDATES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
-	SPACES_MODULE_NAME,
 	SensorRole,
-} from '../../../modules/spaces/spaces.constants';
-import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
+} from '../spaces-home-control.constants';
 
 import { SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceSensorRoleService } from './space-sensor-role.service';

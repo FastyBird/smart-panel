@@ -3,8 +3,8 @@ import { Expose, Type } from 'class-transformer';
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-import { MediaActivationState, MediaActivityKey } from '../../../modules/spaces/spaces.constants';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
+import { MediaActivationState, MediaActivityKey } from '../spaces-home-control.constants';
 
 // ========================
 // Resolved Devices Model

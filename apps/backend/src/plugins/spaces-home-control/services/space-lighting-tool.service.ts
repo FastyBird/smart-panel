@@ -3,7 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { LightingIntentType, LightingMode, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	LlmToolCall,
 	ToolDefinition,
@@ -12,6 +12,7 @@ import {
 import { BaseToolProviderService } from '../../../modules/tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../../modules/tools/services/short-id-mapping.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingIntentType, LightingMode } from '../spaces-home-control.constants';
 
 const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
 

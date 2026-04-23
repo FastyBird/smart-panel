@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { MediaCapabilityPermission, MediaEndpointType } from '../../../modules/spaces/spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType } from '../spaces-home-control.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { MediaCapabilityService } from './media-capability.service';

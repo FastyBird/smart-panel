@@ -9,13 +9,7 @@ import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	EventType,
-	MediaActivationState,
-	MediaActivityKey,
-	MediaEndpointType,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
@@ -29,6 +23,7 @@ import {
 	MediaActivityLastResultModel,
 	MediaActivityResolvedModel,
 } from '../models/media-activity.model';
+import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces-home-control.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';

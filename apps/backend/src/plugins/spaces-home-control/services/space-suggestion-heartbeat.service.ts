@@ -6,14 +6,14 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	EventType,
-	SPACES_MODULE_NAME,
 	SUGGESTION_COOLDOWN_MS,
 	SUGGESTION_EXPIRY_MS,
 	SUGGESTION_HEARTBEAT_INTERVAL_MS,
 	SuggestionType,
-} from '../../../modules/spaces/spaces.constants';
+} from '../spaces-home-control.constants';
 
 import {
 	type EmittedSuggestionEntry,

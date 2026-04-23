@@ -5,7 +5,8 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { CoversMode, CoversRole, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { CoversMode, CoversRole } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { SpaceCoversRoleService } from './space-covers-role.service';

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { SPACE_CATEGORY_TEMPLATES } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
@@ -27,7 +28,6 @@ import { SpacesService } from '../services/spaces.service';
 import {
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
-	SPACE_CATEGORY_TEMPLATES,
 	SpaceRoomCategory,
 	SpaceZoneCategory,
 } from '../spaces.constants';

@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { MediaEndpointType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	DerivedMediaCapabilitiesModel,
 	DerivedMediaEndpointModel,
@@ -11,6 +11,7 @@ import {
 	DerivedMediaLinksModel,
 } from '../models/derived-media-endpoint.model';
 import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
+import { MediaEndpointType } from '../spaces-home-control.constants';
 
 import { MediaCapabilityService } from './media-capability.service';
 

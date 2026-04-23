@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-import { MediaEndpointType } from '../../../modules/spaces/spaces.constants';
+import { MediaEndpointType } from '../spaces-home-control.constants';
 
 /**
  * Property link – maps a capability to a concrete property ID.

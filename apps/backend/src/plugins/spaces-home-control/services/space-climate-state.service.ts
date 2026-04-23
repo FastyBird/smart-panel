@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	CLIMATE_PRIMARY_DEVICE_CATEGORIES,
 	ClimateMode,
@@ -13,10 +14,9 @@ import {
 	DEFAULT_MIN_SETPOINT,
 	SETPOINT_CONSENSUS_TOLERANCE,
 	SETPOINT_PRECISION,
-	SPACES_MODULE_NAME,
 	TEMPERATURE_AVERAGING_STRATEGY,
 	TemperatureAveragingStrategy,
-} from '../../../modules/spaces/spaces.constants';
+} from '../spaces-home-control.constants';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';

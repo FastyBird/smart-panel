@@ -6,14 +6,14 @@ import { hsvToHex } from '../../../common/utils/color.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	ClimateMode,
 	CoversRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 	LightingRole,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
+} from '../spaces-home-control.constants';
 
 import { ClimateState, SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';

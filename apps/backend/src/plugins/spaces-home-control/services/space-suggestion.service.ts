@@ -6,14 +6,9 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	LightingIntentType,
-	SPACES_MODULE_NAME,
-	SUGGESTION_COOLDOWN_MS,
-	SuggestionFeedback,
-	SuggestionType,
-} from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME, SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingIntentType, SUGGESTION_COOLDOWN_MS, SuggestionType } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec/intent-spec-loader.service';
 import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 

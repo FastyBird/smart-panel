@@ -3,7 +3,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional, IsUUID, Min, Validat
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { SensorRole } from '../../../modules/spaces/spaces.constants';
+import { SensorRole } from '../spaces-home-control.constants';
 
 /**
  * DTO for setting a single sensor role assignment

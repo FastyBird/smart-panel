@@ -13,16 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	ClimateMode,
-	IntentCategory,
-	LightingIntentType,
-	LightingMode,
-	LightingRole,
-	QuickActionType,
-	SpaceType,
-	SuggestionType,
-} from '../../../modules/spaces/spaces.constants';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
@@ -43,6 +34,15 @@ import { SpaceSensorStateService } from '../services/space-sensor-state.service'
 import { SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
+import {
+	ClimateMode,
+	IntentCategory,
+	LightingIntentType,
+	LightingMode,
+	LightingRole,
+	QuickActionType,
+	SuggestionType,
+} from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { SpacesDomainController } from './spaces-domain.controller';

@@ -10,6 +10,9 @@ import { IntentTarget, IntentTargetResult } from '../../../modules/intents/model
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { ClimateStateDataModel } from '../models/spaces-response.model';
 import {
 	ClimateIntentType,
 	ClimateMode,
@@ -17,10 +20,7 @@ import {
 	EventType,
 	SETPOINT_DELTA_STEPS,
 	SETPOINT_PRECISION,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
-import { ClimateStateDataModel } from '../models/spaces-response.model';
+} from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateState, PrimaryClimateDevice, SpaceClimateStateService } from './space-climate-state.service';

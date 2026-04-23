@@ -3,7 +3,7 @@ import { IsBoolean, IsDefined, IsEnum, IsInt, Max, Min, ValidateIf, ValidateNest
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { CoversIntentType, CoversMode, CoversRole, PositionDelta } from '../../../modules/spaces/spaces.constants';
+import { CoversIntentType, CoversMode, CoversRole, PositionDelta } from '../spaces-home-control.constants';
 
 @ApiSchema({ name: 'SpacesModuleCoversIntent' })
 export class CoversIntentDto {

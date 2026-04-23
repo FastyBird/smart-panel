@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { EventType } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
 import { IntentType } from '../../intents/intents.constants';
-import { EventType } from '../../spaces/spaces.constants';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
 import { ActionObserverService, ActionRecord } from '../services/action-observer.service';
 

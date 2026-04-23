@@ -7,17 +7,6 @@ import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery,
 import { createExtensionLogger } from '../../../common/logger';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	CoversMode,
-	EventType,
-	IntentCategory,
-	LightingMode,
-	LightingRole,
-	MediaActivityKey,
-	QUICK_ACTION_CATALOG,
-	SUGGESTION_EXPIRY_MS,
-	SuggestionType,
-} from '../../../modules/spaces/spaces.constants';
 import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
 import {
 	ApiBadRequestResponse,
@@ -142,6 +131,17 @@ import { SpaceSensorStateService } from '../services/space-sensor-state.service'
 import { SpaceSuggestionEvent, SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
+import {
+	CoversMode,
+	EventType,
+	IntentCategory,
+	LightingMode,
+	LightingRole,
+	MediaActivityKey,
+	QUICK_ACTION_CATALOG,
+	SUGGESTION_EXPIRY_MS,
+	SuggestionType,
+} from '../spaces-home-control.constants';
 import {
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
 	SPACES_HOME_CONTROL_PLUGIN_NAME,

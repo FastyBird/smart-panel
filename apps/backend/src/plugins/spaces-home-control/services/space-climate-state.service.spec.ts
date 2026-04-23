@@ -11,14 +11,14 @@ import {
 	LastAppliedClimateState,
 } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	ClimateMode,
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 	SETPOINT_CONSENSUS_TOLERANCE,
-} from '../../../modules/spaces/spaces.constants';
-import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
+} from '../spaces-home-control.constants';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceClimateStateService } from './space-climate-state.service';

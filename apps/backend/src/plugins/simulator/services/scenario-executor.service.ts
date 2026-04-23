@@ -27,15 +27,7 @@ import {
 } from '../../../modules/devices/utils/schema.utils';
 import { ScenesService } from '../../../modules/scenes/services/scenes.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	ClimateRole,
-	CoversRole,
-	LightingRole,
-	SensorRole,
-	SpaceRoomCategory,
-	SpaceType,
-	SpaceZoneCategory,
-} from '../../../modules/spaces/spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { SetLightingRoleDto } from '../../spaces-home-control/dto/lighting-role.dto';
 import { SpaceClimateRoleService } from '../../spaces-home-control/services/space-climate-role.service';
@@ -43,6 +35,12 @@ import { SpaceCoversRoleService } from '../../spaces-home-control/services/space
 import { SpaceLightingRoleService } from '../../spaces-home-control/services/space-lighting-role.service';
 import { SpaceMediaActivityBindingService } from '../../spaces-home-control/services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../../spaces-home-control/services/space-sensor-role.service';
+import {
+	ClimateRole,
+	CoversRole,
+	LightingRole,
+	SensorRole,
+} from '../../spaces-home-control/spaces-home-control.constants';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import {
 	ScenarioChannelDefinition,

@@ -6,19 +6,9 @@ import { BaseSuccessResponseModel } from '../../../modules/api/models/api-respon
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
 	ALL_SPACE_CATEGORIES,
-	ClimateMode,
-	ClimateRole,
-	CoversMode,
-	CoversRole,
-	IntentCategory,
-	LightingMode,
-	LightingRole,
-	QuickActionType,
-	SensorRole,
 	SpaceRoomCategory,
 	SpaceType,
 	SpaceZoneCategory,
-	SuggestionType,
 } from '../../../modules/spaces/spaces.constants';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
@@ -30,6 +20,18 @@ import type {
 	RoleAggregatedState,
 	SpaceLightingState,
 } from '../services/space-lighting-state.service';
+import {
+	ClimateMode,
+	ClimateRole,
+	CoversMode,
+	CoversRole,
+	IntentCategory,
+	LightingMode,
+	LightingRole,
+	QuickActionType,
+	SensorRole,
+	SuggestionType,
+} from '../spaces-home-control.constants';
 
 /**
  * Proposed space data model

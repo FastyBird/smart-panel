@@ -8,9 +8,10 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesEventType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { EventType, SENSOR_CHANNEL_CATEGORIES, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SensorStateDataModel } from '../models/spaces-response.model';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
+import { EventType, SENSOR_CHANNEL_CATEGORIES } from '../spaces-home-control.constants';
 
 /**
  * Debounce delay in milliseconds for sensor state change events.

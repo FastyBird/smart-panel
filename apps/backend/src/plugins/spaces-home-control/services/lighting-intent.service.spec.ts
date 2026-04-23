@@ -14,9 +14,9 @@ import { PlatformRegistryService } from '../../../modules/devices/services/platf
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { LightingIntentType, LightingRole } from '../../../modules/spaces/spaces.constants';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { LightingIntentType, LightingRole } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { LightingIntentService } from './lighting-intent.service';

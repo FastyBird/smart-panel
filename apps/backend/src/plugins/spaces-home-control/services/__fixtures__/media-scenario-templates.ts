@@ -10,7 +10,7 @@
  *   3. Import it in the regression spec.
  */
 import { DeviceCategory } from '../../../../modules/devices/devices.constants';
-import { MediaCapabilityPermission, MediaEndpointType } from '../../../../modules/spaces/spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType } from '../../spaces-home-control.constants';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -3,7 +3,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional, IsUUID, Min, Validat
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { CoversRole } from '../../../modules/spaces/spaces.constants';
+import { CoversRole } from '../spaces-home-control.constants';
 
 /**
  * DTO for setting a single covers role assignment

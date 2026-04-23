@@ -10,7 +10,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { MediaCapabilityPermission, MediaEndpointType } from '../../../modules/spaces/spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType } from '../spaces-home-control.constants';
 
 import { MediaCapabilityService } from './media-capability.service';
 

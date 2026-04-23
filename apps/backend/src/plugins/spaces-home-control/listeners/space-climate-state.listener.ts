@@ -9,9 +9,10 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { EventType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { ClimateStateDataModel } from '../models/spaces-response.model';
 import { SpaceClimateStateService } from '../services/space-climate-state.service';
+import { EventType } from '../spaces-home-control.constants';
 
 /**
  * Debounce delay in milliseconds for climate state change events.

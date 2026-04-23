@@ -5,7 +5,8 @@ import { ChildEntity, Column } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
-import { MediaActivityKey, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { MediaActivityKey } from '../spaces-home-control.constants';
 
 /**
  * Represents a per-space media activity binding.

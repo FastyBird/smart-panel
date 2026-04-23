@@ -23,16 +23,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	EventType,
-	MediaActivationState,
-	MediaActivityKey,
-	MediaEndpointType,
-} from '../../../modules/spaces/spaces.constants';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
+import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces-home-control.constants';
 
 import {
 	DEVICE_AVR,

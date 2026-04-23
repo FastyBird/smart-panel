@@ -14,8 +14,8 @@ import { PlatformRegistryService } from '../../../modules/devices/services/platf
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { CoversIntentType, CoversRole } from '../../../modules/spaces/spaces.constants';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
+import { CoversIntentType, CoversRole } from '../spaces-home-control.constants';
 
 import { CoversIntentService } from './covers-intent.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';

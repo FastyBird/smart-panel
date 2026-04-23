@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-import { MediaCapabilityPermission, MediaEndpointType } from '../../../modules/spaces/spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType } from '../spaces-home-control.constants';
 
 // ========================
 // Capability Models

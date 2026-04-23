@@ -8,8 +8,9 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { ClimateMode, LightingRole, SpaceType } from '../../../modules/spaces/spaces.constants';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { ClimateMode, LightingRole } from '../spaces-home-control.constants';
 
 import { ClimateState, SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';

@@ -8,13 +8,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
 import { SpaceUndoHistoryService } from '../../../plugins/spaces-home-control/services/space-undo-history.service';
+import { ClimateMode } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpacesService } from '../services/spaces.service';
-import { ClimateMode, SpaceType } from '../spaces.constants';
+import { SpaceType } from '../spaces.constants';
 
 import { SpacesWsEventType, SpacesWsHandlerName, WebsocketExchangeListener } from './websocket-exchange.listener';
 

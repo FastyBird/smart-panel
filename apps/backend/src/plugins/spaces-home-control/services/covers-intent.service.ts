@@ -9,6 +9,9 @@ import { IntentTarget, IntentTargetResult } from '../../../modules/intents/model
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { CoversIntentDto } from '../dto/covers-intent.dto';
+import { CoversStateDataModel } from '../models/spaces-response.model';
 import {
 	COVERS_MODE_ORCHESTRATION,
 	CoversIntentType,
@@ -18,10 +21,7 @@ import {
 	EventType,
 	POSITION_DELTA_STEPS,
 	PositionDelta,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
-import { CoversIntentDto } from '../dto/covers-intent.dto';
-import { CoversStateDataModel } from '../models/spaces-response.model';
+} from '../spaces-home-control.constants';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { CoverDevice, CoversState, SpaceCoversStateService } from './space-covers-state.service';

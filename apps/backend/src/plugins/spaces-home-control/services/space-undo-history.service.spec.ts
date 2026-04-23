@@ -16,7 +16,7 @@ import { IDevicePlatform } from '../../../modules/devices/platforms/device.platf
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { ClimateMode } from '../../../modules/spaces/spaces.constants';
+import { ClimateMode } from '../spaces-home-control.constants';
 
 import { CoverStateSnapshot, LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';

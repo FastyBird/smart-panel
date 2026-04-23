@@ -8,17 +8,17 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
+import { SetClimateRoleDto } from '../dto/climate-role.dto';
+import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	CLIMATE_SENSOR_CHANNEL_CATEGORIES,
 	CLIMATE_SENSOR_ROLES,
 	CLIMATE_UNIVERSAL_ROLES,
 	ClimateRole,
 	EventType,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
-import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
-import { SetClimateRoleDto } from '../dto/climate-role.dto';
-import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
+} from '../spaces-home-control.constants';
 
 /**
  * Primary climate device categories (main heating/cooling control)

@@ -6,7 +6,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
-import { MediaActivationState, MediaActivityKey, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { MediaActivationState, MediaActivityKey } from '../spaces-home-control.constants';
 
 const jsonToSnakeCaseTransformer = ({ value }: { value: string | null }): Record<string, unknown> | null => {
 	if (!value) return null;

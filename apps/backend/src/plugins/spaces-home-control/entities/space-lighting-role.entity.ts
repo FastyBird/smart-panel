@@ -6,7 +6,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
-import { LightingRole, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { SpaceRoleType } from '../../../modules/spaces/spaces.constants';
+import { LightingRole } from '../spaces-home-control.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpaceLightingRole' })
 @ChildEntity(SpaceRoleType.LIGHTING)

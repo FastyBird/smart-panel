@@ -6,12 +6,8 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import {
-	LightingMode,
-	LightingRole,
-	RoleBrightnessRule,
-	SPACES_MODULE_NAME,
-} from '../../../modules/spaces/spaces.constants';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { LightingMode, LightingRole, RoleBrightnessRule } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceLightingRoleService } from './space-lighting-role.service';

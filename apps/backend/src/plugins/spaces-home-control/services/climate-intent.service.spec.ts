@@ -10,14 +10,14 @@ import { PlatformRegistryService } from '../../../modules/devices/services/platf
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import {
 	ClimateIntentType,
 	ClimateMode,
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
-} from '../../../modules/spaces/spaces.constants';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
+} from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateIntentService, ClimateState, PrimaryClimateDevice } from './climate-intent.service';
