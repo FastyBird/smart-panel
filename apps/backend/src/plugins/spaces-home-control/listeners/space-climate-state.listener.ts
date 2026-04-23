@@ -6,12 +6,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
-import { EventType as DevicesEventType } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { ClimateStateDataModel } from '../models/spaces-response.model';
-import { SpaceClimateStateService } from '../services/space-climate-state.service';
-import { EventType, SPACES_MODULE_NAME } from '../spaces.constants';
+import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ClimateStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
+import { SpaceClimateStateService } from '../../../modules/spaces/services/space-climate-state.service';
+import { EventType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 
 /**
  * Debounce delay in milliseconds for climate state change events.

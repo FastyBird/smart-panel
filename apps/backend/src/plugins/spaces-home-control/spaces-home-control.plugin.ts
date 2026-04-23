@@ -23,6 +23,9 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
+import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
+import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
+import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import {
@@ -62,7 +65,13 @@ import { IntentSpecLoaderService } from './spec';
 @Global()
 @Module({
 	imports: [SwaggerModule, DisplaysModule, SpacesModule],
-	providers: [HomeControlHomePageResolver, IntentSpecLoaderService],
+	providers: [
+		HomeControlHomePageResolver,
+		IntentSpecLoaderService,
+		SpaceClimateStateListener,
+		SpaceLightingStateListener,
+		SpaceSensorStateListener,
+	],
 	controllers: [],
 	exports: [IntentSpecLoaderService],
 })

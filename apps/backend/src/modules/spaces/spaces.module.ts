@@ -29,9 +29,6 @@ import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceRoleEntity } from './entities/space-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
-import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
-import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
-import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
@@ -123,9 +120,6 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
-		SpaceClimateStateListener,
-		SpaceLightingStateListener,
-		SpaceSensorStateListener,
 		WebsocketExchangeListener,
 		SpacesSeederService,
 		SpaceLightingToolService,

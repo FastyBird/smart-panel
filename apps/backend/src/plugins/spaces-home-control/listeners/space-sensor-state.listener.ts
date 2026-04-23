@@ -6,11 +6,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SensorStateDataModel } from '../models/spaces-response.model';
-import { SpaceSensorStateService } from '../services/space-sensor-state.service';
-import { EventType, SENSOR_CHANNEL_CATEGORIES, SPACES_MODULE_NAME } from '../spaces.constants';
+import { EventType as DevicesEventType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SensorStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
+import { SpaceSensorStateService } from '../../../modules/spaces/services/space-sensor-state.service';
+import { EventType, SENSOR_CHANNEL_CATEGORIES, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 
 /**
  * Debounce delay in milliseconds for sensor state change events.
