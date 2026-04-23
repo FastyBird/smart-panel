@@ -362,7 +362,7 @@ import {
 	SpaceScenesSection,
 } from '../../../plugins/spaces-home-control/components/components';
 import { useSpace } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
+import { RouteNames, SpaceRoomCategory, SpaceType, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { type ISpace } from '../store';
 
@@ -431,12 +431,19 @@ const isSpaceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACE;
 });
 
-const spaceIcon = computed<string>((): string => {
-	if (space.value?.icon) {
-		return space.value.icon;
-	}
-	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
-});
+// Defer to the shared `getSpaceIcon` helper so this view's iconography
+// stays consistent with `view-space-edit.vue` and the scenes module, and
+// so new plugin-contributed space types (MASTER / ENTRY / SIGNAGE) pick
+// up their own icons instead of falling back to the old zone marker.
+const spaceIcon = computed<string>((): string =>
+	space.value
+		? getSpaceIcon({
+				icon: space.value.icon ?? null,
+				category: (space.value.category ?? null) as SpaceRoomCategory | SpaceZoneCategory | null,
+				type: space.value.type,
+			})
+		: 'mdi:shape-outline',
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
