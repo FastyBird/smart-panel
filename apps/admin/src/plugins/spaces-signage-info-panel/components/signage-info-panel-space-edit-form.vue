@@ -261,6 +261,12 @@ const submitting = ref(false);
 // user's input (see the guard below).
 const baseline = ref<SignageFormModel | null>({ ...model });
 const loadFailed = ref(false);
+// Tracks whether the server payload has been successfully applied at
+// least once. `baseline` alone can't gate Save because it's seeded from
+// the local defaults at mount — without this separate flag the form
+// would PATCH the server with hardcoded defaults during the fetch
+// window (see the `canSubmit` comment below).
+const loaded = ref(false);
 
 // Element Plus validation rules. Mirrors the core Room/Zone edit form's
 // required-name rule so the signage form catches empty/whitespace-only names
@@ -270,12 +276,11 @@ const rules = computed<FormRules<SignageFormModel>>(() => ({
 	feedUrl: [{ type: 'url', message: t('spacesSignageInfoPanelPlugin.fields.feedUrl.validation.invalid'), trigger: 'blur' }],
 }));
 
-// `baseline` stays null until `fetchSpace` succeeds. Submitting before then
-// would PATCH the server with the form's hardcoded defaults — silently
-// overwriting any saved configuration the fetch never managed to load — so
-// the Save button (and the whole `submit()` call exposed via defineExpose)
-// must wait until we know what the server actually has.
-const canSubmit = computed<boolean>(() => baseline.value !== null && !loadFailed.value);
+// Gate Save on `loaded === true && !loadFailed`. Submitting before the
+// server payload applies would PATCH the server with the form's
+// hardcoded defaults — silently overwriting any saved configuration the
+// fetch never managed to load.
+const canSubmit = computed<boolean>(() => loaded.value && !loadFailed.value);
 
 const formChanged = computed<boolean>(() => {
 	if (!baseline.value) return false;
@@ -315,6 +320,7 @@ const applyServerPayload = (raw: Record<string, unknown>): void => {
 	// non-reactive object) so `formChanged` keeps comparing against the
 	// values the server returned — not the live `model` reference.
 	baseline.value = { ...model };
+	loaded.value = true;
 };
 
 const fetchSpace = async (): Promise<void> => {
