@@ -4,28 +4,27 @@ import { ChildEntity, Column, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { CoversRole, SpaceRoleType } from '../spaces.constants';
+import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
+import { SensorRole, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
 
-import { SpaceRoleEntity } from './space-role.entity';
-
-@ApiSchema({ name: 'SpacesModuleDataSpaceCoversRole' })
-@ChildEntity(SpaceRoleType.COVERS)
-export class SpaceCoversRoleEntity extends SpaceRoleEntity {
+@ApiSchema({ name: 'SpacesModuleDataSpaceSensorRole' })
+@ChildEntity(SpaceRoleType.SENSOR)
+export class SpaceSensorRoleEntity extends SpaceRoleEntity {
 	@ApiProperty({
 		description: 'Role type',
 		enum: SpaceRoleType,
-		default: SpaceRoleType.COVERS,
-		example: SpaceRoleType.COVERS,
+		default: SpaceRoleType.SENSOR,
+		example: SpaceRoleType.SENSOR,
 	})
 	@Expose()
 	get type(): SpaceRoleType {
-		return SpaceRoleType.COVERS;
+		return SpaceRoleType.SENSOR;
 	}
 
 	@ApiProperty({
 		name: 'device_id',
-		description: 'ID of the window covering device',
+		description: 'ID of the sensor device',
 		type: 'string',
 		format: 'uuid',
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
@@ -44,7 +43,7 @@ export class SpaceCoversRoleEntity extends SpaceRoleEntity {
 
 	@ApiProperty({
 		name: 'channel_id',
-		description: 'ID of the window covering channel within the device',
+		description: 'ID of the sensor channel within the device',
 		type: 'string',
 		format: 'uuid',
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
@@ -62,18 +61,18 @@ export class SpaceCoversRoleEntity extends SpaceRoleEntity {
 	channel: ChannelEntity;
 
 	@ApiProperty({
-		description: 'The covers role for this device/channel in the space',
-		enum: CoversRole,
-		example: CoversRole.PRIMARY,
+		description: 'The sensor role for this device/channel in the space',
+		enum: SensorRole,
+		example: SensorRole.ENVIRONMENT,
 	})
 	@Expose()
-	@IsEnum(CoversRole)
+	@IsEnum(SensorRole)
 	@Column({
 		type: 'varchar',
 		nullable: true,
-		default: CoversRole.PRIMARY,
+		default: SensorRole.OTHER,
 	})
-	role: CoversRole;
+	role: SensorRole;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',

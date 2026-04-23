@@ -3,10 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { ModuleRef } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
-import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { ClimateMode, LightingRole, SpaceType } from '../spaces.constants';
 

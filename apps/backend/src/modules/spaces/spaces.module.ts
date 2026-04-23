@@ -1,6 +1,12 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
+import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from '../../plugins/spaces-home-control/entities/space-covers-role.entity';
+import { SpaceLightingRoleEntity } from '../../plugins/spaces-home-control/entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from '../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
+import { SpaceSensorRoleEntity } from '../../plugins/spaces-home-control/entities/space-sensor-role.entity';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
@@ -21,13 +27,7 @@ import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
-import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
-import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
-import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
-import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
-import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceRoleEntity } from './entities/space-role.entity';
-import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
@@ -69,7 +69,6 @@ import {
 	SPACES_MODULE_API_TAG_DESCRIPTION,
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
-	SpaceRoleType,
 	SpaceType,
 } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -169,7 +168,6 @@ export class SpacesModule implements OnModuleInit {
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
-		private readonly spaceRolesTypeMapper: SpaceRolesTypeMapperService,
 	) {}
 
 	onModuleInit() {
@@ -186,34 +184,6 @@ export class SpacesModule implements OnModuleInit {
 			class: ZoneSpaceEntity,
 			createDto: CreateSpaceDto,
 			updateDto: UpdateSpaceDto,
-		});
-
-		// Register built-in role subtypes on the unified `spaces_module_space_roles` table.
-		// These will migrate into their respective plugins (spaces-home-control etc.) in
-		// Phase 3; for now they live in the core module.
-		this.spaceRolesTypeMapper.registerMapping<SpaceLightingRoleEntity>({
-			type: SpaceRoleType.LIGHTING,
-			class: SpaceLightingRoleEntity,
-		});
-		this.spaceRolesTypeMapper.registerMapping<SpaceClimateRoleEntity>({
-			type: SpaceRoleType.CLIMATE,
-			class: SpaceClimateRoleEntity,
-		});
-		this.spaceRolesTypeMapper.registerMapping<SpaceCoversRoleEntity>({
-			type: SpaceRoleType.COVERS,
-			class: SpaceCoversRoleEntity,
-		});
-		this.spaceRolesTypeMapper.registerMapping<SpaceSensorRoleEntity>({
-			type: SpaceRoleType.SENSOR,
-			class: SpaceSensorRoleEntity,
-		});
-		this.spaceRolesTypeMapper.registerMapping<SpaceMediaActivityBindingEntity>({
-			type: SpaceRoleType.MEDIA_BINDING,
-			class: SpaceMediaActivityBindingEntity,
-		});
-		this.spaceRolesTypeMapper.registerMapping<SpaceActiveMediaActivityEntity>({
-			type: SpaceRoleType.ACTIVE_MEDIA,
-			class: SpaceActiveMediaActivityEntity,
 		});
 
 		// Register factory reset handler

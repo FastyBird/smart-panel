@@ -1,6 +1,13 @@
 /**
  * OpenAPI extra models for Spaces module
  */
+import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
+import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from '../../plugins/spaces-home-control/entities/space-covers-role.entity';
+import { SpaceLightingRoleEntity } from '../../plugins/spaces-home-control/entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from '../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
+import { SpaceSensorRoleEntity } from '../../plugins/spaces-home-control/entities/space-sensor-role.entity';
+
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import {
@@ -38,12 +45,6 @@ import {
 } from './dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
-import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
-import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
-import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
-import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
-import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
-import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	DerivedMediaCapabilitiesModel,

@@ -11,6 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
@@ -22,7 +23,6 @@ import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighti
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { RoomSpaceEntity } from '../entities/room-space.entity';
-import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';

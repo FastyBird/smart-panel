@@ -4,28 +4,27 @@ import { ChildEntity, Column, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { ClimateRole, SpaceRoleType } from '../spaces.constants';
+import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
+import { CoversRole, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
 
-import { SpaceRoleEntity } from './space-role.entity';
-
-@ApiSchema({ name: 'SpacesModuleDataSpaceClimateRole' })
-@ChildEntity(SpaceRoleType.CLIMATE)
-export class SpaceClimateRoleEntity extends SpaceRoleEntity {
+@ApiSchema({ name: 'SpacesModuleDataSpaceCoversRole' })
+@ChildEntity(SpaceRoleType.COVERS)
+export class SpaceCoversRoleEntity extends SpaceRoleEntity {
 	@ApiProperty({
 		description: 'Role type',
 		enum: SpaceRoleType,
-		default: SpaceRoleType.CLIMATE,
-		example: SpaceRoleType.CLIMATE,
+		default: SpaceRoleType.COVERS,
+		example: SpaceRoleType.COVERS,
 	})
 	@Expose()
 	get type(): SpaceRoleType {
-		return SpaceRoleType.CLIMATE;
+		return SpaceRoleType.COVERS;
 	}
 
 	@ApiProperty({
 		name: 'device_id',
-		description: 'ID of the climate device',
+		description: 'ID of the window covering device',
 		type: 'string',
 		format: 'uuid',
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
@@ -42,39 +41,38 @@ export class SpaceClimateRoleEntity extends SpaceRoleEntity {
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		name: 'channel_id',
-		description: 'ID of the channel (required for sensor roles, null for actuator roles)',
+		description: 'ID of the window covering channel within the device',
 		type: 'string',
 		format: 'uuid',
-		example: 'c3d29ea4-632f-5e8c-c4af-dce8b9e6c0f8',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
-	@IsOptional()
 	@IsUUID('4')
 	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
 		toClassOnly: true,
 	})
 	@Column({ nullable: true })
-	channelId: string | null;
+	channelId: string;
 
 	@ManyToOne(() => ChannelEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'channelId' })
-	channel: ChannelEntity | null;
+	channel: ChannelEntity;
 
 	@ApiProperty({
-		description: 'The climate role for this device/channel in the space',
-		enum: ClimateRole,
-		example: ClimateRole.AUTO,
+		description: 'The covers role for this device/channel in the space',
+		enum: CoversRole,
+		example: CoversRole.PRIMARY,
 	})
 	@Expose()
-	@IsEnum(ClimateRole)
+	@IsEnum(CoversRole)
 	@Column({
 		type: 'varchar',
 		nullable: true,
-		default: ClimateRole.AUTO,
+		default: CoversRole.PRIMARY,
 	})
-	role: ClimateRole;
+	role: CoversRole;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',

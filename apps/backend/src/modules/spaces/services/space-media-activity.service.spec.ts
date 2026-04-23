@@ -4,8 +4,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { SpaceActiveMediaActivityEntity } from '../../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';

@@ -6,9 +6,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { LightingRole, SpaceType } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';

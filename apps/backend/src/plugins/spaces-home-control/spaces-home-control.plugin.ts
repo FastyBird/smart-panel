@@ -4,12 +4,20 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { SpaceType } from '../../modules/spaces/spaces.constants';
+import { SpaceRolesTypeMapperService } from '../../modules/spaces/services/space-roles-type-mapper.service';
+import { SpaceRoleType, SpaceType } from '../../modules/spaces/spaces.constants';
+import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
+import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
+import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
+import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import {
@@ -48,7 +56,7 @@ import { IntentSpecLoaderService } from './spec';
 // later Phase 3a commit.
 @Global()
 @Module({
-	imports: [SwaggerModule, DisplaysModule],
+	imports: [SwaggerModule, DisplaysModule, SpacesModule],
 	providers: [HomeControlHomePageResolver, IntentSpecLoaderService],
 	controllers: [],
 	exports: [IntentSpecLoaderService],
@@ -60,6 +68,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
 		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
+		private readonly spaceRolesTypeMapper: SpaceRolesTypeMapperService,
 	) {}
 
 	onModuleInit() {
@@ -79,6 +88,33 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 
 		this.spaceHomePageResolverRegistry.register(SpaceType.ROOM, this.homeControlHomePageResolver);
 		this.spaceHomePageResolverRegistry.register(SpaceType.ZONE, this.homeControlHomePageResolver);
+
+		// Role subtype mappings — entities live in this plugin; mapping calls
+		// moved here from SpacesModule.onModuleInit as part of Phase 3a step 3.
+		this.spaceRolesTypeMapper.registerMapping<SpaceLightingRoleEntity>({
+			type: SpaceRoleType.LIGHTING,
+			class: SpaceLightingRoleEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceClimateRoleEntity>({
+			type: SpaceRoleType.CLIMATE,
+			class: SpaceClimateRoleEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceCoversRoleEntity>({
+			type: SpaceRoleType.COVERS,
+			class: SpaceCoversRoleEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceSensorRoleEntity>({
+			type: SpaceRoleType.SENSOR,
+			class: SpaceSensorRoleEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceMediaActivityBindingEntity>({
+			type: SpaceRoleType.MEDIA_BINDING,
+			class: SpaceMediaActivityBindingEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceActiveMediaActivityEntity>({
+			type: SpaceRoleType.ACTIVE_MEDIA,
+			class: SpaceActiveMediaActivityEntity,
+		});
 
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_HOME_CONTROL_PLUGIN_NAME,

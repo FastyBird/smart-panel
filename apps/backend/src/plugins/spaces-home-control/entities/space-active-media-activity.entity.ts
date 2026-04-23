@@ -5,9 +5,8 @@ import { ChildEntity, Column } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
-import { MediaActivationState, MediaActivityKey, SpaceRoleType } from '../spaces.constants';
-
-import { SpaceRoleEntity } from './space-role.entity';
+import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
+import { MediaActivationState, MediaActivityKey, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
 
 const jsonToSnakeCaseTransformer = ({ value }: { value: string | null }): Record<string, unknown> | null => {
 	if (!value) return null;

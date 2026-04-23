@@ -5,10 +5,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { SpaceCoversRoleEntity } from '../../../plugins/spaces-home-control/entities/space-covers-role.entity';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetCoversRoleDto } from '../dto/covers-role.dto';
-import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
 import { CoversRole, EventType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 

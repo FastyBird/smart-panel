@@ -6,9 +6,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
+import { SpaceActiveMediaActivityEntity } from '../../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import {
 	MediaActivityActivationResultModel,

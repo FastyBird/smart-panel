@@ -2,12 +2,12 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { SpaceClimateRoleEntity } from '../../../plugins/spaces-home-control/entities/space-climate-role.entity';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { IntentStatus } from '../../intents/intents.constants';
 import { IntentTimeseriesService, LastAppliedClimateState } from '../../intents/services/intent-timeseries.service';
-import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	ClimateMode,
 	ClimateRole,

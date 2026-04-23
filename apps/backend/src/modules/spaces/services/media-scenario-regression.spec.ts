@@ -20,10 +20,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { SpaceActiveMediaActivityEntity } from '../../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
+import { SpaceMediaActivityBindingEntity } from '../../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
 import { DeviceCategory } from '../../devices/devices.constants';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
-import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces.constants';

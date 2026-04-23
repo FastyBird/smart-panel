@@ -4,8 +4,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { SpaceMediaActivityBindingEntity } from '../../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
 import { DeviceCategory } from '../../devices/devices.constants';
-import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaActivityKey, MediaEndpointType } from '../spaces.constants';

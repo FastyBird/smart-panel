@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { SpaceSensorRoleEntity } from '../../../plugins/spaces-home-control/entities/space-sensor-role.entity';
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
 	SAFETY_SENSOR_THRESHOLDS,
 	SENSOR_CHANNEL_CATEGORIES,

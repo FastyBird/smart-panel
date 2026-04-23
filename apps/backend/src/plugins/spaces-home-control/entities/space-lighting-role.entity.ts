@@ -4,28 +4,27 @@ import { ChildEntity, Column, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SensorRole, SpaceRoleType } from '../spaces.constants';
+import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SpaceRoleEntity } from '../../../modules/spaces/entities/space-role.entity';
+import { LightingRole, SpaceRoleType } from '../../../modules/spaces/spaces.constants';
 
-import { SpaceRoleEntity } from './space-role.entity';
-
-@ApiSchema({ name: 'SpacesModuleDataSpaceSensorRole' })
-@ChildEntity(SpaceRoleType.SENSOR)
-export class SpaceSensorRoleEntity extends SpaceRoleEntity {
+@ApiSchema({ name: 'SpacesModuleDataSpaceLightingRole' })
+@ChildEntity(SpaceRoleType.LIGHTING)
+export class SpaceLightingRoleEntity extends SpaceRoleEntity {
 	@ApiProperty({
 		description: 'Role type',
 		enum: SpaceRoleType,
-		default: SpaceRoleType.SENSOR,
-		example: SpaceRoleType.SENSOR,
+		default: SpaceRoleType.LIGHTING,
+		example: SpaceRoleType.LIGHTING,
 	})
 	@Expose()
 	get type(): SpaceRoleType {
-		return SpaceRoleType.SENSOR;
+		return SpaceRoleType.LIGHTING;
 	}
 
 	@ApiProperty({
 		name: 'device_id',
-		description: 'ID of the sensor device',
+		description: 'ID of the lighting device',
 		type: 'string',
 		format: 'uuid',
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
@@ -44,7 +43,7 @@ export class SpaceSensorRoleEntity extends SpaceRoleEntity {
 
 	@ApiProperty({
 		name: 'channel_id',
-		description: 'ID of the sensor channel within the device',
+		description: 'ID of the light channel within the device',
 		type: 'string',
 		format: 'uuid',
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
@@ -62,18 +61,18 @@ export class SpaceSensorRoleEntity extends SpaceRoleEntity {
 	channel: ChannelEntity;
 
 	@ApiProperty({
-		description: 'The sensor role for this device/channel in the space',
-		enum: SensorRole,
-		example: SensorRole.ENVIRONMENT,
+		description: 'The lighting role for this device/channel in the space',
+		enum: LightingRole,
+		example: LightingRole.MAIN,
 	})
 	@Expose()
-	@IsEnum(SensorRole)
+	@IsEnum(LightingRole)
 	@Column({
 		type: 'varchar',
 		nullable: true,
-		default: SensorRole.OTHER,
+		default: LightingRole.OTHER,
 	})
-	role: SensorRole;
+	role: LightingRole;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',

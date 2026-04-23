@@ -2,12 +2,12 @@ import { Expose, Transform, Type, instanceToPlain } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { SpaceClimateRoleEntity } from '../../../plugins/spaces-home-control/entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from '../../../plugins/spaces-home-control/entities/space-covers-role.entity';
+import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
+import { SpaceSensorRoleEntity } from '../../../plugins/spaces-home-control/entities/space-sensor-role.entity';
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
-import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
-import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
-import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
-import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import type { CoversState, RoleCoversState } from '../services/space-covers-state.service';
 import type {
