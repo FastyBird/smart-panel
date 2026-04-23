@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 
+import { ResolvedSuggestionRule } from '../../../plugins/spaces-home-control/spec/intent-spec.types';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceType, SuggestionType } from '../spaces.constants';
-import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
 import {
 	SuggestionContext,

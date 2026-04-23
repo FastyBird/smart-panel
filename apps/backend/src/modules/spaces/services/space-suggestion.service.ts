@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { CooldownManager } from '../../../common/utils/cooldown-manager';
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec/intent-spec-loader.service';
+import { ResolvedSuggestionRule } from '../../../plugins/spaces-home-control/spec/intent-spec.types';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
@@ -13,8 +15,6 @@ import {
 	SuggestionFeedback,
 	SuggestionType,
 } from '../spaces.constants';
-import { IntentSpecLoaderService } from '../spec/intent-spec-loader.service';
-import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
 import { SpaceIntentService } from './space-intent.service';
 import { SpacesService } from './spaces.service';

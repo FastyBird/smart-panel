@@ -11,6 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
@@ -50,7 +51,6 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
-import { IntentSpecLoaderService } from '../spec';
 
 import { SpacesController } from './spaces.controller';
 

@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { hsvToHex } from '../../../common/utils/color.utils';
+import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { LightingMode, LightingRole, RoleBrightnessRule, SPACES_MODULE_NAME } from '../spaces.constants';
-import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';

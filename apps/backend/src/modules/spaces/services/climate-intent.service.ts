@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -20,7 +21,6 @@ import {
 	SETPOINT_PRECISION,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
-import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateState, PrimaryClimateDevice, SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';

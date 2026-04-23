@@ -11,7 +11,7 @@ import { parse as parseYaml } from 'yaml';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { LightingMode, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { LightingMode, LightingRole, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 
 import {
 	ResolvedCoversModeOrchestration,

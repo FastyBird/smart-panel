@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ConnectionState, DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -17,7 +18,6 @@ import {
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 } from '../spaces.constants';
-import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateIntentService, ClimateState, PrimaryClimateDevice } from './climate-intent.service';
 import { SpaceClimateStateService } from './space-climate-state.service';

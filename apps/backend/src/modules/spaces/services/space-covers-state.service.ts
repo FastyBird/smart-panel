@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { CoversMode, CoversRole, SPACES_MODULE_NAME } from '../spaces.constants';
-import { IntentSpecLoaderService } from '../spec';
 
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';

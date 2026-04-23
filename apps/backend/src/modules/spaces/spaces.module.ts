@@ -73,7 +73,6 @@ import {
 	SpaceType,
 } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
-import { IntentSpecLoaderService } from './spec';
 
 @ApiTag({
 	tagName: SPACES_MODULE_NAME,
@@ -136,7 +135,6 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceLightingStateListener,
 		SpaceSensorStateListener,
 		WebsocketExchangeListener,
-		IntentSpecLoaderService,
 		SpacesSeederService,
 		SpaceLightingToolService,
 		SpacesModuleResetService,
@@ -157,7 +155,6 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
-		IntentSpecLoaderService,
 	],
 })
 export class SpacesModule implements OnModuleInit {

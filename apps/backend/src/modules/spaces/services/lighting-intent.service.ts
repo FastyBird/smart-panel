@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
@@ -21,7 +22,6 @@ import {
 	RoleBrightnessRule,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
-import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';

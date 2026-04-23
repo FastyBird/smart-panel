@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
@@ -158,7 +159,6 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException } from '../spaces.exceptions';
-import { IntentSpecLoaderService } from '../spec';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @ApiExtraModels(

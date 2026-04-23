@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DisplaysModule } from '../../modules/displays/displays.module';
@@ -18,6 +18,7 @@ import {
 	SPACES_HOME_CONTROL_PLUGIN_NAME,
 } from './spaces-home-control.constants';
 import { SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-home-control.openapi';
+import { IntentSpecLoaderService } from './spec';
 
 /**
  * Spaces Home Control plugin.
@@ -39,11 +40,18 @@ import { SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-home-c
 	displayName: SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
 	description: SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 })
+// `@Global()` is transitional — domain services that still live in core
+// (lighting/climate/covers intent + state, suggestion, …) inject
+// `IntentSpecLoaderService` without importing this plugin, so we avoid a
+// circular SpacesModule → plugin → DisplaysModule → SpacesModule chain.
+// Drop the decorator once those callers relocate into the plugin in a
+// later Phase 3a commit.
+@Global()
 @Module({
 	imports: [SwaggerModule, DisplaysModule],
-	providers: [HomeControlHomePageResolver],
+	providers: [HomeControlHomePageResolver, IntentSpecLoaderService],
 	controllers: [],
-	exports: [],
+	exports: [IntentSpecLoaderService],
 })
 export class SpacesHomeControlPlugin implements OnModuleInit {
 	constructor(
