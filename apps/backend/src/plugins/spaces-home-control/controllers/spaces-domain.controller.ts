@@ -6,21 +6,6 @@ import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery,
 
 import { createExtensionLogger } from '../../../common/logger';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
-import { DerivedMediaEndpointsResponseModel } from '../../../modules/spaces/models/derived-media-endpoint.model';
-import {
-	BindingValidationIssueModel,
-	BindingValidationReportModel,
-	BindingValidationResponseModel,
-	MediaActivityBindingResponseModel,
-	MediaActivityBindingsResponseModel,
-} from '../../../modules/spaces/models/media-activity-binding.model';
-import {
-	ActiveMediaActivityResponseModel,
-	MediaActivityActivationResponseModel,
-	MediaActivityDryRunPreviewModel,
-	MediaActivityDryRunPreviewResponseModel,
-	MediaActivityDryRunWarningModel,
-} from '../../../modules/spaces/models/media-activity.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	CoversMode,
@@ -52,6 +37,21 @@ import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighti
 import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
+import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
+import {
+	BindingValidationIssueModel,
+	BindingValidationReportModel,
+	BindingValidationResponseModel,
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
+} from '../models/media-activity-binding.model';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunPreviewResponseModel,
+	MediaActivityDryRunWarningModel,
+} from '../models/media-activity.model';
 import {
 	BulkClimateRoleResultItemModel,
 	BulkClimateRolesResponseModel,

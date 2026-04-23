@@ -2,9 +2,9 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { SpaceActiveMediaActivityEntity } from '../../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
-import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { MediaActivationState, MediaActivityKey } from '../spaces.constants';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+import { MediaActivationState, MediaActivityKey } from '../../../modules/spaces/spaces.constants';
+import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 
 // ========================
 // Resolved Devices Model

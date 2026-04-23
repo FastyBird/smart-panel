@@ -1,34 +1,5 @@
 import { Type } from '@nestjs/common';
 
-import {
-	DerivedMediaCapabilitiesModel,
-	DerivedMediaEndpointModel,
-	DerivedMediaEndpointsResponseModel,
-	DerivedMediaEndpointsResultModel,
-	DerivedMediaLinksModel,
-	DerivedMediaPropertyLinkModel,
-	DerivedRemoteLinksModel,
-} from '../../modules/spaces/models/derived-media-endpoint.model';
-import {
-	MediaActivityBindingResponseModel,
-	MediaActivityBindingsResponseModel,
-} from '../../modules/spaces/models/media-activity-binding.model';
-import {
-	ActiveMediaActivityResponseModel,
-	MediaActivityActivationResponseModel,
-	MediaActivityActivationResultModel,
-	MediaActivityExecutionPlanModel,
-	MediaActivityExecutionStepModel,
-	MediaActivityLastResultModel,
-	MediaActivityResolvedModel,
-	MediaActivityStepFailureModel,
-} from '../../modules/spaces/models/media-activity.model';
-import {
-	MediaCapabilitiesResponseModel,
-	MediaCapabilityMappingModel,
-	MediaCapabilitySummaryModel,
-} from '../../modules/spaces/models/media-routing.model';
-
 import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import {
 	BulkSetClimateRolesDto,
@@ -71,6 +42,34 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpacesHomeControlConfigModel } from './models/config.model';
+import {
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResponseModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaLinksModel,
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+} from './models/derived-media-endpoint.model';
+import {
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
+} from './models/media-activity-binding.model';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+	MediaActivityActivationResultModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityLastResultModel,
+	MediaActivityResolvedModel,
+	MediaActivityStepFailureModel,
+} from './models/media-activity.model';
+import {
+	MediaCapabilitiesResponseModel,
+	MediaCapabilityMappingModel,
+	MediaCapabilitySummaryModel,
+} from './models/media-routing.model';
 import {
 	BulkClimateRoleResultItemModel,
 	BulkClimateRolesResponseModel,

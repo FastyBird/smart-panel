@@ -8,9 +8,9 @@
  */
 import { v4 as uuid } from 'uuid';
 
-import { DerivedMediaEndpointModel } from '../../../../modules/spaces/models/derived-media-endpoint.model';
-import { MediaCapabilitySummaryModel } from '../../../../modules/spaces/models/media-routing.model';
 import { MediaActivityKey, MediaEndpointType } from '../../../../modules/spaces/spaces.constants';
+import { DerivedMediaEndpointModel } from '../../models/derived-media-endpoint.model';
+import { MediaCapabilitySummaryModel } from '../../models/media-routing.model';
 
 import { MediaScenario, ScenarioDevice } from './media-scenario-templates';
 

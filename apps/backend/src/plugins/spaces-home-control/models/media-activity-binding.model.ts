@@ -2,8 +2,8 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { SpaceMediaActivityBindingEntity } from '../../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
-import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 
 /**
  * A single validation issue for a binding slot

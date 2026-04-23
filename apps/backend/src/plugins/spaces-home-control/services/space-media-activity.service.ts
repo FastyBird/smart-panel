@@ -8,17 +8,6 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { DerivedMediaEndpointModel } from '../../../modules/spaces/models/derived-media-endpoint.model';
-import {
-	MediaActivityActivationResultModel,
-	MediaActivityControlTargetsModel,
-	MediaActivityDryRunPreviewModel,
-	MediaActivityDryRunWarningModel,
-	MediaActivityExecutionPlanModel,
-	MediaActivityExecutionStepModel,
-	MediaActivityLastResultModel,
-	MediaActivityResolvedModel,
-} from '../../../modules/spaces/models/media-activity.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	EventType,
@@ -29,6 +18,17 @@ import {
 } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
+import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
+import {
+	MediaActivityActivationResultModel,
+	MediaActivityControlTargetsModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunWarningModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityLastResultModel,
+	MediaActivityResolvedModel,
+} from '../models/media-activity.model';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';

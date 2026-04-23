@@ -5,11 +5,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
-import { DerivedMediaEndpointModel } from '../../../modules/spaces/models/derived-media-endpoint.model';
-import { MediaCapabilitySummaryModel } from '../../../modules/spaces/models/media-routing.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { MediaActivityKey, MediaEndpointType } from '../../../modules/spaces/spaces.constants';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
+import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
+import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { MediaCapabilityService } from './media-capability.service';

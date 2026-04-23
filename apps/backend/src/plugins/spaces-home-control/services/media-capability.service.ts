@@ -8,10 +8,6 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import {
-	MediaCapabilityMappingModel,
-	MediaCapabilitySummaryModel,
-} from '../../../modules/spaces/models/media-routing.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	MEDIA_CHANNEL_CATEGORIES,
@@ -20,6 +16,7 @@ import {
 	MediaEndpointType,
 	SPACES_MODULE_NAME,
 } from '../../../modules/spaces/spaces.constants';
+import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
 
 /**
  * Service that derives media capability summaries from devices in a space.

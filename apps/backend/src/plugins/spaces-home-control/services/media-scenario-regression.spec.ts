@@ -22,8 +22,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { DerivedMediaEndpointModel } from '../../../modules/spaces/models/derived-media-endpoint.model';
-import { MediaCapabilitySummaryModel } from '../../../modules/spaces/models/media-routing.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	EventType,
@@ -33,6 +31,8 @@ import {
 } from '../../../modules/spaces/spaces.constants';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
+import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
+import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 
 import {
 	DEVICE_AVR,
