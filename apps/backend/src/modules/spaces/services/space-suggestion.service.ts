@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { CooldownManager } from '../../../common/utils/cooldown-manager';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec/intent-spec-loader.service';
 import { ResolvedSuggestionRule } from '../../../plugins/spaces-home-control/spec/intent-spec.types';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import {
 	LightingIntentType,

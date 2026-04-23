@@ -11,6 +11,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ReqClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
+import { ReqLightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
+import {
+	ReqBulkSetLightingRolesDto,
+	ReqSetLightingRoleDto,
+} from '../../../plugins/spaces-home-control/dto/lighting-role.dto';
+import { ReqSuggestionFeedbackDto } from '../../../plugins/spaces-home-control/dto/suggestion.dto';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
@@ -18,11 +25,7 @@ import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/sp
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
-import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
-import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
-import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
-import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';

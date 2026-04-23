@@ -3,7 +3,7 @@ import { IsEnum, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { SuggestionFeedback, SuggestionType } from '../spaces.constants';
+import { SuggestionFeedback, SuggestionType } from '../../../modules/spaces/spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleSuggestionFeedback' })
 export class SuggestionFeedbackDto {

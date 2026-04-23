@@ -3,16 +3,16 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional, IsUUID, Min, Validat
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { CoversRole } from '../spaces.constants';
+import { SensorRole } from '../../../modules/spaces/spaces.constants';
 
 /**
- * DTO for setting a single covers role assignment
+ * DTO for setting a single sensor role assignment
  */
-@ApiSchema({ name: 'SpacesModuleSetCoversRole' })
-export class SetCoversRoleDto {
+@ApiSchema({ name: 'SpacesModuleSetSensorRole' })
+export class SetSensorRoleDto {
 	@ApiProperty({
 		name: 'device_id',
-		description: 'ID of the window covering device',
+		description: 'ID of the sensor device',
 		type: 'string',
 		format: 'uuid',
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
@@ -26,7 +26,7 @@ export class SetCoversRoleDto {
 
 	@ApiProperty({
 		name: 'channel_id',
-		description: 'ID of the window covering channel within the device',
+		description: 'ID of the sensor channel within the device',
 		type: 'string',
 		format: 'uuid',
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
@@ -38,14 +38,16 @@ export class SetCoversRoleDto {
 	})
 	channelId: string;
 
-	@ApiProperty({
-		description: 'The covers role for this device/channel',
-		enum: CoversRole,
-		example: CoversRole.PRIMARY,
+	@ApiPropertyOptional({
+		description: 'The sensor role for this device/channel (null to remove role)',
+		enum: SensorRole,
+		example: SensorRole.ENVIRONMENT,
+		nullable: true,
 	})
 	@Expose()
-	@IsEnum(CoversRole, { message: '[{"field":"role","reason":"Role must be a valid covers role."}]' })
-	role: CoversRole;
+	@IsOptional()
+	@IsEnum(SensorRole, { message: '[{"field":"role","reason":"Role must be a valid sensor role."}]' })
+	role?: SensorRole | null;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',
@@ -60,48 +62,48 @@ export class SetCoversRoleDto {
 }
 
 /**
- * Request wrapper for setting a single covers role
+ * Request wrapper for setting a single sensor role
  */
-@ApiSchema({ name: 'SpacesModuleReqSetCoversRole' })
-export class ReqSetCoversRoleDto {
+@ApiSchema({ name: 'SpacesModuleReqSetSensorRole' })
+export class ReqSetSensorRoleDto {
 	@ApiProperty({
-		description: 'Covers role assignment data',
-		type: () => SetCoversRoleDto,
+		description: 'Sensor role assignment data',
+		type: () => SetSensorRoleDto,
 	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => SetCoversRoleDto)
-	data: SetCoversRoleDto;
+	@Type(() => SetSensorRoleDto)
+	data: SetSensorRoleDto;
 }
 
 /**
- * DTO for bulk setting covers role assignments
+ * DTO for bulk setting sensor role assignments
  */
-@ApiSchema({ name: 'SpacesModuleBulkSetCoversRoles' })
-export class BulkSetCoversRolesDto {
+@ApiSchema({ name: 'SpacesModuleBulkSetSensorRoles' })
+export class BulkSetSensorRolesDto {
 	@ApiProperty({
-		description: 'Array of covers role assignments',
-		type: () => [SetCoversRoleDto],
+		description: 'Array of sensor role assignments',
+		type: () => [SetSensorRoleDto],
 	})
 	@Expose()
 	@IsArray({ message: '[{"field":"roles","reason":"Roles must be an array."}]' })
 	@ArrayNotEmpty({ message: '[{"field":"roles","reason":"Roles array must not be empty."}]' })
 	@ValidateNested({ each: true })
-	@Type(() => SetCoversRoleDto)
-	roles: SetCoversRoleDto[];
+	@Type(() => SetSensorRoleDto)
+	roles: SetSensorRoleDto[];
 }
 
 /**
- * Request wrapper for bulk setting covers roles
+ * Request wrapper for bulk setting sensor roles
  */
-@ApiSchema({ name: 'SpacesModuleReqBulkSetCoversRoles' })
-export class ReqBulkSetCoversRolesDto {
+@ApiSchema({ name: 'SpacesModuleReqBulkSetSensorRoles' })
+export class ReqBulkSetSensorRolesDto {
 	@ApiProperty({
-		description: 'Bulk covers role assignment data',
-		type: () => BulkSetCoversRolesDto,
+		description: 'Bulk sensor role assignment data',
+		type: () => BulkSetSensorRolesDto,
 	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => BulkSetCoversRolesDto)
-	data: BulkSetCoversRolesDto;
+	@Type(() => BulkSetSensorRolesDto)
+	data: BulkSetSensorRolesDto;
 }

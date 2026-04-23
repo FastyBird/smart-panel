@@ -5,9 +5,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	CreateMediaActivityBindingDto,
+	UpdateMediaActivityBindingDto,
+} from '../../../plugins/spaces-home-control/dto/media-activity-binding.dto';
 import { SpaceMediaActivityBindingEntity } from '../../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
 import { DeviceCategory } from '../../devices/devices.constants';
-import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import {
 	CONFIGURABLE_ACTIVITY_KEYS,

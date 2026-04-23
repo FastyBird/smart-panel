@@ -9,7 +9,7 @@ import {
 	ClimateIntentType,
 	ClimateMode,
 	SetpointDelta,
-} from '../spaces.constants';
+} from '../../../modules/spaces/spaces.constants';
 import { AtLeastOneSetpointRequired } from '../validators/at-least-one-setpoint.validator';
 import { IsValidSetpointOrder } from '../validators/setpoint-order-constraint.validator';
 

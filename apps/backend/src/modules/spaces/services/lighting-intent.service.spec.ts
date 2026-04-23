@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, ConnectionState, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -10,7 +11,6 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingRole } from '../spaces.constants';
 
 import { LightingIntentService } from './lighting-intent.service';

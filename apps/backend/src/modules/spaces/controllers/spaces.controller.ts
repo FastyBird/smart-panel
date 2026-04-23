@@ -5,6 +5,30 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ReqClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
+import {
+	ReqBulkSetClimateRolesDto,
+	ReqSetClimateRoleDto,
+} from '../../../plugins/spaces-home-control/dto/climate-role.dto';
+import { ReqCoversIntentDto } from '../../../plugins/spaces-home-control/dto/covers-intent.dto';
+import {
+	ReqBulkSetCoversRolesDto,
+	ReqSetCoversRoleDto,
+} from '../../../plugins/spaces-home-control/dto/covers-role.dto';
+import { ReqLightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
+import {
+	ReqBulkSetLightingRolesDto,
+	ReqSetLightingRoleDto,
+} from '../../../plugins/spaces-home-control/dto/lighting-role.dto';
+import {
+	ReqCreateMediaActivityBindingDto,
+	ReqUpdateMediaActivityBindingDto,
+} from '../../../plugins/spaces-home-control/dto/media-activity-binding.dto';
+import {
+	ReqBulkSetSensorRolesDto,
+	ReqSetSensorRoleDto,
+} from '../../../plugins/spaces-home-control/dto/sensor-role.dto';
+import { ReqSuggestionFeedbackDto } from '../../../plugins/spaces-home-control/dto/suggestion.dto';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
@@ -18,16 +42,7 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
-import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
-import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
-import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
-import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
-import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
-import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
-import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
-import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
-import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';

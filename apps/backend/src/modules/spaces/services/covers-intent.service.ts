@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { CoversIntentDto } from '../../../plugins/spaces-home-control/dto/covers-intent.dto';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { CoversStateDataModel } from '../models/spaces-response.model';
 import {
 	COVERS_MODE_ORCHESTRATION,

@@ -5,10 +5,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { SetClimateRoleDto } from '../../../plugins/spaces-home-control/dto/climate-role.dto';
 import { SpaceClimateRoleEntity } from '../../../plugins/spaces-home-control/entities/space-climate-role.entity';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SetClimateRoleDto } from '../dto/climate-role.dto';
 import {
 	CLIMATE_SENSOR_CHANNEL_CATEGORIES,
 	CLIMATE_SENSOR_ROLES,

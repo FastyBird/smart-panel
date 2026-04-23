@@ -14,7 +14,12 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { BrightnessDelta, LightingIntentType, LightingMode, LightingRole } from '../spaces.constants';
+import {
+	BrightnessDelta,
+	LightingIntentType,
+	LightingMode,
+	LightingRole,
+} from '../../../modules/spaces/spaces.constants';
 
 // Helper to check if intent type is role-specific (requires role parameter)
 const isRoleIntent = (type: LightingIntentType): boolean =>

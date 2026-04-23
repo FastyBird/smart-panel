@@ -6,12 +6,12 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { ClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 import { ResolvedModeOrchestration } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
 	ClimateIntentType,
 	ClimateMode,

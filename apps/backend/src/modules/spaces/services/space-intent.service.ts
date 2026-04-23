@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
-import { CoversIntentDto } from '../dto/covers-intent.dto';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { ClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
+import { CoversIntentDto } from '../../../plugins/spaces-home-control/dto/covers-intent.dto';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
 import { CoversIntentResult, CoversIntentService, CoversState } from './covers-intent.service';

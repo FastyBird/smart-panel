@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../../../plugins/spaces-home-control/spec';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
@@ -11,7 +12,6 @@ import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../..
 import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingStateDataModel } from '../models/spaces-response.model';
 import {
 	BrightnessDelta,

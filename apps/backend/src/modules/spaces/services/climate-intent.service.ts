@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -10,7 +11,6 @@ import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../..
 import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { ClimateStateDataModel } from '../models/spaces-response.model';
 import {
 	ClimateIntentType,

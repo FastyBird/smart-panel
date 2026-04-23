@@ -2,10 +2,10 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 import { ShortIdMappingService } from '../../tools/services/short-id-mapping.service';
-import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { SpacesService } from './spaces.service';

@@ -5,10 +5,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { SetSensorRoleDto } from '../../../plugins/spaces-home-control/dto/sensor-role.dto';
 import { SpaceSensorRoleEntity } from '../../../plugins/spaces-home-control/entities/space-sensor-role.entity';
 import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SetSensorRoleDto } from '../dto/sensor-role.dto';
 import {
 	EventType,
 	SENSOR_AIR_QUALITY_CHANNEL_CATEGORIES,

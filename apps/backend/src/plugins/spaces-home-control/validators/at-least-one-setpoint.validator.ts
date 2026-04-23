@@ -6,7 +6,7 @@ import {
 	registerDecorator,
 } from 'class-validator';
 
-import { ClimateIntentType } from '../spaces.constants';
+import { ClimateIntentType } from '../../../modules/spaces/spaces.constants';
 
 /**
  * Interface for DTOs that have setpoint fields and intent type

@@ -4,13 +4,13 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { ConnectionState, DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import {
 	ClimateIntentType,
 	ClimateMode,

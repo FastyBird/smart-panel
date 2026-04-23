@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SetClimateRoleDto } from '../../../plugins/spaces-home-control/dto/climate-role.dto';
+import { SetLightingRoleDto } from '../../../plugins/spaces-home-control/dto/lighting-role.dto';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
-import { SetClimateRoleDto } from '../dto/climate-role.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
-import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';

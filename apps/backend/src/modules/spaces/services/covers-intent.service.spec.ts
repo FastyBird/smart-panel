@@ -3,12 +3,12 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CoversIntentDto } from '../../../plugins/spaces-home-control/dto/covers-intent.dto';
 import { ChannelCategory, ConnectionState, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
-import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { CoversIntentType, CoversRole } from '../spaces.constants';
 
 import { CoversIntentService } from './covers-intent.service';

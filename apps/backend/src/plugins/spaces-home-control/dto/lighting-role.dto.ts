@@ -3,16 +3,16 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional, IsUUID, Min, Validat
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ClimateRole } from '../spaces.constants';
+import { LightingRole } from '../../../modules/spaces/spaces.constants';
 
 /**
- * DTO for setting a single climate role assignment
+ * DTO for setting a single lighting role assignment
  */
-@ApiSchema({ name: 'SpacesModuleSetClimateRole' })
-export class SetClimateRoleDto {
+@ApiSchema({ name: 'SpacesModuleSetLightingRole' })
+export class SetLightingRoleDto {
 	@ApiProperty({
 		name: 'device_id',
-		description: 'ID of the climate device',
+		description: 'ID of the lighting device',
 		type: 'string',
 		format: 'uuid',
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
@@ -24,30 +24,28 @@ export class SetClimateRoleDto {
 	})
 	deviceId: string;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		name: 'channel_id',
-		description: 'ID of the channel (required for sensor roles, null for actuator roles)',
+		description: 'ID of the light channel within the device',
 		type: 'string',
 		format: 'uuid',
-		example: 'c3d29ea4-632f-5e8c-c4af-dce8b9e6c0f8',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
-	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID."}]' })
 	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
 		toClassOnly: true,
 	})
-	channelId?: string | null;
+	channelId: string;
 
-	@ApiPropertyOptional({
-		description: 'The climate role for this device/channel. Omit or set to null to remove the role assignment.',
-		enum: ClimateRole,
-		example: ClimateRole.AUTO,
+	@ApiProperty({
+		description: 'The lighting role for this device/channel',
+		enum: LightingRole,
+		example: LightingRole.MAIN,
 	})
 	@Expose()
-	@IsOptional()
-	@IsEnum(ClimateRole, { message: '[{"field":"role","reason":"Role must be a valid climate role."}]' })
-	role?: ClimateRole | null;
+	@IsEnum(LightingRole, { message: '[{"field":"role","reason":"Role must be a valid lighting role."}]' })
+	role: LightingRole;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',
@@ -62,48 +60,48 @@ export class SetClimateRoleDto {
 }
 
 /**
- * Request wrapper for setting a single climate role
+ * Request wrapper for setting a single lighting role
  */
-@ApiSchema({ name: 'SpacesModuleReqSetClimateRole' })
-export class ReqSetClimateRoleDto {
+@ApiSchema({ name: 'SpacesModuleReqSetLightingRole' })
+export class ReqSetLightingRoleDto {
 	@ApiProperty({
-		description: 'Climate role assignment data',
-		type: () => SetClimateRoleDto,
+		description: 'Lighting role assignment data',
+		type: () => SetLightingRoleDto,
 	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => SetClimateRoleDto)
-	data: SetClimateRoleDto;
+	@Type(() => SetLightingRoleDto)
+	data: SetLightingRoleDto;
 }
 
 /**
- * DTO for bulk setting climate role assignments
+ * DTO for bulk setting lighting role assignments
  */
-@ApiSchema({ name: 'SpacesModuleBulkSetClimateRoles' })
-export class BulkSetClimateRolesDto {
+@ApiSchema({ name: 'SpacesModuleBulkSetLightingRoles' })
+export class BulkSetLightingRolesDto {
 	@ApiProperty({
-		description: 'Array of climate role assignments',
-		type: () => [SetClimateRoleDto],
+		description: 'Array of lighting role assignments',
+		type: () => [SetLightingRoleDto],
 	})
 	@Expose()
 	@IsArray({ message: '[{"field":"roles","reason":"Roles must be an array."}]' })
 	@ArrayNotEmpty({ message: '[{"field":"roles","reason":"Roles array must not be empty."}]' })
 	@ValidateNested({ each: true })
-	@Type(() => SetClimateRoleDto)
-	roles: SetClimateRoleDto[];
+	@Type(() => SetLightingRoleDto)
+	roles: SetLightingRoleDto[];
 }
 
 /**
- * Request wrapper for bulk setting climate roles
+ * Request wrapper for bulk setting lighting roles
  */
-@ApiSchema({ name: 'SpacesModuleReqBulkSetClimateRoles' })
-export class ReqBulkSetClimateRolesDto {
+@ApiSchema({ name: 'SpacesModuleReqBulkSetLightingRoles' })
+export class ReqBulkSetLightingRolesDto {
 	@ApiProperty({
-		description: 'Bulk climate role assignment data',
-		type: () => BulkSetClimateRolesDto,
+		description: 'Bulk lighting role assignment data',
+		type: () => BulkSetLightingRolesDto,
 	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => BulkSetClimateRolesDto)
-	data: BulkSetClimateRolesDto;
+	@Type(() => BulkSetLightingRolesDto)
+	data: BulkSetLightingRolesDto;
 }

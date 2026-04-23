@@ -1,6 +1,40 @@
 /**
  * OpenAPI extra models for Spaces module
  */
+import { ClimateIntentDto, ReqClimateIntentDto } from '../../plugins/spaces-home-control/dto/climate-intent.dto';
+import {
+	BulkSetClimateRolesDto,
+	ReqBulkSetClimateRolesDto,
+	ReqSetClimateRoleDto,
+	SetClimateRoleDto,
+} from '../../plugins/spaces-home-control/dto/climate-role.dto';
+import { CoversIntentDto, ReqCoversIntentDto } from '../../plugins/spaces-home-control/dto/covers-intent.dto';
+import {
+	BulkSetCoversRolesDto,
+	ReqBulkSetCoversRolesDto,
+	ReqSetCoversRoleDto,
+	SetCoversRoleDto,
+} from '../../plugins/spaces-home-control/dto/covers-role.dto';
+import { LightingIntentDto, ReqLightingIntentDto } from '../../plugins/spaces-home-control/dto/lighting-intent.dto';
+import {
+	BulkSetLightingRolesDto,
+	ReqBulkSetLightingRolesDto,
+	ReqSetLightingRoleDto,
+	SetLightingRoleDto,
+} from '../../plugins/spaces-home-control/dto/lighting-role.dto';
+import {
+	CreateMediaActivityBindingDto,
+	ReqCreateMediaActivityBindingDto,
+	ReqUpdateMediaActivityBindingDto,
+	UpdateMediaActivityBindingDto,
+} from '../../plugins/spaces-home-control/dto/media-activity-binding.dto';
+import {
+	BulkSetSensorRolesDto,
+	ReqBulkSetSensorRolesDto,
+	ReqSetSensorRoleDto,
+	SetSensorRoleDto,
+} from '../../plugins/spaces-home-control/dto/sensor-role.dto';
+import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from '../../plugins/spaces-home-control/dto/suggestion.dto';
 import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../../plugins/spaces-home-control/entities/space-covers-role.entity';
@@ -9,41 +43,7 @@ import { SpaceMediaActivityBindingEntity } from '../../plugins/spaces-home-contr
 import { SpaceSensorRoleEntity } from '../../plugins/spaces-home-control/entities/space-sensor-role.entity';
 
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
-import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
-import {
-	BulkSetClimateRolesDto,
-	ReqBulkSetClimateRolesDto,
-	ReqSetClimateRoleDto,
-	SetClimateRoleDto,
-} from './dto/climate-role.dto';
-import { CoversIntentDto, ReqCoversIntentDto } from './dto/covers-intent.dto';
-import {
-	BulkSetCoversRolesDto,
-	ReqBulkSetCoversRolesDto,
-	ReqSetCoversRoleDto,
-	SetCoversRoleDto,
-} from './dto/covers-role.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
-import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
-import {
-	BulkSetLightingRolesDto,
-	ReqBulkSetLightingRolesDto,
-	ReqSetLightingRoleDto,
-	SetLightingRoleDto,
-} from './dto/lighting-role.dto';
-import {
-	CreateMediaActivityBindingDto,
-	ReqCreateMediaActivityBindingDto,
-	ReqUpdateMediaActivityBindingDto,
-	UpdateMediaActivityBindingDto,
-} from './dto/media-activity-binding.dto';
-import {
-	BulkSetSensorRolesDto,
-	ReqBulkSetSensorRolesDto,
-	ReqSetSensorRoleDto,
-	SetSensorRoleDto,
-} from './dto/sensor-role.dto';
-import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceEntity } from './entities/space.entity';
 import {

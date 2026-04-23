@@ -3,7 +3,7 @@ import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, Val
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { CONFIGURABLE_ACTIVITY_KEYS, MediaActivityKey } from '../spaces.constants';
+import { CONFIGURABLE_ACTIVITY_KEYS, MediaActivityKey } from '../../../modules/spaces/spaces.constants';
 
 /**
  * DTO for creating a media activity binding
