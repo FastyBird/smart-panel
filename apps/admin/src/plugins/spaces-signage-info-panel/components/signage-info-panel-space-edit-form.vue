@@ -253,7 +253,13 @@ const model = reactive<SignageFormModel>({
 
 const formRef = ref<FormInstance | null>(null);
 const submitting = ref(false);
-const baseline = ref<SignageFormModel | null>(null);
+// Seed the baseline with the initial hardcoded defaults so `formChanged`
+// tracks user edits immediately on mount, even before `fetchSpace`
+// finishes. Without this, typing into the form during the fetch window
+// produces `formChanged = false` and the parent's discard-guard stays
+// inactive; also, `applyServerPayload` would then silently clobber the
+// user's input (see the guard below).
+const baseline = ref<SignageFormModel | null>({ ...model });
 const loadFailed = ref(false);
 
 // Element Plus validation rules. Mirrors the core Room/Zone edit form's
@@ -284,6 +290,17 @@ watch(formChanged, (changed) => {
 });
 
 const applyServerPayload = (raw: Record<string, unknown>): void => {
+	// If the user edited the form while the fetch was in flight, the
+	// baseline and the live model already diverge. Overwriting the model
+	// with the server payload at this point would silently lose the user's
+	// in-progress edits. Keep their input intact — they can cancel and
+	// refresh if they want the server copy. `canSubmit` still gates Save
+	// on `baseline.value !== null`, so the initial defaults baseline keeps
+	// that active even without the server payload.
+	if (formChanged.value) {
+		return;
+	}
+
 	model.name = (raw.name as string | undefined) ?? props.space.name;
 	model.description = (raw.description as string | null | undefined) ?? null;
 	model.layout = ((raw.layout as SignageInfoPanelLayout | undefined) ?? SignageInfoPanelLayout.CLOCK_WEATHER_ANNOUNCEMENTS);
