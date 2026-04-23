@@ -2,10 +2,10 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
+import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
 import { EventType as ConfigEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
-import { LightingIntentDto } from '../../spaces/dto/lighting-intent.dto';
-import { SpaceIntentService } from '../../spaces/services/space-intent.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
 import { SystemConfigModel } from '../models/config.model';

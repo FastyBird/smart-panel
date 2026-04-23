@@ -6,15 +6,18 @@ import { SpaceClimateRoleEntity } from '../../../plugins/spaces-home-control/ent
 import { SpaceCoversRoleEntity } from '../../../plugins/spaces-home-control/entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../../../plugins/spaces-home-control/entities/space-lighting-role.entity';
 import { SpaceSensorRoleEntity } from '../../../plugins/spaces-home-control/entities/space-sensor-role.entity';
-import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
-import { SpaceEntity } from '../entities/space.entity';
-import type { CoversState, RoleCoversState } from '../services/space-covers-state.service';
+import type {
+	CoversState,
+	RoleCoversState,
+} from '../../../plugins/spaces-home-control/services/space-covers-state.service';
 import type {
 	OtherLightsState,
 	RoleAggregatedState,
 	SpaceLightingState,
-} from '../services/space-lighting-state.service';
+} from '../../../plugins/spaces-home-control/services/space-lighting-state.service';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { SpaceEntity } from '../entities/space.entity';
 import {
 	ALL_SPACE_CATEGORIES,
 	ClimateMode,

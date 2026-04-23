@@ -9,8 +9,8 @@ import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devi
 import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { LightingStateDataModel } from '../../../modules/spaces/models/spaces-response.model';
-import { SpaceLightingStateService } from '../../../modules/spaces/services/space-lighting-state.service';
 import { EventType, SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 
 /**
  * Debounce delay in milliseconds for lighting state change events.

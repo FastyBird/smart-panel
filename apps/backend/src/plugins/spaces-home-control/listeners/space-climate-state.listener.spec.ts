@@ -8,8 +8,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { ClimateState, SpaceClimateStateService } from '../../../modules/spaces/services/space-climate-state.service';
 import { ClimateMode, EventType } from '../../../modules/spaces/spaces.constants';
+import { ClimateState, SpaceClimateStateService } from '../services/space-climate-state.service';
 
 import { SpaceClimateStateListener } from './space-climate-state.listener';
 

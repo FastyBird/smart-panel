@@ -26,12 +26,6 @@ import {
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
 import { ScenesService } from '../../../modules/scenes/services/scenes.service';
-import { SetLightingRoleDto } from '../../../modules/spaces/dto/lighting-role.dto';
-import { SpaceClimateRoleService } from '../../../modules/spaces/services/space-climate-role.service';
-import { SpaceCoversRoleService } from '../../../modules/spaces/services/space-covers-role.service';
-import { SpaceLightingRoleService } from '../../../modules/spaces/services/space-lighting-role.service';
-import { SpaceMediaActivityBindingService } from '../../../modules/spaces/services/space-media-activity-binding.service';
-import { SpaceSensorRoleService } from '../../../modules/spaces/services/space-sensor-role.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	ClimateRole,
@@ -43,6 +37,12 @@ import {
 	SpaceZoneCategory,
 } from '../../../modules/spaces/spaces.constants';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
+import { SetLightingRoleDto } from '../../spaces-home-control/dto/lighting-role.dto';
+import { SpaceClimateRoleService } from '../../spaces-home-control/services/space-climate-role.service';
+import { SpaceCoversRoleService } from '../../spaces-home-control/services/space-covers-role.service';
+import { SpaceLightingRoleService } from '../../spaces-home-control/services/space-lighting-role.service';
+import { SpaceMediaActivityBindingService } from '../../spaces-home-control/services/space-media-activity-binding.service';
+import { SpaceSensorRoleService } from '../../spaces-home-control/services/space-sensor-role.service';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import {
 	ScenarioChannelDefinition,

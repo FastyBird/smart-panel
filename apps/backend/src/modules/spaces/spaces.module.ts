@@ -16,11 +16,9 @@ import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
-import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
@@ -31,33 +29,10 @@ import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
-import { ClimateIntentService } from './services/climate-intent.service';
-import { CoversIntentService } from './services/covers-intent.service';
-import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
-import { LightingIntentService } from './services/lighting-intent.service';
-import { MediaCapabilityService } from './services/media-capability.service';
 import { SpacesModuleResetService } from './services/module-reset.service';
-import { SpaceClimateRoleService } from './services/space-climate-role.service';
-import { SpaceClimateStateService } from './services/space-climate-state.service';
-import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
-import { SpaceCoversRoleService } from './services/space-covers-role.service';
-import { SpaceCoversStateService } from './services/space-covers-state.service';
 import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
-import { SpaceIntentBaseService } from './services/space-intent-base.service';
-import { SpaceIntentService } from './services/space-intent.service';
-import { SpaceLightingRoleService } from './services/space-lighting-role.service';
-import { SpaceLightingStateService } from './services/space-lighting-state.service';
-import { SpaceLightingToolService } from './services/space-lighting-tool.service';
-import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
-import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
 import { SpaceRolesTypeMapperService } from './services/space-roles-type-mapper.service';
-import { SpaceSensorRoleService } from './services/space-sensor-role.service';
-import { SpaceSensorStateService } from './services/space-sensor-state.service';
-import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
-import { SpaceSuggestionService } from './services/space-suggestion.service';
-import { SpaceUndoHistoryService } from './services/space-undo-history.service';
-import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
@@ -98,31 +73,8 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceRolesTypeMapperService,
 		SpaceCreateBuilderRegistryService,
 		SpaceRelationsLoaderRegistryService,
-		SpaceIntentBaseService,
-		LightingIntentService,
-		ClimateIntentService,
-		CoversIntentService,
-		SpaceIntentService,
-		SpaceLightingRoleService,
-		SpaceLightingStateService,
-		SpaceClimateRoleService,
-		SpaceClimateStateService,
-		SpaceCoversRoleService,
-		SpaceCoversStateService,
-		MediaCapabilityService,
-		DerivedMediaEndpointService,
-		SpaceMediaActivityBindingService,
-		SpaceMediaActivityService,
-		SpaceSensorRoleService,
-		SpaceSensorStateService,
-		SpaceSuggestionService,
-		SpaceSuggestionHeartbeatService,
-		SpaceContextSnapshotService,
-		SpaceUndoHistoryService,
 		SpaceActivityListener,
 		WebsocketExchangeListener,
-		SpacesSeederService,
-		SpaceLightingToolService,
 		SpacesModuleResetService,
 	],
 	exports: [
@@ -131,16 +83,6 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceRolesTypeMapperService,
 		SpaceCreateBuilderRegistryService,
 		SpaceRelationsLoaderRegistryService,
-		SpaceIntentService,
-		SpaceLightingRoleService,
-		SpaceClimateRoleService,
-		SpaceCoversRoleService,
-		SpaceMediaActivityBindingService,
-		SpaceMediaActivityService,
-		SpaceSensorRoleService,
-		SpaceSuggestionService,
-		SpaceContextSnapshotService,
-		SpaceUndoHistoryService,
 	],
 })
 export class SpacesModule implements OnModuleInit {
@@ -148,12 +90,8 @@ export class SpacesModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
-		private readonly moduleSeeder: SpacesSeederService,
 		private readonly moduleReset: SpacesModuleResetService,
-		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
-		private readonly toolProviderRegistry: ToolProviderRegistryService,
-		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
@@ -164,18 +102,6 @@ export class SpacesModule implements OnModuleInit {
 				return this.moduleReset.reset();
 			},
 			280,
-		);
-
-		// Register space lighting tool provider
-		this.toolProviderRegistry.register(this.spaceLightingTool);
-
-		// Register seeder (priority 120 - after devices, before dashboard)
-		this.seedRegistry.register(
-			SPACES_MODULE_NAME,
-			async (): Promise<void> => {
-				await this.moduleSeeder.seed();
-			},
-			120,
 		);
 
 		this.modulesMapperService.registerMapping<SpacesConfigModel, UpdateSpacesConfigDto>({
@@ -222,3 +148,5 @@ The Spaces module provides a room-centric organization for your Smart Panel syst
 		});
 	}
 }
+
+export default SpacesModule;

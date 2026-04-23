@@ -29,6 +29,23 @@ import {
 	ReqSetSensorRoleDto,
 } from '../../../plugins/spaces-home-control/dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../../../plugins/spaces-home-control/dto/suggestion.dto';
+import { DerivedMediaEndpointService } from '../../../plugins/spaces-home-control/services/derived-media-endpoint.service';
+import { SpaceClimateRoleService } from '../../../plugins/spaces-home-control/services/space-climate-role.service';
+import { SpaceContextSnapshotService } from '../../../plugins/spaces-home-control/services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from '../../../plugins/spaces-home-control/services/space-covers-role.service';
+import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
+import { SpaceLightingRoleService } from '../../../plugins/spaces-home-control/services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../../../plugins/spaces-home-control/services/space-lighting-state.service';
+import { SpaceMediaActivityBindingService } from '../../../plugins/spaces-home-control/services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from '../../../plugins/spaces-home-control/services/space-media-activity.service';
+import { SpaceSensorRoleService } from '../../../plugins/spaces-home-control/services/space-sensor-role.service';
+import { SpaceSensorStateService } from '../../../plugins/spaces-home-control/services/space-sensor-state.service';
+import {
+	SpaceSuggestionEvent,
+	SpaceSuggestionHeartbeatService,
+} from '../../../plugins/spaces-home-control/services/space-suggestion-heartbeat.service';
+import { SpaceSuggestionService } from '../../../plugins/spaces-home-control/services/space-suggestion.service';
+import { SpaceUndoHistoryService } from '../../../plugins/spaces-home-control/services/space-undo-history.service';
 import { IntentSpecLoaderService } from '../../../plugins/spaces-home-control/spec';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
@@ -142,20 +159,6 @@ import {
 	UndoStateDataModel,
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
-import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
-import { SpaceClimateRoleService } from '../services/space-climate-role.service';
-import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
-import { SpaceCoversRoleService } from '../services/space-covers-role.service';
-import { SpaceIntentService } from '../services/space-intent.service';
-import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
-import { SpaceLightingStateService } from '../services/space-lighting-state.service';
-import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
-import { SpaceMediaActivityService } from '../services/space-media-activity.service';
-import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
-import { SpaceSensorStateService } from '../services/space-sensor-state.service';
-import { SpaceSuggestionEvent, SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
-import { SpaceSuggestionService } from '../services/space-suggestion.service';
-import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
 	CoversMode,

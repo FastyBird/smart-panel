@@ -4,6 +4,7 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { SeedRegistryService } from '../../modules/seed/services/seed-registry.service';
 import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
 import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
 import { SpaceRolesTypeMapperService } from '../../modules/spaces/services/space-roles-type-mapper.service';
@@ -13,6 +14,7 @@ import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { ToolProviderRegistryService } from '../../modules/tools/services/tool-provider-registry.service';
 
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
@@ -27,7 +29,30 @@ import { SpaceClimateStateListener } from './listeners/space-climate-state.liste
 import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { SpacesHomeControlConfigModel } from './models/config.model';
+import { ClimateIntentService } from './services/climate-intent.service';
+import { CoversIntentService } from './services/covers-intent.service';
+import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
+import { LightingIntentService } from './services/lighting-intent.service';
+import { MediaCapabilityService } from './services/media-capability.service';
+import { SpaceClimateRoleService } from './services/space-climate-role.service';
+import { SpaceClimateStateService } from './services/space-climate-state.service';
+import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from './services/space-covers-role.service';
+import { SpaceCoversStateService } from './services/space-covers-state.service';
+import { SpaceIntentBaseService } from './services/space-intent-base.service';
+import { SpaceIntentService } from './services/space-intent.service';
+import { SpaceLightingRoleService } from './services/space-lighting-role.service';
+import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceLightingToolService } from './services/space-lighting-tool.service';
+import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from './services/space-media-activity.service';
+import { SpaceSensorRoleService } from './services/space-sensor-role.service';
+import { SpaceSensorStateService } from './services/space-sensor-state.service';
+import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
+import { SpaceSuggestionService } from './services/space-suggestion.service';
+import { SpaceUndoHistoryService } from './services/space-undo-history.service';
+import { SpacesSeederService } from './services/spaces-seeder.service';
 import {
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 	SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
@@ -39,41 +64,88 @@ import { IntentSpecLoaderService } from './spec';
 /**
  * Spaces Home Control plugin.
  *
- * Phase 3a skeleton. This plugin will own Room and Zone space types along
- * with their lighting, climate, covers, sensor, and media role domains,
- * intent catalog, suggestions, and undo history once those files are
- * relocated out of `modules/spaces/` in subsequent commits on this branch.
- *
- * Phase 5 adds the first real wiring: the home-page resolver for Room /
- * Zone space types — when a display is assigned to a room/zone and uses
- * `home_mode = auto_space`, this resolver decides which dashboard page is
- * the home page. Today that's always `null` (fall through to first-page
- * fallback), but the indirection is ready for a future "preferred page"
- * column without touching core.
+ * Owns Room and Zone space types along with their lighting, climate,
+ * covers, sensor, and media role domains, intent catalog, suggestions,
+ * and undo history. Transitional: the spaces.controller.ts still lives
+ * in core and consumes these services; it splits into per-domain
+ * controllers in a later Phase 3a commit.
  */
 @ApiTag({
 	tagName: SPACES_HOME_CONTROL_PLUGIN_NAME,
 	displayName: SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
 	description: SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 })
-// `@Global()` is transitional — domain services that still live in core
-// (lighting/climate/covers intent + state, suggestion, …) inject
-// `IntentSpecLoaderService` without importing this plugin, so we avoid a
-// circular SpacesModule → plugin → DisplaysModule → SpacesModule chain.
-// Drop the decorator once those callers relocate into the plugin in a
-// later Phase 3a commit.
+// `@Global()` is transitional — `spaces.controller.ts` (still in core)
+// injects every domain service exported here without importing this
+// plugin, which sidesteps a circular SpacesModule → plugin →
+// DisplaysModule → SpacesModule chain. Drop the decorator once the
+// controller splits into per-domain plugin controllers.
 @Global()
 @Module({
 	imports: [SwaggerModule, DisplaysModule, SpacesModule],
 	providers: [
+		// Resolvers + loader
 		HomeControlHomePageResolver,
 		IntentSpecLoaderService,
+		// Listeners
 		SpaceClimateStateListener,
 		SpaceLightingStateListener,
 		SpaceSensorStateListener,
+		// Intent services
+		ClimateIntentService,
+		CoversIntentService,
+		LightingIntentService,
+		SpaceIntentBaseService,
+		SpaceIntentService,
+		// Role services
+		SpaceClimateRoleService,
+		SpaceCoversRoleService,
+		SpaceLightingRoleService,
+		SpaceSensorRoleService,
+		// State services
+		SpaceClimateStateService,
+		SpaceCoversStateService,
+		SpaceLightingStateService,
+		SpaceSensorStateService,
+		// Media services
+		DerivedMediaEndpointService,
+		MediaCapabilityService,
+		SpaceMediaActivityBindingService,
+		SpaceMediaActivityService,
+		// Support services
+		SpaceContextSnapshotService,
+		SpaceLightingToolService,
+		SpaceSuggestionHeartbeatService,
+		SpaceSuggestionService,
+		SpaceUndoHistoryService,
+		SpacesSeederService,
 	],
 	controllers: [],
-	exports: [IntentSpecLoaderService],
+	exports: [
+		IntentSpecLoaderService,
+		ClimateIntentService,
+		CoversIntentService,
+		LightingIntentService,
+		SpaceIntentBaseService,
+		SpaceIntentService,
+		SpaceClimateRoleService,
+		SpaceCoversRoleService,
+		SpaceLightingRoleService,
+		SpaceSensorRoleService,
+		SpaceClimateStateService,
+		SpaceCoversStateService,
+		SpaceLightingStateService,
+		SpaceSensorStateService,
+		DerivedMediaEndpointService,
+		MediaCapabilityService,
+		SpaceMediaActivityBindingService,
+		SpaceMediaActivityService,
+		SpaceContextSnapshotService,
+		SpaceLightingToolService,
+		SpaceSuggestionHeartbeatService,
+		SpaceSuggestionService,
+		SpaceUndoHistoryService,
+	],
 })
 export class SpacesHomeControlPlugin implements OnModuleInit {
 	constructor(
@@ -84,6 +156,10 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
 		private readonly spaceRolesTypeMapper: SpaceRolesTypeMapperService,
+		private readonly seedRegistry: SeedRegistryService,
+		private readonly moduleSeeder: SpacesSeederService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
@@ -119,8 +195,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 			updateDto: UpdateSpaceDto,
 		});
 
-		// Role subtype mappings — entities live in this plugin; mapping calls
-		// moved here from SpacesModule.onModuleInit as part of Phase 3a step 3.
+		// Role subtype mappings — entities live in this plugin.
 		this.spaceRolesTypeMapper.registerMapping<SpaceLightingRoleEntity>({
 			type: SpaceRoleType.LIGHTING,
 			class: SpaceLightingRoleEntity,
@@ -145,6 +220,23 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 			type: SpaceRoleType.ACTIVE_MEDIA,
 			class: SpaceActiveMediaActivityEntity,
 		});
+
+		// Register the space lighting tool provider (moved here from
+		// SpacesModule.onModuleInit; the tool is plugin-owned).
+		this.toolProviderRegistry.register(this.spaceLightingTool);
+
+		// Seed the spaces module — Room/Zone structure + seeded lighting /
+		// climate roles. The seeder itself owns the role-service injections
+		// so it belongs to the plugin. Priority 125 stays after the core
+		// spaces reset handler at priority 280 runs during factory reset,
+		// while still letting the seeder run in its natural 120–130 range.
+		this.seedRegistry.register(
+			SPACES_HOME_CONTROL_PLUGIN_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			125,
+		);
 
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_HOME_CONTROL_PLUGIN_NAME,
