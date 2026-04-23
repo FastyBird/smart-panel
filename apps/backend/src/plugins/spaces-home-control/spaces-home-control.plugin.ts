@@ -1,9 +1,14 @@
 import { Global, Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DevicesModule } from '../../modules/devices/devices.module';
+import { ChannelEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { IntentsModule } from '../../modules/intents/intents.module';
+import { SeedModule } from '../../modules/seed/seeding.module';
 import { SeedRegistryService } from '../../modules/seed/services/seed-registry.service';
 import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
 import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
@@ -15,6 +20,7 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { ToolProviderRegistryService } from '../../modules/tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../../modules/tools/tools.module';
 
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
@@ -66,23 +72,45 @@ import { IntentSpecLoaderService } from './spec';
  *
  * Owns Room and Zone space types along with their lighting, climate,
  * covers, sensor, and media role domains, intent catalog, suggestions,
- * and undo history. Transitional: the spaces.controller.ts still lives
- * in core and consumes these services; it splits into per-domain
- * controllers in a later Phase 3a commit.
+ * and undo history. Domain endpoints live in the plugin's
+ * `SpacesDomainController` but it is registered on `SpacesModule` (core)
+ * so its routes keep their historical `/api/v1/modules/spaces/spaces/...`
+ * URLs — critical for admin and panel clients that target those paths.
+ * Generic space CRUD stays in `modules/spaces/SpacesController`.
  */
 @ApiTag({
 	tagName: SPACES_HOME_CONTROL_PLUGIN_NAME,
 	displayName: SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
 	description: SPACES_HOME_CONTROL_PLUGIN_API_TAG_DESCRIPTION,
 })
-// `@Global()` is transitional — `spaces.controller.ts` (still in core)
-// injects every domain service exported here without importing this
-// plugin, which sidesteps a circular SpacesModule → plugin →
-// DisplaysModule → SpacesModule chain. Drop the decorator once the
-// controller splits into per-domain plugin controllers.
+// `@Global()` keeps the exported services reachable from any module
+// without each one importing this plugin (and sidesteps a circular
+// SpacesModule → plugin → DisplaysModule → SpacesModule chain). It also
+// lets `SpacesModule` register `SpacesDomainController` (physically
+// defined in this plugin) without a reciprocal module import — the
+// controller injects every domain service directly from the @Global
+// provider pool.
 @Global()
 @Module({
-	imports: [SwaggerModule, DisplaysModule, SpacesModule],
+	imports: [
+		TypeOrmModule.forFeature([
+			ChannelEntity,
+			DeviceEntity,
+			SpaceActiveMediaActivityEntity,
+			SpaceClimateRoleEntity,
+			SpaceCoversRoleEntity,
+			SpaceLightingRoleEntity,
+			SpaceMediaActivityBindingEntity,
+			SpaceSensorRoleEntity,
+		]),
+		SwaggerModule,
+		DisplaysModule,
+		SpacesModule,
+		SeedModule,
+		ToolsModule,
+		DevicesModule,
+		IntentsModule,
+	],
 	providers: [
 		// Resolvers + loader
 		HomeControlHomePageResolver,

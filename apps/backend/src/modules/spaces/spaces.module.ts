@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SpacesDomainController } from '../../plugins/spaces-home-control/controllers/spaces-domain.controller';
 import { RoomSpaceEntity } from '../../plugins/spaces-home-control/entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
@@ -66,7 +67,13 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SeedModule,
 		ToolsModule,
 	],
-	controllers: [SpacesController],
+	// `SpacesDomainController` physically lives in the home-control plugin but
+	// is registered here so RouterModule mounts its routes under
+	// `/api/v1/modules/spaces/spaces/...` — preserving every domain URL
+	// (lighting, climate, covers, sensors, media, suggestions, undo, intent
+	// catalog) that admin and panel clients expect. Once they migrate to the
+	// plugin's own prefix, this dual-location registration can move back.
+	controllers: [SpacesController, SpacesDomainController],
 	providers: [
 		SpacesService,
 		SpacesTypeMapperService,

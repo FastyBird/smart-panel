@@ -1,0 +1,2119 @@
+import { v4 as uuid } from 'uuid';
+
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+
+import { createExtensionLogger } from '../../../common/logger';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { DerivedMediaEndpointsResponseModel } from '../../../modules/spaces/models/derived-media-endpoint.model';
+import {
+	BindingValidationIssueModel,
+	BindingValidationReportModel,
+	BindingValidationResponseModel,
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
+} from '../../../modules/spaces/models/media-activity-binding.model';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunPreviewResponseModel,
+	MediaActivityDryRunWarningModel,
+} from '../../../modules/spaces/models/media-activity.model';
+import {
+	BulkClimateRoleResultItemModel,
+	BulkClimateRolesResponseModel,
+	BulkClimateRolesResultDataModel,
+	BulkCoversRoleResultItemModel,
+	BulkCoversRolesResponseModel,
+	BulkCoversRolesResultDataModel,
+	BulkLightingRoleResultItemModel,
+	BulkLightingRolesResponseModel,
+	BulkLightingRolesResultDataModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
+	ClimateIntentResponseModel,
+	ClimateIntentResultDataModel,
+	ClimateRoleResponseModel,
+	ClimateStateDataModel,
+	ClimateStateResponseModel,
+	ClimateTargetDataModel,
+	ClimateTargetsResponseModel,
+	ContextSnapshotDataModel,
+	ContextSnapshotResponseModel,
+	CoversIntentResponseModel,
+	CoversIntentResultDataModel,
+	CoversModeOrchestrationDataModel,
+	CoversRolePositionRuleDataModel,
+	CoversRoleResponseModel,
+	CoversStateDataModel,
+	CoversStateResponseModel,
+	CoversTargetDataModel,
+	CoversTargetsResponseModel,
+	EnvironmentSummaryDataModel,
+	IntentCatalogDataModel,
+	IntentCatalogResponseModel,
+	IntentCategoryDataModel,
+	IntentEnumValueDataModel,
+	IntentParamDataModel,
+	IntentTypeDataModel,
+	LightStateSnapshotDataModel,
+	LightTargetDataModel,
+	LightTargetsResponseModel,
+	LightingContextDataModel,
+	LightingIntentResponseModel,
+	LightingIntentResultDataModel,
+	LightingModeOrchestrationDataModel,
+	LightingRoleBrightnessRuleDataModel,
+	LightingRoleMetaDataModel,
+	LightingRoleResponseModel,
+	LightingStateDataModel,
+	LightingStateResponseModel,
+	LightingSummaryDataModel,
+	OtherLightsStateDataModel,
+	ProposedSpaceDataModel,
+	ProposedSpacesResponseModel,
+	QuickActionDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	RolesStateMapDataModel,
+	SafetyAlertDataModel,
+	SensorAdditionalReadingDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	SensorRoleResponseModel,
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
+	SuggestionDataModel,
+	SuggestionFeedbackResponseModel,
+	SuggestionFeedbackResultDataModel,
+	SuggestionResponseModel,
+	UndoResultDataModel,
+	UndoResultResponseModel,
+	UndoStateDataModel,
+	UndoStateResponseModel,
+} from '../../../modules/spaces/models/spaces-response.model';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import {
+	CoversMode,
+	EventType,
+	IntentCategory,
+	LightingMode,
+	LightingRole,
+	MediaActivityKey,
+	QUICK_ACTION_CATALOG,
+	SUGGESTION_EXPIRY_MS,
+	SuggestionType,
+} from '../../../modules/spaces/spaces.constants';
+import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
+import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
+import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
+import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
+import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
+import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
+import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
+import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
+import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
+import { SpaceClimateRoleService } from '../services/space-climate-role.service';
+import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from '../services/space-covers-role.service';
+import { SpaceIntentService } from '../services/space-intent.service';
+import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from '../services/space-media-activity.service';
+import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
+import { SpaceSensorStateService } from '../services/space-sensor-state.service';
+import { SpaceSuggestionEvent, SpaceSuggestionHeartbeatService } from '../services/space-suggestion-heartbeat.service';
+import { SpaceSuggestionService } from '../services/space-suggestion.service';
+import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
+import {
+	SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME,
+	SPACES_HOME_CONTROL_PLUGIN_NAME,
+} from '../spaces-home-control.constants';
+import { IntentSpecLoaderService } from '../spec';
+
+@ApiTags(SPACES_HOME_CONTROL_PLUGIN_API_TAG_NAME)
+@ApiExtraModels(
+	LightingStateResponseModel,
+	LightingStateDataModel,
+	RolesStateMapDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	OtherLightsStateDataModel,
+	SensorStateResponseModel,
+	SensorStateDataModel,
+	SensorAdditionalReadingDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	EnvironmentSummaryDataModel,
+	SafetyAlertDataModel,
+	SensorTargetsResponseModel,
+	SensorTargetDataModel,
+	SensorRoleResponseModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
+	BulkSensorRoleResultItemModel,
+	BindingValidationResponseModel,
+	BindingValidationReportModel,
+	BindingValidationIssueModel,
+	MediaActivityDryRunPreviewResponseModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunWarningModel,
+)
+@Controller('spaces')
+export class SpacesDomainController {
+	private readonly logger = createExtensionLogger(SPACES_HOME_CONTROL_PLUGIN_NAME, 'SpacesDomainController');
+
+	constructor(
+		private readonly spacesService: SpacesService,
+		private readonly spaceIntentService: SpaceIntentService,
+		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceLightingStateService: SpaceLightingStateService,
+		private readonly spaceClimateRoleService: SpaceClimateRoleService,
+		private readonly spaceCoversRoleService: SpaceCoversRoleService,
+		private readonly spaceSensorRoleService: SpaceSensorRoleService,
+		private readonly spaceSensorStateService: SpaceSensorStateService,
+		private readonly spaceSuggestionService: SpaceSuggestionService,
+		private readonly spaceSuggestionHeartbeatService: SpaceSuggestionHeartbeatService,
+		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
+		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
+		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
+		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
+		private readonly spaceMediaActivityService: SpaceMediaActivityService,
+		private readonly eventEmitter: EventEmitter2,
+	) {}
+
+	@Get('propose')
+	@ApiOperation({
+		operationId: 'get-spaces-module-propose',
+		summary: 'Propose spaces from device names',
+		description:
+			'Analyzes device names and proposes space (room) names based on common patterns. ' +
+			'Returns a list of proposed spaces with matching device IDs. Requires owner or admin role.',
+	})
+	@ApiSuccessResponse(ProposedSpacesResponseModel, 'Returns proposed spaces')
+	async proposeSpaces(): Promise<ProposedSpacesResponseModel> {
+		this.logger.debug('Proposing spaces from device names');
+
+		const proposals = await this.spacesService.proposeSpaces();
+
+		const response = new ProposedSpacesResponseModel();
+
+		response.data = proposals.map((p) => {
+			const model = new ProposedSpaceDataModel();
+			model.name = p.name;
+			model.type = p.type;
+			model.category = p.category;
+			model.deviceIds = p.deviceIds;
+			model.deviceCount = p.deviceCount;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Get('intents/catalog')
+	@ApiOperation({
+		operationId: 'get-spaces-module-intent-catalog',
+		summary: 'Get intent catalog',
+		description:
+			'Retrieves the complete intent catalog with all available intent categories, intent types, ' +
+			'quick actions, and lighting roles. This provides metadata for building UI controls ' +
+			'and discovering available space control capabilities.',
+	})
+	@ApiSuccessResponse(IntentCatalogResponseModel, 'Returns the intent catalog')
+	getIntentCatalog(): IntentCatalogResponseModel {
+		this.logger.debug('Fetching intent catalog');
+
+		// Get intent categories from YAML spec loader
+		const intentCatalog = this.intentSpecLoaderService.getIntentCatalog();
+
+		// Transform intent categories
+		const categories = intentCatalog.map((cat) => {
+			const categoryData = new IntentCategoryDataModel();
+			categoryData.category = cat.category as IntentCategory;
+			categoryData.label = cat.label;
+			categoryData.description = cat.description;
+			categoryData.icon = cat.icon;
+			categoryData.intents = cat.intents.map((intent) => {
+				const intentData = new IntentTypeDataModel();
+				intentData.type = intent.type;
+				intentData.label = intent.label;
+				intentData.description = intent.description;
+				intentData.icon = intent.icon;
+				intentData.params = intent.params.map((param) => {
+					const paramData = new IntentParamDataModel();
+					paramData.name = param.name;
+					paramData.type = param.type;
+					paramData.required = param.required;
+					paramData.description = param.description;
+					paramData.minValue = param.minValue;
+					paramData.maxValue = param.maxValue;
+					if (param.enumValues) {
+						paramData.enumValues = param.enumValues.map((ev) => {
+							const enumData = new IntentEnumValueDataModel();
+							enumData.value = ev.value;
+							enumData.label = ev.label;
+							enumData.description = ev.description;
+							enumData.icon = ev.icon;
+							return enumData;
+						});
+					}
+					return paramData;
+				});
+				return intentData;
+			});
+			return categoryData;
+		});
+
+		// Transform quick actions (still from constants for now)
+		const quickActions = QUICK_ACTION_CATALOG.map((qa) => {
+			const actionData = new QuickActionDataModel();
+			actionData.type = qa.type;
+			actionData.label = qa.label;
+			actionData.description = qa.description;
+			actionData.icon = qa.icon;
+			actionData.category = qa.category;
+			return actionData;
+		});
+
+		// Get lighting roles from YAML spec loader (via enums)
+		const lightingRolesFromSpec = this.intentSpecLoaderService
+			.getIntentCatalog()
+			.find((c) => c.category === 'lighting');
+		const roleParam = lightingRolesFromSpec?.intents
+			.find((i) => i.type === 'role_on')
+			?.params.find((p) => p.name === 'role');
+
+		const lightingRoles = (roleParam?.enumValues ?? []).map((role) => {
+			const roleData = new LightingRoleMetaDataModel();
+			roleData.value = role.value as LightingRole;
+			roleData.label = role.label;
+			roleData.description = role.description;
+			roleData.icon = role.icon;
+			return roleData;
+		});
+
+		// Get lighting mode orchestrations from YAML spec loader
+		const lightingModesMap = this.intentSpecLoaderService.getAllLightingModeOrchestrations();
+		const lightingModes: LightingModeOrchestrationDataModel[] = [];
+		for (const [modeKey, modeConfig] of lightingModesMap) {
+			const modeData = new LightingModeOrchestrationDataModel();
+			modeData.mode = modeKey as LightingMode;
+			modeData.label = modeConfig.label;
+			modeData.description = modeConfig.description;
+			modeData.icon = modeConfig.icon;
+			modeData.mvpBrightness = modeConfig.mvpBrightness;
+			modeData.fallbackRoles = modeConfig.fallbackRoles;
+			modeData.fallbackBrightness = modeConfig.fallbackBrightness;
+
+			// Transform role rules
+			const roles: Record<string, LightingRoleBrightnessRuleDataModel> = {};
+			for (const [roleKey, roleRule] of Object.entries(modeConfig.roles)) {
+				const ruleData = new LightingRoleBrightnessRuleDataModel();
+				ruleData.on = roleRule.on;
+				ruleData.brightness = roleRule.brightness;
+				roles[roleKey] = ruleData;
+			}
+			modeData.roles = roles;
+
+			lightingModes.push(modeData);
+		}
+
+		// Get covers mode orchestrations from YAML spec loader
+		const coversModesMap = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
+		const coversModes: CoversModeOrchestrationDataModel[] = [];
+		for (const [modeKey, modeConfig] of coversModesMap) {
+			const modeData = new CoversModeOrchestrationDataModel();
+			modeData.mode = modeKey as CoversMode;
+			modeData.label = modeConfig.label;
+			modeData.description = modeConfig.description;
+			modeData.icon = modeConfig.icon;
+			modeData.mvpPosition = modeConfig.mvpPosition;
+
+			// Transform role rules
+			const roles: Record<string, CoversRolePositionRuleDataModel> = {};
+			for (const [roleKey, roleRule] of Object.entries(modeConfig.roles)) {
+				const ruleData = new CoversRolePositionRuleDataModel();
+				ruleData.position = roleRule.position;
+				ruleData.tilt = roleRule.tilt;
+				roles[roleKey] = ruleData;
+			}
+			modeData.roles = roles;
+
+			coversModes.push(modeData);
+		}
+
+		const catalogData = new IntentCatalogDataModel();
+		catalogData.categories = categories;
+		catalogData.quickActions = quickActions;
+		catalogData.lightingRoles = lightingRoles;
+		catalogData.lightingModes = lightingModes;
+		catalogData.coversModes = coversModes;
+
+		const response = new IntentCatalogResponseModel();
+		response.data = catalogData;
+
+		return response;
+	}
+
+	@Post(':id/intents/lighting')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-intent',
+		summary: 'Execute lighting intent for space',
+		description:
+			'Executes a lighting intent command for all lights in the space. ' +
+			'Supports off, on, mode (work/relax/night), and brightness delta operations. ' +
+			'Commands are applied only to lighting devices with supported capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeLightingIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqLightingIntentDto,
+	): Promise<LightingIntentResponseModel> {
+		this.logger.debug(`Executing lighting intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeLightingIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const resultData = new LightingIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
+		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
+
+		const response = new LightingIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Get(':id/climate')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-climate',
+		summary: 'Get climate state for space',
+		description:
+			'Retrieves the current climate state for a space, including temperature readings, ' +
+			'target setpoint, and information about available climate control capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateStateResponseModel, 'Returns the climate state')
+	@ApiNotFoundResponse('Space not found')
+	async getClimateState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ClimateStateResponseModel> {
+		this.logger.debug(`Fetching climate state for space with id=${id}`);
+
+		const state = await this.spaceIntentService.getClimateState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new ClimateStateDataModel();
+		stateData.hasClimate = state.hasClimate;
+		stateData.mode = state.mode;
+		stateData.currentTemperature = state.currentTemperature;
+		stateData.currentHumidity = state.currentHumidity;
+		stateData.heatingSetpoint = state.heatingSetpoint;
+		stateData.coolingSetpoint = state.coolingSetpoint;
+		stateData.minSetpoint = state.minSetpoint;
+		stateData.maxSetpoint = state.maxSetpoint;
+		stateData.supportsHeating = state.supportsHeating;
+		stateData.supportsCooling = state.supportsCooling;
+		stateData.isHeating = state.isHeating;
+		stateData.isCooling = state.isCooling;
+		stateData.isMixed = state.isMixed;
+		stateData.devicesCount = state.devicesCount;
+
+		const response = new ClimateStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/climate')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-intent',
+		summary: 'Execute climate intent for space',
+		description:
+			'Executes a climate intent command for all primary climate devices (thermostats, heating units, air conditioners) in the space. ' +
+			'Supports setpoint delta (+/- adjustments), direct setpoint set, and mode changes (HEAT/COOL/AUTO/OFF). ' +
+			'Devices are filtered by their role (HEATING_ONLY, COOLING_ONLY, AUTO) and capability (presence of HEATER/COOLER channels). ' +
+			'The target setpoint is clamped to the intersection of all device limits (most restrictive range).',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeClimateIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqClimateIntentDto,
+	): Promise<ClimateIntentResponseModel> {
+		this.logger.debug(
+			`Executing climate intent for space with id=${id}, ` +
+				`type=${body.data.type}, mode=${body.data.mode}, ` +
+				`heatingSetpoint=${body.data.heatingSetpoint}, coolingSetpoint=${body.data.coolingSetpoint}`,
+		);
+
+		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const resultData = new ClimateIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
+		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
+		resultData.mode = result.mode;
+		resultData.heatingSetpoint = result.heatingSetpoint;
+		resultData.coolingSetpoint = result.coolingSetpoint;
+
+		const response = new ClimateIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Lighting State & Role Endpoints
+	// ================================
+
+	@Get(':id/lighting/state')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-lighting-state',
+		summary: 'Get aggregated lighting state for space',
+		description:
+			'Retrieves the aggregated lighting state for a space, including per-role state (on/off, brightness, mixed status), ' +
+			'mode detection (which lighting mode current state matches), and summary statistics. ' +
+			'This endpoint provides pre-calculated values for UI display without panel-side calculation.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingStateResponseModel, 'Returns the aggregated lighting state')
+	@ApiNotFoundResponse('Space not found')
+	async getLightingState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<LightingStateResponseModel> {
+		this.logger.debug(`Fetching lighting state for space with id=${id}`);
+
+		const state = await this.spaceLightingStateService.getLightingState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new LightingStateDataModel();
+		stateData.hasLights = state.hasLights;
+		stateData.detectedMode = state.detectedMode;
+		stateData.modeConfidence = state.modeConfidence;
+		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.isModeFromIntent = state.isModeFromIntent;
+		stateData.lastAppliedMode = state.lastAppliedMode;
+		stateData.lastAppliedAt = state.lastAppliedAt;
+		stateData.totalLights = state.totalLights;
+		stateData.lightsOn = state.lightsOn;
+		stateData.averageBrightness = state.averageBrightness;
+		stateData.lightsByRole = state.lightsByRole;
+
+		// Map roles
+		const rolesMap = new RolesStateMapDataModel();
+
+		for (const [roleKey, roleState] of Object.entries(state.roles)) {
+			const roleData = new RoleAggregatedStateDataModel();
+			roleData.role = roleState.role;
+			roleData.isOn = roleState.isOn;
+			roleData.isOnMixed = roleState.isOnMixed;
+			roleData.brightness = roleState.brightness;
+			roleData.colorTemperature = roleState.colorTemperature;
+			roleData.color = roleState.color;
+			roleData.white = roleState.white;
+			roleData.isBrightnessMixed = roleState.isBrightnessMixed;
+			roleData.isColorTemperatureMixed = roleState.isColorTemperatureMixed;
+			roleData.isColorMixed = roleState.isColorMixed;
+			roleData.isWhiteMixed = roleState.isWhiteMixed;
+			roleData.lastIntent = roleState.lastIntent;
+			roleData.devicesCount = roleState.devicesCount;
+			roleData.devicesOn = roleState.devicesOn;
+
+			(rolesMap as Record<string, RoleAggregatedStateDataModel>)[roleKey] = roleData;
+		}
+
+		stateData.roles = rolesMap;
+
+		// Map other lights
+		const otherData = new OtherLightsStateDataModel();
+		otherData.isOn = state.other.isOn;
+		otherData.isOnMixed = state.other.isOnMixed;
+		otherData.brightness = state.other.brightness;
+		otherData.colorTemperature = state.other.colorTemperature;
+		otherData.color = state.other.color;
+		otherData.white = state.other.white;
+		otherData.isBrightnessMixed = state.other.isBrightnessMixed;
+		otherData.isColorTemperatureMixed = state.other.isColorTemperatureMixed;
+		otherData.isColorMixed = state.other.isColorMixed;
+		otherData.isWhiteMixed = state.other.isWhiteMixed;
+		otherData.devicesCount = state.other.devicesCount;
+		otherData.devicesOn = state.other.devicesOn;
+		stateData.other = otherData;
+
+		const response = new LightingStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Get(':id/lighting/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-lighting-targets',
+		summary: 'List light targets in space',
+		description:
+			'Retrieves all controllable light targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightTargetsResponseModel, 'Returns the list of light targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getLightTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<LightTargetsResponseModel> {
+		this.logger.debug(`Fetching light targets for space with id=${id}`);
+
+		const targets = await this.spaceLightingRoleService.getLightTargetsInSpace(id);
+
+		const response = new LightTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new LightTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasBrightness = t.hasBrightness;
+			model.hasColorTemp = t.hasColorTemp;
+			model.hasColor = t.hasColor;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-role',
+		summary: 'Set lighting role for a light target',
+		description:
+			'Sets or updates the lighting role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingRoleResponseModel, 'Returns the created/updated lighting role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setLightingRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetLightingRoleDto,
+	): Promise<LightingRoleResponseModel> {
+		this.logger.debug(`Setting lighting role for space with id=${id}`);
+
+		const role = await this.spaceLightingRoleService.setRole(id, body.data);
+
+		const response = new LightingRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-roles-bulk',
+		summary: 'Bulk set lighting roles for light targets',
+		description:
+			'Sets or updates lighting roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkLightingRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetLightingRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetLightingRolesDto,
+	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Bulk setting lighting roles for space with id=${id}`);
+
+		const result = await this.spaceLightingRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkLightingRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkLightingRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkLightingRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-roles-defaults',
+		summary: 'Apply default lighting roles',
+		description:
+			'Infers and applies default lighting roles for all lights in the space. ' +
+			'First light becomes MAIN, remaining lights become AMBIENT. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkLightingRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultLightingRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Applying default lighting roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(id);
+		const result = await this.spaceLightingRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkLightingRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkLightingRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkLightingRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/lighting/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-lighting-role',
+		summary: 'Delete lighting role assignment',
+		description:
+			'Removes the lighting role assignment for a specific device/channel in a space. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Lighting role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteLightingRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting lighting role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceLightingRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Climate Role Endpoints
+	// ================================
+
+	@Get(':id/climate/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-climate-targets',
+		summary: 'List climate targets in space',
+		description:
+			'Retrieves all controllable climate devices in a space ' +
+			'along with their current role assignments and capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateTargetsResponseModel, 'Returns the list of climate devices with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getClimateTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ClimateTargetsResponseModel> {
+		this.logger.debug(`Fetching climate targets for space with id=${id}`);
+
+		const targets = await this.spaceClimateRoleService.getClimateTargetsInSpace(id);
+
+		const response = new ClimateTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new ClimateTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasTemperature = t.hasTemperature;
+			model.hasHumidity = t.hasHumidity;
+			model.hasAirQuality = t.hasAirQuality;
+			model.hasAirParticulate = t.hasAirParticulate;
+			model.hasCarbonDioxide = t.hasCarbonDioxide;
+			model.hasVolatileOrganicCompounds = t.hasVolatileOrganicCompounds;
+			model.hasPressure = t.hasPressure;
+			model.hasMode = t.hasMode;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/climate/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-role',
+		summary: 'Set or remove climate role for a climate device',
+		description:
+			'Sets, updates, or removes the climate role for a specific device in a space. ' +
+			'Omit the role field or set it to null to remove an existing role assignment. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(
+		ClimateRoleResponseModel,
+		'Returns the created/updated climate role assignment, or null if removed',
+	)
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setClimateRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetClimateRoleDto,
+	): Promise<ClimateRoleResponseModel> {
+		this.logger.debug(`Setting climate role for space with id=${id}`);
+
+		const role = await this.spaceClimateRoleService.setRole(id, body.data);
+
+		const response = new ClimateRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/climate/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-roles-bulk',
+		summary: 'Bulk set climate roles for climate devices',
+		description:
+			'Sets or updates climate roles for multiple devices in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkClimateRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetClimateRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetClimateRolesDto,
+	): Promise<BulkClimateRolesResponseModel> {
+		this.logger.debug(`Bulk setting climate roles for space with id=${id}`);
+
+		const result = await this.spaceClimateRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkClimateRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkClimateRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkClimateRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/climate/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-roles-defaults',
+		summary: 'Apply default climate roles',
+		description:
+			'Infers and applies default climate roles for all climate devices in the space. ' +
+			'Thermostats become PRIMARY, heaters/AC become AUXILIARY, fans become VENTILATION, ' +
+			'humidifiers/dehumidifiers become HUMIDITY. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkClimateRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultClimateRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkClimateRolesResponseModel> {
+		this.logger.debug(`Applying default climate roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceClimateRoleService.inferDefaultClimateRoles(id);
+		const result = await this.spaceClimateRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkClimateRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkClimateRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkClimateRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/climate/roles/:deviceId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-climate-role',
+		summary: 'Delete climate role assignment',
+		description:
+			'Removes the climate role assignment for a specific device in a space. ' +
+			'For actuator roles (PRIMARY, AUXILIARY, etc.), only deviceId is needed. ' +
+			'For sensor roles (TEMPERATURE_SENSOR, HUMIDITY_SENSOR), channelId query parameter must be provided. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiQuery({
+		name: 'channelId',
+		type: 'string',
+		format: 'uuid',
+		required: false,
+		description: 'Channel ID (required for sensor roles, omit for actuator roles)',
+	})
+	@ApiNoContentResponse({ description: 'Climate role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteClimateRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Query('channelId', new ParseUUIDPipe({ version: '4', optional: true })) channelId?: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting climate role for space=${id} device=${deviceId} channel=${channelId ?? 'null'}`);
+
+		await this.spaceClimateRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted climate role for device=${deviceId} channel=${channelId ?? 'null'}`);
+	}
+
+	// ================================
+	// Covers State & Intent Endpoints
+	// ================================
+
+	@Get(':id/covers')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-covers',
+		summary: 'Get covers state for space',
+		description:
+			'Retrieves the current covers state for a space, including average position, ' +
+			'open/closed status, and device counts by role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversStateResponseModel, 'Returns the covers state')
+	@ApiNotFoundResponse('Space not found')
+	async getCoversState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<CoversStateResponseModel> {
+		this.logger.debug(`Fetching covers state for space with id=${id}`);
+
+		const state = await this.spaceIntentService.getCoversState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const response = new CoversStateResponseModel();
+		response.data = CoversStateDataModel.fromState(state);
+
+		return response;
+	}
+
+	@Post(':id/intents/covers')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-intent',
+		summary: 'Execute covers intent for space',
+		description:
+			'Executes a covers intent command for all window coverings in the space. ' +
+			'Supports open, close, set_position, position_delta, role_position, and set_mode operations. ' +
+			'Commands are applied based on device capabilities and role assignments.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeCoversIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqCoversIntentDto,
+	): Promise<CoversIntentResponseModel> {
+		this.logger.debug(`Executing covers intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeCoversIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const resultData = new CoversIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
+		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
+		resultData.newPosition = result.newPosition;
+
+		const response = new CoversIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Covers Role Endpoints
+	// ================================
+
+	@Get(':id/covers/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-covers-targets',
+		summary: 'List covers targets in space',
+		description:
+			'Retrieves all controllable window covering targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversTargetsResponseModel, 'Returns the list of covers targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getCoversTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<CoversTargetsResponseModel> {
+		this.logger.debug(`Fetching covers targets for space with id=${id}`);
+
+		const targets = await this.spaceCoversRoleService.getCoversTargetsInSpace(id);
+
+		const response = new CoversTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new CoversTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasPosition = t.hasPosition;
+			model.hasCommand = t.hasCommand;
+			model.hasTilt = t.hasTilt;
+			model.coverType = t.coverType;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/covers/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-role',
+		summary: 'Set covers role for a covers target',
+		description:
+			'Sets or updates the covers role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversRoleResponseModel, 'Returns the created/updated covers role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setCoversRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetCoversRoleDto,
+	): Promise<CoversRoleResponseModel> {
+		this.logger.debug(`Setting covers role for space with id=${id}`);
+
+		const role = await this.spaceCoversRoleService.setRole(id, body.data);
+
+		const response = new CoversRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/covers/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-roles-bulk',
+		summary: 'Bulk set covers roles for covers targets',
+		description:
+			'Sets or updates covers roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkCoversRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetCoversRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetCoversRolesDto,
+	): Promise<BulkCoversRolesResponseModel> {
+		this.logger.debug(`Bulk setting covers roles for space with id=${id}`);
+
+		const result = await this.spaceCoversRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkCoversRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkCoversRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkCoversRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/covers/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-roles-defaults',
+		summary: 'Apply default covers roles',
+		description:
+			'Infers and applies default covers roles for all window coverings in the space. ' +
+			'First cover becomes PRIMARY, remaining covers are assigned based on type. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkCoversRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultCoversRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkCoversRolesResponseModel> {
+		this.logger.debug(`Applying default covers roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceCoversRoleService.inferDefaultCoversRoles(id);
+		const result = await this.spaceCoversRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkCoversRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkCoversRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkCoversRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/covers/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-covers-role',
+		summary: 'Delete covers role assignment',
+		description:
+			'Removes the covers role assignment for a specific device/channel in a space. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Covers role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteCoversRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting covers role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceCoversRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted covers role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Sensor State & Role Endpoints
+	// ================================
+
+	@Get(':id/sensors')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-sensors',
+		summary: 'Get sensor state for space',
+		description:
+			'Retrieves the current sensor state for a space, including aggregated readings, ' +
+			'environment summary, safety alerts, motion/occupancy status, and readings grouped by role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorStateResponseModel, 'Returns the sensor state')
+	@ApiNotFoundResponse('Space not found')
+	async getSensorState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<SensorStateResponseModel> {
+		this.logger.debug(`Fetching sensor state for space with id=${id}`);
+
+		const state = await this.spaceSensorStateService.getSensorState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new SensorStateDataModel();
+		stateData.hasSensors = state.hasSensors;
+		stateData.totalSensors = state.totalSensors;
+		stateData.sensorsByRole = state.sensorsByRole;
+
+		if (state.environment) {
+			const envData = new EnvironmentSummaryDataModel();
+			envData.averageTemperature = state.environment.averageTemperature;
+			envData.averageHumidity = state.environment.averageHumidity;
+			envData.averagePressure = state.environment.averagePressure;
+			envData.averageIlluminance = state.environment.averageIlluminance;
+			stateData.environment = envData;
+		} else {
+			stateData.environment = null;
+		}
+
+		stateData.safetyAlerts = state.safetyAlerts.map((alert) => {
+			const alertData = new SafetyAlertDataModel();
+			alertData.channelCategory = alert.channelCategory;
+			alertData.deviceId = alert.deviceId;
+			alertData.deviceName = alert.deviceName;
+			alertData.channelId = alert.channelId;
+			alertData.triggered = alert.triggered;
+			return alertData;
+		});
+		stateData.hasSafetyAlert = state.hasSafetyAlert;
+		stateData.motionDetected = state.motionDetected;
+		stateData.occupancyDetected = state.occupancyDetected;
+
+		stateData.readings = state.readings.map((roleReadings) => {
+			const roleData = new SensorRoleReadingsDataModel();
+			roleData.role = roleReadings.role;
+			roleData.sensorsCount = roleReadings.sensorsCount;
+			roleData.readings = roleReadings.readings.map((reading) => {
+				const readingData = new SensorReadingDataModel();
+				readingData.deviceId = reading.deviceId;
+				readingData.deviceName = reading.deviceName;
+				readingData.channelId = reading.channelId;
+				readingData.channelName = reading.channelName;
+				readingData.channelCategory = reading.channelCategory;
+				readingData.propertyId = reading.propertyId;
+				readingData.value = reading.value;
+				readingData.unit = reading.unit;
+				readingData.role = reading.role;
+				readingData.updatedAt = reading.updatedAt;
+				readingData.trend = reading.trend;
+				readingData.additionalReadings = reading.additionalReadings.map((ar) => {
+					const arData = new SensorAdditionalReadingDataModel();
+					arData.propertyId = ar.propertyId;
+					arData.propertyCategory = ar.propertyCategory;
+					arData.value = ar.value;
+					arData.unit = ar.unit;
+					arData.updatedAt = ar.updatedAt;
+					arData.trend = ar.trend;
+					return arData;
+				});
+				return readingData;
+			});
+			return roleData;
+		});
+
+		const response = new SensorStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Get(':id/sensors/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-sensor-targets',
+		summary: 'Get sensor targets in space',
+		description:
+			'Retrieves all sensor channels in a space that can be assigned roles, ' +
+			'including their current role assignments.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorTargetsResponseModel, 'Returns the list of sensor targets')
+	@ApiNotFoundResponse('Space not found')
+	async getSensorTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<SensorTargetsResponseModel> {
+		this.logger.debug(`Fetching sensor targets for space with id=${id}`);
+
+		const targets = await this.spaceSensorRoleService.getSensorTargetsInSpace(id);
+
+		const response = new SensorTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new SensorTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
+			model.role = t.role;
+			model.priority = t.priority;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-role',
+		summary: 'Set sensor role for a sensor target',
+		description:
+			'Sets or updates the sensor role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorRoleResponseModel, 'Returns the created/updated sensor role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setSensorRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetSensorRoleDto,
+	): Promise<SensorRoleResponseModel> {
+		this.logger.debug(`Setting sensor role for space with id=${id}`);
+
+		const role = await this.spaceSensorRoleService.setRole(id, body.data);
+
+		const response = new SensorRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-roles-bulk',
+		summary: 'Bulk set sensor roles for sensor targets',
+		description:
+			'Sets or updates sensor roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkSensorRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetSensorRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetSensorRolesDto,
+	): Promise<BulkSensorRolesResponseModel> {
+		this.logger.debug(`Bulk setting sensor roles for space with id=${id}`);
+
+		const result = await this.spaceSensorRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkSensorRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkSensorRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkSensorRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-roles-defaults',
+		summary: 'Apply default sensor roles',
+		description:
+			'Infers and applies default sensor roles for all sensor channels in the space ' +
+			'based on channel category (environment, safety, security, air quality, energy). ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkSensorRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultSensorRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkSensorRolesResponseModel> {
+		this.logger.debug(`Applying default sensor roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceSensorRoleService.inferDefaultSensorRoles(id);
+		const result = await this.spaceSensorRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkSensorRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkSensorRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkSensorRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/sensors/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-sensor-role',
+		summary: 'Delete sensor role assignment',
+		description:
+			'Removes the sensor role assignment for a specific device/channel in a space. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Sensor role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteSensorRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting sensor role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceSensorRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted sensor role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Derived Media Endpoints
+	// ================================
+
+	@Get(':id/media/endpoints')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-endpoints',
+		summary: 'List derived media endpoints for space',
+		description:
+			'Returns a derived read model of all media endpoints in a space. ' +
+			'Endpoints are computed on-the-fly from device capabilities and use deterministic IDs. ' +
+			'A single device may produce multiple endpoints (e.g., TV as display + audio_output + remote_target).',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(DerivedMediaEndpointsResponseModel, 'Returns derived media endpoints for the space')
+	@ApiNotFoundResponse('Space not found')
+	async getDerivedMediaEndpoints(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<DerivedMediaEndpointsResponseModel> {
+		this.logger.debug(`Fetching derived media endpoints for space with id=${id}`);
+
+		const result = await this.derivedMediaEndpointService.buildEndpointsForSpace(id);
+
+		const response = new DerivedMediaEndpointsResponseModel();
+		response.data = result;
+
+		return response;
+	}
+
+	// ================================
+	// Suggestion Endpoints
+	// ================================
+
+	@Get(':id/suggestion')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-suggestion',
+		summary: 'Get suggestion for space',
+		description:
+			'Retrieves a single, non-intrusive suggestion for the space based on current time and lighting state. ' +
+			'Returns null if no suggestion is applicable or suggestions are disabled for this space. ' +
+			'Suggestions have a cooldown period to avoid repetition.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SuggestionResponseModel, 'Returns the suggestion or null')
+	@ApiNotFoundResponse('Space not found')
+	async getSuggestion(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SuggestionResponseModel> {
+		this.logger.debug(`Getting suggestion for space with id=${id}`);
+
+		const suggestion = await this.spaceSuggestionService.getSuggestion(id);
+
+		const response = new SuggestionResponseModel();
+
+		if (suggestion) {
+			const suggestionData = new SuggestionDataModel();
+			suggestionData.type = suggestion.type;
+			suggestionData.title = suggestion.title;
+			suggestionData.reason = suggestion.reason;
+			suggestionData.intentType = suggestion.intentType;
+			suggestionData.intentMode = suggestion.intentMode;
+			response.data = suggestionData;
+		} else {
+			response.data = null;
+		}
+
+		return response;
+	}
+
+	@Post(':id/suggestion/feedback')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-suggestion-feedback',
+		summary: 'Submit suggestion feedback',
+		description:
+			'Records user feedback for a suggestion (applied or dismissed). ' +
+			'If applied, the corresponding lighting intent is executed. ' +
+			'A cooldown is set to prevent the same suggestion from reappearing immediately.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SuggestionFeedbackResponseModel, 'Returns the feedback result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid feedback data')
+	async submitSuggestionFeedback(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSuggestionFeedbackDto,
+	): Promise<SuggestionFeedbackResponseModel> {
+		this.logger.debug(`Submitting suggestion feedback for space with id=${id}`);
+
+		const result = await this.spaceSuggestionService.recordFeedback(id, body.data.suggestionType, body.data.feedback);
+
+		const resultData = new SuggestionFeedbackResultDataModel();
+		resultData.success = result.success;
+		resultData.intentExecuted = result.intentExecuted;
+
+		const response = new SuggestionFeedbackResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Context Snapshot Endpoints
+	// ================================
+
+	@Get(':id/context/snapshot')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-context-snapshot',
+		summary: 'Capture context snapshot for space',
+		description:
+			'Captures a complete context snapshot of the current state of a space, including ' +
+			'lighting state (on/off, brightness, color) for all lights and climate state ' +
+			'(current temperature, setpoint). Useful for undo functionality, scene saving, ' +
+			'and providing context for automation decisions.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ContextSnapshotResponseModel, 'Returns the context snapshot')
+	@ApiNotFoundResponse('Space not found')
+	async captureContextSnapshot(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ContextSnapshotResponseModel> {
+		this.logger.debug(`Capturing context snapshot for space with id=${id}`);
+
+		const snapshot = await this.spaceContextSnapshotService.captureSnapshot(id);
+
+		if (!snapshot) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		// Transform lighting snapshot to response model
+		const lightingSummary = new LightingSummaryDataModel();
+		lightingSummary.totalLights = snapshot.lighting.summary.totalLights;
+		lightingSummary.lightsOn = snapshot.lighting.summary.lightsOn;
+		lightingSummary.averageBrightness = snapshot.lighting.summary.averageBrightness;
+
+		const lights = snapshot.lighting.lights.map((light) => {
+			const lightData = new LightStateSnapshotDataModel();
+			lightData.deviceId = light.deviceId;
+			lightData.deviceName = light.deviceName;
+			lightData.channelId = light.channelId;
+			lightData.channelName = light.channelName;
+			lightData.role = light.role;
+			lightData.isOn = light.isOn;
+			lightData.brightness = light.brightness;
+			lightData.colorTemperature = light.colorTemperature;
+			lightData.color = light.color;
+			return lightData;
+		});
+
+		const lightingContext = new LightingContextDataModel();
+		lightingContext.summary = lightingSummary;
+		lightingContext.lights = lights;
+
+		// Transform climate state to response model
+		const climateState = new ClimateStateDataModel();
+		climateState.hasClimate = snapshot.climate.hasClimate;
+		climateState.mode = snapshot.climate.mode;
+		climateState.currentTemperature = snapshot.climate.currentTemperature;
+		climateState.currentHumidity = snapshot.climate.currentHumidity;
+		climateState.heatingSetpoint = snapshot.climate.heatingSetpoint;
+		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
+		climateState.minSetpoint = snapshot.climate.minSetpoint;
+		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
+		climateState.supportsHeating = snapshot.climate.supportsHeating;
+		climateState.supportsCooling = snapshot.climate.supportsCooling;
+		climateState.isHeating = snapshot.climate.isHeating;
+		climateState.isCooling = snapshot.climate.isCooling;
+		climateState.isMixed = snapshot.climate.isMixed;
+		climateState.devicesCount = snapshot.climate.devicesCount;
+
+		const snapshotData = new ContextSnapshotDataModel();
+		snapshotData.spaceId = snapshot.spaceId;
+		snapshotData.spaceName = snapshot.spaceName;
+		snapshotData.capturedAt = snapshot.capturedAt;
+		snapshotData.lighting = lightingContext;
+		snapshotData.climate = climateState;
+
+		const response = new ContextSnapshotResponseModel();
+		response.data = snapshotData;
+
+		return response;
+	}
+
+	// ================================
+	// Undo History Endpoints
+	// ================================
+
+	@Get(':id/undo')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-undo-state',
+		summary: 'Get undo state for space',
+		description:
+			'Retrieves the current undo state for a space, indicating whether an undo action is available. ' +
+			'The undo entry expires after 5 minutes and only the most recent intent can be undone.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(UndoStateResponseModel, 'Returns the undo state')
+	@ApiNotFoundResponse('Space not found')
+	async getUndoState(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoStateResponseModel> {
+		this.logger.debug(`Fetching undo state for space with id=${id}`);
+
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(id);
+
+		const undoEntry = this.spaceUndoHistoryService.peekUndoEntry(id);
+
+		const stateData = new UndoStateDataModel();
+
+		if (undoEntry) {
+			// Calculate expiration time using the service's configured TTL
+			const ttlMs = this.spaceUndoHistoryService.getEntryTtlMs();
+			const expiresAt = new Date(undoEntry.capturedAt.getTime() + ttlMs);
+			const expiresInMs = expiresAt.getTime() - Date.now();
+			const expiresInSeconds = Math.max(0, Math.floor(expiresInMs / 1000));
+
+			stateData.canUndo = true;
+			stateData.actionDescription = undoEntry.actionDescription;
+			stateData.intentCategory = undoEntry.intentCategory;
+			stateData.capturedAt = undoEntry.capturedAt;
+			stateData.expiresInSeconds = expiresInSeconds;
+		} else {
+			stateData.canUndo = false;
+			stateData.actionDescription = null;
+			stateData.intentCategory = null;
+			stateData.capturedAt = null;
+			stateData.expiresInSeconds = null;
+		}
+
+		const response = new UndoStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/undo')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-undo',
+		summary: 'Undo the last intent for space',
+		description:
+			'Reverts the most recent lighting or climate intent by restoring device states to their ' +
+			'values before the intent was executed. Only the most recent intent can be undone, and ' +
+			'the undo entry expires after 5 minutes.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(UndoResultResponseModel, 'Returns the undo result')
+	@ApiNotFoundResponse('Space not found')
+	async executeUndo(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoResultResponseModel> {
+		this.logger.debug(`Executing undo for space with id=${id}`);
+
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(id);
+
+		const result = await this.spaceUndoHistoryService.executeUndo(id);
+
+		const resultData = new UndoResultDataModel();
+		resultData.success = result.success;
+		resultData.restoredDevices = result.restoredDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.message = result.message;
+
+		const response = new UndoResultResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Media Activity Bindings
+	// ================================
+
+	@Get(':id/media/bindings')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-bindings',
+		summary: 'List media activity bindings for space',
+		description:
+			'Returns all media activity bindings for a space. ' +
+			'Each binding maps a predefined activity (watch, listen, gaming, background, off) ' +
+			'to concrete derived endpoint IDs.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityBindingsResponseModel, 'Returns media activity bindings for the space')
+	@ApiNotFoundResponse('Space not found')
+	async getMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityBindingsResponseModel> {
+		this.logger.debug(`Fetching media activity bindings for space with id=${id}`);
+
+		const bindings = await this.spaceMediaActivityBindingService.findBySpace(id);
+
+		const response = new MediaActivityBindingsResponseModel();
+		response.data = bindings;
+
+		return response;
+	}
+
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Post(':id/media/bindings/apply-defaults')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-bindings-apply-defaults',
+		summary: 'Apply default activity bindings',
+		description:
+			'Creates missing activity bindings with heuristic defaults based on available endpoints. ' +
+			'Does not overwrite existing bindings. Returns the full set of bindings after applying defaults.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityBindingsResponseModel, 'Default bindings applied successfully')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityBindingsResponseModel> {
+		this.logger.debug(`Applying default media activity bindings for space=${id}`);
+
+		const bindings = await this.spaceMediaActivityBindingService.applyDefaults(id);
+
+		const response = new MediaActivityBindingsResponseModel();
+		response.data = bindings;
+
+		return response;
+	}
+
+	@Get(':id/media/bindings/validate')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-bindings-validate',
+		summary: 'Validate media activity bindings',
+		description:
+			'Returns a diagnostic report for all activity bindings in a space. ' +
+			'Reports missing slots, invalid endpoints, type mismatches, and override issues.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BindingValidationResponseModel, 'Binding validation report')
+	@ApiNotFoundResponse('Space not found')
+	async validateMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BindingValidationResponseModel> {
+		this.logger.debug(`Validating media activity bindings for space=${id}`);
+
+		const reports = await this.spaceMediaActivityBindingService.validateBindings(id);
+
+		const data: BindingValidationReportModel[] = reports.map((r) => {
+			const report = new BindingValidationReportModel();
+			report.activityKey = r.activityKey;
+			report.bindingId = r.bindingId;
+			report.valid = r.valid;
+			report.issues = r.issues;
+
+			return report;
+		});
+
+		const response = new BindingValidationResponseModel();
+		response.data = data;
+
+		return response;
+	}
+
+	@Get(':id/media/bindings/:bindingId')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-binding',
+		summary: 'Get a single media activity binding',
+		description: 'Returns a single media activity binding by ID.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiSuccessResponse(MediaActivityBindingResponseModel, 'Returns the media activity binding')
+	@ApiNotFoundResponse('Space or binding not found')
+	async getMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Fetching media activity binding id=${bindingId} for space=${id}`);
+
+		const binding = await this.spaceMediaActivityBindingService.getOneOrThrowForSpace(id, bindingId);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Post(':id/media/bindings')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-binding',
+		summary: 'Create a media activity binding',
+		description:
+			'Creates a new media activity binding for a space. ' +
+			'Validates that referenced endpoint IDs exist and match the expected slot types. ' +
+			'Only one binding per activity key is allowed per space.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiCreatedSuccessResponse(MediaActivityBindingResponseModel, 'Binding created successfully')
+	@ApiBadRequestResponse('Invalid binding data')
+	@ApiUnprocessableEntityResponse('Validation failed (endpoint not found, type mismatch, etc.)')
+	@ApiNotFoundResponse('Space not found')
+	async createMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqCreateMediaActivityBindingDto,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Creating media activity binding for space=${id} key=${body.data.activityKey}`);
+
+		const binding = await this.spaceMediaActivityBindingService.create(id, body.data);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Patch(':id/media/bindings/:bindingId')
+	@ApiOperation({
+		operationId: 'update-spaces-module-space-media-binding',
+		summary: 'Update a media activity binding',
+		description:
+			'Updates an existing media activity binding. ' +
+			'Validates endpoint IDs and overrides against current derived endpoints.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiSuccessResponse(MediaActivityBindingResponseModel, 'Binding updated successfully')
+	@ApiBadRequestResponse('Invalid binding data')
+	@ApiUnprocessableEntityResponse('Validation failed')
+	@ApiNotFoundResponse('Space or binding not found')
+	async updateMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+		@Body() body: ReqUpdateMediaActivityBindingDto,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Updating media activity binding id=${bindingId} for space=${id}`);
+
+		const binding = await this.spaceMediaActivityBindingService.updateForSpace(id, bindingId, body.data);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Delete(':id/media/bindings/:bindingId')
+	@HttpCode(204)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-media-binding',
+		summary: 'Delete a media activity binding',
+		description: 'Deletes a media activity binding.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiNoContentResponse({ description: 'Binding deleted successfully' })
+	@ApiNotFoundResponse('Space or binding not found')
+	async deleteMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting media activity binding id=${bindingId} for space=${id}`);
+
+		await this.spaceMediaActivityBindingService.deleteForSpace(id, bindingId);
+	}
+
+	// ===========================
+	// Media Activity Activation
+	// ===========================
+
+	@Get(':id/media/activities/active')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-active-media-activity',
+		summary: 'Get active media activity',
+		description: 'Returns the currently active media activity for a space, or null if no activity is active.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ActiveMediaActivityResponseModel, 'Active media activity state')
+	@ApiNotFoundResponse('Space not found')
+	async getActiveMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ActiveMediaActivityResponseModel> {
+		this.logger.debug(`Fetching active media activity for space=${id}`);
+
+		const record = await this.spaceMediaActivityService.getActive(id);
+
+		const response = new ActiveMediaActivityResponseModel();
+		response.data = record;
+
+		return response;
+	}
+
+	@Post(':id/media/activities/:activityKey/preview')
+	@ApiOperation({
+		operationId: 'preview-spaces-module-space-media-activity',
+		summary: 'Preview a media activity execution plan (dry-run)',
+		description:
+			'Returns the resolved execution plan for a media activity without executing any commands, ' +
+			'changing state, or emitting WebSocket events. Useful for debugging bindings and endpoints.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({
+		name: 'activityKey',
+		type: 'string',
+		enum: Object.values(MediaActivityKey),
+		description: 'Activity key to preview',
+	})
+	@ApiSuccessResponse(MediaActivityDryRunPreviewResponseModel, 'Dry-run execution plan preview')
+	@ApiBadRequestResponse('Invalid activity key')
+	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
+	@ApiNotFoundResponse('Space not found')
+	async previewMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('activityKey') activityKey: string,
+	): Promise<MediaActivityDryRunPreviewResponseModel> {
+		this.logger.debug(`Dry-run preview media activity=${activityKey} for space=${id}`);
+
+		const preview = await this.spaceMediaActivityService.preview(id, activityKey as MediaActivityKey);
+
+		const response = new MediaActivityDryRunPreviewResponseModel();
+		response.data = preview;
+
+		return response;
+	}
+
+	@Post(':id/media/activities/:activityKey/activate')
+	@ApiOperation({
+		operationId: 'activate-spaces-module-space-media-activity',
+		summary: 'Activate a media activity',
+		description:
+			'Activates a media activity for a space. Resolves the binding into an execution plan, ' +
+			'executes device commands (power, input, volume), and persists the active state.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({
+		name: 'activityKey',
+		type: 'string',
+		enum: Object.values(MediaActivityKey),
+		description: 'Activity key to activate',
+	})
+	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity activation result')
+	@ApiBadRequestResponse('Invalid activity key')
+	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
+	@ApiNotFoundResponse('Space not found')
+	async activateMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('activityKey') activityKey: string,
+	): Promise<MediaActivityActivationResponseModel> {
+		this.logger.debug(`Activating media activity=${activityKey} for space=${id}`);
+
+		const result = await this.spaceMediaActivityService.activate(id, activityKey as MediaActivityKey);
+
+		const response = new MediaActivityActivationResponseModel();
+		response.data = result;
+
+		return response;
+	}
+
+	@Post(':id/media/activities/deactivate')
+	@ApiOperation({
+		operationId: 'deactivate-spaces-module-space-media-activity',
+		summary: 'Deactivate media activity',
+		description: 'Deactivates the current media activity for a space, resetting the active state.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity deactivated')
+	@ApiNotFoundResponse('Space not found')
+	async deactivateMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityActivationResponseModel> {
+		this.logger.debug(`Deactivating media activity for space=${id}`);
+
+		const result = await this.spaceMediaActivityService.deactivate(id);
+
+		const response = new MediaActivityActivationResponseModel();
+		response.data = result;
+
+		return response;
+	}
+
+	// ================================
+	// Debug / Testing Endpoints
+	// ================================
+
+	@Post('suggestions/heartbeat')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	@ApiOperation({
+		operationId: 'trigger-spaces-module-suggestion-heartbeat',
+		summary: 'Trigger suggestion heartbeat (debug)',
+		description:
+			'Manually runs the space suggestion heartbeat cycle. Evaluates all enabled spaces and emits suggestion events via WebSocket.',
+	})
+	async triggerSuggestionHeartbeat(): Promise<{ data: { triggered: boolean } }> {
+		this.logger.debug('Manually triggering suggestion heartbeat cycle');
+
+		await this.spaceSuggestionHeartbeatService.runCycle();
+
+		return { data: { triggered: true } };
+	}
+
+	@Post('suggestions/test')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@HttpCode(200)
+	@ApiOperation({
+		operationId: 'trigger-spaces-module-suggestion-test',
+		summary: 'Emit a fake suggestion (debug)',
+		description:
+			'Emits a fake lighting suggestion via WebSocket, bypassing all rules and cooldowns. ' +
+			'Optionally specify a space_id in the request body to target a specific space.',
+	})
+	async emitTestSuggestion(
+		@Body() body?: { data?: { space_id?: string } },
+	): Promise<{ data: { emitted: boolean; space_id?: string } }> {
+		let space: SpaceEntity | null | undefined;
+
+		if (body?.data?.space_id) {
+			space = await this.spacesService.findOne(body.data.space_id);
+		}
+
+		if (!space) {
+			const spaces = await this.spacesService.findAll();
+			space = spaces[0];
+		}
+
+		if (!space) {
+			return { data: { emitted: false } };
+		}
+
+		const event: SpaceSuggestionEvent = {
+			id: uuid(),
+			type: SuggestionType.LIGHTING_RELAX,
+			title: 'Relax lighting',
+			reason: 'Evening time — switch to a calmer lighting mode',
+			intent_type: 'set_mode',
+			intent_mode: 'relax',
+			space_id: space.id,
+			created_at: new Date().toISOString(),
+			expires_at: new Date(Date.now() + SUGGESTION_EXPIRY_MS).toISOString(),
+		};
+
+		this.eventEmitter.emit(EventType.SUGGESTION_CREATED, event);
+
+		this.logger.debug(`Test suggestion emitted for space id=${space.id}`);
+
+		return { data: { emitted: true, space_id: space.id } };
+	}
+}
