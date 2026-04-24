@@ -4,7 +4,6 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import i18n from '../../locales';
 import {
 	type ISpacePluginRoutes,
 	type ISpacePluginsComponents,
@@ -57,14 +56,14 @@ export default {
 				devDocumentation: 'https://smart-panel.fastybird.com',
 				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
-			// Human-readable labels per space type — the `name` field surfaces
-			// in `useSpacesPlugins.options` dropdown-style UI and shouldn't be a
-			// raw enum value (`'room'`, `'zone'`). Translate at install time
-			// from the plugin's own locale messages (added just above via
-			// `setLocaleMessage`).
+			// Store the i18n KEY in `element.name`; the `useSpacesPlugins`
+			// composable resolves it through `useI18n()` at render time so
+			// runtime locale changes update the picker label without a
+			// page reload. Plain strings (from legacy plugins) fall
+			// through unchanged.
 			elements: SPACES_HOME_CONTROL_TYPES.map((type) => ({
 				type,
-				name: i18n.global.t(`spacesHomeControlPlugin.typeLabels.${type}`),
+				name: `spacesHomeControlPlugin.typeLabels.${type}`,
 				components: {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,

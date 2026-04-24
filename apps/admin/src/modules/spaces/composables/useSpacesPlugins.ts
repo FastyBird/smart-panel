@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 
@@ -13,6 +14,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 	const pluginsManager = injectPluginsManager();
 
 	const { enabled } = useConfigPlugins();
+	const { t, te } = useI18n();
 
 	const pluginComponents: (keyof ISpacePluginsComponents)[] = ['spaceDetail', 'spaceAddForm', 'spaceEditForm'];
 
@@ -64,6 +66,13 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 		});
 	});
 
+	// Resolve `el.name` through i18n when it happens to be a translation key
+	// (plugins now register with the KEY `spacesXxxPlugin.typeLabels.<type>`
+	// so switching admin locale at runtime updates the picker labels without
+	// a page reload). Plain strings fall through unchanged — `te()` returns
+	// false for non-registered keys so legacy plugins keep working.
+	const resolveLabel = (raw: string): string => (te(raw) ? t(raw) : raw);
+
 	const options = computed<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>(
 		(): { value: IPluginElement['type']; label: string; disabled: boolean }[] => {
 			const flat: { value: IPluginElement['type']; label: string; disabled: boolean }[] = plugins.value.flatMap((plugin) => {
@@ -71,7 +80,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 					.filter((el) => el.modules === undefined || el.modules.includes(SPACES_MODULE_NAME))
 					.map((el) => ({
 						value: el.type,
-						label: el.name?.trim() ? el.name : plugin.name,
+						label: el.name?.trim() ? resolveLabel(el.name) : resolveLabel(plugin.name),
 						disabled: !enabled(plugin.type),
 					}));
 			});

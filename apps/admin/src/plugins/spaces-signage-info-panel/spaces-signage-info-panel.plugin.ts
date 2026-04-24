@@ -11,7 +11,6 @@ import {
 	injectSockets,
 	injectStoresManager,
 } from '../../common';
-import i18n from '../../locales';
 import {
 	type ISpacePluginRoutes,
 	type ISpacePluginsComponents,
@@ -79,12 +78,13 @@ export default {
 				devDocumentation: 'https://smart-panel.fastybird.com',
 				bugsTracking: 'https://smart-panel.fastybird.com',
 			},
-			// Surface the translated `spaceType.label` from the plugin's
-			// locale messages so the space-type picker dropdown renders a
-			// localized label instead of a hardcoded English constant.
+			// i18n KEY; `useSpacesPlugins` resolves it through `useI18n()`
+			// at render time so runtime locale switches propagate to the
+			// picker label without a page reload. The signage plugin has
+			// a single element type, so one shared key works for all.
 			elements: SPACES_SIGNAGE_INFO_PANEL_TYPES.map((type) => ({
 				type,
-				name: i18n.global.t('spacesSignageInfoPanelPlugin.spaceType.label'),
+				name: 'spacesSignageInfoPanelPlugin.spaceType.label',
 				components: {
 					spaceAddForm: SignageInfoPanelSpaceAddForm,
 					spaceEditForm: SignageInfoPanelSpaceEditForm,

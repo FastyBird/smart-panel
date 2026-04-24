@@ -4,7 +4,6 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import i18n from '../../locales';
 import { type ISpacePluginRoutes, type ISpacePluginsComponents, type ISpacePluginsSchemas, SPACES_MODULE_NAME } from '../../modules/spaces';
 import { SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
@@ -53,10 +52,10 @@ export default {
 			},
 			elements: SPACES_SYNTHETIC_ENTRY_TYPES.map((type) => ({
 				type,
-				// Translate the type label at install time from the plugin's
-				// own locale messages instead of a hardcoded English constant
-				// so non-English admin locales render the localized name.
-				name: i18n.global.t(`spacesSyntheticEntryPlugin.typeLabels.${type}`),
+				// i18n KEY; `useSpacesPlugins` resolves it through `useI18n()`
+				// at render time so runtime locale switches propagate to
+				// the picker label without a page reload.
+				name: `spacesSyntheticEntryPlugin.typeLabels.${type}`,
 				components: {},
 				schemas: {
 					spaceSchema: SpaceSchema,
