@@ -432,12 +432,16 @@ describe('SpacesService', () => {
 			spaceRepository.find.mockResolvedValue([]);
 			spaceRepository.findOne.mockResolvedValueOnce(existingMaster);
 
+			// Payload stays on the base `CreateSpaceDto` whitelist (name + type only —
+			// `category` moved to `CreateHomeControlSpaceDto` and isn't valid on the
+			// master singleton DTO in this suite). Anything extra would be rejected
+			// by `forbidNonWhitelisted` inside `SpacesService.create`'s per-type
+			// validator, masking whether the actual singleton guard fired.
 			await expect(
 				service.create({
 					name: 'Another Home',
 					type: 'master' as SpaceType,
-					category: null,
-				} as unknown as CreateSpaceDto),
+				} as CreateSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 
@@ -559,11 +563,13 @@ describe('SpacesService', () => {
 
 		it('should reject changing a room into a singleton type', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+			// The master singleton type in this suite uses the base `UpdateSpaceDto`
+			// (no `category`) — keep the payload minimal so the singleton guard is
+			// what fails, not the whitelist.
 			await expect(
 				service.update(existingRoomSpace.id, {
 					type: 'master' as SpaceType,
-					category: null,
-				} as unknown as UpdateSpaceDto),
+				} as UpdateSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 
@@ -576,11 +582,14 @@ describe('SpacesService', () => {
 				category: null,
 			} as unknown as SpaceEntity;
 			spaceRepository.findOne.mockResolvedValue(existingMaster);
+			// Target is ROOM (home-control) — category is a valid whitelisted field
+			// on the per-type `UpdateHomeControlSpaceDto`, so the singleton guard is
+			// the sole reason this must reject.
 			await expect(
 				service.update(existingMaster.id, {
 					type: SpaceType.ROOM,
 					category: SpaceRoomCategory.LIVING_ROOM,
-				} as unknown as UpdateSpaceDto),
+				} as UpdateHomeControlSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 

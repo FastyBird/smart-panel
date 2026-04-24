@@ -7,6 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -137,6 +138,30 @@ describe('SpacesController', () => {
 
 			await expect(controller.create(createDto as ReqCreateSpaceDto)).rejects.toThrow(SpacesValidationException);
 		});
+
+		// Body guard tests — the global ValidationPipe is bypassed for these
+		// routes, so the controller must reject malformed payloads itself.
+		it('should throw BadRequestException when body is null', async () => {
+			await expect(controller.create(null as unknown as ReqCreateSpaceDto)).rejects.toThrow(BadRequestException);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when body is not an object', async () => {
+			await expect(controller.create('garbage' as unknown as ReqCreateSpaceDto)).rejects.toThrow(BadRequestException);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when data envelope is missing', async () => {
+			await expect(controller.create({} as ReqCreateSpaceDto)).rejects.toThrow(BadRequestException);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when data is null', async () => {
+			await expect(controller.create({ data: null } as unknown as ReqCreateSpaceDto)).rejects.toThrow(
+				BadRequestException,
+			);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('update', () => {
@@ -165,6 +190,26 @@ describe('SpacesController', () => {
 			await expect(controller.update('non-existent-id', updateDto as ReqUpdateSpaceDto)).rejects.toThrow(
 				SpacesNotFoundException,
 			);
+		});
+
+		// Same malformed-body guards as create() — the global pipe doesn't run.
+		it('should throw BadRequestException when body is null', async () => {
+			await expect(controller.update(mockSpace.id, null as unknown as ReqUpdateSpaceDto)).rejects.toThrow(
+				BadRequestException,
+			);
+			expect(spacesService.update).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when data envelope is missing', async () => {
+			await expect(controller.update(mockSpace.id, {} as ReqUpdateSpaceDto)).rejects.toThrow(BadRequestException);
+			expect(spacesService.update).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when data is null', async () => {
+			await expect(controller.update(mockSpace.id, { data: null } as unknown as ReqUpdateSpaceDto)).rejects.toThrow(
+				BadRequestException,
+			);
+			expect(spacesService.update).not.toHaveBeenCalled();
 		});
 	});
 
