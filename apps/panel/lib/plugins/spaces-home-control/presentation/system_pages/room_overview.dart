@@ -17,7 +17,6 @@ import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
 import 'package:flutter/material.dart';

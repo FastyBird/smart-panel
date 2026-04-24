@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/mappers/climate_target.dart';

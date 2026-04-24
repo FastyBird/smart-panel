@@ -492,12 +492,12 @@ void main() {
     });
 
     group('SIGNAGE_INFO_PANEL space type', () {
-      const _signageUuid = 'a0000000-0000-4000-8000-000000000050';
+      const signageUuid = 'a0000000-0000-4000-8000-000000000050';
 
       test('should create signage overview only', () {
-        final display = createDisplay(spaceId: _signageUuid);
+        final display = createDisplay(spaceId: signageUuid);
         final space = createMockSpace(
-          id: _signageUuid,
+          id: signageUuid,
           type: SpacesModuleDataSpaceType.signageInfoPanel,
         );
 
@@ -511,14 +511,14 @@ void main() {
 
         final signageOverview = result.items[0] as SystemViewItem;
         expect(signageOverview.viewType, SystemViewType.signageInfoPanel);
-        expect(signageOverview.roomId, _signageUuid);
+        expect(signageOverview.roomId, signageUuid);
         expect(result.domainCounts, isNull);
       });
 
       test('should register signage overview in indexByViewKey', () {
-        final display = createDisplay(spaceId: _signageUuid);
+        final display = createDisplay(spaceId: signageUuid);
         final space = createMockSpace(
-          id: _signageUuid,
+          id: signageUuid,
           type: SpacesModuleDataSpaceType.signageInfoPanel,
         );
 
@@ -528,7 +528,7 @@ void main() {
         ));
 
         expect(
-          result.indexByViewKey['signage-info-panel:$_signageUuid'],
+          result.indexByViewKey['signage-info-panel:$signageUuid'],
           0,
         );
       });
@@ -536,9 +536,9 @@ void main() {
       test('should return empty when builder is not registered', () {
         spaceViewBuilders.remove(SpacesModuleDataSpaceType.signageInfoPanel);
 
-        final display = createDisplay(spaceId: _signageUuid);
+        final display = createDisplay(spaceId: signageUuid);
         final space = createMockSpace(
-          id: _signageUuid,
+          id: signageUuid,
           type: SpacesModuleDataSpaceType.signageInfoPanel,
         );
 
