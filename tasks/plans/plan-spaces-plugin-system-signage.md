@@ -66,21 +66,21 @@ Decision: not worth the cost. The DB column physically lives on the shared table
 
 Until then, treat the three columns as a known architectural wart: they're "generic-named home-control fields the base exposes so the whole admin pipeline keeps working." Any future plugin that wants its own space-type-specific columns should follow the Phase 6 signage pattern — add them via `ALTER TABLE ADD COLUMN` + declare on the child entity only (`SignageInfoPanelSpaceEntity` already has `layout`, `showClock`, etc.).
 
-#### 2. `space-activity.listener` references stale `device.roomId`
+#### 2. ~~`space-activity.listener` references stale `device.roomId`~~ — NOT A BUG
 
-Pre-existing bug from before the Phase 5 displays rename (which was `roomId` → `spaceId` on `DisplayEntity`). The activity listener (now in the plugin, commit `08931502c`) queries `device.roomId IS NOT NULL` and reads `device.roomId` — these should be `device.spaceId`. File: `apps/backend/src/plugins/spaces-home-control/listeners/space-activity.listener.ts`.
+Investigated 2026-04-24: this item was misdiagnosed in the original audit. Phase 5's displays rename only touched `DisplayEntity` (`displays.roomId` → `displays.spaceId`); the `devices.roomId` column is a separate FK on `DeviceEntity` that still points at any space type (via `@ManyToOne(() => SpaceEntity)`). The listener correctly reads `device.roomId` to update `lastActivityAt` on whichever space the device is assigned to. The naming is misleading post-Phase-5 (a device's `roomId` can be a zone/master/entry/signage space id) but renaming the column is a separate, larger refactor — not a bug to fix here.
 
-#### 3. Stale signage key `spacesSignageInfoPanelPlugin.messages.editFailed`
+#### 3. ~~Stale signage key `spacesSignageInfoPanelPlugin.messages.editFailed`~~ — FIXED
 
-Surfaced by the i18n-relocation audit: signage plugin code calls `t('spacesSignageInfoPanelPlugin.messages.editFailed', ...)` but the key isn't defined in any locale file. Fails silently to the raw key string. Add the key to all 6 locales under `apps/admin/src/plugins/spaces-signage-info-panel/locales/*.json`, or remove the call site.
+Commit `72d2aa5f4`. The two signage edit-form call sites repointed to the existing `spacesModule.messages.notEdited` key (which already has the exact copy the signage form wanted) instead of inventing a new plugin-scoped key.
 
-#### 4. Plugin element `name` not reactive to locale changes (low priority)
+#### 4. ~~Plugin element `name` not reactive to locale changes~~ — FIXED
 
-Already flagged by Bugbot. `i18n.global.t('spacesXxxPlugin.typeLabels.<type>')` is called at plugin install to set `element.name` as a plain string. When the user changes admin locale at runtime, space-type picker labels stay in the original language. Fix: store the i18n key in `element.name` and translate at render in `select-space-plugin.vue` (and any other `useSpacesPlugins.options` consumer).
+Commit `5acd44c57`. Three spaces plugins (home-control, synthetic-master, synthetic-entry) plus signage now store the i18n KEY in `element.name`. `useSpacesPlugins.options` resolves it through `useI18n().t()`/`te()` at render time, so runtime admin-locale switches update the space-type picker labels without a page reload.
 
-#### 5. Orphan i18n leaves in `spacesModule.*`
+#### 5. ~~Orphan i18n leaves in `spacesModule.*`~~ — FIXED
 
-Non-destructive Phase 3b i18n sweep left a few orphan leaves in core locales that have no consumers (`smartSuggestions`, `fields.spaces.suggestions.*`, `detail.media.activities`). A tiny follow-up can delete them after verifying no dynamic `t(...)` consumes them.
+Commit `be44ba99a`. Three orphan keys deleted from all 6 locales: `edit.sections.smartOverrides.smartSuggestions`, `fields.spaces.suggestions` (subtree), `detail.media` (subtree).
 
 ## Patterns & Gotchas (learned from Phase 1)
 
