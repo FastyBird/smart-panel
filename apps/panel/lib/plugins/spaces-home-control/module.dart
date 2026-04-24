@@ -53,19 +53,19 @@ class SpacesHomeControlPluginService {
     );
 
     _lightTargetsRepository = LightTargetsRepository(
-      apiClient: apiClient.spacesModule,
+      apiClient: apiClient.spacesHomeControlPlugin,
     );
 
     _climateTargetsRepository = ClimateTargetsRepository(
-      apiClient: apiClient.spacesModule,
+      apiClient: apiClient.spacesHomeControlPlugin,
     );
 
     _coversTargetsRepository = CoversTargetsRepository(
-      apiClient: apiClient.spacesModule,
+      apiClient: apiClient.spacesHomeControlPlugin,
     );
 
     _spaceStateRepository = SpaceStateRepository(
-      apiClient: apiClient.spacesModule,
+      apiClient: apiClient.spacesHomeControlPlugin,
       intentsRepository: locator<IntentsRepository>(),
       commandDispatch: CommandDispatchService(socketService: socketService),
     );

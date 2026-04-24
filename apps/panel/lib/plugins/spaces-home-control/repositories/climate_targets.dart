@@ -3,23 +3,23 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.da
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_type.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_targets/climate_target.dart';
 import 'package:flutter/foundation.dart';
 
 class ClimateTargetsRepository extends ChangeNotifier {
-  final SpacesModuleClient _apiClient;
+  final SpacesHomeControlPluginClient _apiClient;
 
   /// Climate targets indexed by space ID, then by climate target ID
   final Map<String, Map<String, ClimateTargetModel>> _climateTargets = {};
   bool _isLoading = false;
 
   ClimateTargetsRepository({
-    required SpacesModuleClient apiClient,
+    required SpacesHomeControlPluginClient apiClient,
   }) : _apiClient = apiClient;
 
-  SpacesModuleClient get apiClient => _apiClient;
+  SpacesHomeControlPluginClient get apiClient => _apiClient;
 
   bool get isLoading => _isLoading;
 

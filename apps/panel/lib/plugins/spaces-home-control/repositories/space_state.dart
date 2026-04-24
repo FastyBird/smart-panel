@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
@@ -54,7 +54,7 @@ import 'package:flutter/foundation.dart';
 /// );
 /// ```
 class SpaceStateRepository extends ChangeNotifier {
-  final SpacesModuleClient _apiClient;
+  final SpacesHomeControlPluginClient _apiClient;
   final IntentsRepository _intentsRepository;
   final CommandDispatchService _commandDispatch;
 
@@ -80,14 +80,14 @@ class SpaceStateRepository extends ChangeNotifier {
   int _loadingCount = 0;
 
   SpaceStateRepository({
-    required SpacesModuleClient apiClient,
+    required SpacesHomeControlPluginClient apiClient,
     required IntentsRepository intentsRepository,
     required CommandDispatchService commandDispatch,
   })  : _apiClient = apiClient,
         _intentsRepository = intentsRepository,
         _commandDispatch = commandDispatch;
 
-  SpacesModuleClient get apiClient => _apiClient;
+  SpacesHomeControlPluginClient get apiClient => _apiClient;
 
   /// Returns true if any fetch operation is in progress
   bool get isLoading => _loadingCount > 0;

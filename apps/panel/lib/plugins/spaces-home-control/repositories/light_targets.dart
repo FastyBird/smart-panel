@@ -1,20 +1,20 @@
 import 'package:dio/dio.dart';
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/light_targets/light_target.dart';
 import 'package:flutter/foundation.dart';
 
 class LightTargetsRepository extends ChangeNotifier {
-  final SpacesModuleClient _apiClient;
+  final SpacesHomeControlPluginClient _apiClient;
 
   /// Light targets indexed by space ID, then by light target ID
   final Map<String, Map<String, LightTargetModel>> _lightTargets = {};
   bool _isLoading = false;
 
   LightTargetsRepository({
-    required SpacesModuleClient apiClient,
+    required SpacesHomeControlPluginClient apiClient,
   }) : _apiClient = apiClient;
 
-  SpacesModuleClient get apiClient => _apiClient;
+  SpacesHomeControlPluginClient get apiClient => _apiClient;
 
   bool get isLoading => _isLoading;
 

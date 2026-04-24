@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
@@ -16,7 +16,7 @@ import 'package:mocktail/mocktail.dart';
 // and error handling for the lighting domain.
 
 // Mock classes
-class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+class MockSpacesHomeControlPluginClient extends Mock implements SpacesHomeControlPluginClient {}
 
 class MockIntentsRepository extends Mock implements IntentsRepository {}
 
@@ -145,7 +145,7 @@ class LightingModeTestHarness {
 }
 
 void main() {
-  late MockSpacesModuleClient mockApiClient;
+  late MockSpacesHomeControlPluginClient mockApiClient;
   late MockIntentsRepository mockIntentsRepository;
   late FakeSocketService fakeSocketService;
   late SpacesRepository spacesRepository;
@@ -156,7 +156,7 @@ void main() {
   const testSpaceId = '550e8400-e29b-41d4-a716-446655440000';
 
   setUp(() {
-    mockApiClient = MockSpacesModuleClient();
+    mockApiClient = MockSpacesHomeControlPluginClient();
     mockIntentsRepository = MockIntentsRepository();
     fakeSocketService = FakeSocketService();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
