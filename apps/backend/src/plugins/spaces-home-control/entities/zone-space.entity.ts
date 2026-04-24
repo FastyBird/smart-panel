@@ -12,6 +12,12 @@ import {
 	SpaceZoneCategory,
 } from '../../../modules/spaces/spaces.constants';
 
+// See the note on `RoomSpaceEntity` — these three columns (`category`,
+// `suggestionsEnabled`, `statusWidgets`) are intentionally duplicated
+// across Room/Zone because TypeORM 0.3.x's Single Table Inheritance does
+// not tolerate an abstract intermediate class between the `@TableInheritance`
+// root and `@ChildEntity` leaves. Edit in lockstep with
+// `room-space.entity.ts`.
 @ApiSchema({ name: 'SpacesModuleDataZoneSpace' })
 @ChildEntity(SpaceType.ZONE)
 export class ZoneSpaceEntity extends SpaceEntity {

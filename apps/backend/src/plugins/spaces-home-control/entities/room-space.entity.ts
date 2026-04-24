@@ -12,6 +12,18 @@ import {
 	SpaceZoneCategory,
 } from '../../../modules/spaces/spaces.constants';
 
+// NOTE: `category`, `suggestionsEnabled`, and `statusWidgets` are declared
+// identically on both `RoomSpaceEntity` and `ZoneSpaceEntity`. Factoring
+// them onto an abstract intermediate `HomeControlSpaceEntity` was attempted
+// but failed at runtime — TypeORM 0.3.x's Single Table Inheritance expects
+// every `@ChildEntity` to extend the `@TableInheritance` root directly, and
+// inserting an abstract class between `SpaceEntity` and the leaves breaks
+// `EntityMetadataBuilder.computeEntityMetadataStep2()` with
+// `Cannot read properties of undefined (reading 'build')`. Until that
+// upstream limitation is resolved, keep the declarations duplicated and
+// edit them in lockstep. If a third home-control subtype is added later
+// (unlikely), a TypeScript mixin or a shared decorator-bundle helper would
+// be the next-best DRY path.
 @ApiSchema({ name: 'SpacesModuleDataRoomSpace' })
 @ChildEntity(SpaceType.ROOM)
 export class RoomSpaceEntity extends SpaceEntity {

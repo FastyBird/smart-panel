@@ -162,6 +162,19 @@ describe('SpacesController', () => {
 			);
 			expect(spacesService.create).not.toHaveBeenCalled();
 		});
+
+		it('should throw BadRequestException when body is an array', async () => {
+			// typeof [] === 'object' so the array would slip past a naïve check.
+			await expect(controller.create([] as unknown as ReqCreateSpaceDto)).rejects.toThrow(BadRequestException);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestException when data is an array', async () => {
+			await expect(
+				controller.create({ data: [{ name: 'x', type: SpaceType.ROOM }] } as unknown as ReqCreateSpaceDto),
+			).rejects.toThrow(BadRequestException);
+			expect(spacesService.create).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('update', () => {

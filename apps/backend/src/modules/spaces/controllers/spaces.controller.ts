@@ -161,11 +161,14 @@ export class SpacesController {
 	 * client payload surfaces as a 400, not a 500.
 	 */
 	private extractRequestData(body: unknown): object {
-		if (body === null || typeof body !== 'object') {
+		// `typeof [] === 'object'` in JS, so treat arrays as malformed
+		// envelopes explicitly — the `{ data: ... }` contract is an object,
+		// not an array.
+		if (body === null || typeof body !== 'object' || Array.isArray(body)) {
 			throw new BadRequestException([JSON.stringify({ field: 'data', reason: 'Request body must be a JSON object.' })]);
 		}
 		const data = (body as { data?: unknown }).data;
-		if (data === null || typeof data !== 'object') {
+		if (data === null || typeof data !== 'object' || Array.isArray(data)) {
 			throw new BadRequestException([
 				JSON.stringify({ field: 'data', reason: 'Request body is missing the `data` object.' }),
 			]);
