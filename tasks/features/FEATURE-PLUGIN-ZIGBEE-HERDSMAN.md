@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -68,58 +68,58 @@ I want a native plugin that communicates directly with Zigbee devices using zigb
 
 ### Phase 1 — Core infrastructure & coordinator management
 
-- [ ] New plugin directory `apps/backend/src/plugins/devices-zigbee-herdsman/` with standard plugin structure
-- [ ] Plugin module registered with NestJS, discoverable by extension system
-- [ ] Plugin entities: `ZigbeeHerdsmanDeviceEntity`, `ZigbeeHerdsmanChannelEntity`, `ZigbeeHerdsmanChannelPropertyEntity` extending base entities
-- [ ] Device entity stores: `ieeeAddress` (string), `networkAddress` (number), `manufacturerName` (string|null), `modelId` (string|null), `dateCode` (string|null), `softwareBuildId` (string|null), `interviewCompleted` (boolean)
-- [ ] Channel property entity stores: `zigbeeCluster` (string|null), `zigbeeAttribute` (string|null) for mapping back to ZCL
-- [ ] Plugin config model with fields: `serialPort` (string), `baudRate` (number, default 115200), `adapterType` (enum: zstack, ember, deconz, zigate, auto), `channel` (number, default 11), `panId` (number), `extendedPanId` (number[]), `networkKey` (number[]), `permitJoinTimeout` (number, default 254 seconds)
-- [ ] Config validation service that checks serial port accessibility
-- [ ] `ZigbeeHerdsmanAdapterService` — wraps `zigbee-herdsman` Controller with start/stop/restart
-- [ ] Adapter service handles coordinator options: serial port, adapter type, network config, database path (`data/zigbee-herdsman.db`)
-- [ ] Adapter service emits typed events: `deviceJoined`, `deviceInterview`, `deviceLeave`, `deviceAnnounce`, `message`, `adapterDisconnected`
-- [ ] `ZigbeeHerdsmanService` implements `IManagedPluginService` with proper lifecycle (start → initialize controller → form/join network → listen for events)
-- [ ] Service gracefully handles coordinator disconnection and attempts reconnection
-- [ ] Service registers with `PluginServiceManagerService` and `PlatformRegistryService`
-- [ ] Plugin metadata registered with `ExtensionsService` (name, description, author, readme)
+- [x] New plugin directory `apps/backend/src/plugins/devices-zigbee-herdsman/` with standard plugin structure
+- [x] Plugin module registered with NestJS, discoverable by extension system
+- [x] Plugin entities: `ZigbeeHerdsmanDeviceEntity`, `ZigbeeHerdsmanChannelEntity`, `ZigbeeHerdsmanChannelPropertyEntity` extending base entities
+- [x] Device entity stores: `ieeeAddress` (string), `networkAddress` (number), `manufacturerName` (string|null), `modelId` (string|null), `dateCode` (string|null), `softwareBuildId` (string|null), `interviewCompleted` (boolean)
+- [x] Channel property entity stores: `zigbeeCluster` (string|null), `zigbeeAttribute` (string|null) for mapping back to ZCL
+- [x] Plugin config model with fields: `serialPort` (string), `baudRate` (number, default 115200), `adapterType` (enum: zstack, ember, deconz, zigate, auto), `channel` (number, default 11), `panId` (number), `extendedPanId` (number[]), `networkKey` (number[]), `permitJoinTimeout` (number, default 254 seconds)
+- [x] Config validation service that checks serial port accessibility
+- [x] `ZigbeeHerdsmanAdapterService` — wraps `zigbee-herdsman` Controller with start/stop/restart
+- [x] Adapter service handles coordinator options: serial port, adapter type, network config, database path (`data/zigbee-herdsman.db`)
+- [x] Adapter service emits typed events: `deviceJoined`, `deviceInterview`, `deviceLeave`, `deviceAnnounce`, `message`, `adapterDisconnected`
+- [x] `ZigbeeHerdsmanService` implements `IManagedPluginService` with proper lifecycle (start → initialize controller → form/join network → listen for events)
+- [x] Service gracefully handles coordinator disconnection and attempts reconnection
+- [x] Service registers with `PluginServiceManagerService` and `PlatformRegistryService`
+- [x] Plugin metadata registered with `ExtensionsService` (name, description, author, readme)
 
 ### Phase 2 — Device discovery & converter integration
 
-- [ ] On startup, iterate `controller.getDevices()` to load known devices
-- [ ] Listen to `deviceJoined` + `deviceInterview` events for new devices
-- [ ] Use `zigbee-herdsman-converters` `findByDevice()` to resolve device definitions from zigbee model ID
-- [ ] Extract `exposes` from device definition — these are the same format as Z2M exposes
+- [x] On startup, iterate `controller.getDevices()` to load known devices
+- [x] Listen to `deviceJoined` + `deviceInterview` events for new devices
+- [x] Use `zigbee-herdsman-converters` `findByDevice()` to resolve device definitions from zigbee model ID
+- [x] Extract `exposes` from device definition — these are the same format as Z2M exposes
 - [ ] Reuse or adapt the Z2M plugin's converter registry (`converters/converter.registry.ts`) to map exposes → Smart Panel channels/properties
 - [ ] Reuse or adapt the Z2M plugin's mapping layer (`mappings/`) for value transformation
-- [ ] `ZigbeeDiscoveredDevicesService` maintains an in-memory registry of paired-but-not-adopted devices
-- [ ] Each discovered device record includes: IEEE address, friendly name (defaults to model + short addr), model, vendor, description, exposes, interview status, last seen timestamp
-- [ ] Devices that fail interview are still listed with a "interview incomplete" status
-- [ ] `ZigbeeDeviceConnectivityService` tracks online/offline state based on `lastSeen` + configurable timeout (default 3600s for mains, 7200s for battery)
+- [x] `ZigbeeDiscoveredDevicesService` maintains an in-memory registry of paired-but-not-adopted devices
+- [x] Each discovered device record includes: IEEE address, friendly name (defaults to model + short addr), model, vendor, description, exposes, interview status, last seen timestamp
+- [x] Devices that fail interview are still listed with a "interview incomplete" status
+- [x] `ZigbeeDeviceConnectivityService` tracks online/offline state based on `lastSeen` + configurable timeout (default 3600s for mains, 7200s for battery)
 
 ### Phase 3 — Device adoption & state synchronization
 
-- [ ] `ZigbeeMappingPreviewService` generates channel/property mapping preview from exposes (reuse Z2M pattern)
-- [ ] `ZigbeeDeviceAdoptionService` creates Device/Channel/Property entities from confirmed mapping
-- [ ] Adoption assigns device category based on primary exposes (light → LIGHTING, switch → OUTLET, climate → THERMOSTAT, sensor → SENSOR, etc.)
-- [ ] REST controller `ZigbeeHerdsmanDiscoveredDevicesController` with endpoints:
+- [x] `ZigbeeMappingPreviewService` generates channel/property mapping preview from exposes (reuse Z2M pattern)
+- [x] `ZigbeeDeviceAdoptionService` creates Device/Channel/Property entities from confirmed mapping
+- [x] Adoption assigns device category based on primary exposes (light → LIGHTING, switch → OUTLET, climate → THERMOSTAT, sensor → SENSOR, etc.)
+- [x] REST controller `ZigbeeHerdsmanDiscoveredDevicesController` with endpoints:
   - `GET /api/plugins/devices-zigbee-herdsman/discovered-devices` — list discovered unadopted devices
   - `GET /api/plugins/devices-zigbee-herdsman/mapping-preview/:ieeeAddress` — preview channel/property mapping
   - `POST /api/plugins/devices-zigbee-herdsman/adopt` — adopt device with confirmed mapping
   - `DELETE /api/plugins/devices-zigbee-herdsman/devices/:ieeeAddress` — remove device from Zigbee network
   - `POST /api/plugins/devices-zigbee-herdsman/permit-join` — enable/disable permit join (with timeout)
   - `GET /api/plugins/devices-zigbee-herdsman/coordinator-info` — coordinator firmware, type, channel info
-- [ ] All endpoints decorated with Swagger/OpenAPI annotations
+- [x] All endpoints decorated with Swagger/OpenAPI annotations
 - [ ] Incoming `message` events from zigbee-herdsman processed through `fromZigbee` converters to extract property values
 - [ ] Property values written to `PropertyValueService` and broadcast via WebSocket
-- [ ] `ZigbeeHerdsmanDevicePlatform` implements `IDevicePlatform` to handle outgoing commands
-- [ ] Platform handler resolves the correct `toZigbee` converter for each property
-- [ ] Platform handler calls `device.getEndpoint(n).command()` or `.write()` with the correct ZCL cluster/attribute
-- [ ] Batch command support: multiple property updates grouped per endpoint to reduce Zigbee traffic
-- [ ] Command retry logic with configurable attempts (default 3) for unreliable devices
+- [x] `ZigbeeHerdsmanDevicePlatform` implements `IDevicePlatform` to handle outgoing commands
+- [x] Platform handler resolves the correct `toZigbee` converter for each property
+- [x] Platform handler calls `device.getEndpoint(n).command()` or `.write()` with the correct ZCL cluster/attribute
+- [x] Batch command support: multiple property updates grouped per endpoint to reduce Zigbee traffic
+- [x] Command retry logic with configurable attempts (default 3) for unreliable devices
 
 ### Phase 4 — Admin UI
 
-- [ ] Plugin configuration form in admin: serial port input (with auto-detect dropdown), baud rate, adapter type selector, channel number, advanced network settings (PAN ID, network key) with sensible defaults
+- [x] Plugin configuration form in admin: serial port input (with auto-detect dropdown), baud rate, adapter type selector, channel number, advanced network settings (PAN ID, network key) with sensible defaults
 - [ ] Network status indicator showing coordinator state (online/offline/forming)
 - [ ] "Permit Join" toggle button with countdown timer
 - [ ] Discovered devices list with columns: model, vendor, IEEE address, interview status, signal quality (LQI)
@@ -129,21 +129,21 @@ I want a native plugin that communicates directly with Zigbee devices using zigb
 
 ### Phase 5 — Zigbee network management
 
-- [ ] Network key generation on first startup (random 16-byte key) with persistent storage
-- [ ] PAN ID auto-generation if not configured
-- [ ] Channel selection validation (must be one of: 11, 15, 20, 25 recommended; 11-26 allowed)
-- [ ] Permit join broadcasts to all routers (not just coordinator)
-- [ ] Device leave handling: mark device offline, optionally remove entities
+- [x] Network key generation on first startup (random 16-byte key) with persistent storage
+- [x] PAN ID auto-generation if not configured
+- [x] Channel selection validation (must be one of: 11, 15, 20, 25 recommended; 11-26 allowed)
+- [x] Permit join broadcasts to all routers (not just coordinator)
+- [x] Device leave handling: mark device offline, optionally remove entities
 - [ ] Basic group support: create group, add device to group, remove device from group, send commands to group
 - [ ] Zigbee network backup/restore via database file
 
 ### Cross-cutting
 
-- [ ] Unit tests for converter integration, adoption service, connectivity tracking
+- [x] Unit tests for converter integration, adoption service, connectivity tracking
 - [ ] E2E tests for discovery → adoption → command flow (with mocked zigbee-herdsman Controller)
-- [ ] Plugin is completely isolated — disabling it has no effect on other plugins
-- [ ] Existing Z2M plugin continues to work independently (both cannot use the same coordinator simultaneously)
-- [ ] Database migration for new entity columns
+- [x] Plugin is completely isolated — disabling it has no effect on other plugins
+- [x] Existing Z2M plugin continues to work independently (both cannot use the same coordinator simultaneously)
+- [x] Database migration for new entity columns
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
