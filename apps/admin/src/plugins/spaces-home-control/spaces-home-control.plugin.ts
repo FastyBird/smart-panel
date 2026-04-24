@@ -15,7 +15,16 @@ import {
 } from '../../modules/spaces';
 import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
-import { SpaceAddForm, SpaceDetail, SpaceEditForm } from './components/components';
+import {
+	SpaceAddDeviceDialog,
+	SpaceAddDisplayDialog,
+	SpaceAddForm,
+	SpaceAddSceneDialog,
+	SpaceDetail,
+	SpaceDomainsSection,
+	SpaceEditForm,
+	SpaceScenesSection,
+} from './components/components';
 import { locales } from './locales';
 import {
 	SPACES_HOME_CONTROL_PLUGIN_NAME,
@@ -60,6 +69,11 @@ export default {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,
 					spaceEditForm: SpaceEditForm,
+					spaceDomainsSection: SpaceDomainsSection,
+					spaceScenesSection: SpaceScenesSection,
+					spaceAddDeviceDialog: SpaceAddDeviceDialog,
+					spaceAddDisplayDialog: SpaceAddDisplayDialog,
+					spaceAddSceneDialog: SpaceAddSceneDialog,
 				},
 				schemas: {
 					spaceSchema: SpaceSchema,

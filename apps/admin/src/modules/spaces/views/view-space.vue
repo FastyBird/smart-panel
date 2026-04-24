@@ -44,15 +44,16 @@
 			<template #extra>
 				<div class="flex items-center">
 					<!--
-						Add-device / add-scene are home-control affordances
-						(lighting/climate roles, device binding, scene linkage)
-						— they only make sense for ROOM / ZONE. Add-display is
-						room-only (displays are assigned to rooms specifically,
-						not zones). MASTER / ENTRY / SIGNAGE have no add-*
-						button visible here; their Edit button stays.
+						Add-device / add-scene / add-display buttons gate on the
+						plugin's contributed dialogs instead of a hardcoded type
+						check. A plugin that registers `spaceAddDeviceDialog` (or
+						the others) opts into the matching button; the current
+						home-control plugin registers all three. Synthetic master
+						/ entry and signage register none, so only the Edit
+						button renders for those types.
 					-->
 					<el-button
-						v-if="isHomeControlSpace"
+						v-if="spaceAddDeviceDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -65,7 +66,7 @@
 						{{ t('spacesModule.detail.devices.add') }}
 					</el-button>
 					<el-button
-						v-if="isHomeControlSpace"
+						v-if="spaceAddSceneDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -78,7 +79,7 @@
 						{{ t('spacesModule.detail.scenes.add') }}
 					</el-button>
 					<el-button
-						v-if="space?.type === SpaceType.ROOM"
+						v-if="spaceAddDisplayDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -124,24 +125,21 @@
 			<space-detail :space="space" />
 
 			<!--
-				The domain tabs below (Domains / Devices / Scenes / Displays)
-				and the matching add-dialogs at the bottom of this view are
-				home-control concepts — lighting/climate/covers roles, device
-				assignment, scene linkage, and display binding are only
-				meaningful for ROOM and ZONE spaces. MASTER, ENTRY, and
-				SIGNAGE_INFO_PANEL spaces have no devices, no scenes, no
-				domain configuration, so rendering these sections for them
-				produced incorrect UI. Phase 3b will relocate these sections
-				into `plugins/spaces-home-control/` and dispatch via
-				`getElement(space.type).components.spaceDetail`; until then,
-				gate on the home-control space types directly.
+				The tabs below are plugin-dispatched: only types whose plugin
+				contributes the matching `space*Section` / `space*Dialog`
+				component see the corresponding tab/button. Home-control
+				contributes all three tabs plus the add dialogs; synthetic
+				master / entry / signage plugins contribute none, so for
+				those the view renders only the generic `<space-detail>`
+				block above.
 			-->
 			<el-tabs
-				v-if="isHomeControlSpace"
+				v-if="hasDomainsTab || spaceAddDeviceDialog || spaceAddSceneDialog || spaceAddDisplayDialog"
 				v-model="activeTab"
 				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 			>
 				<el-tab-pane
+					v-if="spaceDomainsSection"
 					name="domains"
 					class="h-full overflow-hidden"
 				>
@@ -153,14 +151,15 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<space-domains-section
-							ref="domainsSectionRef"
+						<component
+							:is="spaceDomainsSection"
 							:space="space"
 						/>
 					</el-scrollbar>
 				</el-tab-pane>
 
 				<el-tab-pane
+					v-if="spaceAddDeviceDialog"
 					name="devices"
 					class="h-full overflow-hidden"
 				>
@@ -174,7 +173,6 @@
 					<el-scrollbar class="h-full">
 						<el-card shadow="never" body-class="p-0!">
 							<space-devices-section
-								ref="devicesSectionRef"
 								:space-id="space.id"
 								:space-type="space.type"
 								@open-add-dialog="onAddDevice"
@@ -184,6 +182,7 @@
 				</el-tab-pane>
 
 				<el-tab-pane
+					v-if="spaceScenesSection"
 					name="scenes"
 					class="h-full overflow-hidden"
 				>
@@ -196,8 +195,8 @@
 
 					<el-scrollbar class="h-full">
 						<el-card shadow="never" body-class="p-0!">
-							<space-scenes-section
-								ref="scenesSectionRef"
+							<component
+								:is="spaceScenesSection"
 								:space-id="space.id"
 								@open-add-dialog="onAddScene"
 							/>
@@ -206,7 +205,7 @@
 				</el-tab-pane>
 
 				<el-tab-pane
-					v-if="space?.type === SpaceType.ROOM"
+					v-if="spaceAddDisplayDialog"
 					name="displays"
 					class="h-full overflow-hidden"
 				>
@@ -240,27 +239,29 @@
 	</router-view>
 
 	<!--
-		Add-device / add-scene / add-display dialogs are triggered from the
-		home-control tab panes above, so they only need to mount for ROOM /
-		ZONE spaces. MASTER / ENTRY / SIGNAGE don't surface those triggers.
+		Dialogs are plugin-dispatched mirroring the tabs above. `v-model:visible`
+		is preserved so each dialog handles its own open/close state.
 	-->
-	<space-add-device-dialog
-		v-if="space && isHomeControlSpace"
+	<component
+		:is="spaceAddDeviceDialog"
+		v-if="space && spaceAddDeviceDialog"
 		v-model:visible="showAddDeviceDialog"
 		:space-id="space.id"
 		:space-type="space.type"
 		@device-added="onDeviceAdded"
 	/>
 
-	<space-add-scene-dialog
-		v-if="space && isHomeControlSpace"
+	<component
+		:is="spaceAddSceneDialog"
+		v-if="space && spaceAddSceneDialog"
 		v-model:visible="showAddSceneDialog"
 		:space-id="space.id"
 		@scene-added="onSceneAdded"
 	/>
 
-	<space-add-display-dialog
-		v-if="space && space.type === SpaceType.ROOM"
+	<component
+		:is="spaceAddDisplayDialog"
+		v-if="space && spaceAddDisplayDialog"
 		v-model:visible="showAddDisplayDialog"
 		:space-id="space.id"
 		@display-added="onDisplayAdded"
@@ -354,15 +355,8 @@ import { useDevices } from '../../devices/composables/useDevices';
 import { useDisplays } from '../../displays/composables/useDisplays';
 import { useScenes } from '../../scenes/composables/useScenes';
 import { SpaceDetail, SpaceDevicesSection, SpaceDisplaysSection } from '../components/components';
-import {
-	SpaceAddDeviceDialog,
-	SpaceAddDisplayDialog,
-	SpaceAddSceneDialog,
-	SpaceDomainsSection,
-	SpaceScenesSection,
-} from '../../../plugins/spaces-home-control/components/components';
-import { useSpace } from '../composables';
-import { RouteNames, SpaceRoomCategory, SpaceType, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
+import { useSpace, useSpacesPlugins } from '../composables';
+import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { type ISpace } from '../store';
 
@@ -395,16 +389,35 @@ const { fetchDevices, loaded: devicesLoaded } = useDevices();
 const { fetchScenes, loaded: scenesLoaded } = useScenes();
 const { fetchDisplays, isLoaded: displaysLoaded } = useDisplays();
 
+const { getElement } = useSpacesPlugins();
+
 const isLoading = computed<boolean>(() => fetching.value);
 
-// The domain tabs + add-dialogs rendered below are home-control concepts
-// (lighting / climate / covers roles, device assignment, scenes, displays).
-// Synthetic (master / entry) and plugin-contributed types (signage) get a
-// simpler detail view without those sections. Phase 3b will replace this
-// gate with proper plugin dispatch via `getElement(type).components.spaceDetail`.
-const isHomeControlSpace = computed<boolean>(
-	(): boolean => space.value?.type === SpaceType.ROOM || space.value?.type === SpaceType.ZONE,
-);
+// Plugin-contributed detail sections + add-dialogs. Each space type's
+// plugin registers whichever of these it wants on its `element.components`:
+// home-control contributes all five (domains tab, scenes tab, add-device /
+// add-scene / add-display dialogs); synthetic master / entry and signage
+// register none so the view falls back to its generic detail-only layout.
+// Replaces the hardcoded `isHomeControlSpace` gate that previously decided
+// who saw the tabs and dialogs.
+const pluginComponents = computed(() => {
+	if (!space.value) {
+		return {};
+	}
+	return getElement(space.value.type)?.components ?? {};
+});
+
+const spaceDomainsSection = computed(() => pluginComponents.value.spaceDomainsSection);
+const spaceScenesSection = computed(() => pluginComponents.value.spaceScenesSection);
+const spaceAddDeviceDialog = computed(() => pluginComponents.value.spaceAddDeviceDialog);
+const spaceAddSceneDialog = computed(() => pluginComponents.value.spaceAddSceneDialog);
+const spaceAddDisplayDialog = computed(() => pluginComponents.value.spaceAddDisplayDialog);
+
+// A space has a domains tab iff its plugin contributes one. This replaces
+// the old hardcoded `type === ROOM || ZONE` check — adding a new
+// interactive space type in the future only requires registering
+// `spaceDomainsSection` on its plugin element.
+const hasDomainsTab = computed<boolean>((): boolean => spaceDomainsSection.value !== undefined);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
@@ -421,10 +434,9 @@ const showAddDeviceDialog = ref<boolean>(false);
 const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 
-// Component refs
-const domainsSectionRef = ref<InstanceType<typeof SpaceDomainsSection> | null>(null);
-const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
-const scenesSectionRef = ref<InstanceType<typeof SpaceScenesSection> | null>(null);
+// Only the displays section exposes an imperative `fetchDisplays()` that
+// the add-display callback needs to invoke. The other section refs that
+// lived here historically were never read, so they're dropped.
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 
 const isSpaceRoute = computed<boolean>((): boolean => {
