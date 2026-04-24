@@ -43,7 +43,6 @@
 	"table": {
 		"columns": {
 			"name": "Nombre",
-			"role": "Rol",
 			"macAddress": "Dirección MAC",
 			"version": "Versión",
 			"resolution": "Resolución",
@@ -96,16 +95,6 @@
 				"validation": {
 					"maxLength": "El nombre debe tener menos de 100 caracteres"
 				}
-			},
-			"role": {
-				"title": "Rol de la pantalla",
-				"description": "El propósito de esta pantalla en tu configuración de hogar inteligente",
-				"options": {
-					"room": "Habitación (Control de una sola habitación)",
-					"master": "Principal (Vista general de toda la casa)",
-					"entry": "Entrada (Modos de la casa y seguridad)"
-				},
-				"comingSoon": "Pronto"
 			},
 			"unitSize": {
 				"title": "Tamaño de unidad",
@@ -196,12 +185,12 @@
 					"required": "La página de inicio es obligatoria cuando el modo de página de inicio es Explícito"
 				}
 			},
-			"roomId": {
-				"title": "Habitación asignada",
-				"placeholder": "Seleccionar una habitación",
-				"description": "La habitación que controla esta pantalla. Obligatorio para pantallas con rol de Habitación.",
+			"spaceId": {
+				"title": "Espacio asignado",
+				"placeholder": "Seleccionar un espacio",
+				"description": "El espacio al que está asignada esta pantalla. El tipo del espacio determina lo que muestra el panel.",
 				"validation": {
-					"required": "La asignación de habitación es obligatoria para pantallas con rol de Habitación"
+					"required": "Debe asignarse un espacio cuando la página de inicio se resuelve automáticamente desde el espacio."
 				}
 			},
 			"numberFormat": {
@@ -297,11 +286,6 @@
 		"lost": "Perdido",
 		"unknown": "Desconocido"
 	},
-	"roles": {
-		"room": "Habitación",
-		"master": "Principal",
-		"entry": "Entrada"
-	},
 	"texts": {
 		"loadingDisplays": "Cargando pantallas...",
 		"loadingDisplay": "Cargando pantalla...",
@@ -364,7 +348,7 @@
 			},
 			"homePage": {
 				"title": "Página de inicio",
-				"autoRoomHint": "En <strong>modo Automático</strong>, la pantalla abre la vista predeterminada del sistema según su rol y asignación."
+				"autoSpaceHint": "En <strong>modo Automático</strong>, la pantalla abre la vista predeterminada del sistema para el tipo del espacio asignado."
 			},
 			"weather": {
 				"title": "Ubicación meteorológica",
@@ -384,7 +368,6 @@
 		"title": "Detalle de pantalla",
 		"info": {
 			"title": "Información de la pantalla",
-			"role": "Rol",
 			"macAddress": "Dirección MAC",
 			"version": "Versión",
 			"build": "Compilación",
@@ -433,27 +416,18 @@
 		},
 		"spaceContext": {
 			"title": "Contexto del espacio",
-			"role": "Rol de la pantalla",
 			"homeMode": "Modo de página de inicio",
-			"assignedRoom": "Habitación asignada",
-			"notAssigned": "No asignada",
+			"assignedSpace": "Espacio asignado",
+			"notAssigned": "No asignado",
 			"initialView": "Vista inicial",
-			"systemViews": "Vistas del sistema",
 			"selectedPage": "Página seleccionada",
-			"hint": "Las vistas principales de esta pantalla se generan automáticamente según su rol y espacio asignado.",
+			"hint": "Las vistas principales de esta pantalla se generan automáticamente según el tipo del espacio asignado.",
 			"homeModes": {
 				"auto_space": "Automático",
 				"explicit": "Explícito"
 			},
 			"initialViews": {
-				"roomOverview": "Vista general de habitación",
-				"houseOverview": "Vista general de la casa",
-				"entryOverview": "Vista general de entrada"
-			},
-			"views": {
-				"overview": "Vista general",
-				"lights": "Luces",
-				"climate": "Climatización"
+				"spaceOverview": "Vista general del espacio"
 			}
 		}
 	},

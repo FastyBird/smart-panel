@@ -5,21 +5,21 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_result.d
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_state.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/intent_types.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:retrofit/retrofit.dart';
 
 // Mock classes
-class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+class MockSpacesHomeControlPluginClient extends Mock implements SpacesHomeControlPluginClient {}
 
 /// Fake SocketService that simulates disconnected state to force API fallback
 class FakeDisconnectedSocketService extends SocketService {
@@ -100,7 +100,7 @@ HttpResponse<T> createMockHttpResponse<T>(
 }
 
 void main() {
-  late MockSpacesModuleClient mockClient;
+  late MockSpacesHomeControlPluginClient mockClient;
   late FakeIntentsRepository fakeIntentsRepository;
   late FakeDisconnectedSocketService fakeSocketService;
   late SpaceStateRepository repository;
@@ -111,7 +111,7 @@ void main() {
   });
 
   setUp(() {
-    mockClient = MockSpacesModuleClient();
+    mockClient = MockSpacesHomeControlPluginClient();
     fakeIntentsRepository = FakeIntentsRepository();
     fakeSocketService = FakeDisconnectedSocketService();
 

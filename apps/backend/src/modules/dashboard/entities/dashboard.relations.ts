@@ -1,15 +1,9 @@
-import { BaseEntity } from '../../../common/entities/base.entity';
+import { IRelationLoader } from '../../../common/plugin-relations/relation-loader.interface';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
 
 import { DataSourceEntity, PageEntity, TileEntity } from './dashboard.entity';
-
-export interface IRelationLoader {
-	supports(entity: BaseEntity): boolean;
-
-	loadRelations(entity: BaseEntity): Promise<void>;
-}
 
 export interface IPageRelationsLoader extends IRelationLoader {
 	supports(entity: PageEntity): boolean;

@@ -1,15 +1,26 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_view_builders.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-signage-info-panel/services/space_view_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-synthetic-entry/services/space_view_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-synthetic-master/services/space_view_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+// Valid UUIDs for testing (v4 format with variant bits)
+const _roomUuid = 'a0000000-0000-4000-8000-000000000001';
+const _masterUuid = 'a0000000-0000-4000-8000-000000000002';
+const _entryUuid = 'a0000000-0000-4000-8000-000000000003';
 
 // Helper to create a display with minimum required fields
 DisplayModel createDisplay({
-  DisplayRole role = DisplayRole.room,
-  String? roomId,
+  String? spaceId,
 }) {
   return DisplayModel(
     id: 'display-1',
@@ -31,20 +42,50 @@ DisplayModel createDisplay({
     speakerVolume: 50,
     microphone: true,
     microphoneVolume: 50,
-    role: role,
-    roomId: roomId,
+    spaceId: spaceId,
     createdAt: DateTime(2024, 1, 1),
+  );
+}
+
+// Helper to create a mock space for testing
+SpaceView createMockSpace({
+  required String id,
+  required SpacesModuleDataSpaceType type,
+}) {
+  return SpaceView(
+    model: SpaceModel(
+      id: id,
+      type: type,
+      name: 'Test Space',
+      displayOrder: 0,
+      suggestionsEnabled: true,
+      parentId: null,
+    ),
   );
 }
 
 void main() {
   group('buildSystemViews', () {
-    group('ROOM role', () {
-      test('should return empty result when roomId is null', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: null);
+    setUp(() {
+      spaceViewBuilders[SpacesModuleDataSpaceType.room] = RoomSpaceViewBuilder();
+      spaceViewBuilders[SpacesModuleDataSpaceType.zone] = ZoneSpaceViewBuilder();
+      spaceViewBuilders[SpacesModuleDataSpaceType.master] = MasterSpaceViewBuilder();
+      spaceViewBuilders[SpacesModuleDataSpaceType.entry] = EntrySpaceViewBuilder();
+      spaceViewBuilders[SpacesModuleDataSpaceType.signageInfoPanel] =
+          SignageInfoPanelSpaceViewBuilder();
+    });
+
+    tearDown(() {
+      spaceViewBuilders.clear();
+    });
+
+    group('no space assignment', () {
+      test('should return empty result when space is null', () {
+        final display = createDisplay(spaceId: null);
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: null,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
@@ -53,11 +94,19 @@ void main() {
         expect(result.domainCounts, isNull);
       });
 
-      test('should return empty result when roomId is empty', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: '');
+      test('should return empty result when no builder registered for space type', () {
+        // Remove the room builder so nothing matches
+        spaceViewBuilders.remove(SpacesModuleDataSpaceType.room);
+
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
@@ -65,12 +114,19 @@ void main() {
         expect(result.indexByViewKey, isEmpty);
         expect(result.domainCounts, isNull);
       });
+    });
 
+    group('ROOM space type', () {
       test('should create room overview as first item', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           roomViewTitle: 'Living Room',
         ));
@@ -80,26 +136,36 @@ void main() {
 
         final roomOverview = result.items[0] as SystemViewItem;
         expect(roomOverview.viewType, SystemViewType.room);
-        expect(roomOverview.roomId, 'room-1');
+        expect(roomOverview.roomId, _roomUuid);
         expect(roomOverview.title, 'Living Room');
       });
 
       test('should register room overview in indexByViewKey', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [],
         ));
 
-        expect(result.indexByViewKey['room-overview:room-1'], 0);
+        expect(result.indexByViewKey['room-overview:$_roomUuid'], 0);
       });
 
       test('should create domain views for present domains', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.thermostat,
@@ -120,7 +186,7 @@ void main() {
         expect(lightsView.domainType, DomainType.lights);
         expect(lightsView.title, 'Lights');
         expect(lightsView.deviceCount, 1);
-        expect(lightsView.roomId, 'room-1');
+        expect(lightsView.roomId, _roomUuid);
 
         // Third item is climate domain (displayOrder 1)
         expect(result.items[2], isA<DomainViewItem>());
@@ -131,10 +197,15 @@ void main() {
       });
 
       test('should register domain views in indexByViewKey', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.television,
@@ -143,17 +214,22 @@ void main() {
           sensorReadingsCount: 1, // backend has sensor readings
         ));
 
-        expect(result.indexByViewKey['room-overview:room-1'], 0);
-        expect(result.indexByViewKey['domain:room-1:lights'], 1);
-        expect(result.indexByViewKey['domain:room-1:media'], 2);
-        expect(result.indexByViewKey['domain:room-1:sensors'], 3);
+        expect(result.indexByViewKey['room-overview:$_roomUuid'], 0);
+        expect(result.indexByViewKey['domain:$_roomUuid:lights'], 1);
+        expect(result.indexByViewKey['domain:$_roomUuid:media'], 2);
+        expect(result.indexByViewKey['domain:$_roomUuid:sensors'], 3);
       });
 
       test('should not create domain view for domains with zero count', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
@@ -164,16 +240,21 @@ void main() {
         expect(lightsView.domainType, DomainType.lights);
 
         // No climate, media, or sensors
-        expect(result.indexByViewKey.containsKey('domain:room-1:climate'), false);
-        expect(result.indexByViewKey.containsKey('domain:room-1:media'), false);
-        expect(result.indexByViewKey.containsKey('domain:room-1:sensors'), false);
+        expect(result.indexByViewKey.containsKey('domain:$_roomUuid:climate'), false);
+        expect(result.indexByViewKey.containsKey('domain:$_roomUuid:media'), false);
+        expect(result.indexByViewKey.containsKey('domain:$_roomUuid:sensors'), false);
       });
 
-      test('should return domainCounts for ROOM role', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+      test('should return domainCounts for ROOM space', () {
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.lighting,
@@ -189,10 +270,15 @@ void main() {
       });
 
       test('should order domain views by displayOrder', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.sensor, // sensors = displayOrder 3
             DevicesModuleDeviceCategory.thermostat, // climate = displayOrder 1
@@ -213,10 +299,15 @@ void main() {
       });
 
       test('should handle empty device categories', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [],
         ));
 
@@ -227,10 +318,15 @@ void main() {
       });
 
       test('should ignore unclassified device categories', () {
-        final display = createDisplay(role: DisplayRole.room, roomId: 'room-1');
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.room,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.outlet,
             DevicesModuleDeviceCategory.switcher,
@@ -244,12 +340,17 @@ void main() {
       });
     });
 
-    group('MASTER role', () {
+    group('MASTER space type', () {
       test('should create master overview only', () {
-        final display = createDisplay(role: DisplayRole.master);
+        final display = createDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           masterViewTitle: 'Home',
         ));
 
@@ -263,29 +364,46 @@ void main() {
       });
 
       test('should register master overview in indexByViewKey', () {
-        final display = createDisplay(role: DisplayRole.master);
+        final display = createDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
 
-        final result = buildSystemViews(SystemViewsBuildInput(display: display));
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
 
         expect(result.indexByViewKey['master-overview'], 0);
       });
 
-      test('should not return domainCounts for MASTER role', () {
-        final display = createDisplay(role: DisplayRole.master);
+      test('should not return domainCounts for MASTER space', () {
+        final display = createDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         expect(result.domainCounts, isNull);
       });
 
-      test('should ignore deviceCategories for MASTER role', () {
-        final display = createDisplay(role: DisplayRole.master);
+      test('should ignore deviceCategories for MASTER space', () {
+        final display = createDisplay(spaceId: _masterUuid);
+        final space = createMockSpace(
+          id: _masterUuid,
+          type: SpacesModuleDataSpaceType.master,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.thermostat,
@@ -298,12 +416,17 @@ void main() {
       });
     });
 
-    group('ENTRY role', () {
+    group('ENTRY space type', () {
       test('should create entry overview only', () {
-        final display = createDisplay(role: DisplayRole.entry);
+        final display = createDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           entryViewTitle: 'Entry',
         ));
 
@@ -317,21 +440,115 @@ void main() {
       });
 
       test('should register entry overview in indexByViewKey', () {
-        final display = createDisplay(role: DisplayRole.entry);
+        final display = createDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
 
-        final result = buildSystemViews(SystemViewsBuildInput(display: display));
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
 
         expect(result.indexByViewKey['entry-overview'], 0);
       });
 
-      test('should not return domainCounts for ENTRY role', () {
-        final display = createDisplay(role: DisplayRole.entry);
+      test('should not return domainCounts for ENTRY space', () {
+        final display = createDisplay(spaceId: _entryUuid);
+        final space = createMockSpace(
+          id: _entryUuid,
+          type: SpacesModuleDataSpaceType.entry,
+        );
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
+          space: space,
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
+        expect(result.domainCounts, isNull);
+      });
+    });
+
+    group('ZONE space type', () {
+      test('should return empty result for zone space', () {
+        final display = createDisplay(spaceId: _roomUuid);
+        final space = createMockSpace(
+          id: _roomUuid,
+          type: SpacesModuleDataSpaceType.zone,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
+        ));
+
+        expect(result.items, isEmpty);
+        expect(result.indexByViewKey, isEmpty);
+        expect(result.domainCounts, isNull);
+      });
+    });
+
+    group('SIGNAGE_INFO_PANEL space type', () {
+      const signageUuid = 'a0000000-0000-4000-8000-000000000050';
+
+      test('should create signage overview only', () {
+        final display = createDisplay(spaceId: signageUuid);
+        final space = createMockSpace(
+          id: signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
+
+        expect(result.items.length, 1);
+        expect(result.items[0], isA<SystemViewItem>());
+
+        final signageOverview = result.items[0] as SystemViewItem;
+        expect(signageOverview.viewType, SystemViewType.signageInfoPanel);
+        expect(signageOverview.roomId, signageUuid);
+        expect(result.domainCounts, isNull);
+      });
+
+      test('should register signage overview in indexByViewKey', () {
+        final display = createDisplay(spaceId: signageUuid);
+        final space = createMockSpace(
+          id: signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
+
+        expect(
+          result.indexByViewKey['signage-info-panel:$signageUuid'],
+          0,
+        );
+      });
+
+      test('should return empty when builder is not registered', () {
+        spaceViewBuilders.remove(SpacesModuleDataSpaceType.signageInfoPanel);
+
+        final display = createDisplay(spaceId: signageUuid);
+        final space = createMockSpace(
+          id: signageUuid,
+          type: SpacesModuleDataSpaceType.signageInfoPanel,
+        );
+
+        final result = buildSystemViews(SystemViewsBuildInput(
+          display: display,
+          space: space,
+        ));
+
+        expect(result.items, isEmpty);
+        expect(result.indexByViewKey, isEmpty);
         expect(result.domainCounts, isNull);
       });
     });
@@ -359,6 +576,14 @@ void main() {
 
       expect(input.deviceCategories, isEmpty);
     });
+
+    test('should have null space by default', () {
+      final display = createDisplay();
+
+      final input = SystemViewsBuildInput(display: display);
+
+      expect(input.space, isNull);
+    });
   });
 
   group('SystemViewsResult', () {
@@ -368,6 +593,14 @@ void main() {
         indexByViewKey: {},
         domainCounts: null,
       );
+
+      expect(result.items, isEmpty);
+      expect(result.indexByViewKey, isEmpty);
+      expect(result.domainCounts, isNull);
+    });
+
+    test('empty constant should be an empty result', () {
+      const result = SystemViewsResult.empty;
 
       expect(result.items, isEmpty);
       expect(result.indexByViewKey, isEmpty);

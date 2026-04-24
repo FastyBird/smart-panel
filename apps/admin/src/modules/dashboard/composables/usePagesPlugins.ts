@@ -69,7 +69,7 @@ export const usePagesPlugins = (): IUsePagesPlugins => {
 		}
 	);
 
-	const getByName = (type: IPlugin['type']): IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined => {
+	const getByPluginType = (type: IPlugin['type']): IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
@@ -96,7 +96,7 @@ export const usePagesPlugins = (): IUsePagesPlugins => {
 	return {
 		plugins,
 		options,
-		getByName,
+		getByPluginType,
 		getByType,
 		getElement,
 	};

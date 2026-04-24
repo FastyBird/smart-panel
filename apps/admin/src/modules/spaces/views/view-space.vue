@@ -43,7 +43,17 @@
 		>
 			<template #extra>
 				<div class="flex items-center">
+					<!--
+						Add-device / add-scene / add-display buttons gate on the
+						plugin's contributed dialogs instead of a hardcoded type
+						check. A plugin that registers `spaceAddDeviceDialog` (or
+						the others) opts into the matching button; the current
+						home-control plugin registers all three. Synthetic master
+						/ entry and signage register none, so only the Edit
+						button renders for those types.
+					-->
 					<el-button
+						v-if="spaceAddDeviceDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -56,6 +66,7 @@
 						{{ t('spacesModule.detail.devices.add') }}
 					</el-button>
 					<el-button
+						v-if="spaceAddSceneDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -68,7 +79,7 @@
 						{{ t('spacesModule.detail.scenes.add') }}
 					</el-button>
 					<el-button
-						v-if="space?.type === SpaceType.ROOM"
+						v-if="spaceAddDisplayDialog"
 						type="primary"
 						plain
 						class="px-4! ml-2!"
@@ -113,12 +124,22 @@
 		<template v-if="space">
 			<space-detail :space="space" />
 
-			<!-- Tabs -->
+			<!--
+				The tabs below are plugin-dispatched: only types whose plugin
+				contributes the matching `space*Section` / `space*Dialog`
+				component see the corresponding tab/button. Home-control
+				contributes all three tabs plus the add dialogs; synthetic
+				master / entry / signage plugins contribute none, so for
+				those the view renders only the generic `<space-detail>`
+				block above.
+			-->
 			<el-tabs
+				v-if="hasDomainsTab || spaceAddDeviceDialog || spaceAddSceneDialog || spaceAddDisplayDialog"
 				v-model="activeTab"
 				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 			>
 				<el-tab-pane
+					v-if="spaceDomainsSection"
 					name="domains"
 					class="h-full overflow-hidden"
 				>
@@ -130,14 +151,15 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<space-domains-section
-							ref="domainsSectionRef"
+						<component
+							:is="spaceDomainsSection"
 							:space="space"
 						/>
 					</el-scrollbar>
 				</el-tab-pane>
 
 				<el-tab-pane
+					v-if="spaceAddDeviceDialog"
 					name="devices"
 					class="h-full overflow-hidden"
 				>
@@ -151,7 +173,6 @@
 					<el-scrollbar class="h-full">
 						<el-card shadow="never" body-class="p-0!">
 							<space-devices-section
-								ref="devicesSectionRef"
 								:space-id="space.id"
 								:space-type="space.type"
 								@open-add-dialog="onAddDevice"
@@ -161,6 +182,7 @@
 				</el-tab-pane>
 
 				<el-tab-pane
+					v-if="spaceScenesSection"
 					name="scenes"
 					class="h-full overflow-hidden"
 				>
@@ -173,8 +195,8 @@
 
 					<el-scrollbar class="h-full">
 						<el-card shadow="never" body-class="p-0!">
-							<space-scenes-section
-								ref="scenesSectionRef"
+							<component
+								:is="spaceScenesSection"
 								:space-id="space.id"
 								@open-add-dialog="onAddScene"
 							/>
@@ -183,7 +205,7 @@
 				</el-tab-pane>
 
 				<el-tab-pane
-					v-if="space?.type === SpaceType.ROOM"
+					v-if="spaceAddDisplayDialog"
 					name="displays"
 					class="h-full overflow-hidden"
 				>
@@ -216,26 +238,30 @@
 		<component :is="Component" />
 	</router-view>
 
-	<!-- Add Device Dialog -->
-	<space-add-device-dialog
-		v-if="space"
+	<!--
+		Dialogs are plugin-dispatched mirroring the tabs above. `v-model:visible`
+		is preserved so each dialog handles its own open/close state.
+	-->
+	<component
+		:is="spaceAddDeviceDialog"
+		v-if="space && spaceAddDeviceDialog"
 		v-model:visible="showAddDeviceDialog"
 		:space-id="space.id"
 		:space-type="space.type"
 		@device-added="onDeviceAdded"
 	/>
 
-	<!-- Add Scene Dialog -->
-	<space-add-scene-dialog
-		v-if="space"
+	<component
+		:is="spaceAddSceneDialog"
+		v-if="space && spaceAddSceneDialog"
 		v-model:visible="showAddSceneDialog"
 		:space-id="space.id"
 		@scene-added="onSceneAdded"
 	/>
 
-	<!-- Add Display Dialog -->
-	<space-add-display-dialog
-		v-if="space && space.type === SpaceType.ROOM"
+	<component
+		:is="spaceAddDisplayDialog"
+		v-if="space && spaceAddDisplayDialog"
 		v-model:visible="showAddDisplayDialog"
 		:space-id="space.id"
 		@display-added="onDisplayAdded"
@@ -328,18 +354,9 @@ import {
 import { useDevices } from '../../devices/composables/useDevices';
 import { useDisplays } from '../../displays/composables/useDisplays';
 import { useScenes } from '../../scenes/composables/useScenes';
-import {
-	SpaceAddDeviceDialog,
-	SpaceAddDisplayDialog,
-	SpaceAddSceneDialog,
-	SpaceDetail,
-	SpaceDevicesSection,
-	SpaceDisplaysSection,
-	SpaceDomainsSection,
-	SpaceScenesSection,
-} from '../components/components';
-import { useSpace } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
+import { SpaceDetail, SpaceDevicesSection, SpaceDisplaysSection } from '../components/components';
+import { useSpace, useSpacesPlugins } from '../composables';
+import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { type ISpace } from '../store';
 
@@ -372,7 +389,35 @@ const { fetchDevices, loaded: devicesLoaded } = useDevices();
 const { fetchScenes, loaded: scenesLoaded } = useScenes();
 const { fetchDisplays, isLoaded: displaysLoaded } = useDisplays();
 
+const { getElement } = useSpacesPlugins();
+
 const isLoading = computed<boolean>(() => fetching.value);
+
+// Plugin-contributed detail sections + add-dialogs. Each space type's
+// plugin registers whichever of these it wants on its `element.components`:
+// home-control contributes all five (domains tab, scenes tab, add-device /
+// add-scene / add-display dialogs); synthetic master / entry and signage
+// register none so the view falls back to its generic detail-only layout.
+// Replaces the hardcoded `isHomeControlSpace` gate that previously decided
+// who saw the tabs and dialogs.
+const pluginComponents = computed(() => {
+	if (!space.value) {
+		return {};
+	}
+	return getElement(space.value.type)?.components ?? {};
+});
+
+const spaceDomainsSection = computed(() => pluginComponents.value.spaceDomainsSection);
+const spaceScenesSection = computed(() => pluginComponents.value.spaceScenesSection);
+const spaceAddDeviceDialog = computed(() => pluginComponents.value.spaceAddDeviceDialog);
+const spaceAddSceneDialog = computed(() => pluginComponents.value.spaceAddSceneDialog);
+const spaceAddDisplayDialog = computed(() => pluginComponents.value.spaceAddDisplayDialog);
+
+// A space has a domains tab iff its plugin contributes one. This replaces
+// the old hardcoded `type === ROOM || ZONE` check — adding a new
+// interactive space type in the future only requires registering
+// `spaceDomainsSection` on its plugin element.
+const hasDomainsTab = computed<boolean>((): boolean => spaceDomainsSection.value !== undefined);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
@@ -389,22 +434,28 @@ const showAddDeviceDialog = ref<boolean>(false);
 const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 
-// Component refs
-const domainsSectionRef = ref<InstanceType<typeof SpaceDomainsSection> | null>(null);
-const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
-const scenesSectionRef = ref<InstanceType<typeof SpaceScenesSection> | null>(null);
+// Only the displays section exposes an imperative `fetchDisplays()` that
+// the add-display callback needs to invoke. The other section refs that
+// lived here historically were never read, so they're dropped.
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 
 const isSpaceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACE;
 });
 
-const spaceIcon = computed<string>((): string => {
-	if (space.value?.icon) {
-		return space.value.icon;
-	}
-	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
-});
+// Defer to the shared `getSpaceIcon` helper so this view's iconography
+// stays consistent with `view-space-edit.vue` and the scenes module, and
+// so new plugin-contributed space types (MASTER / ENTRY / SIGNAGE) pick
+// up their own icons instead of falling back to the old zone marker.
+const spaceIcon = computed<string>((): string =>
+	space.value
+		? getSpaceIcon({
+				icon: space.value.icon ?? null,
+				category: (space.value.category ?? null) as SpaceRoomCategory | SpaceZoneCategory | null,
+				type: space.value.type,
+			})
+		: 'mdi:shape-outline',
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

@@ -1,0 +1,9 @@
+{
+	"plugin": {
+		"name": "Przestrzeń główna",
+		"description": "Udostępnia syntetyczną przestrzeń Główna — powierzchnię przeglądu całego domu, która agreguje stan wszystkich pokoi."
+	},
+	"typeLabels": {
+		"master": "Przegląd domu (master)"
+	}
+}

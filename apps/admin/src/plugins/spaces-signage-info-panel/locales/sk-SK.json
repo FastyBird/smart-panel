@@ -1,0 +1,66 @@
+{
+	"plugin": {
+		"name": "Informačný panel (signage)",
+		"description": "Informačná obrazovka len na čítanie s hodinami, počasím, oznámeniami a voliteľným externým zdrojom."
+	},
+	"spaceType": {
+		"label": "Informačný panel (signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Rozloženie",
+			"options": {
+				"clock_weather": "Hodiny + počasie",
+				"clock_weather_announcements": "Hodiny + počasie + oznámenia",
+				"full": "Úplné (všetky sekcie)"
+			}
+		},
+		"sections": {
+			"title": "Sekcie",
+			"description": "Zapnite alebo vypnite jednotlivé sekcie panela.",
+			"showClock": "Hodiny",
+			"showWeather": "Počasie",
+			"showAnnouncements": "Oznámenia",
+			"showFeed": "Externý zdroj"
+		},
+		"weatherLocation": {
+			"label": "Lokalita počasia",
+			"placeholder": "Vyberte lokalitu počasia"
+		},
+		"feedUrl": {
+			"label": "URL zdroja",
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Zadajte prosím platnú URL adresu (vrátane protokolu, napr. https://)."
+			}
+		}
+	},
+	"announcements": {
+		"heading": "Oznámenia",
+		"empty": "Žiadne oznámenia. Pridajte prvé nižšie.",
+		"add": "Pridať oznámenie",
+		"fields": {
+			"title": "Názov",
+			"body": "Text",
+			"icon": "Ikona",
+			"priority": "Priorita",
+			"order": "Poradie",
+			"activeFrom": "Aktívne od",
+			"activeUntil": "Aktívne do"
+		},
+		"actions": {
+			"save": "Uložiť",
+			"edit": "Upraviť",
+			"delete": "Zmazať",
+			"cancel": "Zrušiť"
+		},
+		"messages": {
+			"created": "Oznámenie vytvorené.",
+			"updated": "Oznámenie aktualizované.",
+			"deleted": "Oznámenie zmazané.",
+			"saveFailed": "Uloženie oznámenia zlyhalo.",
+			"deleteFailed": "Zmazanie oznámenia zlyhalo.",
+			"confirmDelete": "Zmazať toto oznámenie?"
+		}
+	}
+}

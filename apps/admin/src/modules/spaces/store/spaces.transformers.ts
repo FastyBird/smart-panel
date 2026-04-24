@@ -12,23 +12,35 @@ export type ApiSpace = NonNullable<operations['get-spaces-module-spaces']['respo
 type ApiSpaceCreate = operations['create-spaces-module-space']['requestBody']['content']['application/json']['data'];
 type ApiSpaceUpdate = NonNullable<operations['update-spaces-module-space']['requestBody']>['content']['application/json']['data'];
 
-const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
+export const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
 	switch (apiType) {
 		case SpacesModuleCreateSpaceType.room:
 			return SpaceType.ROOM;
 		case SpacesModuleCreateSpaceType.zone:
 			return SpaceType.ZONE;
+		case SpacesModuleCreateSpaceType.master:
+			return SpaceType.MASTER;
+		case SpacesModuleCreateSpaceType.entry:
+			return SpaceType.ENTRY;
+		case SpacesModuleCreateSpaceType.signage_info_panel:
+			return SpaceType.SIGNAGE_INFO_PANEL;
 		default:
 			return SpaceType.ROOM;
 	}
 };
 
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
+export const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
 	switch (spaceType) {
 		case SpaceType.ROOM:
 			return SpacesModuleCreateSpaceType.room;
 		case SpaceType.ZONE:
 			return SpacesModuleCreateSpaceType.zone;
+		case SpaceType.MASTER:
+			return SpacesModuleCreateSpaceType.master;
+		case SpaceType.ENTRY:
+			return SpacesModuleCreateSpaceType.entry;
+		case SpaceType.SIGNAGE_INFO_PANEL:
+			return SpacesModuleCreateSpaceType.signage_info_panel;
 		default:
 			return SpacesModuleCreateSpaceType.room;
 	}

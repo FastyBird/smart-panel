@@ -2,7 +2,9 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
+import type { IPlugin, IPluginElement } from '../../../common';
 import type { FormResultType, SpaceType } from '../spaces.constants';
+import type { ISpacePluginRoutes, ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace, ISpaceEditData } from '../store/spaces.store.types';
 
 import type { SpaceAddFormSchemaType, SpaceEditFormSchemaType } from './schemas';
@@ -73,4 +75,12 @@ export interface IUseSpaceEditForm<TForm extends ISpaceEditForm = ISpaceEditForm
 	submit: () => Promise<'saved'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
+}
+
+export interface IUseSpacesPlugins {
+	plugins: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>[]>;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
+	getByPluginType: (type: IPlugin['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined;
 }

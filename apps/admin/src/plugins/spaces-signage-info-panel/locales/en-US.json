@@ -1,0 +1,66 @@
+{
+	"plugin": {
+		"name": "Information Panel Signage",
+		"description": "Read-only, full-screen signage surface with clock, weather, announcements, and optional external feed."
+	},
+	"spaceType": {
+		"label": "Information Panel (signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Layout",
+			"options": {
+				"clock_weather": "Clock + weather",
+				"clock_weather_announcements": "Clock + weather + announcements",
+				"full": "Full (all sections)"
+			}
+		},
+		"sections": {
+			"title": "Sections",
+			"description": "Enable or disable each section of the panel.",
+			"showClock": "Clock",
+			"showWeather": "Weather",
+			"showAnnouncements": "Announcements",
+			"showFeed": "External feed"
+		},
+		"weatherLocation": {
+			"label": "Weather location",
+			"placeholder": "Select a weather location"
+		},
+		"feedUrl": {
+			"label": "Feed URL",
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Please enter a valid URL (including the scheme, e.g. https://)."
+			}
+		}
+	},
+	"announcements": {
+		"heading": "Announcements",
+		"empty": "No announcements yet. Add one below.",
+		"add": "Add announcement",
+		"fields": {
+			"title": "Title",
+			"body": "Body",
+			"icon": "Icon",
+			"priority": "Priority",
+			"order": "Order",
+			"activeFrom": "Active from",
+			"activeUntil": "Active until"
+		},
+		"actions": {
+			"save": "Save",
+			"edit": "Edit",
+			"delete": "Delete",
+			"cancel": "Cancel"
+		},
+		"messages": {
+			"created": "Announcement created.",
+			"updated": "Announcement updated.",
+			"deleted": "Announcement deleted.",
+			"saveFailed": "Failed to save announcement.",
+			"deleteFailed": "Failed to delete announcement.",
+			"confirmDelete": "Delete this announcement?"
+		}
+	}
+}

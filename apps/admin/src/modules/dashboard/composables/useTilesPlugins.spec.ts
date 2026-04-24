@@ -83,15 +83,15 @@ describe('usePlugins', () => {
 		]);
 	});
 
-	it('getByName returns correct plugin', () => {
-		const { getByName } = useTilesPlugins();
-		const plugin = getByName('test-plugin');
+	it('getByPluginType returns correct plugin', () => {
+		const { getByPluginType } = useTilesPlugins();
+		const plugin = getByPluginType('test-plugin');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 
-	it('getByName returns undefined for unknown plugin', () => {
-		const { getByName } = useTilesPlugins();
-		const plugin = getByName('nonexistent');
+	it('getByPluginType returns undefined for unknown plugin', () => {
+		const { getByPluginType } = useTilesPlugins();
+		const plugin = getByPluginType('nonexistent');
 		expect(plugin).toBeUndefined();
 	});
 

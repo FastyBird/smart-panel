@@ -11,11 +11,12 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { SpaceType } from '../../spaces/spaces.constants';
-import { DISPLAYS_MODULE_NAME, DisplayRole, EventType, HomeMode } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException, DisplaysValidationException } from '../displays.exceptions';
 import { UpdateDisplayDto } from '../dto/update-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
+
+import { SpaceSelectionValidatorRegistryService } from './space-selection-validator-registry.service';
 
 @Injectable()
 export class DisplaysService {
@@ -30,6 +31,7 @@ export class DisplaysService {
 		private readonly pageRepository: Repository<PageEntity>,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly spaceSelectionValidatorRegistry: SpaceSelectionValidatorRegistryService,
 	) {}
 
 	async findAll(): Promise<DisplayEntity[]> {
@@ -96,14 +98,13 @@ export class DisplaysService {
 
 		const dtoInstance = await this.validateDto(UpdateDisplayDto, updateDto);
 
-		// Determine the effective role and roomId after the update
-		const effectiveRole = dtoInstance.role ?? display.role;
-		const effectiveRoomId = dtoInstance.room_id !== undefined ? dtoInstance.room_id : display.roomId;
+		// Determine the effective spaceId and home mode/page after the update
+		const effectiveSpaceId = dtoInstance.space_id !== undefined ? dtoInstance.space_id : display.spaceId;
 		const effectiveHomeMode = dtoInstance.home_mode ?? display.homeMode;
 		const effectiveHomePageId = dtoInstance.home_page_id !== undefined ? dtoInstance.home_page_id : display.homePageId;
 
-		// Validate role/roomId combination
-		await this.validateRoleRoomCombination(effectiveRole, effectiveRoomId);
+		// Validate space selection (existence + plugin-contributed rules)
+		await this.validateSpaceSelection(effectiveSpaceId, display.id);
 
 		// Validate homeMode/homePageId combination
 		await this.validateHomeModePageCombination(effectiveHomeMode, effectiveHomePageId);
@@ -143,14 +144,14 @@ export class DisplaysService {
 				// Simple value comparison
 				return newValue !== existingValue;
 			}) ||
-			(dtoInstance.room_id !== undefined && display.roomId !== (dtoInstance.room_id ?? null)) ||
+			(dtoInstance.space_id !== undefined && display.spaceId !== (dtoInstance.space_id ?? null)) ||
 			(dtoInstance.home_page_id !== undefined && display.homePageId !== (dtoInstance.home_page_id ?? null));
 
 		Object.assign(display, updateFields);
 
-		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
-		if (dtoInstance.room_id === null) {
-			display.roomId = null;
+		// Explicitly handle space_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.space_id === null) {
+			display.spaceId = null;
 		}
 
 		// Explicitly handle home_page_id being set to null
@@ -191,34 +192,22 @@ export class DisplaysService {
 	}
 
 	/**
-	 * Validates the role/roomId combination:
-	 * - role=room requires roomId pointing to a space with type=room
-	 * - role=master/entry must not have roomId
+	 * Validates that the target space exists and passes every plugin-registered
+	 * validator. A `null` spaceId is always valid (unassigned display).
 	 */
-	private async validateRoleRoomCombination(role: DisplayRole, roomId: string | null | undefined): Promise<void> {
-		if (role === DisplayRole.ROOM) {
-			// Room role allows null roomId (unassigned state) but validates if provided
-			if (roomId) {
-				// Validate the room exists and is of type 'room'
-				const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+	private async validateSpaceSelection(spaceId: string | null | undefined, displayId: string | null): Promise<void> {
+		if (!spaceId) {
+			return;
+		}
 
-				if (!space) {
-					throw new DisplaysValidationException('The specified room does not exist.');
-				}
+		const space = await this.spaceRepository.findOne({ where: { id: spaceId } });
 
-				if (space.type !== SpaceType.ROOM) {
-					throw new DisplaysValidationException(
-						'Display with role "room" can only be assigned to a space of type "room", not a zone.',
-					);
-				}
-			}
-		} else {
-			// Master/Entry roles must not have a roomId
-			if (roomId) {
-				throw new DisplaysValidationException(
-					`Display with role "${role}" cannot be assigned to a room. Room assignment is only for displays with "room" role.`,
-				);
-			}
+		if (!space) {
+			throw new DisplaysValidationException('The specified space does not exist.');
+		}
+
+		for (const validator of this.spaceSelectionValidatorRegistry.getValidators()) {
+			await validator.validate(space, displayId);
 		}
 	}
 

@@ -17,7 +17,7 @@
 						<el-input v-model="model.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
 					</el-form-item>
 
-					<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
+					<el-form-item v-if="!props.type" :label="t('spacesModule.fields.spaces.type.title')" prop="type">
 						<el-select v-model="model.type">
 							<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
 							<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
@@ -204,20 +204,31 @@ import {
 	SpaceType,
 	type SpaceZoneCategory,
 } from '../spaces.constants';
+import type { ISpace } from '../store';
 
-import { type ISpaceAddFormProps, spaceAddFormEmits } from './space-add-form.types';
+import { type ISpaceAddFormProps } from './space-add-form.types';
 
 const props = withDefaults(defineProps<ISpaceAddFormProps>(), {
 	hideActions: false,
 });
 
-const emit = defineEmits(spaceAddFormEmits);
+const emit = defineEmits<{
+	(e: 'saved', space: ISpace): void;
+	(e: 'cancel'): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+}>();
 
 const { t } = useI18n();
 
 const { zoneSpaces: availableZones } = useSpaces();
 
-// Use the form composable
+// Use the form composable. Seed it with the picker-chosen `type` (if any)
+// so the composable's `initialModel` snapshot captures the correct subtype
+// up front — otherwise the internal `formChanged` watcher would immediately
+// flag ZONE as dirty against a ROOM baseline and prompt "Discard changes?"
+// before the user edits anything. The view re-mounts this form via
+// `:key="selectedType"` whenever the picker changes type, so this one-shot
+// seed per mount is sufficient — no runtime `watch(props.type)` needed.
 const {
 	model,
 	formEl,
@@ -225,7 +236,7 @@ const {
 	submit,
 	formResult,
 	createdSpace,
-} = useSpaceAddForm({ id: uuid().toString() });
+} = useSpaceAddForm({ id: uuid().toString(), type: props.type });
 
 // Local ref for template, synced with composable's formEl
 const formElRef = ref<FormInstance>();

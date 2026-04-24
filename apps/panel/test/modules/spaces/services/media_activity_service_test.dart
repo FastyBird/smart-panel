@@ -1,5 +1,5 @@
-import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
-import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/media_activity/media_activity.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/media_activity_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A minimal fake repository that exposes data manipulation for testing.

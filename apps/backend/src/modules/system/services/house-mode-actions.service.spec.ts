@@ -3,10 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
+import { LightingIntentType, LightingMode } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
 import { ConfigService } from '../../config/services/config.service';
-import { SpaceIntentService } from '../../spaces/services/space-intent.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
 import { SystemConfigModel } from '../models/config.model';
 import { EventType, HouseMode } from '../system.constants';
 

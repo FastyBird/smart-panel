@@ -1,0 +1,404 @@
+{
+	"plugin": {
+		"name": "Heimsteuerungs-Räume",
+		"description": "Fügt physische Räume und Zonen mit Steuerung für Beleuchtung, Klima, Beschattung, Sensoren und Medien hinzu."
+	},
+	"typeLabels": {
+		"room": "Raum",
+		"zone": "Zone"
+	},
+	"lightingRoles": {
+		"main": "Haupt",
+		"task": "Aufgabe",
+		"ambient": "Ambiente",
+		"accent": "Akzent",
+		"night": "Nacht",
+		"other": "Sonstige",
+		"hidden": "Verborgen",
+		"unassigned": "Nicht zugewiesen",
+		"descriptions": {
+			"main": "Primäre Beleuchtung für den Bereich, typischerweise Decken- oder zentrale Leuchten für die allgemeine Beleuchtung.",
+			"task": "Gezielte Beleuchtung für bestimmte Aktivitäten wie Lesen, Kochen oder Arbeiten.",
+			"ambient": "Sanfte Hintergrundbeleuchtung zur Schaffung von Atmosphäre und Behaglichkeit.",
+			"accent": "Dekorative Beleuchtung zur Hervorhebung von Merkmalen oder zur Schaffung visueller Akzente.",
+			"night": "Schwache Beleuchtung für die nächtliche Navigation und Sicherheit.",
+			"other": "Beleuchtung, die nicht in Standardkategorien passt.",
+			"hidden": "Verborgene Lichter werden von der Panel-Oberfläche und der absichtsbasierten Steuerung ausgeschlossen."
+		}
+	},
+	"climateRoles": {
+		"heating_only": "Nur Heizen",
+		"cooling_only": "Nur Kühlen",
+		"auto": "Automatisch",
+		"auxiliary": "Zusatz",
+		"sensor": "Sensor",
+		"hidden": "Verborgen",
+		"unassigned": "Nicht zugewiesen",
+		"descriptions": {
+			"heating_only": "Gerät wird nur zum Heizen im Klimabereich verwendet.",
+			"cooling_only": "Gerät wird nur zum Kühlen im Klimabereich verwendet.",
+			"auto": "Gerät kann automatisch zum Heizen und Kühlen verwendet werden.",
+			"auxiliary": "Zusätzliche Klimageräte wie Luftentfeuchter, Luftbefeuchter, Luftreiniger und Ventilatoren.",
+			"sensor": "Klimasensor, der Messwerte (Temperatur, Luftfeuchtigkeit, Luftqualität usw.) für den Bereich liefert.",
+			"hidden": "Verborgene Geräte werden von der Klima-Oberfläche und der Steuerung ausgeschlossen."
+		}
+	},
+	"coversRoles": {
+		"primary": "Primär",
+		"blackout": "Verdunkelung",
+		"sheer": "Transparent",
+		"outdoor": "Außen",
+		"hidden": "Verborgen",
+		"unassigned": "Nicht zugewiesen",
+		"descriptions": {
+			"primary": "Hauptfensterabdeckung für den Bereich, typischerweise für allgemeinen Sichtschutz und Lichtkontrolle.",
+			"blackout": "Lichtblockierende Abdeckungen für vollständige Dunkelheit, ideal für Schlafzimmer oder Medienräume.",
+			"sheer": "Halbtransparente Abdeckungen, die Privatsphäre bieten und gleichzeitig natürliches Licht durchlassen.",
+			"outdoor": "Außenrollläden, Markisen oder Pergolaabdeckungen für den Außenschutz.",
+			"hidden": "Verborgene Abdeckungen werden von der Panel-Oberfläche und der absichtsbasierten Steuerung ausgeschlossen."
+		}
+	},
+	"sensorRoles": {
+		"environment": "Umgebung",
+		"safety": "Sicherheit",
+		"security": "Überwachung",
+		"air_quality": "Luftqualität",
+		"energy": "Energie",
+		"other": "Sonstige",
+		"hidden": "Verborgen",
+		"descriptions": {
+			"environment": "Umgebungssensoren wie Temperatur, Luftfeuchtigkeit, Druck oder Lichtstärke.",
+			"safety": "Sicherheitssensoren wie Rauch-, Gas-, Leck- oder Kohlenmonoxid-Melder.",
+			"security": "Sicherheits- und Anwesenheitssensoren wie Bewegungs-, Belegungs- und Kontaktsensoren.",
+			"air_quality": "Luftqualitätssensoren einschließlich CO2, VOC, Feinstaub und andere Schadstoffe.",
+			"energy": "Energieüberwachungssensoren wie Leistungs- oder Energieverbrauch.",
+			"other": "Sensoren, die keiner bestimmten Kategorie zugeordnet sind.",
+			"hidden": "Verborgene Sensoren werden von der Oberfläche ausgeschlossen."
+		},
+		"categories": {
+			"temperature": "Temperatur",
+			"humidity": "Luftfeuchtigkeit",
+			"pressure": "Druck",
+			"illuminance": "Beleuchtungsstärke",
+			"smoke": "Rauch",
+			"gas": "Gas",
+			"carbon_monoxide": "Kohlenmonoxid",
+			"carbon_dioxide": "Kohlendioxid",
+			"leak": "Leck",
+			"motion": "Bewegung",
+			"occupancy": "Belegung",
+			"contact": "Kontakt",
+			"air_quality": "Luftqualität",
+			"air_particulate": "Feinstaub",
+			"nitrogen_dioxide": "Stickstoffdioxid",
+			"ozone": "Ozon",
+			"sulphur_dioxide": "Schwefeldioxid",
+			"volatile_organic_compounds": "Flüchtige organische Verbindungen",
+			"electrical_energy": "Energie",
+			"electrical_generation": "Erzeugung",
+			"electrical_power": "Leistung",
+			"battery": "Batterie"
+		}
+	},
+	"media": {
+		"endpointTypes": {
+			"display": "Display",
+			"audio_output": "Audioausgang",
+			"source": "Quelle",
+			"remote_target": "Fernziel"
+		},
+		"capabilities": {
+			"power": "Strom",
+			"input": "Eingang",
+			"volume": "Lautstärke",
+			"playback": "Wiedergabe",
+			"track": "Titel",
+			"remote": "Fernbedienung",
+			"mute": "Stummschaltung"
+		},
+		"activityLabels": {
+			"watch": "Schauen",
+			"listen": "Hören",
+			"gaming": "Spielen",
+			"background": "Hintergrund",
+			"off": "Aus"
+		},
+		"activities": {
+			"loading": "Medienkonfiguration wird geladen...",
+			"description": "Weisen Sie jeder Medienaktivität Display-, Audio-, Quell- und Fernbedienungsgeräte zu. Änderungen werden automatisch gespeichert.",
+			"applyDefaults": "Standards anwenden",
+			"applyDefaultsHint": "Weist Endpunkte automatisch basierend auf Gerätetypen und Fähigkeiten zu",
+			"defaultsApplied": "Standardzuordnungen wurden angewendet.",
+			"defaultsFailed": "Standardzuordnungen konnten nicht angewendet werden.",
+			"selectPrompt": "Wählen Sie eine Aktivität aus der Liste, um ihre Zuordnungen zu konfigurieren.",
+			"selectEndpoint": "Endpunkt auswählen...",
+			"save": "Speichern",
+			"reset": "Zurücksetzen",
+			"saveError": "Zuordnung konnte nicht gespeichert werden",
+			"savedSuccessfully": "Zuordnung erfolgreich gespeichert.",
+			"slots": {
+				"display": "Display",
+				"audio": "Audioausgang",
+				"source": "Quelle",
+				"remote": "Fernziel"
+			},
+			"overrides": {
+				"displayInput": "Display-Eingangsvoreinstellung",
+				"displayInputPlaceholder": "z. B. HDMI1, Apps",
+				"audioInput": "Audio-Eingangsvoreinstellung",
+				"audioInputPlaceholder": "z. B. HDMI1, ARC",
+				"sourceInput": "Quell-Eingangsvoreinstellung",
+				"sourceInputPlaceholder": "z. B. HDMI1, Apps",
+				"audioVolume": "Audio-Lautstärkevoreinstellung"
+			},
+			"mediaInputSources": {
+				"hdmi1": "HDMI 1",
+				"hdmi2": "HDMI 2",
+				"hdmi3": "HDMI 3",
+				"hdmi4": "HDMI 4",
+				"hdmi5": "HDMI 5",
+				"hdmi6": "HDMI 6",
+				"arc": "ARC",
+				"earc": "eARC",
+				"tv": "TV",
+				"cable": "Kabel",
+				"satellite": "Satellit",
+				"antenna": "Antenne",
+				"av1": "AV 1",
+				"av2": "AV 2",
+				"component": "Component",
+				"vga": "VGA",
+				"dvi": "DVI",
+				"usb": "USB",
+				"bluetooth": "Bluetooth",
+				"wifi": "Wi-Fi",
+				"airplay": "AirPlay",
+				"cast": "Chromecast",
+				"dlna": "DLNA",
+				"miracast": "Miracast",
+				"app_netflix": "Netflix",
+				"app_youtube": "YouTube",
+				"app_spotify": "Spotify",
+				"app_prime_video": "Prime Video",
+				"app_disney_plus": "Disney+",
+				"app_hbo_max": "HBO Max",
+				"app_apple_tv": "Apple TV",
+				"app_plex": "Plex",
+				"app_kodi": "Kodi",
+				"other": "Sonstige"
+			},
+			"status": {
+				"configured": "Konfiguriert",
+				"incomplete": "Unvollständig",
+				"unconfigured": "Nicht eingerichtet"
+			},
+			"run": "Ausführen",
+			"deactivate": "Deaktivieren",
+			"refreshStatus": "Status aktualisieren",
+			"rerun": "Erneut ausführen",
+			"copyDebugJson": "Debug-JSON kopieren",
+			"copiedToClipboard": "Debug-JSON in die Zwischenablage kopiert.",
+			"activateSuccess": "Aktivität erfolgreich aktiviert.",
+			"activateFailed": "Aktivierung der Aktivität fehlgeschlagen.",
+			"deactivateSuccess": "Aktivität deaktiviert.",
+			"deactivateFailed": "Deaktivierung der Aktivität fehlgeschlagen.",
+			"fetchFailed": "Aktualisierung des Aktivitätsstatus fehlgeschlagen.",
+			"preview": "Vorschau",
+			"previewFailed": "Vorschau der Aktivität fehlgeschlagen.",
+			"previewDialog": {
+				"title": "Ausführungsplan-Vorschau",
+				"resolvedDevices": "Aufgelöste Geräte",
+				"executionPlan": "Ausführungsplan",
+				"step": "#",
+				"action": "Aktion",
+				"device": "Gerät",
+				"critical": "Kritisch",
+				"criticalYes": "Kritisch",
+				"criticalNo": "Optional",
+				"warnings": "Warnungen & übersprungene Schritte",
+				"noSteps": "Keine Ausführungsschritte im Plan.",
+				"close": "Schließen"
+			},
+			"activePanel": {
+				"title": "Aktiver Zustand",
+				"currentActivity": "Aktuelle Aktivität",
+				"none": "Keine",
+				"state": "Zustand",
+				"activatedAt": "Aktiviert am",
+				"updatedAt": "Aktualisiert am",
+				"resolvedDevices": "Aufgelöste Geräte",
+				"display": "Display",
+				"audio": "Audio",
+				"source": "Quelle",
+				"remote": "Fernbedienung"
+			},
+			"failures": {
+				"title": "Fehler",
+				"total": "Schritte gesamt",
+				"succeeded": "Erfolgreich",
+				"failed": "Fehlgeschlagen",
+				"stepIndex": "Schritt",
+				"device": "Gerät",
+				"property": "Eigenschaft",
+				"reason": "Grund"
+			},
+			"activationState": {
+				"activating": "Wird aktiviert",
+				"active": "Aktiv",
+				"failed": "Fehlgeschlagen",
+				"deactivated": "Deaktiviert"
+			}
+		}
+	},
+	"dialogs": {
+		"lightingRoles": {
+			"title": "Beleuchtungsrollen bearbeiten"
+		},
+		"climateRoles": {
+			"title": "Klimarollen bearbeiten"
+		},
+		"coversRoles": {
+			"title": "Abdeckungsrollen bearbeiten"
+		},
+		"sensorRoles": {
+			"title": "Sensorrollen bearbeiten"
+		},
+		"mediaActivities": {
+			"title": "Medienaktivitäten bearbeiten"
+		}
+	},
+	"fields": {
+		"spaces": {
+			"lightingRoles": {
+				"title": "Beleuchtungsrollen",
+				"description": "Weisen Sie Lichtern Rollen zu, damit das Panel versteht, wie jedes Licht typischerweise verwendet wird (Arbeit, Entspannung, Nacht)",
+				"noLights": "Keine Lichter in diesem Bereich gefunden",
+				"role": {
+					"title": "Rolle",
+					"placeholder": "Rolle auswählen"
+				},
+				"applyDefaults": "Standards anwenden",
+				"applyDefaultsHint": "Setzt das erste Licht als Haupt, andere als Ambiente"
+			},
+			"climateRoles": {
+				"title": "Klimarollen",
+				"description": "Weisen Sie Klimageräten Rollen zu, damit das Panel versteht, wie jedes Gerät Temperatur und Luftqualität steuert",
+				"noDevices": "Keine Klimageräte in diesem Bereich gefunden",
+				"role": {
+					"title": "Rolle",
+					"placeholder": "Rolle auswählen"
+				},
+				"applyDefaults": "Standards anwenden",
+				"applyDefaultsHint": "Weist Rollen automatisch basierend auf dem Gerätetyp zu"
+			},
+			"coversRoles": {
+				"title": "Abdeckungsrollen",
+				"description": "Weisen Sie Fensterabdeckungen Rollen zu, damit das Panel versteht, wie jede Abdeckung verwendet wird (primär, Verdunkelung, transparent)",
+				"noCovers": "Keine Fensterabdeckungen in diesem Bereich gefunden",
+				"role": {
+					"title": "Rolle",
+					"placeholder": "Rolle auswählen"
+				},
+				"applyDefaults": "Standards anwenden",
+				"applyDefaultsHint": "Setzt die erste Abdeckung als Primär, andere basierend auf dem Typ"
+			},
+			"sensorRoles": {
+				"title": "Sensorrollen",
+				"description": "Weisen Sie Sensorkanälen Rollen zu, damit das Panel Umgebungs-, Sicherheits-, Luftqualitäts- und Energiemessungen gruppieren kann.",
+				"noSensors": "Keine Sensoren in diesem Bereich gefunden",
+				"channel": {
+					"title": "Kanal"
+				},
+				"role": {
+					"title": "Rolle",
+					"placeholder": "Rolle auswählen"
+				},
+				"applyDefaults": "Standards anwenden",
+				"applyDefaultsHint": "Weist Rollen automatisch basierend auf der Sensorkanal-Kategorie zu"
+			}
+		}
+	},
+	"detail": {
+		"lightingRoles": {
+			"title": "Beleuchtungsrollen",
+			"lightsAssigned": "Lichter zugewiesen",
+			"noRolesAssigned": "Noch keine Rollen zugewiesen"
+		},
+		"climateRoles": {
+			"title": "Klimarollen",
+			"devicesAssigned": "Geräte zugewiesen",
+			"noRolesAssigned": "Noch keine Rollen zugewiesen"
+		},
+		"coversRoles": {
+			"title": "Abdeckungsrollen",
+			"coversAssigned": "Abdeckungen zugewiesen",
+			"noRolesAssigned": "Noch keine Rollen zugewiesen"
+		},
+		"sensorRoles": {
+			"title": "Sensorrollen",
+			"sensorsAssigned": "Sensoren zugewiesen",
+			"noRolesAssigned": "Noch keine Rollen zugewiesen"
+		},
+		"mediaActivities": {
+			"title": "Medienaktivitäten",
+			"noActivities": "Noch keine Aktivitäten konfiguriert"
+		},
+		"domains": {
+			"notConfigured": "Nicht konfiguriert",
+			"lighting": {
+				"title": "Beleuchtung",
+				"description": "Konfigurieren Sie, wie Lichter in diesem Bereich verwendet werden — Haupt-, Arbeits-, Ambiente-, Akzent- und Nachtbeleuchtungsrollen."
+			},
+			"climate": {
+				"title": "Klima",
+				"description": "Weisen Sie Heiz-, Kühl- und Sensorrollen den Klimageräten in diesem Bereich zu."
+			},
+			"covers": {
+				"title": "Abdeckungen",
+				"description": "Legen Sie Rollen für Fensterabdeckungen fest — Primär-, Verdunkelungs-, Gardinen- und Außenjalousien."
+			},
+			"sensor": {
+				"title": "Sensoren",
+				"description": "Gruppieren Sie Sensorkanäle nach Zweck — Umgebung, Sicherheit, Schutz, Luftqualität und Energie."
+			},
+			"media": {
+				"title": "Medien",
+				"description": "Definieren Sie Medienaktivitäten wie Fernsehen, Musik hören und Spielen mit Geräte-Endpunkt-Routing."
+			}
+		},
+		"scenes": {
+			"loading": "Szenen werden geladen...",
+			"name": "Szenenname",
+			"category": "Kategorie",
+			"status": "Status",
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert",
+			"remove": "Entfernen",
+			"removeHeading": "Szene aus Bereich entfernen",
+			"reassign": "Neu zuweisen",
+			"reassigned": "Szene \"{name}\" wurde erfolgreich neu zugewiesen.",
+			"selectScene": "Szene zum Hinzufügen auswählen",
+			"selectSpace": "Bereich für Szene auswählen",
+			"searchPlaceholder": "Szenen suchen...",
+			"confirmRemove": "Szene \"{name}\" aus diesem Bereich entfernen?",
+			"assignedSpace": "Zugewiesener Bereich",
+			"noAvailable": "Keine Szenen zum Hinzufügen verfügbar",
+			"noFilteredScenes": "Keine Szenen entsprechen Ihrer Suche",
+			"assigned": "Szene \"{name}\" wurde diesem Bereich zugewiesen.",
+			"removed": "Szene \"{name}\" wurde aus diesem Bereich entfernt.",
+			"removeCanceled": "Szenenentfernung wurde abgebrochen.",
+			"empty": "Diesem Bereich sind keine Szenen zugewiesen",
+			"assign": "Zuweisen"
+		}
+	},
+	"edit": {
+		"sections": {
+			"smartOverrides": {
+				"lightingRoles": "Beleuchtungsrollen",
+				"climateRoles": "Klimarollen",
+				"coversRoles": "Abdeckungsrollen",
+				"sensorRoles": "Sensorrollen"
+			}
+		}
+	}
+}

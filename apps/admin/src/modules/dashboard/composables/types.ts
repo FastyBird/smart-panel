@@ -93,7 +93,7 @@ export interface IUsePagesPlugin {
 export interface IUsePagesPlugins {
 	plugins: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
-	getByName: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
+	getByPluginType: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined;
 }
@@ -165,7 +165,7 @@ export interface IUseTilesPlugin {
 export interface IUseTilesPlugins {
 	plugins: ComputedRef<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
-	getByName: (type: IPlugin['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
+	getByPluginType: (type: IPlugin['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
 }
@@ -229,7 +229,7 @@ export interface IUseDataSourcesPlugin {
 export interface IUseDataSourcesPlugins {
 	plugins: ComputedRef<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
-	getByName: (type: IPlugin['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
+	getByPluginType: (type: IPlugin['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
 }

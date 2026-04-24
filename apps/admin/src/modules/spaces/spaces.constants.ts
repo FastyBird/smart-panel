@@ -40,6 +40,9 @@ export const RouteNames = {
 export enum SpaceType {
 	ROOM = 'room',
 	ZONE = 'zone',
+	MASTER = 'master',
+	ENTRY = 'entry',
+	SIGNAGE_INFO_PANEL = 'signage_info_panel',
 }
 
 /**
@@ -151,7 +154,11 @@ export function getCategoriesForType(type: SpaceType): string[] {
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORIES;
 	}
-	return ALL_SPACE_CATEGORIES;
+	// Synthetic singletons (master, entry) and plugin-contributed types
+	// (signage_info_panel, etc.) don't accept categories — return an empty list
+	// so UI category pickers don't surface invalid options. Mirrors the
+	// rejection in `isValidCategoryForType`.
+	return [];
 }
 
 /**
@@ -167,6 +174,9 @@ export function isValidCategoryForType(category: string | null, type: SpaceType)
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORIES.includes(category as SpaceZoneCategory);
 	}
+	// Synthetic singletons (master, entry) and plugin-contributed space types
+	// don't accept categories — a non-null category on anything other than
+	// ROOM/ZONE is always rejected.
 	return false;
 }
 
@@ -417,11 +427,18 @@ export function getTemplatesForType(
 	if (type === SpaceType.ZONE) {
 		return SPACE_ZONE_CATEGORY_TEMPLATES;
 	}
-	return SPACE_ALL_CATEGORY_TEMPLATES;
+	// Synthetic singletons (master, entry) and plugin-contributed types
+	// (signage_info_panel, etc.) don't accept categories — return no templates
+	// so UI onboarding pickers don't surface invalid options. Mirrors
+	// `getCategoriesForType` / `isValidCategoryForType`.
+	return {};
 }
 
 /**
- * Get an icon for a space based on its custom icon, category template, or type default
+ * Get an icon for a space based on its custom icon, category template, or type default.
+ * Mirrors the per-type icon mapping in `view-space-edit.vue` so the iconography
+ * is consistent across the admin (this helper is also consumed from the scenes
+ * module for cross-module space references).
  */
 export function getSpaceIcon(space: { icon: string | null; category: SpaceRoomCategory | SpaceZoneCategory | null; type: SpaceType }): string {
 	if (space.icon) {
@@ -431,7 +448,22 @@ export function getSpaceIcon(space: { icon: string | null; category: SpaceRoomCa
 	if (categoryTemplate) {
 		return categoryTemplate.icon;
 	}
-	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
+	switch (space.type) {
+		case SpaceType.ROOM:
+			return 'mdi:door';
+		case SpaceType.ZONE:
+			return 'mdi:map-marker-radius';
+		case SpaceType.MASTER:
+			return 'mdi:home-outline';
+		case SpaceType.ENTRY:
+			return 'mdi:shield-home-outline';
+		case SpaceType.SIGNAGE_INFO_PANEL:
+			return 'mdi:monitor-dashboard';
+		default:
+			// Plugin-contributed space types fall through. Plugins should set
+			// `space.icon` to override; this fallback keeps the UI from breaking.
+			return 'mdi:shape-outline';
+	}
 }
 
 // Re-export role enums from OpenAPI-generated types (single source of truth)

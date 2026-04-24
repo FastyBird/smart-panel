@@ -43,7 +43,6 @@
 	"table": {
 		"columns": {
 			"name": "Nazwa",
-			"role": "Rola",
 			"macAddress": "Adres MAC",
 			"version": "Wersja",
 			"resolution": "Rozdzielczość",
@@ -96,16 +95,6 @@
 				"validation": {
 					"maxLength": "Nazwa musi mieć mniej niż 100 znaków"
 				}
-			},
-			"role": {
-				"title": "Rola wyświetlacza",
-				"description": "Przeznaczenie tego wyświetlacza w konfiguracji inteligentnego domu",
-				"options": {
-					"room": "Pokój (sterowanie jednym pokojem)",
-					"master": "Główny (przegląd całego domu)",
-					"entry": "Wejście (tryby domu i bezpieczeństwo)"
-				},
-				"comingSoon": "Wkrótce"
 			},
 			"unitSize": {
 				"title": "Rozmiar jednostki",
@@ -196,12 +185,12 @@
 					"required": "Strona główna jest wymagana gdy tryb strony głównej jest Jawny"
 				}
 			},
-			"roomId": {
-				"title": "Przypisany pokój",
-				"placeholder": "Wybierz pokój",
-				"description": "Pokój, którym steruje ten wyświetlacz. Wymagany dla wyświetlaczy z rolą Pokój.",
+			"spaceId": {
+				"title": "Przypisana przestrzeń",
+				"placeholder": "Wybierz przestrzeń",
+				"description": "Przestrzeń, do której jest przypisany ten wyświetlacz. Typ przestrzeni decyduje o tym, co panel wyświetla.",
 				"validation": {
-					"required": "Przypisanie pokoju jest wymagane dla wyświetlaczy z rolą Pokój"
+					"required": "Gdy strona startowa jest ustalana automatycznie na podstawie przestrzeni, przestrzeń musi być przypisana."
 				}
 			},
 			"numberFormat": {
@@ -297,11 +286,6 @@
 		"lost": "Utracony",
 		"unknown": "Nieznany"
 	},
-	"roles": {
-		"room": "Pokój",
-		"master": "Główny",
-		"entry": "Wejście"
-	},
 	"texts": {
 		"loadingDisplays": "Ładowanie wyświetlaczy...",
 		"loadingDisplay": "Ładowanie wyświetlacza...",
@@ -364,7 +348,7 @@
 			},
 			"homePage": {
 				"title": "Strona główna",
-				"autoRoomHint": "W <strong>trybie automatycznym</strong> wyświetlacz otwiera domyślny widok systemu na podstawie swojej roli i przypisania."
+				"autoSpaceHint": "W <strong>trybie automatycznym</strong> wyświetlacz otwiera domyślny widok systemowy dla typu przypisanej przestrzeni."
 			},
 			"weather": {
 				"title": "Lokalizacja pogody",
@@ -384,7 +368,6 @@
 		"title": "Szczegóły wyświetlacza",
 		"info": {
 			"title": "Informacje o wyświetlaczu",
-			"role": "Rola",
 			"macAddress": "Adres MAC",
 			"version": "Wersja",
 			"build": "Kompilacja",
@@ -433,27 +416,18 @@
 		},
 		"spaceContext": {
 			"title": "Kontekst przestrzeni",
-			"role": "Rola wyświetlacza",
 			"homeMode": "Tryb strony głównej",
-			"assignedRoom": "Przypisany pokój",
+			"assignedSpace": "Przypisana przestrzeń",
 			"notAssigned": "Nie przypisano",
 			"initialView": "Widok początkowy",
-			"systemViews": "Widoki systemowe",
 			"selectedPage": "Wybrana strona",
-			"hint": "Główne widoki tego wyświetlacza są generowane automatycznie na podstawie jego roli i przypisanej przestrzeni.",
+			"hint": "Główne widoki tego wyświetlacza są generowane automatycznie na podstawie typu przypisanej przestrzeni.",
 			"homeModes": {
 				"auto_space": "Automatyczny",
 				"explicit": "Jawny"
 			},
 			"initialViews": {
-				"roomOverview": "Przegląd pokoju",
-				"houseOverview": "Przegląd domu",
-				"entryOverview": "Przegląd wejścia"
-			},
-			"views": {
-				"overview": "Przegląd",
-				"lights": "Oświetlenie",
-				"climate": "Klimat"
+				"spaceOverview": "Przegląd przestrzeni"
 			}
 		}
 	},

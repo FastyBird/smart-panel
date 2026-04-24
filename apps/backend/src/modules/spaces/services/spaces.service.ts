@@ -17,16 +17,11 @@ import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
-import {
-	EventType,
-	SPACES_MODULE_NAME,
-	SpaceRoomCategory,
-	SpaceType,
-	SpaceZoneCategory,
-	isValidCategoryForType,
-} from '../spaces.constants';
+import { EventType, SPACES_MODULE_NAME, SpaceType, isValidCategoryForType } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
+
+import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 
 @Injectable()
 export class SpacesService {
@@ -42,6 +37,7 @@ export class SpacesService {
 		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly spacesTypeMapper: SpacesTypeMapperService,
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
@@ -118,17 +114,47 @@ export class SpacesService {
 			throw new SpacesValidationException('Category is required for zones.');
 		}
 
+		// Validate that the category matches the space type (blocks e.g. creating a
+		// ROOM with a zone category, or a MASTER/ENTRY singleton with any category).
+		// `update()` has this check; `create()` was missing it.
+		if (category !== null && !isValidCategoryForType(category, type)) {
+			this.logger.error(`Category '${category}' is not valid for type '${type}'`);
+			throw new SpacesValidationException(`Category '${category}' is not valid for space type '${type}'.`);
+		}
+
 		// Validate parent assignment
 		await this.validateParentAssignment(type, dtoInstance.parent_id ?? null);
 
-		const space = this.repository.create(
-			toInstance(SpaceEntity, {
+		// Instantiate the concrete subtype via the plugin mapper so TableInheritance writes the correct discriminator.
+		// We obtain a repository scoped to the subclass — calling `this.repository.create()` on the base
+		// SpaceEntity repo would do `new SpaceEntity()` + Object.assign, which discards the concrete class
+		// (and won't copy the prototype-only `type` getter), so TypeORM would write a null/incorrect
+		// discriminator on save.
+		const mapping = this.spacesTypeMapper.getMapping(type);
+		const subtypeRepository = this.dataSource.getRepository(mapping.class);
+
+		// Singleton space types (master, entry, and any future plugin-contributed
+		// singleton) are seeded once per install and must not be duplicatable via
+		// `POST /spaces`. The seeder handles first-boot creation; reject any
+		// subsequent attempt.
+		if (mapping.singleton) {
+			const existing = await subtypeRepository.findOne({ where: {} });
+			if (existing) {
+				this.logger.error(`Cannot create a second space of singleton type '${type}' (existing id=${existing.id})`);
+				throw new SpacesValidationException(
+					`Space type '${type}' is a singleton and already exists. Edit the existing space instead of creating a new one.`,
+				);
+			}
+		}
+
+		const space = subtypeRepository.create(
+			toInstance(mapping.class, {
 				...dtoInstance,
 				category,
 			}),
 		);
 
-		await this.repository.save(space);
+		await subtypeRepository.save(space);
 
 		// Re-fetch to get database default values populated
 		const savedSpace = await this.getOneOrThrow(space.id);
@@ -148,7 +174,7 @@ export class SpacesService {
 		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
 
 		// Determine the effective type (new type if provided, otherwise existing)
-		const effectiveType = dtoInstance.type ?? space.type;
+		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
 
 		// Determine the effective category (new category if provided, otherwise existing)
 		const effectiveCategory = dtoInstance.category !== undefined ? dtoInstance.category : space.category;
@@ -181,8 +207,43 @@ export class SpacesService {
 			...dtoInstance,
 		};
 
-		// Get the fields to update from DTO (excluding undefined values)
-		const updateFields = omitBy(toInstance(SpaceEntity, updateData), isUndefined);
+		// Get the fields to update from DTO (excluding undefined values).
+		// Use the *effective* type's mapping so that when a subtype change adds new
+		// @Expose'd fields, those fields survive `toInstance` and land in the raw
+		// update below. Using `space.type` here would use the OLD subtype's class
+		// and silently drop new-subtype-specific fields.
+		const mapping = this.spacesTypeMapper.getMapping(effectiveType);
+		const updateFields = omitBy(toInstance(mapping.class, updateData), isUndefined);
+
+		// Decide type-change BEFORE any in-memory mutation. `space.type` is a
+		// prototype-only getter today, so computing after `Object.assign(space, ...)`
+		// happens to work — but it's fragile: any future change that makes `type` an
+		// own property (e.g. a different serialization library or a `@Column` being
+		// re-introduced) would let Object.assign shadow the getter and make this
+		// comparison silently return `false`, skipping the raw discriminator update.
+		const typeChanged = effectiveType !== space.type;
+
+		// Singleton space types (master, entry, future plugin-contributed singletons)
+		// must not be reachable via a type change in either direction — flipping a
+		// room into a master would violate the "exactly one per install" invariant
+		// the seeders and reset handlers depend on, and flipping an existing singleton
+		// away would destroy it outright. The only supported lifecycle for a singleton
+		// is: seeder creates once, admin edits in place.
+		if (typeChanged) {
+			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
+			if (oldMapping.singleton) {
+				this.logger.error(`Cannot change type away from singleton '${space.type}' (space id=${id})`);
+				throw new SpacesValidationException(
+					`Space type '${space.type}' is a singleton and cannot be converted to another type.`,
+				);
+			}
+			if (mapping.singleton) {
+				this.logger.error(`Cannot change type to singleton '${effectiveType}' (space id=${id})`);
+				throw new SpacesValidationException(
+					`Space type '${effectiveType}' is a singleton and cannot be assigned via a type change. The singleton is created by its seeder.`,
+				);
+			}
+		}
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged =
@@ -225,6 +286,54 @@ export class SpacesService {
 			space.parentId = null;
 		}
 
+		// When the space type changes we cannot just save the existing entity instance —
+		// TableInheritance keys off the concrete class (RoomSpaceEntity vs ZoneSpaceEntity),
+		// and the `type` getter is immutable on an already-loaded instance. Update the
+		// discriminator column directly via a raw update, then reload as the new subtype.
+		if (typeChanged) {
+			// `toInstance(mapping.class, ...)` applies every @Expose()'d property on the
+			// entity, including relations (`parent`, `children`) and read-only columns
+			// (`createdAt`, `lastActivityAt`). TypeORM's `QueryBuilder.set()` will reject
+			// relation keys and happily overwrite read-only columns if they sneak in.
+			// Filter to actual @Column property names from the repository metadata so the
+			// raw UPDATE only touches real data columns.
+			const columnPropertyNames = new Set(this.repository.metadata.columns.map((col) => col.propertyName));
+			const rawUpdate: Record<string, unknown> = { type: effectiveType };
+			for (const [key, value] of Object.entries(updateFields)) {
+				if (columnPropertyNames.has(key)) {
+					rawUpdate[key] = value;
+				}
+			}
+			// The `parent_id` transform on the DTO collapses null into undefined, so an
+			// explicit null clear would be dropped by `omitBy(..., isUndefined)` above.
+			// Mirror the in-memory fix-up for the raw update set().
+			if (dtoInstance.parent_id === null) {
+				rawUpdate.parentId = null;
+			}
+			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
+			// transaction so a concurrent update or delete cannot wedge us into a state
+			// where the UPDATE committed but the reload observes stale / missing data.
+			const reloaded = await this.dataSource.transaction(async (transactionalManager) => {
+				await transactionalManager
+					.createQueryBuilder()
+					.update(SpaceEntity)
+					.set(rawUpdate)
+					.where('id = :id', { id })
+					.execute();
+				const fresh = await transactionalManager.findOne(SpaceEntity, { where: { id } });
+				if (!fresh) {
+					this.logger.error(`Space with id=${id} disappeared during type-change UPDATE`);
+					throw new SpacesNotFoundException('Requested space does not exist');
+				}
+				return fresh;
+			});
+			// A type change is always a semantically-meaningful update even when no other
+			// field changed: the entity's concrete subtype (and therefore any subscriber
+			// branching on it) has flipped, so downstream listeners must be notified.
+			this.eventEmitter.emit(EventType.SPACE_UPDATED, reloaded);
+			return reloaded;
+		}
+
 		await this.repository.save(space);
 
 		this.logger.debug(`Successfully updated space with id=${space.id}`);
@@ -258,12 +367,14 @@ export class SpacesService {
 				.where('roomId = :id', { id })
 				.execute();
 
-			// Set roomId to null for all displays in this space
+			// Unassign any displays pointing at this space. Displays now point
+			// at any space type (Phase 5 dropped the role=room constraint), so
+			// cleanup is not room-specific.
 			await manager
 				.createQueryBuilder()
 				.update(DisplayEntity)
-				.set({ roomId: null })
-				.where('roomId = :id', { id })
+				.set({ spaceId: null })
+				.where('spaceId = :id', { id })
 				.execute();
 
 			await manager.remove(space);
@@ -350,7 +461,7 @@ export class SpacesService {
 		await this.getOneOrThrow(spaceId);
 
 		const displays = await this.displayRepository.find({
-			where: { roomId: spaceId },
+			where: { spaceId },
 			order: { name: 'ASC' },
 		});
 
@@ -408,7 +519,7 @@ export class SpacesService {
 			const result = await this.displayRepository
 				.createQueryBuilder()
 				.update()
-				.set({ roomId: spaceId })
+				.set({ spaceId })
 				.where('id IN (:...ids)', { ids: dtoInstance.displayIds })
 				.execute();
 
@@ -453,7 +564,7 @@ export class SpacesService {
 	}
 
 	async unassignDisplays(displayIds: string[]): Promise<number> {
-		this.logger.debug(`Unassigning ${displayIds.length} displays from their rooms`);
+		this.logger.debug(`Unassigning ${displayIds.length} displays from their spaces`);
 
 		if (displayIds.length === 0) {
 			return 0;
@@ -462,7 +573,7 @@ export class SpacesService {
 		const result = await this.displayRepository
 			.createQueryBuilder()
 			.update()
-			.set({ roomId: null })
+			.set({ spaceId: null })
 			.where('id IN (:...ids)', { ids: displayIds })
 			.execute();
 
@@ -470,198 +581,6 @@ export class SpacesService {
 		this.logger.debug(`Unassigned ${unassigned} displays`);
 
 		return unassigned;
-	}
-
-	async proposeSpaces(): Promise<
-		{
-			name: string;
-			type: SpaceType;
-			category: SpaceRoomCategory | SpaceZoneCategory | null;
-			deviceIds: string[];
-			deviceCount: number;
-		}[]
-	> {
-		this.logger.debug('Proposing spaces based on device names');
-
-		// Token to (type, category) mapping for intelligent space proposals
-		const tokenMapping: Record<string, { type: SpaceType; category: SpaceRoomCategory | SpaceZoneCategory | null }> = {
-			// Room tokens
-			'living room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
-			bedroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
-			'master bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
-			'guest bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
-			'guest room': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
-			'guests room': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
-			'kids bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
-			'children bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
-			kitchen: { type: SpaceType.ROOM, category: SpaceRoomCategory.KITCHEN },
-			bathroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
-			'master bathroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
-			'guest bathroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
-			toilet: { type: SpaceType.ROOM, category: SpaceRoomCategory.TOILET },
-			wc: { type: SpaceType.ROOM, category: SpaceRoomCategory.TOILET },
-			restroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.TOILET },
-			lavatory: { type: SpaceType.ROOM, category: SpaceRoomCategory.TOILET },
-			hallway: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
-			hall: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
-			corridor: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
-			entrance: { type: SpaceType.ROOM, category: SpaceRoomCategory.ENTRYWAY },
-			entry: { type: SpaceType.ROOM, category: SpaceRoomCategory.ENTRYWAY },
-			entryway: { type: SpaceType.ROOM, category: SpaceRoomCategory.ENTRYWAY },
-			foyer: { type: SpaceType.ROOM, category: SpaceRoomCategory.ENTRYWAY },
-			vestibule: { type: SpaceType.ROOM, category: SpaceRoomCategory.ENTRYWAY },
-			garage: { type: SpaceType.ROOM, category: SpaceRoomCategory.GARAGE },
-			office: { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
-			'home office': { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
-			study: { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
-			'dining room': { type: SpaceType.ROOM, category: SpaceRoomCategory.DINING_ROOM },
-			laundry: { type: SpaceType.ROOM, category: SpaceRoomCategory.LAUNDRY },
-			'laundry room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LAUNDRY },
-			'utility room': { type: SpaceType.ROOM, category: SpaceRoomCategory.UTILITY_ROOM },
-			utility: { type: SpaceType.ROOM, category: SpaceRoomCategory.UTILITY_ROOM },
-			'boiler room': { type: SpaceType.ROOM, category: SpaceRoomCategory.UTILITY_ROOM },
-			nursery: { type: SpaceType.ROOM, category: SpaceRoomCategory.NURSERY },
-			playroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
-			'game room': { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
-			'media room': { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
-			theater: { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
-			gym: { type: SpaceType.ROOM, category: SpaceRoomCategory.GYM },
-			workshop: { type: SpaceType.ROOM, category: SpaceRoomCategory.WORKSHOP },
-			closet: { type: SpaceType.ROOM, category: SpaceRoomCategory.CLOSET },
-			'walk-in closet': { type: SpaceType.ROOM, category: SpaceRoomCategory.CLOSET },
-			wardrobe: { type: SpaceType.ROOM, category: SpaceRoomCategory.CLOSET },
-			pantry: { type: SpaceType.ROOM, category: SpaceRoomCategory.PANTRY },
-			storage: { type: SpaceType.ROOM, category: SpaceRoomCategory.STORAGE },
-			'storage room': { type: SpaceType.ROOM, category: SpaceRoomCategory.STORAGE },
-			mudroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
-			sunroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
-			sauna: { type: SpaceType.ROOM, category: SpaceRoomCategory.OTHER },
-			// Zone tokens
-			basement: { type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_BASEMENT },
-			attic: { type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_ATTIC },
-			patio: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
-			balcony: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BALCONY },
-			terrace: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
-			garden: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_GARDEN },
-			backyard: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BACKYARD },
-			'front yard': { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_FRONT_YARD },
-			porch: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
-			pool: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BACKYARD },
-			spa: { type: SpaceType.ROOM, category: SpaceRoomCategory.OTHER },
-			driveway: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_DRIVEWAY },
-		};
-
-		const tokens = Object.keys(tokenMapping);
-
-		// Get all devices (including those already assigned, for completeness)
-		const devices = await this.deviceRepository.find({
-			select: ['id', 'name'],
-		});
-
-		// Map to store space token -> device IDs
-		const spaceMap = new Map<string, string[]>();
-
-		for (const device of devices) {
-			const deviceNameLower = device.name.toLowerCase();
-
-			// Try to match room tokens in device name (prefer longest match)
-			let matchedToken: string | null = null;
-			let matchLength = 0;
-
-			for (const token of tokens) {
-				if (deviceNameLower.includes(token) && token.length > matchLength) {
-					matchedToken = token;
-					matchLength = token.length;
-				}
-			}
-
-			if (matchedToken) {
-				const existingDevices = spaceMap.get(matchedToken) ?? [];
-				existingDevices.push(device.id);
-				spaceMap.set(matchedToken, existingDevices);
-			}
-		}
-
-		// Convert map to array and sort by device count (descending)
-		const proposals = Array.from(spaceMap.entries())
-			.map(([token, deviceIds]) => {
-				const mapping = tokenMapping[token];
-				// Capitalize the token for display name
-				const name = token
-					.split(' ')
-					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-					.join(' ');
-
-				return {
-					name,
-					type: mapping.type,
-					category: mapping.category,
-					deviceIds,
-					deviceCount: deviceIds.length,
-				};
-			})
-			.sort((a, b) => b.deviceCount - a.deviceCount);
-
-		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);
-
-		return proposals;
-	}
-
-	/**
-	 * Get child rooms for a zone
-	 */
-	async getChildRooms(zoneId: string): Promise<SpaceEntity[]> {
-		this.logger.debug(`Fetching child rooms for zone id=${zoneId}`);
-
-		const zone = await this.getOneOrThrow(zoneId);
-
-		if (zone.type !== SpaceType.ZONE) {
-			this.logger.warn(`Space ${zoneId} is not a zone, returning empty list`);
-			return [];
-		}
-
-		const children = await this.repository.find({
-			where: { parentId: zoneId, type: SpaceType.ROOM },
-			order: { displayOrder: 'ASC', name: 'ASC' },
-		});
-
-		this.logger.debug(`Found ${children.length} child rooms for zone`);
-
-		return children;
-	}
-
-	/**
-	 * Get parent zone for a room
-	 */
-	async getParentZone(roomId: string): Promise<SpaceEntity | null> {
-		this.logger.debug(`Fetching parent zone for room id=${roomId}`);
-
-		const room = await this.getOneOrThrow(roomId);
-
-		if (!room.parentId) {
-			this.logger.debug(`Room ${roomId} has no parent zone`);
-			return null;
-		}
-
-		const parent = await this.findOne(room.parentId);
-
-		return parent;
-	}
-
-	/**
-	 * Get all zones (for parent selection dropdown)
-	 */
-	async findAllZones(): Promise<SpaceEntity[]> {
-		this.logger.debug('Fetching all zones');
-
-		const zones = await this.repository.find({
-			where: { type: SpaceType.ZONE },
-			order: { displayOrder: 'ASC', name: 'ASC' },
-		});
-
-		this.logger.debug(`Found ${zones.length} zones`);
-
-		return zones;
 	}
 
 	/**
@@ -679,10 +598,16 @@ export class SpacesService {
 			return;
 		}
 
-		// Zones cannot have a parent
-		if (spaceType === SpaceType.ZONE) {
-			this.logger.error('Zones cannot have a parent');
-			throw new SpacesValidationException('Zones cannot have a parent. Only rooms can belong to a zone.');
+		// Only rooms participate in the zone→room hierarchy. Zones are root-level,
+		// and synthetic singletons (master, entry) — as well as any future
+		// plugin-contributed space types — are also always root-level unless they
+		// opt in to the hierarchy. Using an allowlist here means new space types
+		// default to the safe "no parent allowed" behavior.
+		if (spaceType !== SpaceType.ROOM) {
+			this.logger.error(`Spaces of type '${spaceType}' cannot have a parent`);
+			throw new SpacesValidationException(
+				`Spaces of type '${spaceType}' cannot have a parent. Only rooms can belong to a zone.`,
+			);
 		}
 
 		// Cannot assign self as parent

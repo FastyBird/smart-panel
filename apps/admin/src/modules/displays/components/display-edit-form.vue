@@ -43,70 +43,18 @@
 						/>
 					</el-form-item>
 
+					<!-- Space Assignment -->
 					<el-form-item
-						:label="t('displaysModule.fields.displays.role.title')"
-						:prop="['role']"
-					>
-						<el-select
-							v-model="model.role"
-							name="role"
-							@change="onRoleChange"
-						>
-							<el-option
-								value="room"
-								:label="t('displaysModule.fields.displays.role.options.room')"
-							/>
-							<el-option
-								value="master"
-								:label="t('displaysModule.fields.displays.role.options.master')"
-								disabled
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ t('displaysModule.fields.displays.role.options.master') }}</span>
-									<el-tag
-										size="small"
-										type="info"
-										class="ml-2"
-									>
-										{{ t('displaysModule.fields.displays.role.comingSoon') }}
-									</el-tag>
-								</div>
-							</el-option>
-							<el-option
-								value="entry"
-								:label="t('displaysModule.fields.displays.role.options.entry')"
-								disabled
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ t('displaysModule.fields.displays.role.options.entry') }}</span>
-									<el-tag
-										size="small"
-										type="info"
-										class="ml-2"
-									>
-										{{ t('displaysModule.fields.displays.role.comingSoon') }}
-									</el-tag>
-								</div>
-							</el-option>
-						</el-select>
-						<div class="text-gray-500 text-sm mt-1">
-							{{ t('displaysModule.fields.displays.role.description') }}
-						</div>
-					</el-form-item>
-
-					<!-- Room Assignment (only for role=room) -->
-					<el-form-item
-						v-if="model.role === 'room'"
-						:label="t('displaysModule.fields.displays.roomId.title')"
-						:prop="['roomId']"
+						:label="t('displaysModule.fields.displays.spaceId.title')"
+						:prop="['spaceId']"
 					>
 						<space-select
-							v-model="model.roomId"
-							:placeholder="t('displaysModule.fields.displays.roomId.placeholder')"
-							filter="room"
+							v-model="model.spaceId"
+							:placeholder="t('displaysModule.fields.displays.spaceId.placeholder')"
+							filter="all"
 						/>
 						<div class="text-gray-500 text-sm mt-1">
-							{{ t('displaysModule.fields.displays.roomId.description') }}
+							{{ t('displaysModule.fields.displays.spaceId.description') }}
 						</div>
 					</el-form-item>
 				</div>
@@ -170,16 +118,16 @@
 						</div>
 					</el-form-item>
 
-					<!-- Helper text for auto mode when role=room -->
+					<!-- Helper text for auto_space mode -->
 					<el-alert
-						v-if="model.homeMode === 'auto_space' && model.role === 'room'"
+						v-if="model.homeMode === 'auto_space' && model.spaceId"
 						type="info"
 						:closable="false"
 						show-icon
 					>
 						<template #title>
 							<!-- eslint-disable-next-line vue/no-v-html -- trusted i18n string -->
-							<span v-html="t('displaysModule.edit.sections.homePage.autoRoomHint')" />
+							<span v-html="t('displaysModule.edit.sections.homePage.autoSpaceHint')" />
 						</template>
 					</el-alert>
 				</div>
@@ -747,29 +695,37 @@ const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ 
 // Collapse state - only General open by default
 const activeCollapses = ref<string[]>(['general']);
 
-// Handle role change - clear roomId if switching away from room role
-const onRoleChange = (newRole: string): void => {
-	if (newRole !== 'room') {
-		model.roomId = null;
-	}
-};
-
-// Handle homeMode change - clear homePageId if switching away from explicit
+// Handle homeMode change - clear homePageId if switching away from explicit,
+// and re-evaluate the spaceId rule since its `required` flag flips with
+// homeMode. Element Plus caches rules at render time and only re-runs
+// validators on user interaction with the bound field, so without an
+// explicit validate/clear call here the user could (a) set homeMode to
+// `auto_space` with an empty spaceId and submit without seeing the
+// required-error inline, or (b) switch back to `explicit` and keep a
+// stale required-error on spaceId.
 const onHomeModeChange = (newMode: string): void => {
 	if (newMode !== 'explicit') {
 		model.homePageId = null;
+	}
+
+	if (!formEl.value) return;
+
+	if (newMode === 'auto_space') {
+		// Surface the required-error inline as soon as the mode flips, so
+		// the user sees the missing-spaceId warning before hitting Save.
+		formEl.value.validateField('spaceId').catch(() => {
+			// validate rejects when the field is invalid; the <el-form-item>
+			// already renders the message inline, so just swallow.
+		});
+	} else {
+		// No longer required — clear any pending error from a previous
+		// `auto_space` selection so it doesn't linger.
+		formEl.value.clearValidate(['spaceId']);
 	}
 };
 
 const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],
-	roomId: [
-		{
-			required: model.role === 'room',
-			message: t('displaysModule.fields.displays.roomId.validation.required'),
-			trigger: 'blur',
-		},
-	],
 	unitSize: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.unitSize.validation.min'), trigger: 'blur' }],
 	rows: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.rows.validation.min'), trigger: 'blur' }],
 	cols: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.cols.validation.min'), trigger: 'blur' }],
@@ -780,6 +736,18 @@ const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 			required: model.homeMode === 'explicit',
 			message: t('displaysModule.fields.displays.homePageId.validation.required'),
 			trigger: 'blur',
+		},
+	],
+	// When `homeMode` is `auto_space`, HomeResolutionService looks up the home
+	// page via the selected space — without a spaceId the display has nothing
+	// to resolve and the panel lands on a fallback. Phase 5 dropped the old
+	// role=room conditional; restore an analogous required-when-auto_space rule
+	// so the user can't save a broken configuration.
+	spaceId: [
+		{
+			required: model.homeMode === 'auto_space',
+			message: t('displaysModule.fields.displays.spaceId.validation.required'),
+			trigger: 'change',
 		},
 	],
 	speakerVolume: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.speakerVolume.validation.range'), trigger: 'blur' }],

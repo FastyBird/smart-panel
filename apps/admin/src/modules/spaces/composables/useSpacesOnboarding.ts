@@ -1,10 +1,7 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient, useUuid } from '../../../common';
-import {
-	SpacesModuleCreateSpaceCategory,
-	SpacesModuleCreateSpaceType,
-} from '../../../openapi.constants';
+import { SpacesModuleCreateSpaceCategory } from '../../../openapi.constants';
 import {
 	ASSIGNABLE_ZONE_CATEGORIES,
 	SPACE_ALL_CATEGORY_TEMPLATES,
@@ -15,7 +12,7 @@ import {
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
-import { type ApiSpace, transformSpaceResponse } from '../store/spaces.transformers';
+import { type ApiSpace, apiTypeToSpaceType, spaceTypeToApiType, transformSpaceResponse } from '../store/spaces.transformers';
 
 interface ProposedSpace {
 	name: string;
@@ -64,8 +61,7 @@ export interface DisplayInfo {
 	id: string;
 	name: string | null;
 	macAddress: string;
-	role: string;
-	roomId: string | null;
+	spaceId: string | null;
 }
 
 interface WizardState {
@@ -82,28 +78,6 @@ interface WizardState {
 	isLoading: boolean;
 	error: string | null;
 }
-
-const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
-	switch (apiType) {
-		case SpacesModuleCreateSpaceType.room:
-			return SpaceType.ROOM;
-		case SpacesModuleCreateSpaceType.zone:
-			return SpaceType.ZONE;
-		default:
-			return SpaceType.ROOM;
-	}
-};
-
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
-	switch (spaceType) {
-		case SpaceType.ROOM:
-			return SpacesModuleCreateSpaceType.room;
-		case SpaceType.ZONE:
-			return SpacesModuleCreateSpaceType.zone;
-		default:
-			return SpacesModuleCreateSpaceType.room;
-	}
-};
 
 const apiCategoryToSpaceCategory = (
 	apiCategory: SpacesModuleCreateSpaceCategory | null | undefined
@@ -905,7 +879,7 @@ export const useSpacesOnboarding = () => {
 
 	const initializeDisplayAssignments = (displays: DisplayInfo[]): void => {
 		for (const display of displays) {
-			state.displayAssignments[display.id] = display.roomId ?? null;
+			state.displayAssignments[display.id] = display.spaceId ?? null;
 		}
 	};
 
@@ -949,8 +923,7 @@ export const useSpacesOnboarding = () => {
 				id: d.id,
 				name: d.name ?? null,
 				macAddress: d.mac_address ?? '',
-				role: d.role ?? 'room',
-				roomId: d.room_id ?? null,
+				spaceId: d.space_id ?? null,
 			}));
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';

@@ -2,8 +2,6 @@ import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
 enum HomeMode { autoSpace, explicit }
 
-enum DisplayRole { room, master, entry }
-
 class DisplayModel {
   final String id;
   final String macAddress;
@@ -26,8 +24,7 @@ class DisplayModel {
   final int speakerVolume;
   final bool microphone;
   final int microphoneVolume;
-  final DisplayRole role;
-  final String? roomId;
+  final String? spaceId;
   final HomeMode homeMode;
   final String? homePageId;
   final String? resolvedHomePageId;
@@ -65,8 +62,7 @@ class DisplayModel {
     required this.speakerVolume,
     required this.microphone,
     required this.microphoneVolume,
-    this.role = DisplayRole.room,
-    this.roomId,
+    this.spaceId,
     this.homeMode = HomeMode.autoSpace,
     this.homePageId,
     this.resolvedHomePageId,
@@ -104,8 +100,7 @@ class DisplayModel {
       speakerVolume: json['speaker_volume'] as int,
       microphone: json['microphone'] as bool,
       microphoneVolume: json['microphone_volume'] as int,
-      role: _parseDisplayRole(json['role'] as String?),
-      roomId: json['room_id'] as String?,
+      spaceId: json['space_id'] as String?,
       homeMode: _parseHomeMode(json['home_mode'] as String?),
       homePageId: json['home_page_id'] as String?,
       resolvedHomePageId: json['resolved_home_page_id'] as String?,
@@ -133,18 +128,6 @@ class DisplayModel {
           ? DateTime.parse(json['updated_at'] as String)
           : null,
     );
-  }
-
-  static DisplayRole _parseDisplayRole(String? role) {
-    switch (role) {
-      case 'master':
-        return DisplayRole.master;
-      case 'entry':
-        return DisplayRole.entry;
-      case 'room':
-      default:
-        return DisplayRole.room;
-    }
   }
 
   static HomeMode _parseHomeMode(String? mode) {
@@ -182,8 +165,7 @@ class DisplayModel {
     int? speakerVolume,
     bool? microphone,
     int? microphoneVolume,
-    DisplayRole? role,
-    String? roomId,
+    Object? spaceId = _unset,
     HomeMode? homeMode,
     String? homePageId,
     String? resolvedHomePageId,
@@ -219,8 +201,7 @@ class DisplayModel {
       speakerVolume: speakerVolume ?? this.speakerVolume,
       microphone: microphone ?? this.microphone,
       microphoneVolume: microphoneVolume ?? this.microphoneVolume,
-      role: role ?? this.role,
-      roomId: roomId ?? this.roomId,
+      spaceId: identical(spaceId, _unset) ? this.spaceId : spaceId as String?,
       homeMode: homeMode ?? this.homeMode,
       homePageId: homePageId ?? this.homePageId,
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
@@ -275,8 +256,7 @@ class DisplayModel {
         other.speakerVolume == speakerVolume &&
         other.microphone == microphone &&
         other.microphoneVolume == microphoneVolume &&
-        other.role == role &&
-        other.roomId == roomId &&
+        other.spaceId == spaceId &&
         other.homeMode == homeMode &&
         other.homePageId == homePageId &&
         other.resolvedHomePageId == resolvedHomePageId &&
@@ -313,8 +293,7 @@ class DisplayModel {
       speakerVolume,
       microphone,
       microphoneVolume,
-      role,
-      roomId,
+      spaceId,
       homeMode,
       homePageId,
       resolvedHomePageId,

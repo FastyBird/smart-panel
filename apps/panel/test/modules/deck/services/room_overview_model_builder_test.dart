@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_catego
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
@@ -15,7 +15,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 // Helper to create a display with minimum required fields
 DisplayModel createDisplay({
-  String? roomId = 'room-1',
+  String? spaceId = _roomUuid,
 }) {
   return DisplayModel(
     id: 'display-1',
@@ -37,8 +37,7 @@ DisplayModel createDisplay({
     speakerVolume: 50,
     microphone: true,
     microphoneVolume: 50,
-    role: DisplayRole.room,
-    roomId: roomId,
+    spaceId: spaceId,
     createdAt: DateTime(2024, 1, 1),
   );
 }
@@ -184,7 +183,7 @@ void main() {
     group('domain cards', () {
       test('should create domain cards for present domains', () {
         final input = RoomOverviewBuildInput(
-          display: createDisplay(roomId: 'room-1'),
+          display: createDisplay(spaceId: _roomUuid),
           room: createRoom(),
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,
@@ -220,7 +219,7 @@ void main() {
 
       test('should create cards for multiple domains with correct counts', () {
         final input = RoomOverviewBuildInput(
-          display: createDisplay(roomId: 'room-1'),
+          display: createDisplay(spaceId: _roomUuid),
           room: createRoom(),
           deviceCategories: [
             DevicesModuleDeviceCategory.lighting,

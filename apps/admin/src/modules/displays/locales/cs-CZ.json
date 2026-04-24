@@ -43,7 +43,6 @@
 	"table": {
 		"columns": {
 			"name": "Název",
-			"role": "Role",
 			"macAddress": "MAC adresa",
 			"version": "Verze",
 			"resolution": "Rozlišení",
@@ -96,16 +95,6 @@
 				"validation": {
 					"maxLength": "Název musí mít méně než 100 znaků"
 				}
-			},
-			"role": {
-				"title": "Role displeje",
-				"description": "Účel tohoto displeje ve vašem systému chytré domácnosti",
-				"options": {
-					"room": "Místnost (ovládání jedné místnosti)",
-					"master": "Hlavní (přehled celého domu)",
-					"entry": "Vstup (režimy domu a zabezpečení)"
-				},
-				"comingSoon": "Brzy"
 			},
 			"unitSize": {
 				"title": "Velikost jednotky",
@@ -196,12 +185,12 @@
 					"required": "Domovská stránka je povinná v režimu Explicitní"
 				}
 			},
-			"roomId": {
-				"title": "Přiřazená místnost",
-				"placeholder": "Vyberte místnost",
-				"description": "Místnost, kterou tento displej ovládá. Povinné pro displeje s rolí Místnost.",
+			"spaceId": {
+				"title": "Přiřazený prostor",
+				"placeholder": "Vyberte prostor",
+				"description": "Prostor, ke kterému je tento displej přiřazen. Typ prostoru určuje, co panel zobrazuje.",
 				"validation": {
-					"required": "Přiřazení místnosti je povinné pro displeje s rolí Místnost"
+					"required": "Prostor musí být přiřazen, když se domovská stránka odvozuje z prostoru."
 				}
 			},
 			"numberFormat": {
@@ -297,11 +286,6 @@
 		"lost": "Ztraceno",
 		"unknown": "Neznámý"
 	},
-	"roles": {
-		"room": "Místnost",
-		"master": "Hlavní",
-		"entry": "Vstup"
-	},
 	"texts": {
 		"loadingDisplays": "Načítání displejů...",
 		"loadingDisplay": "Načítání displeje...",
@@ -364,7 +348,7 @@
 			},
 			"homePage": {
 				"title": "Domovská stránka",
-				"autoRoomHint": "V <strong>automatickém režimu</strong> displej otevře výchozí systémové zobrazení na základě jeho role a přiřazení."
+				"autoSpaceHint": "V <strong>automatickém režimu</strong> displej otevře výchozí systémové zobrazení pro typ přiřazeného prostoru."
 			},
 			"weather": {
 				"title": "Meteorologická lokace",
@@ -384,7 +368,6 @@
 		"title": "Detail displeje",
 		"info": {
 			"title": "Informace o displeji",
-			"role": "Role",
 			"macAddress": "MAC adresa",
 			"version": "Verze",
 			"build": "Sestavení",
@@ -433,27 +416,18 @@
 		},
 		"spaceContext": {
 			"title": "Kontext prostoru",
-			"role": "Role displeje",
 			"homeMode": "Režim domovské stránky",
-			"assignedRoom": "Přiřazená místnost",
+			"assignedSpace": "Přiřazený prostor",
 			"notAssigned": "Nepřiřazeno",
 			"initialView": "Počáteční zobrazení",
-			"systemViews": "Systémová zobrazení",
 			"selectedPage": "Vybraná stránka",
-			"hint": "Hlavní zobrazení tohoto displeje se generují automaticky na základě jeho role a přiřazeného prostoru.",
+			"hint": "Hlavní zobrazení tohoto displeje se generují automaticky na základě typu přiřazeného prostoru.",
 			"homeModes": {
 				"auto_space": "Automaticky",
 				"explicit": "Explicitně"
 			},
 			"initialViews": {
-				"roomOverview": "Přehled místnosti",
-				"houseOverview": "Přehled domu",
-				"entryOverview": "Přehled vstupu"
-			},
-			"views": {
-				"overview": "Přehled",
-				"lights": "Světla",
-				"climate": "Klima"
+				"spaceOverview": "Přehled prostoru"
 			}
 		}
 	},

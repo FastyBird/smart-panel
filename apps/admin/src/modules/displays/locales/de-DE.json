@@ -43,7 +43,6 @@
 	"table": {
 		"columns": {
 			"name": "Name",
-			"role": "Rolle",
 			"macAddress": "MAC-Adresse",
 			"version": "Version",
 			"resolution": "Auflösung",
@@ -96,16 +95,6 @@
 				"validation": {
 					"maxLength": "Name muss weniger als 100 Zeichen haben"
 				}
-			},
-			"role": {
-				"title": "Display-Rolle",
-				"description": "Der Zweck dieses Displays in Ihrem Smart-Home-Setup",
-				"options": {
-					"room": "Raum (Einzelraumsteuerung)",
-					"master": "Master (Gesamthaus-Überblick)",
-					"entry": "Eingang (Hausmodi und Sicherheit)"
-				},
-				"comingSoon": "Bald"
 			},
 			"unitSize": {
 				"title": "Einheitsgröße",
@@ -196,12 +185,12 @@
 					"required": "Startseite ist erforderlich, wenn der Startseitenmodus auf Explizit steht"
 				}
 			},
-			"roomId": {
-				"title": "Zugewiesener Raum",
-				"placeholder": "Raum auswählen",
-				"description": "Der Raum, den dieses Display steuert. Erforderlich für Displays mit Raum-Rolle.",
+			"spaceId": {
+				"title": "Zugewiesener Bereich",
+				"placeholder": "Bereich auswählen",
+				"description": "Der Bereich, dem dieses Display zugewiesen ist. Der Typ des Bereichs bestimmt, was das Panel darstellt.",
 				"validation": {
-					"required": "Raumzuweisung ist für Displays mit Raum-Rolle erforderlich"
+					"required": "Ein Bereich muss zugewiesen sein, wenn die Startseite automatisch aus dem Bereich ermittelt wird."
 				}
 			},
 			"numberFormat": {
@@ -297,11 +286,6 @@
 		"lost": "Verloren",
 		"unknown": "Unbekannt"
 	},
-	"roles": {
-		"room": "Raum",
-		"master": "Master",
-		"entry": "Eingang"
-	},
 	"texts": {
 		"loadingDisplays": "Displays werden geladen...",
 		"loadingDisplay": "Display wird geladen...",
@@ -364,7 +348,7 @@
 			},
 			"homePage": {
 				"title": "Startseite",
-				"autoRoomHint": "Im <strong>Auto-Modus</strong> öffnet das Display die Standard-Systemansicht basierend auf seiner Rolle und Zuweisung."
+				"autoSpaceHint": "Im <strong>Auto-Modus</strong> öffnet das Display die Standard-Systemansicht für den Typ des zugewiesenen Bereichs."
 			},
 			"weather": {
 				"title": "Wetterstandort",
@@ -384,7 +368,6 @@
 		"title": "Display-Details",
 		"info": {
 			"title": "Display-Informationen",
-			"role": "Rolle",
 			"macAddress": "MAC-Adresse",
 			"version": "Version",
 			"build": "Build",
@@ -432,28 +415,19 @@
 			"revoked": "Token erfolgreich widerrufen"
 		},
 		"spaceContext": {
-			"title": "Raumkontext",
-			"role": "Display-Rolle",
+			"title": "Bereichskontext",
 			"homeMode": "Startseitenmodus",
-			"assignedRoom": "Zugewiesener Raum",
+			"assignedSpace": "Zugewiesener Bereich",
 			"notAssigned": "Nicht zugewiesen",
 			"initialView": "Anfangsansicht",
-			"systemViews": "Systemansichten",
 			"selectedPage": "Ausgewählte Seite",
-			"hint": "Die Hauptansichten dieses Displays werden automatisch basierend auf seiner Rolle und dem zugewiesenen Raum generiert.",
+			"hint": "Die Hauptansichten dieses Displays werden automatisch basierend auf dem Typ des zugewiesenen Bereichs generiert.",
 			"homeModes": {
 				"auto_space": "Auto",
 				"explicit": "Explizit"
 			},
 			"initialViews": {
-				"roomOverview": "Raumübersicht",
-				"houseOverview": "Hausübersicht",
-				"entryOverview": "Eingangsübersicht"
-			},
-			"views": {
-				"overview": "Übersicht",
-				"lights": "Lichter",
-				"climate": "Klima"
+				"spaceOverview": "Bereichsübersicht"
 			}
 		}
 	},

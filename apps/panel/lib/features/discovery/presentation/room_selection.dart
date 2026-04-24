@@ -92,7 +92,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
     try {
       final displayRepo = locator<DisplayRepository>();
-      final success = await displayRepo.setDisplayRoom(_selectedRoom!.id);
+      final success = await displayRepo.setDisplaySpace(_selectedRoom!.id);
 
       if (!mounted) return;
 

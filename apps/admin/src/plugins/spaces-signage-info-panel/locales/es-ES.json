@@ -1,0 +1,66 @@
+{
+	"plugin": {
+		"name": "Panel de información (signage)",
+		"description": "Pantalla de señalización de solo lectura con reloj, tiempo, anuncios y feed externo opcional."
+	},
+	"spaceType": {
+		"label": "Panel de información (signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Diseño",
+			"options": {
+				"clock_weather": "Reloj + tiempo",
+				"clock_weather_announcements": "Reloj + tiempo + anuncios",
+				"full": "Completo (todas las secciones)"
+			}
+		},
+		"sections": {
+			"title": "Secciones",
+			"description": "Activa o desactiva cada sección del panel.",
+			"showClock": "Reloj",
+			"showWeather": "Tiempo",
+			"showAnnouncements": "Anuncios",
+			"showFeed": "Feed externo"
+		},
+		"weatherLocation": {
+			"label": "Ubicación del tiempo",
+			"placeholder": "Selecciona una ubicación"
+		},
+		"feedUrl": {
+			"label": "URL del feed",
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Introduzca una URL válida (incluido el esquema, p. ej. https://)."
+			}
+		}
+	},
+	"announcements": {
+		"heading": "Anuncios",
+		"empty": "No hay anuncios todavía. Añade uno abajo.",
+		"add": "Añadir anuncio",
+		"fields": {
+			"title": "Título",
+			"body": "Texto",
+			"icon": "Icono",
+			"priority": "Prioridad",
+			"order": "Orden",
+			"activeFrom": "Activo desde",
+			"activeUntil": "Activo hasta"
+		},
+		"actions": {
+			"save": "Guardar",
+			"edit": "Editar",
+			"delete": "Eliminar",
+			"cancel": "Cancelar"
+		},
+		"messages": {
+			"created": "Anuncio creado.",
+			"updated": "Anuncio actualizado.",
+			"deleted": "Anuncio eliminado.",
+			"saveFailed": "No se pudo guardar el anuncio.",
+			"deleteFailed": "No se pudo eliminar el anuncio.",
+			"confirmDelete": "¿Eliminar este anuncio?"
+		}
+	}
+}

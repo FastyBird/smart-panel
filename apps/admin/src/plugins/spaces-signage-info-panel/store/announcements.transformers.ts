@@ -1,0 +1,85 @@
+import type { operations } from '../../../openapi';
+
+import type {
+	IAnnouncement,
+	IAnnouncementCreateData,
+	IAnnouncementUpdateData,
+} from './announcements.store.types';
+
+export type ApiAnnouncement = NonNullable<
+	operations['get-spaces-signage-info-panel-plugin-announcements']['responses']['200']['content']['application/json']['data']
+>[number];
+
+type ApiAnnouncementCreate =
+	operations['create-spaces-signage-info-panel-plugin-announcement']['requestBody']['content']['application/json']['data'];
+
+type ApiAnnouncementUpdate = NonNullable<
+	operations['update-spaces-signage-info-panel-plugin-announcement']['requestBody']
+>['content']['application/json']['data'];
+
+export const transformAnnouncementResponse = (response: ApiAnnouncement): IAnnouncement => {
+	return {
+		id: response.id,
+		spaceId: response.space_id,
+		order: response.order ?? 0,
+		title: response.title,
+		body: response.body ?? null,
+		icon: response.icon ?? null,
+		activeFrom: response.active_from ? new Date(response.active_from) : null,
+		activeUntil: response.active_until ? new Date(response.active_until) : null,
+		priority: response.priority ?? 0,
+		createdAt: new Date(response.created_at),
+		updatedAt: response.updated_at ? new Date(response.updated_at) : null,
+	};
+};
+
+export const transformAnnouncementCreateRequest = (
+	data: IAnnouncementCreateData,
+): ApiAnnouncementCreate => {
+	const payload: Record<string, unknown> = {
+		title: data.title,
+	};
+
+	// Explicit null is preserved so a caller that opts to clear body / icon
+	// up-front (rather than omitting the key) actually sends `null` over the
+	// wire. `?? undefined` would JSON-omit those keys and the backend would
+	// fall back to the column default — surprising for a Create request that
+	// went out of its way to specify `null`. Only `undefined` (i.e. the key
+	// genuinely wasn't supplied) is allowed to drop out.
+	if ('body' in data) payload.body = data.body;
+	if ('icon' in data) payload.icon = data.icon;
+	if (data.order !== undefined) payload.order = data.order;
+	if (data.priority !== undefined) payload.priority = data.priority;
+	if ('activeFrom' in data) {
+		payload.active_from = data.activeFrom ? data.activeFrom.toISOString() : null;
+	}
+	if ('activeUntil' in data) {
+		payload.active_until = data.activeUntil ? data.activeUntil.toISOString() : null;
+	}
+
+	return payload as ApiAnnouncementCreate;
+};
+
+export const transformAnnouncementUpdateRequest = (
+	data: IAnnouncementUpdateData,
+): ApiAnnouncementUpdate => {
+	const payload: Record<string, unknown> = {};
+
+	// Nullable fields use `'key' in data` so an explicit `null` from the
+	// caller is preserved on the wire (the backend interprets it as "clear
+	// this column"). Non-nullable primitives can stay on `!== undefined`
+	// since the caller has no way to express "clear" for them.
+	if (data.title !== undefined) payload.title = data.title;
+	if ('body' in data) payload.body = data.body;
+	if ('icon' in data) payload.icon = data.icon;
+	if (data.order !== undefined) payload.order = data.order;
+	if (data.priority !== undefined) payload.priority = data.priority;
+	if ('activeFrom' in data) {
+		payload.active_from = data.activeFrom ? data.activeFrom.toISOString() : null;
+	}
+	if ('activeUntil' in data) {
+		payload.active_until = data.activeUntil ? data.activeUntil.toISOString() : null;
+	}
+
+	return payload as ApiAnnouncementUpdate;
+};

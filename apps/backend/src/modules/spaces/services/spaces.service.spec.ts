@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { DataSource, Repository, SelectQueryBuilder, UpdateQueryBuilder, UpdateResult } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder, UpdateResult } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
+import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
@@ -13,6 +15,7 @@ import { SpaceEntity } from '../entities/space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
+import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpacesService', () => {
@@ -20,8 +23,14 @@ describe('SpacesService', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
+	let mockQueryBuilder: {
+		update: jest.Mock;
+		set: jest.Mock;
+		where: jest.Mock;
+		execute: jest.Mock;
+	};
 
-	const mockSpace: SpaceEntity = {
+	const mockSpace = {
 		id: uuid(),
 		name: 'Living Room',
 		description: 'Main living area',
@@ -37,29 +46,49 @@ describe('SpacesService', () => {
 		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as unknown as SpaceEntity;
 
 	beforeEach(async () => {
-		const mockQueryBuilder = {
+		mockQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
-		} as unknown as UpdateQueryBuilder<any>;
+		};
+
+		const spaceRepositoryMock = {
+			find: jest.fn().mockResolvedValue([mockSpace]),
+			findOne: jest.fn().mockResolvedValue(mockSpace),
+			save: jest.fn().mockResolvedValue(mockSpace),
+			create: jest
+				.fn()
+				.mockImplementation((data: Partial<SpaceEntity>) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
+			delete: jest.fn().mockResolvedValue({ affected: 1 }),
+			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+			// The type-change raw UPDATE path whitelists keys against the entity's column
+			// metadata. Supply the set of known column property names the production
+			// entity has so filtering passes through the fields these tests actually send.
+			metadata: {
+				columns: [
+					'name',
+					'description',
+					'category',
+					'parentId',
+					'icon',
+					'displayOrder',
+					'suggestionsEnabled',
+					'statusWidgets',
+					'lastActivityAt',
+				].map((propertyName) => ({ propertyName })),
+			},
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpacesService,
 				{
 					provide: getRepositoryToken(SpaceEntity),
-					useValue: {
-						find: jest.fn().mockResolvedValue([mockSpace]),
-						findOne: jest.fn().mockResolvedValue(mockSpace),
-						save: jest.fn().mockResolvedValue(mockSpace),
-						create: jest.fn().mockImplementation((data) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
-						delete: jest.fn().mockResolvedValue({ affected: 1 }),
-						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-					},
+					useValue: spaceRepositoryMock,
 				},
 				{
 					provide: getRepositoryToken(DeviceEntity),
@@ -78,6 +107,23 @@ describe('SpacesService', () => {
 				{
 					provide: DataSource,
 					useValue: {
+						// SpacesService.create now resolves a subtype-specific repository via
+						// dataSource.getRepository(mapping.class). Route those calls back to the
+						// same mocked SpaceEntity repo so the existing assertions still apply.
+						getRepository: jest.fn().mockImplementation(() => spaceRepositoryMock),
+						// The type-change raw UPDATE path wraps the QueryBuilder.update() and
+						// the subsequent reload in a DataSource.transaction(...). The
+						// transactional manager exposes `createQueryBuilder` and `findOne` —
+						// delegate both back to the same mocked repository so existing
+						// findOne.mockResolvedValueOnce(...) chains continue to drive the reload.
+						transaction: jest.fn().mockImplementation(async (cb: (manager: unknown) => Promise<unknown>) =>
+							cb({
+								createQueryBuilder: () => mockQueryBuilder,
+								findOne: (...args: unknown[]): unknown => spaceRepositoryMock.findOne(...(args as [never])),
+								remove: jest.fn().mockResolvedValue(undefined),
+								save: jest.fn().mockResolvedValue(mockSpace),
+							}),
+						),
 						createQueryRunner: jest.fn().mockReturnValue({
 							connect: jest.fn(),
 							startTransaction: jest.fn(),
@@ -104,6 +150,7 @@ describe('SpacesService', () => {
 						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
+				SpacesTypeMapperService,
 			],
 		}).compile();
 
@@ -111,84 +158,31 @@ describe('SpacesService', () => {
 		spaceRepository = module.get(getRepositoryToken(SpaceEntity));
 		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
 		displayRepository = module.get(getRepositoryToken(DisplayEntity));
-	});
 
-	describe('proposeSpaces', () => {
-		it('should return empty array when no devices exist', async () => {
-			deviceRepository.find.mockResolvedValue([]);
-
-			const result = await service.proposeSpaces();
-
-			expect(result).toEqual([]);
-			expect(deviceRepository.find).toHaveBeenCalledWith({ select: ['id', 'name'] });
+		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit)
+		const typeMapper = module.get<SpacesTypeMapperService>(SpacesTypeMapperService);
+		typeMapper.registerMapping({
+			type: SpaceType.ROOM,
+			class: RoomSpaceEntity,
+			createDto: class {} as never,
+			updateDto: class {} as never,
 		});
-
-		it('should propose spaces based on device names', async () => {
-			const devices = [
-				{ id: uuid(), name: 'Living Room Ceiling Light' },
-				{ id: uuid(), name: 'Living Room Lamp' },
-				{ id: uuid(), name: 'Kitchen Light' },
-				{ id: uuid(), name: 'Bedroom Thermostat' },
-			] as DeviceEntity[];
-
-			deviceRepository.find.mockResolvedValue(devices);
-
-			const result = await service.proposeSpaces();
-
-			expect(result).toHaveLength(3);
-
-			const livingRoom = result.find((s) => s.name === 'Living Room');
-			expect(livingRoom).toBeDefined();
-			expect(livingRoom?.deviceCount).toBe(2);
-			expect(livingRoom?.deviceIds).toContain(devices[0].id);
-			expect(livingRoom?.deviceIds).toContain(devices[1].id);
-
-			const kitchen = result.find((s) => s.name === 'Kitchen');
-			expect(kitchen).toBeDefined();
-			expect(kitchen?.deviceCount).toBe(1);
-
-			const bedroom = result.find((s) => s.name === 'Bedroom');
-			expect(bedroom).toBeDefined();
-			expect(bedroom?.deviceCount).toBe(1);
+		typeMapper.registerMapping({
+			type: SpaceType.ZONE,
+			class: ZoneSpaceEntity,
+			createDto: class {} as never,
+			updateDto: class {} as never,
 		});
-
-		it('should not propose spaces for devices without room tokens', async () => {
-			const devices = [
-				{ id: uuid(), name: 'Main Switch' },
-				{ id: uuid(), name: 'Temperature Sensor' },
-			] as DeviceEntity[];
-
-			deviceRepository.find.mockResolvedValue(devices);
-
-			const result = await service.proposeSpaces();
-
-			expect(result).toEqual([]);
-		});
-
-		it('should match longest room token when multiple match', async () => {
-			const devices = [{ id: uuid(), name: 'Master Bedroom Light' }] as DeviceEntity[];
-
-			deviceRepository.find.mockResolvedValue(devices);
-
-			const result = await service.proposeSpaces();
-
-			expect(result).toHaveLength(1);
-			expect(result[0].name).toBe('Master Bedroom');
-		});
-
-		it('should handle case-insensitive matching', async () => {
-			const devices = [
-				{ id: uuid(), name: 'LIVING ROOM Lamp' },
-				{ id: uuid(), name: 'living room light' },
-			] as DeviceEntity[];
-
-			deviceRepository.find.mockResolvedValue(devices);
-
-			const result = await service.proposeSpaces();
-
-			expect(result).toHaveLength(1);
-			expect(result[0].name).toBe('Living Room');
-			expect(result[0].deviceCount).toBe(2);
+		// A synthetic singleton type used in the singleton-enforcement test below.
+		// Mirrors how spaces-synthetic-master / spaces-synthetic-entry plugins
+		// register their mappings, but scoped to the test suite so the core spec
+		// doesn't need to import plugin code.
+		typeMapper.registerMapping({
+			type: 'master' as SpaceType,
+			class: RoomSpaceEntity, // subtype class doesn't matter for the guard
+			createDto: class {} as never,
+			updateDto: class {} as never,
+			singleton: true,
 		});
 	});
 
@@ -232,7 +226,7 @@ describe('SpacesService', () => {
 			expect(result.devicesAssigned).toBe(2);
 			expect(result.displaysAssigned).toBe(1);
 			expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId });
-			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ roomId: roomId });
+			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ spaceId: roomId });
 		});
 
 		it('should handle empty device and display arrays', async () => {
@@ -412,24 +406,61 @@ describe('SpacesService', () => {
 
 			await expect(service.create(createDto)).rejects.toThrow(SpacesValidationException);
 		});
+
+		it('should reject creating a second instance of a singleton space type', async () => {
+			// The in-suite 'master' mapping is registered with `singleton: true`.
+			// The first row is seeded by the plugin on boot — simulate that by
+			// having the subtype repository's findOne (which SpacesService.create
+			// consults before writing) return an already-existing row.
+			const existingMaster = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Home',
+				type: 'master' as SpaceType,
+				category: null,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.find.mockResolvedValue([]);
+			spaceRepository.findOne.mockResolvedValueOnce(existingMaster);
+
+			await expect(
+				service.create({
+					name: 'Another Home',
+					type: 'master' as SpaceType,
+					category: null,
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject creating a ROOM with a zone category', async () => {
+			spaceRepository.find.mockResolvedValue([]);
+
+			await expect(
+				service.create({
+					name: 'Oddly-shaped room',
+					type: SpaceType.ROOM,
+					category: SpaceZoneCategory.FLOOR_GROUND, // zone category on room
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
 	});
 
 	describe('update - type/category validation', () => {
-		const existingRoomSpace: SpaceEntity = {
+		const existingRoomSpace = {
 			...mockSpace,
 			id: uuid(),
 			name: 'Living Room',
 			type: SpaceType.ROOM,
 			category: SpaceRoomCategory.LIVING_ROOM,
-		};
+		} as unknown as SpaceEntity;
 
-		const existingZoneSpace: SpaceEntity = {
+		const existingZoneSpace = {
 			...mockSpace,
 			id: uuid(),
 			name: 'Ground Floor',
 			type: SpaceType.ZONE,
 			category: SpaceZoneCategory.FLOOR_GROUND,
-		};
+		} as unknown as SpaceEntity;
 
 		it('should accept updating ROOM category to another room category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
@@ -441,7 +472,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...existingRoomSpace,
 				category: SpaceRoomCategory.BEDROOM,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
@@ -461,7 +492,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...existingZoneSpace,
 				category: SpaceZoneCategory.FLOOR_FIRST,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
@@ -503,10 +534,10 @@ describe('SpacesService', () => {
 		});
 
 		it('should reject changing type to ZONE when category is null', async () => {
-			const spaceWithNullCategory: SpaceEntity = {
+			const spaceWithNullCategory = {
 				...existingRoomSpace,
 				category: null,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
 
@@ -518,21 +549,50 @@ describe('SpacesService', () => {
 			await expect(service.update(spaceWithNullCategory.id, updateDto)).rejects.toThrow(SpacesValidationException);
 		});
 
+		it('should reject changing a room into a singleton type', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+			await expect(
+				service.update(existingRoomSpace.id, {
+					type: 'master' as SpaceType,
+					category: null,
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject changing a singleton type into a room', async () => {
+			const existingMaster = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Home',
+				type: 'master' as SpaceType,
+				category: null,
+			} as unknown as SpaceEntity;
+			spaceRepository.findOne.mockResolvedValue(existingMaster);
+			await expect(
+				service.update(existingMaster.id, {
+					type: SpaceType.ROOM,
+					category: SpaceRoomCategory.LIVING_ROOM,
+				}),
+			).rejects.toThrow(SpacesValidationException);
+		});
+
 		it('should accept changing type to ZONE when category is provided', async () => {
-			const spaceWithNullCategory: SpaceEntity = {
+			const spaceWithNullCategory = {
 				...existingRoomSpace,
 				category: null,
-			};
-
-			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
-
-			const updateDto = {
-				type: SpaceType.ZONE,
-				category: SpaceZoneCategory.FLOOR_GROUND,
-			};
+			} as unknown as SpaceEntity;
 
 			const updatedSpace = {
 				...spaceWithNullCategory,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity;
+
+			// First findOne returns the pre-update entity; after the type-change raw update
+			// the service re-fetches to get the entity with the new subtype.
+			spaceRepository.findOne.mockResolvedValueOnce(spaceWithNullCategory).mockResolvedValueOnce(updatedSpace);
+
+			const updateDto = {
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -543,19 +603,30 @@ describe('SpacesService', () => {
 
 			expect(result.type).toBe(SpaceType.ZONE);
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			// The raw UPDATE path for type changes must emit the discriminator column.
+			// We assert the payload handed to TypeORM's QueryBuilder.set() — TypeORM then
+			// resolves `type` via @TableInheritance's entityMetadata to the discriminator
+			// column and issues `UPDATE ... SET type = 'zone' WHERE id = ?`.
+			expect(mockQueryBuilder.update).toHaveBeenCalled();
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_GROUND }),
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: spaceWithNullCategory.id });
+			expect(mockQueryBuilder.execute).toHaveBeenCalled();
 		});
 
 		it('should accept changing type and category together when compatible', async () => {
-			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+			const updatedSpace = {
+				...existingRoomSpace,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			} as unknown as SpaceEntity;
+
+			// See note above — type changes reload the entity as the new subtype.
+			spaceRepository.findOne.mockResolvedValueOnce(existingRoomSpace).mockResolvedValueOnce(updatedSpace);
 
 			// Change from room/living_room to zone/floor_ground
 			const updateDto = {
-				type: SpaceType.ZONE,
-				category: SpaceZoneCategory.FLOOR_GROUND,
-			};
-
-			const updatedSpace = {
-				...existingRoomSpace,
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -566,17 +637,23 @@ describe('SpacesService', () => {
 
 			expect(result.type).toBe(SpaceType.ZONE);
 			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			// Same assertion as above — verify the raw UPDATE SET payload includes the
+			// new discriminator alongside the other DTO-sourced fields, and is keyed by id.
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_GROUND }),
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: existingRoomSpace.id });
 		});
 
 		it('should accept setting category to null for a ROOM', async () => {
 			// Create a fresh room space instance
-			const roomSpace: SpaceEntity = {
+			const roomSpace = {
 				...mockSpace,
 				id: uuid(),
 				name: 'Test Room',
 				type: SpaceType.ROOM,
 				category: SpaceRoomCategory.BEDROOM,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.findOne.mockResolvedValue(roomSpace);
 
@@ -587,7 +664,7 @@ describe('SpacesService', () => {
 			const updatedSpace = {
 				...roomSpace,
 				category: null,
-			};
+			} as unknown as SpaceEntity;
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 

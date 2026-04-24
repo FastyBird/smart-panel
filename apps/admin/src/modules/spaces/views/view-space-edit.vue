@@ -34,7 +34,7 @@
 	</app-bar-button>
 
 	<app-bar-button
-		v-if="!isMDDevice"
+		v-if="!isMDDevice && hasEditForm"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
@@ -54,14 +54,32 @@
 			v-if="space !== null"
 			class="grow-1 p-2 md:px-4"
 		>
-			<space-edit-form
+			<!--
+				Every space type is rendered via its plugin's registered spaceEditForm
+				(home-control provides Room/Zone; synthetic master/entry currently
+				register no form; signage plugins provide their own). If no plugin
+				registers one we show a read-only placeholder rather than falling back
+				to the generic Room/Zone form — that form has type/category/parent
+				controls that don't apply to synthetic or plugin-contributed types.
+			-->
+			<component
+				:is="pluginElement?.components?.spaceEditForm"
+				v-if="pluginElement?.components?.spaceEditForm"
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"
-				/>
+			/>
+
+			<el-alert
+				v-else
+				type="info"
+				:closable="false"
+				:title="t('spacesModule.texts.noEditFormForSpaceType', { type: space.type })"
+				show-icon
+			/>
 		</el-scrollbar>
 
 		<div
@@ -88,6 +106,7 @@
 				</el-button>
 
 				<el-button
+					v-if="hasEditForm"
 					type="primary"
 					@click="onSubmit"
 				>
@@ -104,7 +123,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -113,12 +132,13 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
+	type IPluginElement,
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
-import { SpaceEditForm } from '../components/components';
-import { useSpace } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
+import { useSpace, useSpacesPlugins } from '../composables';
+import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
+import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace } from '../store';
 
 const props = withDefaults(
@@ -148,9 +168,29 @@ const spaceId = computed(() => (props.id ?? route.params.id) as string | undefin
 
 const { space, fetching, fetchSpace } = useSpace(spaceId);
 
+const { getElement } = useSpacesPlugins();
+
+const pluginElement = computed<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>(() => {
+	if (!space.value) {
+		return undefined;
+	}
+	return getElement(space.value.type);
+});
+
 const isLoading = computed<boolean>(() => fetching.value);
 
-const formRef = ref<InstanceType<typeof SpaceEditForm> | null>(null);
+// Synthetic space types (e.g. master / entry) intentionally register no
+// spaceEditForm — the view falls back to a read-only placeholder. Gate
+// the Save buttons so they don't render a visible no-op in that case.
+const hasEditForm = computed<boolean>(() => !!pluginElement.value?.components?.spaceEditForm);
+
+// The rendered form is a dynamically-dispatched plugin component — each space
+// type's plugin contributes its own edit form. We only rely on a `submit()`
+// method on the exposed instance; anything else is plugin-private.
+interface ISpaceEditFormHandle {
+	submit: () => void | Promise<unknown>;
+}
+const formRef = ref<ISpaceEditFormHandle | null>(null);
 const remoteFormChanged = ref(props.remoteFormChanged);
 
 // Track if space was previously loaded to detect deletion
@@ -161,12 +201,18 @@ const isDetailRoute = computed<boolean>(
 		route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined
 );
 
-const spaceIcon = computed<string>((): string => {
-	if (space.value?.icon) {
-		return space.value.icon;
-	}
-	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
-});
+// Defer to the shared `getSpaceIcon` helper so this view's iconography stays
+// consistent with the scenes module and any other consumer (Bugbot flagged
+// inconsistency between the two before they were unified).
+const spaceIcon = computed<string>((): string =>
+	space.value
+		? getSpaceIcon({
+				icon: space.value.icon ?? null,
+				category: (space.value.category ?? null) as SpaceRoomCategory | SpaceZoneCategory | null,
+				type: space.value.type,
+			})
+		: 'mdi:shape-outline',
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

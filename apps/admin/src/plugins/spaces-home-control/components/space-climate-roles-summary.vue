@@ -1,0 +1,262 @@
+<template>
+	<template v-if="hasTargets">
+		<dt
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
+			style="background: var(--el-fill-color-light)"
+		>
+			{{ t('spacesHomeControlPlugin.detail.climateRoles.title') }}
+		</dt>
+		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
+			<!-- Show role tags when roles are assigned -->
+			<div v-if="roleSummaries.length > 0" class="flex items-center gap-2 flex-wrap">
+				<el-popover
+					v-for="summary in roleSummaries"
+					:key="summary.role"
+					placement="bottom"
+					:width="400"
+					trigger="click"
+				>
+					<template #reference>
+						<el-tag
+							:type="getRoleTagType(summary.role)"
+							size="small"
+							class="cursor-pointer"
+						>
+							<div class="flex items-center gap-1">
+								<icon :icon="getRoleIcon(summary.role)" />
+								{{ t(`spacesHomeControlPlugin.climateRoles.${summary.role}`) }}
+								<el-badge
+									:value="summary.devices.length"
+									:type="getRoleTagType(summary.role)"
+									class="ml-1"
+								/>
+							</div>
+						</el-tag>
+					</template>
+					<div class="space-y-2">
+						<el-alert
+							type="info"
+							:closable="false"
+							show-icon
+							class="mb-2!"
+						>
+							{{ t(`spacesHomeControlPlugin.climateRoles.descriptions.${summary.role}`) }}
+						</el-alert>
+						<div class="text-sm font-medium mb-1">
+							{{ t('spacesHomeControlPlugin.detail.climateRoles.devicesAssigned') }}:
+						</div>
+						<ul class="list-none p-0 m-0 space-y-1">
+							<li
+								v-for="device in summary.devices"
+								:key="device.deviceId"
+								class="flex items-center gap-2 text-sm py-1"
+							>
+								<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
+								<span>{{ device.deviceName }}</span>
+							</li>
+						</ul>
+					</div>
+				</el-popover>
+			</div>
+			<!-- Show hint when no roles assigned yet -->
+			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
+				<icon icon="mdi:thermostat" />
+				{{ t('spacesHomeControlPlugin.detail.climateRoles.noRolesAssigned') }}
+			</div>
+			<el-button
+				text
+				size="small"
+				class="ml-2"
+				@click="emit('edit')"
+			>
+				<template #icon>
+					<icon icon="mdi:pencil" />
+				</template>
+				{{ t('spacesModule.buttons.edit.title') }}
+			</el-button>
+		</dd>
+	</template>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
+
+import { Icon } from '@iconify/vue';
+import { ElAlert, ElBadge, ElButton, ElPopover, ElTag } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+
+import { useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../../../modules/spaces/composables';
+import { ClimateRole, SPACES_MODULE_PREFIX } from '../../../modules/spaces/spaces.constants';
+
+import type { IClimateRoleSummary, ISpaceClimateRolesSummaryProps } from './space-climate-roles-summary.types';
+
+defineOptions({
+	name: 'SpaceClimateRolesSummary',
+});
+
+const props = defineProps<ISpaceClimateRolesSummaryProps>();
+
+const emit = defineEmits<{
+	(e: 'edit'): void;
+}>();
+
+const { t } = useI18n();
+const backend = useBackend();
+const { climateSignal } = useSpacesRefreshSignals();
+
+const loading = ref(false);
+const roleSummaries = ref<IClimateRoleSummary[]>([]);
+const hasTargets = ref(false);
+
+const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+	switch (role) {
+		case ClimateRole.heating_only:
+			return 'danger';
+		case ClimateRole.cooling_only:
+			return 'primary';
+		case ClimateRole.auto:
+			return 'success';
+		case ClimateRole.auxiliary:
+			return 'warning';
+		case ClimateRole.sensor:
+			return 'info';
+		case ClimateRole.hidden:
+		default:
+			return 'info';
+	}
+};
+
+const getRoleIcon = (role: string): string => {
+	switch (role) {
+		case ClimateRole.heating_only:
+			return 'mdi:fire';
+		case ClimateRole.cooling_only:
+			return 'mdi:snowflake';
+		case ClimateRole.auto:
+			return 'mdi:thermostat-auto';
+		case ClimateRole.auxiliary:
+			return 'mdi:radiator';
+		case ClimateRole.sensor:
+			return 'mdi:thermometer';
+		case ClimateRole.hidden:
+		default:
+			return 'mdi:eye-off';
+	}
+};
+
+const getDeviceIcon = (category: string): string => {
+	switch (category) {
+		case 'thermostat':
+			return 'mdi:thermostat';
+		case 'heating_unit':
+			return 'mdi:radiator';
+		case 'water_heater':
+			return 'mdi:water-boiler';
+		case 'air_conditioner':
+			return 'mdi:air-conditioner';
+		case 'fan':
+			return 'mdi:fan';
+		case 'air_humidifier':
+			return 'mdi:air-humidifier';
+		case 'air_dehumidifier':
+			return 'mdi:air-humidifier-off';
+		case 'air_purifier':
+			return 'mdi:air-purifier';
+		case 'sensor':
+			return 'mdi:thermometer';
+		default:
+			return 'mdi:thermostat-box';
+	}
+};
+
+const loadClimateRoles = async (): Promise<void> => {
+	if (!props.space?.id) return;
+
+	loading.value = true;
+
+	try {
+		const { data: responseData, error } = await backend.client.GET(
+			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/climate/targets`,
+			{ params: { path: { id: props.space.id } } }
+		);
+
+		if (error || !responseData) {
+			hasTargets.value = false;
+			return;
+		}
+
+		const targets = responseData.data ?? [];
+		hasTargets.value = targets.length > 0;
+
+		// Group targets by role (excluding HIDDEN roles)
+		const roleMap = new Map<string, IClimateRoleSummary>();
+
+		for (const target of targets) {
+			if (!target.role || (target.role as string) === ClimateRole.hidden) continue;
+
+			const role = target.role as string;
+			if (!roleMap.has(role)) {
+				roleMap.set(role, {
+					role,
+					devices: [],
+				});
+			}
+
+			roleMap.get(role)!.devices.push({
+				deviceId: target.device_id,
+				deviceName: target.device_name,
+				deviceCategory: target.device_category ?? '',
+			});
+		}
+
+		// Convert map to array and sort by role order
+		const roleOrder = [
+			ClimateRole.heating_only,
+			ClimateRole.cooling_only,
+			ClimateRole.auto,
+			ClimateRole.auxiliary,
+			ClimateRole.sensor,
+			ClimateRole.hidden,
+		];
+
+		roleSummaries.value = Array.from(roleMap.values()).sort((a, b) => {
+			const aIndex = roleOrder.indexOf(a.role as ClimateRole);
+			const bIndex = roleOrder.indexOf(b.role as ClimateRole);
+			return aIndex - bIndex;
+		});
+	} finally {
+		loading.value = false;
+	}
+};
+
+watch(
+	() => props.space?.id,
+	(newId) => {
+		if (newId) {
+			loadClimateRoles();
+		}
+	}
+);
+
+// Watch for climate refresh signal from websocket events
+watch(
+	() => climateSignal?.value,
+	() => {
+		if (props.space?.id) {
+			loadClimateRoles();
+		}
+	}
+);
+
+onMounted(() => {
+	if (props.space?.id) {
+		loadClimateRoles();
+	}
+});
+
+defineExpose({
+	reload: loadClimateRoles,
+});
+</script>

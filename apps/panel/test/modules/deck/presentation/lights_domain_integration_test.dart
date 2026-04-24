@@ -1,10 +1,11 @@
+import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -16,6 +17,8 @@ import 'package:mocktail/mocktail.dart';
 // and error handling for the lighting domain.
 
 // Mock classes
+class MockSpacesHomeControlPluginClient extends Mock implements SpacesHomeControlPluginClient {}
+
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
 
 class MockIntentsRepository extends Mock implements IntentsRepository {}
@@ -145,7 +148,8 @@ class LightingModeTestHarness {
 }
 
 void main() {
-  late MockSpacesModuleClient mockApiClient;
+  late MockSpacesHomeControlPluginClient mockApiClient;
+  late MockSpacesModuleClient mockSpacesModuleClient;
   late MockIntentsRepository mockIntentsRepository;
   late FakeSocketService fakeSocketService;
   late SpacesRepository spacesRepository;
@@ -156,10 +160,11 @@ void main() {
   const testSpaceId = '550e8400-e29b-41d4-a716-446655440000';
 
   setUp(() {
-    mockApiClient = MockSpacesModuleClient();
+    mockApiClient = MockSpacesHomeControlPluginClient();
+    mockSpacesModuleClient = MockSpacesModuleClient();
     mockIntentsRepository = MockIntentsRepository();
     fakeSocketService = FakeSocketService();
-    spacesRepository = SpacesRepository(apiClient: mockApiClient);
+    spacesRepository = SpacesRepository(apiClient: mockSpacesModuleClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
     spaceStateRepository = SpaceStateRepository(
       apiClient: mockApiClient,

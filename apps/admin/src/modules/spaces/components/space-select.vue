@@ -105,10 +105,19 @@ const flatOptions = computed<ISpace[]>(() => {
 });
 
 const groupedOptions = computed(() => {
-	const groups: { type: SpaceType; label: string; options: ISpace[] }[] = [];
+	const groups: { type: SpaceType | 'other'; label: string; options: ISpace[] }[] = [];
 
 	const rooms = roomSpaces.value.slice().sort((a, b) => a.name.localeCompare(b.name));
 	const zones = zoneSpaces.value.slice().sort((a, b) => a.name.localeCompare(b.name));
+	// Any space that isn't a room or zone — today that's the synthetic
+	// master / entry singletons and plugin-contributed types like signage.
+	// Before this change the `filter="all"` path only rendered rooms and
+	// zones because `groupedOptions` had no bucket for the other types,
+	// silently hiding them from pickers (e.g. the display assignment form).
+	const others = spaces.value
+		.filter((s) => s.type !== SpaceType.ROOM && s.type !== SpaceType.ZONE)
+		.slice()
+		.sort((a, b) => a.name.localeCompare(b.name));
 
 	if (rooms.length > 0) {
 		groups.push({
@@ -123,6 +132,14 @@ const groupedOptions = computed(() => {
 			type: SpaceType.ZONE,
 			label: t('spacesModule.labels.zones'),
 			options: zones,
+		});
+	}
+
+	if (others.length > 0) {
+		groups.push({
+			type: 'other',
+			label: t('spacesModule.labels.others'),
+			options: others,
 		});
 	}
 

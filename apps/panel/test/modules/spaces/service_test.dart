@@ -1,14 +1,14 @@
-import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/undo/undo_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/climate_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/covers_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/intent_types.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

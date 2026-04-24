@@ -1,0 +1,66 @@
+{
+	"plugin": {
+		"name": "Informační panel",
+		"description": "Informační obrazovka pouze pro zobrazení s hodinami, počasím, oznámeními a volitelným externím zdrojem."
+	},
+	"spaceType": {
+		"label": "Informační panel (signage)"
+	},
+	"fields": {
+		"layout": {
+			"label": "Rozvržení",
+			"options": {
+				"clock_weather": "Hodiny + počasí",
+				"clock_weather_announcements": "Hodiny + počasí + oznámení",
+				"full": "Úplné (všechny sekce)"
+			}
+		},
+		"sections": {
+			"title": "Sekce",
+			"description": "Zapněte nebo vypněte jednotlivé sekce panelu.",
+			"showClock": "Hodiny",
+			"showWeather": "Počasí",
+			"showAnnouncements": "Oznámení",
+			"showFeed": "Externí zdroj"
+		},
+		"weatherLocation": {
+			"label": "Lokalita počasí",
+			"placeholder": "Vyberte lokalitu počasí"
+		},
+		"feedUrl": {
+			"label": "URL zdroje",
+			"placeholder": "https://…",
+			"validation": {
+				"invalid": "Zadejte prosím platnou adresu URL (včetně protokolu, např. https://)."
+			}
+		}
+	},
+	"announcements": {
+		"heading": "Oznámení",
+		"empty": "Žádná oznámení. Přidejte první níže.",
+		"add": "Přidat oznámení",
+		"fields": {
+			"title": "Název",
+			"body": "Text",
+			"icon": "Ikona",
+			"priority": "Priorita",
+			"order": "Pořadí",
+			"activeFrom": "Aktivní od",
+			"activeUntil": "Aktivní do"
+		},
+		"actions": {
+			"save": "Uložit",
+			"edit": "Upravit",
+			"delete": "Smazat",
+			"cancel": "Zrušit"
+		},
+		"messages": {
+			"created": "Oznámení vytvořeno.",
+			"updated": "Oznámení upraveno.",
+			"deleted": "Oznámení smazáno.",
+			"saveFailed": "Uložení oznámení selhalo.",
+			"deleteFailed": "Smazání oznámení selhalo.",
+			"confirmDelete": "Smazat toto oznámení?"
+		}
+	}
+}

@@ -1,6 +1,6 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -9,7 +9,8 @@ import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory }
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
-export class SpaceEntity extends BaseEntity {
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
+export abstract class SpaceEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Space name',
 		type: 'string',
@@ -31,19 +32,6 @@ export class SpaceEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	description: string | null;
-
-	@ApiProperty({
-		description: 'Space type',
-		enum: SpaceType,
-		example: SpaceType.ROOM,
-	})
-	@Expose()
-	@IsEnum(SpaceType)
-	@Column({
-		type: 'varchar',
-		default: SpaceType.ROOM,
-	})
-	type: SpaceType;
 
 	@ApiPropertyOptional({
 		description: 'Space category (room type template)',
@@ -200,4 +188,17 @@ export class SpaceEntity extends BaseEntity {
 	})
 	@Column({ type: 'datetime', nullable: true, default: null })
 	lastActivityAt: Date | string | null;
+
+	@ApiProperty({ description: 'Space type', enum: SpaceType, example: SpaceType.ROOM })
+	@Expose()
+	get type(): SpaceType {
+		// Subtypes MUST override this getter and return the same discriminator value
+		// they pass to @ChildEntity(...) and register with SpacesTypeMapperService.
+		// Throwing here catches plugin authors who forget, rather than silently
+		// returning a lowercased class name (e.g. "roomspaceentity") that would
+		// mismatch the discriminator and break mapper lookups.
+		throw new Error(
+			`SpaceEntity subclass "${this.constructor.name}" must override the \`type\` getter to return its registered discriminator.`,
+		);
+	}
 }

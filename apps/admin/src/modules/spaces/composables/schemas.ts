@@ -20,10 +20,14 @@ const SpaceFormBaseSchema = z.object({
 	parentId: z.string().uuid().nullable().optional(),
 });
 
-// Add form schema - includes type selection
+// Add form schema - includes type selection.
+// Only ROOM and ZONE are user-creatable via the add form; MASTER and ENTRY
+// are backend-seeded singletons and SIGNAGE_INFO_PANEL is provisioned by
+// its plugin, so they must not round-trip through the generic add form
+// even if someone bypasses the UI's hardcoded two-option dropdown.
 export const SpaceAddFormSchema = SpaceFormBaseSchema.extend({
 	id: z.string().uuid(),
-	type: z.nativeEnum(SpaceType).default(SpaceType.ROOM),
+	type: z.enum([SpaceType.ROOM, SpaceType.ZONE]).default(SpaceType.ROOM),
 });
 
 export type SpaceAddFormSchemaType = z.infer<typeof SpaceAddFormSchema>;

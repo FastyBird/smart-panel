@@ -66,6 +66,7 @@ import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -332,7 +333,7 @@ class StartupManagerService {
         locator.get<SecurityModuleService>().initialize(),
         locator.get<WeatherModuleService>().initialize(),
         locator.get<DevicesModuleService>().initialize(),
-        locator.get<SpacesModuleService>().initialize(),
+        locator.get<SpacesHomeControlPluginService>().initialize(),
         locator.get<ScenesModuleService>().initialize(),
         locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
@@ -401,7 +402,7 @@ class StartupManagerService {
     service.register('security', () => locator<SecurityModuleService>().refresh());
     service.register('weather', () => locator<WeatherModuleService>().refresh());
     service.register('devices', () => locator<DevicesModuleService>().refresh());
-    service.register('spaces', () => locator<SpacesModuleService>().refresh());
+    service.register('spaces', () => locator<SpacesHomeControlPluginService>().refresh());
     service.register('scenes', () => locator<ScenesModuleService>().refresh());
     service.register('dashboard', () => locator<DashboardModuleService>().refresh());
     service.register('energy', () => locator<EnergyModuleService>().refresh());
@@ -494,9 +495,9 @@ class StartupManagerService {
       try { locator<DashboardModuleService>().dispose(); } catch (_) {}
       try { locator.unregister<DashboardModuleService>(); } catch (_) {}
     }
-    if (locator.isRegistered<SpacesModuleService>()) {
-      try { locator<SpacesModuleService>().dispose(); } catch (_) {}
-      try { locator.unregister<SpacesModuleService>(); } catch (_) {}
+    if (locator.isRegistered<SpacesHomeControlPluginService>()) {
+      try { locator<SpacesHomeControlPluginService>().dispose(); } catch (_) {}
+      try { locator.unregister<SpacesHomeControlPluginService>(); } catch (_) {}
     }
     if (locator.isRegistered<ScenesModuleService>()) {
       try { locator<ScenesModuleService>().dispose(); } catch (_) {}
@@ -784,7 +785,7 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
-    // IntentsModuleService must be created before DevicesModuleService and SpacesModuleService
+    // IntentsModuleService must be created before DevicesModuleService and SpacesHomeControlPluginService
     // because they depend on IntentsRepository for intent-based optimistic UI
     var intentsModuleService = IntentsModuleService(
       socketService: _socketClient,
@@ -801,7 +802,7 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
-    var spacesModuleService = SpacesModuleService(
+    var spacesHomeControlPluginService = SpacesHomeControlPluginService(
       apiClient: _apiClient,
       socketService: _socketClient,
       dio: _apiIoService,
@@ -842,7 +843,7 @@ class StartupManagerService {
     locator.registerSingleton(dashboardModuleService);
     locator.registerSingleton(scenesModuleService);
     locator.registerSingleton(intentsModuleService);
-    locator.registerSingleton(spacesModuleService);
+    locator.registerSingleton(spacesHomeControlPluginService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);

@@ -1,6 +1,15 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SpacesDomainController } from '../../plugins/spaces-home-control/controllers/spaces-domain.controller';
+import { RoomSpaceEntity } from '../../plugins/spaces-home-control/entities/room-space.entity';
+import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
+import { SpaceClimateRoleEntity } from '../../plugins/spaces-home-control/entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from '../../plugins/spaces-home-control/entities/space-covers-role.entity';
+import { SpaceLightingRoleEntity } from '../../plugins/spaces-home-control/entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from '../../plugins/spaces-home-control/entities/space-media-activity-binding.entity';
+import { SpaceSensorRoleEntity } from '../../plugins/spaces-home-control/entities/space-sensor-role.entity';
+import { ZoneSpaceEntity } from '../../plugins/spaces-home-control/entities/zone-space.entity';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
@@ -8,57 +17,24 @@ import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
-import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../tools/tools.module';
-import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
-import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
-import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
-import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
-import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
-import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
-import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
+import { SpaceRoleEntity } from './entities/space-role.entity';
 import { SpaceEntity } from './entities/space.entity';
-import { SpaceActivityListener } from './listeners/space-activity.listener';
-import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
-import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
-import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
-import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
-import { ClimateIntentService } from './services/climate-intent.service';
-import { CoversIntentService } from './services/covers-intent.service';
-import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
-import { LightingIntentService } from './services/lighting-intent.service';
-import { MediaCapabilityService } from './services/media-capability.service';
 import { SpacesModuleResetService } from './services/module-reset.service';
-import { SpaceClimateRoleService } from './services/space-climate-role.service';
-import { SpaceClimateStateService } from './services/space-climate-state.service';
-import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
-import { SpaceCoversRoleService } from './services/space-covers-role.service';
-import { SpaceCoversStateService } from './services/space-covers-state.service';
-import { SpaceIntentBaseService } from './services/space-intent-base.service';
-import { SpaceIntentService } from './services/space-intent.service';
-import { SpaceLightingRoleService } from './services/space-lighting-role.service';
-import { SpaceLightingStateService } from './services/space-lighting-state.service';
-import { SpaceLightingToolService } from './services/space-lighting-tool.service';
-import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
-import { SpaceMediaActivityService } from './services/space-media-activity.service';
-import { SpaceSensorRoleService } from './services/space-sensor-role.service';
-import { SpaceSensorStateService } from './services/space-sensor-state.service';
-import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
-import { SpaceSuggestionService } from './services/space-suggestion.service';
-import { SpaceUndoHistoryService } from './services/space-undo-history.service';
-import { SpacesSeederService } from './services/spaces-seeder.service';
+import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
+import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
+import { SpaceRolesTypeMapperService } from './services/space-roles-type-mapper.service';
+import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
-import { IntentSpecLoaderService } from './spec';
 
 @ApiTag({
 	tagName: SPACES_MODULE_NAME,
@@ -69,6 +45,9 @@ import { IntentSpecLoaderService } from './spec';
 	imports: [
 		TypeOrmModule.forFeature([
 			SpaceEntity,
+			RoomSpaceEntity,
+			ZoneSpaceEntity,
+			SpaceRoleEntity,
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
@@ -81,57 +60,30 @@ import { IntentSpecLoaderService } from './spec';
 		]),
 		DevicesModule,
 		IntentsModule,
-		WebsocketModule,
 		SeedModule,
 		ToolsModule,
 	],
-	controllers: [SpacesController],
+	// `SpacesDomainController` physically lives in the home-control plugin but
+	// is registered here so RouterModule mounts its routes under
+	// `/api/v1/modules/spaces/spaces/...` — preserving every domain URL
+	// (lighting, climate, covers, sensors, media, suggestions, undo, intent
+	// catalog) that admin and panel clients expect. Once they migrate to the
+	// plugin's own prefix, this dual-location registration can move back.
+	controllers: [SpacesController, SpacesDomainController],
 	providers: [
 		SpacesService,
-		SpaceIntentBaseService,
-		LightingIntentService,
-		ClimateIntentService,
-		CoversIntentService,
-		SpaceIntentService,
-		SpaceLightingRoleService,
-		SpaceLightingStateService,
-		SpaceClimateRoleService,
-		SpaceClimateStateService,
-		SpaceCoversRoleService,
-		SpaceCoversStateService,
-		MediaCapabilityService,
-		DerivedMediaEndpointService,
-		SpaceMediaActivityBindingService,
-		SpaceMediaActivityService,
-		SpaceSensorRoleService,
-		SpaceSensorStateService,
-		SpaceSuggestionService,
-		SpaceSuggestionHeartbeatService,
-		SpaceContextSnapshotService,
-		SpaceUndoHistoryService,
-		SpaceActivityListener,
-		SpaceClimateStateListener,
-		SpaceLightingStateListener,
-		SpaceSensorStateListener,
-		WebsocketExchangeListener,
-		IntentSpecLoaderService,
-		SpacesSeederService,
-		SpaceLightingToolService,
+		SpacesTypeMapperService,
+		SpaceRolesTypeMapperService,
+		SpaceCreateBuilderRegistryService,
+		SpaceRelationsLoaderRegistryService,
 		SpacesModuleResetService,
 	],
 	exports: [
 		SpacesService,
-		SpaceIntentService,
-		SpaceLightingRoleService,
-		SpaceClimateRoleService,
-		SpaceCoversRoleService,
-		SpaceMediaActivityBindingService,
-		SpaceMediaActivityService,
-		SpaceSensorRoleService,
-		SpaceSuggestionService,
-		SpaceContextSnapshotService,
-		SpaceUndoHistoryService,
-		IntentSpecLoaderService,
+		SpacesTypeMapperService,
+		SpaceRolesTypeMapperService,
+		SpaceCreateBuilderRegistryService,
+		SpaceRelationsLoaderRegistryService,
 	],
 })
 export class SpacesModule implements OnModuleInit {
@@ -139,12 +91,8 @@ export class SpacesModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
-		private readonly moduleSeeder: SpacesSeederService,
 		private readonly moduleReset: SpacesModuleResetService,
-		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
-		private readonly toolProviderRegistry: ToolProviderRegistryService,
-		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
@@ -155,18 +103,6 @@ export class SpacesModule implements OnModuleInit {
 				return this.moduleReset.reset();
 			},
 			280,
-		);
-
-		// Register space lighting tool provider
-		this.toolProviderRegistry.register(this.spaceLightingTool);
-
-		// Register seeder (priority 120 - after devices, before dashboard)
-		this.seedRegistry.register(
-			SPACES_MODULE_NAME,
-			async (): Promise<void> => {
-				await this.moduleSeeder.seed();
-			},
-			120,
 		);
 
 		this.modulesMapperService.registerMapping<SpacesConfigModel, UpdateSpacesConfigDto>({
@@ -213,3 +149,5 @@ The Spaces module provides a room-centric organization for your Smart Panel syst
 		});
 	}
 }
+
+export default SpacesModule;

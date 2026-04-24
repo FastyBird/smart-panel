@@ -1,0 +1,9 @@
+{
+	"plugin": {
+		"name": "Entry Space",
+		"description": "Contributes the singleton Entry synthetic space — the security / front-door surface that surfaces arming state and access control."
+	},
+	"typeLabels": {
+		"entry": "Entry / security"
+	}
+}
