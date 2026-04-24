@@ -40,8 +40,7 @@
 			"smartOverrides": {
 				"title": "Smart overrides",
 				"badge": "Advanced",
-				"hint": "Optional settings to improve smart behavior and intent-based control.",
-				"smartSuggestions": "Smart suggestions"
+				"hint": "Optional settings to improve smart behavior and intent-based control."
 			}
 		}
 	},
@@ -192,9 +191,6 @@
 				"placeholder": "Select a parent zone (optional)",
 				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
 			},
-			"suggestions": {
-				"title": "Smart suggestions"
-			},
 			"suggestionsEnabled": {
 				"title": "Enable suggestions",
 				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
@@ -344,9 +340,6 @@
 			"noAvailable": "No displays available to add",
 			"removed": "Display \"{name}\" was removed from this space.",
 			"removeCanceled": "Display removal was canceled."
-		},
-		"media": {
-			"activities": "Media Activities"
 		},
 		"scenes": {
 			"title": "Scenes",

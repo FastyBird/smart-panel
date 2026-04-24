@@ -40,8 +40,7 @@
 			"smartOverrides": {
 				"title": "Chytrá přepsání",
 				"badge": "Pokročilé",
-				"hint": "Volitelná nastavení pro zlepšení chytrého chování a ovládání na základě záměrů.",
-				"smartSuggestions": "Chytré návrhy"
+				"hint": "Volitelná nastavení pro zlepšení chytrého chování a ovládání na základě záměrů."
 			}
 		}
 	},
@@ -192,9 +191,6 @@
 				"placeholder": "Vyberte nadřazenou zónu (volitelné)",
 				"hint": "Tuto místnost můžete organizovat přiřazením k zóně, jako je \"Přízemí\" nebo \"Patro\". To pomáhá seskupit související místnosti."
 			},
-			"suggestions": {
-				"title": "Chytré návrhy"
-			},
 			"suggestionsEnabled": {
 				"title": "Povolit návrhy",
 				"hint": "Když je povoleno, panel bude zobrazovat nenápadné návrhy osvětlení na základě denní doby a aktuálního stavu."
@@ -344,9 +340,6 @@
 			"noAvailable": "Nejsou k dispozici žádné displeje k přidání",
 			"removed": "Displej \"{name}\" byl odebrán z tohoto prostoru.",
 			"removeCanceled": "Odebrání displeje bylo zrušeno."
-		},
-		"media": {
-			"activities": "Mediální aktivity"
 		},
 		"scenes": {
 			"title": "Scény",

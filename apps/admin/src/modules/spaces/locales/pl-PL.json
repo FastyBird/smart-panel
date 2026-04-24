@@ -40,8 +40,7 @@
 			"smartOverrides": {
 				"title": "Inteligentne nadpisania",
 				"badge": "Zaawansowane",
-				"hint": "Opcjonalne ustawienia poprawiajace inteligentne zachowanie i sterowanie oparte na intencjach.",
-				"smartSuggestions": "Inteligentne sugestie"
+				"hint": "Opcjonalne ustawienia poprawiajace inteligentne zachowanie i sterowanie oparte na intencjach."
 			}
 		}
 	},
@@ -192,9 +191,6 @@
 				"placeholder": "Wybierz strefe nadrzedna (opcjonalnie)",
 				"hint": "Mozesz uporzadkowac ten pokoj, przypisujac go do strefy, np. 'Parter' lub 'Pietro'. Pomaga to grupowac powiazane pokoje."
 			},
-			"suggestions": {
-				"title": "Inteligentne sugestie"
-			},
 			"suggestionsEnabled": {
 				"title": "Wlacz sugestie",
 				"hint": "Po wlaczeniu panel bedzie wyswietlac nieinwazyjne sugestie oswietleniowe na podstawie pory dnia i biezacego stanu."
@@ -344,9 +340,6 @@
 			"noAvailable": "Brak dostepnych wyswietlaczy do dodania",
 			"removed": "Wyswietlacz \"{name}\" zostal usuniety z tej przestrzeni.",
 			"removeCanceled": "Usuwanie wyswietlacza zostalo anulowane."
-		},
-		"media": {
-			"activities": "Aktywnosci mediow"
 		},
 		"scenes": {
 			"title": "Sceny",

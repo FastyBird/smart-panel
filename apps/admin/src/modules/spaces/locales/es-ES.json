@@ -40,8 +40,7 @@
 			"smartOverrides": {
 				"title": "Anulaciones inteligentes",
 				"badge": "Avanzado",
-				"hint": "Configuraciones opcionales para mejorar el comportamiento inteligente y el control basado en intenciones.",
-				"smartSuggestions": "Sugerencias inteligentes"
+				"hint": "Configuraciones opcionales para mejorar el comportamiento inteligente y el control basado en intenciones."
 			}
 		}
 	},
@@ -192,9 +191,6 @@
 				"placeholder": "Seleccione una zona principal (opcional)",
 				"hint": "Puede organizar esta habitación asignándola a una zona, como 'Planta baja' o 'Planta alta'. Esto ayuda a agrupar habitaciones relacionadas."
 			},
-			"suggestions": {
-				"title": "Sugerencias inteligentes"
-			},
 			"suggestionsEnabled": {
 				"title": "Activar sugerencias",
 				"hint": "Cuando está activado, el panel mostrará sugerencias de iluminación no intrusivas basadas en la hora del día y el estado actual."
@@ -344,9 +340,6 @@
 			"noAvailable": "No hay pantallas disponibles para añadir",
 			"removed": "La pantalla \"{name}\" fue eliminada de este espacio.",
 			"removeCanceled": "La eliminación de la pantalla ha sido cancelada."
-		},
-		"media": {
-			"activities": "Actividades multimedia"
 		},
 		"scenes": {
 			"title": "Escenas",

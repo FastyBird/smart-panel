@@ -40,8 +40,7 @@
 			"smartOverrides": {
 				"title": "Intelligente Überschreibungen",
 				"badge": "Erweitert",
-				"hint": "Optionale Einstellungen zur Verbesserung des intelligenten Verhaltens und der absichtsbasierten Steuerung.",
-				"smartSuggestions": "Intelligente Vorschläge"
+				"hint": "Optionale Einstellungen zur Verbesserung des intelligenten Verhaltens und der absichtsbasierten Steuerung."
 			}
 		}
 	},
@@ -192,9 +191,6 @@
 				"placeholder": "Übergeordnete Zone auswählen (optional)",
 				"hint": "Sie können diesen Raum einer Zone zuordnen, z. B. \"Erdgeschoss\" oder \"Obergeschoss\". Dies hilft, verwandte Räume zusammenzufassen."
 			},
-			"suggestions": {
-				"title": "Intelligente Vorschläge"
-			},
 			"suggestionsEnabled": {
 				"title": "Vorschläge aktivieren",
 				"hint": "Wenn aktiviert, zeigt das Panel unauffällige Beleuchtungsvorschläge basierend auf Tageszeit und aktuellem Zustand an."
@@ -344,9 +340,6 @@
 			"noAvailable": "Keine Displays zum Hinzufügen verfügbar",
 			"removed": "Display \"{name}\" wurde aus diesem Bereich entfernt.",
 			"removeCanceled": "Display-Entfernung wurde abgebrochen."
-		},
-		"media": {
-			"activities": "Medienaktivitäten"
 		},
 		"scenes": {
 			"title": "Szenen",
