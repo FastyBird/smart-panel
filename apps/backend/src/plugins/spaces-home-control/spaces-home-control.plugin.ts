@@ -235,12 +235,20 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		// status_widgets on top of the generic base — those fields are
 		// home-control-specific and don't belong on master/entry/signage
 		// types.
-		// `subtypeColumns` lists the columns on the shared STI table that this
-		// plugin's DTOs whitelist. Core `SpacesService.update()` uses the list
-		// to wipe stale values on a type change to a subtype that doesn't
-		// declare them, and to gate the raw-column fallback read that grounds
-		// the category compat check in the real persisted value.
-		const HOME_CONTROL_SUBTYPE_COLUMNS = ['category', 'suggestionsEnabled', 'statusWidgets'] as const;
+		// `subtypeColumns` maps each shared-STI-table column this plugin owns
+		// to the value core should write when transitioning AWAY from
+		// room/zone to a subtype that doesn't whitelist it. NOT NULL columns
+		// (like `suggestionsEnabled`) must wipe to their declared default,
+		// not `null`, or the UPDATE violates the constraint and the client
+		// gets a 500. Nullable columns can use `null`.
+		//
+		// Defaults mirror `@Column({ default: ... })` on RoomSpaceEntity /
+		// ZoneSpaceEntity — keep in lockstep.
+		const HOME_CONTROL_SUBTYPE_COLUMNS = {
+			category: null,
+			suggestionsEnabled: true,
+			statusWidgets: null,
+		} as const;
 
 		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ROOM,

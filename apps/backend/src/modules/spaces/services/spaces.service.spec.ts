@@ -180,11 +180,16 @@ describe('SpacesService', () => {
 		// `CreateHomeControlSpaceDto` / `UpdateHomeControlSpaceDto`.
 		const typeMapper = module.get<SpacesTypeMapperService>(SpacesTypeMapperService);
 		// Include `subtypeColumns` to mirror the real plugin registration —
-		// `SpacesService.update()` reads this list to decide whether the target
-		// subtype carries category (and whether to wipe stale columns on type
-		// change). Without it, the suite would under-represent the real graph
-		// of which columns belong to which subtype.
-		const HOME_CONTROL_SUBTYPE_COLUMNS = ['category', 'suggestionsEnabled', 'statusWidgets'] as const;
+		// `SpacesService.update()` reads this map to decide whether the target
+		// subtype carries category (and what wipe value to write for each
+		// column on type change). Wipe values must match the `@Column({
+		// default: ... })` defaults on the concrete entity so NOT NULL
+		// columns don't get nulled out.
+		const HOME_CONTROL_SUBTYPE_COLUMNS = {
+			category: null,
+			suggestionsEnabled: true,
+			statusWidgets: null,
+		} as const;
 		typeMapper.registerMapping({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
@@ -860,16 +865,53 @@ describe('SpacesService', () => {
 			await service.update(roomWithCategory.id, { type: 'signage_info_panel' as SpaceType } as UpdateSpaceDto);
 
 			// Compat check must see effectiveCategory = null (target doesn't
-			// accept it); the raw UPDATE must wipe both `category` and the
-			// other home-control-only columns so they don't linger.
+			// accept it); the raw UPDATE must wipe the home-control-only
+			// columns so they don't linger. Each column gets its plugin-
+			// declared wipe value — critically, `suggestionsEnabled` is NOT
+			// NULL in the DB so its wipe value is the column default (`true`)
+			// rather than `null`.
 			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'signage_info_panel',
 					category: null,
-					suggestionsEnabled: null,
+					suggestionsEnabled: true,
 					statusWidgets: null,
 				}),
 			);
+		});
+
+		// Cursor High follow-up: the wipe loop previously hard-coded `null` for
+		// every old-subtype column, which blew up when the column is NOT NULL
+		// (e.g. `suggestionsEnabled boolean NOT NULL DEFAULT 1`). Lock in that
+		// the wipe now sources the value from the plugin's `subtypeColumns`
+		// map so NOT NULL columns land on their default instead.
+		it('should wipe NOT NULL suggestionsEnabled to its default (true) when converting room → signage', async () => {
+			const roomWithSuggestionsOff = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Kiosk',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
+				suggestionsEnabled: false,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValueOnce(roomWithSuggestionsOff).mockResolvedValueOnce({
+				...roomWithSuggestionsOff,
+				type: 'signage_info_panel' as SpaceType,
+				category: null,
+				suggestionsEnabled: true,
+			} as unknown as SpaceEntity);
+			spaceRepository.save.mockResolvedValue(roomWithSuggestionsOff);
+
+			await service.update(roomWithSuggestionsOff.id, {
+				type: 'signage_info_panel' as SpaceType,
+			} as UpdateSpaceDto);
+
+			// `suggestionsEnabled` is a NOT NULL column; its wipe value must
+			// be the column default (`true`), not `null`.
+			const [setArg] = mockQueryBuilder.set.mock.calls[0] as [Record<string, unknown>];
+			expect(setArg.suggestionsEnabled).toBe(true);
+			expect(setArg.suggestionsEnabled).not.toBeNull();
 		});
 	});
 });

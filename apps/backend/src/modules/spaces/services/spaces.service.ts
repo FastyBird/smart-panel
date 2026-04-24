@@ -21,7 +21,21 @@ import { EventType, SPACES_MODULE_NAME, SpaceType, isValidCategoryForType } from
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
-import { SpacesTypeMapperService } from './spaces-type-mapper.service';
+import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.service';
+
+/**
+ * Narrow check for whether a subtype mapping owns a given shared-STI-table
+ * column. Kept as a module-level helper so the `Readonly<Record<string, unknown>>`
+ * default doesn't collapse to `any` through the generic `getMapping<>()`
+ * return type.
+ */
+function subtypeOwnsColumn(
+	mapping: SpaceTypeMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>,
+	column: string,
+): boolean {
+	const columns = mapping.subtypeColumns;
+	return columns !== undefined && Object.hasOwn(columns, column);
+}
 
 @Injectable()
 export class SpacesService {
@@ -199,8 +213,10 @@ export class SpacesService {
 
 		// Determine the effective type (new type if provided, otherwise existing)
 		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
-		const effectiveMapping = this.spacesTypeMapper.getMapping(effectiveType);
-		const targetAcceptsCategory = effectiveMapping.subtypeColumns?.includes('category') ?? false;
+		const effectiveMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(
+			effectiveType,
+		);
+		const targetAcceptsCategory = subtypeOwnsColumn(effectiveMapping, 'category');
 
 		// Determine the effective category. Three cases, in order:
 		//
@@ -374,17 +390,23 @@ export class SpacesService {
 				rawUpdate.category = effectiveCategory;
 			}
 			// Generalized wipe: any column the OLD subtype owned but the NEW
-			// subtype doesn't must be nulled out, otherwise stale values survive
-			// on the shared STI table with no way for the client to clear them
-			// (the new type's DTO doesn't whitelist those fields). `category`
-			// is handled above; this loop covers the rest (e.g. home-control's
-			// `suggestionsEnabled` + `statusWidgets` when flipping away to
-			// master/entry/signage).
-			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
-			const newSubtypeColumns = new Set(effectiveMapping.subtypeColumns ?? []);
-			for (const column of oldMapping.subtypeColumns ?? []) {
-				if (!newSubtypeColumns.has(column) && !Object.prototype.hasOwnProperty.call(rawUpdate, column)) {
-					rawUpdate[column] = null;
+			// subtype doesn't must be reset, otherwise stale values survive
+			// on the shared STI table with no way for the client to clear
+			// them (the new type's DTO doesn't whitelist those fields).
+			// `category` is handled above; this loop covers the rest (e.g.
+			// home-control's `suggestionsEnabled` + `statusWidgets` when
+			// flipping away to master/entry/signage).
+			//
+			// The wipe value is plugin-declared because NOT NULL columns need
+			// their column default (e.g. `suggestionsEnabled` → `true`),
+			// whereas nullable columns can use `null`. Writing a blind `null`
+			// across the board would violate NOT NULL constraints on the
+			// shared table and surface as a 500.
+			const oldMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(space.type);
+			const oldColumns = oldMapping.subtypeColumns ?? {};
+			for (const column of Object.keys(oldColumns)) {
+				if (!subtypeOwnsColumn(effectiveMapping, column) && !Object.hasOwn(rawUpdate, column)) {
+					rawUpdate[column] = oldColumns[column];
 				}
 			}
 			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
