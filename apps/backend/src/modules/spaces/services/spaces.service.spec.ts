@@ -27,6 +27,10 @@ describe('SpacesService', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let displayRepository: jest.Mocked<Repository<DisplayEntity>>;
+	// DataSource mock is hoisted so individual tests can stub `query()` — used
+	// by `SpacesService.update()` to read the raw `category` column straight
+	// from the shared STI table (ignoring subtype hydration).
+	let dataSourceQueryMock: jest.Mock;
 	let mockQueryBuilder: {
 		update: jest.Mock;
 		set: jest.Mock;
@@ -59,6 +63,7 @@ describe('SpacesService', () => {
 			where: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue({ affected: 0 } as UpdateResult),
 		};
+		dataSourceQueryMock = jest.fn().mockResolvedValue([{ category: null }]);
 
 		const spaceRepositoryMock = {
 			find: jest.fn().mockResolvedValue([mockSpace]),
@@ -115,6 +120,12 @@ describe('SpacesService', () => {
 						// dataSource.getRepository(mapping.class). Route those calls back to the
 						// same mocked SpaceEntity repo so the existing assertions still apply.
 						getRepository: jest.fn().mockImplementation(() => spaceRepositoryMock),
+						// `update()` reads the raw `category` column via dataSource.query() to
+						// ground the compat check in the real stored value (ignoring subtype
+						// hydration). Default to `null` — individual tests can override via
+						// `dataSourceQueryMock.mockResolvedValueOnce([{ category: '...' }])`
+						// to simulate a legacy row.
+						query: dataSourceQueryMock,
 						// The type-change raw UPDATE path wraps the QueryBuilder.update() and
 						// the subsequent reload in a DataSource.transaction(...). The
 						// transactional manager exposes `createQueryBuilder` and `findOne` —
@@ -192,6 +203,18 @@ describe('SpacesService', () => {
 			createDto: CreateSpaceDto,
 			updateDto: UpdateSpaceDto,
 			singleton: true,
+		});
+		// A non-singleton non-home-control type stand-in used by the
+		// legacy-category bypass tests below. Signage-like: entity class is
+		// irrelevant (subtype hydration doesn't declare `category`), DTOs are
+		// the generic base. The key property is `singleton: false` so a
+		// `signage → room` type change is allowed and the category compat
+		// check actually runs.
+		typeMapper.registerMapping({
+			type: 'signage_info_panel' as SpaceType,
+			class: RoomSpaceEntity,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
 		});
 	});
 
@@ -699,6 +722,68 @@ describe('SpacesService', () => {
 
 			// Zones require a category
 			await expect(service.update(existingZoneSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		// Legacy-row safety: before `category` moved off the abstract base, a
+		// non-home-control subtype could carry a stored category value that its
+		// post-refactor entity class no longer hydrates. A PATCH that only
+		// flips `type` without touching category must still see the real
+		// stored value via the raw column read — otherwise the compat check
+		// runs against `null` and lets invalid combinations slip through.
+		//
+		// Scenario: legacy signage row with `category = 'floor_ground'` stored
+		// pre-refactor. `SignageInfoPanelSpaceEntity` doesn't declare
+		// `@Column() category`, so TypeORM hydrates it as `undefined`. A PATCH
+		// that flips type to ROOM without providing a category would previously
+		// slip past the compat check (effectiveCategory = null) and leave the
+		// stale zone category on a room row. The raw column read now grounds
+		// the check in the real persisted value.
+		it('should reject a signage → room type change when the stored legacy category is zone-typed', async () => {
+			const legacySignage = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Lobby Panel',
+				type: 'signage_info_panel' as SpaceType,
+				category: undefined,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValue(legacySignage);
+			dataSourceQueryMock.mockResolvedValueOnce([{ category: SpaceZoneCategory.FLOOR_GROUND }]);
+
+			await expect(service.update(legacySignage.id, { type: SpaceType.ROOM } as UpdateSpaceDto)).rejects.toThrow(
+				SpacesValidationException,
+			);
+		});
+
+		it('should pin category in the raw UPDATE to the effective value when the DTO omits it', async () => {
+			const legacySignage = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Lobby Panel',
+				type: 'signage_info_panel' as SpaceType,
+				category: undefined,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValueOnce(legacySignage).mockResolvedValueOnce({
+				...legacySignage,
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
+			} as unknown as SpaceEntity);
+
+			// Stale DB value compatible with the target type so compat check
+			// passes and we exercise the raw UPDATE path itself.
+			dataSourceQueryMock.mockResolvedValueOnce([{ category: SpaceRoomCategory.LIVING_ROOM }]);
+
+			spaceRepository.save.mockResolvedValue(legacySignage);
+
+			await service.update(legacySignage.id, { type: SpaceType.ROOM } as UpdateSpaceDto);
+
+			// The raw UPDATE must explicitly persist the compat-checked
+			// `effectiveCategory` — otherwise a future refactor that changes
+			// how legacy rows are normalized would bypass the service.
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM }),
+			);
 		});
 	});
 });

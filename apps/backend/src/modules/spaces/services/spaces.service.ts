@@ -200,9 +200,17 @@ export class SpacesService {
 		// Determine the effective type (new type if provided, otherwise existing)
 		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
 
-		// Determine the effective category (new category if provided, otherwise existing)
+		// Determine the effective category (new category if provided, otherwise existing).
+		// `space.category` is `undefined` for non-home-control subtypes (the property
+		// isn't declared on master/entry/signage entities), but the shared physical
+		// column may still carry a legacy value from before this refactor — so we
+		// fall back to a raw column read instead of the hydrated property. Without
+		// this, a PATCH that flips type to room/zone without an explicit category
+		// could bypass the compatibility check and leave a stale invalid category
+		// in the DB (e.g. zone category on a row newly typed as room).
 		const dtoCategory = (dtoInstance as { category?: unknown }).category;
-		const effectiveCategory = dtoCategory !== undefined ? (dtoCategory as string | null) : (space.category ?? null);
+		const storedCategory = await this.readRawSpaceCategory(id);
+		const effectiveCategory = dtoCategory !== undefined ? (dtoCategory as string | null) : storedCategory;
 
 		// Zones must have a category
 		if (effectiveType === SpaceType.ZONE && effectiveCategory === null) {
@@ -340,6 +348,15 @@ export class SpacesService {
 			// Mirror the in-memory fix-up for the raw update set().
 			if (dtoInstance.parent_id === null) {
 				rawUpdate.parentId = null;
+			}
+			// Pin `category` to the compat-checked `effectiveCategory` on every type
+			// change. The physical column is shared across all subtypes (STI), so a
+			// legacy row written before `category` was moved off the base could still
+			// carry a stale value; without this, the raw UPDATE above would only touch
+			// columns present in the DTO and the stale category would survive the
+			// transition, producing e.g. a room with a zone category.
+			if (!Object.prototype.hasOwnProperty.call(rawUpdate, 'category')) {
+				rawUpdate.category = effectiveCategory;
 			}
 			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
 			// transaction so a concurrent update or delete cannot wedge us into a state
@@ -659,6 +676,23 @@ export class SpacesService {
 			this.logger.error(`Parent space ${parentId} is not a zone`);
 			throw new SpacesValidationException('Parent must be a zone. Rooms can only belong to zones.');
 		}
+	}
+
+	/**
+	 * Read the `category` column straight from the shared physical table,
+	 * bypassing TypeORM's subtype hydration. Non-home-control entities
+	 * (master/entry/signage) don't declare `@Column() category`, so loading
+	 * them as a concrete subtype yields `space.category === undefined` even
+	 * when the underlying row still carries a value written before this
+	 * column moved off the abstract base. The update flow needs the real
+	 * stored value to run an honest category/type compatibility check.
+	 */
+	private async readRawSpaceCategory(id: string): Promise<string | null> {
+		const rows = await this.dataSource.query<{ category: string | null }[]>(
+			'SELECT category FROM spaces_module_spaces WHERE id = ? LIMIT 1',
+			[id],
+		);
+		return rows[0]?.category ?? null;
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
