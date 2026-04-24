@@ -208,14 +208,15 @@ export class SpacesService {
 			throw new SpacesValidationException('A valid space type is required.');
 		}
 
-		const mapping = this.spacesTypeMapper.getMapping(rawType);
-		const dtoInstance = await this.validateDto(mapping.updateDto as new () => UpdateSpaceDto, updateDto);
+		const effectiveMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(rawType);
+		const dtoInstance = await this.validateDto(effectiveMapping.updateDto as new () => UpdateSpaceDto, updateDto);
 
-		// Determine the effective type (new type if provided, otherwise existing)
-		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
-		const effectiveMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(
-			effectiveType,
-		);
+		// Effective type equals `rawType`. The `UpdateSpaceDto.type` transform
+		// only coerces `null → undefined`, so after validation
+		// `dtoInstance.type ?? space.type` resolves to the same value the
+		// pre-validation `rawType` captured — no second `getMapping()` lookup
+		// is needed.
+		const effectiveType: SpaceType = rawType;
 		const targetAcceptsCategory = subtypeOwnsColumn(effectiveMapping, 'category');
 
 		// Determine the effective category. Three cases, in order:
