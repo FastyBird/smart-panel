@@ -289,6 +289,12 @@ export class SpacesService {
 		// re-introduced) would let Object.assign shadow the getter and make this
 		// comparison silently return `false`, skipping the raw discriminator update.
 		const typeChanged = effectiveType !== space.type;
+		// Resolve the *old* subtype mapping once up front when the type is
+		// changing — reused by the singleton guard below and the stale-column
+		// wipe in the later `if (typeChanged)` raw-UPDATE block.
+		const oldMapping = typeChanged
+			? this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(space.type)
+			: null;
 
 		// Singleton space types (master, entry, future plugin-contributed singletons)
 		// must not be reachable via a type change in either direction — flipping a
@@ -296,8 +302,7 @@ export class SpacesService {
 		// the seeders and reset handlers depend on, and flipping an existing singleton
 		// away would destroy it outright. The only supported lifecycle for a singleton
 		// is: seeder creates once, admin edits in place.
-		if (typeChanged) {
-			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
+		if (typeChanged && oldMapping) {
 			if (oldMapping.singleton) {
 				this.logger.error(`Cannot change type away from singleton '${space.type}' (space id=${id})`);
 				throw new SpacesValidationException(
@@ -403,8 +408,11 @@ export class SpacesService {
 			// whereas nullable columns can use `null`. Writing a blind `null`
 			// across the board would violate NOT NULL constraints on the
 			// shared table and surface as a 500.
-			const oldMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(space.type);
-			const oldColumns = oldMapping.subtypeColumns ?? {};
+			//
+			// `oldMapping` is hoisted above the first `typeChanged` block; it's
+			// guaranteed non-null here because this branch is gated on the same
+			// `typeChanged` flag.
+			const oldColumns = oldMapping?.subtypeColumns ?? {};
 			for (const column of Object.keys(oldColumns)) {
 				if (!subtypeOwnsColumn(effectiveMapping, column) && !Object.hasOwn(rawUpdate, column)) {
 					rawUpdate[column] = oldColumns[column];
