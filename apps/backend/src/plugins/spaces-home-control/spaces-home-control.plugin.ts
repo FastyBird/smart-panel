@@ -10,8 +10,6 @@ import { ExtensionsService } from '../../modules/extensions/services/extensions.
 import { IntentsModule } from '../../modules/intents/intents.module';
 import { SeedModule } from '../../modules/seed/seeding.module';
 import { SeedRegistryService } from '../../modules/seed/services/seed-registry.service';
-import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
-import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
 import { SpaceEntity } from '../../modules/spaces/entities/space.entity';
 import { SpaceRolesTypeMapperService } from '../../modules/spaces/services/space-roles-type-mapper.service';
 import { SpacesTypeMapperService } from '../../modules/spaces/services/spaces-type-mapper.service';
@@ -24,7 +22,9 @@ import { ToolProviderRegistryService } from '../../modules/tools/services/tool-p
 import { ToolsModule } from '../../modules/tools/tools.module';
 import { WebsocketModule } from '../../modules/websocket/websocket.module';
 
+import { CreateHomeControlSpaceDto } from './dto/create-home-control-space.dto';
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
@@ -226,18 +226,22 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		this.spaceHomePageResolverRegistry.register(SpaceType.ZONE, this.homeControlHomePageResolver);
 
 		// Room/Zone space type mappings — entity files moved into this plugin
-		// in Phase 3a step 4.
-		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+		// in Phase 3a step 4. DTOs use CreateHomeControlSpaceDto /
+		// UpdateHomeControlSpaceDto which add category / suggestions_enabled /
+		// status_widgets on top of the generic base — those fields are
+		// home-control-specific and don't belong on master/entry/signage
+		// types.
+		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
 		});
-		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ZONE,
 			class: ZoneSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
 		});
 
 		// Role subtype mappings — entities live in this plugin.

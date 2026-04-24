@@ -6,11 +6,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { CreateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/create-home-control-space.dto';
+import { UpdateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { CreateSpaceDto } from '../dto/create-space.dto';
+import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
@@ -159,29 +163,34 @@ describe('SpacesService', () => {
 		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
 		displayRepository = module.get(getRepositoryToken(DisplayEntity));
 
-		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit)
+		// Pre-register built-in space types (normally done by SpacesModule.onModuleInit).
+		// Use the real plugin DTOs so validation accepts the subtype-specific
+		// fields (category / suggestions_enabled / status_widgets) that live on
+		// `CreateHomeControlSpaceDto` / `UpdateHomeControlSpaceDto`.
 		const typeMapper = module.get<SpacesTypeMapperService>(SpacesTypeMapperService);
 		typeMapper.registerMapping({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
-			createDto: class {} as never,
-			updateDto: class {} as never,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
 		});
 		typeMapper.registerMapping({
 			type: SpaceType.ZONE,
 			class: ZoneSpaceEntity,
-			createDto: class {} as never,
-			updateDto: class {} as never,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
 		});
 		// A synthetic singleton type used in the singleton-enforcement test below.
 		// Mirrors how spaces-synthetic-master / spaces-synthetic-entry plugins
 		// register their mappings, but scoped to the test suite so the core spec
-		// doesn't need to import plugin code.
+		// doesn't need to import plugin code. Master/entry DTOs only accept the
+		// generic base fields — use the core `CreateSpaceDto` / `UpdateSpaceDto`
+		// shape.
 		typeMapper.registerMapping({
 			type: 'master' as SpaceType,
 			class: RoomSpaceEntity, // subtype class doesn't matter for the guard
-			createDto: class {} as never,
-			updateDto: class {} as never,
+			createDto: CreateSpaceDto,
+			updateDto: UpdateSpaceDto,
 			singleton: true,
 		});
 	});
@@ -315,7 +324,7 @@ describe('SpacesService', () => {
 
 	describe('create - type/category validation', () => {
 		it('should accept ROOM with room category', async () => {
-			const createDto = {
+			const createDto: CreateHomeControlSpaceDto = {
 				name: 'Living Room',
 				type: SpaceType.ROOM,
 				category: SpaceRoomCategory.LIVING_ROOM,
@@ -341,7 +350,7 @@ describe('SpacesService', () => {
 		});
 
 		it('should accept ZONE with zone category', async () => {
-			const createDto = {
+			const createDto: CreateHomeControlSpaceDto = {
 				name: 'Ground Floor',
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
@@ -365,7 +374,7 @@ describe('SpacesService', () => {
 		});
 
 		it('should accept null category for both types', async () => {
-			const createDto = {
+			const createDto: CreateHomeControlSpaceDto = {
 				name: 'Custom Space',
 				type: SpaceType.ROOM,
 				category: null,
@@ -388,7 +397,7 @@ describe('SpacesService', () => {
 		});
 
 		it('should reject ROOM with zone category', async () => {
-			const createDto = {
+			const createDto: CreateHomeControlSpaceDto = {
 				name: 'Invalid Room',
 				type: SpaceType.ROOM,
 				category: SpaceZoneCategory.FLOOR_GROUND, // Zone category for room type
@@ -398,7 +407,7 @@ describe('SpacesService', () => {
 		});
 
 		it('should reject ZONE with room category', async () => {
-			const createDto = {
+			const createDto: CreateHomeControlSpaceDto = {
 				name: 'Invalid Zone',
 				type: SpaceType.ZONE,
 				category: SpaceRoomCategory.LIVING_ROOM, // Room category for zone type
@@ -428,20 +437,19 @@ describe('SpacesService', () => {
 					name: 'Another Home',
 					type: 'master' as SpaceType,
 					category: null,
-				}),
+				} as unknown as CreateSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 
 		it('should reject creating a ROOM with a zone category', async () => {
 			spaceRepository.find.mockResolvedValue([]);
 
-			await expect(
-				service.create({
-					name: 'Oddly-shaped room',
-					type: SpaceType.ROOM,
-					category: SpaceZoneCategory.FLOOR_GROUND, // zone category on room
-				}),
-			).rejects.toThrow(SpacesValidationException);
+			const createDto: CreateHomeControlSpaceDto = {
+				name: 'Oddly-shaped room',
+				type: SpaceType.ROOM,
+				category: SpaceZoneCategory.FLOOR_GROUND, // zone category on room
+			};
+			await expect(service.create(createDto)).rejects.toThrow(SpacesValidationException);
 		});
 	});
 
@@ -465,7 +473,7 @@ describe('SpacesService', () => {
 		it('should accept updating ROOM category to another room category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: SpaceRoomCategory.BEDROOM,
 			};
 
@@ -485,7 +493,7 @@ describe('SpacesService', () => {
 		it('should accept updating ZONE category to another zone category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: SpaceZoneCategory.FLOOR_FIRST,
 			};
 
@@ -505,7 +513,7 @@ describe('SpacesService', () => {
 		it('should reject updating ROOM category to a zone category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: SpaceZoneCategory.FLOOR_GROUND, // Zone category for existing room
 			};
 
@@ -515,7 +523,7 @@ describe('SpacesService', () => {
 		it('should reject updating ZONE category to a room category', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: SpaceRoomCategory.LIVING_ROOM, // Room category for existing zone
 			};
 
@@ -555,7 +563,7 @@ describe('SpacesService', () => {
 				service.update(existingRoomSpace.id, {
 					type: 'master' as SpaceType,
 					category: null,
-				}),
+				} as unknown as UpdateSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 
@@ -572,7 +580,7 @@ describe('SpacesService', () => {
 				service.update(existingMaster.id, {
 					type: SpaceType.ROOM,
 					category: SpaceRoomCategory.LIVING_ROOM,
-				}),
+				} as unknown as UpdateSpaceDto),
 			).rejects.toThrow(SpacesValidationException);
 		});
 
@@ -592,7 +600,7 @@ describe('SpacesService', () => {
 			// the service re-fetches to get the entity with the new subtype.
 			spaceRepository.findOne.mockResolvedValueOnce(spaceWithNullCategory).mockResolvedValueOnce(updatedSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -626,7 +634,7 @@ describe('SpacesService', () => {
 			spaceRepository.findOne.mockResolvedValueOnce(existingRoomSpace).mockResolvedValueOnce(updatedSpace);
 
 			// Change from room/living_room to zone/floor_ground
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				type: SpaceType.ZONE,
 				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
@@ -657,7 +665,7 @@ describe('SpacesService', () => {
 
 			spaceRepository.findOne.mockResolvedValue(roomSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: null,
 			};
 
@@ -676,7 +684,7 @@ describe('SpacesService', () => {
 		it('should reject setting category to null for a ZONE', async () => {
 			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
 
-			const updateDto = {
+			const updateDto: UpdateHomeControlSpaceDto = {
 				category: null,
 			};
 
