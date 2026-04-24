@@ -6,7 +6,14 @@ import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery,
 
 import { createExtensionLogger } from '../../../common/logger';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import {
+	CategoryTemplateDataModel,
+	CategoryTemplatesResponseModel,
+	SpaceResponseModel,
+	SpacesResponseModel,
+} from '../../../modules/spaces/models/spaces-response.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SpaceRoomCategory, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { SpacesNotFoundException } from '../../../modules/spaces/spaces.exceptions';
 import {
 	ApiBadRequestResponse,
@@ -118,6 +125,7 @@ import {
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
+import { HomeControlSpacesService } from '../services/home-control-spaces.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
@@ -139,6 +147,7 @@ import {
 	LightingRole,
 	MediaActivityKey,
 	QUICK_ACTION_CATALOG,
+	SPACE_CATEGORY_TEMPLATES,
 	SUGGESTION_EXPIRY_MS,
 	SuggestionType,
 } from '../spaces-home-control.constants';
@@ -182,6 +191,7 @@ export class SpacesDomainController {
 
 	constructor(
 		private readonly spacesService: SpacesService,
+		private readonly homeControlSpacesService: HomeControlSpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
 		private readonly spaceLightingStateService: SpaceLightingStateService,
@@ -212,7 +222,7 @@ export class SpacesDomainController {
 	async proposeSpaces(): Promise<ProposedSpacesResponseModel> {
 		this.logger.debug('Proposing spaces from device names');
 
-		const proposals = await this.spacesService.proposeSpaces();
+		const proposals = await this.homeControlSpacesService.proposeSpaces();
 
 		const response = new ProposedSpacesResponseModel();
 
@@ -225,6 +235,92 @@ export class SpacesDomainController {
 			model.deviceCount = p.deviceCount;
 			return model;
 		});
+
+		return response;
+	}
+
+	@Get('categories/templates')
+	@ApiOperation({
+		operationId: 'get-spaces-module-category-templates',
+		summary: 'List space category templates',
+		description:
+			'Retrieves all available space category templates with their default icons and descriptions. ' +
+			'Templates provide suggested values when creating spaces of common room types.',
+	})
+	@ApiSuccessResponse(CategoryTemplatesResponseModel, 'Returns category templates')
+	getCategoryTemplates(): CategoryTemplatesResponseModel {
+		this.logger.debug('Fetching category templates');
+
+		const templates = Object.entries(SPACE_CATEGORY_TEMPLATES).map(([category, template]) => {
+			const model = new CategoryTemplateDataModel();
+			model.category = category as SpaceRoomCategory | SpaceZoneCategory;
+			model.icon = template.icon;
+			model.description = template.description;
+			return model;
+		});
+
+		const response = new CategoryTemplatesResponseModel();
+		response.data = templates;
+
+		return response;
+	}
+
+	@Get('zones')
+	@ApiOperation({
+		operationId: 'get-spaces-module-zones',
+		summary: 'List all zones',
+		description: 'Retrieves all spaces of type zone. Useful for parent selection dropdowns.',
+	})
+	@ApiSuccessResponse(SpacesResponseModel, 'Returns a list of zones')
+	async findAllZones(): Promise<SpacesResponseModel> {
+		this.logger.debug('Fetching all zones');
+
+		const zones = await this.homeControlSpacesService.findAllZones();
+
+		const response = new SpacesResponseModel();
+		response.data = zones;
+
+		return response;
+	}
+
+	@Get(':id/children')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-children',
+		summary: 'List child rooms of a zone',
+		description: 'Retrieves all child rooms that belong to a zone. Only applicable for zones; returns empty for rooms.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Zone ID' })
+	@ApiSuccessResponse(SpacesResponseModel, 'Returns the list of child rooms')
+	@ApiNotFoundResponse('Space not found')
+	async findChildren(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpacesResponseModel> {
+		this.logger.debug(`Fetching child rooms for zone with id=${id}`);
+
+		const children = await this.homeControlSpacesService.getChildRooms(id);
+
+		const response = new SpacesResponseModel();
+		response.data = children;
+
+		return response;
+	}
+
+	@Get(':id/parent')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-parent',
+		summary: 'Get parent zone of a room',
+		description:
+			'Retrieves the parent zone for a room. Returns null if the room has no parent zone. ' +
+			'Zones do not have parents.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Room ID' })
+	@ApiSuccessResponse(SpaceResponseModel, 'Returns the parent zone or null')
+	@ApiNotFoundResponse('Space not found')
+	async findParent(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpaceResponseModel> {
+		this.logger.debug(`Fetching parent zone for room with id=${id}`);
+
+		const parent = await this.homeControlSpacesService.getParentZone(id);
+
+		const response = new SpaceResponseModel();
+		response.data = parent;
 
 		return response;
 	}

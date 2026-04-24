@@ -21,14 +21,11 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { ToolsModule } from '../tools/tools.module';
-import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceRoleEntity } from './entities/space-role.entity';
 import { SpaceEntity } from './entities/space.entity';
-import { SpaceActivityListener } from './listeners/space-activity.listener';
-import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { SpacesModuleResetService } from './services/module-reset.service';
 import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
@@ -63,7 +60,6 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		]),
 		DevicesModule,
 		IntentsModule,
-		WebsocketModule,
 		SeedModule,
 		ToolsModule,
 	],
@@ -80,8 +76,6 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceRolesTypeMapperService,
 		SpaceCreateBuilderRegistryService,
 		SpaceRelationsLoaderRegistryService,
-		SpaceActivityListener,
-		WebsocketExchangeListener,
 		SpacesModuleResetService,
 	],
 	exports: [

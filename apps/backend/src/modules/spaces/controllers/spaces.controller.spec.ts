@@ -11,7 +11,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
-import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
@@ -73,9 +72,6 @@ describe('SpacesController', () => {
 						findDevicesBySpace: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
 						findDisplaysBySpace: jest.fn().mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]),
 						bulkAssign: jest.fn().mockResolvedValue({ devicesAssigned: 2, displaysAssigned: 1 }),
-						getChildRooms: jest.fn().mockResolvedValue([]),
-						getParentZone: jest.fn().mockResolvedValue(null),
-						findAllZones: jest.fn().mockResolvedValue([]),
 					},
 				},
 			],
@@ -246,74 +242,6 @@ describe('SpacesController', () => {
 			await expect(controller.bulkAssign('non-existent-id', assignDto as ReqBulkAssignDto)).rejects.toThrow(
 				SpacesNotFoundException,
 			);
-		});
-	});
-
-	describe('getCategoryTemplates', () => {
-		it('should return category templates', () => {
-			const result = controller.getCategoryTemplates();
-
-			expect(result.data).toBeDefined();
-			expect(Array.isArray(result.data)).toBe(true);
-			expect(result.data.length).toBeGreaterThan(0);
-
-			// Each template should have category, icon, and description
-			result.data.forEach((template) => {
-				expect(template.category).toBeDefined();
-				expect(template.icon).toBeDefined();
-				expect(template.description).toBeDefined();
-			});
-		});
-	});
-
-	describe('findChildren', () => {
-		it('should return child rooms of a zone', async () => {
-			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([toInstance(RoomSpaceEntity, mockSpace)]);
-
-			const result = await controller.findChildren(mockSpace.id);
-
-			expect(result.data).toEqual([toInstance(RoomSpaceEntity, mockSpace)]);
-			expect(spacesService.getChildRooms).toHaveBeenCalledWith(mockSpace.id);
-		});
-
-		it('should return empty array for room without children', async () => {
-			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([]);
-
-			const result = await controller.findChildren(mockSpace.id);
-
-			expect(result.data).toEqual([]);
-		});
-	});
-
-	describe('findParent', () => {
-		it('should return parent zone of a room', async () => {
-			const parentZone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
-			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(toInstance(ZoneSpaceEntity, parentZone));
-
-			const result = await controller.findParent(mockSpace.id);
-
-			expect(result.data).toEqual(toInstance(ZoneSpaceEntity, parentZone));
-			expect(spacesService.getParentZone).toHaveBeenCalledWith(mockSpace.id);
-		});
-
-		it('should return null for room without parent', async () => {
-			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(null);
-
-			const result = await controller.findParent(mockSpace.id);
-
-			expect(result.data).toBeNull();
-		});
-	});
-
-	describe('findAllZones', () => {
-		it('should return all zones', async () => {
-			const zone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
-			jest.spyOn(spacesService, 'findAllZones').mockResolvedValue([toInstance(ZoneSpaceEntity, zone)]);
-
-			const result = await controller.findAllZones();
-
-			expect(result.data).toHaveLength(1);
-			expect(spacesService.findAllZones).toHaveBeenCalled();
 		});
 	});
 });

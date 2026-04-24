@@ -5,10 +5,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { EventType as DevicesEventType } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SpaceEntity } from '../entities/space.entity';
-import { SPACES_MODULE_NAME } from '../spaces.constants';
+import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 
 @Injectable()
 export class SpaceActivityListener implements OnModuleInit {

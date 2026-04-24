@@ -6,16 +6,16 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
-import { SpaceUndoHistoryService } from '../../../plugins/spaces-home-control/services/space-undo-history.service';
-import { ClimateMode } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
-import { TokenOwnerType } from '../../auth/auth.constants';
-import { UserRole } from '../../users/users.constants';
-import { ClientUserDto } from '../../websocket/dto/client-user.dto';
-import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
-import { SpaceEntity } from '../entities/space.entity';
-import { SpacesService } from '../services/spaces.service';
-import { SpaceType } from '../spaces.constants';
+import { TokenOwnerType } from '../../../modules/auth/auth.constants';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { UserRole } from '../../../modules/users/users.constants';
+import { ClientUserDto } from '../../../modules/websocket/dto/client-user.dto';
+import { CommandEventRegistryService } from '../../../modules/websocket/services/command-event-registry.service';
+import { SpaceIntentService } from '../services/space-intent.service';
+import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
+import { ClimateMode } from '../spaces-home-control.constants';
 
 import { SpacesWsEventType, SpacesWsHandlerName, WebsocketExchangeListener } from './websocket-exchange.listener';
 

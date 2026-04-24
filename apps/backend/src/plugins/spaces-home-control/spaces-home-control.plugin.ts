@@ -12,6 +12,7 @@ import { SeedModule } from '../../modules/seed/seeding.module';
 import { SeedRegistryService } from '../../modules/seed/services/seed-registry.service';
 import { CreateSpaceDto } from '../../modules/spaces/dto/create-space.dto';
 import { UpdateSpaceDto } from '../../modules/spaces/dto/update-space.dto';
+import { SpaceEntity } from '../../modules/spaces/entities/space.entity';
 import { SpaceRolesTypeMapperService } from '../../modules/spaces/services/space-roles-type-mapper.service';
 import { SpacesTypeMapperService } from '../../modules/spaces/services/spaces-type-mapper.service';
 import { SpaceRoleType, SpaceType } from '../../modules/spaces/spaces.constants';
@@ -21,6 +22,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { ToolProviderRegistryService } from '../../modules/tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../../modules/tools/tools.module';
+import { WebsocketModule } from '../../modules/websocket/websocket.module';
 
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
@@ -31,14 +33,17 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
+import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
 import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
+import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
 import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
+import { HomeControlSpacesService } from './services/home-control-spaces.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { MediaCapabilityService } from './services/media-capability.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
@@ -98,6 +103,7 @@ import { IntentSpecLoaderService } from './spec';
 		// from SpacesModule is fine — TypeORM scopes per-module and both
 		// owners get their own repository instance.
 		TypeOrmModule.forFeature([
+			SpaceEntity,
 			RoomSpaceEntity,
 			ZoneSpaceEntity,
 			SpaceLightingRoleEntity,
@@ -116,15 +122,19 @@ import { IntentSpecLoaderService } from './spec';
 		SpacesModule,
 		SeedModule,
 		ToolsModule,
+		WebsocketModule,
 	],
 	providers: [
 		// Resolvers + loader
 		HomeControlHomePageResolver,
+		HomeControlSpacesService,
 		IntentSpecLoaderService,
 		// Listeners
+		SpaceActivityListener,
 		SpaceClimateStateListener,
 		SpaceLightingStateListener,
 		SpaceSensorStateListener,
+		WebsocketExchangeListener,
 		// Intent services
 		ClimateIntentService,
 		CoversIntentService,
@@ -156,6 +166,7 @@ import { IntentSpecLoaderService } from './spec';
 	],
 	controllers: [],
 	exports: [
+		HomeControlSpacesService,
 		IntentSpecLoaderService,
 		ClimateIntentService,
 		CoversIntentService,

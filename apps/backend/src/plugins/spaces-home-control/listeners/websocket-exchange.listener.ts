@@ -2,17 +2,17 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ClimateIntentDto } from '../../../plugins/spaces-home-control/dto/climate-intent.dto';
-import { CoversIntentDto } from '../../../plugins/spaces-home-control/dto/covers-intent.dto';
-import { LightingIntentDto } from '../../../plugins/spaces-home-control/dto/lighting-intent.dto';
-import { SpaceIntentService } from '../../../plugins/spaces-home-control/services/space-intent.service';
-import { SpaceUndoHistoryService } from '../../../plugins/spaces-home-control/services/space-undo-history.service';
-import { TokenOwnerType } from '../../auth/auth.constants';
-import { UserRole } from '../../users/users.constants';
-import { ClientUserDto } from '../../websocket/dto/client-user.dto';
-import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
-import { SpacesService } from '../services/spaces.service';
-import { SPACES_MODULE_NAME } from '../spaces.constants';
+import { TokenOwnerType } from '../../../modules/auth/auth.constants';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { UserRole } from '../../../modules/users/users.constants';
+import { ClientUserDto } from '../../../modules/websocket/dto/client-user.dto';
+import { CommandEventRegistryService } from '../../../modules/websocket/services/command-event-registry.service';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { CoversIntentDto } from '../dto/covers-intent.dto';
+import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { SpaceIntentService } from '../services/space-intent.service';
+import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 
 /**
  * WebSocket command event types for spaces module intents

@@ -2,7 +2,6 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { SPACE_CATEGORY_TEMPLATES } from '../../../plugins/spaces-home-control/spaces-home-control.constants';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
@@ -19,18 +18,11 @@ import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
-	CategoryTemplateDataModel,
-	CategoryTemplatesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from '../models/spaces-response.model';
 import { SpacesService } from '../services/spaces.service';
-import {
-	SPACES_MODULE_API_TAG_NAME,
-	SPACES_MODULE_NAME,
-	SpaceRoomCategory,
-	SpaceZoneCategory,
-} from '../spaces.constants';
+import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @Controller('spaces')
@@ -54,50 +46,6 @@ export class SpacesController {
 		const response = new SpacesResponseModel();
 
 		response.data = spaces;
-
-		return response;
-	}
-
-	@Get('categories/templates')
-	@ApiOperation({
-		operationId: 'get-spaces-module-category-templates',
-		summary: 'List space category templates',
-		description:
-			'Retrieves all available space category templates with their default icons and descriptions. ' +
-			'Templates provide suggested values when creating spaces of common room types.',
-	})
-	@ApiSuccessResponse(CategoryTemplatesResponseModel, 'Returns category templates')
-	getCategoryTemplates(): CategoryTemplatesResponseModel {
-		this.logger.debug('Fetching category templates');
-
-		const templates = Object.entries(SPACE_CATEGORY_TEMPLATES).map(([category, template]) => {
-			const model = new CategoryTemplateDataModel();
-			model.category = category as SpaceRoomCategory | SpaceZoneCategory;
-			model.icon = template.icon;
-			model.description = template.description;
-			return model;
-		});
-
-		const response = new CategoryTemplatesResponseModel();
-		response.data = templates;
-
-		return response;
-	}
-
-	@Get('zones')
-	@ApiOperation({
-		operationId: 'get-spaces-module-zones',
-		summary: 'List all zones',
-		description: 'Retrieves all spaces of type zone. Useful for parent selection dropdowns.',
-	})
-	@ApiSuccessResponse(SpacesResponseModel, 'Returns a list of zones')
-	async findAllZones(): Promise<SpacesResponseModel> {
-		this.logger.debug('Fetching all zones');
-
-		const zones = await this.spacesService.findAllZones();
-
-		const response = new SpacesResponseModel();
-		response.data = zones;
 
 		return response;
 	}
@@ -229,48 +177,6 @@ export class SpacesController {
 		const response = new DisplaysResponseModel();
 
 		response.data = displays;
-
-		return response;
-	}
-
-	@Get(':id/children')
-	@ApiOperation({
-		operationId: 'get-spaces-module-space-children',
-		summary: 'List child rooms of a zone',
-		description: 'Retrieves all child rooms that belong to a zone. Only applicable for zones; returns empty for rooms.',
-	})
-	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Zone ID' })
-	@ApiSuccessResponse(SpacesResponseModel, 'Returns the list of child rooms')
-	@ApiNotFoundResponse('Space not found')
-	async findChildren(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpacesResponseModel> {
-		this.logger.debug(`Fetching child rooms for zone with id=${id}`);
-
-		const children = await this.spacesService.getChildRooms(id);
-
-		const response = new SpacesResponseModel();
-		response.data = children;
-
-		return response;
-	}
-
-	@Get(':id/parent')
-	@ApiOperation({
-		operationId: 'get-spaces-module-space-parent',
-		summary: 'Get parent zone of a room',
-		description:
-			'Retrieves the parent zone for a room. Returns null if the room has no parent zone. ' +
-			'Zones do not have parents.',
-	})
-	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Room ID' })
-	@ApiSuccessResponse(SpaceResponseModel, 'Returns the parent zone or null')
-	@ApiNotFoundResponse('Space not found')
-	async findParent(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpaceResponseModel> {
-		this.logger.debug(`Fetching parent zone for room with id=${id}`);
-
-		const parent = await this.spacesService.getParentZone(id);
-
-		const response = new SpaceResponseModel();
-		response.data = parent;
 
 		return response;
 	}

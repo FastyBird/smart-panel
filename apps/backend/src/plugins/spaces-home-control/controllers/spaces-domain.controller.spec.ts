@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
@@ -19,8 +20,11 @@ import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
+import { HomeControlSpacesService } from '../services/home-control-spaces.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
@@ -50,6 +54,7 @@ import { SpacesDomainController } from './spaces-domain.controller';
 describe('SpacesDomainController', () => {
 	let controller: SpacesDomainController;
 	let spacesService: SpacesService;
+	let homeControlSpacesService: HomeControlSpacesService;
 	let spaceIntentService: SpaceIntentService;
 
 	const mockSpace: SpaceEntity = {
@@ -73,10 +78,18 @@ describe('SpacesDomainController', () => {
 						findAll: jest.fn().mockResolvedValue([mockSpace]),
 						findOne: jest.fn().mockResolvedValue(mockSpace),
 						getOneOrThrow: jest.fn().mockResolvedValue(mockSpace),
+					},
+				},
+				{
+					provide: HomeControlSpacesService,
+					useValue: {
 						proposeSpaces: jest.fn().mockResolvedValue([
 							{ name: 'Living Room', deviceIds: [uuid()], deviceCount: 1 },
 							{ name: 'Bedroom', deviceIds: [uuid(), uuid()], deviceCount: 2 },
 						]),
+						getChildRooms: jest.fn().mockResolvedValue([]),
+						getParentZone: jest.fn().mockResolvedValue(null),
+						findAllZones: jest.fn().mockResolvedValue([]),
 					},
 				},
 				{
@@ -476,6 +489,7 @@ describe('SpacesDomainController', () => {
 
 		controller = module.get<SpacesDomainController>(SpacesDomainController);
 		spacesService = module.get<SpacesService>(SpacesService);
+		homeControlSpacesService = module.get<HomeControlSpacesService>(HomeControlSpacesService);
 		spaceIntentService = module.get<SpaceIntentService>(SpaceIntentService);
 	});
 
@@ -494,7 +508,76 @@ describe('SpacesDomainController', () => {
 			expect(result.data[0].deviceCount).toBe(1);
 			expect(result.data[1].name).toBe('Bedroom');
 			expect(result.data[1].deviceCount).toBe(2);
-			expect(spacesService.proposeSpaces).toHaveBeenCalled();
+			expect(homeControlSpacesService.proposeSpaces).toHaveBeenCalled();
+		});
+	});
+
+	describe('getCategoryTemplates', () => {
+		it('should return category templates', () => {
+			const result = controller.getCategoryTemplates();
+
+			expect(result.data).toBeDefined();
+			expect(Array.isArray(result.data)).toBe(true);
+			expect(result.data.length).toBeGreaterThan(0);
+
+			// Each template should have category, icon, and description
+			result.data.forEach((template) => {
+				expect(template.category).toBeDefined();
+				expect(template.icon).toBeDefined();
+				expect(template.description).toBeDefined();
+			});
+		});
+	});
+
+	describe('findChildren', () => {
+		it('should return child rooms of a zone', async () => {
+			const child = { ...mockSpace, id: uuid(), name: 'Living Room' };
+			jest.spyOn(homeControlSpacesService, 'getChildRooms').mockResolvedValue([toInstance(RoomSpaceEntity, child)]);
+
+			const result = await controller.findChildren(mockSpace.id);
+
+			expect(result.data).toHaveLength(1);
+			expect(homeControlSpacesService.getChildRooms).toHaveBeenCalledWith(mockSpace.id);
+		});
+
+		it('should return empty array for room without children', async () => {
+			jest.spyOn(homeControlSpacesService, 'getChildRooms').mockResolvedValue([]);
+
+			const result = await controller.findChildren(mockSpace.id);
+
+			expect(result.data).toEqual([]);
+		});
+	});
+
+	describe('findParent', () => {
+		it('should return parent zone of a room', async () => {
+			const parentZone = { ...mockSpace, name: 'Ground Floor' };
+			jest.spyOn(homeControlSpacesService, 'getParentZone').mockResolvedValue(toInstance(ZoneSpaceEntity, parentZone));
+
+			const result = await controller.findParent(mockSpace.id);
+
+			expect(result.data).toBeDefined();
+			expect(homeControlSpacesService.getParentZone).toHaveBeenCalledWith(mockSpace.id);
+		});
+
+		it('should return null for room without parent', async () => {
+			jest.spyOn(homeControlSpacesService, 'getParentZone').mockResolvedValue(null);
+
+			const result = await controller.findParent(mockSpace.id);
+
+			expect(result.data).toBeNull();
+		});
+	});
+
+	describe('findAllZones', () => {
+		it('should return all zones', async () => {
+			const zone = { ...mockSpace, name: 'Ground Floor' };
+			jest.spyOn(homeControlSpacesService, 'findAllZones').mockResolvedValue([toInstance(ZoneSpaceEntity, zone)]);
+
+			const result = await controller.findAllZones();
+
+			expect(result.data).toHaveLength(1);
+			expect(homeControlSpacesService.findAllZones).toHaveBeenCalled();
 		});
 	});
 

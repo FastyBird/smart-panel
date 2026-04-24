@@ -5,9 +5,9 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { SpaceEntity } from '../entities/space.entity';
-import { SpaceType } from '../spaces.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 
 import { SpaceActivityListener } from './space-activity.listener';
 
