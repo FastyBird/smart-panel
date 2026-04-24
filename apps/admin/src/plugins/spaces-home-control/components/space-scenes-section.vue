@@ -1,12 +1,12 @@
 <template>
 	<el-table
 		v-loading="loading"
-		:element-loading-text="t('spacesModule.detail.scenes.loading')"
+		:element-loading-text="t('spacesHomeControlPlugin.detail.scenes.loading')"
 		:data="scenes"
 		table-layout="fixed"
 		row-key="id"
 	>
-		<el-table-column :label="t('spacesModule.detail.scenes.name')" min-width="200">
+		<el-table-column :label="t('spacesHomeControlPlugin.detail.scenes.name')" min-width="200">
 			<template #default="{ row }">
 				<div class="flex items-center gap-2">
 					<el-avatar :size="32">
@@ -22,7 +22,7 @@
 			</template>
 		</el-table-column>
 
-		<el-table-column :label="t('spacesModule.detail.scenes.category')" width="150">
+		<el-table-column :label="t('spacesHomeControlPlugin.detail.scenes.category')" width="150">
 			<template #default="{ row }">
 				<el-tag size="small" type="info">
 					{{ t(`scenes.categories.${row.category}`) }}
@@ -30,13 +30,13 @@
 			</template>
 		</el-table-column>
 
-		<el-table-column :label="t('spacesModule.detail.scenes.status')" width="100" align="center">
+		<el-table-column :label="t('spacesHomeControlPlugin.detail.scenes.status')" width="100" align="center">
 			<template #default="{ row }">
 				<el-tag
 					:type="row.enabled ? 'success' : 'info'"
 					size="small"
 				>
-					{{ row.enabled ? t('spacesModule.detail.scenes.enabled') : t('spacesModule.detail.scenes.disabled') }}
+					{{ row.enabled ? t('spacesHomeControlPlugin.detail.scenes.enabled') : t('spacesHomeControlPlugin.detail.scenes.disabled') }}
 				</el-tag>
 			</template>
 		</el-table-column>
@@ -53,7 +53,7 @@
 						<template #icon>
 							<icon icon="mdi:swap-horizontal" />
 						</template>
-						{{ t('spacesModule.detail.scenes.reassign') }}
+						{{ t('spacesHomeControlPlugin.detail.scenes.reassign') }}
 					</el-button>
 					<el-button
 						type="danger"
@@ -64,7 +64,7 @@
 						<template #icon>
 							<icon icon="mdi:close" />
 						</template>
-						{{ t('spacesModule.detail.scenes.remove') }}
+						{{ t('spacesHomeControlPlugin.detail.scenes.remove') }}
 					</el-button>
 				</div>
 			</template>
@@ -106,7 +106,7 @@
 					</template>
 
 					<template #title>
-						{{ t('spacesModule.detail.scenes.empty') }}
+						{{ t('spacesHomeControlPlugin.detail.scenes.empty') }}
 					</template>
 
 					<template #extra>
@@ -130,10 +130,10 @@
 	<!-- Reassign Scene Dialog -->
 	<el-dialog
 		v-model="showReassignDialog"
-		:title="t('spacesModule.detail.scenes.reassign')"
+		:title="t('spacesHomeControlPlugin.detail.scenes.reassign')"
 		width="400px"
 	>
-		<p class="mb-4">{{ t('spacesModule.detail.scenes.selectSpace') }}</p>
+		<p class="mb-4">{{ t('spacesHomeControlPlugin.detail.scenes.selectSpace') }}</p>
 
 		<el-select
 			v-model="selectedTargetSpace"
@@ -244,7 +244,7 @@ const confirmReassign = async (): Promise<void> => {
 	try {
 		await reassignScene(selectedScene.value.id, selectedTargetSpace.value);
 		showReassignDialog.value = false;
-		flashMessage.success(t('spacesModule.detail.scenes.reassigned', { name: selectedScene.value.name }));
+		flashMessage.success(t('spacesHomeControlPlugin.detail.scenes.reassigned', { name: selectedScene.value.name }));
 	} catch {
 		flashMessage.error(t('spacesModule.messages.saveError'));
 	} finally {
@@ -254,8 +254,8 @@ const confirmReassign = async (): Promise<void> => {
 
 const onRemoveScene = (scene: IScene): void => {
 	ElMessageBox.confirm(
-		t('spacesModule.detail.scenes.confirmRemove', { name: scene.name }),
-		t('spacesModule.detail.scenes.removeHeading'),
+		t('spacesHomeControlPlugin.detail.scenes.confirmRemove', { name: scene.name }),
+		t('spacesHomeControlPlugin.detail.scenes.removeHeading'),
 		{
 			confirmButtonText: t('spacesModule.buttons.yes.title'),
 			cancelButtonText: t('spacesModule.buttons.no.title'),
@@ -265,13 +265,13 @@ const onRemoveScene = (scene: IScene): void => {
 		.then(async (): Promise<void> => {
 			try {
 				await removeScene(scene.id);
-				flashMessage.success(t('spacesModule.detail.scenes.removed', { name: scene.name }));
+				flashMessage.success(t('spacesHomeControlPlugin.detail.scenes.removed', { name: scene.name }));
 			} catch {
 				flashMessage.error(t('spacesModule.messages.saveError'));
 			}
 		})
 		.catch((): void => {
-			flashMessage.info(t('spacesModule.detail.scenes.removeCanceled'));
+			flashMessage.info(t('spacesHomeControlPlugin.detail.scenes.removeCanceled'));
 		});
 };
 

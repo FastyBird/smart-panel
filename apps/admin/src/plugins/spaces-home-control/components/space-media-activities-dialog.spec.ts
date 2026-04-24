@@ -324,7 +324,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 
 			const watchPanel = findCollapseItemByName('watch');
 
-			expect(watchPanel.text()).toContain('spacesModule.media.activities.status.configured');
+			expect(watchPanel.text()).toContain('spacesHomeControlPlugin.media.activities.status.configured');
 		});
 
 		it('shows unconfigured status for activity without binding', async () => {
@@ -332,7 +332,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 
 			const listenPanel = findCollapseItemByName('listen');
 
-			expect(listenPanel.text()).toContain('spacesModule.media.activities.status.unconfigured');
+			expect(listenPanel.text()).toContain('spacesHomeControlPlugin.media.activities.status.unconfigured');
 		});
 	});
 
@@ -342,7 +342,7 @@ describe('SpaceMediaActivitiesDialog', () => {
 
 			const watchPanel = findCollapseItemByName('watch');
 
-			expect(watchPanel.text()).toContain('spacesModule.media.activities.overrides.displayInput');
+			expect(watchPanel.text()).toContain('spacesHomeControlPlugin.media.activities.overrides.displayInput');
 		});
 
 		it('shows volume slider when audio endpoint has volume capability', async () => {
@@ -359,9 +359,9 @@ describe('SpaceMediaActivitiesDialog', () => {
 
 			const listenPanel = findCollapseItemByName('listen');
 
-			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.displayInput');
-			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioInput');
-			expect(listenPanel.text()).not.toContain('spacesModule.media.activities.overrides.audioVolume');
+			expect(listenPanel.text()).not.toContain('spacesHomeControlPlugin.media.activities.overrides.displayInput');
+			expect(listenPanel.text()).not.toContain('spacesHomeControlPlugin.media.activities.overrides.audioInput');
+			expect(listenPanel.text()).not.toContain('spacesHomeControlPlugin.media.activities.overrides.audioVolume');
 
 			const sliders = listenPanel.findAll('.slider-stub');
 

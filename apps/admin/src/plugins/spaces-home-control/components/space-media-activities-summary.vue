@@ -4,7 +4,7 @@
 			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
-			{{ t('spacesModule.detail.mediaActivities.title') }}
+			{{ t('spacesHomeControlPlugin.detail.mediaActivities.title') }}
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
 			<!-- Show activity tags when bindings exist -->
@@ -19,7 +19,7 @@
 				>
 					<div class="flex items-center gap-1">
 						<icon :icon="summary.icon" />
-						{{ t(`spacesModule.media.activityLabels.${summary.activityKey}`) }}
+						{{ t(`spacesHomeControlPlugin.media.activityLabels.${summary.activityKey}`) }}
 						<el-badge
 							:value="summary.routeCount"
 							:type="summary.tagType"
@@ -31,7 +31,7 @@
 			<!-- Show hint when no bindings exist -->
 			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
 				<icon icon="mdi:play-box-multiple-outline" />
-				{{ t('spacesModule.detail.mediaActivities.noActivities') }}
+				{{ t('spacesHomeControlPlugin.detail.mediaActivities.noActivities') }}
 			</div>
 			<el-button
 				text
@@ -56,7 +56,7 @@
 	>
 		<div
 			v-loading="previewLoading"
-			:element-loading-text="t('spacesModule.media.activities.loading')"
+			:element-loading-text="t('spacesHomeControlPlugin.media.activities.loading')"
 		>
 			<div
 				v-if="previewData"
@@ -71,17 +71,17 @@
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
 							<div>
-								<span class="text-gray-500 text-sm">{{ t('spacesModule.media.activities.activePanel.state') }}:</span>
+								<span class="text-gray-500 text-sm">{{ t('spacesHomeControlPlugin.media.activities.activePanel.state') }}:</span>
 								<el-tag
 									:type="activeStateTagType"
 									size="small"
 									class="ml-2"
 								>
-									{{ t(`spacesModule.media.activities.activationState.${activeState!.state}`) }}
+									{{ t(`spacesHomeControlPlugin.media.activities.activationState.${activeState!.state}`) }}
 								</el-tag>
 							</div>
 							<div v-if="activeState!.activatedAt">
-								<span class="text-gray-500 text-sm">{{ t('spacesModule.media.activities.activePanel.activatedAt') }}:</span>
+								<span class="text-gray-500 text-sm">{{ t('spacesHomeControlPlugin.media.activities.activePanel.activatedAt') }}:</span>
 								<span class="ml-1 text-sm">{{ formatTimestamp(activeState!.activatedAt!) }}</span>
 							</div>
 						</div>
@@ -95,7 +95,7 @@
 							<template #icon>
 								<icon icon="mdi:stop" />
 							</template>
-							{{ t('spacesModule.media.activities.deactivate') }}
+							{{ t('spacesHomeControlPlugin.media.activities.deactivate') }}
 						</el-button>
 					</div>
 				</el-card>
@@ -108,11 +108,11 @@
 				>
 					<div class="flex flex-col gap-2">
 						<div class="flex items-center justify-between">
-							<span class="text-sm font-medium">{{ t('spacesModule.media.activities.failures.title') }}</span>
+							<span class="text-sm font-medium">{{ t('spacesHomeControlPlugin.media.activities.failures.title') }}</span>
 							<div class="flex gap-3 text-xs text-gray-500">
-								<span>{{ t('spacesModule.media.activities.failures.total') }}: {{ activeState!.summary?.stepsTotal ?? 0 }}</span>
-								<span class="text-green-600">{{ t('spacesModule.media.activities.failures.succeeded') }}: {{ activeState!.summary?.stepsSucceeded ?? 0 }}</span>
-								<span class="text-red-600">{{ t('spacesModule.media.activities.failures.failed') }}: {{ activeState!.summary?.stepsFailed ?? 0 }}</span>
+								<span>{{ t('spacesHomeControlPlugin.media.activities.failures.total') }}: {{ activeState!.summary?.stepsTotal ?? 0 }}</span>
+								<span class="text-green-600">{{ t('spacesHomeControlPlugin.media.activities.failures.succeeded') }}: {{ activeState!.summary?.stepsSucceeded ?? 0 }}</span>
+								<span class="text-red-600">{{ t('spacesHomeControlPlugin.media.activities.failures.failed') }}: {{ activeState!.summary?.stepsFailed ?? 0 }}</span>
 							</div>
 						</div>
 						<el-table
@@ -121,7 +121,7 @@
 							border
 						>
 							<el-table-column
-								:label="t('spacesModule.media.activities.failures.stepIndex')"
+								:label="t('spacesHomeControlPlugin.media.activities.failures.stepIndex')"
 								width="70"
 							>
 								<template #default="{ row }">
@@ -129,7 +129,7 @@
 								</template>
 							</el-table-column>
 							<el-table-column
-								:label="t('spacesModule.media.activities.failures.device')"
+								:label="t('spacesHomeControlPlugin.media.activities.failures.device')"
 								min-width="140"
 							>
 								<template #default="{ row }">
@@ -137,7 +137,7 @@
 								</template>
 							</el-table-column>
 							<el-table-column
-								:label="t('spacesModule.media.activities.failures.property')"
+								:label="t('spacesHomeControlPlugin.media.activities.failures.property')"
 								min-width="100"
 							>
 								<template #default="{ row }">
@@ -145,7 +145,7 @@
 								</template>
 							</el-table-column>
 							<el-table-column
-								:label="t('spacesModule.media.activities.failures.reason')"
+								:label="t('spacesHomeControlPlugin.media.activities.failures.reason')"
 								min-width="180"
 							>
 								<template #default="{ row }">
@@ -158,22 +158,22 @@
 
 				<!-- Resolved devices -->
 				<div>
-					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.resolvedDevices') }}</div>
+					<div class="text-sm font-medium mb-2">{{ t('spacesHomeControlPlugin.media.activities.previewDialog.resolvedDevices') }}</div>
 					<div class="grid grid-cols-2 gap-2 text-sm">
 						<div v-if="previewData.resolved.displayDeviceId">
-							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.display') }}:</span>
+							<span class="text-gray-400">{{ t('spacesHomeControlPlugin.media.activities.activePanel.display') }}:</span>
 							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.displayDeviceId) }}</span>
 						</div>
 						<div v-if="previewData.resolved.audioDeviceId">
-							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.audio') }}:</span>
+							<span class="text-gray-400">{{ t('spacesHomeControlPlugin.media.activities.activePanel.audio') }}:</span>
 							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.audioDeviceId) }}</span>
 						</div>
 						<div v-if="previewData.resolved.sourceDeviceId">
-							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.source') }}:</span>
+							<span class="text-gray-400">{{ t('spacesHomeControlPlugin.media.activities.activePanel.source') }}:</span>
 							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.sourceDeviceId) }}</span>
 						</div>
 						<div v-if="previewData.resolved.remoteDeviceId">
-							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.remote') }}:</span>
+							<span class="text-gray-400">{{ t('spacesHomeControlPlugin.media.activities.activePanel.remote') }}:</span>
 							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.remoteDeviceId) }}</span>
 						</div>
 					</div>
@@ -181,7 +181,7 @@
 
 				<!-- Execution plan steps -->
 				<div>
-					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.executionPlan') }}</div>
+					<div class="text-sm font-medium mb-2">{{ t('spacesHomeControlPlugin.media.activities.previewDialog.executionPlan') }}</div>
 					<el-table
 						v-if="previewData.plan.length"
 						:data="previewData.plan"
@@ -189,7 +189,7 @@
 						border
 					>
 						<el-table-column
-							:label="t('spacesModule.media.activities.previewDialog.step')"
+							:label="t('spacesHomeControlPlugin.media.activities.previewDialog.step')"
 							width="60"
 						>
 							<template #default="{ $index }">
@@ -197,7 +197,7 @@
 							</template>
 						</el-table-column>
 						<el-table-column
-							:label="t('spacesModule.media.activities.previewDialog.action')"
+							:label="t('spacesHomeControlPlugin.media.activities.previewDialog.action')"
 							min-width="200"
 						>
 							<template #default="{ row }">
@@ -211,7 +211,7 @@
 							</template>
 						</el-table-column>
 						<el-table-column
-							:label="t('spacesModule.media.activities.previewDialog.device')"
+							:label="t('spacesHomeControlPlugin.media.activities.previewDialog.device')"
 							min-width="140"
 						>
 							<template #default="{ row }">
@@ -219,7 +219,7 @@
 							</template>
 						</el-table-column>
 						<el-table-column
-							:label="t('spacesModule.media.activities.previewDialog.critical')"
+							:label="t('spacesHomeControlPlugin.media.activities.previewDialog.critical')"
 							width="100"
 						>
 							<template #default="{ row }">
@@ -227,7 +227,7 @@
 									:type="row.critical ? 'danger' : 'info'"
 									size="small"
 								>
-									{{ row.critical ? t('spacesModule.media.activities.previewDialog.criticalYes') : t('spacesModule.media.activities.previewDialog.criticalNo') }}
+									{{ row.critical ? t('spacesHomeControlPlugin.media.activities.previewDialog.criticalYes') : t('spacesHomeControlPlugin.media.activities.previewDialog.criticalNo') }}
 								</el-tag>
 							</template>
 						</el-table-column>
@@ -236,13 +236,13 @@
 						v-else
 						class="text-sm text-gray-400"
 					>
-						{{ t('spacesModule.media.activities.previewDialog.noSteps') }}
+						{{ t('spacesHomeControlPlugin.media.activities.previewDialog.noSteps') }}
 					</div>
 				</div>
 
 				<!-- Warnings -->
 				<div v-if="previewData.warnings.length">
-					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.warnings') }}</div>
+					<div class="text-sm font-medium mb-2">{{ t('spacesHomeControlPlugin.media.activities.previewDialog.warnings') }}</div>
 					<el-alert
 						v-for="(warning, idx) in previewData.warnings"
 						:key="idx"
@@ -259,7 +259,7 @@
 			<el-alert
 				v-if="previewError"
 				type="error"
-				:title="t('spacesModule.media.activities.previewFailed')"
+				:title="t('spacesHomeControlPlugin.media.activities.previewFailed')"
 				:description="previewError"
 				show-icon
 				:closable="false"
@@ -268,7 +268,7 @@
 
 		<template #footer>
 			<el-button @click="previewDialogVisible = false">
-				{{ t('spacesModule.media.activities.previewDialog.close') }}
+				{{ t('spacesHomeControlPlugin.media.activities.previewDialog.close') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -366,9 +366,9 @@ const activitySummaries = computed<IActivitySummary[]>(() => {
 });
 
 const previewDialogTitle = computed(() => {
-	if (!previewActivityKey.value) return t('spacesModule.media.activities.previewDialog.title');
-	const label = t(`spacesModule.media.activityLabels.${previewActivityKey.value}`);
-	return `${t('spacesModule.media.activities.previewDialog.title')} — ${label}`;
+	if (!previewActivityKey.value) return t('spacesHomeControlPlugin.media.activities.previewDialog.title');
+	const label = t(`spacesHomeControlPlugin.media.activityLabels.${previewActivityKey.value}`);
+	return `${t('spacesHomeControlPlugin.media.activities.previewDialog.title')} — ${label}`;
 });
 
 // Active state helpers for preview dialog
@@ -434,9 +434,9 @@ const getStepKindIcon = (kind: string): string => {
 const onDeactivate = async (): Promise<void> => {
 	try {
 		await deactivate();
-		flashMessage.success(t('spacesModule.media.activities.deactivateSuccess'));
+		flashMessage.success(t('spacesHomeControlPlugin.media.activities.deactivateSuccess'));
 	} catch {
-		flashMessage.error(t('spacesModule.media.activities.deactivateFailed'));
+		flashMessage.error(t('spacesHomeControlPlugin.media.activities.deactivateFailed'));
 	}
 };
 

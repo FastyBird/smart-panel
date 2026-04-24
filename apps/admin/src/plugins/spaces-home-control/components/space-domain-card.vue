@@ -52,7 +52,7 @@
 						v-else
 						class="space-domain-card__not-configured"
 					>
-						{{ t('spacesModule.detail.domains.notConfigured') }}
+						{{ t('spacesHomeControlPlugin.detail.domains.notConfigured') }}
 					</span>
 				</div>
 			</div>

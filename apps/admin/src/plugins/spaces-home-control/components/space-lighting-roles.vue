@@ -1,7 +1,7 @@
 <template>
 	<div :class="{ 'mt-2': !hideHeader }">
 		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
-			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
+			{{ t('spacesHomeControlPlugin.edit.sections.smartOverrides.lightingRoles') }}
 		</el-divider>
 
 		<el-alert
@@ -10,7 +10,7 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
+			{{ t('spacesHomeControlPlugin.fields.spaces.lightingRoles.description') }}
 		</el-alert>
 
 		<div v-if="loading && lightTargets.length === 0" class="flex justify-center py-4">
@@ -31,11 +31,11 @@
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.lightingRoles.role.title')" width="160">
+				<el-table-column :label="t('spacesHomeControlPlugin.fields.spaces.lightingRoles.role.title')" width="160">
 					<template #default="{ row }">
 						<el-select
 							:model-value="row.role ?? ''"
-							:placeholder="t('spacesModule.fields.spaces.lightingRoles.role.placeholder')"
+							:placeholder="t('spacesHomeControlPlugin.fields.spaces.lightingRoles.role.placeholder')"
 							clearable
 							@update:model-value="onRoleChange(row, $event)"
 						>
@@ -61,10 +61,10 @@
 
 			<div class="flex justify-between items-center mt-4">
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
-					{{ t('spacesModule.fields.spaces.lightingRoles.applyDefaults') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.lightingRoles.applyDefaults') }}
 				</el-button>
 				<div class="text-xs text-gray-400">
-					{{ t('spacesModule.fields.spaces.lightingRoles.applyDefaultsHint') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.lightingRoles.applyDefaultsHint') }}
 				</div>
 			</div>
 		</template>
@@ -82,7 +82,7 @@
 			</template>
 
 			<template #title>
-				{{ t('spacesModule.fields.spaces.lightingRoles.noLights') }}
+				{{ t('spacesHomeControlPlugin.fields.spaces.lightingRoles.noLights') }}
 			</template>
 		</el-result>
 	</div>
@@ -132,13 +132,13 @@ const applyingDefaults = ref(false);
 const lightTargets = ref<ILightTarget[]>([]);
 
 const roleOptions = computed(() => [
-	{ value: LightingRole.main, label: t('spacesModule.lightingRoles.main') },
-	{ value: LightingRole.task, label: t('spacesModule.lightingRoles.task') },
-	{ value: LightingRole.ambient, label: t('spacesModule.lightingRoles.ambient') },
-	{ value: LightingRole.accent, label: t('spacesModule.lightingRoles.accent') },
-	{ value: LightingRole.night, label: t('spacesModule.lightingRoles.night') },
-	{ value: LightingRole.other, label: t('spacesModule.lightingRoles.other') },
-	{ value: LightingRole.hidden, label: t('spacesModule.lightingRoles.hidden') },
+	{ value: LightingRole.main, label: t('spacesHomeControlPlugin.lightingRoles.main') },
+	{ value: LightingRole.task, label: t('spacesHomeControlPlugin.lightingRoles.task') },
+	{ value: LightingRole.ambient, label: t('spacesHomeControlPlugin.lightingRoles.ambient') },
+	{ value: LightingRole.accent, label: t('spacesHomeControlPlugin.lightingRoles.accent') },
+	{ value: LightingRole.night, label: t('spacesHomeControlPlugin.lightingRoles.night') },
+	{ value: LightingRole.other, label: t('spacesHomeControlPlugin.lightingRoles.other') },
+	{ value: LightingRole.hidden, label: t('spacesHomeControlPlugin.lightingRoles.hidden') },
 ]);
 
 const loadLightTargets = async (): Promise<void> => {

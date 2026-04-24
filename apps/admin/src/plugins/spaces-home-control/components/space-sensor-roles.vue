@@ -1,7 +1,7 @@
 <template>
 	<div :class="{ 'mt-2': !hideHeader }">
 		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
-			{{ t('spacesModule.edit.sections.smartOverrides.sensorRoles') }}
+			{{ t('spacesHomeControlPlugin.edit.sections.smartOverrides.sensorRoles') }}
 		</el-divider>
 
 		<el-alert
@@ -10,7 +10,7 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ t('spacesModule.fields.spaces.sensorRoles.description') }}
+			{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.description') }}
 		</el-alert>
 
 		<div v-if="loading && sensorTargets.length === 0" class="flex justify-center py-4">
@@ -31,7 +31,7 @@
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.sensorRoles.channel.title')" width="200">
+				<el-table-column :label="t('spacesHomeControlPlugin.fields.spaces.sensorRoles.channel.title')" width="200">
 					<template #default="{ row }">
 						<el-tag size="small" type="info">
 							{{ getChannelLabel(row.channelCategory) }}
@@ -39,11 +39,11 @@
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.sensorRoles.role.title')" width="200">
+				<el-table-column :label="t('spacesHomeControlPlugin.fields.spaces.sensorRoles.role.title')" width="200">
 					<template #default="{ row }">
 						<el-select
 							:model-value="row.role ?? ''"
-							:placeholder="t('spacesModule.fields.spaces.sensorRoles.role.placeholder')"
+							:placeholder="t('spacesHomeControlPlugin.fields.spaces.sensorRoles.role.placeholder')"
 							clearable
 							@update:model-value="onRoleChange(row, $event)"
 						>
@@ -60,10 +60,10 @@
 
 			<div class="flex justify-between items-center mt-4">
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
-					{{ t('spacesModule.fields.spaces.sensorRoles.applyDefaults') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.applyDefaults') }}
 				</el-button>
 				<div class="text-xs text-gray-400 ml-4">
-					{{ t('spacesModule.fields.spaces.sensorRoles.applyDefaultsHint') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.applyDefaultsHint') }}
 				</div>
 			</div>
 		</template>
@@ -81,7 +81,7 @@
 			</template>
 
 			<template #title>
-				{{ t('spacesModule.fields.spaces.sensorRoles.noSensors') }}
+				{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.noSensors') }}
 			</template>
 		</el-result>
 	</div>
@@ -135,56 +135,56 @@ const sensorTargets = ref<ISensorTarget[]>([]);
 const roleOptions = computed(() =>
 	SENSOR_ROLE_ORDER.map((role) => ({
 		value: role,
-		label: t(`spacesModule.sensorRoles.${role}`),
+		label: t(`spacesHomeControlPlugin.sensorRoles.${role}`),
 	}))
 );
 
 const getChannelLabel = (category: string): string => {
 	switch (category) {
 		case 'temperature':
-			return t('spacesModule.sensorRoles.categories.temperature');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.temperature');
 		case 'humidity':
-			return t('spacesModule.sensorRoles.categories.humidity');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.humidity');
 		case 'pressure':
-			return t('spacesModule.sensorRoles.categories.pressure');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.pressure');
 		case 'illuminance':
-			return t('spacesModule.sensorRoles.categories.illuminance');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.illuminance');
 		case 'smoke':
-			return t('spacesModule.sensorRoles.categories.smoke');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.smoke');
 		case 'gas':
-			return t('spacesModule.sensorRoles.categories.gas');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.gas');
 		case 'carbon_monoxide':
-			return t('spacesModule.sensorRoles.categories.carbon_monoxide');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.carbon_monoxide');
 		case 'carbon_dioxide':
-			return t('spacesModule.sensorRoles.categories.carbon_dioxide');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.carbon_dioxide');
 		case 'leak':
-			return t('spacesModule.sensorRoles.categories.leak');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.leak');
 		case 'motion':
-			return t('spacesModule.sensorRoles.categories.motion');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.motion');
 		case 'occupancy':
-			return t('spacesModule.sensorRoles.categories.occupancy');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.occupancy');
 		case 'contact':
-			return t('spacesModule.sensorRoles.categories.contact');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.contact');
 		case 'air_quality':
-			return t('spacesModule.sensorRoles.categories.air_quality');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.air_quality');
 		case 'air_particulate':
-			return t('spacesModule.sensorRoles.categories.air_particulate');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.air_particulate');
 		case 'nitrogen_dioxide':
-			return t('spacesModule.sensorRoles.categories.nitrogen_dioxide');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.nitrogen_dioxide');
 		case 'ozone':
-			return t('spacesModule.sensorRoles.categories.ozone');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.ozone');
 		case 'sulphur_dioxide':
-			return t('spacesModule.sensorRoles.categories.sulphur_dioxide');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.sulphur_dioxide');
 		case 'volatile_organic_compounds':
-			return t('spacesModule.sensorRoles.categories.volatile_organic_compounds');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.volatile_organic_compounds');
 		case 'electrical_energy':
-			return t('spacesModule.sensorRoles.categories.electrical_energy');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.electrical_energy');
 		case 'electrical_generation':
-			return t('spacesModule.sensorRoles.categories.electrical_generation');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.electrical_generation');
 		case 'electrical_power':
-			return t('spacesModule.sensorRoles.categories.electrical_power');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.electrical_power');
 		case 'battery':
-			return t('spacesModule.sensorRoles.categories.battery');
+			return t('spacesHomeControlPlugin.sensorRoles.categories.battery');
 		default:
 			return category;
 	}

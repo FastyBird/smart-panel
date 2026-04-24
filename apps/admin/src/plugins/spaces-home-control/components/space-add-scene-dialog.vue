@@ -1,13 +1,13 @@
 <template>
 	<el-dialog
 		v-model="visible"
-		:title="t('spacesModule.detail.scenes.selectScene')"
+		:title="t('spacesHomeControlPlugin.detail.scenes.selectScene')"
 		class="max-w-[700px]"
 		@close="onClose"
 	>
 		<el-input
 			v-model="searchQuery"
-			:placeholder="t('spacesModule.detail.scenes.searchPlaceholder')"
+			:placeholder="t('spacesHomeControlPlugin.detail.scenes.searchPlaceholder')"
 			clearable
 			class="mb-4"
 		>
@@ -40,7 +40,7 @@
 						</template>
 
 						<template #title>
-							{{ t('spacesModule.detail.scenes.noAvailable') }}
+							{{ t('spacesHomeControlPlugin.detail.scenes.noAvailable') }}
 						</template>
 					</el-result>
 				</div>
@@ -63,13 +63,13 @@
 
 						<template #title>
 							<el-text class="block">
-								{{ t('spacesModule.detail.scenes.noFilteredScenes') }}
+								{{ t('spacesHomeControlPlugin.detail.scenes.noFilteredScenes') }}
 							</el-text>
 						</template>
 					</el-result>
 				</div>
 			</template>
-			<el-table-column :label="t('spacesModule.detail.scenes.name')" min-width="200">
+			<el-table-column :label="t('spacesHomeControlPlugin.detail.scenes.name')" min-width="200">
 				<template #default="{ row }">
 					<div class="flex items-center gap-2">
 						<el-avatar :size="32">
@@ -94,7 +94,7 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.detail.scenes.assignedSpace')" width="150">
+			<el-table-column :label="t('spacesHomeControlPlugin.detail.scenes.assignedSpace')" width="150">
 				<template #default="{ row }">
 					<el-tag v-if="row.primarySpaceId" size="small" type="warning">
 						{{ getSpaceName(row.primarySpaceId) }}
@@ -115,7 +115,7 @@
 						<template #icon>
 							<icon :icon="row.primarySpaceId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
 						</template>
-						{{ row.primarySpaceId ? t('spacesModule.detail.scenes.reassign') : t('spacesModule.detail.scenes.assign') }}
+						{{ row.primarySpaceId ? t('spacesHomeControlPlugin.detail.scenes.reassign') : t('spacesHomeControlPlugin.detail.scenes.assign') }}
 					</el-button>
 				</template>
 			</el-table-column>
@@ -220,7 +220,7 @@ const onAssignScene = async (scene: IScene): Promise<void> => {
 				primarySpaceId: props.spaceId,
 			},
 		});
-		flashMessage.success(t('spacesModule.detail.scenes.assigned', { name: scene.name }));
+		flashMessage.success(t('spacesHomeControlPlugin.detail.scenes.assigned', { name: scene.name }));
 		emit('scene-added');
 	} catch {
 		flashMessage.error(t('spacesModule.messages.saveError'));

@@ -4,7 +4,7 @@
 			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
-			{{ t('spacesModule.detail.coversRoles.title') }}
+			{{ t('spacesHomeControlPlugin.detail.coversRoles.title') }}
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
 			<!-- Show role tags when roles are assigned -->
@@ -24,7 +24,7 @@
 						>
 							<div class="flex items-center gap-1">
 								<icon :icon="getRoleIcon(summary.role)" />
-								{{ t(`spacesModule.coversRoles.${summary.role}`) }}
+								{{ t(`spacesHomeControlPlugin.coversRoles.${summary.role}`) }}
 								<el-badge
 									:value="summary.devices.length"
 									:type="getRoleTagType(summary.role)"
@@ -40,10 +40,10 @@
 							show-icon
 							class="mb-2!"
 						>
-							{{ t(`spacesModule.coversRoles.descriptions.${summary.role}`) }}
+							{{ t(`spacesHomeControlPlugin.coversRoles.descriptions.${summary.role}`) }}
 						</el-alert>
 						<div class="text-sm font-medium mb-1">
-							{{ t('spacesModule.detail.coversRoles.coversAssigned') }}:
+							{{ t('spacesHomeControlPlugin.detail.coversRoles.coversAssigned') }}:
 						</div>
 						<ul class="list-none p-0 m-0 space-y-1">
 							<li
@@ -61,7 +61,7 @@
 			<!-- Show hint when no roles assigned yet -->
 			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
 				<icon icon="mdi:blinds" />
-				{{ t('spacesModule.detail.coversRoles.noRolesAssigned') }}
+				{{ t('spacesHomeControlPlugin.detail.coversRoles.noRolesAssigned') }}
 			</div>
 			<el-button
 				text

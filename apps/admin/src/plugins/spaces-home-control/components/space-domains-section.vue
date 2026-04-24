@@ -167,7 +167,7 @@ const loadLightingRoles = async (): Promise<void> => {
 		lightingTags.value = Array.from(roleMap.entries())
 			.sort(([a], [b]) => roleOrder.indexOf(a as LightingRole) - roleOrder.indexOf(b as LightingRole))
 			.map(([role, count]) => ({
-				label: t(`spacesModule.lightingRoles.${role}`),
+				label: t(`spacesHomeControlPlugin.lightingRoles.${role}`),
 				type: getLightingRoleTagType(role),
 				icon: getLightingRoleIcon(role),
 				count,
@@ -245,7 +245,7 @@ const loadClimateRoles = async (): Promise<void> => {
 		climateTags.value = Array.from(roleMap.entries())
 			.sort(([a], [b]) => roleOrder.indexOf(a as ClimateRole) - roleOrder.indexOf(b as ClimateRole))
 			.map(([role, count]) => ({
-				label: t(`spacesModule.climateRoles.${role}`),
+				label: t(`spacesHomeControlPlugin.climateRoles.${role}`),
 				type: getClimateRoleTagType(role),
 				icon: getClimateRoleIcon(role),
 				count,
@@ -321,7 +321,7 @@ const loadCoversRoles = async (): Promise<void> => {
 		coversTags.value = Array.from(roleMap.entries())
 			.sort(([a], [b]) => roleOrder.indexOf(a as CoversRole) - roleOrder.indexOf(b as CoversRole))
 			.map(([role, count]) => ({
-				label: t(`spacesModule.coversRoles.${role}`),
+				label: t(`spacesHomeControlPlugin.coversRoles.${role}`),
 				type: getCoversRoleTagType(role),
 				icon: getCoversRoleIcon(role),
 				count,
@@ -399,7 +399,7 @@ const loadSensorRoles = async (): Promise<void> => {
 		sensorTags.value = Array.from(roleMap.entries())
 			.sort(([a], [b]) => SENSOR_ROLE_ORDER.indexOf(a as SensorRole) - SENSOR_ROLE_ORDER.indexOf(b as SensorRole))
 			.map(([role, count]) => ({
-				label: t(`spacesModule.sensorRoles.${role}`),
+				label: t(`spacesHomeControlPlugin.sensorRoles.${role}`),
 				type: getSensorRoleTagType(role),
 				icon: getSensorRoleIcon(role),
 				count,
@@ -436,7 +436,7 @@ const loadMediaActivities = async (): Promise<void> => {
 			const routeCount = [binding.displayEndpointId, binding.audioEndpointId, binding.sourceEndpointId, binding.remoteEndpointId].filter(Boolean).length;
 
 			tags.push({
-				label: t(`spacesModule.media.activityLabels.${key}`),
+				label: t(`spacesHomeControlPlugin.media.activityLabels.${key}`),
 				type: getActivityColor(key),
 				icon: getActivityIcon(key),
 				count: routeCount,
@@ -458,8 +458,8 @@ const domains = computed(() => [
 		key: 'lighting',
 		icon: 'mdi:lightbulb',
 		iconColor: 'warning' as const,
-		title: t('spacesModule.detail.domains.lighting.title'),
-		description: t('spacesModule.detail.domains.lighting.description'),
+		title: t('spacesHomeControlPlugin.detail.domains.lighting.title'),
+		description: t('spacesHomeControlPlugin.detail.domains.lighting.description'),
 		tags: lightingTags.value,
 		loading: lightingLoading.value,
 		openDialog: () => {
@@ -470,8 +470,8 @@ const domains = computed(() => [
 		key: 'climate',
 		icon: 'mdi:thermostat',
 		iconColor: 'danger' as const,
-		title: t('spacesModule.detail.domains.climate.title'),
-		description: t('spacesModule.detail.domains.climate.description'),
+		title: t('spacesHomeControlPlugin.detail.domains.climate.title'),
+		description: t('spacesHomeControlPlugin.detail.domains.climate.description'),
 		tags: climateTags.value,
 		loading: climateLoading.value,
 		openDialog: () => {
@@ -482,8 +482,8 @@ const domains = computed(() => [
 		key: 'covers',
 		icon: 'mdi:blinds',
 		iconColor: 'primary' as const,
-		title: t('spacesModule.detail.domains.covers.title'),
-		description: t('spacesModule.detail.domains.covers.description'),
+		title: t('spacesHomeControlPlugin.detail.domains.covers.title'),
+		description: t('spacesHomeControlPlugin.detail.domains.covers.description'),
 		tags: coversTags.value,
 		loading: coversLoading.value,
 		openDialog: () => {
@@ -494,8 +494,8 @@ const domains = computed(() => [
 		key: 'sensor',
 		icon: 'mdi:chart-bell-curve',
 		iconColor: 'success' as const,
-		title: t('spacesModule.detail.domains.sensor.title'),
-		description: t('spacesModule.detail.domains.sensor.description'),
+		title: t('spacesHomeControlPlugin.detail.domains.sensor.title'),
+		description: t('spacesHomeControlPlugin.detail.domains.sensor.description'),
 		tags: sensorTags.value,
 		loading: sensorLoading.value,
 		openDialog: () => {
@@ -506,8 +506,8 @@ const domains = computed(() => [
 		key: 'media',
 		icon: 'mdi:play-box-multiple',
 		iconColor: 'info' as const,
-		title: t('spacesModule.detail.domains.media.title'),
-		description: t('spacesModule.detail.domains.media.description'),
+		title: t('spacesHomeControlPlugin.detail.domains.media.title'),
+		description: t('spacesHomeControlPlugin.detail.domains.media.description'),
 		tags: mediaTags.value,
 		loading: mediaLoading.value,
 		openDialog: () => {

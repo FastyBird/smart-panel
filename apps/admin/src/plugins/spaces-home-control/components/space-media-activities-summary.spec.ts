@@ -70,7 +70,7 @@ const mountOpts = {
 const openPreviewDialog = async (wrapper: ReturnType<typeof mount>): Promise<void> => {
 	// Find the tag by its DOM element (el-tag renders as span.el-tag)
 	const tagEls = wrapper.findAll('.el-tag');
-	const watchTag = tagEls.find((el) => el.text().includes('spacesModule.media.activityLabels.watch'));
+	const watchTag = tagEls.find((el) => el.text().includes('spacesHomeControlPlugin.media.activityLabels.watch'));
 
 	if (watchTag) {
 		await watchTag.trigger('click');
@@ -161,7 +161,7 @@ describe('SpaceMediaActivitiesSummary', () => {
 
 		const html = wrapper.html();
 
-		expect(html).toContain('spacesModule.media.activities.activationState.failed');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.activationState.failed');
 	});
 
 	it('renders failures table with step details in preview dialog', async () => {
@@ -203,14 +203,14 @@ describe('SpaceMediaActivitiesSummary', () => {
 		const html = wrapper.html();
 
 		// Should render the failures section
-		expect(html).toContain('spacesModule.media.activities.failures.title');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.failures.title');
 		// Should show failure reasons
 		expect(html).toContain('Device unreachable');
 		expect(html).toContain('Timeout');
 		// Should show failure stats
-		expect(html).toContain('spacesModule.media.activities.failures.total');
-		expect(html).toContain('spacesModule.media.activities.failures.succeeded');
-		expect(html).toContain('spacesModule.media.activities.failures.failed');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.failures.total');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.failures.succeeded');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.failures.failed');
 	});
 
 	it('does not render failures section when there are no failures', async () => {
@@ -247,7 +247,7 @@ describe('SpaceMediaActivitiesSummary', () => {
 		const html = wrapper.html();
 
 		// Should NOT render failures section when no failures
-		expect(html).not.toContain('spacesModule.media.activities.failures.title');
+		expect(html).not.toContain('spacesHomeControlPlugin.media.activities.failures.title');
 	});
 
 	it('shows deactivate button when an activity is active', async () => {
@@ -283,7 +283,7 @@ describe('SpaceMediaActivitiesSummary', () => {
 
 		const html = wrapper.html();
 
-		expect(html).toContain('spacesModule.media.activities.deactivate');
+		expect(html).toContain('spacesHomeControlPlugin.media.activities.deactivate');
 	});
 
 	it('resolves device names from endpoints for failures', async () => {

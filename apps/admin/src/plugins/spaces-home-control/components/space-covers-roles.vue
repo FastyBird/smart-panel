@@ -1,7 +1,7 @@
 <template>
 	<div :class="{ 'mt-2': !hideHeader }">
 		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
-			{{ t('spacesModule.edit.sections.smartOverrides.coversRoles') }}
+			{{ t('spacesHomeControlPlugin.edit.sections.smartOverrides.coversRoles') }}
 		</el-divider>
 
 		<el-alert
@@ -10,7 +10,7 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ t('spacesModule.fields.spaces.coversRoles.description') }}
+			{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.description') }}
 		</el-alert>
 
 		<div v-if="loading && coversTargets.length === 0" class="flex justify-center py-4">
@@ -31,11 +31,11 @@
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.coversRoles.role.title')" width="160">
+				<el-table-column :label="t('spacesHomeControlPlugin.fields.spaces.coversRoles.role.title')" width="160">
 					<template #default="{ row }">
 						<el-select
 							:model-value="row.role ?? ''"
-							:placeholder="t('spacesModule.fields.spaces.coversRoles.role.placeholder')"
+							:placeholder="t('spacesHomeControlPlugin.fields.spaces.coversRoles.role.placeholder')"
 							clearable
 							@update:model-value="onRoleChange(row, $event)"
 						>
@@ -61,10 +61,10 @@
 
 			<div class="flex justify-between items-center mt-4">
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
-					{{ t('spacesModule.fields.spaces.coversRoles.applyDefaults') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.applyDefaults') }}
 				</el-button>
 				<div class="text-xs text-gray-400">
-					{{ t('spacesModule.fields.spaces.coversRoles.applyDefaultsHint') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.applyDefaultsHint') }}
 				</div>
 			</div>
 		</template>
@@ -82,7 +82,7 @@
 			</template>
 
 			<template #title>
-				{{ t('spacesModule.fields.spaces.coversRoles.noCovers') }}
+				{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.noCovers') }}
 			</template>
 		</el-result>
 	</div>
@@ -133,11 +133,11 @@ const applyingDefaults = ref(false);
 const coversTargets = ref<ICoversTarget[]>([]);
 
 const roleOptions = computed(() => [
-	{ value: CoversRole.primary, label: t('spacesModule.coversRoles.primary') },
-	{ value: CoversRole.blackout, label: t('spacesModule.coversRoles.blackout') },
-	{ value: CoversRole.sheer, label: t('spacesModule.coversRoles.sheer') },
-	{ value: CoversRole.outdoor, label: t('spacesModule.coversRoles.outdoor') },
-	{ value: CoversRole.hidden, label: t('spacesModule.coversRoles.hidden') },
+	{ value: CoversRole.primary, label: t('spacesHomeControlPlugin.coversRoles.primary') },
+	{ value: CoversRole.blackout, label: t('spacesHomeControlPlugin.coversRoles.blackout') },
+	{ value: CoversRole.sheer, label: t('spacesHomeControlPlugin.coversRoles.sheer') },
+	{ value: CoversRole.outdoor, label: t('spacesHomeControlPlugin.coversRoles.outdoor') },
+	{ value: CoversRole.hidden, label: t('spacesHomeControlPlugin.coversRoles.hidden') },
 ]);
 
 const loadCoversTargets = async (): Promise<void> => {

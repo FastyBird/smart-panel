@@ -1,7 +1,7 @@
 <template>
 	<el-dialog
 		v-model="visible"
-		:title="t('spacesModule.dialogs.coversRoles.title')"
+		:title="t('spacesHomeControlPlugin.dialogs.coversRoles.title')"
 		class="max-w-[700px]"
 		@close="onClose"
 	>

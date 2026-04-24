@@ -1,7 +1,7 @@
 <template>
 	<el-dialog
 		v-model="visible"
-		:title="t('spacesModule.dialogs.mediaActivities.title')"
+		:title="t('spacesHomeControlPlugin.dialogs.mediaActivities.title')"
 		class="max-w-[800px]"
 		destroy-on-close
 		@open="onDialogOpen"
@@ -9,7 +9,7 @@
 	>
 		<div
 			v-loading="initialLoading"
-			:element-loading-text="t('spacesModule.media.activities.loading')"
+			:element-loading-text="t('spacesHomeControlPlugin.media.activities.loading')"
 			class="flex flex-col gap-4"
 		>
 			<!-- Info alert -->
@@ -19,7 +19,7 @@
 				show-icon
 				class="mb-0!"
 			>
-				{{ t('spacesModule.media.activities.description') }}
+				{{ t('spacesHomeControlPlugin.media.activities.description') }}
 			</el-alert>
 
 			<!-- Collapse panels (one per activity) -->
@@ -39,7 +39,7 @@
 								class="w[20px] h[20px] shrink-0"
 							/>
 							<span class="font-medium text-sm">
-								{{ t(`spacesModule.media.activityLabels.${activity}`) }}
+								{{ t(`spacesHomeControlPlugin.media.activityLabels.${activity}`) }}
 							</span>
 							<el-tag
 								:type="getActivityTagType(activity)"
@@ -60,7 +60,7 @@
 								circle
 								:loading="activating && activatingKey === activity"
 								:disabled="activating || deactivating || (activeState?.state === 'activating')"
-								:title="t('spacesModule.media.activities.run')"
+								:title="t('spacesHomeControlPlugin.media.activities.run')"
 								@click.stop="onActivate(activity)"
 							>
 								<template #icon>
@@ -77,10 +77,10 @@
 					>
 						<!-- Display + Display input preset -->
 						<div :class="hasInputSelect(activity, 'displayEndpointId') ? 'grid grid-cols-2 gap-x-4' : ''">
-							<el-form-item :label="t('spacesModule.media.activities.slots.display')">
+							<el-form-item :label="t('spacesHomeControlPlugin.media.activities.slots.display')">
 								<el-select
 									v-model="forms[activity].displayEndpointId"
-									:placeholder="t('spacesModule.media.activities.selectEndpoint')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.selectEndpoint')"
 									clearable
 									class="w-full"
 								>
@@ -98,7 +98,7 @@
 													size="small"
 													type="info"
 												>
-													{{ t('spacesModule.media.capabilities.input') }}
+													{{ t('spacesHomeControlPlugin.media.capabilities.input') }}
 												</el-tag>
 											</div>
 										</div>
@@ -108,12 +108,12 @@
 
 							<el-form-item
 								v-if="hasInputSelect(activity, 'displayEndpointId')"
-								:label="t('spacesModule.media.activities.overrides.displayInput')"
+								:label="t('spacesHomeControlPlugin.media.activities.overrides.displayInput')"
 							>
 								<el-select
 									v-if="getInputSelectOptions(forms[activity].displayEndpointId).type === 'select'"
 									v-model="forms[activity].displayInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.displayInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.displayInputPlaceholder')"
 									clearable
 									class="w-full"
 								>
@@ -127,7 +127,7 @@
 								<el-input
 									v-else
 									v-model="forms[activity].displayInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.displayInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.displayInputPlaceholder')"
 									clearable
 								/>
 							</el-form-item>
@@ -135,10 +135,10 @@
 
 						<!-- Audio output + Audio input preset -->
 						<div :class="hasInputSelect(activity, 'audioEndpointId') ? 'grid grid-cols-2 gap-x-4' : ''">
-							<el-form-item :label="t('spacesModule.media.activities.slots.audio')">
+							<el-form-item :label="t('spacesHomeControlPlugin.media.activities.slots.audio')">
 								<el-select
 									v-model="forms[activity].audioEndpointId"
-									:placeholder="t('spacesModule.media.activities.selectEndpoint')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.selectEndpoint')"
 									clearable
 									class="w-full"
 								>
@@ -156,14 +156,14 @@
 													size="small"
 													type="info"
 												>
-													{{ t('spacesModule.media.capabilities.volume') }}
+													{{ t('spacesHomeControlPlugin.media.capabilities.volume') }}
 												</el-tag>
 												<el-tag
 													v-if="ep.capabilities.inputSelect"
 													size="small"
 													type="info"
 												>
-													{{ t('spacesModule.media.capabilities.input') }}
+													{{ t('spacesHomeControlPlugin.media.capabilities.input') }}
 												</el-tag>
 											</div>
 										</div>
@@ -173,12 +173,12 @@
 
 							<el-form-item
 								v-if="hasInputSelect(activity, 'audioEndpointId')"
-								:label="t('spacesModule.media.activities.overrides.audioInput')"
+								:label="t('spacesHomeControlPlugin.media.activities.overrides.audioInput')"
 							>
 								<el-select
 									v-if="getInputSelectOptions(forms[activity].audioEndpointId).type === 'select'"
 									v-model="forms[activity].audioInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.audioInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.audioInputPlaceholder')"
 									clearable
 									class="w-full"
 								>
@@ -192,7 +192,7 @@
 								<el-input
 									v-else
 									v-model="forms[activity].audioInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.audioInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.audioInputPlaceholder')"
 									clearable
 								/>
 							</el-form-item>
@@ -201,7 +201,7 @@
 						<!-- Audio volume preset (full width, below audio row) -->
 						<el-form-item
 							v-if="hasVolume(activity)"
-							:label="t('spacesModule.media.activities.overrides.audioVolume')"
+							:label="t('spacesHomeControlPlugin.media.activities.overrides.audioVolume')"
 						>
 							<el-slider
 								v-model="forms[activity].audioVolumePreset"
@@ -213,10 +213,10 @@
 
 						<!-- Source + Source input preset -->
 						<div :class="hasInputSelect(activity, 'sourceEndpointId') ? 'grid grid-cols-2 gap-x-4' : ''">
-							<el-form-item :label="t('spacesModule.media.activities.slots.source')">
+							<el-form-item :label="t('spacesHomeControlPlugin.media.activities.slots.source')">
 								<el-select
 									v-model="forms[activity].sourceEndpointId"
-									:placeholder="t('spacesModule.media.activities.selectEndpoint')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.selectEndpoint')"
 									clearable
 									class="w-full"
 								>
@@ -234,7 +234,7 @@
 													size="small"
 													type="info"
 												>
-													{{ t('spacesModule.media.capabilities.input') }}
+													{{ t('spacesHomeControlPlugin.media.capabilities.input') }}
 												</el-tag>
 											</div>
 										</div>
@@ -244,12 +244,12 @@
 
 							<el-form-item
 								v-if="hasInputSelect(activity, 'sourceEndpointId')"
-								:label="t('spacesModule.media.activities.overrides.sourceInput')"
+								:label="t('spacesHomeControlPlugin.media.activities.overrides.sourceInput')"
 							>
 								<el-select
 									v-if="getInputSelectOptions(forms[activity].sourceEndpointId).type === 'select'"
 									v-model="forms[activity].sourceInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.sourceInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.sourceInputPlaceholder')"
 									clearable
 									class="w-full"
 								>
@@ -263,17 +263,17 @@
 								<el-input
 									v-else
 									v-model="forms[activity].sourceInputId"
-									:placeholder="t('spacesModule.media.activities.overrides.sourceInputPlaceholder')"
+									:placeholder="t('spacesHomeControlPlugin.media.activities.overrides.sourceInputPlaceholder')"
 									clearable
 								/>
 							</el-form-item>
 						</div>
 
 						<!-- Remote target (full width, last) -->
-						<el-form-item :label="t('spacesModule.media.activities.slots.remote')">
+						<el-form-item :label="t('spacesHomeControlPlugin.media.activities.slots.remote')">
 							<el-select
 								v-model="forms[activity].remoteEndpointId"
-								:placeholder="t('spacesModule.media.activities.selectEndpoint')"
+								:placeholder="t('spacesHomeControlPlugin.media.activities.selectEndpoint')"
 								clearable
 								class="w-full"
 							>
@@ -290,7 +290,7 @@
 						<el-alert
 							v-if="activityErrors[activity]"
 							type="error"
-							:title="t('spacesModule.media.activities.saveError')"
+							:title="t('spacesHomeControlPlugin.media.activities.saveError')"
 							:description="activityErrors[activity]!"
 							show-icon
 							closable
@@ -308,7 +308,7 @@
 						:loading="applyingDefaults"
 						@click="onApplyDefaults"
 					>
-						{{ t('spacesModule.media.activities.applyDefaults') }}
+						{{ t('spacesHomeControlPlugin.media.activities.applyDefaults') }}
 					</el-button>
 					<el-button
 						v-if="activeState && activeState.state !== 'deactivated'"
@@ -321,11 +321,11 @@
 						<template #icon>
 							<icon icon="mdi:stop" />
 						</template>
-						{{ t('spacesModule.media.activities.deactivate') }}
+						{{ t('spacesHomeControlPlugin.media.activities.deactivate') }}
 					</el-button>
 				</div>
 				<div class="text-xs text-gray-400">
-					{{ t('spacesModule.media.activities.applyDefaultsHint') }}
+					{{ t('spacesHomeControlPlugin.media.activities.applyDefaultsHint') }}
 				</div>
 			</div>
 
@@ -333,7 +333,7 @@
 			<el-alert
 				v-if="activationError"
 				type="error"
-				:title="t('spacesModule.media.activities.activateFailed')"
+				:title="t('spacesHomeControlPlugin.media.activities.activateFailed')"
 				:description="activationError"
 				show-icon
 				closable
@@ -570,13 +570,13 @@ const getInputSelectOptionsList = (endpointId: string): (string | number)[] => {
 };
 
 const mediaInputSourceLabel = (source: string | number): string => {
-	const key = `spacesModule.media.activities.mediaInputSources.${source}`;
+	const key = `spacesHomeControlPlugin.media.activities.mediaInputSources.${source}`;
 	const translated = t(key);
 	return translated !== key ? translated : String(source);
 };
 
 const endpointDisplayName = (ep: IDerivedMediaEndpoint): string => {
-	const typeLabel = t(`spacesModule.media.endpointTypes.${ep.type}`);
+	const typeLabel = t(`spacesHomeControlPlugin.media.endpointTypes.${ep.type}`);
 	const suffix = ` (${typeLabel})`;
 	return ep.name.endsWith(suffix) ? ep.name.slice(0, -suffix.length) : ep.name;
 };
@@ -620,13 +620,13 @@ const getActivityStatusLabel = (key: MediaActivityKey): string => {
 	const { isActive, state, binding, hasSlots } = getActivityContext(key);
 
 	if (isActive) {
-		return t(`spacesModule.media.activities.activationState.${state}`);
+		return t(`spacesHomeControlPlugin.media.activities.activationState.${state}`);
 	}
 
-	if (!binding) return t('spacesModule.media.activities.status.unconfigured');
+	if (!binding) return t('spacesHomeControlPlugin.media.activities.status.unconfigured');
 	return hasSlots
-		? t('spacesModule.media.activities.status.configured')
-		: t('spacesModule.media.activities.status.incomplete');
+		? t('spacesHomeControlPlugin.media.activities.status.configured')
+		: t('spacesHomeControlPlugin.media.activities.status.incomplete');
 };
 
 // Autosave with debounce
@@ -726,9 +726,9 @@ const onActivate = async (key: MediaActivityKey): Promise<void> => {
 	activatingKey.value = key;
 	try {
 		await activate(key);
-		flashMessage.success(t('spacesModule.media.activities.activateSuccess'));
+		flashMessage.success(t('spacesHomeControlPlugin.media.activities.activateSuccess'));
 	} catch {
-		flashMessage.error(t('spacesModule.media.activities.activateFailed'));
+		flashMessage.error(t('spacesHomeControlPlugin.media.activities.activateFailed'));
 	} finally {
 		activatingKey.value = null;
 	}
@@ -737,13 +737,13 @@ const onActivate = async (key: MediaActivityKey): Promise<void> => {
 const onDeactivate = async (): Promise<void> => {
 	try {
 		await deactivate();
-		flashMessage.success(t('spacesModule.media.activities.deactivateSuccess'));
+		flashMessage.success(t('spacesHomeControlPlugin.media.activities.deactivateSuccess'));
 	} catch {
 		// Clear activationError set by deactivate() to prevent the inline alert
 		// from showing the misleading "activateFailed" title — the flash message
 		// already provides the correct feedback.
 		activationError.value = null;
-		flashMessage.error(t('spacesModule.media.activities.deactivateFailed'));
+		flashMessage.error(t('spacesHomeControlPlugin.media.activities.deactivateFailed'));
 	}
 };
 
@@ -753,9 +753,9 @@ const onApplyDefaults = async (): Promise<void> => {
 	try {
 		await applyDefaults();
 		initAllForms();
-		flashMessage.success(t('spacesModule.media.activities.defaultsApplied'));
+		flashMessage.success(t('spacesHomeControlPlugin.media.activities.defaultsApplied'));
 	} catch {
-		flashMessage.error(t('spacesModule.media.activities.defaultsFailed'));
+		flashMessage.error(t('spacesHomeControlPlugin.media.activities.defaultsFailed'));
 	}
 
 	await nextTick();

@@ -1,7 +1,7 @@
 <template>
 	<div :class="{ 'mt-2': !hideHeader }">
 		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
-			{{ t('spacesModule.edit.sections.smartOverrides.climateRoles') }}
+			{{ t('spacesHomeControlPlugin.edit.sections.smartOverrides.climateRoles') }}
 		</el-divider>
 
 		<el-alert
@@ -10,7 +10,7 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ t('spacesModule.fields.spaces.climateRoles.description') }}
+			{{ t('spacesHomeControlPlugin.fields.spaces.climateRoles.description') }}
 		</el-alert>
 
 		<div v-if="loading && climateTargets.length === 0" class="flex justify-center py-4">
@@ -31,11 +31,11 @@
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.climateRoles.role.title')" width="200">
+				<el-table-column :label="t('spacesHomeControlPlugin.fields.spaces.climateRoles.role.title')" width="200">
 					<template #default="{ row }">
 						<el-select
 							:model-value="row.role ?? ''"
-							:placeholder="t('spacesModule.fields.spaces.climateRoles.role.placeholder')"
+							:placeholder="t('spacesHomeControlPlugin.fields.spaces.climateRoles.role.placeholder')"
 							clearable
 							@update:model-value="onRoleChange(row, $event)"
 						>
@@ -61,10 +61,10 @@
 
 			<div class="flex justify-between items-center mt-4">
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
-					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaults') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.climateRoles.applyDefaults') }}
 				</el-button>
 				<div class="text-xs text-gray-400 ml-4">
-					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaultsHint') }}
+					{{ t('spacesHomeControlPlugin.fields.spaces.climateRoles.applyDefaultsHint') }}
 				</div>
 			</div>
 		</template>
@@ -82,7 +82,7 @@
 			</template>
 
 			<template #title>
-				{{ t('spacesModule.fields.spaces.climateRoles.noDevices') }}
+				{{ t('spacesHomeControlPlugin.fields.spaces.climateRoles.noDevices') }}
 			</template>
 		</el-result>
 	</div>
@@ -133,17 +133,17 @@ const climateTargets = ref<IClimateTarget[]>([]);
 
 // Control roles for actuator devices
 const controlRoleOptions = computed(() => [
-	{ value: ClimateRole.heating_only, label: t(`spacesModule.climateRoles.${ClimateRole.heating_only}`) },
-	{ value: ClimateRole.cooling_only, label: t(`spacesModule.climateRoles.${ClimateRole.cooling_only}`) },
-	{ value: ClimateRole.auto, label: t(`spacesModule.climateRoles.${ClimateRole.auto}`) },
-	{ value: ClimateRole.auxiliary, label: t(`spacesModule.climateRoles.${ClimateRole.auxiliary}`) },
-	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
+	{ value: ClimateRole.heating_only, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.heating_only}`) },
+	{ value: ClimateRole.cooling_only, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.cooling_only}`) },
+	{ value: ClimateRole.auto, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.auto}`) },
+	{ value: ClimateRole.auxiliary, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.auxiliary}`) },
+	{ value: ClimateRole.hidden, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Sensor roles for sensor device channels
 const sensorRoleOptions = computed(() => [
-	{ value: ClimateRole.sensor, label: t(`spacesModule.climateRoles.${ClimateRole.sensor}`) },
-	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
+	{ value: ClimateRole.sensor, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.sensor}`) },
+	{ value: ClimateRole.hidden, label: t(`spacesHomeControlPlugin.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Get role options based on device category
