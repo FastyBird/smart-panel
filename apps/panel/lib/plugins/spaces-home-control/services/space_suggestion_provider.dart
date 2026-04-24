@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_p
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 
 /// Wraps [SuggestionModel] as an [AppSuggestion].
 class SpaceAppSuggestion implements AppSuggestion {

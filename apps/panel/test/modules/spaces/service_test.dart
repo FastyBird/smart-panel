@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/i
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

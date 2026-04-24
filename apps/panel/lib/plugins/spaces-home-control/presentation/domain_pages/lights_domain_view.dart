@@ -102,7 +102,7 @@ import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/types/scene_extensions.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
 

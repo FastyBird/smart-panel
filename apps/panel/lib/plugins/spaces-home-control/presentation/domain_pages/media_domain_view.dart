@@ -83,7 +83,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/media_activity/media_activity.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/media_activity_service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 

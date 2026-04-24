@@ -32,9 +32,11 @@ export 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/m
 // Services — home-control domain orchestration
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/services/media_activity_service.dart';
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_suggestion_provider.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 
 // Utils — home-control domain helpers
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/utils/intent_result_handler.dart';
 
 // Plugin bootstrap
 export 'package:fastybird_smart_panel/plugins/spaces-home-control/mapper.dart';
+export 'package:fastybird_smart_panel/plugins/spaces-home-control/module.dart';

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/mappers/climate_target.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/mappers/covers_target.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/mappers/light_target.dart';
-import 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/intent_result/intent_result.dart';
@@ -16,13 +20,9 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/c
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/climate_targets/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/covers_targets/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 /// Service for managing spaces and their associated state.
@@ -675,12 +675,12 @@ class SpacesService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
-    // Build space views
+    // Build space views (pass 1: without children so we can wire them in pass 2)
     Map<String, SpaceView> newSpaceViews = {};
 
     for (var space in spaceModels) {
       try {
-        newSpaceViews[space.id] = buildSpaceView(space);
+        newSpaceViews[space.id] = SpaceView(model: space);
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
@@ -688,6 +688,21 @@ class SpacesService extends ChangeNotifier {
           );
         }
       }
+    }
+
+    // Pass 2: resolve children from the freshly built map
+    for (var space in spaceModels) {
+      final parent = newSpaceViews[space.id];
+      if (parent == null) continue;
+      final List<SpaceView> children = space.children
+          .map((childId) => newSpaceViews[childId])
+          .whereType<SpaceView>()
+          .toList()
+        ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      newSpaceViews[space.id] = SpaceView(
+        model: parent.model,
+        children: children,
+      );
     }
 
     if (!mapEquals(_spaces, newSpaceViews)) {

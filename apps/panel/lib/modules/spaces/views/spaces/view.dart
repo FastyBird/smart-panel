@@ -1,21 +1,23 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
 
+/// Generic view over a [SpaceModel] plus its child spaces.
+///
+/// This is the canonical "space" value passed around the panel. It stays
+/// plugin-agnostic on purpose: domain-specific enrichment (light targets,
+/// climate targets, etc.) lives in the plugins that own those domains and
+/// is queried via their services rather than stapled onto [SpaceView].
 class SpaceView {
   final SpaceModel _model;
   final List<SpaceView> _children;
-  final List<LightTargetView> _lightTargets;
 
   SpaceView({
     required SpaceModel model,
     List<SpaceView> children = const [],
-    List<LightTargetView> lightTargets = const [],
   })  : _model = model,
-        _children = children,
-        _lightTargets = lightTargets;
+        _children = children;
 
   SpaceModel get model => _model;
 
@@ -41,31 +43,9 @@ class SpaceView {
 
   List<SpaceView> get children => _children;
 
-  List<LightTargetView> get lightTargets => _lightTargets;
-
   List<StatusWidget>? get statusWidgets => _model.statusWidgets;
 
   bool get isRoom => _model.isRoom;
 
   bool get isZone => _model.isZone;
-
-  /// Get light targets by role
-  List<LightTargetView> getLightTargetsByRole(LightTargetRole role) {
-    return _lightTargets.where((t) => t.role == role).toList()
-      ..sort((a, b) => a.priority.compareTo(b.priority));
-  }
-
-  /// Get the primary light target for a specific role
-  LightTargetView? getPrimaryLightTarget(LightTargetRole role) {
-    final targets = getLightTargetsByRole(role);
-    return targets.isNotEmpty ? targets.first : null;
-  }
-
-  /// Get all assigned light targets (those with a role)
-  List<LightTargetView> get assignedLightTargets =>
-      _lightTargets.where((t) => t.role != null).toList();
-
-  /// Get all unassigned light targets
-  List<LightTargetView> get unassignedLightTargets =>
-      _lightTargets.where((t) => t.role == null).toList();
 }

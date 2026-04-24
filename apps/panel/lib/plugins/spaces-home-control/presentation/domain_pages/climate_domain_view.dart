@@ -109,7 +109,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart'
     as spaces_climate;
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/climate_targets/view.dart';
 

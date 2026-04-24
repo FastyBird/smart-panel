@@ -35,8 +35,6 @@ import 'package:fastybird_smart_panel/modules/system/export.dart'
     as system_module;
 import 'package:fastybird_smart_panel/modules/energy/export.dart'
     as energy_module;
-import 'package:fastybird_smart_panel/modules/spaces/export.dart'
-    as spaces_module;
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart'
     as spaces_home_control_plugin;
 import 'package:fastybird_smart_panel/modules/weather/export.dart'

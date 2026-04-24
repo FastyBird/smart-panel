@@ -1,26 +1,34 @@
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_notification_service.dart';
-import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_suggestion_provider.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/media_activity.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
-import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/media_activity_service.dart';
-import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/space_suggestion_provider.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/spaces_service.dart';
 import 'package:flutter/foundation.dart';
 
-class SpacesModuleService {
+/// DI wiring + socket-event fan-out for the spaces-home-control plugin.
+///
+/// Despite the generic-sounding name, this plugin owns the home-control
+/// aggregator ([SpacesService]) and all of its home-control-specific
+/// repositories (light/climate/covers targets, space state, media
+/// activity). Pure-CRUD access to [SpacesRepository] lives in the core
+/// spaces module and is used directly by other callers — this service
+/// only manages the *aggregated* home-control view.
+class SpacesHomeControlPluginService {
   final SocketService _socketService;
 
   late SpacesRepository _spacesRepository;
@@ -35,7 +43,7 @@ class SpacesModuleService {
 
   bool _isLoading = true;
 
-  SpacesModuleService({
+  SpacesHomeControlPluginService({
     required ApiClient apiClient,
     required SocketService socketService,
     required Dio dio,
