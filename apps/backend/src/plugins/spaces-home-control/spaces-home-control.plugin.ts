@@ -235,17 +235,26 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		// status_widgets on top of the generic base — those fields are
 		// home-control-specific and don't belong on master/entry/signage
 		// types.
+		// `subtypeColumns` lists the columns on the shared STI table that this
+		// plugin's DTOs whitelist. Core `SpacesService.update()` uses the list
+		// to wipe stale values on a type change to a subtype that doesn't
+		// declare them, and to gate the raw-column fallback read that grounds
+		// the category compat check in the real persisted value.
+		const HOME_CONTROL_SUBTYPE_COLUMNS = ['category', 'suggestionsEnabled', 'statusWidgets'] as const;
+
 		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
 			createDto: CreateHomeControlSpaceDto,
 			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
 		});
 		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ZONE,
 			class: ZoneSpaceEntity,
 			createDto: CreateHomeControlSpaceDto,
 			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
 		});
 
 		// Register discriminator mappings so OpenAPI emits proper `oneOf` schemas

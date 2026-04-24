@@ -199,18 +199,35 @@ export class SpacesService {
 
 		// Determine the effective type (new type if provided, otherwise existing)
 		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
+		const effectiveMapping = this.spacesTypeMapper.getMapping(effectiveType);
+		const targetAcceptsCategory = effectiveMapping.subtypeColumns?.includes('category') ?? false;
 
-		// Determine the effective category (new category if provided, otherwise existing).
-		// `space.category` is `undefined` for non-home-control subtypes (the property
-		// isn't declared on master/entry/signage entities), but the shared physical
-		// column may still carry a legacy value from before this refactor — so we
-		// fall back to a raw column read instead of the hydrated property. Without
-		// this, a PATCH that flips type to room/zone without an explicit category
-		// could bypass the compatibility check and leave a stale invalid category
-		// in the DB (e.g. zone category on a row newly typed as room).
+		// Determine the effective category. Three cases, in order:
+		//
+		// 1. DTO provided a value (including explicit null) — honor the caller's
+		//    intent verbatim.
+		// 2. Target subtype doesn't whitelist `category` (e.g. master/entry/
+		//    signage after a type change from room/zone) — treat as null. Without
+		//    this, stored room/zone categories would leak into the compat check
+		//    against a non-home-control type and the update would fail, and
+		//    since the target DTO doesn't accept `category` the client can't
+		//    clear it in the same PATCH. One-step conversions must work.
+		// 3. Target is home-control and DTO omitted — preserve the stored value.
+		//    Prefer the subtype-hydrated property; fall back to a raw column
+		//    read only when the source subtype didn't declare the column (legacy
+		//    rows written before the column moved). This gates the extra SQL
+		//    round-trip to the rare legacy-row case instead of every update.
 		const dtoCategory = (dtoInstance as { category?: unknown }).category;
-		const storedCategory = await this.readRawSpaceCategory(id);
-		const effectiveCategory = dtoCategory !== undefined ? (dtoCategory as string | null) : storedCategory;
+		let effectiveCategory: string | null;
+		if (dtoCategory !== undefined) {
+			effectiveCategory = dtoCategory as string | null;
+		} else if (!targetAcceptsCategory) {
+			effectiveCategory = null;
+		} else if ((space as { category?: unknown }).category !== undefined) {
+			effectiveCategory = ((space as { category?: unknown }).category ?? null) as string | null;
+		} else {
+			effectiveCategory = await this.readRawSpaceCategory(id);
+		}
 
 		// Zones must have a category
 		if (effectiveType === SpaceType.ZONE && effectiveCategory === null) {
@@ -241,11 +258,11 @@ export class SpacesService {
 		};
 
 		// Get the fields to update from DTO (excluding undefined values).
-		// Use the *effective* type's mapping so that when a subtype change adds new
-		// @Expose'd fields, those fields survive `toInstance` and land in the raw
-		// update below. Using `space.type` here would use the OLD subtype's class
-		// and silently drop new-subtype-specific fields.
-		const effectiveMapping = this.spacesTypeMapper.getMapping(effectiveType);
+		// Use the *effective* type's mapping (resolved earlier for the category
+		// check) so that when a subtype change adds new @Expose'd fields, those
+		// fields survive `toInstance` and land in the raw update below. Using
+		// `space.type` here would use the OLD subtype's class and silently drop
+		// new-subtype-specific fields.
 		const updateFields = omitBy(toInstance(effectiveMapping.class, updateData), isUndefined);
 
 		// Decide type-change BEFORE any in-memory mutation. `space.type` is a
@@ -349,14 +366,26 @@ export class SpacesService {
 			if (dtoInstance.parent_id === null) {
 				rawUpdate.parentId = null;
 			}
-			// Pin `category` to the compat-checked `effectiveCategory` on every type
-			// change. The physical column is shared across all subtypes (STI), so a
-			// legacy row written before `category` was moved off the base could still
-			// carry a stale value; without this, the raw UPDATE above would only touch
-			// columns present in the DTO and the stale category would survive the
-			// transition, producing e.g. a room with a zone category.
+			// Pin `category` to the compat-checked `effectiveCategory`. If the
+			// target subtype accepts category this persists whatever the compat
+			// check endorsed; if the target doesn't accept it the value is null
+			// (forced above) and the stale stored value gets wiped.
 			if (!Object.prototype.hasOwnProperty.call(rawUpdate, 'category')) {
 				rawUpdate.category = effectiveCategory;
+			}
+			// Generalized wipe: any column the OLD subtype owned but the NEW
+			// subtype doesn't must be nulled out, otherwise stale values survive
+			// on the shared STI table with no way for the client to clear them
+			// (the new type's DTO doesn't whitelist those fields). `category`
+			// is handled above; this loop covers the rest (e.g. home-control's
+			// `suggestionsEnabled` + `statusWidgets` when flipping away to
+			// master/entry/signage).
+			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
+			const newSubtypeColumns = new Set(effectiveMapping.subtypeColumns ?? []);
+			for (const column of oldMapping.subtypeColumns ?? []) {
+				if (!newSubtypeColumns.has(column) && !Object.prototype.hasOwnProperty.call(rawUpdate, column)) {
+					rawUpdate[column] = null;
+				}
 			}
 			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
 			// transaction so a concurrent update or delete cannot wedge us into a state

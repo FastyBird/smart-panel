@@ -179,17 +179,25 @@ describe('SpacesService', () => {
 		// fields (category / suggestions_enabled / status_widgets) that live on
 		// `CreateHomeControlSpaceDto` / `UpdateHomeControlSpaceDto`.
 		const typeMapper = module.get<SpacesTypeMapperService>(SpacesTypeMapperService);
+		// Include `subtypeColumns` to mirror the real plugin registration —
+		// `SpacesService.update()` reads this list to decide whether the target
+		// subtype carries category (and whether to wipe stale columns on type
+		// change). Without it, the suite would under-represent the real graph
+		// of which columns belong to which subtype.
+		const HOME_CONTROL_SUBTYPE_COLUMNS = ['category', 'suggestionsEnabled', 'statusWidgets'] as const;
 		typeMapper.registerMapping({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
 			createDto: CreateHomeControlSpaceDto,
 			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
 		});
 		typeMapper.registerMapping({
 			type: SpaceType.ZONE,
 			class: ZoneSpaceEntity,
 			createDto: CreateHomeControlSpaceDto,
 			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
 		});
 		// A synthetic singleton type used in the singleton-enforcement test below.
 		// Mirrors how spaces-synthetic-master / spaces-synthetic-entry plugins
@@ -783,6 +791,84 @@ describe('SpacesService', () => {
 			// how legacy rows are normalized would bypass the service.
 			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
 				expect.objectContaining({ type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM }),
+			);
+		});
+
+		// Cursor Low follow-up: the raw-column read is an extra SQL round-trip
+		// and should only run for the narrow legacy-row case (source subtype
+		// didn't declare `category` and DTO didn't provide one). Ordinary
+		// home-control updates — or any update where the category isn't needed
+		// — must not trigger it.
+		it('should not issue the raw category read on a hydrated home-control update', async () => {
+			const roomWithCategory = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Kitchen',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.KITCHEN,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValue(roomWithCategory);
+			spaceRepository.save.mockResolvedValue(roomWithCategory);
+
+			await service.update(roomWithCategory.id, { name: 'Kitchen updated' } as UpdateHomeControlSpaceDto);
+
+			expect(dataSourceQueryMock).not.toHaveBeenCalled();
+		});
+
+		it('should not issue the raw category read when target is non-home-control', async () => {
+			const existingMaster = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Home',
+				type: 'master' as SpaceType,
+				category: undefined,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValue(existingMaster);
+			spaceRepository.save.mockResolvedValue(existingMaster);
+
+			await service.update(existingMaster.id, { name: 'Renamed' } as UpdateSpaceDto);
+
+			expect(dataSourceQueryMock).not.toHaveBeenCalled();
+		});
+
+		// Codex P2 follow-up: a one-step conversion from room/zone to a
+		// non-home-control target (e.g. signage) must work even without the
+		// client clearing `category` in the same PATCH — the target DTO
+		// doesn't whitelist `category`, so the client *can't* clear it. Core
+		// has to force-null home-control-only columns when they're not on
+		// the target subtype's `subtypeColumns` list.
+		it('should wipe category when converting room → signage without an explicit category', async () => {
+			const roomWithCategory = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Lobby',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
+				suggestionsEnabled: true,
+			} as unknown as SpaceEntity;
+
+			spaceRepository.findOne.mockResolvedValueOnce(roomWithCategory).mockResolvedValueOnce({
+				...roomWithCategory,
+				type: 'signage_info_panel' as SpaceType,
+				category: null,
+				suggestionsEnabled: false,
+			} as unknown as SpaceEntity);
+			spaceRepository.save.mockResolvedValue(roomWithCategory);
+
+			await service.update(roomWithCategory.id, { type: 'signage_info_panel' as SpaceType } as UpdateSpaceDto);
+
+			// Compat check must see effectiveCategory = null (target doesn't
+			// accept it); the raw UPDATE must wipe both `category` and the
+			// other home-control-only columns so they don't linger.
+			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'signage_info_panel',
+					category: null,
+					suggestionsEnabled: null,
+					statusWidgets: null,
+				}),
 			);
 		});
 	});
