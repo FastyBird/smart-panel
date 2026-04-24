@@ -56,7 +56,9 @@ The following gaps surfaced during hands-on testing after all seven phases had m
 
 ### Outstanding work
 
-Phases 1–7 plus the full Phase 3a/3b relocations have landed. The feature is functional end-to-end. Items still open:
+Phases 1–7 plus the full Phase 3a/3b relocations have landed. The feature is functional end-to-end. All six known follow-up items are resolved (fixed or investigated + closed). Items still open: none.
+
+Historical detail on each resolved item below.
 
 #### 1. ~~`SpaceEntity` polymorphism — domain columns on the abstract base~~ — INVESTIGATED, KEPT AS-IS
 
@@ -82,11 +84,23 @@ Commit `5acd44c57`. Three spaces plugins (home-control, synthetic-master, synthe
 
 Commit `be44ba99a`. Three orphan keys deleted from all 6 locales: `edit.sections.smartOverrides.smartSuggestions`, `fields.spaces.suggestions` (subtree), `detail.media` (subtree).
 
-#### 6. Relocate `category` / `suggestionsEnabled` / `statusWidgets` to home-control subtypes — DEFERRED TO FOLLOW-UP PR
+#### 6. ~~Relocate `category` / `suggestionsEnabled` / `statusWidgets` to home-control subtypes~~ — FIXED (option B, pragmatic)
 
-These three columns live on the abstract `SpaceEntity` today but are home-control concepts: `category` uses the Room/Zone taxonomy (living room, kitchen, floor_ground, …), `suggestionsEnabled` toggles the home-control suggestion engine, and `statusWidgets` only surfaces lighting/climate/covers/sensor/energy widgets. Signage / master / entry spaces ship them as dead JSON today.
+Shipped on `claude/interesting-lumiere-51931d`. Option (b) pragmatic path: backend entities/DTOs relocated, admin keeps fields as populated-when-applicable on `ISpace`, panel unchanged.
 
-Related: item #1 above documents an earlier 2026-04-24 investigation that attempted the move and reverted — the admin pipeline broke because swagger doesn't emit discriminated subtype schemas, only the flat base. Revisiting now because: (a) PR #578 is already 421 files / 108 commits and should merge before growing further, (b) after Phase 3's Room/Zone are in the plugin, the relocation is cleaner, and (c) the admin cost can be absorbed in one focused PR instead of entangling it with the active Phase 5 / 6 / 7 work.
+**What landed:**
+- Backend: `@Column` / `@ApiProperty` / `@Expose` / `@Transform` decorators for `category`, `suggestionsEnabled`, `statusWidgets` moved off `SpaceEntity` (abstract) onto `RoomSpaceEntity` + `ZoneSpaceEntity` (plugin). Base keeps TS-only `?:` declarations so cross-module consumers (Buddy) can still read them without instanceof narrowing. Physical columns stay on the shared `spaces_module_spaces` table via `@TableInheritance` — no DB migration needed.
+- Backend DTOs: fields removed from `CreateSpaceDto` / `UpdateSpaceDto` (core); new `CreateHomeControlSpaceDto` / `UpdateHomeControlSpaceDto` in `plugins/spaces-home-control/dto/` extend base and re-declare the three fields + the "category required for zone" `@ValidateIf`. The `IsValidSpaceCategory` decorator moved into `plugins/spaces-home-control/validators/` alongside its spec — `modules/spaces/validators/` directory removed.
+- Plugin `onModuleInit` registers the per-type DTOs via `spacesTypeMapper.registerMapping`. `SpacesService.create` / `.update` were rewritten to dispatch through `mapping.createDto` / `mapping.updateDto` for per-type validation (previously validated against the base which would now reject subtype fields under `forbidNonWhitelisted`). The type-change raw UPDATE path uses `effectiveMapping.class`'s repository metadata so subtype-only columns survive.
+- Buddy: `buddy-context.service.ts` normalizes `space.category ?? null` for the snapshot shape. `heartbeat.service.ts` + `space-suggestion-heartbeat.service.ts` `.filter((s) => s.suggestionsEnabled)` works naturally — undefined for non-home-control is falsy, so master/entry/signage drop out as intended. `buddy-conversation.service.ts` already used `?? 'unknown'` and needed no change.
+- Admin: chose option (b) per plan — `ISpace` keeps the three fields as always-defined (populated for room/zone, falls back to null/true/null for master/entry/signage). `spaces.transformers.ts` widens its local `ApiSpace`/`ApiSpaceCreate`/`ApiSpaceUpdate` aliases with the three fields as optional. `openapi.constants.ts` re-exports `SpacesModuleCreateSpaceCategory` + `SpacesModuleEnergyWidgetRange` behind the same name but pointing at the new `SpacesHomeControlPluginCreateHomeControlSpace*` generated enums — no consumer churn. The transformer now only includes a home-control field in the outbound payload when the caller set it (`'category' in data` etc.) so admin never sends dead fields to master/entry/signage; the backend's per-type DTO is still the source of truth.
+- Panel: unchanged per option (b).
+
+**OpenAPI diff confirms the goal:** `SpacesModuleDataSpace` (base) no longer carries category / suggestions_enabled / status_widgets; `SpacesModuleDataRoomSpace` and `SpacesModuleDataZoneSpace` do. `SpacesSyntheticMasterPluginDataMasterSpace`, `SpacesSyntheticEntryPluginDataEntrySpace`, and `SpacesSignageInfoPanelPluginDataSignageInfoPanelSpace` schemas are clean — no more dead JSON. `SpacesModuleCreateSpace` base DTO is clean; `SpacesHomeControlPluginCreateHomeControlSpace` + `...UpdateHomeControlSpace` carry the home-control fields.
+
+**Verification:** backend lint clean; backend jest 2,774 tests + 36 e2e green; backend lint:api green; admin type-check clean; admin vitest 1,275 tests green.
+
+Original decision-point rationale preserved below for future reference:
 
 **Scope — call sites identified 2026-04-24 (~18 files, four groups):**
 

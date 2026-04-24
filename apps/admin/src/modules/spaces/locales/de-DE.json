@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Bereiche",
 		"spaces": "Bereiche",
-		"detail": "Bereichsdetails",
+		"detail": "Bereich: {space}",
 		"add": "Bereich hinzufügen",
 		"edit": "Bereich bearbeiten",
 		"removeSpace": "Bereich entfernen",
@@ -48,8 +48,8 @@
 		"list": "Geräte und Displays nach Räumen oder Zonen organisieren",
 		"adjustFilters": "Anzeigefilter anpassen",
 		"add": "Neuen Bereich hinzufügen",
-		"detail": "Bereich verwalten: {space}",
-		"onboarding": "Einrichtungsassistent für Bereiche, Geräte und Displays"
+		"detail": "Smart Panel Bereich verwalten",
+		"wizard": "Einrichtungsassistent für Bereiche, Geräte und Displays"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "Bereich: {space}",
 			"edit": "Bereich bearbeiten",
 			"add": "Bereich hinzufügen",
-			"onboarding": "Einrichtungsassistent"
+			"wizard": "Einrichtungsassistent"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Bereich: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Einrichtungsassistent für Bereiche"
 			}
 		}
@@ -214,9 +214,8 @@
 		}
 	},
 	"filters": {
-		"type": {
-			"title": "Typ",
-			"all": "Alle"
+		"types": {
+			"title": "Typ"
 		}
 	},
 	"texts": {
@@ -227,6 +226,7 @@
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
 		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden.",
 		"noAddFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht erstellt werden.",
+		"noWizardForSpaceType": "Bereiche vom Typ „{type}\" stellen keinen Einrichtungsassistenten bereit.",
 		"selectPlugin": "Wählen Sie einen Bereichstyp zur Konfiguration. Das Formular unten passt sich dem gewählten Typ an."
 	},
 	"buttons": {
@@ -238,6 +238,9 @@
 		},
 		"detail": {
 			"title": "Details"
+		},
+		"configure": {
+			"title": "Konfigurieren"
 		},
 		"adjust": {
 			"title": "Filtern"
@@ -281,7 +284,7 @@
 		"finish": {
 			"title": "Abschließen"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Einrichtungsassistent"
 		},
 		"viewAll": {
@@ -372,7 +375,7 @@
 			"zone": "Zone"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Einrichtungsassistent für Bereiche",
 		"devices": "Geräte",
 		"displays": "Displays",

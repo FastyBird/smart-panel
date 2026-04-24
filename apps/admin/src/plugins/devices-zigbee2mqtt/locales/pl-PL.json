@@ -274,6 +274,13 @@
 			"loadFailed": "Nie udało się załadować wykrytych urządzeń",
 			"mappingPreviewFailed": "Nie udało się załadować podglądu mapowania"
 		},
+		"wizard": {
+			"sessionNotStarted": "Nie udało się uruchomić kreatora wykrywania",
+			"sessionNotLoaded": "Nie udało się odświeżyć kreatora wykrywania",
+			"permitJoinNotEnabled": "Nie udało się włączyć trybu parowania",
+			"permitJoinNotDisabled": "Nie udało się wyłączyć trybu parowania",
+			"adoptionFailed": "Nie udało się adoptować wybranych urządzeń"
+		},
 		"mapping": {
 			"previewError": "Nie udało się załadować podglądu mapowania",
 			"previewLoading": "Ładowanie podglądu mapowania...",
@@ -297,5 +304,70 @@
 		"adoptDevice": "Adoptuj urządzenie",
 		"refresh": "Odśwież",
 		"use": "Użyj"
+	},
+	"wizard": {
+		"title": "Kreator wykrywania Zigbee2MQTT",
+		"subtitle": "Znajdź i adoptuj urządzenia Zigbee przez bridge Zigbee2MQTT",
+		"breadcrumb": "kreator wykrywania",
+		"bridge": {
+			"offline": {
+				"title": "Bridge offline",
+				"message": "Bridge Zigbee2MQTT jest obecnie offline. Skonfiguruj połączenie, aby kontynuować.",
+				"openConfig": "Otwórz konfigurację"
+			}
+		},
+		"steps": {
+			"discovery": {
+				"title": "Wykrywanie",
+				"loading": "Ładowanie wykrytych urządzeń...",
+				"permitJoin": "Sparuj nowe urządzenie",
+				"cancelPairing": "Anuluj parowanie",
+				"pairingActive": "Tryb parowania aktywny — pozostało {remaining}s",
+				"pairingDisabled": "Tryb parowania wyłączony",
+				"autoPickAll": "Zaznacz wszystkie",
+				"clearSelection": "Wyczyść wybór",
+				"empty": "Nie wykryto żadnych urządzeń Zigbee. Kliknij \"Sparuj nowe urządzenie\", aby przełączyć bridge w tryb parowania."
+			},
+			"categorize": {
+				"title": "Kategoryzuj",
+				"willCreate": "Zostanie utworzone",
+				"willUpdate": "Zostanie zaktualizowane",
+				"channels": "{count} kanał | {count} kanały | {count} kanałów"
+			},
+			"results": {
+				"title": "Wyniki",
+				"created": "Utworzono",
+				"updated": "Zaktualizowano",
+				"failed": "Nie powiodło się",
+				"done": "Gotowe",
+				"addMore": "Dodaj więcej"
+			}
+		},
+		"columns": {
+			"name": "Nazwa",
+			"friendlyName": "Przyjazna nazwa",
+			"manufacturer": "Producent",
+			"model": "Model",
+			"status": "Status",
+			"category": "Kategoria",
+			"channels": "Kanały",
+			"error": "Błąd"
+		},
+		"status": {
+			"ready": "Gotowe",
+			"unsupported": "Nieobsługiwane",
+			"alreadyRegistered": "Już adoptowane",
+			"failed": "Nie powiodło się"
+		},
+		"actions": {
+			"next": "Dalej",
+			"back": "Wstecz",
+			"adopt": "Adoptuj wybrane",
+			"cancel": "Anuluj"
+		},
+		"validation": {
+			"nameRequired": "Nazwa jest wymagana",
+			"categoryRequired": "Kategoria jest wymagana"
+		}
 	}
 }

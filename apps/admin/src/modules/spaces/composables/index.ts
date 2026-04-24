@@ -7,7 +7,7 @@ export * from './useSpaceEditForm';
 export * from './useSpaces';
 export * from './useSpacesActions';
 export * from './useSpacesDataSource';
-export * from './useSpacesOnboarding';
+export * from './useSpacesPlugin';
 export * from './useSpacesPlugins';
 export * from './useSpacesRefreshSignals';
 export * from './types';

@@ -74,7 +74,8 @@
       "bulkEnable": "Povolit zařízení?",
       "bulkDisable": "Zakázat zařízení?",
       "adjustFilters": "Filtrovat zařízení",
-      "selectPlugin": "Vyžadován plugin zařízení"
+      "selectPlugin": "Vyžadován plugin zařízení",
+      "selectWizardPlugin": "Vybrat průvodce zařízením"
     },
     "channels": {
       "list": "Kanály",
@@ -214,6 +215,7 @@
         "window_covering": "Zařízení Okenní krytina představuje automatizované okenní prvky, jako jsou žaluzie, rolety nebo záclony."
       },
       "selectPlugin": "Pro vytvoření nového zařízení vyberte prosím kompatibilní plugin ze seznamu. Pluginy poskytují potřebné konfigurační možnosti pro konkrétní typ zařízení.",
+      "noWizardForDevicePlugin": "Plugin zařízení „{type}\" neposkytuje průvodce nastavením.",
       "noChannels": "Toto zařízení zatím nemá žádné kanály. Kanály definují vstupy nebo výstupy zařízení. Vytvořte nový kanál pro zahájení interakce s tímto zařízením.",
       "category": "Kategorie",
       "channelsCount": "Žádné kanály nakonfigurovány | Jeden kanál nakonfigurován | {count} kanálů nakonfigurováno",
@@ -611,6 +613,9 @@
   "buttons": {
     "add": {
       "title": "Přidat"
+    },
+    "wizard": {
+      "title": "Průvodce"
     },
     "edit": {
       "title": "Upravit"

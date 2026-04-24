@@ -35,6 +35,24 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'wizard',
+				redirect: { name: RouteNames.DEVICES },
+			},
+			{
+				path: 'wizard/:type',
+				name: RouteNames.DEVICES_WIZARD,
+				component: () => import('../views/view-devices-wizard.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'Devices Wizard',
+					icon: 'mdi:wizard-hat',
+				},
+			},
+			{
 				path: ':id',
 				name: RouteNames.DEVICES_EDIT,
 				component: () => import('../views/view-device-edit.vue'),

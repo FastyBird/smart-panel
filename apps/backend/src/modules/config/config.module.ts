@@ -94,27 +94,43 @@ export class ConfigModule implements OnModuleInit {
 			name: 'Configuration',
 			description: 'Application and module configuration management',
 			author: 'FastyBird',
-			readme: `# Configuration Module
+			readme: `# Configuration
 
-The Configuration module manages application settings and module configurations for the Smart Panel.
+> Module · by FastyBird
+
+Single source of truth for every setting in the Smart Panel. Modules and plugins register their own config DTOs at startup; this module accepts updates through one API, validates them, persists them to disk, and notifies the registered owner so live reconfiguration is possible without restarts.
+
+## What it gives you
+
+- A common config surface so the admin UI, CLI and Buddy don't need a custom flow per module
+- Strong validation — every section is type-checked against its owning module's DTO at write time, so bad config never reaches the runtime
+- Hot-reload semantics — owners are notified when their slice changes and can react (start polling, swap providers, …) without a backend restart
+- Predictable persistence — settings are JSON files, easy to inspect, version-control, back up and restore
 
 ## Features
 
-- **Centralized Configuration** - Single source of truth for all settings
-- **Module Configuration** - Per-module settings management
-- **Plugin Configuration** - Per-plugin settings management
-- **Factory Reset** - Ability to reset configuration to defaults
-
-## How It Works
-
-The Configuration module provides a unified API for accessing and modifying settings:
-- Application-level settings (language, display, etc.)
-- Module-specific configurations
-- Plugin-specific configurations
+- **Central config store** — every module and plugin reads its settings through this module's typed accessors
+- **Type registry** — modules and plugins register their config DTOs at startup; the registry knows the shape of every section
+- **Validation** — incoming changes are validated against the registered DTOs and rejected with field-level errors when they don't pass
+- **Watcher API** — modules subscribe to "my section changed" notifications and apply updates live
+- **Atomic writes** — changes are written to a temporary file and renamed in place, so a crash mid-write can never corrupt config
+- **Backups** — the config directory is automatically included in system backups; the seed subdir is excluded since those are factory defaults
+- **Factory reset** — restores defaults from the seed directory, preserving the owner's existence
+- **Schema versioning** — sections can declare a version number so future migrations can rewrite them safely
 
 ## Configuration Storage
 
-Settings are stored in a JSON configuration file on the device filesystem.`,
+Settings are stored as JSON files in \`FB_CONFIG_PATH\` (defaults to \`var/data\`).
+
+## API Endpoints
+
+- \`GET /api/v1/modules/config\` — read the global config (owner / admin only)
+- \`GET /api/v1/modules/config/:section\` — read a single section
+- \`PATCH /api/v1/modules/config\` — update one or more module / plugin sections in one transaction
+
+## CLI Commands
+
+- \`pnpm run cli config:generate-admin-extensions\` — regenerate the admin-side extensions import map (\`apps/admin/var/config/extensions.ts\`)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -122,41 +122,45 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 			name: 'OpenWeatherMap OneCall 3.0',
 			description: 'Weather data provider using OpenWeatherMap One Call API',
 			author: 'FastyBird',
-			readme: `# OpenWeatherMap One Call Weather Provider
+			readme: `# OpenWeatherMap One Call
 
-Weather data provider using the OpenWeatherMap One Call 3.0 API.
+> Plugin · by FastyBird · platform: weather
 
-## Features
+Weather provider backed by the OpenWeatherMap **One Call API 3.0** — current conditions, 48-hour hourly forecast, 8-day daily forecast, UV index, precipitation probability and government weather alerts in a single request. Includes a built-in geolocation lookup to convert city names into coordinates so users can pick a location by name in the admin UI.
 
-- **Comprehensive Data** - Current, hourly, and daily forecasts in one call
-- **8-Day Forecast** - Extended daily weather predictions
-- **48-Hour Hourly** - Detailed hourly forecast
-- **Weather Alerts** - Government weather warnings (where available)
-- **Geolocation** - Search locations by city name
+## What you get
+
+- The richest forecast available from OpenWeatherMap: hourly resolution out to 48 hours, daily for 8 days, plus official severe-weather alerts
+- One-call efficiency: a single HTTP request hydrates everything the panel needs, so the polling rate stays well within the free tier
+- A coordinate lookup endpoint so users never need to copy / paste lat / lon by hand
+- Drop-in compatibility with the weather tiles and data sources — pick this plugin per-location for a power-user setup, leave others on the simpler current-weather plugin
+
+## Capabilities
+
+- **Current conditions** — full set including UV index, dew point and visibility
+- **Hourly forecast** — next 48 hours with temperature, precipitation probability and condition
+- **Daily forecast** — next 8 days with high / low, condition, sunrise / sunset and precipitation
+- **Weather alerts** — government / national-service severe-weather alerts (when available)
+- **Geolocation lookup** — name-based search returns coordinates ready to feed back into a location create call
+- **Configurable unit** — Celsius or Fahrenheit per deployment
 
 ## Setup
 
 1. Create an account at [OpenWeatherMap](https://openweathermap.org)
-2. Subscribe to One Call API 3.0 (has free tier with 1000 calls/day)
-3. Enter your API key in plugin configuration
+2. Subscribe to **One Call API 3.0** (free tier: 1 000 calls/day)
+3. Enter the API key in this plugin's configuration
+4. Add a weather location (use the geolocation endpoint to look up coordinates) and set its provider to \`${WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME}\`
 
-## Data Provided
+## API Endpoints
 
-- Current conditions with "feels like" temperature
-- Hourly forecasts for 48 hours
-- Daily forecasts for 8 days
-- UV index
-- Precipitation probability
-- Weather alerts
+- \`GET /api/v1/plugins/weather-openweathermap-onecall/geolocation?query=…\` — search coordinates by city name
 
 ## Configuration
 
-- **API Key** - Your OpenWeatherMap API key (required)
-- **Units** - Temperature units (metric/imperial)
-
-## Geolocation
-
-This plugin includes a location search feature to find coordinates by city name, making it easy to set up weather locations.`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`api_key\` | OpenWeatherMap API key (required) | — |
+| \`unit\` | Temperature unit (\`celsius\` or \`fahrenheit\`) | \`celsius\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

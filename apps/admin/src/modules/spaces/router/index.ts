@@ -25,6 +25,24 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'onboarding',
+				redirect: { name: RouteNames.SPACES },
+			},
+			{
+				path: 'wizard',
+				redirect: { name: RouteNames.SPACES },
+			},
+			{
+				path: 'wizard/:type',
+				name: RouteNames.SPACES_WIZARD,
+				component: () => import('../views/view-spaces-wizard.vue'),
+				props: true,
+				meta: {
+					guards: { authenticated: true },
+					title: 'Spaces Wizard',
+				},
+			},
+			{
 				path: ':id',
 				name: RouteNames.SPACES_EDIT,
 				component: () => import('../views/view-space-edit.vue'),
@@ -34,36 +52,17 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					title: 'Edit space',
 				},
 			},
-			{
-				path: 'onboarding',
-				name: RouteNames.SPACES_ONBOARDING,
-				component: () => import('../views/view-spaces-onboarding.vue'),
-				meta: {
-					guards: { authenticated: true },
-					title: 'Spaces Onboarding',
-				},
-			},
 		],
 	},
 	{
-		path: 'space/:id',
-		name: RouteNames.SPACE,
-		component: () => import('../views/view-space.vue'),
+		path: 'space/:id/plugin',
+		name: RouteNames.SPACE_PLUGIN,
+		component: () => import('../views/view-space-plugin.vue'),
 		props: true,
 		meta: {
 			guards: { authenticated: true },
+			title: 'Space plugin',
+			icon: 'mdi:home-group',
 		},
-		children: [
-			{
-				path: 'edit',
-				name: RouteNames.SPACE_EDIT,
-				component: () => import('../views/view-space-edit.vue'),
-				props: true,
-				meta: {
-					guards: { authenticated: true },
-					title: 'Edit space',
-				},
-			},
-		],
 	},
 ];

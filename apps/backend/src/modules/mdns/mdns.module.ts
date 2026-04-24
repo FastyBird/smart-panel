@@ -49,38 +49,43 @@ export class MdnsModule implements OnModuleInit {
 			name: 'mDNS',
 			description: 'Multicast DNS service advertisement for network discovery',
 			author: 'FastyBird',
-			readme: `# mDNS Module
+			readme: `# mDNS
 
-The mDNS (Multicast DNS) module enables automatic network discovery of the Smart Panel using Bonjour/Avahi protocols.
+> Module · by FastyBird
+
+Advertises the Smart Panel on the local network using Multicast DNS (Bonjour / Avahi) so admin browsers and panel displays can auto-discover the backend without a hard-coded IP address. This is what makes "just plug it in and find it on the LAN" actually work.
+
+## What it gives you
+
+- Newly flashed displays connect to the backend on first boot without any manual IP entry
+- The admin UI bookmarks survive DHCP IP changes — the hostname is what's resolved
+- Multiple Smart Panel installations can coexist on the same network and be told apart by hostname
 
 ## Features
 
-- **Service Advertisement** - Broadcasts Smart Panel presence on the local network
-- **Zero Configuration** - Clients can discover the panel without manual IP configuration
-- **Custom Naming** - Configure a custom hostname for the panel
+- **Zero-conf discovery** — clients find the panel automatically on the LAN by looking up the advertised service name
+- **Custom hostname** — pick the name advertised on the network; defaults to the system hostname
+- **Service metadata** — advertises the API base path, scheme (http/https) and version so clients can build URLs from the discovery record alone
+- **Toggleable** — disable advertisement on networks where mDNS is filtered or undesirable
+- **Live re-broadcast** — when the configuration changes the advertisement is updated without needing a restart
 
-## How It Works
+## Configuration
 
-When enabled, the Smart Panel advertises itself on the local network as:
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`enabled\` | Toggle mDNS advertisement | \`true\` |
+| \`hostname\` | Hostname advertised on the network | system hostname |
+
+## Service Record
 
 \`\`\`
 _smart-panel._tcp.local
 \`\`\`
 
-This allows:
-- Mobile apps to auto-discover the panel
-- Other services to find the panel's IP address
-- Easy setup without manual network configuration
-
-## Configuration
-
-- **Enabled** - Toggle mDNS advertisement on/off
-- **Hostname** - Custom name for network identification
-
 ## Requirements
 
-- The Smart Panel must be on the same network segment as discovering clients
-- mDNS uses UDP port 5353`,
+- Discovering clients must share the same network segment as the panel
+- mDNS uses UDP port \`5353\` — make sure it isn't blocked by host or network firewalls`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

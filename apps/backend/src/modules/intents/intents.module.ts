@@ -47,42 +47,43 @@ export class IntentsModule {
 			name: 'Intents',
 			description: 'Intent orchestration for UI anti-jitter and optimistic updates',
 			author: 'FastyBird',
-			readme: `# Intents Module
+			readme: `# Intents
 
-The Intents module provides intent orchestration for coordinating UI updates across multiple clients, preventing anti-jitter issues and enabling optimistic updates.
+> Module · by FastyBird
+
+Coordinates UI updates across all connected clients (admin, panel displays, mobile) so optimistic actions stay in sync. An intent represents a user-initiated change with a TTL: clients show the expected value immediately and reconcile when the backend confirms the real outcome or the TTL elapses. This is what makes the panel feel instant even when the underlying device takes a second to respond.
+
+## What it gives you
+
+- A "single source of truth" for in-flight user actions: every client sees the same pending change at the same time
+- Automatic anti-jitter — when two users tap the same switch from two clients, they don't fight each other
+- A short audit trail of recent user actions, queryable by the action observer used in dashboards and Buddy
 
 ## Features
 
-- **Intent Lifecycle Management** - Track intents from creation through completion or expiration
-- **Multi-Target Support** - Single intent can affect multiple devices/properties
-- **Optimistic Updates** - Clients can show expected values before confirmation
-- **Anti-Jitter Protection** - Prevents UI flickering when multiple clients update simultaneously
-- **WebSocket Integration** - Real-time intent status broadcasts to all connected clients
-
-## How It Works
-
-1. **Intent Creation** - When a client initiates an action (e.g., turn on light), an intent is created with a unique ID and TTL
-2. **Broadcasting** - The intent is broadcast to all connected clients via WebSocket
-3. **Target Tracking** - Each target (device/property) within the intent is tracked individually
-4. **Completion** - When backend confirms the change, intent is marked complete
-5. **Expiration** - If TTL expires before confirmation, intent is marked expired
+- **Intent lifecycle** — \`pending → confirmed | failed | expired\`, observable through the API and over WebSocket
+- **Multi-target** — a single intent can carry several device / property writes at once and is committed atomically from the UI's point of view
+- **Optimistic updates** — clients apply the expected value the instant the intent is created and revert if the backend reports failure or the TTL fires
+- **Anti-jitter** — coalesces near-simultaneous intents on the same target so the UI doesn't flicker between competing values
+- **WebSocket broadcast** — every state transition is pushed to every connected client; no polling needed
+- **Time-series log** — completed and failed intents are persisted briefly so dashboards and the assistant can answer "what just happened in this room?"
+- **Pluggable intent types** — modules can register their own intent kinds with their own validation and reconciliation logic
 
 ## Intent Types
 
-- \`light.toggle\` - Toggle light on/off
-- \`light.setBrightness\` - Set light brightness level
-- \`light.setColor\` - Set light RGB color
-- \`light.setColorTemp\` - Set light color temperature
-- \`device.setProperty\` - Generic property value change
-- \`scene.run\` - Execute a scene
+- \`light.toggle\` — toggle a light on/off
+- \`light.setBrightness\` — set light brightness
+- \`light.setColor\` — set light RGB colour
+- \`light.setColorTemp\` — set light colour temperature
+- \`device.setProperty\` — generic property value change
+- \`scene.run\` — execute a scene
 
-## Client Integration
+## Client Flow
 
-Clients should:
-1. Listen for intent events via WebSocket
-2. Apply optimistic updates when intent is created
-3. Revert if intent expires or fails
-4. Confirm when intent completes successfully`,
+1. User triggers an action — a client publishes an intent
+2. The intent is broadcast over WebSocket; every client applies the expected value
+3. The backend confirms the change → intent completes and clients keep the value
+4. If the TTL elapses without confirmation → intent expires and clients revert to the last known good value`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -20,31 +20,25 @@
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
 				<el-collapse-item
-					name="type"
+					name="types"
 					:class="[ns.e('filter-item')]"
 				>
 					<template #title>
 						<el-text class="!px-2">
-							{{ t('spacesModule.filters.type.title') }}
+							{{ t('spacesModule.filters.types.title') }}
 						</el-text>
 					</template>
-
-					<div class="px-2">
-						<el-radio-group v-model="innerFilters.type">
-							<el-radio-button
-								:label="t('spacesModule.misc.types.room')"
-								:value="SpaceType.ROOM"
-							/>
-							<el-radio-button
-								:label="t('spacesModule.misc.types.zone')"
-								:value="SpaceType.ZONE"
-							/>
-							<el-radio-button
-								:label="t('spacesModule.filters.type.all')"
-								value="all"
-							/>
-						</el-radio-group>
-					</div>
+					<el-checkbox-group
+						v-model="innerFilters.types"
+						class="flex flex-col px-4"
+					>
+						<el-checkbox
+							v-for="type of typesOptions"
+							:key="type.value"
+							:label="type.label"
+							:value="type.value"
+						/>
+					</el-checkbox-group>
 				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
@@ -68,13 +62,13 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElScrollbar, ElText, useNamespace } from 'element-plus';
+import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../common';
-import { SpaceType } from '../spaces.constants';
+import { useSpacesPlugins } from '../composables/useSpacesPlugins';
 import type { ISpacesFilter } from '../composables/types';
 
 interface IListSpacesAdjustProps {
@@ -96,7 +90,9 @@ const emit = defineEmits<{
 const ns = useNamespace('list-spaces-adjust');
 const { t } = useI18n();
 
-const activeBoxes = ref<string[]>(['type']);
+const { options: typesOptions } = useSpacesPlugins();
+
+const activeBoxes = ref<string[]>(['types']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>

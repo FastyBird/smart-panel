@@ -1,5 +1,5 @@
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -38,7 +38,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get domain_data_load_failed_description => 'No se pudieron obtener los datos. Compruebe su conexión e inténtelo de nuevo.';
+  String get domain_data_load_failed_description =>
+      'No se pudieron obtener los datos. Compruebe su conexión e inténtelo de nuevo.';
 
   @override
   String get domain_not_configured_subtitle => 'No configurado';
@@ -161,34 +162,44 @@ class AppLocalizationsEs extends AppLocalizations {
   String get day_sunday_short => 'Dom';
 
   @override
-  String get message_error_tiles_not_configured_title => '¡No hay mosaicos configurados!';
+  String get message_error_tiles_not_configured_title =>
+      '¡No hay mosaicos configurados!';
 
   @override
-  String get message_error_tiles_not_configured_description => 'Configure al menos un mosaico en la pantalla.';
+  String get message_error_tiles_not_configured_description =>
+      'Configure al menos un mosaico en la pantalla.';
 
   @override
-  String get message_error_cards_not_configured_title => '¡No hay tarjetas configuradas!';
+  String get message_error_cards_not_configured_title =>
+      '¡No hay tarjetas configuradas!';
 
   @override
-  String get message_error_cards_not_configured_description => 'Configure al menos una tarjeta en la pantalla.';
+  String get message_error_cards_not_configured_description =>
+      'Configure al menos una tarjeta en la pantalla.';
 
   @override
-  String get message_error_device_not_found_title => '¡Dispositivo no encontrado!';
+  String get message_error_device_not_found_title =>
+      '¡Dispositivo no encontrado!';
 
   @override
-  String get message_error_device_not_found_description => 'No se pudo encontrar el dispositivo solicitado en la aplicación.';
+  String get message_error_device_not_found_description =>
+      'No se pudo encontrar el dispositivo solicitado en la aplicación.';
 
   @override
-  String get message_error_no_device_detail_title => '¡Sin detalle de dispositivo!';
+  String get message_error_no_device_detail_title =>
+      '¡Sin detalle de dispositivo!';
 
   @override
-  String get message_error_no_device_detail_description => 'La página de detalle no está disponible para el dispositivo seleccionado.';
+  String get message_error_no_device_detail_description =>
+      'La página de detalle no está disponible para el dispositivo seleccionado.';
 
   @override
-  String get message_error_no_device_detail_preparing_title => '¡Detalle de dispositivo no listo!';
+  String get message_error_no_device_detail_preparing_title =>
+      '¡Detalle de dispositivo no listo!';
 
   @override
-  String get message_error_no_device_detail_preparing_description => 'La página de detalle del dispositivo seleccionado aún no está lista.';
+  String get message_error_no_device_detail_preparing_description =>
+      'La página de detalle del dispositivo seleccionado aún no está lista.';
 
   @override
   String get device_status_offline => 'Sin conexión';
@@ -200,7 +211,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get device_offline_title => 'Dispositivo sin conexión';
 
   @override
-  String get device_offline_description => 'No se puede comunicar con este dispositivo. Compruebe que esté encendido y conectado a la red.';
+  String get device_offline_description =>
+      'No se puede comunicar con este dispositivo. Compruebe que esté encendido y conectado a la red.';
 
   @override
   String get device_offline_retry => 'Reintentar conexión';
@@ -352,73 +364,85 @@ class AppLocalizationsEs extends AppLocalizations {
   String get message_error_page_not_found_title => '¡Página no encontrada!';
 
   @override
-  String get message_error_page_not_found_description => 'No se pudo encontrar la página solicitada en la aplicación.';
+  String get message_error_page_not_found_description =>
+      'No se pudo encontrar la página solicitada en la aplicación.';
 
   @override
   String get electrical_energy_consumption_title => 'Consumo de energía';
 
   @override
-  String get electrical_energy_consumption_description => 'Energía total consumida a lo largo del tiempo';
+  String get electrical_energy_consumption_description =>
+      'Energía total consumida a lo largo del tiempo';
 
   @override
   String get electrical_energy_average_power_title => 'Potencia media';
 
   @override
-  String get electrical_energy_average_power_description => 'Potencia media consumida durante el último intervalo de informe';
+  String get electrical_energy_average_power_description =>
+      'Potencia media consumida durante el último intervalo de informe';
 
   @override
   String get electrical_generation_production_title => 'Producción de energía';
 
   @override
-  String get electrical_generation_production_description => 'Energía total producida por la fuente de generación';
+  String get electrical_generation_production_description =>
+      'Energía total producida por la fuente de generación';
 
   @override
   String get electrical_generation_power_title => 'Potencia de generación';
 
   @override
-  String get electrical_generation_power_description => 'Potencia actual de salida de la fuente de generación';
+  String get electrical_generation_power_description =>
+      'Potencia actual de salida de la fuente de generación';
 
   @override
   String get electrical_power_current_title => 'Corriente';
 
   @override
-  String get electrical_power_current_description => 'Cuánta electricidad está fluyendo';
+  String get electrical_power_current_description =>
+      'Cuánta electricidad está fluyendo';
 
   @override
   String get electrical_power_voltage_title => 'Tensión';
 
   @override
-  String get electrical_power_voltage_description => 'La intensidad de la electricidad';
+  String get electrical_power_voltage_description =>
+      'La intensidad de la electricidad';
 
   @override
   String get electrical_power_power_title => 'Potencia';
 
   @override
-  String get electrical_power_power_description => 'Cuánta energía se está consumiendo';
+  String get electrical_power_power_description =>
+      'Cuánta energía se está consumiendo';
 
   @override
   String get electrical_power_frequency_title => 'Frecuencia';
 
   @override
-  String get electrical_power_frequency_description => 'Estabilidad de la electricidad';
+  String get electrical_power_frequency_description =>
+      'Estabilidad de la electricidad';
 
   @override
   String get electrical_power_over_current_title => 'Sobrecorriente';
 
   @override
-  String get electrical_power_over_current_description => 'Advertencia: Demasiada corriente fluyendo';
+  String get electrical_power_over_current_description =>
+      'Advertencia: Demasiada corriente fluyendo';
 
   @override
   String get electrical_power_over_voltage_title => 'Sobretensión';
 
   @override
-  String get electrical_power_over_voltage_description => 'Advertencia: La electricidad es demasiado fuerte';
+  String get electrical_power_over_voltage_description =>
+      'Advertencia: La electricidad es demasiado fuerte';
 
   @override
   String get electrical_power_over_power_title => 'Sobrepotencia';
 
   @override
-  String get electrical_power_over_power_description => 'Advertencia: El consumo de energía es demasiado alto';
+  String get electrical_power_over_power_description =>
+      'Advertencia: El consumo de energía es demasiado alto';
 
   @override
   String get light_state_on => 'Enc.';
@@ -439,13 +463,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get light_state_brightness_description => 'Brillo actual';
 
   @override
-  String get light_state_mixed_description => 'Los dispositivos tienen valores diferentes';
+  String get light_state_mixed_description =>
+      'Los dispositivos tienen valores diferentes';
 
   @override
   String get light_state_syncing_description => 'Sincronizando dispositivos...';
 
   @override
-  String get light_state_not_synced_description => 'Los dispositivos no están sincronizados';
+  String get light_state_not_synced_description =>
+      'Los dispositivos no están sincronizados';
 
   @override
   String get light_role_main => 'Principal';
@@ -475,13 +501,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get light_role_off_description => 'Las luces están apagadas';
 
   @override
-  String get light_role_not_synced_description => 'Error de sincronización de luces';
+  String get light_role_not_synced_description =>
+      'Error de sincronización de luces';
 
   @override
   String get light_role_syncing_description => 'Sincronizando luces';
 
   @override
-  String get light_role_mixed_description => 'Las luces tienen valores diferentes';
+  String get light_role_mixed_description =>
+      'Las luces tienen valores diferentes';
 
   @override
   String get light_state_out_of_sync => 'Desincronizado';
@@ -517,10 +545,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get thermostat_state_title => 'Estado del termostato';
 
   @override
-  String get thermostat_state_configured_temperature_description => 'Temperatura configurada';
+  String get thermostat_state_configured_temperature_description =>
+      'Temperatura configurada';
 
   @override
-  String get thermostat_state_current_temperature_description => 'Temperatura actual';
+  String get thermostat_state_current_temperature_description =>
+      'Temperatura actual';
 
   @override
   String get thermostat_state_current_humidity_description => 'Humedad actual';
@@ -532,7 +562,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get thermostat_openings_state_title => 'La ventana está abierta';
 
   @override
-  String get thermostat_openings_state_description => 'El termostato está desactivado';
+  String get thermostat_openings_state_description =>
+      'El termostato está desactivado';
 
   @override
   String get contact_sensor_window => 'Ventana';
@@ -613,7 +644,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get thermostat_with_invalid_configuration => 'Este termostato está configurado incorrectamente.';
+  String get thermostat_with_invalid_configuration =>
+      'Este termostato está configurado incorrectamente.';
 
   @override
   String get on_state_on => 'Encendido';
@@ -631,52 +663,64 @@ class AppLocalizationsEs extends AppLocalizations {
   String get message_info_app_reboot_title => '¡Reiniciando dispositivo!';
 
   @override
-  String get message_info_app_reboot_description => 'Espere mientras el dispositivo se reinicia. Este proceso puede tardar unos momentos.';
+  String get message_info_app_reboot_description =>
+      'Espere mientras el dispositivo se reinicia. Este proceso puede tardar unos momentos.';
 
   @override
   String get message_info_app_power_off_title => '¡Apagando!';
 
   @override
-  String get message_info_app_power_off_description => 'El dispositivo se está apagando. Para volver a encenderlo, utilice el botón de encendido.';
+  String get message_info_app_power_off_description =>
+      'El dispositivo se está apagando. Para volver a encenderlo, utilice el botón de encendido.';
 
   @override
   String get message_info_factory_reset_title => '¡Restableciendo dispositivo!';
 
   @override
-  String get message_info_factory_reset_description => 'Se borrarán todos los ajustes y datos, y el dispositivo se restaurará a su configuración de fábrica. No apague el dispositivo durante el proceso de restablecimiento. Esto puede tardar unos minutos.';
+  String get message_info_factory_reset_description =>
+      'Se borrarán todos los ajustes y datos, y el dispositivo se restaurará a su configuración de fábrica. No apague el dispositivo durante el proceso de restablecimiento. Esto puede tardar unos minutos.';
 
   @override
   String get settings_general_settings_title => 'Ajustes generales';
 
   @override
-  String get settings_general_settings_button_display_settings => 'Ajustes de pantalla';
+  String get settings_general_settings_button_display_settings =>
+      'Ajustes de pantalla';
 
   @override
-  String get settings_general_settings_button_language_settings => 'Ajustes de idioma';
+  String get settings_general_settings_button_language_settings =>
+      'Ajustes de idioma';
 
   @override
-  String get settings_general_settings_button_audio_settings => 'Ajustes de audio';
+  String get settings_general_settings_button_audio_settings =>
+      'Ajustes de audio';
 
   @override
-  String get settings_general_settings_button_weather_settings => 'Ajustes del tiempo';
+  String get settings_general_settings_button_weather_settings =>
+      'Ajustes del tiempo';
 
   @override
-  String get settings_general_settings_button_about => 'Acerca de la aplicación';
+  String get settings_general_settings_button_about =>
+      'Acerca de la aplicación';
 
   @override
   String get settings_general_settings_button_maintenance => 'Mantenimiento';
 
   @override
-  String get settings_general_settings_button_voice_activation => 'Activación por voz';
+  String get settings_general_settings_button_voice_activation =>
+      'Activación por voz';
 
   @override
-  String get settings_voice_activation_settings_title => 'Ajustes de activación por voz';
+  String get settings_voice_activation_settings_title =>
+      'Ajustes de activación por voz';
 
   @override
-  String get settings_voice_activation_section_detection => 'Detección de activación por voz';
+  String get settings_voice_activation_section_detection =>
+      'Detección de activación por voz';
 
   @override
-  String get settings_voice_activation_enable_label => 'Activar activación por voz';
+  String get settings_voice_activation_enable_label =>
+      'Activar activación por voz';
 
   @override
   String settings_voice_activation_enable_description(String wakeWord) {
@@ -684,16 +728,19 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get settings_voice_activation_microphone_unavailable => 'El micrófono no está disponible o está desactivado en esta pantalla.';
+  String get settings_voice_activation_microphone_unavailable =>
+      'El micrófono no está disponible o está desactivado en esta pantalla.';
 
   @override
   String get settings_voice_activation_section_sensitivity => 'Sensibilidad';
 
   @override
-  String get settings_voice_activation_sensitivity_label => 'Sensibilidad de detección';
+  String get settings_voice_activation_sensitivity_label =>
+      'Sensibilidad de detección';
 
   @override
-  String get settings_voice_activation_sensitivity_description => 'Una sensibilidad mayor detecta el habla más baja, pero puede activarse con el ruido ambiental.';
+  String get settings_voice_activation_sensitivity_description =>
+      'Una sensibilidad mayor detecta el habla más baja, pero puede activarse con el ruido ambiental.';
 
   @override
   String get settings_voice_activation_section_status => 'Estado';
@@ -705,31 +752,38 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_voice_activation_status_stopped => 'Detenido';
 
   @override
-  String get settings_voice_activation_status_listening => 'Escuchando activación por voz...';
+  String get settings_voice_activation_status_listening =>
+      'Escuchando activación por voz...';
 
   @override
   String get settings_voice_activation_status_recording => 'Grabando voz...';
 
   @override
-  String get settings_voice_activation_status_processing => 'Procesando audio...';
+  String get settings_voice_activation_status_processing =>
+      'Procesando audio...';
 
   @override
   String get settings_weather_settings_title => 'Ajustes del tiempo';
 
   @override
-  String get settings_weather_settings_temperature_unit_title => 'Unidad de temperatura';
+  String get settings_weather_settings_temperature_unit_title =>
+      'Unidad de temperatura';
 
   @override
-  String get settings_weather_settings_temperature_unit_description => 'Configure la unidad de temperatura preferida para la visualización del tiempo.';
+  String get settings_weather_settings_temperature_unit_description =>
+      'Configure la unidad de temperatura preferida para la visualización del tiempo.';
 
   @override
-  String get settings_weather_settings_temperature_location_title => 'Ubicación meteorológica';
+  String get settings_weather_settings_temperature_location_title =>
+      'Ubicación meteorológica';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Seleccione la fuente de datos meteorológicos.';
+  String get settings_weather_settings_temperature_location_description =>
+      'Seleccione la fuente de datos meteorológicos.';
 
   @override
-  String get settings_weather_settings_temperature_location_single => 'Solo hay una ubicación disponible.';
+  String get settings_weather_settings_temperature_location_single =>
+      'Solo hay una ubicación disponible.';
 
   @override
   String get settings_maintenance_title => 'Mantenimiento';
@@ -738,37 +792,47 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_maintenance_restart_title => 'Reiniciar';
 
   @override
-  String get settings_maintenance_restart_description => 'Reinicie el dispositivo para aplicar los cambios.';
+  String get settings_maintenance_restart_description =>
+      'Reinicie el dispositivo para aplicar los cambios.';
 
   @override
-  String get settings_maintenance_restart_confirm_title => 'Reiniciar dispositivo';
+  String get settings_maintenance_restart_confirm_title =>
+      'Reiniciar dispositivo';
 
   @override
-  String get settings_maintenance_restart_confirm_description => '¿Está seguro de que desea reiniciar el dispositivo? Esta acción interrumpirá temporalmente la funcionalidad.';
+  String get settings_maintenance_restart_confirm_description =>
+      '¿Está seguro de que desea reiniciar el dispositivo? Esta acción interrumpirá temporalmente la funcionalidad.';
 
   @override
   String get settings_maintenance_power_off_title => 'Apagar';
 
   @override
-  String get settings_maintenance_power_off_description => 'Apagar completamente el dispositivo.';
+  String get settings_maintenance_power_off_description =>
+      'Apagar completamente el dispositivo.';
 
   @override
-  String get settings_maintenance_power_off_confirm_title => 'Apagar dispositivo';
+  String get settings_maintenance_power_off_confirm_title =>
+      'Apagar dispositivo';
 
   @override
-  String get settings_maintenance_power_off_confirm_description => '¿Está seguro de que desea apagar el dispositivo? Será necesario encenderlo manualmente de nuevo.';
+  String get settings_maintenance_power_off_confirm_description =>
+      '¿Está seguro de que desea apagar el dispositivo? Será necesario encenderlo manualmente de nuevo.';
 
   @override
-  String get settings_maintenance_factory_reset_title => 'Restablecimiento de fábrica';
+  String get settings_maintenance_factory_reset_title =>
+      'Restablecimiento de fábrica';
 
   @override
-  String get settings_maintenance_factory_reset_description => 'Restaurar el dispositivo a su configuración original de fábrica.';
+  String get settings_maintenance_factory_reset_description =>
+      'Restaurar el dispositivo a su configuración original de fábrica.';
 
   @override
-  String get settings_maintenance_factory_reset_confirm_title => 'Restablecer dispositivo de fábrica';
+  String get settings_maintenance_factory_reset_confirm_title =>
+      'Restablecer dispositivo de fábrica';
 
   @override
-  String get settings_maintenance_factory_reset_confirm_description => '¿Está seguro de que desea borrar todos los datos y restaurar la configuración de fábrica del dispositivo? Esta acción es irreversible.';
+  String get settings_maintenance_factory_reset_confirm_description =>
+      '¿Está seguro de que desea borrar todos los datos y restaurar la configuración de fábrica del dispositivo? Esta acción es irreversible.';
 
   @override
   String get settings_maintenance_system_heading => 'Sistema';
@@ -777,31 +841,40 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_maintenance_danger_heading => 'Zona de peligro';
 
   @override
-  String get settings_maintenance_restart_display_description => 'Reinicie esta pantalla para aplicar los cambios.';
+  String get settings_maintenance_restart_display_description =>
+      'Reinicie esta pantalla para aplicar los cambios.';
 
   @override
-  String get settings_maintenance_restart_display_confirm_title => 'Reiniciar pantalla';
+  String get settings_maintenance_restart_display_confirm_title =>
+      'Reiniciar pantalla';
 
   @override
-  String get settings_maintenance_restart_display_confirm_description => '¿Está seguro de que desea reiniciar esta pantalla? La pasarela y otras pantallas no se verán afectadas.';
+  String get settings_maintenance_restart_display_confirm_description =>
+      '¿Está seguro de que desea reiniciar esta pantalla? La pasarela y otras pantallas no se verán afectadas.';
 
   @override
-  String get settings_maintenance_power_off_display_description => 'Apagar completamente esta pantalla.';
+  String get settings_maintenance_power_off_display_description =>
+      'Apagar completamente esta pantalla.';
 
   @override
-  String get settings_maintenance_power_off_display_confirm_title => 'Apagar pantalla';
+  String get settings_maintenance_power_off_display_confirm_title =>
+      'Apagar pantalla';
 
   @override
-  String get settings_maintenance_power_off_display_confirm_description => '¿Está seguro de que desea apagar esta pantalla? Será necesario encenderla manualmente de nuevo. La pasarela no se verá afectada.';
+  String get settings_maintenance_power_off_display_confirm_description =>
+      '¿Está seguro de que desea apagar esta pantalla? Será necesario encenderla manualmente de nuevo. La pasarela no se verá afectada.';
 
   @override
-  String get settings_maintenance_factory_reset_display_description => 'Eliminar esta pantalla de la pasarela y restaurar la configuración de fábrica.';
+  String get settings_maintenance_factory_reset_display_description =>
+      'Eliminar esta pantalla de la pasarela y restaurar la configuración de fábrica.';
 
   @override
-  String get settings_maintenance_factory_reset_display_confirm_title => 'Restablecimiento de fábrica de pantalla';
+  String get settings_maintenance_factory_reset_display_confirm_title =>
+      'Restablecimiento de fábrica de pantalla';
 
   @override
-  String get settings_maintenance_factory_reset_display_confirm_description => '¿Está seguro de que desea restablecer de fábrica esta pantalla? Se eliminará de la pasarela y se borrarán todos los datos locales. Esta acción es irreversible.';
+  String get settings_maintenance_factory_reset_display_confirm_description =>
+      '¿Está seguro de que desea restablecer de fábrica esta pantalla? Se eliminará de la pasarela y se borrarán todos los datos locales. Esta acción es irreversible.';
 
   @override
   String get settings_language_settings_title => 'Ajustes de idioma';
@@ -810,25 +883,30 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_language_settings_language_title => 'Idioma';
 
   @override
-  String get settings_language_settings_language_description => 'Seleccione su idioma preferido.';
+  String get settings_language_settings_language_description =>
+      'Seleccione su idioma preferido.';
 
   @override
   String get settings_language_settings_timezone_title => 'Zona horaria';
 
   @override
-  String get settings_language_settings_timezone_description => 'Zona horaria local.';
+  String get settings_language_settings_timezone_description =>
+      'Zona horaria local.';
 
   @override
   String get settings_language_settings_time_format_title => 'Formato de hora';
 
   @override
-  String get settings_language_settings_time_format_description => 'Formato de 12 o 24 horas.';
+  String get settings_language_settings_time_format_description =>
+      'Formato de 12 o 24 horas.';
 
   @override
-  String get settings_language_settings_number_format_title => 'Formato de números';
+  String get settings_language_settings_number_format_title =>
+      'Formato de números';
 
   @override
-  String get settings_language_settings_number_format_description => 'Cómo se muestran los números (separadores de miles y decimales).';
+  String get settings_language_settings_number_format_description =>
+      'Cómo se muestran los números (separadores de miles y decimales).';
 
   @override
   String get number_format_comma_dot => '1,234.56';
@@ -849,64 +927,82 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_display_settings_theme_mode_title => 'Modo de tema';
 
   @override
-  String get settings_display_settings_theme_mode_description => 'Cambiar entre tema claro y oscuro.';
+  String get settings_display_settings_theme_mode_description =>
+      'Cambiar entre tema claro y oscuro.';
 
   @override
   String get settings_display_settings_brightness_title => 'Brillo';
 
   @override
-  String get settings_display_settings_brightness_description => 'Ajustar el nivel de brillo de la pantalla.';
+  String get settings_display_settings_brightness_description =>
+      'Ajustar el nivel de brillo de la pantalla.';
 
   @override
-  String get settings_display_settings_screen_lock_title => 'Bloqueo de pantalla';
+  String get settings_display_settings_screen_lock_title =>
+      'Bloqueo de pantalla';
 
   @override
-  String get settings_display_settings_screen_lock_description => 'Bloqueo automático tras inactividad.';
+  String get settings_display_settings_screen_lock_description =>
+      'Bloqueo automático tras inactividad.';
 
   @override
   String get settings_display_settings_screen_saver_title => 'Salvapantallas';
 
   @override
-  String get settings_display_settings_screen_saver_description => 'Mostrar salvapantallas en reposo.';
+  String get settings_display_settings_screen_saver_description =>
+      'Mostrar salvapantallas en reposo.';
 
   @override
-  String get settings_display_settings_screen_power_off_title => 'Screen Power Off';
+  String get settings_display_settings_screen_power_off_title =>
+      'Screen Power Off';
 
   @override
-  String get settings_display_settings_screen_power_off_description => 'Turn off the display when screen is locked.';
+  String get settings_display_settings_screen_power_off_description =>
+      'Turn off the display when screen is locked.';
 
   @override
-  String get settings_display_settings_unit_overrides_section => 'Anulación de unidades';
+  String get settings_display_settings_unit_overrides_section =>
+      'Anulación de unidades';
 
   @override
-  String get settings_display_settings_temperature_unit_title => 'Unidad de temperatura';
+  String get settings_display_settings_temperature_unit_title =>
+      'Unidad de temperatura';
 
   @override
-  String get settings_display_settings_temperature_unit_description => 'Anular la unidad de temperatura del sistema para esta pantalla.';
+  String get settings_display_settings_temperature_unit_description =>
+      'Anular la unidad de temperatura del sistema para esta pantalla.';
 
   @override
-  String get settings_display_settings_wind_speed_unit_title => 'Unidad de velocidad del viento';
+  String get settings_display_settings_wind_speed_unit_title =>
+      'Unidad de velocidad del viento';
 
   @override
-  String get settings_display_settings_wind_speed_unit_description => 'Anular la unidad de velocidad del viento del sistema para esta pantalla.';
+  String get settings_display_settings_wind_speed_unit_description =>
+      'Anular la unidad de velocidad del viento del sistema para esta pantalla.';
 
   @override
-  String get settings_display_settings_pressure_unit_title => 'Unidad de presión';
+  String get settings_display_settings_pressure_unit_title =>
+      'Unidad de presión';
 
   @override
-  String get settings_display_settings_pressure_unit_description => 'Anular la unidad de presión del sistema para esta pantalla.';
+  String get settings_display_settings_pressure_unit_description =>
+      'Anular la unidad de presión del sistema para esta pantalla.';
 
   @override
-  String get settings_display_settings_precipitation_unit_title => 'Unidad de precipitación';
+  String get settings_display_settings_precipitation_unit_title =>
+      'Unidad de precipitación';
 
   @override
-  String get settings_display_settings_precipitation_unit_description => 'Anular la unidad de precipitación del sistema para esta pantalla.';
+  String get settings_display_settings_precipitation_unit_description =>
+      'Anular la unidad de precipitación del sistema para esta pantalla.';
 
   @override
-  String get settings_display_settings_distance_unit_title => 'Unidad de distancia';
+  String get settings_display_settings_distance_unit_title =>
+      'Unidad de distancia';
 
   @override
-  String get settings_display_settings_distance_unit_description => 'Anular la unidad de distancia del sistema para esta pantalla.';
+  String get settings_display_settings_distance_unit_description =>
+      'Anular la unidad de distancia del sistema para esta pantalla.';
 
   @override
   String get settings_audio_settings_title => 'Ajustes de audio';
@@ -915,28 +1011,35 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_audio_settings_speaker_title => 'Altavoz';
 
   @override
-  String get settings_audio_settings_speaker_description => 'Activar o desactivar el altavoz.';
+  String get settings_audio_settings_speaker_description =>
+      'Activar o desactivar el altavoz.';
 
   @override
-  String get settings_audio_settings_speaker_volume_title => 'Volumen del altavoz';
+  String get settings_audio_settings_speaker_volume_title =>
+      'Volumen del altavoz';
 
   @override
-  String get settings_audio_settings_speaker_volume_description => 'Ajustar el nivel de salida del altavoz.';
+  String get settings_audio_settings_speaker_volume_description =>
+      'Ajustar el nivel de salida del altavoz.';
 
   @override
   String get settings_audio_settings_microphone_title => 'Micrófono';
 
   @override
-  String get settings_audio_settings_microphone_description => 'Activar o desactivar el micrófono.';
+  String get settings_audio_settings_microphone_description =>
+      'Activar o desactivar el micrófono.';
 
   @override
-  String get settings_audio_settings_microphone_volume_title => 'Volumen del micrófono';
+  String get settings_audio_settings_microphone_volume_title =>
+      'Volumen del micrófono';
 
   @override
-  String get settings_audio_settings_microphone_volume_description => 'Ajustar la sensibilidad de entrada.';
+  String get settings_audio_settings_microphone_volume_description =>
+      'Ajustar la sensibilidad de entrada.';
 
   @override
-  String get settings_audio_settings_no_support => 'Esta pantalla no admite entrada ni salida de audio.';
+  String get settings_audio_settings_no_support =>
+      'Esta pantalla no admite entrada ni salida de audio.';
 
   @override
   String get settings_about_title => 'Acerca de la aplicación';
@@ -945,7 +1048,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_about_about_heading => 'Acerca de';
 
   @override
-  String get settings_about_about_info => 'FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con sus dispositivos inteligentes, ofreciendo un control y monitorización mejorados.';
+  String get settings_about_about_info =>
+      'FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con sus dispositivos inteligentes, ofreciendo un control y monitorización mejorados.';
 
   @override
   String get settings_about_developed_by_heading => 'Desarrollado por';
@@ -954,7 +1058,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_about_license_heading => 'Licencia';
 
   @override
-  String get settings_about_device_information_heading => 'Información del dispositivo';
+  String get settings_about_device_information_heading =>
+      'Información del dispositivo';
 
   @override
   String get settings_about_show_license_button => 'Ver licencia';
@@ -1005,13 +1110,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_detail_hourly_forecast => 'Previsión por horas';
 
   @override
-  String get weather_condition_thunderstorm_with_light_rain => 'Tormenta con lluvia ligera';
+  String get weather_condition_thunderstorm_with_light_rain =>
+      'Tormenta con lluvia ligera';
 
   @override
   String get weather_condition_thunderstorm_with_rain => 'Tormenta con lluvia';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_rain => 'Tormenta con lluvia intensa';
+  String get weather_condition_thunderstorm_with_heavy_rain =>
+      'Tormenta con lluvia intensa';
 
   @override
   String get weather_condition_light_thunderstorm => 'Tormenta leve';
@@ -1026,13 +1133,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_condition_ragged_thunderstorm => 'Tormenta irregular';
 
   @override
-  String get weather_condition_thunderstorm_with_light_drizzle => 'Tormenta con llovizna ligera';
+  String get weather_condition_thunderstorm_with_light_drizzle =>
+      'Tormenta con llovizna ligera';
 
   @override
-  String get weather_condition_thunderstorm_with_drizzle => 'Tormenta con llovizna';
+  String get weather_condition_thunderstorm_with_drizzle =>
+      'Tormenta con llovizna';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_drizzle => 'Tormenta con llovizna intensa';
+  String get weather_condition_thunderstorm_with_heavy_drizzle =>
+      'Tormenta con llovizna intensa';
 
   @override
   String get weather_condition_light_intensity_drizzle => 'Llovizna ligera';
@@ -1044,19 +1154,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_condition_heavy_intensity_drizzle => 'Llovizna intensa';
 
   @override
-  String get weather_condition_light_intensity_drizzle_rain => 'Llovizna ligera con lluvia';
+  String get weather_condition_light_intensity_drizzle_rain =>
+      'Llovizna ligera con lluvia';
 
   @override
   String get weather_condition_drizzle_rain => 'Llovizna con lluvia';
 
   @override
-  String get weather_condition_heavy_intensity_drizzle_rain => 'Llovizna intensa con lluvia';
+  String get weather_condition_heavy_intensity_drizzle_rain =>
+      'Llovizna intensa con lluvia';
 
   @override
-  String get weather_condition_shower_rain_and_drizzle => 'Chubascos con llovizna';
+  String get weather_condition_shower_rain_and_drizzle =>
+      'Chubascos con llovizna';
 
   @override
-  String get weather_condition_heavy_shower_rain_and_drizzle => 'Chubascos fuertes con llovizna';
+  String get weather_condition_heavy_shower_rain_and_drizzle =>
+      'Chubascos fuertes con llovizna';
 
   @override
   String get weather_condition_shower_drizzle => 'Chubascos de llovizna';
@@ -1080,13 +1194,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_condition_freezing_rain => 'Lluvia helada';
 
   @override
-  String get weather_condition_light_intensity_shower_rain => 'Chubascos ligeros';
+  String get weather_condition_light_intensity_shower_rain =>
+      'Chubascos ligeros';
 
   @override
   String get weather_condition_shower_rain => 'Chubascos';
 
   @override
-  String get weather_condition_heavy_intensity_shower_rain => 'Chubascos intensos';
+  String get weather_condition_heavy_intensity_shower_rain =>
+      'Chubascos intensos';
 
   @override
   String get weather_condition_ragged_shower_rain => 'Chubascos irregulares';
@@ -1104,7 +1220,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_condition_sleet => 'Aguanieve';
 
   @override
-  String get weather_condition_light_shower_sleet => 'Chubascos ligeros de aguanieve';
+  String get weather_condition_light_shower_sleet =>
+      'Chubascos ligeros de aguanieve';
 
   @override
   String get weather_condition_shower_sleet => 'Chubascos de aguanieve';
@@ -1116,13 +1233,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_condition_rain_and_snow => 'Lluvia con nieve';
 
   @override
-  String get weather_condition_light_shower_snow => 'Chubascos ligeros de nieve';
+  String get weather_condition_light_shower_snow =>
+      'Chubascos ligeros de nieve';
 
   @override
   String get weather_condition_shower_snow => 'Chubascos de nieve';
 
   @override
-  String get weather_condition_heavy_shower_snow => 'Chubascos intensos de nieve';
+  String get weather_condition_heavy_shower_snow =>
+      'Chubascos intensos de nieve';
 
   @override
   String get weather_condition_mist => 'Neblina';
@@ -1173,7 +1292,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discovery_searching_title => 'Buscando pasarelas';
 
   @override
-  String get discovery_searching_description => 'Buscando pasarelas FastyBird Smart Panel en su red...';
+  String get discovery_searching_description =>
+      'Buscando pasarelas FastyBird Smart Panel en su red...';
 
   @override
   String discovery_found_count(int count) {
@@ -1192,13 +1312,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discovery_not_found_title => 'Pasarela no encontrada';
 
   @override
-  String get discovery_not_found_description => 'No se pudo encontrar ninguna pasarela FastyBird Smart Panel en su red.\n\nAsegúrese de que la pasarela esté en funcionamiento y conectada a la misma red que este dispositivo.';
+  String get discovery_not_found_description =>
+      'No se pudo encontrar ninguna pasarela FastyBird Smart Panel en su red.\n\nAsegúrese de que la pasarela esté en funcionamiento y conectada a la misma red que este dispositivo.';
 
   @override
   String get discovery_error_title => 'Error de descubrimiento';
 
   @override
-  String get discovery_error_description => 'Se produjo un error al buscar pasarelas.\n\nCompruebe su conexión de red e inténtelo de nuevo.';
+  String get discovery_error_description =>
+      'Se produjo un error al buscar pasarelas.\n\nCompruebe su conexión de red e inténtelo de nuevo.';
 
   @override
   String discovery_error_failed(String error) {
@@ -1217,7 +1339,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discovery_connecting_fallback => 'pasarela';
 
   @override
-  String get discovery_manual_entry_title => 'Introduzca la dirección de la pasarela';
+  String get discovery_manual_entry_title =>
+      'Introduzca la dirección de la pasarela';
 
   @override
   String get discovery_manual_entry_hint => '192.168.1.100:3000';
@@ -1226,13 +1349,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discovery_manual_entry_label => 'Dirección de la pasarela';
 
   @override
-  String get discovery_manual_entry_help => 'Introduzca la dirección IP o el nombre de host con puerto opcional.\nEjemplos: 192.168.1.100:3000, gateway.local, 10.0.0.5';
+  String get discovery_manual_entry_help =>
+      'Introduzca la dirección IP o el nombre de host con puerto opcional.\nEjemplos: 192.168.1.100:3000, gateway.local, 10.0.0.5';
 
   @override
-  String get discovery_validation_empty => 'Introduzca una dirección de pasarela';
+  String get discovery_validation_empty =>
+      'Introduzca una dirección de pasarela';
 
   @override
-  String get discovery_validation_invalid => 'Dirección no válida. Introduzca una dirección IP o nombre de host válidos.';
+  String get discovery_validation_invalid =>
+      'Dirección no válida. Introduzca una dirección IP o nombre de host válidos.';
 
   @override
   String get discovery_button_back => 'Atrás';
@@ -1241,7 +1367,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discovery_button_connect => 'Conectar';
 
   @override
-  String get discovery_button_connect_selected => 'Conectar a la pasarela seleccionada';
+  String get discovery_button_connect_selected =>
+      'Conectar a la pasarela seleccionada';
 
   @override
   String get discovery_button_rescan => 'Buscar de nuevo';
@@ -1270,13 +1397,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get room_selection_saving => 'Asignando habitación...';
 
   @override
-  String get room_selection_error => 'Error al asignar la habitación. Inténtelo de nuevo.';
+  String get room_selection_error =>
+      'Error al asignar la habitación. Inténtelo de nuevo.';
 
   @override
   String get room_selection_empty_title => 'No hay habitaciones disponibles';
 
   @override
-  String get room_selection_empty_description => 'Aún no se han creado habitaciones. Abra la administración y añada al menos una habitación.';
+  String get room_selection_empty_description =>
+      'Aún no se han creado habitaciones. Abra la administración y añada al menos una habitación.';
 
   @override
   String get action_success => 'Acción completada correctamente';
@@ -1300,7 +1429,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get space_devices_title => 'Dispositivos';
 
   @override
-  String get space_devices_placeholder => 'Los dispositivos de esta estancia se mostrarán aquí';
+  String get space_devices_placeholder =>
+      'Los dispositivos de esta estancia se mostrarán aquí';
 
   @override
   String get space_climate_controls_title => 'Climatización';
@@ -1350,16 +1480,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get space_sensors_only_title => 'Solo sensores';
 
   @override
-  String get space_sensors_only_description => 'Esta estancia solo tiene sensores — sin dispositivos controlables';
+  String get space_sensors_only_description =>
+      'Esta estancia solo tiene sensores — sin dispositivos controlables';
 
   @override
   String get house_overview_no_spaces_title => 'No hay estancias configuradas';
 
   @override
-  String get house_overview_no_spaces_description => 'Cree estancias a través de la administración para verlas aquí';
+  String get house_overview_no_spaces_description =>
+      'Cree estancias a través de la administración para verlas aquí';
 
   @override
-  String get house_overview_no_space_page => 'No hay página configurada para esta estancia';
+  String get house_overview_no_space_page =>
+      'No hay página configurada para esta estancia';
 
   @override
   String get house_overview_tap_to_view => 'Toque para ver';
@@ -1383,7 +1516,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get house_modes_night_description => 'Ajustes nocturnos';
 
   @override
-  String get house_modes_changed_success => 'Modo de la casa cambiado correctamente';
+  String get house_modes_changed_success =>
+      'Modo de la casa cambiado correctamente';
 
   @override
   String get house_modes_changed_error => 'Error al cambiar el modo de la casa';
@@ -1392,7 +1526,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get house_modes_confirm_title => 'Confirmar cambio de modo';
 
   @override
-  String get house_modes_confirm_away_description => '¿Está seguro de que desea poner la casa en modo Fuera? Esto puede afectar a las reglas de automatización y los ajustes de seguridad.';
+  String get house_modes_confirm_away_description =>
+      '¿Está seguro de que desea poner la casa en modo Fuera? Esto puede afectar a las reglas de automatización y los ajustes de seguridad.';
 
   @override
   String get space_scenes_title => 'Escenas rápidas';
@@ -1517,7 +1652,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connection_lost_title => 'Conexión perdida';
 
   @override
-  String get connection_lost_message => 'No se puede conectar a la pasarela. Compruebe su conexión de red e inténtelo de nuevo.';
+  String get connection_lost_message =>
+      'No se puede conectar a la pasarela. Compruebe su conexión de red e inténtelo de nuevo.';
 
   @override
   String get connection_lost_button_reconnect => 'Reconectar';
@@ -1556,7 +1692,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get domain_lights_empty_title => 'Iluminación no configurada';
 
   @override
-  String get domain_lights_empty_description => 'Los roles de iluminación no se han configurado para esta habitación. Configure los roles en la administración para controlar sus luces.';
+  String get domain_lights_empty_description =>
+      'Los roles de iluminación no se han configurado para esta habitación. Configure los roles en la administración para controlar sus luces.';
 
   @override
   String domain_lights_count_on(int count) {
@@ -1597,7 +1734,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get domain_climate_empty_title => 'Climatización no configurada';
 
   @override
-  String get domain_climate_empty_description => 'No hay termostatos ni actuadores de climatización configurados para esta habitación. Añada dispositivos de climatización en la administración.';
+  String get domain_climate_empty_description =>
+      'No hay termostatos ni actuadores de climatización configurados para esta habitación. Añada dispositivos de climatización en la administración.';
 
   @override
   String get domain_media => 'Multimedia';
@@ -1684,16 +1822,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_no_endpoints_title => 'Sin dispositivos multimedia';
 
   @override
-  String get media_no_endpoints_description => 'Esta habitación no tiene dispositivos multimedia. Añada un televisor, altavoz o reproductor.';
+  String get media_no_endpoints_description =>
+      'Esta habitación no tiene dispositivos multimedia. Añada un televisor, altavoz o reproductor.';
 
   @override
-  String get media_no_bindings_description => 'Las actividades multimedia se están configurando. Deslice para actualizar.';
+  String get media_no_bindings_description =>
+      'Las actividades multimedia se están configurando. Deslice para actualizar.';
 
   @override
   String get media_ws_offline_title => 'Conexión perdida';
 
   @override
-  String get media_ws_offline_description => 'Los controles multimedia requieren una conexión activa. Reconectando...';
+  String get media_ws_offline_description =>
+      'Los controles multimedia requieren una conexión activa. Reconectando...';
 
   @override
   String get domain_sensors => 'Sensores';
@@ -1735,7 +1876,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get energy_empty_title => 'Sin datos de energía';
 
   @override
-  String get energy_empty_description => 'No se encontraron dispositivos de monitorización de energía en esta estancia';
+  String get energy_empty_description =>
+      'No se encontraron dispositivos de monitorización de energía en esta estancia';
 
   @override
   String get energy_load_failed => 'Error al cargar los datos de energía';
@@ -1829,7 +1971,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get entry_security => 'Seguridad';
 
   @override
-  String get entry_no_security_devices => 'No hay dispositivos de seguridad configurados';
+  String get entry_no_security_devices =>
+      'No hay dispositivos de seguridad configurados';
 
   @override
   String get entry_locks => 'Cerraduras';
@@ -2249,7 +2392,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get domain_shading_empty_title => 'Sombreado no configurado';
 
   @override
-  String get domain_shading_empty_description => 'Los roles de persianas no se han configurado para esta habitación. Configure los roles en la administración para controlar sus persianas.';
+  String get domain_shading_empty_description =>
+      'Los roles de persianas no se han configurado para esta habitación. Configure los roles en la administración para controlar sus persianas.';
 
   @override
   String get shading_modes_title => 'Modos';
@@ -2431,10 +2575,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connection_overlay_title_reconnecting => 'Reconectando';
 
   @override
-  String get connection_overlay_message_reconnecting => 'Intentando reconectar...';
+  String get connection_overlay_message_reconnecting =>
+      'Intentando reconectar...';
 
   @override
-  String get connection_overlay_message_still_trying => 'Seguimos intentando reconectar...';
+  String get connection_overlay_message_still_trying =>
+      'Seguimos intentando reconectar...';
 
   @override
   String get connection_overlay_retry => 'Reintentar ahora';
@@ -2449,7 +2595,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connection_auth_error_title => 'Sesión expirada';
 
   @override
-  String get connection_auth_error_message => 'Su sesión ha expirado o ha sido revocada. Restablezca el dispositivo para reconectar.';
+  String get connection_auth_error_message =>
+      'Su sesión ha expirado o ha sido revocada. Restablezca el dispositivo para reconectar.';
 
   @override
   String get connection_auth_error_button_reset => 'Restablecer dispositivo';
@@ -2458,7 +2605,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connection_network_error_title => 'Red no disponible';
 
   @override
-  String get connection_network_error_message => 'No se puede contactar con el servidor. Compruebe su conexión de red.';
+  String get connection_network_error_message =>
+      'No se puede contactar con el servidor. Compruebe su conexión de red.';
 
   @override
   String get connection_network_error_button_retry => 'Intentar de nuevo';
@@ -2467,7 +2615,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connection_server_error_title => 'Servidor no disponible';
 
   @override
-  String get connection_server_error_message => 'El servidor no está disponible temporalmente. Inténtelo más tarde.';
+  String get connection_server_error_message =>
+      'El servidor no está disponible temporalmente. Inténtelo más tarde.';
 
   @override
   String get connection_server_error_button_retry => 'Intentar de nuevo';
@@ -2905,7 +3054,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_not_configured_title => 'Multimedia no configurado';
 
   @override
-  String get media_not_configured_description => 'Las actividades multimedia no se han configurado para esta habitación. Configure las vinculaciones de actividades en la administración.';
+  String get media_not_configured_description =>
+      'Las actividades multimedia no se han configurado para esta habitación. Configure las vinculaciones de actividades en la administración.';
 
   @override
   String media_starting_activity(String activityName) {
@@ -2918,7 +3068,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get media_activity_failed_description => 'No se pudo aplicar la actividad. Compruebe la conectividad del dispositivo.';
+  String get media_activity_failed_description =>
+      'No se pudo aplicar la actividad. Compruebe la conectividad del dispositivo.';
 
   @override
   String get media_activity_retry => 'Reintentar';
@@ -2927,10 +3078,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_activity_turn_off => 'Apagar';
 
   @override
-  String get media_warning_audio_offline => 'Salida de audio sin conexión — usando altavoces de pantalla';
+  String get media_warning_audio_offline =>
+      'Salida de audio sin conexión — usando altavoces de pantalla';
 
   @override
-  String get media_warning_some_devices_offline => 'Algunos dispositivos sin conexión';
+  String get media_warning_some_devices_offline =>
+      'Algunos dispositivos sin conexión';
 
   @override
   String media_warning_steps_failed(int count) {
@@ -2944,7 +3097,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get media_warning_steps_had_issues => 'Algunos pasos tuvieron problemas';
+  String get media_warning_steps_had_issues =>
+      'Algunos pasos tuvieron problemas';
 
   @override
   String get media_remote => 'Control';
@@ -2976,7 +3130,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_failure_errors_critical => 'Errores (críticos)';
 
   @override
-  String get media_failure_warnings_non_critical => 'Advertencias (no críticas)';
+  String get media_failure_warnings_non_critical =>
+      'Advertencias (no críticas)';
 
   @override
   String get media_failure_warnings_label => 'Advertencias';
@@ -3096,7 +3251,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_detail_connection_lost => 'Conexión perdida';
 
   @override
-  String get media_detail_connection_lost_description => 'Los controles multimedia requieren una conexión WebSocket activa.';
+  String get media_detail_connection_lost_description =>
+      'Los controles multimedia requieren una conexión WebSocket activa.';
 
   @override
   String get media_detail_go_back => 'Volver';
@@ -3381,7 +3537,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sensors_domain_empty_title => 'Sensores no configurados';
 
   @override
-  String get sensors_domain_empty_description => 'Los roles de sensores no se han configurado para esta habitación. Configure las asignaciones de sensores en la administración.';
+  String get sensors_domain_empty_description =>
+      'Los roles de sensores no se han configurado para esta habitación. Configure las asignaciones de sensores en la administración.';
 
   @override
   String sensors_domain_alerts_active(int count) {
@@ -3633,13 +3790,15 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get room_overview_no_room => 'No hay habitación asignada a esta pantalla';
+  String get room_overview_no_room =>
+      'No hay habitación asignada a esta pantalla';
 
   @override
   String get room_overview_display_not_configured => 'Pantalla no configurada';
 
   @override
-  String get room_overview_load_failed => 'Error al cargar datos de la habitación';
+  String get room_overview_load_failed =>
+      'Error al cargar datos de la habitación';
 
   @override
   String room_overview_lights_active(int lightsOn, int totalLights) {
@@ -3713,19 +3872,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get app_error_failed_to_start_short => 'Error al iniciar';
 
   @override
-  String get app_error_unexpected => 'Se produjo un error inesperado al iniciar la aplicación.';
+  String get app_error_unexpected =>
+      'Se produjo un error inesperado al iniciar la aplicación.';
 
   @override
-  String get app_error_see_details => 'Se produjo un error. Vea los detalles a continuación.';
+  String get app_error_see_details =>
+      'Se produjo un error. Vea los detalles a continuación.';
 
   @override
   String get app_error_restart_button => 'Reiniciar aplicación';
 
   @override
-  String get app_error_permit_join_hint => 'Solicite al administrador que active \"Permit Join\" en la administración y luego reinicie la aplicación.';
+  String get app_error_permit_join_hint =>
+      'Solicite al administrador que active \"Permit Join\" en la administración y luego reinicie la aplicación.';
 
   @override
-  String get app_error_connection_failed_stored => 'No se pudo conectar al servidor almacenado.';
+  String get app_error_connection_failed_stored =>
+      'No se pudo conectar al servidor almacenado.';
 
   @override
   String app_error_connection_failed_backend(String name, String address) {
@@ -3733,7 +3896,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get app_error_initialization_failed => 'Error al inicializar la conexión con el servidor.';
+  String get app_error_initialization_failed =>
+      'Error al inicializar la conexión con el servidor.';
 
   @override
   String app_error_connection_failed_url(String url) {
@@ -3744,7 +3908,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deck_empty_title => 'No hay páginas configuradas';
 
   @override
-  String get deck_empty_description => 'Configure su panel de control en la administración.';
+  String get deck_empty_description =>
+      'Configure su panel de control en la administración.';
 
   @override
   String get alert_banner_view_button => 'Ver';
@@ -3759,7 +3924,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weather_tile_not_configured => 'No configurado';
 
   @override
-  String get entry_error_load_security_data => 'Error al cargar datos de seguridad';
+  String get entry_error_load_security_data =>
+      'Error al cargar datos de seguridad';
 
   @override
   String get entry_locks_all_locked => 'Todo cerrado';
@@ -3798,16 +3964,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get buddy_got_it => 'Entendido';
 
   @override
-  String get buddy_empty_state_message => '¡Pregúntame lo que quieras sobre tu hogar!';
+  String get buddy_empty_state_message =>
+      '¡Pregúntame lo que quieras sobre tu hogar!';
 
   @override
   String get buddy_init_failed_message => 'No se pudo iniciar la conversación';
 
   @override
-  String get buddy_provider_not_configured_title => 'Proveedor de IA no configurado';
+  String get buddy_provider_not_configured_title =>
+      'Proveedor de IA no configurado';
 
   @override
-  String get buddy_provider_not_configured_description => 'Configure un proveedor de IA en la administración para activar el chat.';
+  String get buddy_provider_not_configured_description =>
+      'Configure un proveedor de IA en la administración para activar el chat.';
 
   @override
   String get buddy_thinking => 'Pensando...';
@@ -3834,13 +4003,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get buddy_error_send_message => 'Error al enviar mensaje';
 
   @override
-  String get buddy_error_provider_not_configured => 'Proveedor de IA no configurado';
+  String get buddy_error_provider_not_configured =>
+      'Proveedor de IA no configurado';
 
   @override
-  String get buddy_error_request_timeout => 'Tiempo de espera agotado. Inténtelo de nuevo.';
+  String get buddy_error_request_timeout =>
+      'Tiempo de espera agotado. Inténtelo de nuevo.';
 
   @override
-  String get buddy_error_connection_error => 'Error de conexión. Compruebe su red.';
+  String get buddy_error_connection_error =>
+      'Error de conexión. Compruebe su red.';
 
   @override
   String get buddy_error_generic => 'Algo salió mal. Inténtelo de nuevo.';
@@ -3857,10 +4029,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get buddy_recording_cancel => 'Cancelar';
 
   @override
-  String get buddy_recording_too_short => 'Grabación demasiado corta. Mantenga pulsado más tiempo.';
+  String get buddy_recording_too_short =>
+      'Grabación demasiado corta. Mantenga pulsado más tiempo.';
 
   @override
-  String get buddy_recording_permission_error => 'No se pudo iniciar la grabación. Compruebe los permisos del micrófono.';
+  String get buddy_recording_permission_error =>
+      'No se pudo iniciar la grabación. Compruebe los permisos del micrófono.';
 
   @override
   String get buddy_voice_listening => 'Escuchando...';
@@ -3882,7 +4056,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get buddy_voice_transcribing => 'Transcribiendo audio...';
 
   @override
-  String get security_events_error_unexpected_response => 'Respuesta inesperada';
+  String get security_events_error_unexpected_response =>
+      'Respuesta inesperada';
 
   @override
   String media_activation_step_fallback(int index) {
@@ -3893,34 +4068,43 @@ class AppLocalizationsEs extends AppLocalizations {
   String get intent_error_deck_not_initialized => 'Deck no inicializado';
 
   @override
-  String get intent_error_deck_item_not_found => 'Elemento del deck no encontrado';
+  String get intent_error_deck_item_not_found =>
+      'Elemento del deck no encontrado';
 
   @override
   String get intent_error_no_home_item => 'Elemento de inicio no disponible';
 
   @override
-  String get intent_error_scenes_not_available => 'Servicio de escenas no disponible';
+  String get intent_error_scenes_not_available =>
+      'Servicio de escenas no disponible';
 
   @override
-  String get intent_error_scene_activation_failed => 'Error al activar la escena';
+  String get intent_error_scene_activation_failed =>
+      'Error al activar la escena';
 
   @override
-  String get intent_error_scene_activation_error => 'Error durante la activación de la escena';
+  String get intent_error_scene_activation_error =>
+      'Error durante la activación de la escena';
 
   @override
-  String get intent_error_device_repo_not_available => 'Repositorio de propiedades del dispositivo no disponible';
+  String get intent_error_device_repo_not_available =>
+      'Repositorio de propiedades del dispositivo no disponible';
 
   @override
-  String get intent_error_set_property_failed => 'Error al establecer el valor de la propiedad';
+  String get intent_error_set_property_failed =>
+      'Error al establecer el valor de la propiedad';
 
   @override
-  String get intent_error_set_property_error => 'Error al configurar el valor de la propiedad';
+  String get intent_error_set_property_error =>
+      'Error al configurar el valor de la propiedad';
 
   @override
-  String get intent_error_toggle_device_failed => 'Error al conmutar el dispositivo';
+  String get intent_error_toggle_device_failed =>
+      'Error al conmutar el dispositivo';
 
   @override
-  String get intent_error_toggle_device_error => 'Error durante la conmutación del dispositivo';
+  String get intent_error_toggle_device_error =>
+      'Error durante la conmutación del dispositivo';
 
   @override
   String get settings_display_screen_lock_never => 'Nunca';

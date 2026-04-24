@@ -46,44 +46,35 @@ export class LoggerRotatingFilePlugin {
 			name: 'Rotating File Logger',
 			description: 'File-based logging with automatic log rotation',
 			author: 'FastyBird',
-			readme: `# Rotating File Logger Plugin
+			readme: `# Rotating File Logger
 
-File-based logging with automatic rotation and retention management.
+> Plugin · by FastyBird · platform: logging
+
+Persists application logs to disk in a configurable directory. Files are rotated daily and old logs are cleaned up on a cron schedule based on the configured retention window — the simplest way to keep a forensic trail without external log shippers.
+
+## What you get
+
+- A reliable, self-managing on-disk log archive: write speed isn't bottlenecked, files are rotated automatically, and you don't have to remember to clean them up
+- A direct, plain-text format that any tool can consume (\`grep\`, \`tail -f\`, log shippers, viewers in the admin UI)
+- Bounded disk usage thanks to the retention policy — a verbose deployment cannot fill the disk silently
+- Plays nicely with the system module: the same structured log entries the API exposes are mirrored to disk
 
 ## Features
 
-- **File Logging** - Persist logs to disk for later analysis
-- **Automatic Rotation** - Create new log files based on size or time
-- **Retention Policy** - Automatically delete old log files
-- **Configurable Format** - Customize log output format
-
-## How It Works
-
-The plugin writes application logs to files in a configured directory. When logs reach a certain size or age, they are rotated:
-
-1. Current log file is renamed with timestamp
-2. New log file is created
-3. Old rotated files are deleted based on retention settings
+- **Daily rotation** — one file per day, timestamped (e.g. \`smart-panel-2026-04-27.log\`)
+- **Retention policy** — files older than \`retention_days\` are deleted automatically
+- **Cron-driven cleanup** — schedule the eviction job with a standard cron expression so it runs at a quiet hour
+- **Custom prefix & directory** — pick the file name and storage location to match your deployment layout
+- **Atomic-safe writes** — log writes are flushed in line with the application's structured logger so a crash doesn't truncate a half-written entry
 
 ## Configuration
 
-- **Enabled** - Toggle file logging on/off
-- **Log Directory** - Where to store log files
-- **Max File Size** - Rotate when file reaches this size
-- **Max Files** - Number of rotated files to keep
-- **Log Level** - Minimum level to log (debug, info, warn, error)
-
-## Log Location
-
-By default, logs are stored in:
-\`\`\`
-./logs/smart-panel.log
-\`\`\`
-
-Rotated files are named:
-\`\`\`
-smart-panel-2024-01-15.log
-\`\`\``,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`dir\` | Directory where log files are written | system default (\`./logs\`) |
+| \`file_prefix\` | Prefix for rotated files (\`[A-Za-z0-9._-]+\`) | \`smart-panel\` |
+| \`retention_days\` | Days to retain rotated files (≥ 1) | \`7\` |
+| \`cleanup_cron\` | Cron expression for the cleanup job | \`0 3 * * *\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

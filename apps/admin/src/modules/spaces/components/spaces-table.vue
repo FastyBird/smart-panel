@@ -15,7 +15,6 @@
 		:max-height="tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
-		@row-click="onRowClick"
 	>
 		<template #empty>
 			<div
@@ -143,37 +142,14 @@
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="200"
 		>
 			<template #default="scope">
-				<el-tag
-					:type="scope.row.type === SpaceType.ROOM ? 'primary' : 'info'"
-					size="small"
-				>
-					{{ t(`spacesModule.misc.types.${scope.row.type}`) }}
-				</el-tag>
-			</template>
-		</el-table-column>
-
-		<el-table-column
-			:label="t('spacesModule.table.columns.category')"
-			prop="category"
-			:width="150"
-		>
-			<template #default="scope">
-				<el-text
-					v-if="scope.row.category"
-					size="small"
-				>
-					{{ t(`spacesModule.fields.spaces.category.options.${scope.row.category}`) }}
-				</el-text>
-				<el-text
-					v-else
-					size="small"
-					type="info"
-				>
-					—
-				</el-text>
+				<spaces-table-column-plugin
+					:space="scope.row"
+					:filters="innerFilters"
+					@filter-by="(value: IPluginElement['type'], add: boolean) => onFilterBy(value, add)"
+				/>
 			</template>
 		</el-table-column>
 
@@ -191,46 +167,16 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="190"
+			:width="220"
 			align="right"
 		>
 			<template #default="scope">
 				<div @click.stop>
-					<el-button
-						size="small"
-						plain
-						data-test-id="detail-space"
-						@click="emit('detail', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:file-search-outline" />
-						</template>
-
-						{{ t('spacesModule.buttons.detail.title') }}
-					</el-button>
-					<el-button
-						size="small"
-						plain
-						class="ml-1!"
-						data-test-id="edit-space"
-						@click="emit('edit', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-					<el-button
-						size="small"
-						type="warning"
-						plain
-						class="ml-1!"
-						data-test-id="remove-space"
-						@click="emit('remove', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:trash" />
-						</template>
-					</el-button>
+					<spaces-table-column-actions
+						:space="scope.row"
+						@edit="(id: ISpace['id']) => emit('edit', id)"
+						@remove="(id: ISpace['id']) => emit('remove', id)"
+					/>
 				</div>
 			</template>
 		</el-table-column>
@@ -241,14 +187,18 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, useBreakpoints } from '../../../common';
+import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../common';
+import type { ISpacesFilter } from '../composables/types';
 import { SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
+import SpacesTableColumnActions from './spaces-table-column-actions.vue';
+import SpacesTableColumnPlugin from './spaces-table-column-plugin.vue';
 import type { ISpacesTableProps } from './spaces-table.types';
 
 defineOptions({
@@ -258,11 +208,11 @@ defineOptions({
 const props = defineProps<ISpacesTableProps>();
 
 const emit = defineEmits<{
-	(e: 'detail', id: ISpace['id']): void;
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
 	(e: 'add'): void;
 	(e: 'reset-filters'): void;
+	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 	(e: 'selected-changes', items: ISpace[]): void;
@@ -272,26 +222,24 @@ const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
 
+const innerFilters = useVModel(props, 'filters', emit);
+
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
 const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
 
-const onSortData = ({
-	prop,
-	order,
-}: {
-	prop: 'name' | 'type' | 'displayOrder';
-	order: 'ascending' | 'descending' | null;
-}): void => {
+const onSortData = ({ prop, order }: { prop: 'name' | 'type' | 'displayOrder'; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
-const onRowClick = (row: ISpace): void => {
-	emit('detail', row.id);
-};
-
 const onSelectionChange = (selected: ISpace[]): void => {
 	emit('selected-changes', selected);
+};
+
+const onFilterBy = (value: IPluginElement['type'], add: boolean): void => {
+	const filteredTypes = add ? [...innerFilters.value.types, value] : innerFilters.value.types.filter((item) => item !== value);
+
+	innerFilters.value.types = Array.from(new Set(filteredTypes));
 };
 </script>

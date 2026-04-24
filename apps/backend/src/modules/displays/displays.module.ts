@@ -113,38 +113,36 @@ export class DisplaysModule implements OnModuleInit {
 			name: 'Displays',
 			description: 'Manage connected display panels and their registration',
 			author: 'FastyBird',
-			readme: `# Displays Module
+			readme: `# Displays
 
-The Displays module manages physical display panels connected to the Smart Panel system.
+> Module · by FastyBird
+
+Manages physical display panels (the Flutter touchscreen app) connected to the Smart Panel backend. Owns pairing, per-display configuration, the home-page resolution that decides what each panel shows on boot, and real-time updates that keep every screen in sync without any user-side credentials.
 
 ## Features
 
-- **Display Registration** - Secure pairing of display panels with the backend
-- **Connection Tracking** - Monitor display online/offline status
-- **Multi-Display Support** - Manage multiple display panels from one backend
-- **Status History** - Track connection status over time via storage
+- **Secure pairing (permit-join)** — registration is closed by default; an admin opens a temporary join window from the admin UI, the panel submits its hardware fingerprint, and the admin approves it before any token is issued
+- **Per-display credentials** — once approved, the panel is given a long-lived token tied to its display ID; pulling the display from the admin UI revokes the token immediately
+- **Multi-display** — drive any number of panels from one backend, each with its own primary space, brightness and personalisation
+- **Per-display configuration** — brightness, dark / auto mode, optional PIN lock, idle / screensaver behaviour, primary space and home page; all editable from the admin UI and pushed live to the panel
+- **Home-page resolution** — pluggable resolvers decide which dashboard page a display should land on for a given space; space plugins can register their own logic without touching this module
+- **Space-selection validation** — pluggable validators ensure a display can only be tied to spaces it's actually allowed to render
+- **Connection tracking** — display online / offline state and last-seen timestamps are stored as time-series and exposed to the stats module
+- **WebSocket exchange** — listens to backend events (dashboards, devices, scenes, weather, …) and re-broadcasts only the slices each display needs
+- **Factory reset hook** — registers itself with the system reset pipeline so wiping a panel removes its display record and revokes its token
 
 ## Registration Flow
 
-1. **Permit Join** - Admin enables registration mode in the admin panel
-2. **Display Request** - The display sends a registration request with its details
-3. **Approval** - Admin approves the display in the pending list
-4. **Token Exchange** - Display receives authentication tokens for API access
+1. **Permit join** — an admin enables registration mode in the admin UI for a limited time window
+2. **Display request** — the panel sends its identifier and metadata to the registration endpoint
+3. **Approval** — the admin reviews the pending registration and either approves or rejects it
+4. **Token exchange** — on approval, the panel receives long-lived credentials for API and WebSocket access; permit-join then closes again
 
-## Display Properties
+## API Endpoints
 
-- **Name** - Friendly name for the display
-- **Identifier** - Unique device identifier
-- **Brightness** - Current display brightness level
-- **Dark Mode** - Enable/disable dark theme
-- **Screen Lock** - PIN protection settings
-
-## WebSocket Events
-
-Displays communicate via WebSocket for real-time updates:
-- Configuration changes
-- Dashboard updates
-- Device state changes`,
+- \`GET|PATCH|DELETE /api/v1/modules/displays/displays\` — list, configure and remove displays
+- \`POST /api/v1/modules/displays/registration\` — submit a registration request (panel side)
+- \`PATCH /api/v1/modules/displays/registration/permit\` — toggle permit-join (admin side)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

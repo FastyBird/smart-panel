@@ -201,41 +201,49 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			name: 'System',
 			description: 'System management, logs, and platform operations',
 			author: 'FastyBird',
-			readme: `# System Module
+			readme: `# System
 
-The System module provides core system management functionality for the Smart Panel.
+> Module · by FastyBird
+
+Core platform management for the Smart Panel. Owns everything that is *about the box itself* rather than the things plugged into it: status reporting, structured logging, software updates, backups, statistics aggregation and the dangerous platform-level commands (reboot, power off, factory reset).
+
+## What it gives you
+
+- A single place to see how the appliance is doing (CPU, memory, disk, network, uptime, version) — surfaced both in the admin UI and on the panel
+- A pluggable update channel that can pull a new backend, a new panel build, or both, and roll them out together
+- A backup pipeline that collects contributions from every module and plugin into one archive, and can restore the whole appliance from it
+- A central reset / seed coordinator so a "factory reset" actually wipes everything in the right order
+- A structured logs API so the admin UI can show recent log entries, filter by level or module, and trigger downloads
 
 ## Features
 
-- **System Information** - View system status, uptime, and resource usage
-- **Logging** - Centralized application logging with configurable levels
-- **System Commands** - Reboot, power off, and factory reset operations
-- **Statistics** - System-wide statistics collection and reporting
+- **System info** — uptime, CPU, memory, storage, network, version and platform stats refreshed in the background
+- **Centralised structured logs** — every module emits through the same logger; entries are persisted with module / level / context and exposed through the API
+- **Power actions** — reboot, power off and full factory reset, all owner-only and audited
+- **Display actions** — remotely reboot, power off or factory-reset a connected panel display
+- **Backups** — orchestrates a backup registry: every module / plugin contributes the files and rows it owns into one downloadable archive; restore replays them in the same order
+- **Updates** — check for available backend / panel updates, install them, and report progress; updates are pluggable so different deployment targets (Docker, embedded, dev) can each register their own runner
+- **Statistics aggregator** — runs the stats registry: every module exposes its own metrics provider, the system module merges them into one snapshot for the admin UI and the API
+- **Factory-reset registry** — orchestrated, prioritised wipe across all modules / plugins; safe order, error reporting per step
+- **Settings & ownership** — owns the system-level config (locale, time-zone, log levels, update channel, …)
 
-## System Commands
+## API Endpoints
 
-### Reboot
-Safely restarts the Smart Panel application and optionally the host system.
+- \`GET /api/v1/modules/system/status\` — system status and stats
+- \`GET /api/v1/modules/system/logs\` — recent log entries (filterable by module / level)
+- \`POST /api/v1/modules/system/power/{reboot|shutdown|factory-reset}\` — power actions
+- \`POST /api/v1/modules/system/backup\` / \`/restore\` — create or restore a backup archive
+- \`POST /api/v1/modules/system/update/{check|install}\` — update operations
 
-### Power Off
-Performs a clean shutdown of the Smart Panel.
+## CLI Commands
 
-### Factory Reset
-Resets all settings and data to initial state:
-- Removes all configured devices
-- Clears dashboard pages and tiles
-- Resets user accounts (except owner)
-- Restores default configuration
+- \`pnpm run cli system:update:check\` — check for available updates
+- \`pnpm run cli system:update:server\` — update the backend
+- \`pnpm run cli system:update:panel\` — update the panel display
 
-## Logging
+## Logging Levels
 
-Supports multiple log levels:
-- **Error** - Critical errors requiring attention
-- **Warning** - Potential issues
-- **Info** - General operational messages
-- **Debug** - Detailed debugging information
-
-Logs are stored in memory and can be viewed through the admin interface.`,
+\`error\` · \`warn\` · \`info\` · \`debug\` — configurable via the \`logLevels\` setting.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

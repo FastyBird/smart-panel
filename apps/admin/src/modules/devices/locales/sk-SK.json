@@ -74,7 +74,8 @@
 			"bulkEnable": "Povoliť zariadenia?",
 			"bulkDisable": "Zakázať zariadenia?",
 			"adjustFilters": "Filtrovať zariadenia",
-			"selectPlugin": "Vyžaduje sa plugin zariadenia"
+			"selectPlugin": "Vyžaduje sa plugin zariadenia",
+			"selectWizardPlugin": "Vybrať sprievodcu zariadením"
 		},
 		"channels": {
 			"list": "Kanály",
@@ -214,6 +215,7 @@
 				"window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
 			},
 			"selectPlugin": "Na vytvorenie nového zariadenia vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétny typ zariadenia.",
+			"noWizardForDevicePlugin": "Plugin zariadenia „{type}\" neposkytuje sprievodcu nastavením.",
 			"noChannels": "Toto zariadenie zatiaľ nemá žiadne kanály. Kanály definujú vstupy alebo výstupy zariadenia. Vytvorte nový kanál na začatie interakcie s týmto zariadením.",
 			"category": "Kategória",
 			"channelsCount": "Žiadne kanály nakonfigurované | Jeden kanál nakonfigurovaný | {count} kanálov nakonfigurovaných",
@@ -611,6 +613,9 @@
 	"buttons": {
 		"add": {
 			"title": "Pridať"
+		},
+		"wizard": {
+			"title": "Sprievodca"
 		},
 		"edit": {
 			"title": "Upraviť"

@@ -134,23 +134,35 @@ export class SpacesSignageInfoPanelPlugin implements OnModuleInit {
 			description:
 				'Contributes the information-panel signage space type — a read-only, full-screen surface with configurable sections (clock, weather, announcements, optional feed) and nested announcement CRUD.',
 			author: 'FastyBird',
-			readme: `# Spaces Signage Info Panel Plugin
+			readme: `# Information Panel
 
-Contributes the **Information Panel** signage space type — a read-only,
-full-screen surface for hallway / lobby info displays.
+> Plugin · by FastyBird · platform: spaces
+
+Contributes the **Information Panel** signage space type — a read-only, full-screen surface designed for hallway, lobby and reception displays. Lays out a configurable mix of clock, weather, scrollable announcements and an optional external feed, and skips the regular dashboard navigation entirely.
+
+## What you get
+
+- A purpose-built signage mode that turns any panel into a low-touch info display without writing a custom UI
+- Announcement management from the admin UI: type a message, set its priority and visibility window, and it shows up on the panel within seconds
+- Reuse of everything else you already have: the same Weather module, the same clock, the same time-zone settings — no separate stack
+- A safe surface for public spaces — the panel does not expose any controls, just information
 
 ## Features
 
-- **Configurable sections** — clock, weather, announcements, optional external feed.
-- **Announcements** — nested CRUD with priority, sort order, and optional active-window scheduling.
-- **Per-space weather location** — the weather section reuses the existing weather plugin pipeline.
-- **No dashboard chrome** — the panel renders the info view directly, bypassing pages and navigation.
+- **Configurable sections** — clock, weather, announcements and an optional external feed (RSS / URL); each section can be toggled per-space
+- **Announcements** — full CRUD with priority, sort order and optional active-window scheduling (start / end timestamps); the panel auto-cycles through active items
+- **Per-space weather** — reuses the existing Weather module pipeline; pick the location once
+- **No dashboard chrome** — the panel renders the info view directly, bypassing pages, tabs and navigation
+- **Reorder API** — drag-and-drop in the admin UI persists through a dedicated reorder endpoint
+- **Time-window aware** — announcements outside their start / end window are quietly hidden without manual cleanup
 
-## Uninstall behavior
+## API Endpoints
 
-Uninstalling leaves signage space rows orphaned in the spaces table; displays
-pointing at them will no longer resolve to a rendered view until the plugin
-is reinstalled. Factory reset re-seeds via the reset handler.`,
+- \`GET /api/v1/plugins/spaces-signage-info-panel/announcements\` — list announcements
+- \`POST /api/v1/plugins/spaces-signage-info-panel/announcements\` — create
+- \`PATCH /api/v1/plugins/spaces-signage-info-panel/announcements/:id\` — update
+- \`DELETE /api/v1/plugins/spaces-signage-info-panel/announcements/:id\` — delete
+- \`POST /api/v1/plugins/spaces-signage-info-panel/announcements/reorder\` — reorder`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -215,6 +215,40 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	}
 
 	/**
+	 * Toggle the bridge's permit_join state for a bounded number of seconds.
+	 * Returns true on successful send, false otherwise.
+	 * Pass 0 to disable pairing immediately.
+	 *
+	 * Note: Topics are sent without the baseTopic prefix (see publishCommand).
+	 */
+	async setPermitJoin(seconds: number): Promise<boolean> {
+		if (!this.ws || !this.connected) {
+			this.logger.warn('Cannot toggle permit_join: not connected to Zigbee2MQTT WebSocket');
+			return false;
+		}
+
+		const topic = 'bridge/request/permit_join';
+		const value = seconds > 0;
+		const payload = { value, time: seconds };
+		const message: Z2mWsMessage = { topic, payload };
+
+		this.logger.debug(`Sending WS permit_join to ${topic}: ${JSON.stringify(payload)}`);
+
+		return new Promise<boolean>((resolve) => {
+			this.ws?.send(JSON.stringify(message), (error) => {
+				if (error) {
+					this.logger.error(`Failed to send WS permit_join to ${topic}`, {
+						message: error.message,
+					});
+					resolve(false);
+					return;
+				}
+				resolve(true);
+			});
+		});
+	}
+
+	/**
 	 * Request current state from a device via WebSocket
 	 *
 	 * Note: Topics are sent without the baseTopic prefix (see publishCommand).

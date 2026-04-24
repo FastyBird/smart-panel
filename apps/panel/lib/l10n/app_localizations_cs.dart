@@ -1,5 +1,5 @@
+// ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -38,7 +38,8 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get domain_data_load_failed_description => 'Nepodařilo se načíst data. Zkontrolujte připojení a zkuste to znovu.';
+  String get domain_data_load_failed_description =>
+      'Nepodařilo se načíst data. Zkontrolujte připojení a zkuste to znovu.';
 
   @override
   String get domain_not_configured_subtitle => 'Nekonfigurováno';
@@ -161,34 +162,43 @@ class AppLocalizationsCs extends AppLocalizations {
   String get day_sunday_short => 'Ne';
 
   @override
-  String get message_error_tiles_not_configured_title => 'Žádné dlaždice nejsou nakonfigurovány!';
+  String get message_error_tiles_not_configured_title =>
+      'Žádné dlaždice nejsou nakonfigurovány!';
 
   @override
-  String get message_error_tiles_not_configured_description => 'Nakonfigurujte alespoň jednu dlaždici na obrazovce.';
+  String get message_error_tiles_not_configured_description =>
+      'Nakonfigurujte alespoň jednu dlaždici na obrazovce.';
 
   @override
-  String get message_error_cards_not_configured_title => 'Žádné karty nejsou nakonfigurovány!';
+  String get message_error_cards_not_configured_title =>
+      'Žádné karty nejsou nakonfigurovány!';
 
   @override
-  String get message_error_cards_not_configured_description => 'Nakonfigurujte alespoň jednu kartu na obrazovce.';
+  String get message_error_cards_not_configured_description =>
+      'Nakonfigurujte alespoň jednu kartu na obrazovce.';
 
   @override
   String get message_error_device_not_found_title => 'Zařízení nenalezeno!';
 
   @override
-  String get message_error_device_not_found_description => 'Požadované zařízení nebylo nalezeno v aplikaci.';
+  String get message_error_device_not_found_description =>
+      'Požadované zařízení nebylo nalezeno v aplikaci.';
 
   @override
-  String get message_error_no_device_detail_title => 'Žádné podrobnosti o zařízení!';
+  String get message_error_no_device_detail_title =>
+      'Žádné podrobnosti o zařízení!';
 
   @override
-  String get message_error_no_device_detail_description => 'Pro vybrané zařízení není k dispozici stránka s podrobnostmi.';
+  String get message_error_no_device_detail_description =>
+      'Pro vybrané zařízení není k dispozici stránka s podrobnostmi.';
 
   @override
-  String get message_error_no_device_detail_preparing_title => 'Podrobnosti o zařízení nejsou připraveny!';
+  String get message_error_no_device_detail_preparing_title =>
+      'Podrobnosti o zařízení nejsou připraveny!';
 
   @override
-  String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
+  String get message_error_no_device_detail_preparing_description =>
+      'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
 
   @override
   String get device_status_offline => 'Offline';
@@ -200,7 +210,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_offline_title => 'Zařízení je offline';
 
   @override
-  String get device_offline_description => 'Nelze komunikovat s tímto zařízením. Zkontrolujte, zda je zařízení zapnuté a připojené k síti.';
+  String get device_offline_description =>
+      'Nelze komunikovat s tímto zařízením. Zkontrolujte, zda je zařízení zapnuté a připojené k síti.';
 
   @override
   String get device_offline_retry => 'Zkusit znovu';
@@ -363,31 +374,36 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_page_not_found_title => 'Stránka nenalezena!';
 
   @override
-  String get message_error_page_not_found_description => 'Požadovaná stránka nebyla nalezena v aplikaci.';
+  String get message_error_page_not_found_description =>
+      'Požadovaná stránka nebyla nalezena v aplikaci.';
 
   @override
   String get electrical_energy_consumption_title => 'Spotřeba energie';
 
   @override
-  String get electrical_energy_consumption_description => 'Celková spotřeba energie v průběhu času.';
+  String get electrical_energy_consumption_description =>
+      'Celková spotřeba energie v průběhu času.';
 
   @override
   String get electrical_energy_average_power_title => 'Průměrný výkon';
 
   @override
-  String get electrical_energy_average_power_description => 'Průměrný odběr výkonu za poslední interval hlášení.';
+  String get electrical_energy_average_power_description =>
+      'Průměrný odběr výkonu za poslední interval hlášení.';
 
   @override
   String get electrical_generation_production_title => 'Výroba energie';
 
   @override
-  String get electrical_generation_production_description => 'Celková energie vyrobená zdrojem výroby.';
+  String get electrical_generation_production_description =>
+      'Celková energie vyrobená zdrojem výroby.';
 
   @override
   String get electrical_generation_power_title => 'Výkon výroby';
 
   @override
-  String get electrical_generation_power_description => 'Aktuální výkon ze zdroje výroby.';
+  String get electrical_generation_power_description =>
+      'Aktuální výkon ze zdroje výroby.';
 
   @override
   String get electrical_power_current_title => 'Proud';
@@ -405,31 +421,36 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_power_power_title => 'Výkon';
 
   @override
-  String get electrical_power_power_description => 'Kolik energie se právě spotřebovává.';
+  String get electrical_power_power_description =>
+      'Kolik energie se právě spotřebovává.';
 
   @override
   String get electrical_power_frequency_title => 'Frekvence';
 
   @override
-  String get electrical_power_frequency_description => 'Jak stabilní je elektřina.';
+  String get electrical_power_frequency_description =>
+      'Jak stabilní je elektřina.';
 
   @override
   String get electrical_power_over_current_title => 'Přetížení proudu';
 
   @override
-  String get electrical_power_over_current_description => 'Varování: Příliš velký proud.';
+  String get electrical_power_over_current_description =>
+      'Varování: Příliš velký proud.';
 
   @override
   String get electrical_power_over_voltage_title => 'Přepětí';
 
   @override
-  String get electrical_power_over_voltage_description => 'Varování: Elektřina je příliš silná.';
+  String get electrical_power_over_voltage_description =>
+      'Varování: Elektřina je příliš silná.';
 
   @override
   String get electrical_power_over_power_title => 'Přetížení výkonu';
 
   @override
-  String get electrical_power_over_power_description => 'Varování: Spotřeba energie je příliš vysoká.';
+  String get electrical_power_over_power_description =>
+      'Varování: Spotřeba energie je příliš vysoká.';
 
   @override
   String get light_state_on => 'Zapnuto';
@@ -456,7 +477,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_syncing_description => 'Synchronizace zařízení...';
 
   @override
-  String get light_state_not_synced_description => 'Zařízení nejsou synchronizována';
+  String get light_state_not_synced_description =>
+      'Zařízení nejsou synchronizována';
 
   @override
   String get light_role_main => 'Hlavní';
@@ -528,13 +550,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_state_title => 'Stav termostatu';
 
   @override
-  String get thermostat_state_configured_temperature_description => 'Nastavená teplota.';
+  String get thermostat_state_configured_temperature_description =>
+      'Nastavená teplota.';
 
   @override
-  String get thermostat_state_current_temperature_description => 'Aktuální teplota místnosti.';
+  String get thermostat_state_current_temperature_description =>
+      'Aktuální teplota místnosti.';
 
   @override
-  String get thermostat_state_current_humidity_description => 'Aktuální vlhkost místnosti.';
+  String get thermostat_state_current_humidity_description =>
+      'Aktuální vlhkost místnosti.';
 
   @override
   String get thermostat_child_lock_title => 'Dětský zámek';
@@ -624,7 +649,8 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get thermostat_with_invalid_configuration => 'Zařízení termostatu je nesprávně nakonfigurováno.';
+  String get thermostat_with_invalid_configuration =>
+      'Zařízení termostatu je nesprávně nakonfigurováno.';
 
   @override
   String get on_state_on => 'Zapnuto';
@@ -642,34 +668,41 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_info_app_reboot_title => 'Restartování zařízení!';
 
   @override
-  String get message_info_app_reboot_description => 'Počkejte, než se zařízení restartuje. Tento proces může chvíli trvat.';
+  String get message_info_app_reboot_description =>
+      'Počkejte, než se zařízení restartuje. Tento proces může chvíli trvat.';
 
   @override
   String get message_info_app_power_off_title => 'Vypnutí zařízení!';
 
   @override
-  String get message_info_app_power_off_description => 'Zařízení se vypíná. Pro opětovné zapnutí použijte tlačítko napájení.';
+  String get message_info_app_power_off_description =>
+      'Zařízení se vypíná. Pro opětovné zapnutí použijte tlačítko napájení.';
 
   @override
   String get message_info_factory_reset_title => 'Reset zařízení!';
 
   @override
-  String get message_info_factory_reset_description => 'Všechna nastavení a data budou vymazána. Zařízení bude obnoveno na tovární nastavení.';
+  String get message_info_factory_reset_description =>
+      'Všechna nastavení a data budou vymazána. Zařízení bude obnoveno na tovární nastavení.';
 
   @override
   String get settings_general_settings_title => 'Obecné nastavení';
 
   @override
-  String get settings_general_settings_button_display_settings => 'Nastavení displeje';
+  String get settings_general_settings_button_display_settings =>
+      'Nastavení displeje';
 
   @override
-  String get settings_general_settings_button_language_settings => 'Nastavení jazyka';
+  String get settings_general_settings_button_language_settings =>
+      'Nastavení jazyka';
 
   @override
-  String get settings_general_settings_button_audio_settings => 'Nastavení zvuku';
+  String get settings_general_settings_button_audio_settings =>
+      'Nastavení zvuku';
 
   @override
-  String get settings_general_settings_button_weather_settings => 'Nastavení počasí';
+  String get settings_general_settings_button_weather_settings =>
+      'Nastavení počasí';
 
   @override
   String get settings_general_settings_button_about => 'O aplikaci';
@@ -678,16 +711,20 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Údržba';
 
   @override
-  String get settings_general_settings_button_voice_activation => 'Hlasová aktivace';
+  String get settings_general_settings_button_voice_activation =>
+      'Hlasová aktivace';
 
   @override
-  String get settings_voice_activation_settings_title => 'Nastavení hlasové aktivace';
+  String get settings_voice_activation_settings_title =>
+      'Nastavení hlasové aktivace';
 
   @override
-  String get settings_voice_activation_section_detection => 'Detekce hlasové aktivace';
+  String get settings_voice_activation_section_detection =>
+      'Detekce hlasové aktivace';
 
   @override
-  String get settings_voice_activation_enable_label => 'Povolit hlasovou aktivaci';
+  String get settings_voice_activation_enable_label =>
+      'Povolit hlasovou aktivaci';
 
   @override
   String settings_voice_activation_enable_description(String wakeWord) {
@@ -695,7 +732,8 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get settings_voice_activation_microphone_unavailable => 'Mikrofon není na tomto displeji dostupný nebo je vypnutý.';
+  String get settings_voice_activation_microphone_unavailable =>
+      'Mikrofon není na tomto displeji dostupný nebo je vypnutý.';
 
   @override
   String get settings_voice_activation_section_sensitivity => 'Citlivost';
@@ -704,7 +742,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_voice_activation_sensitivity_label => 'Citlivost detekce';
 
   @override
-  String get settings_voice_activation_sensitivity_description => 'Vyšší citlivost detekuje tišší řeč, ale může reagovat na okolní hluk.';
+  String get settings_voice_activation_sensitivity_description =>
+      'Vyšší citlivost detekuje tišší řeč, ale může reagovat na okolní hluk.';
 
   @override
   String get settings_voice_activation_section_status => 'Stav';
@@ -716,31 +755,38 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_voice_activation_status_stopped => 'Zastaveno';
 
   @override
-  String get settings_voice_activation_status_listening => 'Naslouchání hlasové aktivaci...';
+  String get settings_voice_activation_status_listening =>
+      'Naslouchání hlasové aktivaci...';
 
   @override
   String get settings_voice_activation_status_recording => 'Nahrávání řeči...';
 
   @override
-  String get settings_voice_activation_status_processing => 'Zpracování zvuku...';
+  String get settings_voice_activation_status_processing =>
+      'Zpracování zvuku...';
 
   @override
   String get settings_weather_settings_title => 'Nastavení počasí';
 
   @override
-  String get settings_weather_settings_temperature_unit_title => 'Jednotka teploty';
+  String get settings_weather_settings_temperature_unit_title =>
+      'Jednotka teploty';
 
   @override
-  String get settings_weather_settings_temperature_unit_description => 'Nastavte preferovanou jednotku teploty pro zobrazení počasí.';
+  String get settings_weather_settings_temperature_unit_description =>
+      'Nastavte preferovanou jednotku teploty pro zobrazení počasí.';
 
   @override
-  String get settings_weather_settings_temperature_location_title => 'Poloha počasí';
+  String get settings_weather_settings_temperature_location_title =>
+      'Poloha počasí';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Vyberte zdroj meteorologických dat.';
+  String get settings_weather_settings_temperature_location_description =>
+      'Vyberte zdroj meteorologických dat.';
 
   @override
-  String get settings_weather_settings_temperature_location_single => 'K dispozici je pouze jedna poloha.';
+  String get settings_weather_settings_temperature_location_single =>
+      'K dispozici je pouze jedna poloha.';
 
   @override
   String get settings_maintenance_title => 'Údržba';
@@ -749,37 +795,44 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_restart_title => 'Restart';
 
   @override
-  String get settings_maintenance_restart_description => 'Restartujte zařízení pro použití změn.';
+  String get settings_maintenance_restart_description =>
+      'Restartujte zařízení pro použití změn.';
 
   @override
   String get settings_maintenance_restart_confirm_title => 'Restart zařízení';
 
   @override
-  String get settings_maintenance_restart_confirm_description => 'Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.';
+  String get settings_maintenance_restart_confirm_description =>
+      'Opravdu chcete restartovat zařízení? Tato akce dočasně přeruší funkčnost.';
 
   @override
   String get settings_maintenance_power_off_title => 'Vypnutí';
 
   @override
-  String get settings_maintenance_power_off_description => 'Úplně vypněte zařízení.';
+  String get settings_maintenance_power_off_description =>
+      'Úplně vypněte zařízení.';
 
   @override
   String get settings_maintenance_power_off_confirm_title => 'Vypnout zařízení';
 
   @override
-  String get settings_maintenance_power_off_confirm_description => 'Opravdu chcete zařízení vypnout? Bude nutné ho ručně znovu zapnout.';
+  String get settings_maintenance_power_off_confirm_description =>
+      'Opravdu chcete zařízení vypnout? Bude nutné ho ručně znovu zapnout.';
 
   @override
   String get settings_maintenance_factory_reset_title => 'Tovární nastavení';
 
   @override
-  String get settings_maintenance_factory_reset_description => 'Obnovte zařízení do původního továrního nastavení.';
+  String get settings_maintenance_factory_reset_description =>
+      'Obnovte zařízení do původního továrního nastavení.';
 
   @override
-  String get settings_maintenance_factory_reset_confirm_title => 'Obnovení továrního nastavení';
+  String get settings_maintenance_factory_reset_confirm_title =>
+      'Obnovení továrního nastavení';
 
   @override
-  String get settings_maintenance_factory_reset_confirm_description => 'Opravdu chcete vymazat všechna data a obnovit tovární nastavení zařízení? Tato akce je nevratná.';
+  String get settings_maintenance_factory_reset_confirm_description =>
+      'Opravdu chcete vymazat všechna data a obnovit tovární nastavení zařízení? Tato akce je nevratná.';
 
   @override
   String get settings_maintenance_system_heading => 'Systém';
@@ -788,31 +841,40 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_danger_heading => 'Nebezpečná zóna';
 
   @override
-  String get settings_maintenance_restart_display_description => 'Restartujte tento displej pro aplikaci změn.';
+  String get settings_maintenance_restart_display_description =>
+      'Restartujte tento displej pro aplikaci změn.';
 
   @override
-  String get settings_maintenance_restart_display_confirm_title => 'Restartovat displej';
+  String get settings_maintenance_restart_display_confirm_title =>
+      'Restartovat displej';
 
   @override
-  String get settings_maintenance_restart_display_confirm_description => 'Opravdu chcete restartovat tento displej? Brána a ostatní displeje nebudou ovlivněny.';
+  String get settings_maintenance_restart_display_confirm_description =>
+      'Opravdu chcete restartovat tento displej? Brána a ostatní displeje nebudou ovlivněny.';
 
   @override
-  String get settings_maintenance_power_off_display_description => 'Vypněte tento displej úplně.';
+  String get settings_maintenance_power_off_display_description =>
+      'Vypněte tento displej úplně.';
 
   @override
-  String get settings_maintenance_power_off_display_confirm_title => 'Vypnout displej';
+  String get settings_maintenance_power_off_display_confirm_title =>
+      'Vypnout displej';
 
   @override
-  String get settings_maintenance_power_off_display_confirm_description => 'Opravdu chcete vypnout tento displej? Bude nutné ho znovu ručně zapnout. Brána nebude ovlivněna.';
+  String get settings_maintenance_power_off_display_confirm_description =>
+      'Opravdu chcete vypnout tento displej? Bude nutné ho znovu ručně zapnout. Brána nebude ovlivněna.';
 
   @override
-  String get settings_maintenance_factory_reset_display_description => 'Odeberte tento displej z brány a obnovte tovární nastavení.';
+  String get settings_maintenance_factory_reset_display_description =>
+      'Odeberte tento displej z brány a obnovte tovární nastavení.';
 
   @override
-  String get settings_maintenance_factory_reset_display_confirm_title => 'Tovární nastavení displeje';
+  String get settings_maintenance_factory_reset_display_confirm_title =>
+      'Tovární nastavení displeje';
 
   @override
-  String get settings_maintenance_factory_reset_display_confirm_description => 'Opravdu chcete obnovit tovární nastavení tohoto displeje? Bude odebrán z brány a všechna lokální data budou vymazána. Tato akce je nevratná.';
+  String get settings_maintenance_factory_reset_display_confirm_description =>
+      'Opravdu chcete obnovit tovární nastavení tohoto displeje? Bude odebrán z brány a všechna lokální data budou vymazána. Tato akce je nevratná.';
 
   @override
   String get settings_language_settings_title => 'Nastavení jazyka';
@@ -821,25 +883,29 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_language_settings_language_title => 'Jazyk';
 
   @override
-  String get settings_language_settings_language_description => 'Vyberte svůj preferovaný jazyk.';
+  String get settings_language_settings_language_description =>
+      'Vyberte svůj preferovaný jazyk.';
 
   @override
   String get settings_language_settings_timezone_title => 'Časové pásmo';
 
   @override
-  String get settings_language_settings_timezone_description => 'Místní časové pásmo.';
+  String get settings_language_settings_timezone_description =>
+      'Místní časové pásmo.';
 
   @override
   String get settings_language_settings_time_format_title => 'Formát času';
 
   @override
-  String get settings_language_settings_time_format_description => '12hodinový nebo 24hodinový formát.';
+  String get settings_language_settings_time_format_description =>
+      '12hodinový nebo 24hodinový formát.';
 
   @override
   String get settings_language_settings_number_format_title => 'Formát čísel';
 
   @override
-  String get settings_language_settings_number_format_description => 'Jak se zobrazují čísla (oddělovače tisíců a desetinných míst).';
+  String get settings_language_settings_number_format_description =>
+      'Jak se zobrazují čísla (oddělovače tisíců a desetinných míst).';
 
   @override
   String get number_format_comma_dot => '1,234.56';
@@ -860,64 +926,81 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_display_settings_theme_mode_title => 'Režim motivu';
 
   @override
-  String get settings_display_settings_theme_mode_description => 'Přepnout mezi světlým a tmavým motivem.';
+  String get settings_display_settings_theme_mode_description =>
+      'Přepnout mezi světlým a tmavým motivem.';
 
   @override
   String get settings_display_settings_brightness_title => 'Jas';
 
   @override
-  String get settings_display_settings_brightness_description => 'Nastavení úrovně jasu obrazovky.';
+  String get settings_display_settings_brightness_description =>
+      'Nastavení úrovně jasu obrazovky.';
 
   @override
-  String get settings_display_settings_screen_lock_title => 'Zamknutí obrazovky';
+  String get settings_display_settings_screen_lock_title =>
+      'Zamknutí obrazovky';
 
   @override
-  String get settings_display_settings_screen_lock_description => 'Automatické zamknutí při nečinnosti.';
+  String get settings_display_settings_screen_lock_description =>
+      'Automatické zamknutí při nečinnosti.';
 
   @override
   String get settings_display_settings_screen_saver_title => 'Spořič obrazovky';
 
   @override
-  String get settings_display_settings_screen_saver_description => 'Zobrazit spořič při nečinnosti.';
+  String get settings_display_settings_screen_saver_description =>
+      'Zobrazit spořič při nečinnosti.';
 
   @override
-  String get settings_display_settings_screen_power_off_title => 'Screen Power Off';
+  String get settings_display_settings_screen_power_off_title =>
+      'Screen Power Off';
 
   @override
-  String get settings_display_settings_screen_power_off_description => 'Turn off the display when screen is locked.';
+  String get settings_display_settings_screen_power_off_description =>
+      'Turn off the display when screen is locked.';
 
   @override
-  String get settings_display_settings_unit_overrides_section => 'Přepsání jednotek';
+  String get settings_display_settings_unit_overrides_section =>
+      'Přepsání jednotek';
 
   @override
-  String get settings_display_settings_temperature_unit_title => 'Jednotka teploty';
+  String get settings_display_settings_temperature_unit_title =>
+      'Jednotka teploty';
 
   @override
-  String get settings_display_settings_temperature_unit_description => 'Přepsat systémovou jednotku teploty pro tento displej.';
+  String get settings_display_settings_temperature_unit_description =>
+      'Přepsat systémovou jednotku teploty pro tento displej.';
 
   @override
-  String get settings_display_settings_wind_speed_unit_title => 'Jednotka rychlosti větru';
+  String get settings_display_settings_wind_speed_unit_title =>
+      'Jednotka rychlosti větru';
 
   @override
-  String get settings_display_settings_wind_speed_unit_description => 'Přepsat systémovou jednotku rychlosti větru pro tento displej.';
+  String get settings_display_settings_wind_speed_unit_description =>
+      'Přepsat systémovou jednotku rychlosti větru pro tento displej.';
 
   @override
   String get settings_display_settings_pressure_unit_title => 'Jednotka tlaku';
 
   @override
-  String get settings_display_settings_pressure_unit_description => 'Přepsat systémovou jednotku tlaku pro tento displej.';
+  String get settings_display_settings_pressure_unit_description =>
+      'Přepsat systémovou jednotku tlaku pro tento displej.';
 
   @override
-  String get settings_display_settings_precipitation_unit_title => 'Jednotka srážek';
+  String get settings_display_settings_precipitation_unit_title =>
+      'Jednotka srážek';
 
   @override
-  String get settings_display_settings_precipitation_unit_description => 'Přepsat systémovou jednotku srážek pro tento displej.';
+  String get settings_display_settings_precipitation_unit_description =>
+      'Přepsat systémovou jednotku srážek pro tento displej.';
 
   @override
-  String get settings_display_settings_distance_unit_title => 'Jednotka vzdálenosti';
+  String get settings_display_settings_distance_unit_title =>
+      'Jednotka vzdálenosti';
 
   @override
-  String get settings_display_settings_distance_unit_description => 'Přepsat systémovou jednotku vzdálenosti pro tento displej.';
+  String get settings_display_settings_distance_unit_description =>
+      'Přepsat systémovou jednotku vzdálenosti pro tento displej.';
 
   @override
   String get settings_audio_settings_title => 'Nastavení zvuku';
@@ -926,28 +1009,35 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_audio_settings_speaker_title => 'Reproduktor';
 
   @override
-  String get settings_audio_settings_speaker_description => 'Povolit nebo zakázat reproduktor.';
+  String get settings_audio_settings_speaker_description =>
+      'Povolit nebo zakázat reproduktor.';
 
   @override
-  String get settings_audio_settings_speaker_volume_title => 'Hlasitost reproduktoru';
+  String get settings_audio_settings_speaker_volume_title =>
+      'Hlasitost reproduktoru';
 
   @override
-  String get settings_audio_settings_speaker_volume_description => 'Nastavení hlasitosti výstupu.';
+  String get settings_audio_settings_speaker_volume_description =>
+      'Nastavení hlasitosti výstupu.';
 
   @override
   String get settings_audio_settings_microphone_title => 'Mikrofon';
 
   @override
-  String get settings_audio_settings_microphone_description => 'Povolit nebo zakázat mikrofon.';
+  String get settings_audio_settings_microphone_description =>
+      'Povolit nebo zakázat mikrofon.';
 
   @override
-  String get settings_audio_settings_microphone_volume_title => 'Hlasitost mikrofonu';
+  String get settings_audio_settings_microphone_volume_title =>
+      'Hlasitost mikrofonu';
 
   @override
-  String get settings_audio_settings_microphone_volume_description => 'Nastavení citlivosti vstupu.';
+  String get settings_audio_settings_microphone_volume_description =>
+      'Nastavení citlivosti vstupu.';
 
   @override
-  String get settings_audio_settings_no_support => 'Tento displej nepodporuje zvukový vstup ani výstup.';
+  String get settings_audio_settings_no_support =>
+      'Tento displej nepodporuje zvukový vstup ani výstup.';
 
   @override
   String get settings_about_title => 'O aplikaci';
@@ -956,7 +1046,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_about_about_heading => 'O aplikaci';
 
   @override
-  String get settings_about_about_info => 'FastyBird Smart Panel je aplikace pro chytrou domácnost, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí lepší ovládání a monitorování.';
+  String get settings_about_about_info =>
+      'FastyBird Smart Panel je aplikace pro chytrou domácnost, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí lepší ovládání a monitorování.';
 
   @override
   String get settings_about_developed_by_heading => 'Vyvinuto';
@@ -965,7 +1056,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_about_license_heading => 'Licence';
 
   @override
-  String get settings_about_device_information_heading => 'Informace o zařízení';
+  String get settings_about_device_information_heading =>
+      'Informace o zařízení';
 
   @override
   String get settings_about_show_license_button => 'Zobrazit licenci';
@@ -1016,13 +1108,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_detail_hourly_forecast => 'Hodinová předpověď';
 
   @override
-  String get weather_condition_thunderstorm_with_light_rain => 'Bouřka s lehkým deštěm';
+  String get weather_condition_thunderstorm_with_light_rain =>
+      'Bouřka s lehkým deštěm';
 
   @override
   String get weather_condition_thunderstorm_with_rain => 'Bouřka s deštěm';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_rain => 'Bouřka s prudkým deštěm';
+  String get weather_condition_thunderstorm_with_heavy_rain =>
+      'Bouřka s prudkým deštěm';
 
   @override
   String get weather_condition_light_thunderstorm => 'Lehká bouřka';
@@ -1037,13 +1131,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_condition_ragged_thunderstorm => 'Nepravidelná bouřka';
 
   @override
-  String get weather_condition_thunderstorm_with_light_drizzle => 'Bouřka s lehkým mrholením';
+  String get weather_condition_thunderstorm_with_light_drizzle =>
+      'Bouřka s lehkým mrholením';
 
   @override
-  String get weather_condition_thunderstorm_with_drizzle => 'Bouřka s mrholením';
+  String get weather_condition_thunderstorm_with_drizzle =>
+      'Bouřka s mrholením';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_drizzle => 'Bouřka s hustým mrholením';
+  String get weather_condition_thunderstorm_with_heavy_drizzle =>
+      'Bouřka s hustým mrholením';
 
   @override
   String get weather_condition_light_intensity_drizzle => 'Lehké mrholení';
@@ -1055,19 +1152,23 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_condition_heavy_intensity_drizzle => 'Husté mrholení';
 
   @override
-  String get weather_condition_light_intensity_drizzle_rain => 'Lehké mrholení přecházející v déšť';
+  String get weather_condition_light_intensity_drizzle_rain =>
+      'Lehké mrholení přecházející v déšť';
 
   @override
   String get weather_condition_drizzle_rain => 'Mrholení s deštěm';
 
   @override
-  String get weather_condition_heavy_intensity_drizzle_rain => 'Husté mrholení přecházející v déšť';
+  String get weather_condition_heavy_intensity_drizzle_rain =>
+      'Husté mrholení přecházející v déšť';
 
   @override
-  String get weather_condition_shower_rain_and_drizzle => 'Přeháňky s mrholením';
+  String get weather_condition_shower_rain_and_drizzle =>
+      'Přeháňky s mrholením';
 
   @override
-  String get weather_condition_heavy_shower_rain_and_drizzle => 'Silné přeháňky s mrholením';
+  String get weather_condition_heavy_shower_rain_and_drizzle =>
+      'Silné přeháňky s mrholením';
 
   @override
   String get weather_condition_shower_drizzle => 'Přeháňkové mrholení';
@@ -1091,16 +1192,19 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_condition_freezing_rain => 'Mrznoucí déšť';
 
   @override
-  String get weather_condition_light_intensity_shower_rain => 'Lehké dešťové přeháňky';
+  String get weather_condition_light_intensity_shower_rain =>
+      'Lehké dešťové přeháňky';
 
   @override
   String get weather_condition_shower_rain => 'Dešťové přeháňky';
 
   @override
-  String get weather_condition_heavy_intensity_shower_rain => 'Silné dešťové přeháňky';
+  String get weather_condition_heavy_intensity_shower_rain =>
+      'Silné dešťové přeháňky';
 
   @override
-  String get weather_condition_ragged_shower_rain => 'Nepravidelné dešťové přeháňky';
+  String get weather_condition_ragged_shower_rain =>
+      'Nepravidelné dešťové přeháňky';
 
   @override
   String get weather_condition_light_snow => 'Lehký sníh';
@@ -1115,7 +1219,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_condition_sleet => 'Sněhová krupice';
 
   @override
-  String get weather_condition_light_shower_sleet => 'Lehké přeháňky se sněhovou krupicí';
+  String get weather_condition_light_shower_sleet =>
+      'Lehké přeháňky se sněhovou krupicí';
 
   @override
   String get weather_condition_shower_sleet => 'Přeháňky se sněhovou krupicí';
@@ -1184,7 +1289,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_searching_title => 'Hledání bran';
 
   @override
-  String get discovery_searching_description => 'Hledám brány FastyBird Smart Panel ve vaší síti...';
+  String get discovery_searching_description =>
+      'Hledám brány FastyBird Smart Panel ve vaší síti...';
 
   @override
   String discovery_found_count(int count) {
@@ -1203,13 +1309,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_not_found_title => 'Brána nenalezena';
 
   @override
-  String get discovery_not_found_description => 'Nepodařilo se najít žádnou bránu FastyBird Smart Panel ve vaší síti.\n\nUjistěte se, že brána běží a je připojena ke stejné síti jako toto zařízení.';
+  String get discovery_not_found_description =>
+      'Nepodařilo se najít žádnou bránu FastyBird Smart Panel ve vaší síti.\n\nUjistěte se, že brána běží a je připojena ke stejné síti jako toto zařízení.';
 
   @override
   String get discovery_error_title => 'Chyba vyhledávání';
 
   @override
-  String get discovery_error_description => 'Při hledání bran došlo k chybě.\n\nZkontrolujte připojení k síti a zkuste to znovu.';
+  String get discovery_error_description =>
+      'Při hledání bran došlo k chybě.\n\nZkontrolujte připojení k síti a zkuste to znovu.';
 
   @override
   String discovery_error_failed(String error) {
@@ -1237,13 +1345,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_manual_entry_label => 'Adresa brány';
 
   @override
-  String get discovery_manual_entry_help => 'Zadejte IP adresu nebo hostname s volitelným portem.\nPříklady: 192.168.1.100:3000, gateway.local, 10.0.0.5';
+  String get discovery_manual_entry_help =>
+      'Zadejte IP adresu nebo hostname s volitelným portem.\nPříklady: 192.168.1.100:3000, gateway.local, 10.0.0.5';
 
   @override
   String get discovery_validation_empty => 'Prosím zadejte adresu brány';
 
   @override
-  String get discovery_validation_invalid => 'Neplatná adresa. Zadejte platnou IP adresu nebo hostname.';
+  String get discovery_validation_invalid =>
+      'Neplatná adresa. Zadejte platnou IP adresu nebo hostname.';
 
   @override
   String get discovery_button_back => 'Zpět';
@@ -1281,13 +1391,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get room_selection_saving => 'Přiřazování místnosti...';
 
   @override
-  String get room_selection_error => 'Přiřazení místnosti se nezdařilo. Zkuste to znovu.';
+  String get room_selection_error =>
+      'Přiřazení místnosti se nezdařilo. Zkuste to znovu.';
 
   @override
   String get room_selection_empty_title => 'Žádné místnosti';
 
   @override
-  String get room_selection_empty_description => 'Zatím nebyly vytvořeny žádné místnosti. Otevřete administraci a přidejte alespoň jednu místnost.';
+  String get room_selection_empty_description =>
+      'Zatím nebyly vytvořeny žádné místnosti. Otevřete administraci a přidejte alespoň jednu místnost.';
 
   @override
   String get action_success => 'Akce byla úspěšně dokončena';
@@ -1311,7 +1423,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_devices_title => 'Zařízení';
 
   @override
-  String get space_devices_placeholder => 'Zařízení v této místnosti se zobrazí zde';
+  String get space_devices_placeholder =>
+      'Zařízení v této místnosti se zobrazí zde';
 
   @override
   String get space_climate_controls_title => 'Klimatizace';
@@ -1361,16 +1474,20 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_sensors_only_title => 'Pouze senzory';
 
   @override
-  String get space_sensors_only_description => 'Tato místnost má pouze senzory — žádná ovladatelná zařízení';
+  String get space_sensors_only_description =>
+      'Tato místnost má pouze senzory — žádná ovladatelná zařízení';
 
   @override
-  String get house_overview_no_spaces_title => 'Žádné místnosti nejsou nakonfigurovány';
+  String get house_overview_no_spaces_title =>
+      'Žádné místnosti nejsou nakonfigurovány';
 
   @override
-  String get house_overview_no_spaces_description => 'Vytvořte místnosti přes administraci, aby se zde zobrazily';
+  String get house_overview_no_spaces_description =>
+      'Vytvořte místnosti přes administraci, aby se zde zobrazily';
 
   @override
-  String get house_overview_no_space_page => 'Pro tuto místnost není nakonfigurována stránka';
+  String get house_overview_no_space_page =>
+      'Pro tuto místnost není nakonfigurována stránka';
 
   @override
   String get house_overview_tap_to_view => 'Klepnutím zobrazíte';
@@ -1403,7 +1520,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get house_modes_confirm_title => 'Potvrdit změnu režimu';
 
   @override
-  String get house_modes_confirm_away_description => 'Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.';
+  String get house_modes_confirm_away_description =>
+      'Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.';
 
   @override
   String get space_scenes_title => 'Rychlé scény';
@@ -1528,7 +1646,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_lost_title => 'Spojení ztraceno';
 
   @override
-  String get connection_lost_message => 'Nelze se připojit k bráně. Zkontrolujte síťové připojení a zkuste to znovu.';
+  String get connection_lost_message =>
+      'Nelze se připojit k bráně. Zkontrolujte síťové připojení a zkuste to znovu.';
 
   @override
   String get connection_lost_button_reconnect => 'Znovu připojit';
@@ -1567,7 +1686,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_lights_empty_title => 'Osvětlení nenastaveno';
 
   @override
-  String get domain_lights_empty_description => 'Role osvětlení nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
+  String get domain_lights_empty_description =>
+      'Role osvětlení nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
 
   @override
   String domain_lights_count_on(int count) {
@@ -1609,7 +1729,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_climate_empty_title => 'Klima nenastaveno';
 
   @override
-  String get domain_climate_empty_description => 'V této místnosti nejsou nastaveny žádné termostaty ani klimatizace. Přidejte klimatická zařízení v administraci.';
+  String get domain_climate_empty_description =>
+      'V této místnosti nejsou nastaveny žádné termostaty ani klimatizace. Přidejte klimatická zařízení v administraci.';
 
   @override
   String get domain_media => 'Média';
@@ -1696,16 +1817,19 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_no_endpoints_title => 'Žádná mediální zařízení';
 
   @override
-  String get media_no_endpoints_description => 'Tato místnost nemá žádná mediální zařízení. Přidejte TV, reproduktor nebo streamer.';
+  String get media_no_endpoints_description =>
+      'Tato místnost nemá žádná mediální zařízení. Přidejte TV, reproduktor nebo streamer.';
 
   @override
-  String get media_no_bindings_description => 'Mediální aktivity se konfigurují. Potáhněte pro obnovení.';
+  String get media_no_bindings_description =>
+      'Mediální aktivity se konfigurují. Potáhněte pro obnovení.';
 
   @override
   String get media_ws_offline_title => 'Spojení ztraceno';
 
   @override
-  String get media_ws_offline_description => 'Mediální ovládání vyžaduje aktivní připojení. Připojování...';
+  String get media_ws_offline_description =>
+      'Mediální ovládání vyžaduje aktivní připojení. Připojování...';
 
   @override
   String get domain_sensors => 'Senzory';
@@ -1747,7 +1871,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get energy_empty_title => 'Žádná data o energii';
 
   @override
-  String get energy_empty_description => 'V tomto prostoru nejsou žádná zařízení pro monitoring energie';
+  String get energy_empty_description =>
+      'V tomto prostoru nejsou žádná zařízení pro monitoring energie';
 
   @override
   String get energy_load_failed => 'Nepodařilo se načíst data o energii';
@@ -1842,7 +1967,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get entry_security => 'Zabezpečení';
 
   @override
-  String get entry_no_security_devices => 'Žádná bezpečnostní zařízení nejsou nakonfigurována';
+  String get entry_no_security_devices =>
+      'Žádná bezpečnostní zařízení nejsou nakonfigurována';
 
   @override
   String get entry_locks => 'Zámky';
@@ -2262,7 +2388,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_shading_empty_title => 'Stínění nenastaveno';
 
   @override
-  String get domain_shading_empty_description => 'Role stínění nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
+  String get domain_shading_empty_description =>
+      'Role stínění nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
 
   @override
   String get shading_modes_title => 'Režimy';
@@ -2445,10 +2572,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_overlay_title_reconnecting => 'Připojování';
 
   @override
-  String get connection_overlay_message_reconnecting => 'Pokus o opětovné připojení...';
+  String get connection_overlay_message_reconnecting =>
+      'Pokus o opětovné připojení...';
 
   @override
-  String get connection_overlay_message_still_trying => 'Stále se pokoušíme připojit...';
+  String get connection_overlay_message_still_trying =>
+      'Stále se pokoušíme připojit...';
 
   @override
   String get connection_overlay_retry => 'Zkusit znovu';
@@ -2463,7 +2592,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_auth_error_title => 'Relace vypršela';
 
   @override
-  String get connection_auth_error_message => 'Vaše relace vypršela nebo byla zrušena. Resetujte prosím zařízení pro opětovné připojení.';
+  String get connection_auth_error_message =>
+      'Vaše relace vypršela nebo byla zrušena. Resetujte prosím zařízení pro opětovné připojení.';
 
   @override
   String get connection_auth_error_button_reset => 'Resetovat zařízení';
@@ -2472,7 +2602,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_network_error_title => 'Síť nedostupná';
 
   @override
-  String get connection_network_error_message => 'Nelze se připojit k serveru. Zkontrolujte prosím síťové připojení.';
+  String get connection_network_error_message =>
+      'Nelze se připojit k serveru. Zkontrolujte prosím síťové připojení.';
 
   @override
   String get connection_network_error_button_retry => 'Zkusit znovu';
@@ -2481,7 +2612,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_server_error_title => 'Server nedostupný';
 
   @override
-  String get connection_server_error_message => 'Server je dočasně nedostupný. Zkuste to prosím později.';
+  String get connection_server_error_message =>
+      'Server je dočasně nedostupný. Zkuste to prosím později.';
 
   @override
   String get connection_server_error_button_retry => 'Zkusit znovu';
@@ -2919,7 +3051,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_not_configured_title => 'Média nenastavena';
 
   @override
-  String get media_not_configured_description => 'Mediální aktivity nebyly pro tuto místnost nastaveny. Nakonfigurujte vazby aktivit v administraci.';
+  String get media_not_configured_description =>
+      'Mediální aktivity nebyly pro tuto místnost nastaveny. Nakonfigurujte vazby aktivit v administraci.';
 
   @override
   String media_starting_activity(String activityName) {
@@ -2932,7 +3065,8 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get media_activity_failed_description => 'Aktivitu se nepodařilo aplikovat. Zkontrolujte připojení zařízení.';
+  String get media_activity_failed_description =>
+      'Aktivitu se nepodařilo aplikovat. Zkontrolujte připojení zařízení.';
 
   @override
   String get media_activity_retry => 'Opakovat';
@@ -2941,10 +3075,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_activity_turn_off => 'Vypnout';
 
   @override
-  String get media_warning_audio_offline => 'Audio výstup offline – používají se reproduktory displeje';
+  String get media_warning_audio_offline =>
+      'Audio výstup offline – používají se reproduktory displeje';
 
   @override
-  String get media_warning_some_devices_offline => 'Některá zařízení jsou offline';
+  String get media_warning_some_devices_offline =>
+      'Některá zařízení jsou offline';
 
   @override
   String media_warning_steps_failed(int count) {
@@ -3113,7 +3249,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_detail_connection_lost => 'Spojení ztraceno';
 
   @override
-  String get media_detail_connection_lost_description => 'Ovládání médií vyžaduje aktivní WebSocket připojení.';
+  String get media_detail_connection_lost_description =>
+      'Ovládání médií vyžaduje aktivní WebSocket připojení.';
 
   @override
   String get media_detail_go_back => 'Zpět';
@@ -3140,7 +3277,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_detail_now_playing => 'Právě hraje';
 
   @override
-  String get media_detail_no_track_info => 'Informace o skladbě nejsou k dispozici';
+  String get media_detail_no_track_info =>
+      'Informace o skladbě nejsou k dispozici';
 
   @override
   String get media_detail_home => 'Domů';
@@ -3398,7 +3536,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensors_domain_empty_title => 'Senzory nenastaveny';
 
   @override
-  String get sensors_domain_empty_description => 'Role senzorů nebyly pro tuto místnost nastaveny. Nakonfigurujte přiřazení senzorů v administraci.';
+  String get sensors_domain_empty_description =>
+      'Role senzorů nebyly pro tuto místnost nastaveny. Nakonfigurujte přiřazení senzorů v administraci.';
 
   @override
   String sensors_domain_alerts_active(int count) {
@@ -3651,10 +3790,12 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get room_overview_no_room => 'K tomuto displeji není přiřazena žádná místnost';
+  String get room_overview_no_room =>
+      'K tomuto displeji není přiřazena žádná místnost';
 
   @override
-  String get room_overview_display_not_configured => 'Displej není nakonfigurován';
+  String get room_overview_display_not_configured =>
+      'Displej není nakonfigurován';
 
   @override
   String get room_overview_load_failed => 'Nepodařilo se načíst data místnosti';
@@ -3734,7 +3875,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get app_error_failed_to_start_short => 'Spuštění selhalo';
 
   @override
-  String get app_error_unexpected => 'Při spouštění aplikace došlo k neočekávané chybě.';
+  String get app_error_unexpected =>
+      'Při spouštění aplikace došlo k neočekávané chybě.';
 
   @override
   String get app_error_see_details => 'Došlo k chybě. Podrobnosti níže.';
@@ -3743,10 +3885,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get app_error_restart_button => 'Restartovat aplikaci';
 
   @override
-  String get app_error_permit_join_hint => 'Požádejte administrátora o aktivaci \"Permit Join\" v administraci a poté restartujte aplikaci.';
+  String get app_error_permit_join_hint =>
+      'Požádejte administrátora o aktivaci \"Permit Join\" v administraci a poté restartujte aplikaci.';
 
   @override
-  String get app_error_connection_failed_stored => 'Nepodařilo se připojit k uloženému serveru.';
+  String get app_error_connection_failed_stored =>
+      'Nepodařilo se připojit k uloženému serveru.';
 
   @override
   String app_error_connection_failed_backend(String name, String address) {
@@ -3754,7 +3898,8 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get app_error_initialization_failed => 'Inicializace připojení k serveru selhala.';
+  String get app_error_initialization_failed =>
+      'Inicializace připojení k serveru selhala.';
 
   @override
   String app_error_connection_failed_url(String url) {
@@ -3765,7 +3910,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get deck_empty_title => 'Žádné stránky nejsou nakonfigurovány';
 
   @override
-  String get deck_empty_description => 'Nakonfigurujte si dashboard v administraci.';
+  String get deck_empty_description =>
+      'Nakonfigurujte si dashboard v administraci.';
 
   @override
   String get alert_banner_view_button => 'Zobrazit';
@@ -3780,7 +3926,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_tile_not_configured => 'Není nakonfigurováno';
 
   @override
-  String get entry_error_load_security_data => 'Nepodařilo se načíst bezpečnostní data';
+  String get entry_error_load_security_data =>
+      'Nepodařilo se načíst bezpečnostní data';
 
   @override
   String get entry_locks_all_locked => 'Vše zamčeno';
@@ -3819,16 +3966,19 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_got_it => 'Rozumím';
 
   @override
-  String get buddy_empty_state_message => 'Zeptejte se mě na cokoli o vašem domě!';
+  String get buddy_empty_state_message =>
+      'Zeptejte se mě na cokoli o vašem domě!';
 
   @override
   String get buddy_init_failed_message => 'Nepodařilo se zahájit konverzaci';
 
   @override
-  String get buddy_provider_not_configured_title => 'AI poskytovatel není nakonfigurován';
+  String get buddy_provider_not_configured_title =>
+      'AI poskytovatel není nakonfigurován';
 
   @override
-  String get buddy_provider_not_configured_description => 'Nakonfigurujte AI poskytovatele v administraci pro aktivaci chatu.';
+  String get buddy_provider_not_configured_description =>
+      'Nakonfigurujte AI poskytovatele v administraci pro aktivaci chatu.';
 
   @override
   String get buddy_thinking => 'Přemýšlím...';
@@ -3843,10 +3993,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_hint_default => 'Zeptejte se na svůj domov...';
 
   @override
-  String get buddy_error_load_conversations => 'Nepodařilo se načíst konverzace';
+  String get buddy_error_load_conversations =>
+      'Nepodařilo se načíst konverzace';
 
   @override
-  String get buddy_error_create_conversation => 'Nepodařilo se vytvořit konverzaci';
+  String get buddy_error_create_conversation =>
+      'Nepodařilo se vytvořit konverzaci';
 
   @override
   String get buddy_error_load_messages => 'Nepodařilo se načíst zprávy';
@@ -3855,13 +4007,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_error_send_message => 'Nepodařilo se odeslat zprávu';
 
   @override
-  String get buddy_error_provider_not_configured => 'AI poskytovatel není nakonfigurován';
+  String get buddy_error_provider_not_configured =>
+      'AI poskytovatel není nakonfigurován';
 
   @override
-  String get buddy_error_request_timeout => 'Požadavek vypršel. Zkuste to prosím znovu.';
+  String get buddy_error_request_timeout =>
+      'Požadavek vypršel. Zkuste to prosím znovu.';
 
   @override
-  String get buddy_error_connection_error => 'Chyba připojení. Zkontrolujte prosím síť.';
+  String get buddy_error_connection_error =>
+      'Chyba připojení. Zkontrolujte prosím síť.';
 
   @override
   String get buddy_error_generic => 'Něco se pokazilo. Zkuste to prosím znovu.';
@@ -3878,10 +4033,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get buddy_recording_cancel => 'Zrušit';
 
   @override
-  String get buddy_recording_too_short => 'Nahrávka je příliš krátká. Podržte déle.';
+  String get buddy_recording_too_short =>
+      'Nahrávka je příliš krátká. Podržte déle.';
 
   @override
-  String get buddy_recording_permission_error => 'Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.';
+  String get buddy_recording_permission_error =>
+      'Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.';
 
   @override
   String get buddy_voice_listening => 'Naslouchám...';
@@ -3923,22 +4080,27 @@ class AppLocalizationsCs extends AppLocalizations {
   String get intent_error_scenes_not_available => 'Služba scén není dostupná';
 
   @override
-  String get intent_error_scene_activation_failed => 'Nepodařilo se aktivovat scénu';
+  String get intent_error_scene_activation_failed =>
+      'Nepodařilo se aktivovat scénu';
 
   @override
   String get intent_error_scene_activation_error => 'Chyba při aktivaci scény';
 
   @override
-  String get intent_error_device_repo_not_available => 'Repozitář vlastností zařízení není dostupný';
+  String get intent_error_device_repo_not_available =>
+      'Repozitář vlastností zařízení není dostupný';
 
   @override
-  String get intent_error_set_property_failed => 'Nepodařilo se nastavit hodnotu vlastnosti';
+  String get intent_error_set_property_failed =>
+      'Nepodařilo se nastavit hodnotu vlastnosti';
 
   @override
-  String get intent_error_set_property_error => 'Chyba při nastavení hodnoty vlastnosti';
+  String get intent_error_set_property_error =>
+      'Chyba při nastavení hodnoty vlastnosti';
 
   @override
-  String get intent_error_toggle_device_failed => 'Nepodařilo se přepnout zařízení';
+  String get intent_error_toggle_device_failed =>
+      'Nepodařilo se přepnout zařízení';
 
   @override
   String get intent_error_toggle_device_error => 'Chyba při přepínání zařízení';

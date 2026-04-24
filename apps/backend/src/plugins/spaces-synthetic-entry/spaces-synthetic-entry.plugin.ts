@@ -12,15 +12,12 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
-import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { CreateEntrySpaceDto } from './dto/create-entry-space.dto';
 import { SpacesSyntheticEntryUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateEntrySpaceDto } from './dto/update-entry-space.dto';
 import { EntrySpaceEntity } from './entities/entry-space.entity';
 import { SpacesSyntheticEntryConfigModel } from './models/config.model';
-import { EntrySpaceResetService } from './services/entry-space-reset.service';
-import { EntrySpaceSeederService } from './services/entry-space-seeder.service';
 import {
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_API_TAG_DESCRIPTION,
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_API_TAG_NAME,
@@ -33,10 +30,9 @@ import { SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-syn
  * Spaces Synthetic Entry plugin.
  *
  * Contributes the singleton `entry` space type — a security / front-door
- * surface with no physical-room semantics. One entry space is seeded on
- * first boot; subsequent boots short-circuit. The core spaces module's
- * factory reset clears the row, and this plugin's reset handler (priority
- * 300, after core's 280) re-seeds it.
+ * surface with no physical-room semantics. The entry space row is owned by
+ * the user: it is created/edited/removed through the standard spaces API and
+ * is never auto-seeded by this plugin.
  */
 @ApiTag({
 	tagName: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
@@ -45,23 +41,20 @@ import { SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-syn
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([EntrySpaceEntity]), SpacesModule, SwaggerModule],
-	providers: [EntrySpaceSeederService, EntrySpaceResetService],
+	providers: [],
 	controllers: [],
-	exports: [EntrySpaceSeederService],
+	exports: [],
 })
 export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
-		private readonly seeder: EntrySpaceSeederService,
-		private readonly resetService: EntrySpaceResetService,
-		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		this.configMapper.registerMapping<SpacesSyntheticEntryConfigModel, SpacesSyntheticEntryUpdatePluginConfigDto>({
 			type: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
 			class: SpacesSyntheticEntryConfigModel,
@@ -101,49 +94,29 @@ export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 			modelClass: UpdateEntrySpaceDto,
 		});
 
-		this.factoryResetRegistry.register(
-			SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
-			async (): Promise<{ success: boolean; reason?: string }> => {
-				return this.resetService.reset();
-			},
-			300,
-		);
-
-		// Skip DB-touching seed when the app is booted solely to host a CLI command
-		// (e.g. `openapi:generate`, where migrations may not have run and the spaces
-		// table may not exist). In normal app boot FB_CLI is unset.
-		if (process.env.FB_CLI !== 'on') {
-			await this.seeder.seed();
-		}
-
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
 			name: 'Spaces Synthetic Entry',
 			description: 'Contributes the singleton Entry synthetic space for security / front-door surfaces.',
 			author: 'FastyBird',
-			readme: `# Spaces Synthetic Entry Plugin
+			readme: `# Entry Space
 
-Contributes the **Entry** space type — a singleton synthetic space that represents
-the security / front-door surface. Unlike Room and Zone spaces, the entry space has
-no physical-room semantics and no parent/child hierarchy.
+> Plugin · by FastyBird · platform: spaces
+
+Contributes the singleton **Entry** synthetic space — a security / front-door surface with no physical-room semantics. Used as the binding for entry-focused displays (intercom, alarm status, lock state, recent doorbell events).
+
+## What you get
+
+- A dedicated anchor for the front-door / entry experience, separate from any specific room
+- A clean target for displays placed near the entrance where the panel should show alarm and access information instead of a generic dashboard
+- Tight integration with the rest of the system: the security module's armed / alarm state feeds straight into pages bound to this space
 
 ## Features
 
-- **Singleton** — exactly one entry space per installation, seeded on first boot.
-- **Display target** — displays configured for security / entry surfaces point at this space.
-- **Factory-reset safe** — re-seeded automatically after the core spaces module reset.
-
-## Defaults
-
-- ID: \`a0000000-0000-4000-8000-000000000002\`
-- Name: \`Entry\` (user-editable)
-- No category, no parent, no children.
-
-## Uninstall behavior
-
-Uninstalling this plugin leaves the entry row orphaned in the spaces table;
-displays pointing at it will no longer resolve to a rendered view until the
-plugin is reinstalled.`,
+- **Singleton** — only one entry space per installation; the spaces service rejects attempts to create a second one
+- **User-owned** — created, edited and removed through the standard spaces API (this plugin never auto-seeds it)
+- **Display target** — used as the binding for security / front-door displays
+- **Plays nicely with security & devices** — pages built on top can show alarm state, latest doorbell ring, lock state and recent intrusion alerts without bespoke wiring`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

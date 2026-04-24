@@ -88,8 +88,9 @@ export class DeviceZonesService {
 			throw new DevicesValidationException('Can only add device to a zone, not a room');
 		}
 
-		// Validate that it's not a floor zone
-		if (isFloorZoneCategory(zone.category)) {
+		// Validate that it's not a floor zone. `category` lives on home-control's
+		// ZoneSpaceEntity, not the abstract SpaceEntity, so read it via an indexed-property cast.
+		if (isFloorZoneCategory((zone as { category?: string | null }).category ?? null)) {
 			this.logger.error(`Cannot explicitly assign device to floor zone ${zoneId}`);
 			throw new DevicesValidationException(
 				'Cannot explicitly assign device to a floor zone. Floor membership is derived from room→zone hierarchy.',
@@ -169,7 +170,7 @@ export class DeviceZonesService {
 				throw new DevicesValidationException(`${zone.name} is not a zone`);
 			}
 
-			if (isFloorZoneCategory(zone.category)) {
+			if (isFloorZoneCategory((zone as { category?: string | null }).category ?? null)) {
 				this.logger.error(`Cannot explicitly assign device to floor zone ${zoneId}`);
 				throw new DevicesValidationException(
 					`Cannot assign to floor zone "${zone.name}". Floor membership is derived from room hierarchy.`,

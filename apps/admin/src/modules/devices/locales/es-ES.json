@@ -74,7 +74,8 @@
       "bulkEnable": "¿Activar dispositivos?",
       "bulkDisable": "¿Desactivar dispositivos?",
       "adjustFilters": "Filtrar dispositivos",
-      "selectPlugin": "Se requiere plugin de dispositivo"
+      "selectPlugin": "Se requiere plugin de dispositivo",
+      "selectWizardPlugin": "Seleccionar asistente de dispositivo"
     },
     "channels": {
       "list": "Canales",
@@ -214,6 +215,7 @@
         "window_covering": "El dispositivo Cubierta de Ventana representa tratamientos automatizados de ventanas como persianas, estores o cortinas."
       },
       "selectPlugin": "Para crear un nuevo dispositivo, por favor seleccione un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de dispositivo específicos.",
+      "noWizardForDevicePlugin": "El plugin de dispositivo «{type}» no proporciona un asistente de configuración.",
       "noChannels": "Este dispositivo aún no tiene canales. Los canales definen las entradas o salidas de un dispositivo. Cree un nuevo canal para comenzar a interactuar con este dispositivo.",
       "category": "Categoría",
       "channelsCount": "Sin canales configurados | Un canal configurado | {count} canales configurados",
@@ -611,6 +613,9 @@
   "buttons": {
     "add": {
       "title": "Añadir"
+    },
+    "wizard": {
+      "title": "Asistente"
     },
     "edit": {
       "title": "Editar"

@@ -97,39 +97,38 @@ export class ScenesLocalPlugin implements OnModuleInit {
 			name: 'Local Scenes',
 			description: 'Execute scenes locally by controlling device properties',
 			author: 'FastyBird',
-			readme: `# Local Scenes Plugin
+			readme: `# Local Scenes
 
-Plugin for executing scenes that control local device properties.
+> Plugin · by FastyBird · platform: scenes
 
-## Features
+Scene-action provider that drives local device properties — when a scene is triggered, each action sets a property on a target device managed by this Smart Panel installation. Validates device / channel / property existence, write permissions and value-type compatibility before issuing any commands.
 
-- **Device Control** - Set device property values when scene triggers
-- **Action Validation** - Validates device, channel, and property exist
-- **Permission Checking** - Ensures properties are writable before execution
-- **Value Type Validation** - Checks value matches property data type
+## What you get
 
-## How It Works
-
-When a local scene is triggered:
-1. Each action is validated for device/channel/property availability
-2. Property write permissions are verified
-3. Value type compatibility is checked
-4. Commands are sent to devices through their platform handlers
+- A first-class way to bundle multiple local device changes into one scene with full validation — the scene either references real, writable things or it never gets saved
+- Predictable execution: every action returns its own success / failure result so partial failures are visible to the caller (panel, admin UI or Buddy)
+- Type safety: a scene that tries to push a string into a numeric switch is rejected at create / update time, not at run time
+- Channel auto-detection so you don't need to memorise channel IDs when a device only has one matching channel
 
 ## Action Structure
 
 Each local scene action specifies:
-- **deviceId** - Target device identifier
-- **channelId** - Optional channel (auto-detected if omitted)
-- **propertyId** - Property to modify
-- **value** - New value (boolean, number, or string)
+
+- \`device_id\` — target device
+- \`channel_id\` — optional channel (auto-detected when the device has a single matching channel)
+- \`property_id\` — property to modify
+- \`value\` — new value (boolean, number, string or enum)
+
+## Behaviour
+
+- **Validation up front** — the action is checked at scene save time, not at trigger time, so broken scenes are caught early
+- **Permission-aware** — read-only properties are rejected with a clear error
+- **Sequential execution** — actions run in declared order; later actions still run even if an earlier one fails, but the overall scene reports a partial-failure status
+- **Optimistic feedback** — uses the standard intent layer so panel UIs reflect the change instantly
 
 ## Supported Value Types
 
-- Boolean (bool, boolean)
-- Numbers (int, uint, float, short, ushort, char, uchar)
-- Strings
-- Enums (validated against allowed format values)`,
+Boolean (\`bool\`, \`boolean\`), numbers (\`int\`, \`uint\`, \`float\`, \`short\`, \`ushort\`, \`char\`, \`uchar\`), strings, and enums (validated against allowed format values).`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

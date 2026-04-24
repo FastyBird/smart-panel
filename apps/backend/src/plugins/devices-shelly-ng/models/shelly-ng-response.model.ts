@@ -4,7 +4,12 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
-import { ShellyNgDeviceInfoModel, ShellyNgMappingReloadModel, ShellyNgSupportedDeviceModel } from './shelly-ng.model';
+import {
+	ShellyNgDeviceInfoModel,
+	ShellyNgDiscoverySessionModel,
+	ShellyNgMappingReloadModel,
+	ShellyNgSupportedDeviceModel,
+} from './shelly-ng.model';
 
 /**
  * Response wrapper for ShellyNgDeviceInfoModel
@@ -31,6 +36,19 @@ export class ShellyNgSupportedDevicesResponseModel extends BaseSuccessResponseMo
 	})
 	@Expose()
 	declare data: ShellyNgSupportedDeviceModel[];
+}
+
+/**
+ * Response wrapper for ShellyNgDiscoverySessionModel
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginResDiscoverySession' })
+export class ShellyNgDiscoverySessionResponseModel extends BaseSuccessResponseModel<ShellyNgDiscoverySessionModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => ShellyNgDiscoverySessionModel,
+	})
+	@Expose()
+	declare data: ShellyNgDiscoverySessionModel;
 }
 
 /**

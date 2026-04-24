@@ -12,6 +12,8 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 
+import { Z2mWizardAdoptionModel, Z2mWizardSessionModel } from './wizard.model';
+
 // ============================================================================
 // Discovered Device Model
 // ============================================================================
@@ -639,4 +641,28 @@ export class Z2mMappingPreviewResponseModel extends BaseSuccessResponseModel<Z2m
 	})
 	@Expose()
 	declare data: Z2mMappingPreviewModel;
+}
+
+// ============================================================================
+// Wizard Response Models
+// ============================================================================
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginResWizardSession' })
+export class Z2mWizardSessionResponseModel extends BaseSuccessResponseModel<Z2mWizardSessionModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => Z2mWizardSessionModel,
+	})
+	@Expose()
+	declare data: Z2mWizardSessionModel;
+}
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginResWizardAdoption' })
+export class Z2mWizardAdoptionResponseModel extends BaseSuccessResponseModel<Z2mWizardAdoptionModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => Z2mWizardAdoptionModel,
+	})
+	@Expose()
+	declare data: Z2mWizardAdoptionModel;
 }

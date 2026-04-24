@@ -1,3 +1,6 @@
+// Import for local use in helper arrays
+import { DevicesModuleDeviceCategory, SpacesModuleClimateRole } from '../../openapi.constants';
+
 export const SPACES_MODULE_PREFIX = 'spaces';
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_EVENT_PREFIX = 'SpacesModule.';
@@ -34,7 +37,8 @@ export const RouteNames = {
 	SPACES_EDIT: 'spaces_module-spaces_edit',
 	SPACE: 'spaces_module-space',
 	SPACE_EDIT: 'spaces_module-space_edit',
-	SPACES_ONBOARDING: 'spaces_module-onboarding',
+	SPACE_PLUGIN: 'spaces_module-space_plugin',
+	SPACES_WIZARD: 'spaces_module-wizard',
 };
 
 export enum SpaceType {
@@ -135,9 +139,7 @@ export function isFloorZoneCategory(category: string | null): boolean {
 /**
  * Get non-floor zone categories (zones that can be explicitly assigned to devices)
  */
-export const ASSIGNABLE_ZONE_CATEGORIES = SPACE_ZONE_CATEGORIES.filter(
-	(cat) => !FLOOR_ZONE_CATEGORIES.includes(cat)
-);
+export const ASSIGNABLE_ZONE_CATEGORIES = SPACE_ZONE_CATEGORIES.filter((cat) => !FLOOR_ZONE_CATEGORIES.includes(cat));
 
 /**
  * Array of all category values (room + zone)
@@ -216,11 +218,7 @@ export const ZONE_CATEGORY_GROUPS: CategoryGroup[] = [
 	},
 	{
 		key: 'other',
-		categories: [
-			SpaceZoneCategory.SECURITY_PERIMETER,
-			SpaceZoneCategory.UTILITY,
-			SpaceZoneCategory.OTHER,
-		],
+		categories: [SpaceZoneCategory.SECURITY_PERIMETER, SpaceZoneCategory.UTILITY, SpaceZoneCategory.OTHER],
 	},
 ];
 
@@ -418,9 +416,7 @@ export const SPACE_ALL_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemp
 /**
  * Get templates for a given space type
  */
-export function getTemplatesForType(
-	type: SpaceType
-): Record<string, Omit<SpaceCategoryTemplate, 'category'>> {
+export function getTemplatesForType(type: SpaceType): Record<string, Omit<SpaceCategoryTemplate, 'category'>> {
 	if (type === SpaceType.ROOM) {
 		return SPACE_ROOM_CATEGORY_TEMPLATES;
 	}
@@ -429,7 +425,7 @@ export function getTemplatesForType(
 	}
 	// Synthetic singletons (master, entry) and plugin-contributed types
 	// (signage_info_panel, etc.) don't accept categories — return no templates
-	// so UI onboarding pickers don't surface invalid options. Mirrors
+	// so UI wizard pickers don't surface invalid options. Mirrors
 	// `getCategoriesForType` / `isValidCategoryForType`.
 	return {};
 }
@@ -483,9 +479,6 @@ export enum SensorRole {
 	OTHER = 'other',
 	HIDDEN = 'hidden',
 }
-
-// Import for local use in helper arrays
-import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [

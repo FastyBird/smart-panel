@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Prostory",
 		"spaces": "Prostory",
-		"detail": "Detail prostoru",
+		"detail": "Prostor: {space}",
 		"add": "Přidat prostor",
 		"edit": "Upravit prostor",
 		"removeSpace": "Odebrat prostor",
@@ -48,8 +48,8 @@
 		"list": "Organizujte zařízení a displeje podle místností nebo zón",
 		"adjustFilters": "Upravit nastavení filtrů",
 		"add": "Přidat nový prostor",
-		"detail": "Správa prostoru: {space}",
-		"onboarding": "Průvodce nastavením prostorů, zařízení a displejů"
+		"detail": "Správa prostoru Smart panelu",
+		"wizard": "Průvodce nastavením prostorů, zařízení a displejů"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "prostor: {space}",
 			"edit": "upravit prostor",
 			"add": "přidat prostor",
-			"onboarding": "průvodce nastavením"
+			"wizard": "průvodce nastavením"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Prostor: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Průvodce nastavením prostorů"
 			}
 		}
@@ -214,9 +214,8 @@
 		}
 	},
 	"filters": {
-		"type": {
-			"title": "Typ",
-			"all": "Vše"
+		"types": {
+			"title": "Typ"
 		}
 	},
 	"texts": {
@@ -227,6 +226,7 @@
 		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
 		"noEditFormForSpaceType": "Prostory typu „{type}\" nelze upravovat přímo z tohoto zobrazení.",
 		"noAddFormForSpaceType": "Prostory typu „{type}\" nelze vytvořit z tohoto zobrazení.",
+		"noWizardForSpaceType": "Prostory typu „{type}\" neposkytují průvodce nastavením.",
 		"selectPlugin": "Vyberte typ prostoru, který chcete nakonfigurovat. Formulář níže se přizpůsobí zvolenému typu."
 	},
 	"buttons": {
@@ -238,6 +238,9 @@
 		},
 		"detail": {
 			"title": "Detail"
+		},
+		"configure": {
+			"title": "Konfigurovat"
 		},
 		"adjust": {
 			"title": "Filtr"
@@ -281,7 +284,7 @@
 		"finish": {
 			"title": "Dokončit"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Průvodce nastavením"
 		},
 		"viewAll": {
@@ -372,7 +375,7 @@
 			"zone": "Zóna"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Průvodce nastavením prostorů",
 		"devices": "zařízení",
 		"displays": "displeje",

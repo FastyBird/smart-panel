@@ -114,42 +114,41 @@ export class WeatherOpenweathermapPlugin implements OnModuleInit {
 			name: 'OpenWeatherMap',
 			description: 'Weather data provider using OpenWeatherMap API',
 			author: 'FastyBird',
-			readme: `# OpenWeatherMap Weather Provider
+			readme: `# OpenWeatherMap
 
-Weather data provider using the OpenWeatherMap Current Weather API.
+> Plugin · by FastyBird · platform: weather
 
-## Features
+Weather provider backed by the [OpenWeatherMap](https://openweathermap.org) Current Weather API. Works with the free tier (1 000 calls / day, 60 calls / min) and provides current conditions plus a basic daily forecast — a friendly default if you already have an OpenWeatherMap key.
 
-- **Current Weather** - Real-time weather conditions
-- **Basic Forecast** - Daily weather forecasts
-- **Global Coverage** - Weather data for locations worldwide
-- **Free Tier** - Works with OpenWeatherMap free API plan
+## What you get
+
+- A familiar provider with worldwide coverage and a generous free tier
+- Reliable current-conditions data with the standard suite of values dashboards and Buddy expect (temperature, condition, humidity, wind, pressure, sunrise / sunset)
+- Drop-in compatible with all weather tiles and the weather data source — pick this plugin per-location, swap to another later without touching the location
+
+## Capabilities
+
+- **Current conditions** — temperature, condition (clear / cloudy / rain / …), humidity, pressure, wind speed and direction, sunrise / sunset
+- **Basic daily forecast** — high / low and condition for the next few days (resolution depends on OpenWeatherMap's free tier)
+- **Configurable unit** — Celsius or Fahrenheit per deployment
 
 ## Setup
 
 1. Create a free account at [OpenWeatherMap](https://openweathermap.org)
-2. Generate an API key from your account dashboard
-3. Enter the API key in plugin configuration
+2. Generate an API key in your dashboard
+3. Enter the API key in this plugin's configuration
+4. Add a weather location (Weather module) and set its provider to \`${WEATHER_OPENWEATHERMAP_PLUGIN_NAME}\`
 
 ## Data Provided
 
-- Current temperature
-- Weather conditions (clear, cloudy, rain, etc.)
-- Humidity and pressure
-- Wind speed and direction
-- Sunrise and sunset times
+Current temperature, condition (clear / cloudy / rain / …), humidity and pressure, wind speed and direction, sunrise and sunset times.
 
 ## Configuration
 
-- **API Key** - Your OpenWeatherMap API key (required)
-- **Units** - Temperature units (metric/imperial)
-- **Update Interval** - How often to refresh data
-
-## API Limits
-
-Free tier allows:
-- 1,000 API calls per day
-- 60 calls per minute`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`api_key\` | OpenWeatherMap API key (required) | — |
+| \`unit\` | Temperature unit (\`celsius\` or \`fahrenheit\`) | \`celsius\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

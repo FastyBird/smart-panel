@@ -116,38 +116,49 @@ export class WeatherOpenMeteoPlugin implements OnModuleInit {
 			name: 'Open-Meteo',
 			description: 'Free weather data provider using Open-Meteo API. No API key required.',
 			author: 'FastyBird',
-			readme: `# Open-Meteo Weather Provider
+			readme: `# Open-Meteo
 
-Free weather data provider using the Open-Meteo API.
+> Plugin · by FastyBird · platform: weather
 
-## Features
+Free, no-registration weather provider backed by the [Open-Meteo](https://open-meteo.com) API. Aggregates data from ECMWF, NOAA / GFS, DWD and other national weather services. Current conditions plus a 7-day daily forecast — weather alerts are not exposed by this provider.
 
-- **No API Key Required** - Works out of the box with no registration
-- **Current Weather** - Real-time temperature, humidity, wind, and conditions
-- **7-Day Forecast** - Daily weather predictions
-- **Global Coverage** - Weather data for any location worldwide
-- **Multiple Weather Models** - Data from ECMWF, GFS, and other national weather services
+## What you get
+
+- Real meteorological data with no API key, no account, no rate limit anxiety
+- An ensemble of national weather services under the hood, so accuracy is generally on par with paid providers in covered regions
+- A coordinate-based geolocation helper so users can pick a location by city name in the admin UI without copying lat / lon themselves
+- A safe default: enabling this plugin and adding a location is all you need to power the weather tiles
+
+## Capabilities
+
+- **Current conditions** — temperature with "feels like", humidity, pressure, wind speed / direction / gusts, cloud cover, precipitation
+- **Daily forecast** — 7 days with high / low temperature, condition, precipitation probability, sunrise / sunset
+- **Geolocation lookup** — name-based search returns coordinates ready to feed back into a location create call
+- **Configurable units** — Celsius or Fahrenheit per deployment
+
+## Setup
+
+1. Enable the plugin (no account or API key required)
+2. Add a weather location — use the geolocation endpoint to look up coordinates
+3. Set the location's provider to \`${WEATHER_OPEN_METEO_PLUGIN_NAME}\`
+
+## API Endpoints
+
+- \`GET /api/v1/plugins/weather-open-meteo/geolocation?query=…\` — search coordinates by city name
 
 ## Data Provided
 
-- Current conditions with "feels like" temperature
-- Daily forecasts for 7 days
-- Wind speed, direction, and gusts
-- Cloud coverage
-- Precipitation (rain and snow)
-- Sunrise and sunset times
-- Atmospheric pressure and humidity
+Current conditions with "feels like" temperature, 7-day daily forecast, wind speed/direction/gusts, cloud coverage, precipitation (rain and snow), sunrise / sunset, atmospheric pressure and humidity.
 
 ## Configuration
 
-- **Units** - Temperature units (metric/imperial)
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`unit\` | Temperature unit (\`celsius\` or \`fahrenheit\`) | \`celsius\` |
 
-## Notes
+## Usage Limits
 
-- Free for non-commercial use (up to 10,000 API calls/day)
-- No registration or API key needed
-- Weather alerts are not supported by this provider
-- Data sourced from top national weather services (ECMWF, NOAA, DWD, and more)`,
+Free for non-commercial use, up to 10 000 API calls per day.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

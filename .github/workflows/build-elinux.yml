@@ -81,7 +81,7 @@ jobs:
       - name: "Setup Flutter Project"
         uses: "./.github/actions/setup-flutter-project"
         with:
-          flutter-version: "3.27.0"
+          flutter-version: "3.41.5"
           flutter-channel: "stable"
 
       - name: "Setup flutter-elinux"

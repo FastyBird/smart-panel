@@ -12,6 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { MappingLoaderService } from '../mappings';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellyNgDiscoveryService } from '../services/shelly-ng-discovery.service';
 
 import { ShellyNgDevicesController } from './shelly-ng-devices.controller';
 
@@ -47,6 +48,7 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 describe('ShellyNgDevicesController', () => {
 	let controller: ShellyNgDevicesController;
 	let deviceManager: jest.Mocked<DeviceManagerService>;
+	let discoveryService: jest.Mocked<ShellyNgDiscoveryService>;
 
 	beforeAll(() => {});
 
@@ -54,11 +56,17 @@ describe('ShellyNgDevicesController', () => {
 		const deviceManagerMock: Partial<jest.Mocked<DeviceManagerService>> = {
 			getDeviceInfo: jest.fn(),
 		};
+		const discoveryServiceMock: Partial<jest.Mocked<ShellyNgDiscoveryService>> = {
+			start: jest.fn(),
+			get: jest.fn(),
+			manual: jest.fn(),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyNgDevicesController],
 			providers: [
 				{ provide: DeviceManagerService, useValue: deviceManagerMock },
+				{ provide: ShellyNgDiscoveryService, useValue: discoveryServiceMock },
 				{
 					provide: MappingLoaderService,
 					useValue: {
@@ -71,6 +79,59 @@ describe('ShellyNgDevicesController', () => {
 
 		controller = module.get(ShellyNgDevicesController);
 		deviceManager = module.get(DeviceManagerService) as jest.Mocked<DeviceManagerService>;
+		discoveryService = module.get(ShellyNgDiscoveryService) as jest.Mocked<ShellyNgDiscoveryService>;
+	});
+
+	describe('Shelly NG discovery endpoints', () => {
+		const discoverySession = {
+			id: 'session-1',
+			status: 'running' as const,
+			startedAt: '2026-04-29T12:00:00.000Z',
+			expiresAt: '2026-04-29T12:00:30.000Z',
+			remainingSeconds: 30,
+			devices: [],
+		};
+
+		it('starts a discovery session', async () => {
+			discoveryService.start.mockResolvedValue(discoverySession);
+
+			const result = await controller.startDiscovery();
+
+			expect(discoveryService.start).toHaveBeenCalledWith({ duration: 30 });
+			expect(result.data).toEqual(discoverySession);
+		});
+
+		it('returns an existing discovery session', () => {
+			discoveryService.get.mockReturnValue(discoverySession);
+
+			const result = controller.getDiscovery('session-1');
+
+			expect(discoveryService.get).toHaveBeenCalledWith('session-1');
+			expect(result.data).toEqual(discoverySession);
+		});
+
+		it('throws NotFoundException when discovery session does not exist', () => {
+			discoveryService.get.mockReturnValue(null);
+
+			expect(() => controller.getDiscovery('missing')).toThrow(NotFoundException);
+		});
+
+		it('adds manual device lookup to a discovery session', async () => {
+			discoveryService.manual.mockResolvedValue(discoverySession);
+
+			const result = await controller.addManualDiscoveryDevice('session-1', {
+				data: {
+					hostname: '192.168.1.12',
+					password: 'secret',
+				},
+			});
+
+			expect(discoveryService.manual).toHaveBeenCalledWith('session-1', {
+				hostname: '192.168.1.12',
+				password: 'secret',
+			});
+			expect(result.data).toEqual(discoverySession);
+		});
 	});
 
 	afterEach(() => {

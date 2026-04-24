@@ -14,7 +14,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mAdapterCallbacks, Z2mDevice } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mAdapterCallbacks, Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mDeviceMapperService } from './device-mapper.service';
@@ -107,6 +107,7 @@ describe('Zigbee2mqttService', () => {
 		getCachedState: jest.fn().mockReturnValue({}),
 		publishCommand: jest.fn().mockResolvedValue(true),
 		requestState: jest.fn().mockResolvedValue(true),
+		setPermitJoin: jest.fn().mockResolvedValue(true),
 		getDevice: jest.fn(),
 		getDeviceByIeeeAddress: jest.fn(),
 		setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {
@@ -497,6 +498,151 @@ describe('Zigbee2mqttService', () => {
 	describe('getActiveAdapter', () => {
 		it('should return MQTT adapter by default', () => {
 			expect(service.getActiveAdapter()).toBe(mqttAdapter);
+		});
+	});
+
+	describe('setPermitJoin', () => {
+		it('should return false when bridge is offline', async () => {
+			mqttAdapter.isBridgeOnline.mockReturnValue(false);
+
+			const result = await service.setPermitJoin(120);
+
+			expect(result).toBe(false);
+			expect(mqttAdapter.setPermitJoin).not.toHaveBeenCalled();
+		});
+
+		it('should return false when no active adapter', async () => {
+			// Bypass the bridge-online guard, then null out the adapter to hit
+			// the defensive `!this.activeAdapter` branch.
+			jest.spyOn(service, 'isBridgeOnline').mockReturnValue(true);
+			(service as unknown as { activeAdapter: unknown }).activeAdapter = null;
+
+			const result = await service.setPermitJoin(120);
+
+			expect(result).toBe(false);
+		});
+
+		it('should proxy through to the active adapter when bridge is online', async () => {
+			mqttAdapter.isBridgeOnline.mockReturnValue(true);
+			mqttAdapter.setPermitJoin.mockResolvedValue(true);
+
+			const result = await service.setPermitJoin(120);
+
+			expect(result).toBe(true);
+			expect(mqttAdapter.setPermitJoin).toHaveBeenCalledWith(120);
+		});
+
+		it('should return the value the adapter returns', async () => {
+			mqttAdapter.isBridgeOnline.mockReturnValue(true);
+			mqttAdapter.setPermitJoin.mockResolvedValue(false);
+
+			const result = await service.setPermitJoin(0);
+
+			expect(result).toBe(false);
+			expect(mqttAdapter.setPermitJoin).toHaveBeenCalledWith(0);
+		});
+	});
+
+	describe('subscribeToDeviceJoined', () => {
+		const buildRegistered = (friendlyName: string): Z2mRegisteredDevice => ({
+			ieeeAddress: `0x${friendlyName}`,
+			friendlyName,
+			type: 'Router',
+			supported: true,
+			disabled: false,
+			available: true,
+			currentState: {},
+		});
+
+		it('should fire when a device joins and is included in the next bridge/devices payload', async () => {
+			const subscriber = jest.fn();
+			service.subscribeToDeviceJoined(subscriber);
+
+			// Bridge online and registry initially populated only with a pre-existing device
+			const existing = buildRegistered('existing_device');
+			const newDevice = buildRegistered('new_device');
+
+			mqttAdapter.getRegisteredDevices.mockReturnValue([existing]);
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			// Initial fetch must NOT fire any subscriber
+			expect(subscriber).not.toHaveBeenCalled();
+
+			// Now a real device_joined event arrives
+			await capturedCallbacks.onDeviceJoined?.(newDevice.ieeeAddress, newDevice.friendlyName);
+
+			// Bridge republishes devices including the newly-joined device
+			mqttAdapter.getRegisteredDevices.mockReturnValue([existing, newDevice]);
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(subscriber).toHaveBeenCalledTimes(1);
+			expect(subscriber).toHaveBeenCalledWith(newDevice);
+		});
+
+		it('should NOT fire on a periodic bridge/devices republish containing only already-paired devices', async () => {
+			const subscriber = jest.fn();
+			service.subscribeToDeviceJoined(subscriber);
+
+			const existingA = buildRegistered('existing_a');
+			const existingB = buildRegistered('existing_b');
+
+			mqttAdapter.getRegisteredDevices.mockReturnValue([existingA, existingB]);
+			await capturedCallbacks.onBridgeOnline?.();
+
+			// Initial fetch
+			await capturedCallbacks.onDevicesReceived?.([]);
+			expect(subscriber).not.toHaveBeenCalled();
+
+			// Subsequent periodic republishes — same devices, no device_joined in between
+			await capturedCallbacks.onDevicesReceived?.([]);
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(subscriber).not.toHaveBeenCalled();
+		});
+
+		it('should stop firing after unsubscribe', async () => {
+			const subscriber = jest.fn();
+			const unsubscribe = service.subscribeToDeviceJoined(subscriber);
+
+			const existing = buildRegistered('existing');
+			const newDevice = buildRegistered('new');
+
+			mqttAdapter.getRegisteredDevices.mockReturnValue([existing]);
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			unsubscribe();
+
+			// Real device_joined + republish; should not fire because we unsubscribed
+			await capturedCallbacks.onDeviceJoined?.(newDevice.ieeeAddress, newDevice.friendlyName);
+			mqttAdapter.getRegisteredDevices.mockReturnValue([existing, newDevice]);
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(subscriber).not.toHaveBeenCalled();
+		});
+
+		it('should not let a throwing subscriber prevent other subscribers from firing', async () => {
+			const throwing = jest.fn(() => {
+				throw new Error('boom');
+			});
+			const good = jest.fn();
+			service.subscribeToDeviceJoined(throwing);
+			service.subscribeToDeviceJoined(good);
+
+			const newDevice = buildRegistered('new');
+
+			mqttAdapter.getRegisteredDevices.mockReturnValue([]);
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			await capturedCallbacks.onDeviceJoined?.(newDevice.ieeeAddress, newDevice.friendlyName);
+			mqttAdapter.getRegisteredDevices.mockReturnValue([newDevice]);
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(throwing).toHaveBeenCalledTimes(1);
+			expect(good).toHaveBeenCalledTimes(1);
+			expect(good).toHaveBeenCalledWith(newDevice);
 		});
 	});
 });

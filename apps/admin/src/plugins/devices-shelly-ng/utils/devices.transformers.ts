@@ -1,7 +1,17 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DevicesShellyNgValidationException } from '../devices-shelly-ng.exceptions';
-import { ShellyNgDeviceInfoRequestSchema, ShellyNgDeviceInfoSchema, ShellyNgSupportedDeviceSchema } from '../schemas/devices.schemas';
-import type { IShellyNgDeviceInfo, IShellyNgDeviceInfoRequest, IShellyNgSupportedDevice } from '../schemas/devices.types';
+import {
+	ShellyNgDeviceInfoRequestSchema,
+	ShellyNgDeviceInfoSchema,
+	ShellyNgDiscoverySessionSchema,
+	ShellyNgSupportedDeviceSchema,
+} from '../schemas/devices.schemas';
+import type {
+	IShellyNgDeviceInfo,
+	IShellyNgDeviceInfoRequest,
+	IShellyNgDiscoverySession,
+	IShellyNgSupportedDevice,
+} from '../schemas/devices.types';
 
 export const transformSupportedDevicesResponse = (response: object[]): IShellyNgSupportedDevice[] => {
 	const devices = [];
@@ -40,6 +50,18 @@ export const transformDeviceInfoRequest = (data: object): IShellyNgDeviceInfoReq
 		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesShellyNgValidationException('Failed to validate get device info request.');
+	}
+
+	return parsed.data;
+};
+
+export const transformDiscoverySessionResponse = (response: object): IShellyNgDiscoverySession => {
+	const parsed = ShellyNgDiscoverySessionSchema.safeParse(snakeToCamel(response));
+
+	if (!parsed.success) {
+		logger.error('Schema validation failed with:', parsed.error);
+
+		throw new DevicesShellyNgValidationException('Failed to validate received discovery session data.');
 	}
 
 	return parsed.data;

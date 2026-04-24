@@ -3,7 +3,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { IPlugin, IPluginElement } from '../../../common';
-import type { FormResultType, SpaceType } from '../spaces.constants';
+import type { FormResultType } from '../spaces.constants';
 import type { ISpacePluginRoutes, ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace, ISpaceEditData } from '../store/spaces.store.types';
 
@@ -11,7 +11,7 @@ import type { SpaceAddFormSchemaType, SpaceEditFormSchemaType } from './schemas'
 
 export interface ISpacesFilter {
 	search?: string | undefined;
-	type: SpaceType | 'all';
+	types: string[];
 }
 
 export interface IUseSpacesDataSource {
@@ -80,7 +80,13 @@ export interface IUseSpaceEditForm<TForm extends ISpaceEditForm = ISpaceEditForm
 export interface IUseSpacesPlugins {
 	plugins: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
+	wizardOptions: ComputedRef<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>;
 	getByPluginType: (type: IPlugin['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined;
+}
+
+export interface IUseSpacesPlugin {
+	plugin: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined>;
+	element: ComputedRef<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>;
 }

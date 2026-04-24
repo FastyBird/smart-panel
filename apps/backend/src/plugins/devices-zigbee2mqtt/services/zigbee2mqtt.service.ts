@@ -13,7 +13,7 @@ import {
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mMqttConfig, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mDevice, Z2mMqttConfig, Z2mRegisteredDevice, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -46,6 +46,23 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 
 	// The active adapter is selected based on connection_type config
 	private activeAdapter: Z2mBaseClientAdapter;
+
+	// Subscribers notified when a brand-new Z2M device appears in the registry.
+	// Used by the wizard service to react to devices joined during a pairing session.
+	private readonly deviceJoinedSubscribers = new Set<(device: Z2mRegisteredDevice) => void>();
+
+	// Friendly names captured from real `device_joined` / `device_announce`
+	// bridge events. The bridge follows up with a `bridge/devices` republish
+	// once interview completes — at that point we drain this set, look up the
+	// full `Z2mRegisteredDevice`, and fire `notifyDeviceJoined` exactly once
+	// per truly new device. This avoids the initial-fetch problem where every
+	// already-paired device would otherwise look "new" to a freshly-started
+	// service.
+	// Keyed by IEEE address (immutable) rather than friendly name, because Z2M
+	// can rename a device between the `device_joined` event and the subsequent
+	// `bridge/devices` republish (auto-rename on collision, user rename via Z2M
+	// UI mid-interview). Looking up by IEEE address keeps the drain robust.
+	private readonly pendingJoinedIeeeAddresses = new Set<string>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -219,6 +236,59 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	 */
 	async requestDeviceState(friendlyName: string): Promise<boolean> {
 		return this.activeAdapter.requestState(friendlyName);
+	}
+
+	/**
+	 * Toggle the bridge's permit_join state for a bounded number of seconds.
+	 * Returns true on successful publish/send, false otherwise.
+	 * Pass 0 to disable pairing immediately.
+	 *
+	 * Returns false if the bridge is offline or no adapter is active.
+	 */
+	async setPermitJoin(seconds: number): Promise<boolean> {
+		if (!this.isBridgeOnline()) {
+			return false;
+		}
+
+		if (!this.activeAdapter) {
+			return false;
+		}
+
+		return this.activeAdapter.setPermitJoin(seconds);
+	}
+
+	/**
+	 * Subscribe to "device joined" notifications.
+	 *
+	 * The callback is invoked with the new Z2mRegisteredDevice each time a
+	 * previously-unknown device is added to the internal registry. It is NOT
+	 * invoked for updates to already-registered devices.
+	 *
+	 * Returns an unsubscribe function.
+	 */
+	subscribeToDeviceJoined(cb: (device: Z2mRegisteredDevice) => void): () => void {
+		this.deviceJoinedSubscribers.add(cb);
+
+		return () => {
+			this.deviceJoinedSubscribers.delete(cb);
+		};
+	}
+
+	/**
+	 * Notify all device-joined subscribers of a new device.
+	 * Subscriber exceptions are caught and logged so a faulty subscriber
+	 * cannot break the others (or the calling sync logic).
+	 */
+	private notifyDeviceJoined(device: Z2mRegisteredDevice): void {
+		for (const cb of this.deviceJoinedSubscribers) {
+			try {
+				cb(device);
+			} catch (e) {
+				this.logger.warn('Device-joined subscriber threw', {
+					message: e instanceof Error ? e.message : String(e),
+				});
+			}
+		}
 	}
 
 	/**
@@ -408,6 +478,7 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
+		this.pendingJoinedIeeeAddresses.clear();
 
 		// Set all devices to unknown state
 		try {
@@ -444,6 +515,27 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		const registeredDevices = this.activeAdapter.getRegisteredDevices();
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
+
+		// Drain pending joined IEEE addresses. The bridge fires a real
+		// `device_joined` / `device_announce` event for new devices, then
+		// republishes `bridge/devices` once the interview completes. Here we
+		// look up each pending join in the now-populated registry and notify
+		// subscribers — exactly once per truly new device. Already-paired
+		// devices in this republish are NOT notified, which avoids the
+		// initial-fetch problem. Keyed by IEEE address (immutable) so a Z2M
+		// auto-rename or user rename mid-interview doesn't lose the device.
+		if (this.pendingJoinedIeeeAddresses.size > 0) {
+			const registryByIeee = new Map(registeredDevices.map((d) => [d.ieeeAddress, d]));
+			for (const ieeeAddress of [...this.pendingJoinedIeeeAddresses]) {
+				const registered = registryByIeee.get(ieeeAddress);
+				if (registered) {
+					this.pendingJoinedIeeeAddresses.delete(ieeeAddress);
+					this.notifyDeviceJoined(registered);
+				}
+				// If not yet in registry (interview still pending), leave it in
+				// the set; the next `bridge/devices` republish will pick it up.
+			}
+		}
 
 		// Process cached state for all existing devices
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
@@ -530,10 +622,18 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	}
 
 	/**
-	 * Handle device joined event
+	 * Handle device joined event.
+	 *
+	 * The bridge sends this for actual `device_joined` / `device_announce`
+	 * events — the authoritative signal that a NEW device is pairing. The
+	 * bridge then republishes `bridge/devices` once the interview completes
+	 * (which is what populates the registry). We record the IEEE address
+	 * here and let `handleDevicesReceived` drain the pending set once the
+	 * full `Z2mRegisteredDevice` is available.
 	 */
-	private handleDeviceJoined(_ieeeAddress: string, friendlyName: string): void {
-		this.logger.log(`Device joined: ${friendlyName}`);
+	private handleDeviceJoined(ieeeAddress: string, friendlyName: string): void {
+		this.logger.log(`Device joined: ${friendlyName} (${ieeeAddress})`);
+		this.pendingJoinedIeeeAddresses.add(ieeeAddress);
 	}
 
 	/**

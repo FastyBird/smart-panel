@@ -136,8 +136,8 @@ export default async function RootLayout({ children }) {
         </Layout>
         <script
           defer
-          src="https://cloud.umami.is/script.js"
-          data-website-id="f893c539-0cf2-442f-a511-904e606f9e15"
+          src="https://analytics.studio81.cz/script.js"
+          data-website-id="a4756197-5ee3-4948-9a6b-ce3f1dba416b"
         ></script>
       </body>
     </html>

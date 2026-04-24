@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_create_home_control_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/model.dart';
@@ -8,7 +8,7 @@ class SpaceModel extends Model {
   final SpacesModuleDataSpaceType _type;
   final String _name;
   final String? _description;
-  final SpacesModuleDataSpaceCategory? _category;
+  final SpacesHomeControlPluginCreateHomeControlSpaceCategory? _category;
   final String? _parentId;
   final int _displayOrder;
   final bool _suggestionsEnabled;
@@ -22,7 +22,7 @@ class SpaceModel extends Model {
     required SpacesModuleDataSpaceType type,
     required String name,
     String? description,
-    SpacesModuleDataSpaceCategory? category,
+    SpacesHomeControlPluginCreateHomeControlSpaceCategory? category,
     String? parentId,
     required int displayOrder,
     required bool suggestionsEnabled,
@@ -50,7 +50,7 @@ class SpaceModel extends Model {
 
   String? get description => _description;
 
-  SpacesModuleDataSpaceCategory? get category => _category;
+  SpacesHomeControlPluginCreateHomeControlSpaceCategory? get category => _category;
 
   String? get parentId => _parentId;
 
@@ -98,7 +98,7 @@ class SpaceModel extends Model {
       name: json['name'],
       description: json['description'],
       category: json['category'] != null
-          ? SpacesModuleDataSpaceCategory.fromJson(json['category'])
+          ? SpacesHomeControlPluginCreateHomeControlSpaceCategory.fromJson(json['category'])
           : null,
       parentId: json['parent_id'],
       displayOrder: json['display_order'] ?? 0,

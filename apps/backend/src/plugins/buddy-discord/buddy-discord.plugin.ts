@@ -58,32 +58,44 @@ export class BuddyDiscordPlugin implements OnModuleInit {
 			description: 'Discord bot adapter for Buddy module with multi-channel space mapping',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.MESSAGING],
-			readme: `# Buddy Discord Plugin
+			readme: `# Discord
 
-Discord bot adapter plugin for the Buddy module. Enables remote conversations and alert forwarding via Discord with multi-channel space mapping.
+> Plugin · by FastyBird · capability: messaging
+
+Discord bot adapter for the Buddy module. Forwards alerts and supports remote conversations from any Discord client, with optional per-space channel mapping so messages in your "kitchen" channel are answered with the kitchen's context.
+
+## What you get
+
+- Talk to your home from anywhere Discord works — desktop, web, mobile
+- A dedicated channel per room so conversations stay tidy and context-aware (the assistant scopes the home snapshot to whichever space the channel maps to)
+- Alerts and suggestions are routed to the right channel automatically — leak in the bathroom? You'll see it in #bathroom, not #general
+- Granular access control: restrict the bot to a specific Discord role so only authorised users can issue commands
 
 ## Features
 
-- **Multi-Channel Support** - Map Discord channels to smart home spaces for context-aware conversations
-- **Remote Chat** - Interact with your smart home buddy from anywhere via Discord
-- **Alert Routing** - Receive suggestion notifications in the relevant space channel
-- **Role-Based Access** - Restrict bot interaction to users with a specific Discord role
+- **Multi-channel mapping** — map Discord channels to smart-home spaces for context-aware conversations
+- **Remote chat** — talk to Buddy from anywhere Discord runs
+- **Alert routing** — suggestion notifications land in the relevant space's channel
+- **Role-based access** — restrict who can interact via a Discord role
+- **Markdown-friendly replies** — Buddy's answers render cleanly in Discord (lists, code blocks, links)
+- **Thread-aware** — keeps replies in the originating thread when the message starts in one
 
 ## Setup
 
-1. Create a bot application at the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Enable the "Message Content Intent" under Bot settings
-3. Copy the bot token
-4. Add the bot to your server with required permissions (Send Messages, Read Messages, Add Reactions)
-5. Enable the plugin and configure the bot token, guild ID, and channel mappings
+1. Create a bot at the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Enable the **Message Content Intent** under Bot settings and copy the bot token
+3. Invite the bot to your server with the *Send Messages*, *Read Messages* and *Add Reactions* permissions
+4. Enable the plugin and fill in the configuration
 
 ## Configuration
 
-- **Bot Token** - Discord bot token from the Developer Portal (required)
-- **Guild ID** - Discord server ID (required)
-- **General Channel ID** - Default channel for cross-space queries (required)
-- **Space-Channel Mappings** - JSON mapping of space IDs to Discord channel IDs
-- **Allowed Role ID** - Discord role required to interact (empty = allow all server members)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`bot_token\` | Discord bot token (required) | — |
+| \`guild_id\` | Discord server ID (required) | — |
+| \`general_channel_id\` | Default channel for cross-space queries (required) | — |
+| \`space_channel_mappings\` | JSON map of space IDs → Discord channel IDs | \`{}\` |
+| \`allowed_role_id\` | Discord role required to interact | unrestricted |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -188,25 +188,39 @@ export class BuddyModule implements OnModuleInit {
 			name: 'Buddy',
 			description: 'AI assistant for proactive suggestions and text chat',
 			author: 'FastyBird',
-			readme: `# Buddy Module
+			readme: `# Buddy
 
-The Buddy module provides an AI assistant for the Smart Panel that observes user actions, learns patterns, and suggests automations.
+> Module · by FastyBird
+
+AI assistant for the Smart Panel. Observes user actions, builds a structured snapshot of the home, surfaces context-aware suggestions and powers a text / voice chat backed by pluggable LLM, TTS, STT and messaging providers. Buddy is the orchestration layer; the actual brains live in companion plugins so you can pick the model and provider that fit your privacy / cost / latency constraints.
+
+## What it gives you
+
+- A grounded assistant: every reply is prepared with a fresh, privacy-respecting snapshot of *your* home (spaces, devices, scenes, weather, energy) — not generic web knowledge
+- A unified tool layer: the LLM can run scenes, control devices and set lighting modes through structured tool calls, without you wiring a new endpoint per intent
+- A pluggable spine: swap LLM provider (Claude / OpenAI / Ollama / VoiceAI), voice (system / ElevenLabs / Whisper) or messaging channel (Discord / Telegram / WhatsApp) without touching this module
+- A safety net: when no AI provider is configured, rule-based suggestions and the action observer keep delivering value offline
 
 ## Features
 
-- **Action Observer** - Tracks completed intents to build a history of user actions
-- **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
-- **Text Chat** - Conversational interface powered by pluggable LLM providers
-- **Voice Interface** - Optional STT/TTS for hands-free interaction via pluggable providers
-- **Tool Execution** - LLM can control devices, run scenes, and set lighting modes via extensible tool providers
-- **Suggestions** - Context-aware suggestions based on detected patterns and rules
-- **Offline-First** - Rule-based suggestions work without any AI provider configured
+- **Action observer** — listens to completed intents and builds a rolling, anonymised history of "what happened in the home"; feeds suggestions and chat context
+- **Context aggregator** — produces a structured snapshot of spaces, devices and their roles, recent scenes, current weather, energy stats and security state; the LLM sees this instead of raw rows
+- **Text chat** — conversational REST endpoint backed by an LLM plugin; supports streaming responses, conversation history and per-conversation context overrides
+- **Voice interface** — optional STT (microphone → text) and TTS (text → speaker) so the panel can be operated hands-free; both pluggable
+- **Tool execution** — the LLM can call structured tools (e.g. \`device.control\`, \`scene.run\`, \`lighting.setMode\`); tools come from a registry other modules contribute to
+- **Suggestions engine** — pattern detection, anomaly detection, energy advice and conflict detection running on the action history; results surfaced in the panel "for you" area
+- **Personality file** — a writable markdown file describes how the assistant should behave; users can edit it without touching code
+- **Messaging adapters** — companion plugins can route Buddy chat through Discord, Telegram or WhatsApp so you can talk to your home from anywhere
+- **Offline-first defaults** — without any AI provider configured, the action observer + rule-based suggestions still work
 
-## Plugins
+## Configuration
 
-All LLM, TTS, and STT functionality is provided by separate plugins that register themselves with the buddy module. Install and enable the desired plugins, then set the buddy module \`provider\`, \`tts_plugin\`, and \`stt_plugin\` configs to the corresponding plugin type.
-
-Each plugin declares its capabilities (LLM, TTS, STT) when registering, and the buddy module discovers them dynamically.`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`provider\` | LLM plugin type to use for chat | — |
+| \`tts_plugin\` | TTS plugin for spoken responses | — |
+| \`stt_plugin\` | STT plugin for voice input | — |
+| \`personality_path\` | Path to the personality markdown file (included in backups) | data dir |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -86,7 +86,11 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 
 		try {
 			const spaces = await this.spacesService.findAll();
-			const enabledSpaces = spaces.filter((s) => s.suggestionsEnabled);
+			// `suggestionsEnabled` lives on RoomSpaceEntity / ZoneSpaceEntity (this plugin's
+			// subtypes) and not the abstract SpaceEntity. Cross-plugin space types (master /
+			// entry / signage) don't expose it, so an indexed-property cast collapses their
+			// undefined to a falsy value and excludes them from the suggestion cycle.
+			const enabledSpaces = spaces.filter((s) => (s as { suggestionsEnabled?: boolean }).suggestionsEnabled === true);
 
 			if (enabledSpaces.length === 0) {
 				return;

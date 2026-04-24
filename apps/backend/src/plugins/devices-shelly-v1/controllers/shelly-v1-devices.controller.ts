@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { Body, Controller, Get, Post, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -21,9 +21,15 @@ import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import { DevicesShellyV1PluginReqGetInfo } from '../dto/shelly-v1-probe.dto';
 import {
 	ShellyV1DeviceInfoResponseModel,
+	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 } from '../models/shelly-v1-response.model';
-import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from '../models/shelly-v1.model';
+import {
+	ShellyV1DeviceInfoModel,
+	ShellyV1DiscoverySessionModel,
+	ShellyV1SupportedDeviceModel,
+} from '../models/shelly-v1.model';
+import { ShellyV1DiscoveryService } from '../services/shelly-v1-discovery.service';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
 @ApiTags(DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME)
@@ -34,7 +40,92 @@ export class ShellyV1DevicesController {
 		'ShellyV1DevicesController',
 	);
 
-	constructor(private readonly probeService: ShellyV1ProbeService) {}
+	constructor(
+		private readonly probeService: ShellyV1ProbeService,
+		private readonly discoveryService: ShellyV1DiscoveryService,
+	) {}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		summary: 'Start Shelly V1 discovery wizard scan',
+		description:
+			'Starts a short-lived CoAP/mDNS discovery session for Shelly Generation 1 devices. The session can be polled by the admin wizard and enriched with manual host lookups.',
+		operationId: 'create-devices-shelly-v1-plugin-discovery',
+	})
+	@ApiSuccessResponse(
+		ShellyV1DiscoverySessionResponseModel,
+		'Shelly V1 discovery session was started. The response includes session timing and discovered device candidates.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('discovery')
+	startDiscovery(): ShellyV1DiscoverySessionResponseModel {
+		const response = new ShellyV1DiscoverySessionResponseModel();
+		response.data = toInstance(ShellyV1DiscoverySessionModel, this.discoveryService.start({ duration: 30 }));
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		summary: 'Get Shelly V1 discovery wizard scan',
+		description:
+			'Returns the current state of a Shelly V1 discovery session, including remaining scan time and discovered device candidates.',
+		operationId: 'get-devices-shelly-v1-plugin-discovery',
+	})
+	@ApiSuccessResponse(ShellyV1DiscoverySessionResponseModel, 'Shelly V1 discovery session was successfully retrieved.')
+	@ApiNotFoundResponse('Discovery session could not be found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('discovery/:id')
+	getDiscovery(@Param('id') id: string): ShellyV1DiscoverySessionResponseModel {
+		const session = this.discoveryService.get(id);
+
+		if (session === null) {
+			throw new NotFoundException('Discovery session could not be found');
+		}
+
+		const response = new ShellyV1DiscoverySessionResponseModel();
+		response.data = toInstance(ShellyV1DiscoverySessionModel, session);
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		summary: 'Add a manual Shelly V1 discovery wizard lookup',
+		description:
+			'Adds a manually entered hostname or IP address to an existing Shelly V1 discovery session. Password-protected devices can be verified by providing their password.',
+		operationId: 'create-devices-shelly-v1-plugin-discovery-manual',
+	})
+	@ApiBody({
+		type: DevicesShellyV1PluginReqGetInfo,
+		description: 'Manual Shelly V1 discovery lookup data',
+	})
+	@ApiSuccessResponse(
+		ShellyV1DiscoverySessionResponseModel,
+		'Manual lookup was added to the Shelly V1 discovery session.',
+	)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Discovery session could not be found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('discovery/:id/manual')
+	async addManualDiscoveryDevice(
+		@Param('id') id: string,
+		@Body() createDto: DevicesShellyV1PluginReqGetInfo,
+	): Promise<ShellyV1DiscoverySessionResponseModel> {
+		const session = await this.discoveryService.manual(id, {
+			hostname: createDto.data.hostname,
+			password: createDto.data.password,
+		});
+
+		if (session === null) {
+			throw new NotFoundException('Discovery session could not be found');
+		}
+
+		const response = new ShellyV1DiscoverySessionResponseModel();
+		response.data = toInstance(ShellyV1DiscoverySessionModel, session);
+
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],

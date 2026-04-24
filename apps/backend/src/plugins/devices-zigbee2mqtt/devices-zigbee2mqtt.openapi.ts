@@ -21,6 +21,7 @@ import {
 	Zigbee2mqttUpdatePluginConfigDto,
 } from './dto/update-config.dto';
 import { UpdateZigbee2mqttDeviceDto } from './dto/update-device.dto';
+import { ReqZ2mWizardAdoptDto, Z2mWizardAdoptDeviceDto, Z2mWizardAdoptDto } from './dto/wizard-adopt.dto';
 import {
 	Zigbee2mqttChannelEntity,
 	Zigbee2mqttChannelPropertyEntity,
@@ -34,6 +35,13 @@ import {
 	Zigbee2mqttConfigModel,
 } from './models/config.model';
 import {
+	Z2mWizardAdoptionModel,
+	Z2mWizardAdoptionResultModel,
+	Z2mWizardDeviceSnapshotModel,
+	Z2mWizardPermitJoinModel,
+	Z2mWizardSessionModel,
+} from './models/wizard.model';
+import {
 	Z2mDeviceInfoModel,
 	Z2mExposeInfoModel,
 	Z2mExposeMappingPreviewModel,
@@ -43,6 +51,8 @@ import {
 	Z2mPropertyMappingPreviewModel,
 	Z2mSuggestedChannelModel,
 	Z2mSuggestedDeviceModel,
+	Z2mWizardAdoptionResponseModel,
+	Z2mWizardSessionResponseModel,
 	Zigbee2mqttDiscoveredDeviceModel,
 	Zigbee2mqttDiscoveredDeviceResponseModel,
 	Zigbee2mqttDiscoveredDevicesResponseModel,
@@ -67,6 +77,10 @@ export const DEVICES_ZIGBEE2MQTT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	AdoptDeviceRequestDto,
 	AdoptChannelDefinitionDto,
 	AdoptPropertyDefinitionDto,
+	// Wizard DTOs
+	Z2mWizardAdoptDeviceDto,
+	Z2mWizardAdoptDto,
+	ReqZ2mWizardAdoptDto,
 	// Config models
 	Zigbee2mqttConfigModel,
 	Z2mMqttConfigModel,
@@ -86,6 +100,14 @@ export const DEVICES_ZIGBEE2MQTT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	Z2mSuggestedChannelModel,
 	Z2mPropertyMappingPreviewModel,
 	Z2mMappingWarningModel,
+	// Wizard models
+	Z2mWizardPermitJoinModel,
+	Z2mWizardDeviceSnapshotModel,
+	Z2mWizardSessionModel,
+	Z2mWizardAdoptionResultModel,
+	Z2mWizardAdoptionModel,
+	Z2mWizardSessionResponseModel,
+	Z2mWizardAdoptionResponseModel,
 	// Entities
 	Zigbee2mqttDeviceEntity,
 	Zigbee2mqttChannelEntity,

@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { Body, Controller, Get, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -22,11 +22,13 @@ import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
 import { MappingLoaderService } from '../mappings';
 import {
 	ShellyNgDeviceInfoResponseModel,
+	ShellyNgDiscoverySessionResponseModel,
 	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 } from '../models/shelly-ng-response.model';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellyNgDiscoveryService } from '../services/shelly-ng-discovery.service';
 
 @ApiTags(DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME)
 @Controller('devices')
@@ -39,7 +41,90 @@ export class ShellyNgDevicesController {
 	constructor(
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly mappingLoaderService: MappingLoaderService,
+		private readonly discoveryService: ShellyNgDiscoveryService,
 	) {}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Start Shelly NG discovery wizard scan',
+		description:
+			'Starts a short-lived mDNS discovery session for Shelly Next-Generation devices. The session can be polled by the admin wizard and enriched with manual host lookups.',
+		operationId: 'create-devices-shelly-ng-plugin-discovery',
+	})
+	@ApiSuccessResponse(
+		ShellyNgDiscoverySessionResponseModel,
+		'Shelly NG discovery session was started. The response includes session timing and discovered device candidates.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('discovery')
+	async startDiscovery(): Promise<ShellyNgDiscoverySessionResponseModel> {
+		const response = new ShellyNgDiscoverySessionResponseModel();
+		response.data = await this.discoveryService.start({ duration: 30 });
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Get Shelly NG discovery wizard scan',
+		description:
+			'Returns the current state of a Shelly NG discovery session, including remaining scan time and discovered device candidates.',
+		operationId: 'get-devices-shelly-ng-plugin-discovery',
+	})
+	@ApiSuccessResponse(ShellyNgDiscoverySessionResponseModel, 'Shelly NG discovery session was successfully retrieved.')
+	@ApiNotFoundResponse('Discovery session could not be found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('discovery/:id')
+	getDiscovery(@Param('id') id: string): ShellyNgDiscoverySessionResponseModel {
+		const session = this.discoveryService.get(id);
+
+		if (session === null) {
+			throw new NotFoundException('Discovery session could not be found');
+		}
+
+		const response = new ShellyNgDiscoverySessionResponseModel();
+		response.data = session;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Add a manual Shelly NG discovery wizard lookup',
+		description:
+			'Adds a manually entered hostname or IP address to an existing Shelly NG discovery session. Password-protected devices can be verified by providing their password.',
+		operationId: 'create-devices-shelly-ng-plugin-discovery-manual',
+	})
+	@ApiBody({
+		type: DevicesShellyNgPluginReqGetInfo,
+		description: 'Manual Shelly NG discovery lookup data',
+	})
+	@ApiSuccessResponse(
+		ShellyNgDiscoverySessionResponseModel,
+		'Manual lookup was added to the Shelly NG discovery session.',
+	)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Discovery session could not be found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('discovery/:id/manual')
+	async addManualDiscoveryDevice(
+		@Param('id') id: string,
+		@Body() createDto: DevicesShellyNgPluginReqGetInfo,
+	): Promise<ShellyNgDiscoverySessionResponseModel> {
+		const session = await this.discoveryService.manual(id, {
+			hostname: createDto.data.hostname,
+			password: createDto.data.password,
+		});
+
+		if (session === null) {
+			throw new NotFoundException('Discovery session could not be found');
+		}
+
+		const response = new ShellyNgDiscoverySessionResponseModel();
+		response.data = session;
+
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],

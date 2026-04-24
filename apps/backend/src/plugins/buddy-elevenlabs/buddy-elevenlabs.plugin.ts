@@ -65,27 +65,38 @@ export class BuddyElevenlabsPlugin implements OnModuleInit {
 			description: 'STT and TTS provider for Buddy module using ElevenLabs API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.STT, BuddyCapability.TTS],
-			readme: `# Buddy ElevenLabs Provider
+			readme: `# ElevenLabs
 
-STT and TTS provider plugin for the Buddy module using the ElevenLabs API.
+> Plugin · by FastyBird · capabilities: STT, TTS
 
-## Features
+ElevenLabs as both a speech-to-text and text-to-speech provider for the Buddy module. Uses the Scribe v2 model for transcription across 99 languages and ElevenLabs' high-quality neural voices for synthesis — easily the most realistic voice option in the bundle.
 
-- **Speech-to-Text** - Accurate transcription using the Scribe v2 model across 99 languages
-- **High-Quality Voices** - Natural-sounding text-to-speech
-- **Multiple Voices** - Choose from various voice profiles
+## What you get
+
+- Best-in-class voice quality for the assistant's spoken replies
+- Multilingual transcription with Scribe v2 (99 languages) so the panel works for non-English households out of the box
+- Configurable voice — pick any ElevenLabs voice (default, premade or cloned) by pasting its voice ID
+- Fully cloud-hosted: no on-device GPU required for high-quality voice
+
+## Capabilities
+
+- **TTS** — neural synthesis with the chosen voice; streaming where supported
+- **STT** — Scribe v2 transcription with automatic language detection
+- **Pair freely** — combine with any LLM provider (Claude, OpenAI, Ollama) for the chat brain
 
 ## Setup
 
 1. Create an account at [ElevenLabs](https://elevenlabs.io)
-2. Generate an API key from your account dashboard
-3. Enter the API key in plugin configuration
-4. Set the buddy module \`stt_plugin\` and/or \`tts_plugin\` to \`${BUDDY_ELEVENLABS_PLUGIN_NAME}\`
+2. Generate an API key from your dashboard
+3. Enter the API key in this plugin's configuration
+4. Set Buddy's \`stt_plugin\` and/or \`tts_plugin\` to \`${BUDDY_ELEVENLABS_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **API Key** - Your ElevenLabs API key (required)
-- **Voice ID** - ElevenLabs voice ID for TTS (auto-detected if not set)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`api_key\` | ElevenLabs API key (required) | — |
+| \`voice_id\` | Voice ID used for TTS | auto-detected |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

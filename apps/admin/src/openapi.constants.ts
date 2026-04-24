@@ -152,6 +152,8 @@ export type DevicesShellyNgPluginConfigSchema = components['schemas']['DevicesSh
 export type DevicesShellyNgPluginCreateDeviceSchema = components['schemas']['DevicesShellyNgPluginCreateDevice'];
 export type DevicesShellyNgPluginUpdateDeviceSchema = components['schemas']['DevicesShellyNgPluginUpdateDevice'];
 export type DevicesShellyNgPluginDeviceSchema = components['schemas']['DevicesShellyNgPluginDataDevice'];
+export type DevicesShellyNgPluginDiscoveryDeviceSchema = components['schemas']['DevicesShellyNgPluginDataDiscoveryDevice'];
+export type DevicesShellyNgPluginDiscoverySessionSchema = components['schemas']['DevicesShellyNgPluginDataDiscoverySession'];
 export type DevicesShellyNgPluginCreateChannelSchema = components['schemas']['DevicesShellyNgPluginCreateChannel'];
 export type DevicesShellyNgPluginUpdateChannelSchema = components['schemas']['DevicesShellyNgPluginUpdateChannel'];
 export type DevicesShellyNgPluginChannelSchema = components['schemas']['DevicesShellyNgPluginDataChannel'];
@@ -344,10 +346,16 @@ export type StatsModuleGetStatsOperation = operations['get-stats-module-stats'];
 // Devices Shelly NG Plugin Operations
 export type DevicesShellyNgPluginGetSupportedOperation = operations['get-devices-shelly-ng-plugin-supported'];
 export type DevicesShellyNgPluginCreateDeviceInfoOperation = operations['create-devices-shelly-ng-plugin-device-info'];
+export type DevicesShellyNgPluginCreateDiscoveryOperation = operations['create-devices-shelly-ng-plugin-discovery'];
+export type DevicesShellyNgPluginGetDiscoveryOperation = operations['get-devices-shelly-ng-plugin-discovery'];
+export type DevicesShellyNgPluginCreateDiscoveryManualOperation = operations['create-devices-shelly-ng-plugin-discovery-manual'];
 
 // Devices Shelly V1 Plugin Operations
 export type DevicesShellyV1PluginGetSupportedOperation = operations['get-devices-shelly-v1-plugin-supported'];
 export type DevicesShellyV1PluginCreateDeviceInfoOperation = operations['create-devices-shelly-v1-plugin-device-info'];
+export type DevicesShellyV1PluginCreateDiscoveryOperation = operations['create-devices-shelly-v1-plugin-discovery'];
+export type DevicesShellyV1PluginGetDiscoveryOperation = operations['get-devices-shelly-v1-plugin-discovery'];
+export type DevicesShellyV1PluginCreateDiscoveryManualOperation = operations['create-devices-shelly-v1-plugin-discovery-manual'];
 
 // Pages Cards Plugin Operations
 export type PagesCardsPluginGetPageCardOperation = operations['get-pages-cards-plugin-page-card'];
@@ -361,6 +369,12 @@ export type DevicesZigbee2mqttPluginGetDiscoveredDevicesOperation = operations['
 export type DevicesZigbee2mqttPluginGetDiscoveredDeviceOperation = operations['get-devices-zigbee2mqtt-plugin-device'];
 export type DevicesZigbee2mqttPluginPreviewMappingOperation = operations['preview-devices-zigbee2mqtt-plugin-device-mapping'];
 export type DevicesZigbee2mqttPluginAdoptDeviceOperation = operations['adopt-devices-zigbee2mqtt-plugin-device'];
+export type DevicesZigbee2mqttPluginCreateWizardOperation = operations['create-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginGetWizardOperation = operations['get-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginDeleteWizardOperation = operations['delete-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation = operations['enable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
+export type DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation = operations['disable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
+export type DevicesZigbee2mqttPluginAdoptWizardOperation = operations['adopt-devices-zigbee2mqtt-plugin-wizard'];
 
 // Devices Home Assistant Plugin Operations
 export type DevicesHomeAssistantPluginGetDeviceOperation = operations['get-devices-home-assistant-plugin-device'];
@@ -478,7 +492,12 @@ export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openap
 
 // Spaces Module Enums
 // ===================
-export { SpacesModuleCreateSpaceCategory } from './openapi';
+// The category / status_widgets enums moved onto the home-control plugin's
+// subtype DTOs (CreateHomeControlSpaceDto) since those fields are no longer
+// present on the generic base CreateSpaceDto. The SpacesModule* aliases are
+// kept here so consumers don't have to thread the longer plugin-scoped type
+// name through every call site.
+export { SpacesHomeControlPluginCreateHomeControlSpaceCategory as SpacesModuleCreateSpaceCategory } from './openapi';
 export { SpacesModuleCreateSpaceType } from './openapi';
 export { SpacesModuleLightingIntentType } from './openapi';
 export { SpacesModuleLightingIntentDelta } from './openapi';
@@ -486,7 +505,7 @@ export { SpacesModuleClimateIntentType } from './openapi';
 export { SpacesModuleClimateIntentMode } from './openapi';
 export { SpacesModuleDataLightingStateDetected_mode as SpacesModuleLightingDetectedMode } from './openapi';
 export { SpacesModuleSuggestionFeedbackSuggestion_type as SpacesModuleSuggestionType } from './openapi';
-export { SpacesModuleCreateSpaceStatus_widgetsSettingsRange as SpacesModuleEnergyWidgetRange } from './openapi';
+export { SpacesHomeControlPluginCreateHomeControlSpaceStatus_widgetsSettingsRange as SpacesModuleEnergyWidgetRange } from './openapi';
 
 // Spaces Module Type Schemas
 // ==========================

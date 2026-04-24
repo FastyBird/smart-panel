@@ -92,42 +92,43 @@ export class ExtensionsModule implements OnModuleInit {
 			name: 'Extensions',
 			description: 'Manage application modules and plugins',
 			author: 'FastyBird',
-			readme: `# Extensions Module
+			readme: `# Extensions
 
-The Extensions module provides a unified interface for discovering and managing all modules and plugins in the Smart Panel application.
+> Module · by FastyBird
+
+Provides a unified interface for discovering, enabling, disabling and inspecting every module and plugin registered with the Smart Panel backend. This is what the admin UI's "Extensions" page is built on, and what the rest of the system uses to find out which optional features are actually available.
+
+## What it gives you
+
+- One catalogue of everything plugged into the backend, with consistent metadata (name, description, author, version, README, links)
+- A safe enable / disable surface — toggling a plugin re-validates dependencies (e.g. don't disable the storage backend that's currently in use)
+- A service control plane for plugins that run long-lived workers, so the admin can start / stop / restart them without restarting the whole backend
+- An action audit log so you can see *who* enabled / disabled / restarted what, and when
 
 ## Features
 
-- **Extension Discovery** - Automatically discovers all registered modules and plugins
-- **Metadata Management** - Stores extension information like name, description, author
-- **Enable/Disable** - Toggle plugin functionality on and off
-- **Configuration** - Access extension-specific configuration options
+- **Extension discovery** — enumerates all registered modules and plugins at runtime; the catalogue is built from in-process metadata so it is always exact
+- **Rich metadata** — exposes name, description, author, version, type, default-enabled flag, capabilities, links and the rendered README to the admin UI
+- **Enable / disable** — toggles plugins (and configurable modules) on or off via configuration; the relevant module is notified live so the change takes effect without a restart wherever possible
+- **Dependency awareness** — refuses to disable a plugin that another active component currently depends on (e.g. the selected storage backend) and reports why
+- **Service control** — start, stop and restart long-running plugin services; useful for plugins that connect to external systems where reconnect can fix transient issues
+- **Action audit** — every enable / disable / service action is recorded with the actor and timestamp; available through the API and CLI
+- **Capability registry** — plugins advertise capabilities (\`tts\`, \`stt\`, \`llm\`, \`messaging\`, …) so other modules can pick a provider by capability instead of hard-coded type
 
-## Extension Types
+## API Endpoints
 
-### Modules
-Core functionality providers that cannot be uninstalled:
-- Devices, Dashboard, Users, Weather, Auth, etc.
+- \`GET /api/v1/modules/extensions\` — list all extensions
+- \`GET /api/v1/modules/extensions/:type\` — get a single extension
+- \`PATCH /api/v1/modules/extensions/:type\` — enable or disable an extension
+- \`GET /api/v1/modules/extensions/services\` — list managed plugin services
+- \`POST /api/v1/modules/extensions/services/:type/{start|stop|restart}\` — control a plugin service
 
-### Plugins
-Optional add-ons that extend functionality:
-- Device integrations (Shelly, Home Assistant)
-- Dashboard tiles (time, weather)
-- Data sources for tiles
-- Weather providers
+## CLI Commands
 
-## For Developers
-
-Extensions register their metadata during module initialization using the \`ExtensionsService\`:
-
-\`\`\`typescript
-this.extensionsService.registerModuleMetadata({
-  type: 'my-module',
-  name: 'My Module',
-  description: 'Module description',
-  author: 'Author Name',
-});
-\`\`\``,
+- \`pnpm run cli services:list\` — list managed plugin services
+- \`pnpm run cli services:start <type>\` — start a service
+- \`pnpm run cli services:stop <type>\` — stop a service
+- \`pnpm run cli services:restart <type>\` — restart a service`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

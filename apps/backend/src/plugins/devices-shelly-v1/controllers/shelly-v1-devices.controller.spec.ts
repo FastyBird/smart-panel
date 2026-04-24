@@ -10,6 +10,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import { ShellyV1DeviceInfoModel } from '../models/shelly-v1.model';
+import { ShellyV1DiscoveryService } from '../services/shelly-v1-discovery.service';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
 import { ShellyV1DevicesController } from './shelly-v1-devices.controller';
@@ -25,9 +26,18 @@ describe('ShellyV1DevicesController', () => {
 			probeDevice: jest.fn(),
 		};
 
+		const discoveryServiceMock: Partial<jest.Mocked<ShellyV1DiscoveryService>> = {
+			start: jest.fn(),
+			get: jest.fn(),
+			manual: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyV1DevicesController],
-			providers: [{ provide: ShellyV1ProbeService, useValue: probeServiceMock }],
+			providers: [
+				{ provide: ShellyV1ProbeService, useValue: probeServiceMock },
+				{ provide: ShellyV1DiscoveryService, useValue: discoveryServiceMock },
+			],
 		}).compile();
 
 		controller = module.get(ShellyV1DevicesController);

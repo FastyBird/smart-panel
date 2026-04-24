@@ -111,39 +111,28 @@ export class PagesCardsPlugin {
 			name: 'Cards Page',
 			description: 'Dashboard page type for displaying information cards',
 			author: 'FastyBird',
-			readme: `# Cards Page Plugin
+			readme: `# Cards Page
 
-Dashboard page type for displaying scrollable information cards.
+> Plugin · by FastyBird · platform: dashboard pages
+
+Dashboard page type that lays out scrollable information cards — useful for status summaries, navigation menus, quick actions and "everything that doesn't fit a grid". Picks up where the tile grid stops: lists of items where each item is a small standalone card.
+
+## What you get
+
+- A flexible page surface for items that aren't tile-sized but still want a rich, tappable presentation
+- A common shape for navigation hubs (e.g. a "rooms" page that lists every space with its key state)
+- Logical grouping so pages stay legible even with many cards
+- Tap actions that integrate with the rest of the system: trigger scenes, run scripts, navigate to other pages, or drop a user into a detail view
 
 ## Features
 
-- **Card Layout** - Vertical scrolling card list
-- **Rich Content** - Cards support text, icons, and actions
-- **Action Buttons** - Configurable tap actions per card
-- **Grouping** - Organize cards into logical groups
+- **Card layout** — vertical scrolling list of cards, each with an icon, title, optional secondary line and tap action
+- **Rich content** — text, icons, badges and accent colours per card
+- **Quick actions** — fire scenes, send device commands or navigate to other dashboard pages
+- **Section grouping** — organise cards into logical sections with optional headings
+- **Live data** — cards bound to data sources update in real time without re-rendering the whole page
 
-## Card Types
-
-Cards can display:
-- Static information
-- Quick action buttons
-- Navigation links
-- Status summaries
-
-## Page Structure
-
-- Header with page title
-- Scrollable card container
-- Cards stack vertically
-- Each card has title, content, and optional actions
-
-## Usage
-
-1. Create a new cards page
-2. Add cards with titles and content
-3. Configure actions for each card
-4. Order cards as needed
-5. View on the panel display`,
+Each page defines its own cards (title, content, icon, action) when created — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

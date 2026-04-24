@@ -185,37 +185,33 @@ export class DevicesThirdPartyPlugin {
 			name: 'Third Party',
 			description: 'Support for integrating third-party devices via custom protocols',
 			author: 'FastyBird',
-			readme: `# Third Party Devices Plugin
+			readme: `# Third Party
 
-Plugin for manually adding and managing custom devices.
+> Plugin · by FastyBird · platform: devices
+
+Generic platform for manually-defined devices that don't have a dedicated integration. Lets you build custom channels and properties and drive them through the REST API or WebSocket — perfect for one-off hardware, custom firmware, scripts pushing values from somewhere else, and testing.
+
+## What you get
+
+- A way to make *anything* show up as a Smart Panel device — even gear that has no native integration yet
+- The same dashboard / scene / Buddy experience for your DIY hardware as for first-class devices
+- A predictable API contract: define the channels and properties once, then push values whenever you have new ones
+- A safe sandbox for prototyping new integrations before turning them into a proper plugin
 
 ## Features
 
-- **Manual Device Creation** - Add devices that aren't auto-discovered
-- **Custom Channels** - Define custom channels and properties
-- **API Integration** - Devices can be controlled via the REST API
-- **Flexible Schema** - Support for various property types and formats
+- **Manual device creation** — define devices that aren't auto-discovered, with a custom name and category
+- **Custom channels & properties** — booleans, numbers, strings or enums; readable, writable or both
+- **REST + WebSocket control** — push current values from any external system; receive write requests when the panel asks for a change
+- **Validation** — property writes are validated against the declared schema, so a script can't push a string into a numeric property
+- **Flexible schema** — model anything Smart Panel's data model can describe; useful for sensors, switches, virtual devices and more
 
 ## Use Cases
 
-- Devices without native integration plugins
-- Custom hardware projects
-- Testing and development
-- External systems pushing data via API
-
-## Device Structure
-
-Each third-party device can have:
-- Multiple **channels** (e.g., relay, sensor, button)
-- Multiple **properties** per channel (e.g., state, value, unit)
-- Custom property types (boolean, number, string, enum)
-
-## API Control
-
-Third-party device states can be updated via:
-- REST API endpoints
-- WebSocket events
-- Direct database updates (for advanced use)`,
+- Hardware without a native plugin yet
+- DIY / custom firmware projects publishing over HTTP or WebSocket
+- Pushing values from external services or scripts (e.g. a cron job that posts your car's battery level)
+- Testing and development of dashboards / scenes without touching real devices`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

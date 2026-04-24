@@ -32,6 +32,8 @@ export { default as SpaceDomainCard } from './space-domain-card.vue';
 export { default as SpaceDomainsSection } from './space-domains-section.vue';
 
 // Scenes + parent zone
+export { default as SpaceDevicesSection } from './space-devices-section.vue';
+export { default as SpaceDisplaysSection } from './space-displays-section.vue';
 export { default as SpaceScenesSection } from './space-scenes-section.vue';
 export { default as SpaceParentZoneSection } from './space-parent-zone-section.vue';
 
@@ -43,3 +45,6 @@ export { default as SpaceAddSceneDialog } from './space-add-scene-dialog.vue';
 // Media sections
 export { default as SpaceMediaActivitiesSummary } from './space-media-activities-summary.vue';
 export { default as SpaceMediaActivitiesDialog } from './space-media-activities-dialog.vue';
+
+// Setup wizard
+export { default as SpacesWizard } from '../views/view-spaces-wizard.vue';

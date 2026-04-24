@@ -30,7 +30,7 @@ export const ShellyNgDeviceEditFormSchema = DeviceEditFormSchema.extend({
 	{
 		message: 'At least one network address (WiFi or Ethernet) is required',
 		path: ['wifiAddress'],
-	},
+	}
 );
 
 export const ShellyNgSupportedDeviceSchema = z.object({
@@ -75,4 +75,35 @@ export const ShellyNgDeviceInfoSchema = z.object({
 			ids: z.array(z.number()),
 		})
 	),
+});
+
+export const ShellyNgDiscoveryDeviceSchema = z.object({
+	identifier: z.string().nullable(),
+	hostname: z.string(),
+	name: z.string().nullable(),
+	model: z.string().nullable(),
+	displayName: z.string().nullable(),
+	firmware: z.string().nullable(),
+	status: z.enum(['checking', 'ready', 'needs_password', 'already_registered', 'unsupported', 'failed']),
+	source: z.enum(['mdns', 'manual']),
+	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
+	suggestedCategory: z.nativeEnum(DevicesModuleDeviceCategory).nullable(),
+	authentication: z.object({
+		enabled: z.boolean(),
+		domain: z.string().nullable().optional(),
+	}),
+	registeredDeviceId: z.string().nullable(),
+	registeredDeviceName: z.string().nullable(),
+	registeredDeviceCategory: z.nativeEnum(DevicesModuleDeviceCategory).nullable(),
+	error: z.string().nullable(),
+	lastSeenAt: z.string(),
+});
+
+export const ShellyNgDiscoverySessionSchema = z.object({
+	id: z.string(),
+	status: z.enum(['running', 'finished', 'failed']),
+	startedAt: z.string(),
+	expiresAt: z.string(),
+	remainingSeconds: z.number(),
+	devices: z.array(ShellyNgDiscoveryDeviceSchema),
 });

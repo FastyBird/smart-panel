@@ -23,6 +23,7 @@ import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './st
 export type IDevicePluginsComponents = {
 	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
 	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
+	deviceWizard?: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 };
 
 export type IDevicePluginsSchemas = {

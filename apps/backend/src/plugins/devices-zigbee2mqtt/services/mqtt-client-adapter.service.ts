@@ -171,6 +171,37 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	}
 
 	/**
+	 * Toggle the bridge's permit_join state for a bounded number of seconds.
+	 * Returns true on successful publish, false otherwise.
+	 * Pass 0 to disable pairing immediately.
+	 */
+	async setPermitJoin(seconds: number): Promise<boolean> {
+		if (!this.client?.connected) {
+			this.logger.warn('Cannot toggle permit_join: not connected to MQTT broker');
+			return false;
+		}
+
+		const topic = `${this.baseTopic}/bridge/request/permit_join`;
+		const value = seconds > 0;
+		const message = JSON.stringify({ value, time: seconds });
+
+		this.logger.debug(`Publishing permit_join to ${topic}: ${message}`);
+
+		return new Promise<boolean>((resolve) => {
+			this.client?.publish(topic, message, { qos: 1 }, (error) => {
+				if (error) {
+					this.logger.error(`Failed to publish permit_join to ${topic}`, {
+						message: error.message,
+					});
+					resolve(false);
+					return;
+				}
+				resolve(true);
+			});
+		});
+	}
+
+	/**
 	 * Request current state from a device
 	 */
 	async requestState(friendlyName: string, properties: string[] = []): Promise<boolean> {

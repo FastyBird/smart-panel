@@ -10,7 +10,20 @@
       "notSupported": "We are sorry, your device is not supported",
       "model": "Model",
       "firmware": "Firmware"
+    },
+    "wizard": {
+      "title": "Shelly Gen 1 discovery wizard",
+      "discovery": "Discovery",
+      "categories": "Categories",
+      "results": "Results",
+      "status": "Status"
     }
+  },
+  "subHeadings": {
+    "wizard": "Find and adopt Shelly Gen 1 devices on your network"
+  },
+  "breadcrumbs": {
+    "wizard": "discovery wizard"
   },
   "fields": {
     "devices": {
@@ -44,6 +57,9 @@
       "password": {
         "title": "Admin password",
         "placeholder": "Provide device password if device is protected"
+      },
+      "error": {
+        "title": "Error"
       },
       "hostname": {
         "title": "Device hostname",
@@ -101,16 +117,60 @@
       "edited": "Changes saved! The Shelly Gen 1 device: {device} has been updated.",
       "notEdited": "Something went wrong. Shelly Gen 1 device update was not successful.",
       "failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
+    },
+    "wizard": {
+      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
     }
   },
   "texts": {
     "aboutPluginStatus": "Enable or disable the Shelly Gen 1 device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
     "aboutDiscovery": "Configure how the plugin discovers Shelly Gen 1 devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
-    "aboutTimeouts": "Configure timeout settings for HTTP communication with Shelly Gen 1 devices. These settings control request handling and device state monitoring."
+    "aboutTimeouts": "Configure timeout settings for HTTP communication with Shelly Gen 1 devices. These settings control request handling and device state monitoring.",
+    "wizard": {
+      "discovery": "The wizard scans the local network for Shelly Gen 1 devices and also accepts a manually entered hostname or IP address.",
+      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+      "scanStatus": "{count} devices found",
+      "noDevices": "No Shelly devices found",
+      "results": {
+        "success": "All devices were adopted successfully.",
+        "failed": "Some devices could not be adopted. Review the errors below."
+      }
+    }
   },
   "buttons": {
     "next": {
       "title": "Next"
+    },
+    "wizard": {
+      "restart": {
+        "title": "Scan again"
+      },
+      "addManual": {
+        "title": "Add"
+      },
+      "adopt": {
+        "title": "Adopt selected"
+      },
+      "finish": {
+        "title": "Back to devices"
+      }
+    }
+  },
+  "statuses": {
+    "wizard": {
+      "checking": "Checking",
+      "ready": "Ready",
+      "needs_password": "Needs password",
+      "already_registered": "Registered",
+      "unsupported": "Unsupported",
+      "failed": "Failed",
+      "created": "Created",
+      "updated": "Updated",
+      "willCreate": "Will create",
+      "willUpdate": "Will update existing"
     }
   }
 }

@@ -36,6 +36,7 @@ export const RouteNames = {
 	DEVICES: 'devices_module-devices',
 	DEVICES_ADD: 'devices_module-devices_add',
 	DEVICES_EDIT: 'devices_module-devices_edit',
+	DEVICES_WIZARD: 'devices_module-devices_wizard',
 	DEVICE: 'devices_module-device',
 	DEVICE_EDIT: 'devices_module-device_edit',
 	DEVICE_CONTROL: 'devices_module-device_control',

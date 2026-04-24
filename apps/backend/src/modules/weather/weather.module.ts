@@ -102,32 +102,34 @@ export class WeatherModule implements OnModuleInit {
 			name: 'Weather',
 			description: 'Weather forecasts and geolocation services',
 			author: 'FastyBird',
-			readme: `# Weather Module
+			readme: `# Weather
 
-The Weather module provides weather forecast data and location management for the Smart Panel display.
+> Module · by FastyBird
+
+Aggregates weather data for the Smart Panel. Manages a list of named locations, delegates the actual data fetching to provider plugins, normalises the result into a single shape, and pushes updates to the panel and dashboards in real time.
+
+## What it gives you
+
+- One canonical weather model regardless of which provider you use, so tiles, pages and the assistant don't care whether the bytes came from Open-Meteo or OpenWeather
+- A long-running scheduler that keeps every location fresh in the background, with automatic retry / back-off on provider errors
+- Time-series storage of past observations so dashboards can show trends, not just snapshots
 
 ## Features
 
-- **Weather Forecasts** - Current conditions and multi-day forecasts
-- **Location Management** - Configure weather locations by coordinates or city name
-- **Provider System** - Pluggable weather data providers
-- **Historical Data** - Store and retrieve past weather data via storage
-- **Multiple Locations** - Support for multiple weather locations
+- **Multiple locations** — keep as many locations as you need (home, weekend cabin, parents' place, …) each with its own provider configuration
+- **Provider plugins** — pluggable data sources; pick a provider per location at creation time, swap providers without losing the location's history
+- **Background polling** — the module schedules refreshes for every location and re-tries failures with exponential back-off; the panel never has to call the provider directly
+- **Forecasts** — current conditions plus a multi-day outlook (resolution depends on the chosen provider)
+- **Rich, normalised data** — temperature (current / min / max), humidity, pressure, wind speed and direction, condition code and label, sunrise / sunset, UV index, precipitation
+- **Historical data** — every observation is written to the storage module as time-series, exposed through the \`/history\` endpoint
+- **Real-time push** — fresh observations are broadcast over WebSocket so panel weather tiles update without polling
+- **Validation** — location DTOs are validated by the active provider plugin so an invalid coordinate / city / API key fails fast at the API layer
 
-## Weather Providers
+## API Endpoints
 
-Weather data is fetched through provider plugins:
-
-- **OpenWeatherMap** - Current weather and daily forecasts
-- **OpenWeatherMap One Call** - Detailed hourly and daily forecasts
-
-## Data Available
-
-- Temperature (current, min, max)
-- Weather conditions and descriptions
-- Humidity, pressure, wind speed
-- Sunrise and sunset times
-- Multi-day forecasts`,
+- \`GET|POST|PATCH|DELETE /api/v1/modules/weather/locations\` — manage locations
+- \`GET /api/v1/modules/weather/locations/:id\` — current weather for a location
+- \`GET /api/v1/modules/weather/locations/:id/history\` — historical observations`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

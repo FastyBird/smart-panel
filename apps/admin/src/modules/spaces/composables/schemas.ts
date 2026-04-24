@@ -5,7 +5,7 @@ import { StatusWidgetSchema } from '../store/spaces.store.schemas';
 
 export const SpacesFilterSchema = z.object({
 	search: z.string().optional(),
-	type: z.union([z.nativeEnum(SpaceType), z.literal('all')]).default('all'),
+	types: z.array(z.string()),
 });
 
 export type SpacesFilterSchemaType = z.infer<typeof SpacesFilterSchema>;

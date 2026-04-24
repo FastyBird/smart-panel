@@ -17,13 +17,9 @@ export const SPACES_SYNTHETIC_ENTRY_PLUGIN_API_TAG_DESCRIPTION =
 export const SPACES_SYNTHETIC_ENTRY_TYPE = SpaceType.ENTRY;
 
 /**
- * Deterministic UUID for the singleton entry space. Persisted once on first
- * boot by the plugin seeder. Later phases (display → space backfill, panel
- * view dispatch) may reference this ID directly.
+ * Deterministic UUID used by the legacy `displays.role` → `displays.spaceId`
+ * backfill in migration 1000000000004 to map `role = 'entry'` displays at the
+ * entry space. Kept as a constant so the migration stays self-contained; new
+ * code should not hard-code this UUID — query by `type = entry` instead.
  */
 export const SPACES_SYNTHETIC_ENTRY_SPACE_ID = 'a0000000-0000-4000-8000-000000000002';
-
-/**
- * Default name for the seeded entry space. User-editable after creation.
- */
-export const SPACES_SYNTHETIC_ENTRY_DEFAULT_NAME = 'Entry';

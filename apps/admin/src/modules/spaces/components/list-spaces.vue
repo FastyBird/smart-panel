@@ -33,7 +33,6 @@
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
-				@detail="onDetail"
 				@edit="onEdit"
 				@remove="onRemove"
 				@add="onAdd"
@@ -70,9 +69,9 @@ import { type IBulkAction, useBreakpoints } from '../../../common';
 import type { ISpacesFilter } from '../composables/types';
 import type { ISpace } from '../store/spaces.store.types';
 
+import { type IListSpacesProps } from './list-spaces.types';
 import SpacesFilter from './spaces-filter.vue';
 import SpacesTable from './spaces-table.vue';
-import { type IListSpacesProps } from './list-spaces.types';
 
 defineOptions({
 	name: 'ListSpaces',
@@ -81,7 +80,6 @@ defineOptions({
 const props = defineProps<IListSpacesProps>();
 
 const emit = defineEmits<{
-	(e: 'detail', id: ISpace['id']): void;
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
 	(e: 'add'): void;
@@ -125,10 +123,6 @@ const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
 		type: 'danger',
 	},
 ]);
-
-const onDetail = (id: ISpace['id']): void => {
-	emit('detail', id);
-};
 
 const onEdit = (id: ISpace['id']): void => {
 	emit('edit', id);

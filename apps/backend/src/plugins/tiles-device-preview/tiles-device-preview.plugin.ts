@@ -93,35 +93,29 @@ export class TilesDevicePreviewPlugin {
 			name: 'Device Preview Tile',
 			description: 'Dashboard tiles for displaying device status preview',
 			author: 'FastyBird',
-			readme: `# Device Preview Tiles Plugin
+			readme: `# Device Preview Tile
 
-Dashboard tiles for displaying device status and quick controls.
+> Plugin · by FastyBird · platform: dashboard tiles
+
+Compact dashboard tile that surfaces the live status of a device with optional one-tap control — the workhorse tile of any dashboard, suitable for everything from a single switch to a temperature sensor.
+
+## What you get
+
+- A standardised, glanceable view of any device's most relevant value with the panel's optimistic-UI guarantees baked in
+- Per-tile choice of *primary* property so the tile shows what matters for that device (a switch's on / off, a sensor's temperature, a power meter's current draw)
+- Optional *secondary* properties so a single tile can convey "is the AC running, what's the room temperature, what's the set-point" at one glance
+- One-tap control on writable primary properties without dropping the user into a detail page
 
 ## Features
 
-- **Device Status** - Show real-time device status on dashboard
-- **Quick Controls** - Toggle devices directly from the tile
-- **Status Icons** - Visual indicators for device state
-- **Multi-Property Display** - Show multiple device properties
+- **Live status** — real-time updates of the selected primary property over WebSocket
+- **Quick control** — toggle controllable devices directly from the tile; the optimistic UI means feedback is instant
+- **Status icon** — connection / state indicator turns the tile into a connectivity dashboard at a glance
+- **Multi-property** — render additional secondary properties under the primary value
+- **Unit-aware** — values are rendered with the unit declared by the device's property
+- **Tap-through** — tapping the tile body opens the device detail page when present, the property dialog otherwise
 
-## Tile Types
-
-### Device Preview Tile
-Compact device status display:
-- Device icon and name
-- Primary property value (e.g., on/off state)
-- Quick action button for controllable devices
-- Connection status indicator
-
-## Usage
-
-Add device preview tiles to dashboard pages for at-a-glance monitoring of your most important devices. Tap tiles to toggle state or view details.
-
-## Configuration
-
-- Select the device to display
-- Choose which property to show as primary
-- Enable/disable quick control button`,
+Each tile selects its target device and primary property when placed on a dashboard — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

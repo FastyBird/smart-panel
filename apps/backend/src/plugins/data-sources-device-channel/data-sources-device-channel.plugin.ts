@@ -105,45 +105,31 @@ export class DataSourcesDeviceChannelPlugin {
 			name: 'Device Channel Property Data Source',
 			description: 'Data sources for connecting tiles to device channel properties',
 			author: 'FastyBird',
-			readme: `# Device Channel Data Sources Plugin
+			readme: `# Device Channel Data Source
 
-Data source type for connecting dashboard tiles to device properties.
+> Plugin · by FastyBird · platform: dashboard data sources
+
+Data source that binds a dashboard tile to a single device-channel property. Reads stream live to the tile; tiles that support writing can push values back through the property's platform handler — so the same data source powers both a sensor display and an interactive switch.
+
+## What you get
+
+- A no-code way to wire any dashboard tile to any device property without ever leaving the admin UI
+- The same optimistic-UI guarantees the rest of the panel uses: feedback is instant, the value reconciles with the device when the backend confirms
+- Strict validation: a tile that points at a missing or deleted property is refused at save time
+- Type-aware rendering: the tile knows whether the underlying property is a boolean, number, string or enum and renders the right control / unit / formatter
 
 ## Features
 
-- **Property Binding** - Link tiles to specific device properties
-- **Real-time Updates** - Receive live property value changes
-- **Bidirectional** - Support for both reading and writing values
-- **Validation** - Ensures referenced device/channel/property exists
-
-## How It Works
-
-Data sources act as a bridge between:
-- **Tiles** - Visual elements on dashboard pages
-- **Device Properties** - Values from connected devices
-
-When a property value changes, connected tiles update automatically.
-
-## Configuration
-
-Each data source specifies:
-- Target device ID
-- Channel ID within the device
-- Property ID to bind to
-
-## Usage
-
-1. Add a tile that supports data sources
-2. Create a device channel data source
-3. Select device → channel → property
-4. The tile will display the property value
+- **Property binding** — link a tile to \`device → channel → property\` with one config object
+- **Real-time updates** — values stream over WebSocket; tiles re-render only when the value changes
+- **Bidirectional** — read and (optionally) write; whether writes are allowed is derived from the property's permissions, never overridden by the tile
+- **Validation** — referenced device, channel and property must exist; the data source survives device renames but breaks loudly if the property is deleted
 
 ## Supported Property Types
 
-- Boolean (on/off states)
-- Numeric (temperature, humidity, etc.)
-- String (text values)
-- Enum (predefined value lists)`,
+Boolean (on / off states), numeric (temperature, humidity, …), string and enum.
+
+Each data source picks its target \`device_id\`, \`channel_id\` and \`property_id\` when it is created — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

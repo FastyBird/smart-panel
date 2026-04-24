@@ -59,28 +59,40 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 			description: 'WhatsApp adapter plugin for Buddy module remote conversations and alerts',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.MESSAGING],
-			readme: `# Buddy WhatsApp Plugin
+			readme: `# WhatsApp
 
-WhatsApp adapter plugin for the Buddy module. Connects via WhatsApp Web protocol (QR code scan).
+> Plugin · by FastyBird · capability: messaging
+
+WhatsApp adapter for the Buddy module that connects through the WhatsApp Web protocol — no Meta Business account, no cloud middleman, just a phone running WhatsApp paired as a "linked device".
+
+## What you get
+
+- Talk to Buddy from any WhatsApp client — desktop, web, Android, iOS — the same way you'd message a friend
+- Use a number you already own; no business verification, no new SIM, no Meta API onboarding
+- Persistent session: pair once, the plugin remembers the auth state across restarts and reconnects automatically when the phone goes online again
+- Granular access control via a phone-number allow-list, so the bot only answers people you trust
 
 ## Features
 
-- **QR Code Pairing** - Scan a QR code with your phone to connect (no Meta Business account needed)
-- **Remote Chat** - Interact with your smart home buddy from anywhere via WhatsApp
-- **Alert Forwarding** - Receive suggestion notifications
-- **Phone Whitelist** - Restrict access to specific phone numbers
-- **Persistent Session** - Authentication persists across restarts
+- **QR-code pairing** — link a phone via *Settings → Linked Devices*
+- **Remote chat** — interact with Buddy from anywhere
+- **Alert forwarding** — receive suggestion notifications as regular WhatsApp messages
+- **Phone whitelist** — restrict access to a comma-separated list of E.164 numbers
+- **Persistent session** — authentication survives restarts; you don't re-scan the QR every time
+- **Auto reconnect** — the plugin handles WhatsApp Web disconnects and re-establishes the session in the background
 
 ## Setup
 
-1. Enable the plugin in configuration
-2. Open the status endpoint or check the terminal for the QR code
-3. Scan the QR code with WhatsApp on your phone (Linked Devices)
-4. Start chatting with the bot
+1. Enable the plugin
+2. Read the QR code from the status endpoint or backend logs
+3. Scan it with WhatsApp on your phone (*Settings → Linked Devices*)
+4. Start chatting with Buddy
 
 ## Configuration
 
-- **Allowed Phone Numbers** - Comma-separated E.164 phone numbers (empty = allow all)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`allowed_phone_numbers\` | Comma-separated E.164 numbers permitted to chat | unrestricted |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

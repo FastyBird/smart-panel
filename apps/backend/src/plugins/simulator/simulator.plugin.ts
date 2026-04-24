@@ -234,90 +234,81 @@ export class SimulatorPlugin {
 			name: 'Simulator',
 			description: 'Plugin for creating simulated devices, spaces, and scenes for testing and development',
 			author: 'FastyBird',
-			readme: `# Simulator Plugin
+			readme: `# Simulator
 
-Plugin for creating virtual devices, spaces, and scenes for testing purposes without requiring physical hardware.
+> Plugin · by FastyBird · platform: devices
+
+Creates virtual devices, channels and properties for testing and development — and for showing the panel off without any physical hardware. Supports loading entire homes from YAML scenarios, generating individual devices, realistic time- and location-aware behaviour, and toggling connection state on demand.
+
+## What you get
+
+- A complete, believable home in seconds: pick a scenario (small apartment, penthouse, office) and the simulator seeds devices, channels and properties that look exactly like real ones to the rest of the system
+- A way to develop dashboards, scenes and Buddy logic without touching real hardware — values change realistically over time, daylight follows your latitude, AC and heaters react to setpoints
+- A reproducible test bed for QA: fixed scenarios with known expected behaviour mean dashboards and scenes can be tested end-to-end
+- A live demo mode: pair with auto-simulation and the panel becomes a self-driving showroom
+- Granular control: simulate a single property, the entire device, or the whole home; flip connection states to exercise offline / reconnect handling
 
 ## Features
 
-- **Load Scenarios** - Load predefined device sets from YAML files (small apartment, penthouse, office, etc.)
-- **Generate Devices** - Create simulated devices of any category with proper channels and properties
-- **Realistic Simulation** - Time-based and environmental simulation for realistic device behavior
-- **Smart Simulators** - Dedicated simulators for sensors, lighting, AC, heaters, thermostats, and more
-- **Connection Testing** - Simulate connection state changes (online/offline)
-- **Auto-Simulation** - Enable automatic value updates at configurable intervals
-- **Location-Aware** - Latitude-based simulation for accurate daylight and temperature patterns
+- **Scenarios** — load predefined device sets from YAML (small apartment, penthouse, office, …) or your own custom files
+- **Device generation** — synthesise devices of any supported category with sensible defaults for channels and properties
+- **Realistic simulators** — time-based and environmental simulation for sensors, lighting, AC, heaters, thermostats, outlets, fans, locks and window coverings
+- **Connection testing** — flip devices between connected / lost states to exercise reconnect logic in scenes, dashboards and Buddy
+- **Auto-simulation** — periodic value updates at a configurable interval, optionally with smooth transitions for realism
+- **Location-aware** — latitude-based daylight and temperature curves so the simulated home behaves differently in summer vs. winter, day vs. night
+- **Smooth transitions** — values gradually move toward the next target rather than snapping, so dashboards look alive
 
-## Supported Device Categories with Realistic Simulators
+## Supported Categories
 
-- **Sensors** - Temperature, humidity, motion, illuminance, pressure, contact, leak, smoke, CO, CO2, air quality
-- **Lighting** - Time-based on/off, brightness, color temperature, RGB colors
-- **Air Conditioners** - Cooling/heating modes, fan control, temperature regulation
-- **Heating Units** - Temperature control, power consumption
-- **Thermostats** - Scheduled temperature control with hysteresis
-- **Outlets** - Power monitoring, energy consumption tracking
-- **Fans** - Temperature-based speed control
-- **Locks** - Time-based lock/unlock patterns
-- **Window Coverings** - Position based on time of day and season
+Sensors (temperature, humidity, motion, illuminance, pressure, contact, leak, smoke, CO, CO₂, air quality), lighting (on / off, brightness, CCT, RGB), air conditioners, heating units, thermostats, outlets (with power & energy), fans, locks and window coverings.
 
-## Configuration Options
+## Configuration
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| \`update_on_start\` | Simulate values when service starts | \`false\` |
-| \`simulation_interval\` | Auto-simulation interval (ms), 0 = disabled | \`0\` |
-| \`latitude\` | Location for daylight/temperature calculations | \`50.0\` |
+| \`update_on_start\` | Simulate values immediately on service start | \`false\` |
+| \`simulation_interval\` | Auto-simulation interval in ms (\`0\` = disabled) | \`0\` |
+| \`latitude\` | Latitude used for daylight / temperature patterns | \`50.0\` |
 | \`smooth_transitions\` | Gradual value changes for realism | \`true\` |
+
+## API Endpoints
+
+- \`GET /api/v1/plugins/simulator/categories\` — list device categories
+- \`POST /api/v1/plugins/simulator/generate\` — generate a simulated device
+- \`POST /api/v1/plugins/simulator/{device_id}/simulate-value\` — set a property value
+- \`POST /api/v1/plugins/simulator/{device_id}/simulate-connection\` — change connection state
+- \`POST /api/v1/plugins/simulator/{device_id}/simulate-all\` — randomise all properties
 
 ## CLI Commands
 
-### Realistic Simulation (New!)
 \`\`\`bash
-pnpm run cli simulator:simulate --list              # List devices with simulator info
-pnpm run cli simulator:simulate --all               # Simulate all devices once
-pnpm run cli simulator:simulate --device <id>       # Simulate specific device
-pnpm run cli simulator:simulate --config            # Show configuration
-pnpm run cli simulator:simulate --start --interval 5000  # Start auto-simulation
-pnpm run cli simulator:simulate --stop              # Stop auto-simulation
-pnpm run cli simulator:simulate                     # Interactive mode
-\`\`\`
+# Realistic simulation
+pnpm run cli simulator:simulate --list
+pnpm run cli simulator:simulate --all
+pnpm run cli simulator:simulate --device <id>
+pnpm run cli simulator:simulate --start --interval 5000
+pnpm run cli simulator:simulate --stop
 
-### Load Scenarios (New!)
-\`\`\`bash
-pnpm run cli simulator:scenario --list              # List available scenarios
-pnpm run cli simulator:scenario -s small-apartment  # Load a scenario
-pnpm run cli simulator:scenario --truncate -s office # Clear devices first
-pnpm run cli simulator:scenario -f /path/to/custom.yaml  # Load custom YAML
-pnpm run cli simulator:scenario --dry-run -s penthouse   # Preview only
-pnpm run cli simulator:scenario                     # Interactive mode
-\`\`\`
+# Scenarios
+pnpm run cli simulator:scenario --list
+pnpm run cli simulator:scenario -s small-apartment
+pnpm run cli simulator:scenario --truncate -s office
+pnpm run cli simulator:scenario -f /path/to/custom.yaml
+pnpm run cli simulator:scenario --dry-run -s penthouse
 
-### Generate Devices
-\`\`\`bash
+# Device generation
 pnpm run cli simulator:generate --list
 pnpm run cli simulator:generate --category sensor --name "Living Room Sensor"
 pnpm run cli simulator:generate --category thermostat --count 3
-\`\`\`
 
-### Random Values (Legacy)
-\`\`\`bash
+# Random values (legacy)
 pnpm run cli simulator:populate --all
 pnpm run cli simulator:populate --device <id>
-\`\`\`
 
-### Connection State
-\`\`\`bash
+# Connection state
 pnpm run cli simulator:connection --all --state connected
 pnpm run cli simulator:connection --device <id> --state lost
-\`\`\`
-
-## REST API Endpoints
-
-- \`GET /simulator/categories\` - List available device categories
-- \`POST /simulator/generate\` - Generate a new simulated device
-- \`POST /simulator/{deviceId}/simulate-value\` - Set a property value
-- \`POST /simulator/{deviceId}/simulate-connection\` - Change connection state
-- \`POST /simulator/{deviceId}/simulate-all\` - Generate random values`,
+\`\`\``,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -98,39 +98,28 @@ export class PagesTilesPlugin {
 			name: 'Tiles Page',
 			description: 'Dashboard page type for displaying tiles with widgets',
 			author: 'FastyBird',
-			readme: `# Tiles Page Plugin
+			readme: `# Tiles Page
 
-Dashboard page type for displaying a grid of configurable tiles.
+> Plugin · by FastyBird · platform: dashboard pages
+
+Dashboard page type that lays out configurable tiles in a flexible grid. The default page used for "the main view of a room" or any custom layout — works with every registered tile plugin (clock, weather, device preview, scenes, …) and lets them mix freely on the same page.
+
+## What you get
+
+- A free-form, room-style canvas: drop a clock here, two switches there, a temperature graph beside them
+- Variable tile sizes so big-impact tiles (a temperature gauge) can sit next to small ones (a quick switch)
+- Live data everywhere — every tile reflects the underlying device / weather / scene state in real time
+- Responsiveness by default — the same page renders on a phone-sized panel and a 10" panel without per-device tweaks
 
 ## Features
 
-- **Grid Layout** - Arrange tiles in a flexible grid system
-- **Multiple Tile Types** - Support for various tile plugins
-- **Responsive Design** - Adapts to display size
-- **Tile Data Sources** - Connect tiles to live data
+- **Grid layout** — configurable rows × columns; tiles can span multiple cells horizontally and vertically
+- **Mixed tiles** — combine any registered tile plugins on the same page
+- **Drag-and-drop editing** in the admin UI; positions and sizes are validated against the configured grid
+- **Live data** — tiles bound to data-source plugins update automatically as values change
+- **Empty-state hint** — a freshly created page guides the user into adding the first tile rather than showing a blank screen
 
-## Page Layout
-
-Tiles pages display widgets in a grid:
-- Configurable grid dimensions
-- Tiles can span multiple cells
-- Automatic layout optimization
-
-## Supported Tiles
-
-Works with any registered tile type:
-- Time tiles
-- Weather tiles
-- Device preview tiles
-- Custom tile plugins
-
-## Usage
-
-1. Create a new tiles page
-2. Configure grid size
-3. Add tiles and position them
-4. Connect data sources to tiles
-5. Save and view on the panel display`,
+Grid size and tile placement are configured per page — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

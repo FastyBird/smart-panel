@@ -140,45 +140,33 @@ export class DataSourcesWeatherPlugin {
 			name: 'Weather Data Source',
 			description: 'Data sources for connecting tiles to weather information',
 			author: 'FastyBird',
-			readme: `# Weather Data Sources Plugin
+			readme: `# Weather Data Source
 
-Data source types for connecting dashboard tiles to weather data.
+> Plugin · by FastyBird · platform: dashboard data sources
 
-## Features
+Data sources that bind dashboard tiles to weather information served by the Weather module — the bridge between the module's normalised location data and the weather tiles drawn on the panel.
 
-- **Current Weather** - Bind to current weather conditions
-- **Forecast Data** - Access multi-day weather forecasts
-- **Location Selection** - Choose which weather location to display
-- **Auto-refresh** - Weather data updates automatically
+## What you get
+
+- Drop-in weather data for any tile that wants it, without any tile needing direct knowledge of the Weather module's API
+- Two sharply-defined shapes: "current conditions for this location" and "forecast for this location, N days from today"
+- Provider-agnostic: the data source picks the location, not the provider, so you can swap providers without recreating the data source
+- The same real-time push the rest of the panel benefits from — the tile updates as soon as the weather module receives a fresh observation
 
 ## Data Source Types
 
-### Current Weather Data Source
-Provides:
-- Current temperature
-- Weather conditions
-- Humidity and wind
-- Last update time
+- **Current weather** — temperature, condition code & label, humidity, wind speed / direction, pressure, last update time, sunrise / sunset
+- **Forecast day** — high / low temperature, condition, precipitation probability for a given day offset (\`0\` = today, \`1\` = tomorrow, …)
 
-### Forecast Day Data Source
-Provides:
-- Daily high/low temperatures
-- Weather conditions per day
-- Day index selection (0 = today, 1 = tomorrow, etc.)
+## Behaviour
+
+- **Live updates** — re-emits whenever the weather module receives a new observation
+- **Unit-aware** — values are emitted in the location's configured units (°C / °F, m·s⁻¹ / mph, …)
+- **Graceful empty state** — when the location has not yet received its first observation the data source emits a clearly-marked empty value rather than zeros
 
 ## Requirements
 
-- Weather module must be configured
-- At least one weather location defined
-- A weather provider plugin enabled (e.g., OpenWeatherMap)
-
-## Usage
-
-1. Add a weather tile to a dashboard page
-2. Create a weather data source
-3. Select the location
-4. For forecasts, select the day offset
-5. The tile displays the weather data`,
+The Weather module must be configured with at least one location and an enabled weather provider plugin (e.g. OpenWeatherMap). Each data source selects its weather location (and day offset for forecasts) when it is created.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

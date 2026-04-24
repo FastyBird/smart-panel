@@ -8,10 +8,11 @@ export const getErrorReason = <T extends Record<string | number, unknown>>(
 	const details = get(error, 'error.details', null);
 
 	if (Array.isArray(details)) {
-		return details
+		const reasons = details
 			.map((row) => ('reason' in row && typeof row['reason'] === 'string' ? row.reason : undefined))
-			.filter((row) => typeof row === 'undefined')
-			.join(', ');
+			.filter((row): row is string => typeof row === 'string');
+
+		return reasons.length > 0 ? reasons.join(', ') : message;
 	} else if (details && typeof details === 'object' && 'reason' in details && typeof details['reason'] === 'string') {
 		return details['reason'];
 	}
