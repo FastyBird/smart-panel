@@ -82,6 +82,47 @@ Commit `5acd44c57`. Three spaces plugins (home-control, synthetic-master, synthe
 
 Commit `be44ba99a`. Three orphan keys deleted from all 6 locales: `edit.sections.smartOverrides.smartSuggestions`, `fields.spaces.suggestions` (subtree), `detail.media` (subtree).
 
+#### 6. Relocate `category` / `suggestionsEnabled` / `statusWidgets` to home-control subtypes — DEFERRED TO FOLLOW-UP PR
+
+These three columns live on the abstract `SpaceEntity` today but are home-control concepts: `category` uses the Room/Zone taxonomy (living room, kitchen, floor_ground, …), `suggestionsEnabled` toggles the home-control suggestion engine, and `statusWidgets` only surfaces lighting/climate/covers/sensor/energy widgets. Signage / master / entry spaces ship them as dead JSON today.
+
+Related: item #1 above documents an earlier 2026-04-24 investigation that attempted the move and reverted — the admin pipeline broke because swagger doesn't emit discriminated subtype schemas, only the flat base. Revisiting now because: (a) PR #578 is already 421 files / 108 commits and should merge before growing further, (b) after Phase 3's Room/Zone are in the plugin, the relocation is cleaner, and (c) the admin cost can be absorbed in one focused PR instead of entangling it with the active Phase 5 / 6 / 7 work.
+
+**Scope — call sites identified 2026-04-24 (~18 files, four groups):**
+
+1. **Backend source of truth (2 files):**
+   - `apps/backend/src/modules/spaces/entities/space.entity.ts` — move `@Column` decls for `category`, `suggestionsEnabled`, `statusWidgets` (+ their `@ApiProperty` / `@Expose` / `@Transform` decorators) off the abstract base.
+   - Destination: `RoomSpaceEntity` and `ZoneSpaceEntity`. When Phase 3's continuation relocates Room/Zone into `plugins/spaces-home-control/entities/`, the columns come along. No DB migration — physical columns stay on `spaces_module_spaces` via `@TableInheritance`; non-home-control rows just never populate them.
+   - `apps/backend/src/modules/spaces/dto/{create,update}-space.dto.ts` — drop the three fields from the abstract base DTO. Move into `CreateRoomSpaceDto` / `CreateZoneSpaceDto` / Update variants. The "category required for room, forbidden elsewhere" `@ValidateIf` also moves — it's already Room/Zone-specific.
+
+2. **Backend cross-module consumers (3 files) — require narrowing:**
+   - `apps/backend/src/modules/buddy/services/buddy-context.service.ts:218,242` — `space.category` passed into buddy context snapshot. Needs `instanceof RoomSpaceEntity | ZoneSpaceEntity` guard, or query through a home-control projection service.
+   - `apps/backend/src/modules/buddy/services/buddy-conversation.service.ts:384` — `space.category` in prompt text.
+   - `apps/backend/src/modules/buddy/services/heartbeat.service.ts:92` — filters `spaces.filter((s) => s.suggestionsEnabled)`. Structurally this is asking "which spaces opted into suggestions" — after the move, only home-control subtypes have the field, so a type narrow or an `s.suggestionsEnabled === true` check (treating `undefined` as false) is the fix.
+   - Consider: introduce a `HomeControlSpacesService.getSuggestionEnabledSpaces()` / `getCategorizedSpaces()` the Buddy module injects, so Buddy stops reaching through the core SpaceEntity shape. Cleaner long-term but a larger change.
+
+3. **Admin (~8 files):**
+   - `apps/admin/src/modules/spaces/store/spaces.store.types.ts` — the three fields drop from the base `ISpace` interface; declared instead on a home-control-specific variant. Given the admin doesn't have `IRoomSpace` / `IZoneSpace` today (everything's a single `ISpace`), either (a) introduce subtype interfaces (structural cost), or (b) keep the fields on `ISpace` as optional and populated-only-for-home-control-types (pragmatic, matches OpenAPI base shape).
+   - `apps/admin/src/modules/spaces/store/spaces.transformers.ts` — current transformers read/write all three unconditionally; after the move, only emit them when `type ∈ {room, zone}`.
+   - `apps/admin/src/modules/spaces/spaces.constants.ts` — `getSpaceIcon(space)` currently requires `category`. Either (a) relocate to `apps/admin/src/plugins/spaces-home-control/` and generalize the core caller to accept a `string | null` directly, or (b) leave `getSpaceIcon` in core but make `space.category` optional and fall back to `SPACE_TYPE_ICONS[space.type]` for non-home-control types.
+   - `apps/admin/src/modules/spaces/composables/useSpaces.ts`, `useSpaceEditForm.ts`, `useSpacesOnboarding.ts`, `useAppOnboarding.ts` — all read `space.category` in space-list/edit flows. Should either narrow by type (skip category read for non-home-control) or move the home-control-specific logic into `apps/admin/src/plugins/spaces-home-control/composables/`.
+   - `apps/admin/src/modules/spaces/components/space-edit-form.vue`, `space-add-form.vue`, `apps/admin/src/modules/onboarding/components/step-spaces.vue`, `views/view-spaces-onboarding.vue` — category + statusWidgets editor sections. These UIs are home-control-specific already and are candidates to move wholesale into the plugin's `spaceEditForm` / `spaceAddForm` components (the plugin-element dispatch is already there).
+
+4. **Panel (2 files):**
+   - `apps/panel/lib/modules/spaces/views/spaces/view.dart` — drops the three passthrough getters from the generic `SpaceView`. Replacements on a home-control-specific view (`RoomSpaceView` / `ZoneSpaceView`) under `apps/panel/lib/plugins/spaces-home-control/views/`, or accessed via `space.model` narrowed to the plugin-owned model class.
+   - `apps/panel/lib/plugins/spaces-home-control/presentation/system_pages/room_overview.dart` — reads `space.statusWidgets`. Already inside the plugin, so after the getters relocate to a home-control view class this call site still compiles (and type-narrows correctly).
+
+**Verification checklist for the follow-up PR:**
+- OpenAPI regen — expect `category`, `suggestions_enabled`, `status_widgets` to disappear from the base `SpacesModuleDataSpace` and appear only on `SpacesModuleDataRoomSpace` + `SpacesModuleDataZoneSpace` schemas.
+- Backend jest — expect breakage in `spaces.service.spec.ts`, `buddy/*.spec.ts`, any fixture that builds a `SpaceEntity` literal with the three fields.
+- Admin vitest — `spaces.transformers.spec.ts`, `useSpaces.spec.ts`, `useSpace.spec.ts`, `useSpacesActions.spec.ts` will need fixture updates.
+- Admin type-check — the main pressure point. If we go with the pragmatic "keep optional on base" approach, minimal churn. If we introduce true subtype interfaces, ripple through every `ISpace`-typed prop/composable/store accessor.
+- Panel analyzer — expect a handful of `space.category`/etc. errors in core space views that need to narrow or project through the home-control plugin.
+
+**Decision point to take before starting:** pick either (a) **strict relocation** — subtype-only declarations + subtype interfaces in admin + per-subtype views in panel (architecturally clean, wide admin+panel blast radius), or (b) **pragmatic relocation** — backend entities/DTOs relocate but admin keeps optional fields on the base `ISpace` and panel keeps passthrough getters for now, with consumers narrowing only where they need to (backend buddy). Option (b) is ~half the work and solves the "dead JSON on non-home-control responses" problem via OpenAPI schema shape alone.
+
+Sequencing note: ideally runs in the same follow-up PR as the Room/Zone entity relocation into `plugins/spaces-home-control/entities/` (Phase 3 continuation), so all home-control-owned columns + entities land together.
+
 ## Patterns & Gotchas (learned from Phase 1)
 
 Hard-earned lessons from Phase 1 review. Apply these verbatim when writing Phase 2+ code — each one took a round of Bugbot feedback or CI failure to surface.
