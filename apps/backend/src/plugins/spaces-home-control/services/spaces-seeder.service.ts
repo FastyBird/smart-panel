@@ -6,10 +6,10 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../../modules/seed/services/seed.service';
-import { CreateSpaceDto } from '../../../modules/spaces/dto/create-space.dto';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SetClimateRoleDto } from '../dto/climate-role.dto';
+import { CreateHomeControlSpaceDto } from '../dto/create-home-control-space.dto';
 import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';
@@ -137,7 +137,15 @@ export class SpacesSeederService implements Seeder {
 			}
 		}
 
-		const dtoInstance = toInstance(CreateSpaceDto, space);
+		// Normalize seed records through `CreateHomeControlSpaceDto` — the
+		// home-control subtype DTO that whitelists `category`,
+		// `suggestions_enabled`, and `status_widgets`. `toInstance` runs with
+		// `excludeExtraneousValues: true`, so passing the slimmer base
+		// `CreateSpaceDto` here would silently strip those fields and e.g.
+		// reject zone seed entries as "Category is required for zones." Only
+		// home-control types (room/zone) appear in the built-in seed set
+		// this plugin owns.
+		const dtoInstance = toInstance(CreateHomeControlSpaceDto, space);
 
 		const createdSpace = await this.spacesService.create(dtoInstance);
 
