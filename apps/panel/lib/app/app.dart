@@ -37,6 +37,8 @@ import 'package:fastybird_smart_panel/modules/energy/export.dart'
     as energy_module;
 import 'package:fastybird_smart_panel/modules/spaces/export.dart'
     as spaces_module;
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart'
+    as spaces_home_control_plugin;
 import 'package:fastybird_smart_panel/modules/weather/export.dart'
     as weather_module;
 import 'package:flutter/material.dart';
@@ -724,7 +726,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<deck_module.BottomNavModeNotifier>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<spaces_module.MediaActivityRepository>(),
+          value: locator<spaces_home_control_plugin.MediaActivityRepository>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<security_module.SecurityStatusRepository>(),
@@ -736,7 +738,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<security_module.SecurityEventsRepository>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<spaces_module.MediaActivityService>(),
+          value: locator<spaces_home_control_plugin.MediaActivityService>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<energy_module.EnergyRepository>(),

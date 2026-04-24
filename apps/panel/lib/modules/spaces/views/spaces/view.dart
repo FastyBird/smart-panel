@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_catego
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
 
 class SpaceView {
   final SpaceModel _model;

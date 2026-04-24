@@ -2,9 +2,9 @@ import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dar
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

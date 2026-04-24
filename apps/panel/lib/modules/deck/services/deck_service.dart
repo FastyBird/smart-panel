@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

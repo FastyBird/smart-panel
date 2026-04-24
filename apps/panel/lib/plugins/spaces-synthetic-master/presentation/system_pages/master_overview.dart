@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 

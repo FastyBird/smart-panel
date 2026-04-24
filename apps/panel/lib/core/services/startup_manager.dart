@@ -66,6 +66,7 @@ import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

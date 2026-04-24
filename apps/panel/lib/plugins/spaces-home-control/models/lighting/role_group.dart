@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 
 /// Role group data for displaying in tiles.
 class RoleGroup {

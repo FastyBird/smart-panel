@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/covers_targets/view.dart';
 
 /// Gets the display name for a covers target based on channel count.
 ///

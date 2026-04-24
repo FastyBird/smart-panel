@@ -1,5 +1,5 @@
-import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/covers_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
 
 /// Module name identifier.
 const String kDeckModuleName = 'deck';

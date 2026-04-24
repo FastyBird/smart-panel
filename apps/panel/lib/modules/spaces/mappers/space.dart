@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 
 SpaceModel buildSpaceModel(Map<String, dynamic> data) {

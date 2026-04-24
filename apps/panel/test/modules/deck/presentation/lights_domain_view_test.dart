@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/light_targets/view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

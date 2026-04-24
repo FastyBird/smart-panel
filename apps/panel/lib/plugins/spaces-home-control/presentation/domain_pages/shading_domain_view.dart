@@ -79,10 +79,10 @@ import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart'
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
-import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/utils/intent_result_handler.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
