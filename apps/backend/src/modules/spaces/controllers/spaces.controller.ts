@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -78,13 +78,21 @@ export class SpacesController {
 		summary: 'Create a new space',
 		description: 'Creates a new space (room/zone). Requires owner or admin role.',
 	})
+	// The incoming body is typed as `{ data: object }` to bypass the global
+	// `ValidationPipe` (which runs with `forbidNonWhitelisted: true` and would
+	// reject subtype-specific fields that only exist on per-type plugin DTOs —
+	// e.g. `category` on home-control, `layout` on signage). `SpacesService.create`
+	// dispatches to the right `mapping.createDto` and validates there with full
+	// whitelist + forbidNonWhitelisted semantics. Swagger docs stay accurate
+	// via `@ApiBody({ type: ReqCreateSpaceDto })`.
+	@ApiBody({ type: ReqCreateSpaceDto, description: 'Payload containing the space attributes to create.' })
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the created space')
 	@ApiBadRequestResponse('Invalid space data')
 	@ApiUnprocessableEntityResponse('Space validation failed')
-	async create(@Body() body: ReqCreateSpaceDto): Promise<SpaceResponseModel> {
+	async create(@Body() body: { data: object }): Promise<SpaceResponseModel> {
 		this.logger.debug('Creating new space');
 
-		const space = await this.spacesService.create(body.data);
+		const space = await this.spacesService.create(body.data as Parameters<SpacesService['create']>[0]);
 
 		const response = new SpaceResponseModel();
 
@@ -101,16 +109,20 @@ export class SpacesController {
 		description: 'Updates an existing space. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	// See create() — typed as `{ data: object }` to bypass the global pipe so
+	// plugin-contributed subtype fields reach `SpacesService.update()`, which
+	// dispatches to `mapping.updateDto` for the authoritative validation.
+	@ApiBody({ type: ReqUpdateSpaceDto, description: 'Payload containing the space attributes to update.' })
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the updated space')
 	@ApiNotFoundResponse('Space not found')
 	@ApiUnprocessableEntityResponse('Invalid space data')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() body: ReqUpdateSpaceDto,
+		@Body() body: { data: object },
 	): Promise<SpaceResponseModel> {
 		this.logger.debug(`Updating space with id=${id}`);
 
-		const space = await this.spacesService.update(id, body.data);
+		const space = await this.spacesService.update(id, body.data as Parameters<SpacesService['update']>[1]);
 
 		const response = new SpaceResponseModel();
 

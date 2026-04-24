@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_create_home_control_space_category.dart';
 import 'package:flutter/widgets.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -38,51 +38,51 @@ IconData? resolveIconNullable(String? iconName) {
 
 /// Resolves a space icon: tries a custom MDI icon name first, then falls
 /// back to a category-based default icon.
-IconData resolveSpaceIcon(String? iconName, SpacesModuleDataSpaceCategory? category) {
+IconData resolveSpaceIcon(String? iconName, SpacesHomeControlPluginCreateHomeControlSpaceCategory? category) {
   final customIcon = resolveIconNullable(iconName);
   if (customIcon != null) {
     return customIcon;
   }
 
   switch (category) {
-    case SpacesModuleDataSpaceCategory.livingRoom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.livingRoom:
       return MdiIcons.sofa;
-    case SpacesModuleDataSpaceCategory.bedroom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.bedroom:
       return MdiIcons.bedKingOutline;
-    case SpacesModuleDataSpaceCategory.bathroom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.bathroom:
       return MdiIcons.showerHead;
-    case SpacesModuleDataSpaceCategory.kitchen:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.kitchen:
       return MdiIcons.stove;
-    case SpacesModuleDataSpaceCategory.office:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.office:
       return MdiIcons.deskLamp;
-    case SpacesModuleDataSpaceCategory.garage:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.garage:
       return MdiIcons.garage;
-    case SpacesModuleDataSpaceCategory.outdoorGarden:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.outdoorGarden:
       return MdiIcons.flower;
-    case SpacesModuleDataSpaceCategory.hallway:
-    case SpacesModuleDataSpaceCategory.entryway:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.hallway:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.entryway:
       return MdiIcons.doorOpen;
-    case SpacesModuleDataSpaceCategory.laundry:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.laundry:
       return MdiIcons.washingMachine;
-    case SpacesModuleDataSpaceCategory.floorBasement:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.floorBasement:
       return MdiIcons.stairs;
-    case SpacesModuleDataSpaceCategory.floorAttic:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.floorAttic:
       return MdiIcons.homeRoof;
-    case SpacesModuleDataSpaceCategory.nursery:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.nursery:
       return MdiIcons.toyBrickOutline;
-    case SpacesModuleDataSpaceCategory.diningRoom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.diningRoom:
       return MdiIcons.tableFurniture;
-    case SpacesModuleDataSpaceCategory.outdoorBalcony:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.outdoorBalcony:
       return MdiIcons.balcony;
-    case SpacesModuleDataSpaceCategory.outdoorTerrace:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.outdoorTerrace:
       return MdiIcons.tableChair;
-    case SpacesModuleDataSpaceCategory.guestRoom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.guestRoom:
       return MdiIcons.bedOutline;
-    case SpacesModuleDataSpaceCategory.gym:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.gym:
       return MdiIcons.dumbbell;
-    case SpacesModuleDataSpaceCategory.mediaRoom:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.mediaRoom:
       return MdiIcons.television;
-    case SpacesModuleDataSpaceCategory.workshop:
+    case SpacesHomeControlPluginCreateHomeControlSpaceCategory.workshop:
       return MdiIcons.hammerWrench;
     default:
       return MdiIcons.homeOutline;

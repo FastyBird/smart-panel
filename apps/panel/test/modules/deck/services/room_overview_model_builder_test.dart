@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_create_home_control_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
@@ -67,7 +67,7 @@ SpaceView createRoom({
     model: SpaceModel(
       id: id,
       type: SpacesModuleDataSpaceType.room,
-      category: SpacesModuleDataSpaceCategory.livingRoom,
+      category: SpacesHomeControlPluginCreateHomeControlSpaceCategory.livingRoom,
       name: name,
       icon: icon,
       displayOrder: 0,

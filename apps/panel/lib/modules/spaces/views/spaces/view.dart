@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_create_home_control_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
@@ -29,7 +29,7 @@ class SpaceView {
 
   String? get description => _model.description;
 
-  SpacesModuleDataSpaceCategory? get category => _model.category;
+  SpacesHomeControlPluginCreateHomeControlSpaceCategory? get category => _model.category;
 
   String? get parentId => _model.parentId;
 
