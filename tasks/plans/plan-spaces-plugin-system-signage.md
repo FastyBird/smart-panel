@@ -58,16 +58,13 @@ The following gaps surfaced during hands-on testing after all seven phases had m
 
 Phases 1–7 plus the full Phase 3a/3b relocations have landed. The feature is functional end-to-end. Items still open:
 
-#### 1. `SpaceEntity` polymorphism — domain columns on the abstract base
+#### 1. ~~`SpaceEntity` polymorphism — domain columns on the abstract base~~ — INVESTIGATED, KEPT AS-IS
 
-The abstract `SpaceEntity` still declares three home-control-specific columns — `statusWidgets`, `suggestionsEnabled`, `lastActivityAt`. Conceptually these belong on `RoomSpaceEntity` / `ZoneSpaceEntity` (home-control subtypes) rather than on every space including `MASTER` / `ENTRY` / `SIGNAGE_INFO_PANEL`. Relocating them requires:
+The abstract `SpaceEntity` declares `statusWidgets`, `suggestionsEnabled`, `lastActivityAt` — all home-control-specific concepts. Investigation on 2026-04-24 (prototyped and reverted): moving the `@Column` decorations to `RoomSpaceEntity` / `ZoneSpaceEntity` is structurally possible (no DB migration needed since the physical columns stay on the shared `spaces_module_spaces` table under TableInheritance), but the generated OpenAPI surface does NOT materialize subtype-specific data schemas — only the flat `SpacesModuleDataSpace` base is emitted. After the move, admin loses these fields from its typed `ApiSpace` response entirely; the transformer, `ISpace` shape, 10+ composables, and ~20 test fixtures all need to restructure around optional / cast access, and `buddy-heartbeat` has to structurally probe for the field it used to type-read directly.
 
-- A TypeORM migration (`1000000000007-SpacesDomainColumnsPerSubtype.ts`): SQLite table-recreate pattern; copy values for rows with `type IN ('room', 'zone')` into the new per-subtype columns; drop the base columns.
-- Move the `@Column` declarations from `SpaceEntity` to `RoomSpaceEntity` and `ZoneSpaceEntity` (both in `plugins/spaces-home-control/entities/`). Mirror them on both since both subtypes currently use them.
-- Update the generic `SpaceEntity`-typed callers (they currently read `space.lastActivityAt` etc. on the abstract base; after the move, they'll need a type-guard or subtype cast, or the access should move into home-control-scoped code).
-- OpenAPI: the schema names shouldn't change but the fields will reorganize — likely requires a non-empty diff review.
+Decision: not worth the cost. The DB column physically lives on the shared table either way; the only gain is TypeScript narrowing on backend handlers that already know they're operating on a home-control space. If we ever emit proper discriminated `oneOf` schemas for space subtypes (a Swagger registry change that would also benefit Room/Zone / Master / Entry / Signage DTO separation), revisit — that context would make the cost side worth paying.
 
-Owner: backend maintainer familiar with TypeORM `@ChildEntity` migrations.
+Until then, treat the three columns as a known architectural wart: they're "generic-named home-control fields the base exposes so the whole admin pipeline keeps working." Any future plugin that wants its own space-type-specific columns should follow the Phase 6 signage pattern — add them via `ALTER TABLE ADD COLUMN` + declare on the child entity only (`SignageInfoPanelSpaceEntity` already has `layout`, `showClock`, etc.).
 
 #### 2. `space-activity.listener` references stale `device.roomId`
 
