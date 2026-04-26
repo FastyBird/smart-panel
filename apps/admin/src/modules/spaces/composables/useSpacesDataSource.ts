@@ -51,7 +51,12 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 			},
 		},
 		syncQuery: true,
-		version: 1,
+		// Bumped from 1 → 2: the filter schema's `type: SpaceType | 'all'` was
+		// replaced with `types: string[]`. Without bumping the version, existing
+		// users with cached `spaces:list` state would rehydrate the old shape
+		// (no `types` key) and crash on first render with "Cannot read properties
+		// of undefined (reading 'length')" when the spaces filter is evaluated.
+		version: 2,
 	});
 
 	const filtersActive = computed<boolean>((): boolean => {
