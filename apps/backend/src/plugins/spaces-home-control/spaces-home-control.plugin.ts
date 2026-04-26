@@ -18,13 +18,16 @@ import { SpacesTypeMapperService } from '../../modules/spaces/services/spaces-ty
 import { SpaceRoleType, SpaceType } from '../../modules/spaces/spaces.constants';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { ToolProviderRegistryService } from '../../modules/tools/services/tool-provider-registry.service';
 import { ToolsModule } from '../../modules/tools/tools.module';
 import { WebsocketModule } from '../../modules/websocket/websocket.module';
 
+import { CreateHomeControlSpaceDto } from './dto/create-home-control-space.dto';
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
@@ -196,6 +199,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
 		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
@@ -226,18 +230,87 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		this.spaceHomePageResolverRegistry.register(SpaceType.ZONE, this.homeControlHomePageResolver);
 
 		// Room/Zone space type mappings — entity files moved into this plugin
-		// in Phase 3a step 4.
-		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+		// in Phase 3a step 4. DTOs use CreateHomeControlSpaceDto /
+		// UpdateHomeControlSpaceDto which add category / suggestions_enabled /
+		// status_widgets on top of the generic base — those fields are
+		// home-control-specific and don't belong on master/entry/signage
+		// types.
+		// `subtypeColumns` maps each shared-STI-table column this plugin owns
+		// to the value core should write when transitioning AWAY from
+		// room/zone to a subtype that doesn't whitelist it. NOT NULL columns
+		// (like `suggestionsEnabled`) must wipe to their declared default,
+		// not `null`, or the UPDATE violates the constraint and the client
+		// gets a 500. Nullable columns can use `null`.
+		//
+		// Defaults mirror `@Column({ default: ... })` on RoomSpaceEntity /
+		// ZoneSpaceEntity — keep in lockstep.
+		const HOME_CONTROL_SUBTYPE_COLUMNS = {
+			category: null,
+			suggestionsEnabled: true,
+			statusWidgets: null,
+		} as const;
+
+		this.spacesTypeMapper.registerMapping<RoomSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ROOM,
 			class: RoomSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
 		});
-		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateSpaceDto, UpdateSpaceDto>({
+		this.spacesTypeMapper.registerMapping<ZoneSpaceEntity, CreateHomeControlSpaceDto, UpdateHomeControlSpaceDto>({
 			type: SpaceType.ZONE,
 			class: ZoneSpaceEntity,
-			createDto: CreateSpaceDto,
-			updateDto: UpdateSpaceDto,
+			createDto: CreateHomeControlSpaceDto,
+			updateDto: UpdateHomeControlSpaceDto,
+			subtypeColumns: HOME_CONTROL_SUBTYPE_COLUMNS,
+		});
+
+		// Register discriminator mappings so OpenAPI emits proper `oneOf` schemas
+		// for every surface that speaks polymorphic spaces. Mirrors the pattern in
+		// spaces-synthetic-master / spaces-synthetic-entry / spaces-signage-info-panel.
+		// Without these, `/spaces` request/response schemas stay flat on the base
+		// DTO and generated clients can't see `category` / `suggestions_enabled` /
+		// `status_widgets` on Room/Zone without unsafe casts.
+		//
+		// Room and Zone share the same Create/Update DTO (`CreateHomeControlSpaceDto`
+		// / `UpdateHomeControlSpaceDto`) — register each discriminator value against
+		// that shared class. Entity side gets per-type mappings because Room and
+		// Zone have distinct `@ChildEntity` classes and Swagger names.
+		this.discriminatorRegistry.register({
+			parentClass: SpaceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ROOM,
+			modelClass: RoomSpaceEntity,
+		});
+		this.discriminatorRegistry.register({
+			parentClass: SpaceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ZONE,
+			modelClass: ZoneSpaceEntity,
+		});
+		this.discriminatorRegistry.register({
+			parentClass: CreateSpaceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ROOM,
+			modelClass: CreateHomeControlSpaceDto,
+		});
+		this.discriminatorRegistry.register({
+			parentClass: CreateSpaceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ZONE,
+			modelClass: CreateHomeControlSpaceDto,
+		});
+		this.discriminatorRegistry.register({
+			parentClass: UpdateSpaceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ROOM,
+			modelClass: UpdateHomeControlSpaceDto,
+		});
+		this.discriminatorRegistry.register({
+			parentClass: UpdateSpaceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: SpaceType.ZONE,
+			modelClass: UpdateHomeControlSpaceDto,
 		});
 
 		// Role subtype mappings — entities live in this plugin.

@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../../../modules/spaces/spaces.constants';
 
 import { IsValidSpaceCategory } from './space-category-constraint.validator';
 

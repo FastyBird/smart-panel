@@ -215,7 +215,10 @@ export class BuddyContextService {
 					{
 						id: space.id,
 						name: space.name,
-						category: space.category,
+						// `category` is home-control-specific; it's undefined on master /
+						// entry / signage spaces. Collapse undefined to null so the
+						// downstream snapshot keeps its existing "string | null" shape.
+						category: space.category ?? null,
 						deviceCount: spaceDevices.length,
 					},
 				];
@@ -239,7 +242,8 @@ export class BuddyContextService {
 					return {
 						id: space.id,
 						name: space.name,
-						category: space.category,
+						// See note above — home-control-only field; normalize to null.
+						category: space.category ?? null,
 						deviceCount,
 					};
 				}),

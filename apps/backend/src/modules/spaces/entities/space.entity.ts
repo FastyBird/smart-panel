@@ -1,11 +1,11 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsArray, IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsDate, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ALL_SPACE_CATEGORIES, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
@@ -33,21 +33,12 @@ export abstract class SpaceEntity extends BaseEntity {
 	@Column({ nullable: true, default: null })
 	description: string | null;
 
-	@ApiPropertyOptional({
-		description: 'Space category (room type template)',
-		enum: ALL_SPACE_CATEGORIES,
-		nullable: true,
-		example: SpaceRoomCategory.LIVING_ROOM,
-	})
-	@Expose()
-	@IsOptional()
-	@IsEnum({ ...SpaceRoomCategory, ...SpaceZoneCategory })
-	@Column({
-		type: 'varchar',
-		nullable: true,
-		default: null,
-	})
-	category: SpaceRoomCategory | SpaceZoneCategory | null;
+	// `category` is a home-control-specific concept (Room/Zone taxonomy). The
+	// @Column + @ApiProperty decorations live on RoomSpaceEntity / ZoneSpaceEntity
+	// so the generated OpenAPI schemas only surface it on those subtypes.
+	// Declared as optional here so the abstract base's TS type remains readable
+	// by cross-module consumers that don't (or can't) narrow to a subtype.
+	category?: SpaceRoomCategory | SpaceZoneCategory | null;
 
 	@ApiPropertyOptional({
 		name: 'parent_id',
@@ -115,53 +106,13 @@ export abstract class SpaceEntity extends BaseEntity {
 	@Column({ type: 'int', default: 0 })
 	displayOrder: number;
 
-	@ApiProperty({
-		name: 'suggestions_enabled',
-		description: 'Whether suggestions are enabled for this space',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose({ name: 'suggestions_enabled' })
-	@Transform(
-		({ obj }: { obj: { suggestions_enabled?: boolean; suggestionsEnabled?: boolean } }) =>
-			obj.suggestions_enabled ?? obj.suggestionsEnabled,
-		{ toClassOnly: true },
-	)
-	@Column({ type: 'boolean', default: true })
-	suggestionsEnabled: boolean;
+	// `suggestionsEnabled` + `statusWidgets` are home-control-specific. Their
+	// @Column + @ApiProperty decorations live on RoomSpaceEntity / ZoneSpaceEntity.
+	// Declared optional here so cross-module consumers (e.g. Buddy) can still
+	// read them off the abstract base without narrowing to a subtype.
+	suggestionsEnabled?: boolean;
 
-	@ApiPropertyOptional({
-		name: 'status_widgets',
-		description: 'Ordered list of status widgets configured for this space',
-		type: 'array',
-		nullable: true,
-		items: {
-			type: 'object',
-			properties: {
-				type: { type: 'string', example: 'energy' },
-				order: { type: 'number', example: 0 },
-				settings: {
-					type: 'object',
-					properties: {
-						range: { type: 'string', enum: ['today', 'week', 'month'], example: 'today' },
-						show_production: { type: 'boolean', example: true },
-					},
-				},
-			},
-			required: ['type', 'order', 'settings'],
-		},
-		example: [{ type: 'energy', order: 0, settings: { range: 'today', show_production: true } }],
-	})
-	@Expose({ name: 'status_widgets' })
-	@IsOptional()
-	@IsArray()
-	@Transform(
-		({ obj }: { obj: { status_widgets?: unknown[] | null; statusWidgets?: unknown[] | null } }) =>
-			obj.status_widgets ?? obj.statusWidgets ?? null,
-		{ toClassOnly: true },
-	)
-	@Column({ type: 'simple-json', nullable: true, default: null })
-	statusWidgets: Record<string, unknown>[] | null;
+	statusWidgets?: Record<string, unknown>[] | null;
 
 	@ApiPropertyOptional({
 		name: 'last_activity_at',

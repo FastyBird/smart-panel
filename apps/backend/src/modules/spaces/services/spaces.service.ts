@@ -21,7 +21,21 @@ import { EventType, SPACES_MODULE_NAME, SpaceType, isValidCategoryForType } from
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
-import { SpacesTypeMapperService } from './spaces-type-mapper.service';
+import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.service';
+
+/**
+ * Narrow check for whether a subtype mapping owns a given shared-STI-table
+ * column. Kept as a module-level helper so the `Readonly<Record<string, unknown>>`
+ * default doesn't collapse to `any` through the generic `getMapping<>()`
+ * return type.
+ */
+function subtypeOwnsColumn(
+	mapping: SpaceTypeMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>,
+	column: string,
+): boolean {
+	const columns = mapping.subtypeColumns;
+	return columns !== undefined && Object.hasOwn(columns, column);
+}
 
 @Injectable()
 export class SpacesService {
@@ -92,7 +106,19 @@ export class SpacesService {
 	async create(createDto: CreateSpaceDto): Promise<SpaceEntity> {
 		this.logger.debug('Creating new space');
 
-		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
+		// The caller supplies `type` on the incoming DTO. Dispatch through the
+		// type mapper so each subtype gets validated against its own DTO —
+		// home-control types (room/zone) carry category / suggestions_enabled /
+		// status_widgets that do not exist on master/entry/signage DTOs, and
+		// the base `CreateSpaceDto` whitelist would reject them.
+		const rawType = (createDto as Partial<CreateSpaceDto> | null | undefined)?.type;
+		if (!rawType || !Object.values(SpaceType).includes(rawType)) {
+			this.logger.error(`Missing or unknown space type on create: ${String(rawType)}`);
+			throw new SpacesValidationException('A valid space type is required.');
+		}
+
+		const mapping = this.spacesTypeMapper.getMapping(rawType);
+		const dtoInstance = await this.validateDto(mapping.createDto as new () => CreateSpaceDto, createDto);
 
 		// Check for existing space with same canonical name (deduplication)
 		const canonicalName = canonicalizeSpaceName(dtoInstance.name);
@@ -106,7 +132,8 @@ export class SpacesService {
 		}
 
 		const type = dtoInstance.type;
-		const category = dtoInstance.category ?? null;
+		const rawCategory = (dtoInstance as { category?: string | null }).category;
+		const category: string | null = rawCategory ?? null;
 
 		// Zones must have a category
 		if (type === SpaceType.ZONE && category === null) {
@@ -130,7 +157,6 @@ export class SpacesService {
 		// SpaceEntity repo would do `new SpaceEntity()` + Object.assign, which discards the concrete class
 		// (and won't copy the prototype-only `type` getter), so TypeORM would write a null/incorrect
 		// discriminator on save.
-		const mapping = this.spacesTypeMapper.getMapping(type);
 		const subtypeRepository = this.dataSource.getRepository(mapping.class);
 
 		// Singleton space types (master, entry, and any future plugin-contributed
@@ -171,13 +197,54 @@ export class SpacesService {
 
 		const space = await this.getOneOrThrow(id);
 
-		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
+		// Dispatch to the per-type update DTO so subtype-specific fields
+		// (category / suggestions_enabled / status_widgets on home-control
+		// rooms/zones) are preserved under the forbidNonWhitelisted guard.
+		// The effective type is whatever the caller provides, otherwise the
+		// existing space's type.
+		const rawType = (updateDto as Partial<UpdateSpaceDto> | null | undefined)?.type ?? space.type;
+		if (!Object.values(SpaceType).includes(rawType)) {
+			this.logger.error(`Unknown space type on update: ${String(rawType)}`);
+			throw new SpacesValidationException('A valid space type is required.');
+		}
 
-		// Determine the effective type (new type if provided, otherwise existing)
-		const effectiveType: SpaceType = dtoInstance.type ?? space.type;
+		const effectiveMapping = this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(rawType);
+		const dtoInstance = await this.validateDto(effectiveMapping.updateDto as new () => UpdateSpaceDto, updateDto);
 
-		// Determine the effective category (new category if provided, otherwise existing)
-		const effectiveCategory = dtoInstance.category !== undefined ? dtoInstance.category : space.category;
+		// Effective type equals `rawType`. The `UpdateSpaceDto.type` transform
+		// only coerces `null → undefined`, so after validation
+		// `dtoInstance.type ?? space.type` resolves to the same value the
+		// pre-validation `rawType` captured — no second `getMapping()` lookup
+		// is needed.
+		const effectiveType: SpaceType = rawType;
+		const targetAcceptsCategory = subtypeOwnsColumn(effectiveMapping, 'category');
+
+		// Determine the effective category. Three cases, in order:
+		//
+		// 1. DTO provided a value (including explicit null) — honor the caller's
+		//    intent verbatim.
+		// 2. Target subtype doesn't whitelist `category` (e.g. master/entry/
+		//    signage after a type change from room/zone) — treat as null. Without
+		//    this, stored room/zone categories would leak into the compat check
+		//    against a non-home-control type and the update would fail, and
+		//    since the target DTO doesn't accept `category` the client can't
+		//    clear it in the same PATCH. One-step conversions must work.
+		// 3. Target is home-control and DTO omitted — preserve the stored value.
+		//    Prefer the subtype-hydrated property; fall back to a raw column
+		//    read only when the source subtype didn't declare the column (legacy
+		//    rows written before the column moved). This gates the extra SQL
+		//    round-trip to the rare legacy-row case instead of every update.
+		const dtoCategory = (dtoInstance as { category?: unknown }).category;
+		let effectiveCategory: string | null;
+		if (dtoCategory !== undefined) {
+			effectiveCategory = dtoCategory as string | null;
+		} else if (!targetAcceptsCategory) {
+			effectiveCategory = null;
+		} else if ((space as { category?: unknown }).category !== undefined) {
+			effectiveCategory = ((space as { category?: unknown }).category ?? null) as string | null;
+		} else {
+			effectiveCategory = await this.readRawSpaceCategory(id);
+		}
 
 		// Zones must have a category
 		if (effectiveType === SpaceType.ZONE && effectiveCategory === null) {
@@ -208,12 +275,12 @@ export class SpacesService {
 		};
 
 		// Get the fields to update from DTO (excluding undefined values).
-		// Use the *effective* type's mapping so that when a subtype change adds new
-		// @Expose'd fields, those fields survive `toInstance` and land in the raw
-		// update below. Using `space.type` here would use the OLD subtype's class
-		// and silently drop new-subtype-specific fields.
-		const mapping = this.spacesTypeMapper.getMapping(effectiveType);
-		const updateFields = omitBy(toInstance(mapping.class, updateData), isUndefined);
+		// Use the *effective* type's mapping (resolved earlier for the category
+		// check) so that when a subtype change adds new @Expose'd fields, those
+		// fields survive `toInstance` and land in the raw update below. Using
+		// `space.type` here would use the OLD subtype's class and silently drop
+		// new-subtype-specific fields.
+		const updateFields = omitBy(toInstance(effectiveMapping.class, updateData), isUndefined);
 
 		// Decide type-change BEFORE any in-memory mutation. `space.type` is a
 		// prototype-only getter today, so computing after `Object.assign(space, ...)`
@@ -222,6 +289,12 @@ export class SpacesService {
 		// re-introduced) would let Object.assign shadow the getter and make this
 		// comparison silently return `false`, skipping the raw discriminator update.
 		const typeChanged = effectiveType !== space.type;
+		// Resolve the *old* subtype mapping once up front when the type is
+		// changing — reused by the singleton guard below and the stale-column
+		// wipe in the later `if (typeChanged)` raw-UPDATE block.
+		const oldMapping = typeChanged
+			? this.spacesTypeMapper.getMapping<SpaceEntity, CreateSpaceDto, UpdateSpaceDto>(space.type)
+			: null;
 
 		// Singleton space types (master, entry, future plugin-contributed singletons)
 		// must not be reachable via a type change in either direction — flipping a
@@ -229,15 +302,14 @@ export class SpacesService {
 		// the seeders and reset handlers depend on, and flipping an existing singleton
 		// away would destroy it outright. The only supported lifecycle for a singleton
 		// is: seeder creates once, admin edits in place.
-		if (typeChanged) {
-			const oldMapping = this.spacesTypeMapper.getMapping(space.type);
+		if (typeChanged && oldMapping) {
 			if (oldMapping.singleton) {
 				this.logger.error(`Cannot change type away from singleton '${space.type}' (space id=${id})`);
 				throw new SpacesValidationException(
 					`Space type '${space.type}' is a singleton and cannot be converted to another type.`,
 				);
 			}
-			if (mapping.singleton) {
+			if (effectiveMapping.singleton) {
 				this.logger.error(`Cannot change type to singleton '${effectiveType}' (space id=${id})`);
 				throw new SpacesValidationException(
 					`Space type '${effectiveType}' is a singleton and cannot be assigned via a type change. The singleton is created by its seeder.`,
@@ -297,7 +369,13 @@ export class SpacesService {
 			// relation keys and happily overwrite read-only columns if they sneak in.
 			// Filter to actual @Column property names from the repository metadata so the
 			// raw UPDATE only touches real data columns.
-			const columnPropertyNames = new Set(this.repository.metadata.columns.map((col) => col.propertyName));
+			// Pull column metadata from the *effective* subtype repository so the
+			// UPDATE set also includes columns that only the target subtype declares
+			// (e.g. home-control's category / suggestionsEnabled / statusWidgets live
+			// on RoomSpaceEntity / ZoneSpaceEntity, not the abstract base).
+			const columnPropertyNames = new Set(
+				this.dataSource.getRepository(effectiveMapping.class).metadata.columns.map((col) => col.propertyName),
+			);
 			const rawUpdate: Record<string, unknown> = { type: effectiveType };
 			for (const [key, value] of Object.entries(updateFields)) {
 				if (columnPropertyNames.has(key)) {
@@ -309,6 +387,36 @@ export class SpacesService {
 			// Mirror the in-memory fix-up for the raw update set().
 			if (dtoInstance.parent_id === null) {
 				rawUpdate.parentId = null;
+			}
+			// Pin `category` to the compat-checked `effectiveCategory`. If the
+			// target subtype accepts category this persists whatever the compat
+			// check endorsed; if the target doesn't accept it the value is null
+			// (forced above) and the stale stored value gets wiped.
+			if (!Object.prototype.hasOwnProperty.call(rawUpdate, 'category')) {
+				rawUpdate.category = effectiveCategory;
+			}
+			// Generalized wipe: any column the OLD subtype owned but the NEW
+			// subtype doesn't must be reset, otherwise stale values survive
+			// on the shared STI table with no way for the client to clear
+			// them (the new type's DTO doesn't whitelist those fields).
+			// `category` is handled above; this loop covers the rest (e.g.
+			// home-control's `suggestionsEnabled` + `statusWidgets` when
+			// flipping away to master/entry/signage).
+			//
+			// The wipe value is plugin-declared because NOT NULL columns need
+			// their column default (e.g. `suggestionsEnabled` → `true`),
+			// whereas nullable columns can use `null`. Writing a blind `null`
+			// across the board would violate NOT NULL constraints on the
+			// shared table and surface as a 500.
+			//
+			// `oldMapping` is hoisted above the first `typeChanged` block; it's
+			// guaranteed non-null here because this branch is gated on the same
+			// `typeChanged` flag.
+			const oldColumns = oldMapping?.subtypeColumns ?? {};
+			for (const column of Object.keys(oldColumns)) {
+				if (!subtypeOwnsColumn(effectiveMapping, column) && !Object.hasOwn(rawUpdate, column)) {
+					rawUpdate[column] = oldColumns[column];
+				}
 			}
 			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
 			// transaction so a concurrent update or delete cannot wedge us into a state
@@ -628,6 +736,23 @@ export class SpacesService {
 			this.logger.error(`Parent space ${parentId} is not a zone`);
 			throw new SpacesValidationException('Parent must be a zone. Rooms can only belong to zones.');
 		}
+	}
+
+	/**
+	 * Read the `category` column straight from the shared physical table,
+	 * bypassing TypeORM's subtype hydration. Non-home-control entities
+	 * (master/entry/signage) don't declare `@Column() category`, so loading
+	 * them as a concrete subtype yields `space.category === undefined` even
+	 * when the underlying row still carries a value written before this
+	 * column moved off the abstract base. The update flow needs the real
+	 * stored value to run an honest category/type compatibility check.
+	 */
+	private async readRawSpaceCategory(id: string): Promise<string | null> {
+		const rows = await this.dataSource.query<{ category: string | null }[]>(
+			'SELECT category FROM spaces_module_spaces WHERE id = ? LIMIT 1',
+			[id],
+		);
+		return rows[0]?.category ?? null;
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

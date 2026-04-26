@@ -478,7 +478,12 @@ export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openap
 
 // Spaces Module Enums
 // ===================
-export { SpacesModuleCreateSpaceCategory } from './openapi';
+// The category / status_widgets enums moved onto the home-control plugin's
+// subtype DTOs (CreateHomeControlSpaceDto) since those fields are no longer
+// present on the generic base CreateSpaceDto. The SpacesModule* aliases are
+// kept here so consumers don't have to thread the longer plugin-scoped type
+// name through every call site.
+export { SpacesHomeControlPluginCreateHomeControlSpaceCategory as SpacesModuleCreateSpaceCategory } from './openapi';
 export { SpacesModuleCreateSpaceType } from './openapi';
 export { SpacesModuleLightingIntentType } from './openapi';
 export { SpacesModuleLightingIntentDelta } from './openapi';
@@ -486,7 +491,7 @@ export { SpacesModuleClimateIntentType } from './openapi';
 export { SpacesModuleClimateIntentMode } from './openapi';
 export { SpacesModuleDataLightingStateDetected_mode as SpacesModuleLightingDetectedMode } from './openapi';
 export { SpacesModuleSuggestionFeedbackSuggestion_type as SpacesModuleSuggestionType } from './openapi';
-export { SpacesModuleCreateSpaceStatus_widgetsSettingsRange as SpacesModuleEnergyWidgetRange } from './openapi';
+export { SpacesHomeControlPluginCreateHomeControlSpaceStatus_widgetsSettingsRange as SpacesModuleEnergyWidgetRange } from './openapi';
 
 // Spaces Module Type Schemas
 // ==========================

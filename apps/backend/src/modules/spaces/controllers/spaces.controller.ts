@@ -1,5 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	Param,
+	ParseUUIDPipe,
+	Patch,
+	Post,
+} from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -78,13 +89,28 @@ export class SpacesController {
 		summary: 'Create a new space',
 		description: 'Creates a new space (room/zone). Requires owner or admin role.',
 	})
+	// The incoming body is typed as `unknown` to bypass the global
+	// `ValidationPipe` (which runs with `forbidNonWhitelisted: true` and would
+	// reject subtype-specific fields that only exist on per-type plugin DTOs —
+	// e.g. `category` on home-control, `layout` on signage). `SpacesService.create`
+	// dispatches to the right `mapping.createDto` and validates there with full
+	// whitelist + forbidNonWhitelisted semantics. Swagger docs stay accurate
+	// via `@ApiBody({ type: ReqCreateSpaceDto })`.
+	@ApiBody({ type: ReqCreateSpaceDto, description: 'Payload containing the space attributes to create.' })
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the created space')
 	@ApiBadRequestResponse('Invalid space data')
 	@ApiUnprocessableEntityResponse('Space validation failed')
-	async create(@Body() body: ReqCreateSpaceDto): Promise<SpaceResponseModel> {
+	async create(@Body() body: unknown): Promise<SpaceResponseModel> {
 		this.logger.debug('Creating new space');
 
-		const space = await this.spacesService.create(body.data);
+		// Typing the body as `unknown` skips the global ValidationPipe's
+		// class-based whitelist (see the block comment above the @ApiBody
+		// decorator). That also means we inherit no null/shape normalization,
+		// so guard `body.data` explicitly — a raw `null` / non-object / missing
+		// `data` field would otherwise dereference and produce a 500.
+		const data = this.extractRequestData(body);
+
+		const space = await this.spacesService.create(data as Parameters<SpacesService['create']>[0]);
 
 		const response = new SpaceResponseModel();
 
@@ -101,22 +127,53 @@ export class SpacesController {
 		description: 'Updates an existing space. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	// See create() — typed as `unknown` to bypass the global pipe so
+	// plugin-contributed subtype fields reach `SpacesService.update()`, which
+	// dispatches to `mapping.updateDto` for the authoritative validation.
+	@ApiBody({ type: ReqUpdateSpaceDto, description: 'Payload containing the space attributes to update.' })
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the updated space')
 	@ApiNotFoundResponse('Space not found')
 	@ApiUnprocessableEntityResponse('Invalid space data')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() body: ReqUpdateSpaceDto,
+		@Body() body: unknown,
 	): Promise<SpaceResponseModel> {
 		this.logger.debug(`Updating space with id=${id}`);
 
-		const space = await this.spacesService.update(id, body.data);
+		// See create() — guard against null / non-object / missing `data`.
+		const data = this.extractRequestData(body);
+
+		const space = await this.spacesService.update(id, data as Parameters<SpacesService['update']>[1]);
 
 		const response = new SpaceResponseModel();
 
 		response.data = space;
 
 		return response;
+	}
+
+	/**
+	 * Unwrap the `{ data: ... }` envelope used by every spaces mutation
+	 * endpoint. Typed as `unknown` because the global ValidationPipe is
+	 * bypassed for these routes (see create() / update() body comments) —
+	 * the pipe normally rejects null/non-object bodies before they reach
+	 * the handler, and we have to do the same by hand here so a malformed
+	 * client payload surfaces as a 400, not a 500.
+	 */
+	private extractRequestData(body: unknown): object {
+		// `typeof [] === 'object'` in JS, so treat arrays as malformed
+		// envelopes explicitly — the `{ data: ... }` contract is an object,
+		// not an array.
+		if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+			throw new BadRequestException([JSON.stringify({ field: 'data', reason: 'Request body must be a JSON object.' })]);
+		}
+		const data = (body as { data?: unknown }).data;
+		if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+			throw new BadRequestException([
+				JSON.stringify({ field: 'data', reason: 'Request body is missing the `data` object.' }),
+			]);
+		}
+		return data;
 	}
 
 	@Delete(':id')

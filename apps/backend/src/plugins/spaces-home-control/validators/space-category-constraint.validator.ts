@@ -6,7 +6,12 @@ import {
 	registerDecorator,
 } from 'class-validator';
 
-import { ALL_SPACE_CATEGORIES, SPACE_ROOM_CATEGORIES, SPACE_ZONE_CATEGORIES, SpaceType } from '../spaces.constants';
+import {
+	ALL_SPACE_CATEGORIES,
+	SPACE_ROOM_CATEGORIES,
+	SPACE_ZONE_CATEGORIES,
+	SpaceType,
+} from '../../../modules/spaces/spaces.constants';
 
 /**
  * Interface for DTOs that have both type and category fields

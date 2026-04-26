@@ -24,6 +24,28 @@ export interface SpaceTypeMapping<
 	 * `POST /spaces` with `{ type: 'master', ... }` and duplicate the singleton.
 	 */
 	singleton?: boolean;
+	/**
+	 * Columns on the shared STI table (`spaces_module_spaces`) that this
+	 * subtype's DTOs whitelist, mapped to the value core should write when
+	 * transitioning AWAY from this subtype (i.e. the "wipe value"). Core
+	 * `SpacesService.update()` consults the map on a type change:
+	 *
+	 * - **wipes** columns owned by the OLD subtype but NOT the new one, so
+	 *   a row that transitions to a type whose DTO can't clear them doesn't
+	 *   carry stale values forward (e.g. a room's `category` surviving a
+	 *   flip to `signage_info_panel`, whose update DTO has no `category`).
+	 *   The wipe VALUE is plugin-declared so NOT NULL columns get their
+	 *   column default (e.g. `suggestionsEnabled` defaults to `true`)
+	 *   rather than violating the constraint with a blind `null`.
+	 * - **gates the raw-column fallback** in `readRawSpaceCategory` to only
+	 *   run when the *target* subtype actually carries the column — avoiding
+	 *   an extra SQL round-trip on every ordinary update.
+	 *
+	 * Defaults to `undefined` (treated as empty) so existing plugins keep
+	 * working; only subtypes that genuinely own per-subtype columns on the
+	 * shared table need to declare this.
+	 */
+	subtypeColumns?: Readonly<Record<string, unknown>>;
 }
 
 @Injectable()
