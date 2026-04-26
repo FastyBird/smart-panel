@@ -22,10 +22,18 @@ import { AuthenticatedRequest } from './auth.guard';
  * still hit the default throttle, so this only widens the door for trusted
  * device-class clients — it doesn't disable rate-limiting globally.
  *
- * Falls back to default throttle behavior whenever `request.auth` isn't
- * populated (e.g. if `AuthGuard` ever runs after this one due to a future
- * module-load order change). The fail-safe direction is "throttle still
- * applies", never "throttle accidentally removed".
+ * **Ordering invariant.** This guard depends on `AuthGuard` having
+ * populated `request.auth` first. That ordering is enforced by registering
+ * both guards as `APP_GUARD` providers inside `AuthModule.providers`, with
+ * `AuthGuard` declared *before* this one — within a single module, NestJS
+ * executes `APP_GUARD` providers in declared array order. Do not move
+ * either registration to a different module; the cross-module load order
+ * isn't stable enough to rely on.
+ *
+ * Even with that invariant the check is conservative: if `request.auth`
+ * is somehow `undefined`, the call falls through to `super.shouldSkip()`
+ * and the default throttle applies. The fail-safe direction is "throttle
+ * still applies", never "throttle accidentally removed".
  */
 @Injectable()
 export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
