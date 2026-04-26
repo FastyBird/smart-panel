@@ -1,14 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import {
-	IsEmail,
-	IsEnum,
-	IsNotEmpty,
-	IsOptional,
-	IsString,
-	IsUUID,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
