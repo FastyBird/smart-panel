@@ -157,11 +157,21 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 
 // `category`, `suggestions_enabled`, and `status_widgets` are home-control-
 // specific; the backend's `CreateHomeControlSpaceDto` / `UpdateHomeControlSpaceDto`
-// whitelist them, while master / entry / signage DTOs reject them. Include a
-// home-control field in the outbound payload whenever the caller provided it
-// — the backend's per-type validator is the single source of truth for whether
-// a given space type accepts it, and the admin UI today only surfaces these
-// fields on the home-control forms anyway.
+// whitelist them, while master / entry / signage DTOs reject them under
+// `forbidNonWhitelisted`. The shared `useSpaceEditForm` /
+// `useSpaceAddForm` composables ALWAYS populate these fields on the model
+// (they're declared on `ISpaceEditData` / `ISpaceCreateData` as optional
+// but the form always emits them), so a presence-only check (`'category' in
+// data`) sends `category: null` plus `suggestions_enabled: true` plus
+// `status_widgets: null` even for a master/entry/signage edit — and the
+// per-type validator 422s the request before any update happens.
+//
+// Gate by target `SpaceType` instead. Only ROOM and ZONE accept these
+// fields; everything else (MASTER, ENTRY, SIGNAGE_INFO_PANEL) drops them
+// regardless of what the form populated.
+const isHomeControlSpaceType = (type: SpaceType | undefined): boolean =>
+	type === SpaceType.ROOM || type === SpaceType.ZONE;
+
 export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCreate => {
 	const payload: Record<string, unknown> = {
 		name: data.name,
@@ -172,14 +182,16 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		parent_id: data.parentId ?? undefined,
 	};
 
-	if ('category' in data) {
-		payload.category = spaceCategoryToApiCategory(data.category) ?? undefined;
-	}
-	if ('suggestionsEnabled' in data) {
-		payload.suggestions_enabled = data.suggestionsEnabled;
-	}
-	if ('statusWidgets' in data) {
-		payload.status_widgets = transformStatusWidgetsToApi(data.statusWidgets);
+	if (isHomeControlSpaceType(data.type)) {
+		if ('category' in data) {
+			payload.category = spaceCategoryToApiCategory(data.category) ?? undefined;
+		}
+		if ('suggestionsEnabled' in data) {
+			payload.suggestions_enabled = data.suggestionsEnabled;
+		}
+		if ('statusWidgets' in data) {
+			payload.status_widgets = transformStatusWidgetsToApi(data.statusWidgets);
+		}
 	}
 
 	return payload as ApiSpaceCreate;
@@ -194,19 +206,22 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		display_order: data.displayOrder,
 	};
 
-	if ('category' in data) {
-		// Category supports null to clear the value - cast needed as OpenAPI
-		// types don't reflect this even on the home-control subtype schemas.
-		baseData.category = spaceCategoryToApiCategory(data.category) as SpacesModuleCreateSpaceCategory | undefined;
-	}
-	if ('suggestionsEnabled' in data) {
-		baseData.suggestions_enabled = data.suggestionsEnabled;
-	}
-	if ('statusWidgets' in data) {
-		baseData.status_widgets = transformStatusWidgetsToApi(data.statusWidgets);
+	if (isHomeControlSpaceType(data.type)) {
+		if ('category' in data) {
+			// Category supports null to clear the value - cast needed as OpenAPI
+			// types don't reflect this even on the home-control subtype schemas.
+			baseData.category = spaceCategoryToApiCategory(data.category) as SpacesModuleCreateSpaceCategory | undefined;
+		}
+		if ('suggestionsEnabled' in data) {
+			baseData.suggestions_enabled = data.suggestionsEnabled;
+		}
+		if ('statusWidgets' in data) {
+			baseData.status_widgets = transformStatusWidgetsToApi(data.statusWidgets);
+		}
 	}
 
-	// Parent zone assignment - explicitly include null to unassign
+	// Parent zone assignment - explicitly include null to unassign.
+	// (Not home-control-gated: every space type accepts a parent.)
 	if ('parentId' in data) {
 		baseData.parent_id = data.parentId ?? null;
 	}

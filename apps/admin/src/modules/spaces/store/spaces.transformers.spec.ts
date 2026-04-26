@@ -245,6 +245,7 @@ describe('Spaces Transformers', (): void => {
 		it('should handle category being set to null', (): void => {
 			const payloadWithNullCategory: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				category: null,
 			};
 
@@ -257,6 +258,7 @@ describe('Spaces Transformers', (): void => {
 		it('should include status_widgets when present in data', (): void => {
 			const payloadWithWidgets: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				statusWidgets: [
 					{
 						type: StatusWidgetType.ENERGY,
@@ -287,6 +289,7 @@ describe('Spaces Transformers', (): void => {
 		it('should not include status_widgets when not in data', (): void => {
 			const payloadWithoutWidgets: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 			};
 
 			const result = transformSpaceEditRequest(payloadWithoutWidgets);
@@ -298,6 +301,7 @@ describe('Spaces Transformers', (): void => {
 		it('should include null status_widgets when explicitly set to null', (): void => {
 			const payloadWithNullWidgets: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				statusWidgets: null,
 			};
 
@@ -305,6 +309,77 @@ describe('Spaces Transformers', (): void => {
 
 			expect(result).toBeDefined();
 			expect((result as Record<string, unknown>).status_widgets).toBeNull();
+		});
+
+		// Codex P1: home-control fields must be stripped when the target
+		// space type is master / entry / signage. The shared edit form
+		// composable always populates `category` / `suggestionsEnabled` /
+		// `statusWidgets` on the model, so without a type-aware filter
+		// the transformer would emit them and the per-type backend DTO
+		// would 422 the request.
+		it('strips home-control fields when editing a MASTER space', (): void => {
+			const payloadForMaster: ISpaceEditData = {
+				name: 'Smart Home',
+				type: SpaceType.MASTER,
+				category: null,
+				suggestionsEnabled: true,
+				statusWidgets: null,
+			};
+
+			const result = transformSpaceEditRequest(payloadForMaster) as Record<string, unknown>;
+
+			expect(result.name).toBe('Smart Home');
+			expect('category' in result).toBe(false);
+			expect('suggestions_enabled' in result).toBe(false);
+			expect('status_widgets' in result).toBe(false);
+		});
+
+		it('strips home-control fields when editing an ENTRY space', (): void => {
+			const payloadForEntry: ISpaceEditData = {
+				name: 'Front Door',
+				type: SpaceType.ENTRY,
+				category: null,
+				suggestionsEnabled: true,
+				statusWidgets: null,
+			};
+
+			const result = transformSpaceEditRequest(payloadForEntry) as Record<string, unknown>;
+
+			expect('category' in result).toBe(false);
+			expect('suggestions_enabled' in result).toBe(false);
+			expect('status_widgets' in result).toBe(false);
+		});
+
+		it('strips home-control fields when editing a SIGNAGE_INFO_PANEL space', (): void => {
+			const payloadForSignage: ISpaceEditData = {
+				name: 'Lobby Display',
+				type: SpaceType.SIGNAGE_INFO_PANEL,
+				category: null,
+				suggestionsEnabled: true,
+				statusWidgets: null,
+			};
+
+			const result = transformSpaceEditRequest(payloadForSignage) as Record<string, unknown>;
+
+			expect('category' in result).toBe(false);
+			expect('suggestions_enabled' in result).toBe(false);
+			expect('status_widgets' in result).toBe(false);
+		});
+
+		it('strips home-control fields when create payload targets a MASTER space', (): void => {
+			const payloadForMaster: ISpaceCreateData = {
+				name: 'Smart Home',
+				type: SpaceType.MASTER,
+				category: null,
+				suggestionsEnabled: true,
+				statusWidgets: null,
+			};
+
+			const result = transformSpaceCreateRequest(payloadForMaster) as Record<string, unknown>;
+
+			expect('category' in result).toBe(false);
+			expect('suggestions_enabled' in result).toBe(false);
+			expect('status_widgets' in result).toBe(false);
 		});
 	});
 
@@ -386,6 +461,7 @@ describe('Spaces Transformers', (): void => {
 		it('should transform create request with energy widget', (): void => {
 			const payloadWithWidget: ISpaceCreateData = {
 				name: 'Room with Energy Widget',
+				type: SpaceType.ROOM,
 				statusWidgets: [
 					{
 						type: StatusWidgetType.ENERGY,
@@ -433,6 +509,7 @@ describe('Spaces Transformers', (): void => {
 
 			const payloadWithDefaults: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				statusWidgets,
 			};
 
@@ -464,6 +541,7 @@ describe('Spaces Transformers', (): void => {
 
 			const payload: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				statusWidgets,
 			};
 
@@ -483,6 +561,7 @@ describe('Spaces Transformers', (): void => {
 		it('disabling energy widget removes it from payload', (): void => {
 			const payload: ISpaceEditData = {
 				name: 'Room',
+				type: SpaceType.ROOM,
 				statusWidgets: null,
 			};
 
@@ -513,6 +592,7 @@ describe('Spaces Transformers', (): void => {
 			// Edit only the name (don't change statusWidgets)
 			const editPayload: ISpaceEditData = {
 				name: 'Updated Name',
+				type: space.type,
 				statusWidgets: space.statusWidgets,
 			};
 
