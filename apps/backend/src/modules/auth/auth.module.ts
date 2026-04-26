@@ -32,7 +32,6 @@ import { UpdateAuthConfigDto } from './dto/update-config.dto';
 import { UpdateAccessTokenDto, UpdateLongLiveTokenDto, UpdateRefreshTokenDto } from './dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from './entities/auth.entity';
 import { AuthGuard } from './guards/auth.guard';
-import { DisplayAwareThrottlerGuard } from './guards/display-aware-throttler.guard';
 import { AuthConfigModel } from './models/config.model';
 import { AuthService } from './services/auth.service';
 import { CryptoService } from './services/crypto.service';
@@ -91,20 +90,9 @@ import { TokensService } from './services/tokens.service';
 		TokensTypeMapperService,
 		RegisterOwnerCommand,
 		ResetPasswordCommand,
-		// `APP_GUARD` providers in the same module's `providers` array execute
-		// in declared order. Keep `AuthGuard` first so `request.auth` is
-		// populated by the time `DisplayAwareThrottlerGuard` runs and reads
-		// `auth.ownerType` to decide whether to skip throttling. Splitting the
-		// two across separate modules would make execution order depend on
-		// module-load order, which is fragile across future refactors and
-		// would silently regress the display cold-boot fix.
 		{
 			provide: APP_GUARD,
 			useClass: AuthGuard,
-		},
-		{
-			provide: APP_GUARD,
-			useClass: DisplayAwareThrottlerGuard,
 		},
 	],
 	controllers: [AuthController, TokensController],

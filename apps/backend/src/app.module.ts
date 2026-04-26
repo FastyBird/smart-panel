@@ -3,7 +3,7 @@ import path from 'path';
 import { CacheModule } from '@nestjs/cache-manager';
 import { DynamicModule, Module, type Type } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
-import { RouterModule } from '@nestjs/core';
+import { APP_GUARD, RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -14,6 +14,7 @@ import { getEnvValue } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
+import { DisplayAwareThrottlerGuard } from './modules/auth/guards/display-aware-throttler.guard';
 import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
 import { BuddyModule } from './modules/buddy/buddy.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
@@ -144,12 +145,14 @@ export class AppModule {
 
 		return {
 			module: AppModule,
-			// Throttler config lives here (global setup) but the APP_GUARD that
-			// applies it is registered inside `AuthModule` so it can sit *after*
-			// `AuthGuard` in the same providers array. Within a single module,
-			// `APP_GUARD` providers execute in declared order — that's the only
-			// way to make `request.auth` reliably populated by the time the
-			// throttler decides whether to skip.
+			// Register `DisplayAwareThrottlerGuard` as a global guard. It does
+			// its own lightweight JWT signature check (no DB lookup) to detect
+			// display tokens and skip throttling for them — this means the
+			// guard runs BEFORE `AuthGuard` short-circuits unauthenticated
+			// traffic at 401, so anonymous floods to protected endpoints stay
+			// rate-limited at the default `30 req / 60s`. AuthGuard later
+			// performs the full DB-backed validation (revocation, expiry, etc).
+			providers: [{ provide: APP_GUARD, useClass: DisplayAwareThrottlerGuard }],
 			imports: [
 				ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
 				NestConfigModule.forRoot({

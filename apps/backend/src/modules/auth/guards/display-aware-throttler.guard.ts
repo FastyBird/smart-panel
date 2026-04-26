@@ -1,9 +1,22 @@
+import { Request } from 'express';
+
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import {
+	InjectThrottlerOptions,
+	InjectThrottlerStorage,
+	ThrottlerGuard,
+	ThrottlerModuleOptions,
+	ThrottlerStorage,
+} from '@nestjs/throttler';
 
-import { TokenOwnerType } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE, TokenOwnerType } from '../auth.constants';
 
-import { AuthenticatedRequest } from './auth.guard';
+interface JwtPayload {
+	sub?: string;
+	type?: string;
+}
 
 /**
  * `ThrottlerGuard` variant that exempts requests authenticated as a
@@ -18,33 +31,65 @@ import { AuthenticatedRequest } from './auth.guard';
  * the throttle on any non-trivial install and the panel surfaces opaque
  * `null - null` errors that propagate up as a hard init failure.
  *
- * Web admin sessions, long-live user tokens, and unauthenticated traffic
- * still hit the default throttle, so this only widens the door for trusted
- * device-class clients — it doesn't disable rate-limiting globally.
+ * **Why this guard does its own token check** (instead of reading
+ * `request.auth` populated by `AuthGuard`): registering the throttler
+ * after `AuthGuard` would let unauthenticated traffic to protected
+ * endpoints short-circuit at 401 before the throttler runs, leaving
+ * anonymous floods unthrottled. The throttler MUST run first to keep
+ * that protection. To still know whether the caller is a display, this
+ * guard does a lightweight JWT signature check (no DB lookup) on the
+ * bearer token: if the signature verifies AND `payload.type` is
+ * `TokenOwnerType.DISPLAY`, throttling is skipped. `AuthGuard` later
+ * runs the full DB-backed validation (revocation, expiry, owner exists).
  *
- * **Ordering invariant.** This guard depends on `AuthGuard` having
- * populated `request.auth` first. That ordering is enforced by registering
- * both guards as `APP_GUARD` providers inside `AuthModule.providers`, with
- * `AuthGuard` declared *before* this one — within a single module, NestJS
- * executes `APP_GUARD` providers in declared array order. Do not move
- * either registration to a different module; the cross-module load order
- * isn't stable enough to rely on.
+ * **Trust boundary.** A revoked-but-not-yet-expired display token would
+ * bypass throttling for the brief window before `AuthGuard` rejects with
+ * 401. That's an acceptable trade — every such request still 401s, and
+ * issuing a new display token requires physical access to the
+ * registration flow. The bypass only widens the door for trusted
+ * device-class clients holding signed tokens, not arbitrary attackers.
  *
- * Even with that invariant the check is conservative: if `request.auth`
- * is somehow `undefined`, the call falls through to `super.shouldSkip()`
- * and the default throttle applies. The fail-safe direction is "throttle
- * still applies", never "throttle accidentally removed".
+ * Web admin sessions, long-live user tokens, anonymous traffic, missing
+ * Authorization headers, non-Bearer schemes, and tokens with bad
+ * signatures all fall through to the default throttle.
  */
 @Injectable()
 export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
-	protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
-		const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-		const auth = request.auth;
+	constructor(
+		@InjectThrottlerOptions() options: ThrottlerModuleOptions,
+		@InjectThrottlerStorage() storageService: ThrottlerStorage,
+		reflector: Reflector,
+		private readonly jwtService: JwtService,
+	) {
+		super(options, storageService, reflector);
+	}
 
-		if (auth?.type === 'token' && auth.ownerType === TokenOwnerType.DISPLAY) {
-			return true;
+	protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+		const request = context.switchToHttp().getRequest<Request>();
+		const token = this.extractTokenFromHeader(request);
+
+		if (token) {
+			try {
+				const payload: JwtPayload = await this.jwtService.verifyAsync(token);
+				if ((payload.type as TokenOwnerType) === TokenOwnerType.DISPLAY && payload.sub) {
+					return true;
+				}
+			} catch {
+				// Invalid signature / expired / malformed — do NOT skip; let
+				// the throttler apply normally so a flood of bad tokens still
+				// counts toward the budget. AuthGuard will return the 401.
+			}
 		}
 
 		return super.shouldSkip(context);
+	}
+
+	private extractTokenFromHeader(request: Request): string | undefined {
+		const authHeader = request.headers.authorization;
+		if (!authHeader) {
+			return undefined;
+		}
+		const [type, token] = authHeader.split(' ');
+		return type === ACCESS_TOKEN_TYPE ? token : undefined;
 	}
 }
