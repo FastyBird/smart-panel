@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, SPACES_MODULE_NAME, SpaceType } from '../spaces.constants';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, SPACES_MODULE_NAME } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 import { spacesStoreKey } from '../store/keys';
 
@@ -15,7 +15,7 @@ import type { ISpacesFilter, IUseSpacesDataSource } from './types';
 
 export const defaultSpacesFilter: ISpacesFilter = {
 	search: undefined,
-	type: 'all',
+	types: [],
 };
 
 export const defaultSpacesSort: ISortEntry = {
@@ -57,7 +57,7 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 	const filtersActive = computed<boolean>((): boolean => {
 		return (
 			filters.value.search !== defaultSpacesFilter.search ||
-			!isEqual(filters.value.type, defaultSpacesFilter.type)
+			!isEqual(filters.value.types, defaultSpacesFilter.types)
 		);
 	});
 
@@ -82,9 +82,7 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 							space.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 							space.name?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 							space.description?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
-						(filters.value.type === 'all' ||
-							(filters.value.type === SpaceType.ROOM && space.type === SpaceType.ROOM) ||
-							(filters.value.type === SpaceType.ZONE && space.type === SpaceType.ZONE))
+						(filters.value.types.length === 0 || filters.value.types.includes(space.type))
 				),
 			[
 				(space: ISpace) => {

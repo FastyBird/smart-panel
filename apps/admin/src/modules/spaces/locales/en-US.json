@@ -214,9 +214,8 @@
 		}
 	},
 	"filters": {
-		"type": {
-			"title": "Type",
-			"all": "All"
+		"types": {
+			"title": "Type"
 		}
 	},
 	"texts": {

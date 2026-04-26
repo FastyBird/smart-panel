@@ -146,29 +146,11 @@
 			:width="170"
 		>
 			<template #default="scope">
-				<spaces-table-column-plugin :space="scope.row" />
-			</template>
-		</el-table-column>
-
-		<el-table-column
-			:label="t('spacesModule.table.columns.category')"
-			prop="category"
-			:width="150"
-		>
-			<template #default="scope">
-				<el-text
-					v-if="scope.row.category"
-					size="small"
-				>
-					{{ t(`spacesModule.fields.spaces.category.options.${scope.row.category}`) }}
-				</el-text>
-				<el-text
-					v-else
-					size="small"
-					type="info"
-				>
-					—
-				</el-text>
+				<spaces-table-column-plugin
+					:space="scope.row"
+					:filters="innerFilters"
+					@filter-by="(value: IPluginElement['type'], add: boolean) => onFilterBy(value, add)"
+				/>
 			</template>
 		</el-table-column>
 
@@ -239,8 +221,10 @@ import { useI18n } from 'vue-i18n';
 import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, useBreakpoints } from '../../../common';
+import { IconWithChild, type IPluginElement, useBreakpoints } from '../../../common';
+import type { ISpacesFilter } from '../composables/types';
 import { SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
@@ -259,6 +243,7 @@ const emit = defineEmits<{
 	(e: 'remove', id: ISpace['id']): void;
 	(e: 'add'): void;
 	(e: 'reset-filters'): void;
+	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 	(e: 'selected-changes', items: ISpace[]): void;
@@ -267,6 +252,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
+
+const innerFilters = useVModel(props, 'filters', emit);
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
@@ -289,5 +276,13 @@ const onRowClick = (row: ISpace): void => {
 
 const onSelectionChange = (selected: ISpace[]): void => {
 	emit('selected-changes', selected);
+};
+
+const onFilterBy = (value: IPluginElement['type'], add: boolean): void => {
+	const filteredTypes = add
+		? [...innerFilters.value.types, value]
+		: innerFilters.value.types.filter((item) => item !== value);
+
+	innerFilters.value.types = Array.from(new Set(filteredTypes));
 };
 </script>

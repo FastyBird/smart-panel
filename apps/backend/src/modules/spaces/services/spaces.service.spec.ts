@@ -382,7 +382,9 @@ describe('SpacesService', () => {
 			const result = await service.create(createDto);
 
 			expect(result.type).toBe(SpaceType.ROOM);
-			expect(result.category).toBe(SpaceRoomCategory.LIVING_ROOM);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceRoomCategory.LIVING_ROOM,
+			);
 		});
 
 		it('should accept ZONE with zone category', async () => {
@@ -406,7 +408,9 @@ describe('SpacesService', () => {
 			const result = await service.create(createDto);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceZoneCategory.FLOOR_GROUND,
+			);
 		});
 
 		it('should accept null category for both types', async () => {
@@ -429,7 +433,7 @@ describe('SpacesService', () => {
 
 			const result = await service.create(createDto);
 
-			expect(result.category).toBeNull();
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBeNull();
 		});
 
 		it('should reject ROOM with zone category', async () => {
@@ -527,7 +531,9 @@ describe('SpacesService', () => {
 			const result = await service.update(existingRoomSpace.id, updateDto);
 
 			expect(result.type).toBe(SpaceType.ROOM);
-			expect(result.category).toBe(SpaceRoomCategory.BEDROOM);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceRoomCategory.BEDROOM,
+			);
 		});
 
 		it('should accept updating ZONE category to another zone category', async () => {
@@ -547,7 +553,9 @@ describe('SpacesService', () => {
 			const result = await service.update(existingZoneSpace.id, updateDto);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceZoneCategory.FLOOR_FIRST);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceZoneCategory.FLOOR_FIRST,
+			);
 		});
 
 		it('should reject updating ROOM category to a zone category', async () => {
@@ -655,7 +663,9 @@ describe('SpacesService', () => {
 			const result = await service.update(spaceWithNullCategory.id, updateDto);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceZoneCategory.FLOOR_GROUND,
+			);
 			// The raw UPDATE path for type changes must emit the discriminator column.
 			// We assert the payload handed to TypeORM's QueryBuilder.set() — TypeORM then
 			// resolves `type` via @TableInheritance's entityMetadata to the discriminator
@@ -689,7 +699,9 @@ describe('SpacesService', () => {
 			const result = await service.update(existingRoomSpace.id, updateDto);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBe(
+				SpaceZoneCategory.FLOOR_GROUND,
+			);
 			// Same assertion as above — verify the raw UPDATE SET payload includes the
 			// new discriminator alongside the other DTO-sourced fields, and is keyed by id.
 			expect(mockQueryBuilder.set).toHaveBeenCalledWith(
@@ -723,7 +735,7 @@ describe('SpacesService', () => {
 
 			const result = await service.update(roomSpace.id, updateDto);
 
-			expect(result.category).toBeNull();
+			expect((result as { category?: SpaceRoomCategory | SpaceZoneCategory | null }).category).toBeNull();
 		});
 
 		it('should reject setting category to null for a ZONE', async () => {

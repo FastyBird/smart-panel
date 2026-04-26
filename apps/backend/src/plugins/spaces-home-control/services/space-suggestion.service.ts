@@ -142,8 +142,11 @@ export class SpaceSuggestionService {
 		// Get space - throws if not found
 		const space = await this.spacesService.getOneOrThrow(spaceId);
 
-		// Check if suggestions are enabled
-		if (!space.suggestionsEnabled) {
+		// `suggestionsEnabled` lives on RoomSpaceEntity / ZoneSpaceEntity (this plugin's
+		// subtypes) and not the abstract SpaceEntity. Read it via an indexed-property cast
+		// so cross-plugin types (master / entry / signage) — where the field is undefined —
+		// are treated as suggestion-disabled instead of triggering a TS error.
+		if ((space as { suggestionsEnabled?: boolean }).suggestionsEnabled !== true) {
 			return null;
 		}
 

@@ -5,7 +5,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritan
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
+import { SpaceType } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
@@ -32,13 +32,6 @@ export abstract class SpaceEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	description: string | null;
-
-	// `category` is a home-control-specific concept (Room/Zone taxonomy). The
-	// @Column + @ApiProperty decorations live on RoomSpaceEntity / ZoneSpaceEntity
-	// so the generated OpenAPI schemas only surface it on those subtypes.
-	// Declared as optional here so the abstract base's TS type remains readable
-	// by cross-module consumers that don't (or can't) narrow to a subtype.
-	category?: SpaceRoomCategory | SpaceZoneCategory | null;
 
 	@ApiPropertyOptional({
 		name: 'parent_id',
@@ -105,14 +98,6 @@ export abstract class SpaceEntity extends BaseEntity {
 	)
 	@Column({ type: 'int', default: 0 })
 	displayOrder: number;
-
-	// `suggestionsEnabled` + `statusWidgets` are home-control-specific. Their
-	// @Column + @ApiProperty decorations live on RoomSpaceEntity / ZoneSpaceEntity.
-	// Declared optional here so cross-module consumers (e.g. Buddy) can still
-	// read them off the abstract base without narrowing to a subtype.
-	suggestionsEnabled?: boolean;
-
-	statusWidgets?: Record<string, unknown>[] | null;
 
 	@ApiPropertyOptional({
 		name: 'last_activity_at',
