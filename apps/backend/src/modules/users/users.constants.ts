@@ -1,3 +1,5 @@
+import { ValidationOptions, registerDecorator } from 'class-validator';
+
 export const USERS_MODULE_PREFIX = 'users';
 
 export const USERS_MODULE_NAME = 'users-module';
@@ -9,8 +11,17 @@ export const USERS_MODULE_API_TAG_DESCRIPTION =
 
 const DEFAULT_PASSWORD_MIN_LENGTH = 8;
 
-const parsePasswordMinLength = (raw: string | undefined): number => {
-	if (raw === undefined || raw.trim() === '') {
+// Resolved on every validation call rather than at module load, because
+// `NestConfigModule.forRoot()` populates `process.env` from `.env` files
+// AFTER all DTO modules have already been imported and their decorators
+// evaluated. An eager read here would silently ignore values set in `.env`.
+// Operators may lower this for deployments behind VPN/proxy where weak
+// passwords are an accepted tradeoff. Floor of 1; invalid values fall back
+// to the default.
+export const getUsersPasswordMinLength = (): number => {
+	const raw = process.env.FB_USERS_PASSWORD_MIN_LENGTH;
+
+	if (typeof raw !== 'string' || raw.trim() === '') {
 		return DEFAULT_PASSWORD_MIN_LENGTH;
 	}
 
@@ -23,10 +34,25 @@ const parsePasswordMinLength = (raw: string | undefined): number => {
 	return Math.floor(parsed);
 };
 
-// Resolved at module load so it can be used in class-validator decorators.
-// Operators may lower this for deployments behind VPN/proxy where weak passwords
-// are an accepted tradeoff. Floor of 1; invalid values fall back to the default.
-export const USERS_PASSWORD_MIN_LENGTH = parsePasswordMinLength(process.env.FB_USERS_PASSWORD_MIN_LENGTH);
+export function MinUsersPasswordLength(validationOptions?: ValidationOptions): PropertyDecorator {
+	return (object: object, propertyName: string | symbol): void => {
+		registerDecorator({
+			name: 'minUsersPasswordLength',
+			target: object.constructor,
+			propertyName: propertyName as string,
+			options: validationOptions,
+			constraints: [],
+			validator: {
+				validate(value: unknown): boolean {
+					return typeof value === 'string' && value.length >= getUsersPasswordMinLength();
+				},
+				defaultMessage(): string {
+					return `[{"field":"password","reason":"Password must be at least ${getUsersPasswordMinLength()} characters long."}]`;
+				},
+			},
+		});
+	};
+}
 
 export enum EventType {
 	USER_CREATED = 'UsersModule.User.Created',

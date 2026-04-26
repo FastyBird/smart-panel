@@ -5,14 +5,13 @@ import {
 	IsNotEmpty,
 	IsOptional,
 	IsString,
-	MinLength,
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { USERS_PASSWORD_MIN_LENGTH, UserLanguage, UserRole } from '../users.constants';
+import { MinUsersPasswordLength, UserLanguage, UserRole } from '../users.constants';
 
 @ApiSchema({ name: 'UsersModuleUpdateUser' })
 export class UpdateUserDto {
@@ -39,9 +38,7 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
-	@MinLength(USERS_PASSWORD_MIN_LENGTH, {
-		message: `[{"field":"password","reason":"Password must be at least ${USERS_PASSWORD_MIN_LENGTH} characters long."}]`,
-	})
+	@MinUsersPasswordLength()
 	@ValidateIf((_, value) => value !== null)
 	password?: string | null;
 
