@@ -240,4 +240,33 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 
 		expect(jwtService.verifyAsync).toHaveBeenCalledTimes(1);
 	});
+
+	// Codex P1 (round 3): per-token cache is defeated by an attacker who
+	// rotates the Bearer string per request — every new token is a cache
+	// miss, the cheap-decode pre-filter passes (attacker controls the
+	// unsigned `type` claim), so `verifyAsync` would fire on every
+	// request without an additional bound. The token-bucket gate caps
+	// worst-case crypto throughput at `MAX_VERIFY_PER_SEC` regardless of
+	// attacker token rotation.
+	it('falls through to the throttler when the global verify token bucket is drained', async () => {
+		// Force the bucket empty by setting the internal state directly.
+		// Going through `tryConsumeVerifyToken` 200× in a loop is racy on
+		// CI workers — each iteration reads `Date.now()` and refills at
+		// `MAX_VERIFY_PER_SEC`/sec, so a slow-enough loop keeps the bucket
+		// net-flat. Setting state directly is the deterministic way to
+		// assert what `shouldSkip` does when the bucket is already drained.
+		const bucketState = guard as unknown as { verifyTokens: number; verifyTokensRefilledAt: number };
+		bucketState.verifyTokens = 0;
+		bucketState.verifyTokensRefilledAt = Date.now();
+
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+
+		const skipped = await callShouldSkip(buildContext({ authorization: 'Bearer rotating.forged.token' }));
+
+		expect(skipped).toBe(false);
+		// CRITICAL: the bucket short-circuit means `verifyAsync` did NOT
+		// run, so an attacker can't burn CPU by rotating tokens past the
+		// cache.
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+	});
 });

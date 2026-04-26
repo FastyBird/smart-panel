@@ -39,6 +39,24 @@ const VERIFY_CACHE_MAX_ENTRIES = 1_000;
 type VerifyCacheEntry = { ok: boolean; expiresAt: number };
 
 /**
+ * Process-wide token-bucket cap on `verifyAsync` calls per second.
+ *
+ * Closes the residual DoS amplification vector where an attacker
+ * rotates the Bearer token string per request — each new token is a
+ * cache miss, the cheap-decode pre-filter passes (the attacker
+ * controls the unsigned payload and stamps `type: "display"`), so
+ * `verifyAsync` would fire on every request. The token-bucket bounds
+ * worst-case crypto throughput to `MAX_VERIFY_PER_SEC` regardless of
+ * attacker token-rotation strategy or distribution across IPs.
+ *
+ * Sized 200/sec — comfortably above any legitimate-display footprint
+ * (each display verifies once per `VERIFY_CACHE_TTL_MS` window;
+ * hundreds of displays cold-booting in lockstep would still fit) but
+ * far below any plausible CPU-saturation threshold.
+ */
+const MAX_VERIFY_PER_SEC = 200;
+
+/**
  * `ThrottlerGuard` variant that exempts requests authenticated as a
  * registered display from the **default** global throttle.
  *
@@ -65,14 +83,20 @@ type VerifyCacheEntry = { ok: boolean; expiresAt: number };
  * limiter has a chance to 429 the request. Naively calling
  * `verifyAsync()` on every Bearer token would force expensive signature
  * crypto on every flooded request, turning the throttler's "cheap DoS
- * gate" role into an asymmetric amplification vector. Two defenses:
+ * gate" role into an asymmetric amplification vector. Three defenses
+ * stack:
  *   1. `JwtService.decode()` (pure base64, no crypto) reads the
  *      unverified `type` claim. If it isn't `display`, we never call
  *      `verifyAsync` — forged "user-shaped" floods cost ~0.
  *   2. A bounded LRU cache (`hashToken(token) → verdict`, 60s TTL,
  *      1000 entries) memoizes the verdict for both legitimate display
- *      bursts and repeated-forged-token floods. An attacker has to
- *      generate a new JWT per request to keep paying the verify cost.
+ *      bursts and repeated-forged-token floods.
+ *   3. A process-wide token bucket caps `verifyAsync` calls at
+ *      `MAX_VERIFY_PER_SEC` so an attacker who rotates the Bearer
+ *      string per request (defeating the per-token cache) still can't
+ *      drive crypto cost beyond a fixed ceiling. When the bucket is
+ *      drained, requests fall through to the parent throttler counter
+ *      without paying for verification.
  *
  * **What this guard never bypasses:**
  * - Routes with explicit `@Throttle({ ... })` overrides — e.g.
@@ -96,10 +120,27 @@ type VerifyCacheEntry = { ok: boolean; expiresAt: number };
  * to the registration flow. The bypass widens only for trusted
  * device-class clients holding signed tokens against the default
  * throttle, never against per-route stricter limits.
+ *
+ * **DoS posture.** The combined effect of (1) decode pre-filter, (2)
+ * verify cache, and (3) global verify token-bucket is that worst-case
+ * crypto throughput from this guard is bounded at `MAX_VERIFY_PER_SEC`
+ * regardless of attacker token-rotation strategy or distribution
+ * across IPs. Anything beyond that ceiling falls through to the
+ * parent throttler counters (per-IP `30 req / 60s` by default) and
+ * eventually returns 429 without paying for `verifyAsync`.
  */
 @Injectable()
 export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 	private readonly verifyCache = new Map<string, VerifyCacheEntry>();
+
+	// Token-bucket state for the global `verifyAsync` rate limit.
+	// `verifyTokens` is a fractional count refilled at
+	// `MAX_VERIFY_PER_SEC` per second up to a max of `MAX_VERIFY_PER_SEC`.
+	// Each `verifyAsync` call consumes 1 token; if the bucket is drained
+	// the request defers to the parent throttler instead of paying for
+	// signature crypto. See `tryConsumeVerifyToken`.
+	private verifyTokens = MAX_VERIFY_PER_SEC;
+	private verifyTokensRefilledAt = Date.now();
 
 	constructor(
 		@InjectThrottlerOptions() options: ThrottlerModuleOptions,
@@ -164,11 +205,19 @@ export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 			return cached;
 		}
 
-		// Cache miss + payload claims display — pay the verify cost
-		// once and cache the verdict. A flood of distinct forged
-		// "display-shaped" tokens still triggers verifyAsync on each
-		// new token, but the attacker has to GENERATE each token, so
-		// the cost is no longer asymmetric.
+		// Process-wide verify rate limit. Closes the residual attack
+		// where an attacker rotates the Bearer string per request
+		// (defeating the per-token cache) — once the bucket is drained
+		// the request defers to the parent throttler counter without
+		// paying for signature crypto. Legitimate display traffic
+		// almost never hits this because each display verifies once
+		// per `VERIFY_CACHE_TTL_MS` window.
+		if (!this.tryConsumeVerifyToken()) {
+			return super.shouldSkip(context);
+		}
+
+		// Cache miss + payload claims display + budget available —
+		// pay the verify cost once and cache the verdict.
 		try {
 			const verified: JwtPayload = await this.jwtService.verifyAsync(token);
 			const ok = (verified.type as TokenOwnerType) === TokenOwnerType.DISPLAY && !!verified.sub;
@@ -185,6 +234,24 @@ export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 		}
 
 		return super.shouldSkip(context);
+	}
+
+	/**
+	 * Token-bucket consumer. Refills `MAX_VERIFY_PER_SEC` tokens per
+	 * second up to a `MAX_VERIFY_PER_SEC` cap, debits 1 token per
+	 * `verifyAsync` call. Returns `false` (no token available) only
+	 * when the process is already running at the configured ceiling.
+	 */
+	private tryConsumeVerifyToken(): boolean {
+		const now = Date.now();
+		const elapsedSec = (now - this.verifyTokensRefilledAt) / 1000;
+		this.verifyTokens = Math.min(MAX_VERIFY_PER_SEC, this.verifyTokens + elapsedSec * MAX_VERIFY_PER_SEC);
+		this.verifyTokensRefilledAt = now;
+		if (this.verifyTokens < 1) {
+			return false;
+		}
+		this.verifyTokens -= 1;
+		return true;
 	}
 
 	private safeDecode(token: string): JwtPayload | null {
