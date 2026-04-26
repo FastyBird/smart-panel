@@ -1,5 +1,5 @@
 <template>
-	<el-table v-loading="fetching" :data="spaces">
+	<el-table v-loading="fetching" :data="spaces" row-key="id">
 		<el-table-column prop="name" :label="t('spacesModule.table.columns.name')" min-width="200">
 			<template #default="{ row }">
 				<div class="flex items-center gap-2">

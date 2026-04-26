@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 
 import { type IPlugin, type IPluginElement } from '../../../common';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
@@ -8,7 +8,7 @@ import type { IUseSpacesPlugin } from './types';
 import { useSpacesPlugins } from './useSpacesPlugins';
 
 interface IUsePluginProps {
-	type: IPluginElement['type'];
+	type: MaybeRefOrGetter<IPluginElement['type']>;
 }
 
 export const useSpacesPlugin = ({ type }: IUsePluginProps): IUseSpacesPlugin => {
@@ -16,14 +16,16 @@ export const useSpacesPlugin = ({ type }: IUsePluginProps): IUseSpacesPlugin => 
 
 	const plugin = computed<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined>(
 		(): IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined => {
-			return getByType(type);
+			return getByType(toValue(type));
 		}
 	);
 
 	const element = computed<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>(
 		(): IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined => {
+			const currentType = toValue(type);
+
 			return (plugin.value?.elements ?? []).find(
-				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(SPACES_MODULE_NAME))
+				(element) => element.type === currentType && (typeof element.modules === 'undefined' || element.modules.includes(SPACES_MODULE_NAME))
 			);
 		}
 	);

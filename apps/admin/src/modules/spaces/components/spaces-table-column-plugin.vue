@@ -20,5 +20,5 @@ defineOptions({
 
 const props = defineProps<ISpacesTableColumnPluginProps>();
 
-const { plugin } = useSpacesPlugin({ type: props.space.type });
+const { plugin } = useSpacesPlugin({ type: (): typeof props.space.type => props.space.type });
 </script>
