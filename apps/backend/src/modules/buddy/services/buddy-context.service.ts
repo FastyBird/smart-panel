@@ -215,10 +215,11 @@ export class BuddyContextService {
 					{
 						id: space.id,
 						name: space.name,
-						// `category` is home-control-specific; it's undefined on master /
-						// entry / signage spaces. Collapse undefined to null so the
-						// downstream snapshot keeps its existing "string | null" shape.
-						category: space.category ?? null,
+						// `category` lives on home-control's RoomSpaceEntity / ZoneSpaceEntity,
+						// not the abstract SpaceEntity. Read it via an indexed-property cast
+						// so non-home-control spaces (master / entry / signage) collapse to null
+						// and the snapshot keeps its existing "string | null" shape.
+						category: (space as { category?: string | null }).category ?? null,
 						deviceCount: spaceDevices.length,
 					},
 				];
@@ -243,7 +244,7 @@ export class BuddyContextService {
 						id: space.id,
 						name: space.name,
 						// See note above — home-control-only field; normalize to null.
-						category: space.category ?? null,
+						category: (space as { category?: string | null }).category ?? null,
 						deviceCount,
 					};
 				}),

@@ -89,7 +89,10 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 
 		try {
 			const spaces = await this.spacesService.findAll();
-			const enabledSpaces = spaces.filter((s) => s.suggestionsEnabled);
+			// `suggestionsEnabled` lives on home-control's RoomSpaceEntity / ZoneSpaceEntity,
+			// not the abstract SpaceEntity. Read it via an indexed-property cast so non-home-control
+			// spaces (master / entry / signage) — where the field is undefined — are excluded.
+			const enabledSpaces = spaces.filter((s) => (s as { suggestionsEnabled?: boolean }).suggestionsEnabled === true);
 
 			if (enabledSpaces.length === 0) {
 				return;

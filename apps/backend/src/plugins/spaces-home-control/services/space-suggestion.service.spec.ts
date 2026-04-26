@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
-import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SuggestionType } from '../spaces-home-control.constants';
 import { ResolvedSuggestionRule } from '../spec/intent-spec.types';
 
@@ -156,7 +156,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 	});
 
 	describe('evaluateSuggestionRules', () => {
-		const createSpace = (name: string): SpaceEntity => ({
+		const createSpace = (name: string): RoomSpaceEntity => ({
 			id: uuid(),
 			name,
 			description: null,

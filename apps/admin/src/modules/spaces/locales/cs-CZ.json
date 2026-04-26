@@ -214,9 +214,8 @@
 		}
 	},
 	"filters": {
-		"type": {
-			"title": "Typ",
-			"all": "Vše"
+		"types": {
+			"title": "Typ"
 		}
 	},
 	"texts": {

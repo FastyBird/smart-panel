@@ -3,7 +3,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { IPlugin, IPluginElement } from '../../../common';
-import type { FormResultType, SpaceType } from '../spaces.constants';
+import type { FormResultType } from '../spaces.constants';
 import type { ISpacePluginRoutes, ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
 import type { ISpace, ISpaceEditData } from '../store/spaces.store.types';
 
@@ -11,7 +11,7 @@ import type { SpaceAddFormSchemaType, SpaceEditFormSchemaType } from './schemas'
 
 export interface ISpacesFilter {
 	search?: string | undefined;
-	type: SpaceType | 'all';
+	types: string[];
 }
 
 export interface IUseSpacesDataSource {

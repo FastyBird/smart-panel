@@ -8,6 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 
 import { SpaceActivityListener } from './space-activity.listener';
 
@@ -16,7 +17,7 @@ describe('SpaceActivityListener', () => {
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
 
-	const mockSpace: SpaceEntity = {
+	const mockSpace: RoomSpaceEntity = {
 		id: uuid(),
 		name: 'Living Room',
 		description: 'Main living area',

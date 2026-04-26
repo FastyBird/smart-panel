@@ -6,9 +6,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
-import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { ClimateMode, LightingRole } from '../spaces-home-control.constants';
 
@@ -26,7 +26,7 @@ describe('SpaceContextSnapshotService', () => {
 	let coversRoleService: jest.Mocked<SpaceCoversRoleService>;
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
 
-	const createSpace = (id: string, name: string): SpaceEntity => ({
+	const createSpace = (id: string, name: string): RoomSpaceEntity => ({
 		id,
 		name,
 		description: null,
