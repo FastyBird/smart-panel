@@ -27,11 +27,13 @@ export const getUsersPasswordMinLength = (): number => {
 
 	const parsed = Number(raw);
 
-	if (!Number.isFinite(parsed) || parsed < 1) {
+	// Reject non-integers (e.g. "7.9") rather than rounding down — silently
+	// floor-ing would weaken the policy below what the operator wrote.
+	if (!Number.isInteger(parsed) || parsed < 1) {
 		return DEFAULT_PASSWORD_MIN_LENGTH;
 	}
 
-	return Math.floor(parsed);
+	return parsed;
 };
 
 export function MinUsersPasswordLength(validationOptions?: ValidationOptions): PropertyDecorator {
