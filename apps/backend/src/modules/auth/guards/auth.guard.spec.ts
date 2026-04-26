@@ -24,6 +24,15 @@ import { AuthGuard, AuthenticatedRequest, IS_PUBLIC_KEY } from './auth.guard';
 
 jest.mock('../utils/token.utils', () => ({
 	hashToken: jest.fn((token) => `hashed-${token}`),
+	// `extractAccessTokenFromHeader` was promoted to a shared util when the
+	// `DisplayAwareThrottlerGuard` was added; preserve the historical
+	// behavior previously inlined as `extractTokenFromHeader` on the guard.
+	extractAccessTokenFromHeader: jest.fn((request: { headers: { authorization?: string } }) => {
+		const header = request?.headers?.authorization;
+		if (!header) return undefined;
+		const [scheme, token] = header.split(' ');
+		return scheme === 'Bearer' ? token : undefined;
+	}),
 }));
 
 describe('AuthGuard', () => {
