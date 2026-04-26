@@ -13,12 +13,30 @@ import {
 import { THROTTLER_LIMIT, THROTTLER_SKIP } from '@nestjs/throttler/dist/throttler.constants';
 
 import { TokenOwnerType } from '../auth.constants';
-import { extractAccessTokenFromHeader } from '../utils/token.utils';
+import { extractAccessTokenFromHeader, hashToken } from '../utils/token.utils';
 
 interface JwtPayload {
 	sub?: string;
 	type?: string;
 }
+
+/**
+ * In-memory cache of `hashToken(token) → verified-display-or-not` for
+ * tokens we've already signature-checked. Keeps the hot-path cost of a
+ * legitimate display burst flat (one verify per token per TTL window)
+ * AND blunts the DoS amplification vector where a flood of forged
+ * Bearer tokens with `type: "display"` would otherwise force a fresh
+ * `verifyAsync` per request.
+ *
+ * Bounded LRU semantics: once we hit `MAX_ENTRIES` we drop the oldest
+ * insertion. An attacker with millions of distinct forged tokens still
+ * pays the verify cost on each new token, but they also pay the cost of
+ * GENERATING that many distinct JWTs — the attack stops being
+ * asymmetric.
+ */
+const VERIFY_CACHE_TTL_MS = 60_000;
+const VERIFY_CACHE_MAX_ENTRIES = 1_000;
+type VerifyCacheEntry = { ok: boolean; expiresAt: number };
 
 /**
  * `ThrottlerGuard` variant that exempts requests authenticated as a
@@ -41,6 +59,20 @@ interface JwtPayload {
  * protection. To still know whether the caller is a display, this guard
  * does a lightweight JWT signature check (no DB lookup) on the bearer
  * token.
+ *
+ * **Why we cheap-decode before verifying.** `shouldSkip` runs in the
+ * pre-accounting phase of `ThrottlerGuard.canActivate`, BEFORE the rate
+ * limiter has a chance to 429 the request. Naively calling
+ * `verifyAsync()` on every Bearer token would force expensive signature
+ * crypto on every flooded request, turning the throttler's "cheap DoS
+ * gate" role into an asymmetric amplification vector. Two defenses:
+ *   1. `JwtService.decode()` (pure base64, no crypto) reads the
+ *      unverified `type` claim. If it isn't `display`, we never call
+ *      `verifyAsync` — forged "user-shaped" floods cost ~0.
+ *   2. A bounded LRU cache (`hashToken(token) → verdict`, 60s TTL,
+ *      1000 entries) memoizes the verdict for both legitimate display
+ *      bursts and repeated-forged-token floods. An attacker has to
+ *      generate a new JWT per request to keep paying the verify cost.
  *
  * **What this guard never bypasses:**
  * - Routes with explicit `@Throttle({ ... })` overrides — e.g.
@@ -67,6 +99,8 @@ interface JwtPayload {
  */
 @Injectable()
 export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
+	private readonly verifyCache = new Map<string, VerifyCacheEntry>();
+
 	constructor(
 		@InjectThrottlerOptions() options: ThrottlerModuleOptions,
 		@InjectThrottlerStorage() storageService: ThrottlerStorage,
@@ -102,19 +136,94 @@ export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 
 		const request = context.switchToHttp().getRequest<Request>();
 		const token = extractAccessTokenFromHeader(request);
-		if (token) {
-			try {
-				const payload: JwtPayload = await this.jwtService.verifyAsync(token);
-				if ((payload.type as TokenOwnerType) === TokenOwnerType.DISPLAY && payload.sub) {
-					return true;
-				}
-			} catch {
-				// Invalid signature / expired / malformed — do NOT skip; let
-				// the throttler apply normally so a flood of bad tokens still
-				// counts toward the budget. AuthGuard will return the 401.
+		if (!token) {
+			return super.shouldSkip(context);
+		}
+
+		// Cheap pre-filter: `decode` is just base64 — no crypto. If the
+		// unsigned payload doesn't even claim to be a display, we never
+		// pay for `verifyAsync`. Filters out the common case (user
+		// access tokens, long-live tokens) and, critically, makes a
+		// flood of forged "user-shaped" Bearer tokens a free pass-through
+		// to the throttler counters instead of an amplification vector.
+		const unverifiedPayload = this.safeDecode(token);
+		if (
+			!unverifiedPayload ||
+			(unverifiedPayload.type as TokenOwnerType) !== TokenOwnerType.DISPLAY ||
+			!unverifiedPayload.sub
+		) {
+			return super.shouldSkip(context);
+		}
+
+		// Cache hit on a previously-verified display token — common case
+		// for the cache-warm waterfall this whole guard exists for.
+		// A burst of N requests from one display verifies once and
+		// fast-paths the next N-1 through a Map lookup.
+		const cached = this.readVerifyCache(token);
+		if (cached !== null) {
+			return cached;
+		}
+
+		// Cache miss + payload claims display — pay the verify cost
+		// once and cache the verdict. A flood of distinct forged
+		// "display-shaped" tokens still triggers verifyAsync on each
+		// new token, but the attacker has to GENERATE each token, so
+		// the cost is no longer asymmetric.
+		try {
+			const verified: JwtPayload = await this.jwtService.verifyAsync(token);
+			const ok = (verified.type as TokenOwnerType) === TokenOwnerType.DISPLAY && !!verified.sub;
+			this.writeVerifyCache(token, ok);
+			if (ok) {
+				return true;
 			}
+		} catch {
+			// Invalid signature / expired / malformed — cache the
+			// negative verdict too so a forged-token flood doesn't
+			// re-verify the same token over and over. Throttler
+			// counters still apply; AuthGuard will return the 401.
+			this.writeVerifyCache(token, false);
 		}
 
 		return super.shouldSkip(context);
+	}
+
+	private safeDecode(token: string): JwtPayload | null {
+		try {
+			// `JwtService.decode` is typed loosely (`any`); narrow through
+			// `unknown` so the rest of the function deals in concrete types.
+			const decoded: unknown = this.jwtService.decode(token);
+			return typeof decoded === 'object' && decoded !== null ? (decoded as JwtPayload) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	private readVerifyCache(token: string): boolean | null {
+		const key = hashToken(token);
+		const entry = this.verifyCache.get(key);
+		if (!entry) {
+			return null;
+		}
+		if (entry.expiresAt <= Date.now()) {
+			this.verifyCache.delete(key);
+			return null;
+		}
+		return entry.ok;
+	}
+
+	private writeVerifyCache(token: string, ok: boolean): void {
+		const key = hashToken(token);
+		// Bounded LRU: drop the oldest entry once full. Map iteration
+		// order is insertion order, so `keys().next()` is the oldest.
+		if (this.verifyCache.size >= VERIFY_CACHE_MAX_ENTRIES && !this.verifyCache.has(key)) {
+			// Drop the oldest entry. Iterate-and-break instead of
+			// `.keys().next().value` because the latter's `IteratorResult`
+			// return type widens to `any` under our strict ESLint rules.
+			for (const oldestKey of this.verifyCache.keys()) {
+				this.verifyCache.delete(oldestKey);
+				break;
+			}
+		}
+		this.verifyCache.set(key, { ok, expiresAt: Date.now() + VERIFY_CACHE_TTL_MS });
 	}
 }

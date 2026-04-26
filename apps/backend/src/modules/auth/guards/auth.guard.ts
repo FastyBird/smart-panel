@@ -20,10 +20,9 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
-import { extractAccessTokenFromHeader } from '../utils/token.utils';
 import { AccessTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
-import { hashToken } from '../utils/token.utils';
+import { extractAccessTokenFromHeader, hashToken } from '../utils/token.utils';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 

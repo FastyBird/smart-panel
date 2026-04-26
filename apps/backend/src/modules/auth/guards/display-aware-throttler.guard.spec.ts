@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 
@@ -20,7 +19,7 @@ type ContextOptions = {
 
 describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	let guard: DisplayAwareThrottlerGuard;
-	let jwtService: { verifyAsync: jest.Mock };
+	let jwtService: { verifyAsync: jest.Mock; decode: jest.Mock };
 	let reflector: { getAllAndOverride: jest.Mock };
 
 	const buildContext = ({ authorization, type = 'http' }: ContextOptions = {}): ExecutionContext => {
@@ -41,7 +40,16 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	};
 
 	beforeEach(async () => {
-		jwtService = { verifyAsync: jest.fn() };
+		jwtService = {
+			verifyAsync: jest.fn(),
+			// `decode` is the cheap base64-only pre-filter the guard uses to
+			// avoid running signature verification on tokens that don't even
+			// claim to be display-class. Most tests want it to mirror what
+			// `verifyAsync` would return; the DoS-amplification tests
+			// override it with a non-display payload to assert the
+			// short-circuit.
+			decode: jest.fn(),
+		};
 		// `getAllAndOverride` is the standard reflector lookup the parent
 		// uses for `@Throttle` / `@SkipThrottle` metadata. Default to
 		// `undefined` (no per-route override); individual tests can stub
@@ -73,8 +81,15 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	const callShouldSkip = (ctx: ExecutionContext) =>
 		(guard as unknown as { shouldSkip(c: ExecutionContext): Promise<boolean> }).shouldSkip(ctx);
 
+	const stubDisplayPayload = (sub: string = uuid()) => {
+		const payload = { sub, type: TokenOwnerType.DISPLAY };
+		jwtService.decode.mockReturnValue(payload);
+		jwtService.verifyAsync.mockResolvedValue(payload);
+		return payload;
+	};
+
 	it('skips throttling for a request bearing a valid display JWT', async () => {
-		jwtService.verifyAsync.mockResolvedValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+		stubDisplayPayload();
 
 		const skipped = await callShouldSkip(buildContext({ authorization: 'Bearer display.signed.token' }));
 
@@ -83,18 +98,26 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	});
 
 	it('does NOT skip for valid USER (long-live) tokens', async () => {
-		jwtService.verifyAsync.mockResolvedValue({ sub: uuid(), type: TokenOwnerType.USER });
+		// Cheap-decode pre-filter sees `type: USER` and short-circuits
+		// without ever paying for signature verification.
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.USER });
 
 		expect(await callShouldSkip(buildContext({ authorization: 'Bearer user.long.live.token' }))).toBe(false);
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
 
 	it('does NOT skip for user access tokens (no `type` claim)', async () => {
-		jwtService.verifyAsync.mockResolvedValue({ sub: uuid() });
+		// User access tokens carry no `type` field, so the cheap decode
+		// pre-filter rejects them before any crypto runs.
+		jwtService.decode.mockReturnValue({ sub: uuid() });
 
 		expect(await callShouldSkip(buildContext({ authorization: 'Bearer user.access.token' }))).toBe(false);
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
 
 	it('does NOT skip when the JWT signature is invalid', async () => {
+		// Forged token claims display, but signature check fails.
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
 		jwtService.verifyAsync.mockRejectedValue(new Error('invalid signature'));
 
 		expect(await callShouldSkip(buildContext({ authorization: 'Bearer forged.bad.signature' }))).toBe(false);
@@ -102,18 +125,23 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 
 	it('does NOT skip when the Authorization header is missing', async () => {
 		expect(await callShouldSkip(buildContext({}))).toBe(false);
+		expect(jwtService.decode).not.toHaveBeenCalled();
 		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
 
 	it('does NOT skip for non-Bearer auth schemes', async () => {
 		expect(await callShouldSkip(buildContext({ authorization: 'Basic dXNlcjpwYXNz' }))).toBe(false);
+		expect(jwtService.decode).not.toHaveBeenCalled();
 		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
 
 	it('does NOT skip when the display payload lacks `sub`', async () => {
-		jwtService.verifyAsync.mockResolvedValue({ type: TokenOwnerType.DISPLAY });
+		// Pre-filter rejects display tokens missing `sub` without touching
+		// signature verification — saves a verify on the malformed path.
+		jwtService.decode.mockReturnValue({ type: TokenOwnerType.DISPLAY });
 
 		expect(await callShouldSkip(buildContext({ authorization: 'Bearer malformed.display' }))).toBe(false);
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
 
 	// Cursor High: ws/rpc contexts have no `request.headers`. Defer to parent.
@@ -130,7 +158,7 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	// MUST take precedence — a stolen display token must not unlock unbounded
 	// brute-force on `/auth/login`.
 	it('does NOT skip when the route has an explicit @Throttle limit override', async () => {
-		jwtService.verifyAsync.mockResolvedValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+		stubDisplayPayload();
 		// Simulate `@Throttle({ default: { limit: 5, ttl: 60000 } })` on the route.
 		reflector.getAllAndOverride.mockImplementation((key: string) =>
 			key === THROTTLER_LIMIT + 'default' ? 5 : undefined,
@@ -147,7 +175,7 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 	it('does NOT skip when the route has explicit @SkipThrottle metadata', async () => {
 		// `@SkipThrottle()` on a route means "the parent already decided" —
 		// the parent's `shouldSkip` will honor it; we just defer.
-		jwtService.verifyAsync.mockResolvedValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+		stubDisplayPayload();
 		reflector.getAllAndOverride.mockImplementation((key: string) =>
 			key === THROTTLER_SKIP + 'default' ? true : undefined,
 		);
@@ -156,5 +184,60 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 
 		expect(skipped).toBe(false);
 		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+	});
+
+	// Codex P1 (round 2): `verifyAsync` is signature crypto and we MUST NOT
+	// pay it on every Bearer request, or a flood of forged tokens becomes a
+	// DoS amplification vector. The cheap base64 `decode` pre-filter handles
+	// the common-and-most-attacker-friendly case (token with `type !== display`)
+	// without any crypto cost.
+	it('avoids verifyAsync when decoded payload is not a display token', async () => {
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.USER });
+
+		await callShouldSkip(buildContext({ authorization: 'Bearer forged.user.shaped.token' }));
+
+		expect(jwtService.decode).toHaveBeenCalledWith('forged.user.shaped.token');
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+	});
+
+	it('avoids verifyAsync when decode returns null (totally malformed token)', async () => {
+		// A garbage Bearer string — `JwtService.decode` returns `null` rather
+		// than throwing for many malformed inputs. We must still skip the
+		// crypto path.
+		jwtService.decode.mockReturnValue(null);
+
+		await callShouldSkip(buildContext({ authorization: 'Bearer not-even-a-jwt' }));
+
+		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+	});
+
+	it('caches a positive verdict so a display burst only verifies once per token', async () => {
+		// The whole reason this guard exists: a registered display fires
+		// dozens of cache-warm requests on cold-boot. Verifying the JWT
+		// signature on each would defeat the throttle bypass's purpose
+		// (still a bottleneck) AND amplify any forged-token DoS.
+		stubDisplayPayload();
+		const ctx = () => buildContext({ authorization: 'Bearer display.signed.token' });
+
+		expect(await callShouldSkip(ctx())).toBe(true);
+		expect(await callShouldSkip(ctx())).toBe(true);
+		expect(await callShouldSkip(ctx())).toBe(true);
+
+		expect(jwtService.verifyAsync).toHaveBeenCalledTimes(1);
+	});
+
+	it('caches a negative verdict so a forged-token flood verifies only once', async () => {
+		// Same forged token re-sent: signature check runs once, the failure
+		// is cached, and subsequent requests defer to the throttler counters
+		// without re-paying for crypto.
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+		jwtService.verifyAsync.mockRejectedValue(new Error('invalid signature'));
+		const ctx = () => buildContext({ authorization: 'Bearer forged.display.token' });
+
+		expect(await callShouldSkip(ctx())).toBe(false);
+		expect(await callShouldSkip(ctx())).toBe(false);
+		expect(await callShouldSkip(ctx())).toBe(false);
+
+		expect(jwtService.verifyAsync).toHaveBeenCalledTimes(1);
 	});
 });
