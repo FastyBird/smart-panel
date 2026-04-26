@@ -167,10 +167,17 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 // per-type validator 422s the request before any update happens.
 //
 // Gate by target `SpaceType` instead. Only ROOM and ZONE accept these
-// fields; everything else (MASTER, ENTRY, SIGNAGE_INFO_PANEL) drops them
-// regardless of what the form populated.
+// fields; MASTER / ENTRY / SIGNAGE_INFO_PANEL drop them regardless of
+// what the form populated.
+//
+// `undefined` is treated as home-control to stay symmetric with
+// `spaceTypeToApiType` (which defaults `undefined → 'room'` on line ~71).
+// Otherwise a caller that omits `type` (e.g. a hypothetical
+// `editSpace({ name: 'x' })`) would emit `{ type: 'room' }` to the API
+// AND silently strip home-control fields, dropping updates the caller
+// intended for an actual room.
 const isHomeControlSpaceType = (type: SpaceType | undefined): boolean =>
-	type === SpaceType.ROOM || type === SpaceType.ZONE;
+	type === undefined || type === SpaceType.ROOM || type === SpaceType.ZONE;
 
 export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCreate => {
 	const payload: Record<string, unknown> = {

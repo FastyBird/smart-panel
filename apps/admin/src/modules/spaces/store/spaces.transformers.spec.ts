@@ -381,6 +381,42 @@ describe('Spaces Transformers', (): void => {
 			expect('suggestions_enabled' in result).toBe(false);
 			expect('status_widgets' in result).toBe(false);
 		});
+
+		// Cursor Medium: `spaceTypeToApiType(undefined)` defaults to `room`,
+		// so `isHomeControlSpaceType(undefined)` MUST also report
+		// home-control. Otherwise a caller that omits `type` (e.g. a
+		// hypothetical `editSpace({ name: 'x' })`) would get a payload
+		// declaring `type: room` while silently dropping the home-control
+		// fields the caller passed.
+		it('keeps home-control fields when type is omitted (defaults to room)', (): void => {
+			const payloadWithoutType: ISpaceEditData = {
+				name: 'Living Room',
+				category: SpaceRoomCategory.LIVING_ROOM,
+				suggestionsEnabled: true,
+				statusWidgets: null,
+			};
+
+			const result = transformSpaceEditRequest(payloadWithoutType) as Record<string, unknown>;
+
+			expect(result.type).toBe(SpacesModuleCreateSpaceType.room);
+			expect(result.category).toBe(SpacesModuleCreateSpaceCategory.living_room);
+			expect(result.suggestions_enabled).toBe(true);
+			expect(result.status_widgets).toBeNull();
+		});
+
+		it('keeps home-control fields on create when type is omitted (defaults to room)', (): void => {
+			const payloadWithoutType: ISpaceCreateData = {
+				name: 'New Space',
+				category: SpaceRoomCategory.OFFICE,
+				suggestionsEnabled: false,
+			};
+
+			const result = transformSpaceCreateRequest(payloadWithoutType) as Record<string, unknown>;
+
+			expect(result.type).toBe(SpacesModuleCreateSpaceType.room);
+			expect(result.category).toBe(SpacesModuleCreateSpaceCategory.office);
+			expect(result.suggestions_enabled).toBe(false);
+		});
 	});
 
 	describe('status widgets transformations', (): void => {
