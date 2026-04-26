@@ -12,15 +12,12 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
-import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { CreateEntrySpaceDto } from './dto/create-entry-space.dto';
 import { SpacesSyntheticEntryUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateEntrySpaceDto } from './dto/update-entry-space.dto';
 import { EntrySpaceEntity } from './entities/entry-space.entity';
 import { SpacesSyntheticEntryConfigModel } from './models/config.model';
-import { EntrySpaceResetService } from './services/entry-space-reset.service';
-import { EntrySpaceSeederService } from './services/entry-space-seeder.service';
 import {
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_API_TAG_DESCRIPTION,
 	SPACES_SYNTHETIC_ENTRY_PLUGIN_API_TAG_NAME,
@@ -33,10 +30,9 @@ import { SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-syn
  * Spaces Synthetic Entry plugin.
  *
  * Contributes the singleton `entry` space type — a security / front-door
- * surface with no physical-room semantics. One entry space is seeded on
- * first boot; subsequent boots short-circuit. The core spaces module's
- * factory reset clears the row, and this plugin's reset handler (priority
- * 300, after core's 280) re-seeds it.
+ * surface with no physical-room semantics. The entry space row is owned by
+ * the user: it is created/edited/removed through the standard spaces API and
+ * is never auto-seeded by this plugin.
  */
 @ApiTag({
 	tagName: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
@@ -45,23 +41,20 @@ import { SPACES_SYNTHETIC_ENTRY_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-syn
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([EntrySpaceEntity]), SpacesModule, SwaggerModule],
-	providers: [EntrySpaceSeederService, EntrySpaceResetService],
+	providers: [],
 	controllers: [],
-	exports: [EntrySpaceSeederService],
+	exports: [],
 })
 export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
-		private readonly seeder: EntrySpaceSeederService,
-		private readonly resetService: EntrySpaceResetService,
-		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		this.configMapper.registerMapping<SpacesSyntheticEntryConfigModel, SpacesSyntheticEntryUpdatePluginConfigDto>({
 			type: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
 			class: SpacesSyntheticEntryConfigModel,
@@ -101,21 +94,6 @@ export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 			modelClass: UpdateEntrySpaceDto,
 		});
 
-		this.factoryResetRegistry.register(
-			SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
-			async (): Promise<{ success: boolean; reason?: string }> => {
-				return this.resetService.reset();
-			},
-			300,
-		);
-
-		// Skip DB-touching seed when the app is booted solely to host a CLI command
-		// (e.g. `openapi:generate`, where migrations may not have run and the spaces
-		// table may not exist). In normal app boot FB_CLI is unset.
-		if (process.env.FB_CLI !== 'on') {
-			await this.seeder.seed();
-		}
-
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_SYNTHETIC_ENTRY_PLUGIN_NAME,
 			name: 'Spaces Synthetic Entry',
@@ -129,15 +107,11 @@ no physical-room semantics and no parent/child hierarchy.
 
 ## Features
 
-- **Singleton** — exactly one entry space per installation, seeded on first boot.
+- **Singleton** — at most one entry space per installation. The singleton guard in the
+  spaces service rejects attempts to create a second one.
+- **User-owned** — the row is created, edited, and removed through the standard spaces
+  API. This plugin does not seed or restore the entry space automatically.
 - **Display target** — displays configured for security / entry surfaces point at this space.
-- **Factory-reset safe** — re-seeded automatically after the core spaces module reset.
-
-## Defaults
-
-- ID: \`a0000000-0000-4000-8000-000000000002\`
-- Name: \`Entry\` (user-editable)
-- No category, no parent, no children.
 
 ## Uninstall behavior
 

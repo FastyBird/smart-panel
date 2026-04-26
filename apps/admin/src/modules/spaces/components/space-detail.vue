@@ -22,9 +22,7 @@
 				{{ t('spacesModule.fields.spaces.type.title') }}
 			</dt>
 			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-				<el-text>
-					{{ t(`spacesModule.misc.types.${space.type}`) }}
-				</el-text>
+				<spaces-table-column-plugin :space="space" />
 			</dd>
 			<dt
 				v-if="space.description"
@@ -138,6 +136,7 @@ import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
 
+import SpacesTableColumnPlugin from './spaces-table-column-plugin.vue';
 import type { ISpaceDetailProps } from './space-detail.types';
 
 defineOptions({

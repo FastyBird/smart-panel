@@ -10,11 +10,9 @@
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column prop="type" :label="t('spacesModule.table.columns.type')" width="120">
+		<el-table-column prop="type" :label="t('spacesModule.table.columns.type')" width="170">
 			<template #default="{ row }">
-				<el-tag :type="row.type === SpaceType.ROOM ? 'primary' : 'info'" size="small">
-					{{ t(`spacesModule.misc.types.${row.type}`) }}
-				</el-tag>
+				<spaces-table-column-plugin :space="row" />
 			</template>
 		</el-table-column>
 		<el-table-column prop="description" :label="t('spacesModule.table.columns.description')" min-width="250">
@@ -83,15 +81,17 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElResult, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+import { ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElResult, ElTable, ElTableColumn, ElText } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { IconWithChild, useFlashMessage } from '../../../common';
 import { useSpaces, useSpacesActions } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
+import { RouteNames } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace } from '../store';
+
+import SpacesTableColumnPlugin from './spaces-table-column-plugin.vue';
 
 const { t } = useI18n();
 const router = useRouter();

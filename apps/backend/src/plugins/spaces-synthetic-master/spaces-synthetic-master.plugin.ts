@@ -12,15 +12,12 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
-import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { CreateMasterSpaceDto } from './dto/create-master-space.dto';
 import { SpacesSyntheticMasterUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateMasterSpaceDto } from './dto/update-master-space.dto';
 import { MasterSpaceEntity } from './entities/master-space.entity';
 import { SpacesSyntheticMasterConfigModel } from './models/config.model';
-import { MasterSpaceResetService } from './services/master-space-reset.service';
-import { MasterSpaceSeederService } from './services/master-space-seeder.service';
 import {
 	SPACES_SYNTHETIC_MASTER_PLUGIN_API_TAG_DESCRIPTION,
 	SPACES_SYNTHETIC_MASTER_PLUGIN_API_TAG_NAME,
@@ -33,10 +30,9 @@ import { SPACES_SYNTHETIC_MASTER_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-sy
  * Spaces Synthetic Master plugin.
  *
  * Contributes the singleton `master` space type — a whole-house overview
- * surface with no physical-room semantics. One master space is seeded on
- * first boot; subsequent boots short-circuit. The core spaces module's
- * factory reset clears the row, and this plugin's reset handler (priority
- * 300, after core's 280) re-seeds it.
+ * surface with no physical-room semantics. The master space row is owned by
+ * the user: it is created/edited/removed through the standard spaces API and
+ * is never auto-seeded by this plugin.
  */
 @ApiTag({
 	tagName: SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
@@ -45,23 +41,20 @@ import { SPACES_SYNTHETIC_MASTER_PLUGIN_SWAGGER_EXTRA_MODELS } from './spaces-sy
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([MasterSpaceEntity]), SpacesModule, SwaggerModule],
-	providers: [MasterSpaceSeederService, MasterSpaceResetService],
+	providers: [],
 	controllers: [],
-	exports: [MasterSpaceSeederService],
+	exports: [],
 })
 export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
-		private readonly seeder: MasterSpaceSeederService,
-		private readonly resetService: MasterSpaceResetService,
-		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		this.configMapper.registerMapping<SpacesSyntheticMasterConfigModel, SpacesSyntheticMasterUpdatePluginConfigDto>({
 			type: SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
 			class: SpacesSyntheticMasterConfigModel,
@@ -101,21 +94,6 @@ export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 			modelClass: UpdateMasterSpaceDto,
 		});
 
-		this.factoryResetRegistry.register(
-			SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
-			async (): Promise<{ success: boolean; reason?: string }> => {
-				return this.resetService.reset();
-			},
-			300,
-		);
-
-		// Skip DB-touching seed when the app is booted solely to host a CLI command
-		// (e.g. `openapi:generate`, where migrations may not have run and the spaces
-		// table may not exist). In normal app boot FB_CLI is unset.
-		if (process.env.FB_CLI !== 'on') {
-			await this.seeder.seed();
-		}
-
 		this.extensionsService.registerPluginMetadata({
 			type: SPACES_SYNTHETIC_MASTER_PLUGIN_NAME,
 			name: 'Spaces Synthetic Master',
@@ -129,15 +107,11 @@ no physical-room semantics and no parent/child hierarchy.
 
 ## Features
 
-- **Singleton** — exactly one master space per installation, seeded on first boot.
+- **Singleton** — at most one master space per installation. The singleton guard in the
+  spaces service rejects attempts to create a second one.
+- **User-owned** — the row is created, edited, and removed through the standard spaces
+  API. This plugin does not seed or restore the master space automatically.
 - **Display target** — displays configured for whole-house overview point at this space.
-- **Factory-reset safe** — re-seeded automatically after the core spaces module reset.
-
-## Defaults
-
-- ID: \`a0000000-0000-4000-8000-000000000001\`
-- Name: \`Home\` (user-editable)
-- No category, no parent, no children.
 
 ## Uninstall behavior
 
