@@ -200,9 +200,22 @@ export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 		// for the cache-warm waterfall this whole guard exists for.
 		// A burst of N requests from one display verifies once and
 		// fast-paths the next N-1 through a Map lookup.
+		//
+		// Two cache outcomes:
+		// - `true` (verified display) → skip throttling, return `true`.
+		// - `false` (forged / revoked / expired token, previously
+		//   verified) → DON'T return `false` directly; defer to
+		//   `super.shouldSkip(context)`. Every other "don't skip" path
+		//   in this method does the same, so any logic the parent
+		//   `ThrottlerGuard.shouldSkip` runs (now or after a future
+		//   `@nestjs/throttler` upgrade — `skipIf`, `ignoreUserAgents`,
+		//   etc.) stays honored for cached-negative tokens.
 		const cached = this.readVerifyCache(token);
-		if (cached !== null) {
-			return cached;
+		if (cached === true) {
+			return true;
+		}
+		if (cached === false) {
+			return super.shouldSkip(context);
 		}
 
 		// Process-wide verify rate limit. Closes the residual attack

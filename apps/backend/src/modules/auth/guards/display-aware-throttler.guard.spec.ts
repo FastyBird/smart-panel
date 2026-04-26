@@ -228,8 +228,9 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 
 	it('caches a negative verdict so a forged-token flood verifies only once', async () => {
 		// Same forged token re-sent: signature check runs once, the failure
-		// is cached, and subsequent requests defer to the throttler counters
-		// without re-paying for crypto.
+		// is cached, and subsequent requests defer to the parent's
+		// `shouldSkip` (no re-verify, but parent metadata like
+		// `@SkipThrottle` / `skipIf` is still honored — Cursor Low).
 		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
 		jwtService.verifyAsync.mockRejectedValue(new Error('invalid signature'));
 		const ctx = () => buildContext({ authorization: 'Bearer forged.display.token' });
@@ -239,6 +240,36 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 		expect(await callShouldSkip(ctx())).toBe(false);
 
 		expect(jwtService.verifyAsync).toHaveBeenCalledTimes(1);
+	});
+
+	// Cursor Low: the cached-negative branch must defer to
+	// `super.shouldSkip(context)` rather than returning `false` directly,
+	// so any logic the parent `ThrottlerGuard.shouldSkip` runs (now or
+	// after a future `@nestjs/throttler` upgrade) stays honored for
+	// cached-negative tokens. In v6.5.0 the parent's `shouldSkip` is a
+	// no-op returning `false`, so observable behavior is identical
+	// today; we spy on the call directly to lock the contract in.
+	it('routes cached-negative tokens through super.shouldSkip', async () => {
+		// First request: decode passes, verify fails, negative cached.
+		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+		jwtService.verifyAsync.mockRejectedValue(new Error('invalid signature'));
+		await callShouldSkip(buildContext({ authorization: 'Bearer forged.display.token' }));
+
+		// Spy on the parent's `shouldSkip` BEFORE the second call so we
+		// can assert delegation. Parent prototype is two levels up:
+		// `DisplayAwareThrottlerGuard` → `ThrottlerGuard` → Object.
+		const parentProto = Object.getPrototypeOf(Object.getPrototypeOf(guard)) as { shouldSkip: jest.Mock };
+		const superSkipSpy = jest.spyOn(parentProto, 'shouldSkip').mockResolvedValue(false);
+
+		// Second request: same forged token, cache is hot.
+		const result = await callShouldSkip(buildContext({ authorization: 'Bearer forged.display.token' }));
+
+		expect(result).toBe(false);
+		expect(superSkipSpy).toHaveBeenCalledTimes(1);
+		// And we still didn't pay for re-verify on the second request.
+		expect(jwtService.verifyAsync).toHaveBeenCalledTimes(1);
+
+		superSkipSpy.mockRestore();
 	});
 
 	// Codex P1 (round 3): per-token cache is defeated by an attacker who
