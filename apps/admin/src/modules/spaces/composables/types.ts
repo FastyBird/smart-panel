@@ -84,3 +84,8 @@ export interface IUseSpacesPlugins {
 	getByType: (type: IPluginElement['type']) => IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined;
 }
+
+export interface IUseSpacesPlugin {
+	plugin: ComputedRef<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined>;
+	element: ComputedRef<IPluginElement<ISpacePluginsComponents, ISpacePluginsSchemas> | undefined>;
+}

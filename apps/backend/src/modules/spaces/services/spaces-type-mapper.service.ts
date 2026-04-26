@@ -19,9 +19,9 @@ export interface SpaceTypeMapping<
 	/**
 	 * When true, the core `SpacesService.create` flow refuses to produce a
 	 * second row of this type — at most one such space may exist per install.
-	 * Used by synthetic singleton plugins (master, entry) whose seeders provide
-	 * the one and only row on first boot; without this flag a caller could
-	 * `POST /spaces` with `{ type: 'master', ... }` and duplicate the singleton.
+	 * Used by synthetic singleton plugins (master, entry) so a caller cannot
+	 * `POST /spaces` with `{ type: 'master', ... }` and duplicate the singleton
+	 * after the user has already created it.
 	 */
 	singleton?: boolean;
 	/**

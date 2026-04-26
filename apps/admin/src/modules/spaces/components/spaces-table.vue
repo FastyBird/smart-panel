@@ -143,15 +143,10 @@
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="170"
 		>
 			<template #default="scope">
-				<el-tag
-					:type="scope.row.type === SpaceType.ROOM ? 'primary' : 'info'"
-					size="small"
-				>
-					{{ t(`spacesModule.misc.types.${scope.row.type}`) }}
-				</el-tag>
+				<spaces-table-column-plugin :space="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -241,7 +236,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -249,6 +244,7 @@ import { IconWithChild, useBreakpoints } from '../../../common';
 import { SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
+import SpacesTableColumnPlugin from './spaces-table-column-plugin.vue';
 import type { ISpacesTableProps } from './spaces-table.types';
 
 defineOptions({
