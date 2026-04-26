@@ -19,7 +19,8 @@ import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator'
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { ACCESS_TOKEN_TYPE, AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
+import { AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
+import { extractAccessTokenFromHeader } from '../utils/token.utils';
 import { AccessTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
 import { hashToken } from '../utils/token.utils';
@@ -92,7 +93,7 @@ export class AuthGuard implements CanActivate {
 		const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
 		// Try authenticating with JWT (Bearer token)
-		const token = this.extractTokenFromHeader(request);
+		const token = extractAccessTokenFromHeader(request);
 
 		if (token && (await this.validateToken(request, token))) {
 			return true;
@@ -252,17 +253,5 @@ export class AuthGuard implements CanActivate {
 		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
-	}
-
-	private extractTokenFromHeader(request: Request): string | undefined {
-		const authHeader = request.headers.authorization;
-
-		if (!authHeader) {
-			return undefined;
-		}
-
-		const [type, token] = authHeader.split(' ');
-
-		return type === ACCESS_TOKEN_TYPE ? token : undefined;
 	}
 }

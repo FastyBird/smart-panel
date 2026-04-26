@@ -14,6 +14,7 @@ import { getEnvValue } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { DisplayAwareThrottlerGuard } from './modules/auth/guards/display-aware-throttler.guard';
 import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
 import { BuddyModule } from './modules/buddy/buddy.module';
@@ -145,14 +146,23 @@ export class AppModule {
 
 		return {
 			module: AppModule,
-			// Register `DisplayAwareThrottlerGuard` as a global guard. It does
+			// Both global guards are registered HERE (not in their owning
+			// modules) so the execution order is controlled at a single point.
+			// Within one module's `providers` array, NestJS executes
+			// `APP_GUARD` providers in declared order — splitting them across
+			// `AuthModule` and `AppModule` would make ordering depend on
+			// module-load order, which is fragile.
+			//
+			// Throttler runs FIRST so anonymous floods to protected endpoints
+			// stay rate-limited (otherwise `AuthGuard` would 401 them and the
+			// throttler would never count the request). The throttler does
 			// its own lightweight JWT signature check (no DB lookup) to detect
-			// display tokens and skip throttling for them — this means the
-			// guard runs BEFORE `AuthGuard` short-circuits unauthenticated
-			// traffic at 401, so anonymous floods to protected endpoints stay
-			// rate-limited at the default `30 req / 60s`. AuthGuard later
-			// performs the full DB-backed validation (revocation, expiry, etc).
-			providers: [{ provide: APP_GUARD, useClass: DisplayAwareThrottlerGuard }],
+			// display tokens; `AuthGuard` runs after for the full DB-backed
+			// validation (revocation, expiry, owner exists).
+			providers: [
+				{ provide: APP_GUARD, useClass: DisplayAwareThrottlerGuard },
+				{ provide: APP_GUARD, useClass: AuthGuard },
+			],
 			imports: [
 				ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
 				NestConfigModule.forRoot({

@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { CacheModule } from '@nestjs/cache-manager';
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -31,7 +30,6 @@ import { CreateAccessTokenDto, CreateLongLiveTokenDto, CreateRefreshTokenDto } f
 import { UpdateAuthConfigDto } from './dto/update-config.dto';
 import { UpdateAccessTokenDto, UpdateLongLiveTokenDto, UpdateRefreshTokenDto } from './dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from './entities/auth.entity';
-import { AuthGuard } from './guards/auth.guard';
 import { AuthConfigModel } from './models/config.model';
 import { AuthService } from './services/auth.service';
 import { CryptoService } from './services/crypto.service';
@@ -90,12 +88,12 @@ import { TokensService } from './services/tokens.service';
 		TokensTypeMapperService,
 		RegisterOwnerCommand,
 		ResetPasswordCommand,
-		{
-			provide: APP_GUARD,
-			useClass: AuthGuard,
-		},
 	],
 	controllers: [AuthController, TokensController],
+	// `AuthGuard` and `DisplayAwareThrottlerGuard` are intentionally NOT
+	// registered here as `APP_GUARD` providers — they live in `AppModule`
+	// instead. See the comment in `app.module.ts` next to the providers
+	// list for why ordering between them must be controlled at one place.
 	exports: [AuthService, TokensService, CryptoService, TokensTypeMapperService, JwtModule],
 })
 export class AuthModule implements OnModuleInit {
