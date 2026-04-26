@@ -13,7 +13,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UserRole } from '../../users/users.constants';
+import { USERS_PASSWORD_MIN_LENGTH, UserRole } from '../../users/users.constants';
 
 @ApiSchema({ name: 'AuthModuleRegister' })
 export class RegisterDto {
@@ -47,7 +47,9 @@ export class RegisterDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
-	@MinLength(8, { message: '[{"field":"password","reason":"Password must be at least 8 characters long."}]' })
+	@MinLength(USERS_PASSWORD_MIN_LENGTH, {
+		message: `[{"field":"password","reason":"Password must be at least ${USERS_PASSWORD_MIN_LENGTH} characters long."}]`,
+	})
 	password: string;
 
 	@ApiPropertyOptional({

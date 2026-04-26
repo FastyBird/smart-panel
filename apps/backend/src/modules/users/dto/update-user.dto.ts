@@ -12,7 +12,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UserLanguage, UserRole } from '../users.constants';
+import { USERS_PASSWORD_MIN_LENGTH, UserLanguage, UserRole } from '../users.constants';
 
 @ApiSchema({ name: 'UsersModuleUpdateUser' })
 export class UpdateUserDto {
@@ -39,7 +39,9 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
-	@MinLength(8, { message: '[{"field":"password","reason":"Password must be at least 8 characters long."}]' })
+	@MinLength(USERS_PASSWORD_MIN_LENGTH, {
+		message: `[{"field":"password","reason":"Password must be at least ${USERS_PASSWORD_MIN_LENGTH} characters long."}]`,
+	})
 	@ValidateIf((_, value) => value !== null)
 	password?: string | null;
 
