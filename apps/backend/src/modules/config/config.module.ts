@@ -130,7 +130,7 @@ Settings are stored as JSON files in \`FB_CONFIG_PATH\` (defaults to \`var/data\
 
 ## CLI Commands
 
-- \`pnpm run cli generate:admin-extensions\` — regenerate admin-side extension manifests`,
+- \`pnpm run cli config:generate-admin-extensions\` — regenerate the admin-side extensions import map (\`apps/admin/var/config/extensions.ts\`)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
