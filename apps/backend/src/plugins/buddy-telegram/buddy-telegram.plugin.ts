@@ -58,27 +58,38 @@ export class BuddyTelegramPlugin implements OnModuleInit {
 			description: 'Telegram bot adapter for Buddy module remote conversations and alerts',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.MESSAGING],
-			readme: `# Buddy Telegram Plugin
+			readme: `# Telegram
 
-Telegram bot adapter plugin for the Buddy module. Enables remote conversations and alert forwarding via Telegram.
+> Plugin · by FastyBird · capability: messaging
+
+Telegram bot adapter for the Buddy module. Forwards alerts (with inline accept / dismiss buttons) and lets you have full Buddy conversations from any Telegram client.
+
+## What you get
+
+- Talk to your home from a Telegram chat — same brain as the panel, available worldwide
+- Inline buttons on suggestions / alerts so you can act with one tap (acknowledge a leak alarm, run a scene, dismiss a suggestion)
+- Tight access control — limit who can chat with the bot to a list of explicit Telegram user IDs
+- Zero infrastructure to host: Telegram's bot API does the heavy lifting, you only need a bot token
 
 ## Features
 
-- **Remote Chat** - Interact with your smart home buddy from anywhere via Telegram
-- **Alert Forwarding** - Receive suggestion notifications with accept/dismiss buttons
-- **User Whitelist** - Restrict access to specific Telegram user IDs
+- **Remote chat** — text Buddy from any Telegram device with the same context as the panel
+- **Inline alert buttons** — every alert / suggestion ships with quick-action buttons
+- **Allow-list** — restrict access to a comma-separated list of user IDs; everyone else is silently ignored
+- **Markdown formatting** — replies render cleanly in Telegram with lists and code blocks where useful
 
 ## Setup
 
-1. Create a bot via [@BotFather](https://t.me/BotFather) on Telegram
-2. Copy the bot token
-3. Enable the plugin and enter the bot token in configuration
-4. Optionally set allowed user IDs to restrict access
+1. Create a bot via [@BotFather](https://t.me/BotFather) and copy the token
+2. Enable the plugin and paste the token into configuration
+3. Optionally restrict access by listing allowed user IDs
 
 ## Configuration
 
-- **Bot Token** - Telegram Bot API token from @BotFather (required)
-- **Allowed User IDs** - Comma-separated Telegram user IDs (empty = allow all)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`bot_token\` | Telegram Bot API token (required) | — |
+| \`allowed_user_ids\` | Comma-separated Telegram user IDs allowed to chat | unrestricted |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

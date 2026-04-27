@@ -93,38 +93,29 @@ export class PagesDeviceDetailPlugin {
 			name: 'Device Detail Page',
 			description: 'Dashboard page for detailed device information and controls',
 			author: 'FastyBird',
-			readme: `# Device Detail Page Plugin
+			readme: `# Device Detail Page
 
-Dashboard page type for displaying detailed device information.
+> Plugin · by FastyBird · platform: dashboard pages
+
+Full-screen dashboard page that surfaces every channel and property of a single device, with controls for writable properties and live updates for the rest. The "deep dive" view a tile points to when the user wants more than a glance.
+
+## What you get
+
+- A complete picture of one device — every channel, every property, every sensor reading and every control on a single page
+- Automatic UI per property: switches for booleans, sliders for ranged numbers, dropdowns for enums, read-only labels for sensors
+- Real-time refresh so the page reflects external changes (someone flipping the physical switch, a sensor changing) without polling
+- A great fallback for devices that don't yet have a custom dashboard: drop a Device Detail page and you immediately have full control
 
 ## Features
 
-- **Full Device View** - Comprehensive device information display
-- **Channel List** - View all device channels and their properties
-- **Property Controls** - Interact with all controllable properties
-- **Real-time Updates** - Live property value updates
+- **Full device view** — name, category, icon, connection status, last-seen timestamp
+- **Channel list** — every channel grouped with its properties; collapsed by default for devices with many channels
+- **Property controls** — automatic UI for writable properties (switch, slider, picker, …) using the same components the rest of the panel uses
+- **Read-only sensors** — non-writable properties render as live values with their unit and label
+- **Real-time updates** — values stream in over WebSocket; controls feed back through the optimistic intent layer for instant feel
+- **Range / enum awareness** — sliders respect the property's declared min / max / step; pickers honour the enum format
 
-## Page Content
-
-### Device Information
-- Device name and type
-- Connection status
-- Device icon
-
-### Channels Section
-- List of all device channels
-- Each channel shows its properties
-- Controls for settable properties
-
-## Usage
-
-Create a device detail page and select a device. When displayed on the panel, users can view all device information and control any writable properties.
-
-## Navigation
-
-Device detail pages can be accessed:
-- From device preview tiles (tap to open)
-- From the pages carousel (swipe to navigate)`,
+Each page selects its target device when created — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

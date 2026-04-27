@@ -59,26 +59,37 @@ export class BuddySystemTtsPlugin implements OnModuleInit {
 			description: 'Local TTS provider using piper or espeak',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.TTS],
-			readme: `# Buddy System TTS Provider
+			readme: `# System TTS
 
-Local TTS provider plugin for the Buddy module using system-installed speech synthesizers.
+> Plugin · by FastyBird · capability: TTS
 
-## Features
+Local text-to-speech provider that delegates synthesis to a system-installed engine — Piper for natural neural voices, eSpeak as a lightweight fallback. No API key, no network calls, no per-request fee.
 
-- **Piper** - High-quality neural TTS (preferred when available)
-- **eSpeak** - Lightweight fallback TTS
-- **No API Key Required** - Runs entirely locally
+## What you get
+
+- 100% offline voice for the assistant — useful when you want full local control or on networks without outbound internet
+- Free choice of voice quality vs. resource cost: Piper sounds great but needs more CPU; eSpeak is tiny and works on the most modest hardware
+- Multilingual support — both engines ship voices for many languages; pick one once and the assistant uses it everywhere
+- Auto-detection of which engine is actually installed, so the same configuration works across hosts that have only one of the two
+
+## Capabilities
+
+- **TTS only** — pair with any LLM and any STT provider
+- **Multiple engines** — Piper (preferred for quality) and eSpeak (fallback for low-power hosts)
+- **Streaming output** — audio is piped to the panel as soon as the engine emits it
 
 ## Setup
 
-1. Install piper or espeak on your system
+1. Install \`piper\` and/or \`espeak\` on the host
 2. Enable this plugin
-3. Set the buddy module \`tts_plugin\` to \`${BUDDY_SYSTEM_TTS_PLUGIN_NAME}\`
+3. Set Buddy's \`tts_plugin\` to \`${BUDDY_SYSTEM_TTS_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **Engine** - Preferred engine: piper or espeak (auto-detected if not set)
-- **Voice** - Voice identifier (piper model name or espeak voice code)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`engine\` | Preferred engine (\`piper\` or \`espeak\`) | auto-detected |
+| \`voice\` | Voice identifier (Piper model or eSpeak voice code) | engine default |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

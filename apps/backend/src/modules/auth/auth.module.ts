@@ -143,38 +143,44 @@ export class AuthModule implements OnModuleInit {
 			name: 'Sign‑in & Security',
 			description: 'Authentication and token management',
 			author: 'FastyBird',
-			readme: `# Authentication Module
+			readme: `# Sign-in & Security
 
-The Authentication module handles user authentication and token management for the Smart Panel.
+> Module · by FastyBird
+
+Handles user authentication, JWT issuing and session management for the Smart Panel backend, admin UI and panel display. Owns the full token lifecycle — login, refresh, logout, profile, password reset and personal access tokens — plus per-display registration credentials issued during pairing.
 
 ## Features
 
-- **JWT Authentication** - Secure token-based authentication
-- **Token Management** - Access tokens, refresh tokens, and long-lived tokens
-- **Session Handling** - Automatic token refresh and session management
-- **Password Security** - Secure password hashing and validation
+- **JWT authentication** — signed access tokens with configurable expiration; rotated automatically on every \`/auth/refresh\`
+- **Refresh tokens** — long-lived tokens stored hashed in the database; used to silently renew access tokens without prompting the user
+- **Long-live (personal) tokens** — non-expiring tokens for automation, scripts and external integrations, individually revocable from the admin UI or the API
+- **Display registration tokens** — short-lived credentials issued during display pairing so a panel can authenticate without a user account
+- **Password security** — bcrypt hashing with per-user salt; passwords never returned in any response
+- **Username / email availability** — public endpoints used by the registration form to validate inputs before submit
+- **Owner bootstrap** — first-run CLI wizard creates the owner account; subsequent owners must be added through the admin UI
+- **Hardening** — guard chain refuses requests when the JWT secret is auto-generated in production and surfaces a critical log line until an explicit \`FB_TOKEN_SECRET\` is provided
 
-## Token Types
+## API Endpoints
 
-### Access Token
-- Short-lived token for API requests
-- Automatically refreshed using refresh token
-- Default expiration: configurable
+- \`POST /api/v1/modules/auth/login\` — exchange username + password for an access / refresh token pair
+- \`POST /api/v1/modules/auth/register\` — register a new user (subject to module configuration)
+- \`POST /api/v1/modules/auth/refresh\` — issue a fresh access token from a refresh token
+- \`POST /api/v1/modules/auth/check/username\` / \`check/email\` — availability lookups for the sign-up form
+- \`GET /api/v1/modules/auth/profile\` — return the authenticated user's profile
+- \`GET|POST|PATCH|DELETE /api/v1/modules/auth/tokens\` — list, create, edit and revoke long-live tokens
+- \`POST /api/v1/modules/auth/tokens/personal\` — quick-create flow for a personal token
 
-### Refresh Token
-- Used to obtain new access tokens
-- Longer lifetime than access tokens
-- Stored securely in the database
+## Configuration
 
-### Long-Live Token
-- For automated systems and integrations
-- Does not expire automatically
-- Can be revoked manually
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`FB_TOKEN_SECRET\` | Secret used to sign JWTs (env var, **set this in production**) | auto-generated random |
+| \`token_expiration\` | Lifetime of access tokens | \`1h\` |
 
 ## CLI Commands
 
-- \`register:owner\` - Create the initial owner account
-- \`reset:password\` - Reset a user's password`,
+- \`pnpm run cli register:owner\` — create the initial owner account
+- \`pnpm run cli reset:password\` — reset a user's password`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -60,31 +60,42 @@ export class BuddyOpenaiCodexPlugin implements OnModuleInit {
 			name: 'OpenAI Codex',
 			description: 'LLM provider for Buddy module using OpenAI Codex with OAuth authentication',
 			author: 'FastyBird',
-			readme: `# Buddy OpenAI Codex Provider
+			readme: `# OpenAI Codex
 
-LLM provider plugin for the Buddy module using the OpenAI Codex API with OAuth authentication.
+> Plugin · by FastyBird · capability: LLM
 
-## Features
+OpenAI Codex as an LLM provider for the Buddy module, authenticated with OAuth2 — so an existing Codex subscription can power the assistant without provisioning a separate API key. Access tokens are refreshed automatically; the user logs in once and the plugin keeps its own credentials fresh in the background.
 
-- **Codex Models** - Access to codex-mini and other OpenAI Codex models
-- **OAuth Authentication** - Uses OAuth2 client credentials for secure API access
-- **Token Refresh** - Automatic access token refresh using refresh tokens
+## What you get
+
+- Use a Codex subscription you already pay for instead of a separate API key
+- Automatic OAuth token refresh — the plugin renews access tokens before they expire and never blocks a chat on auth
+- Native tool calling backed by Codex models, so Buddy can drive devices and scenes through structured calls
+- Streaming chat with the same shape as the regular OpenAI plugin — switching providers requires no code change in Buddy
+
+## Capabilities
+
+- **LLM (chat)** — streaming completions
+- **Tool calls** — structured device / scene control
+- **OAuth login** — credentials are stored encrypted in config and refreshed automatically
 
 ## Setup
 
 1. Register an OAuth application at [OpenAI](https://platform.openai.com)
-2. Obtain client ID and client secret
-3. Complete the OAuth flow to get access and refresh tokens
-4. Enter the credentials in plugin configuration
-5. Set the buddy module \`provider\` to \`${BUDDY_OPENAI_CODEX_PLUGIN_NAME}\`
+2. Note the client ID (and client secret, if your app uses one)
+3. Complete the OAuth flow to obtain access and refresh tokens
+4. Enter the credentials in this plugin's configuration
+5. Set Buddy's \`provider\` to \`${BUDDY_OPENAI_CODEX_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **Client ID** - OAuth client ID (required)
-- **Client Secret** - OAuth client secret (optional)
-- **Access Token** - OAuth access token
-- **Refresh Token** - OAuth refresh token for automatic renewal
-- **Model** - Model name to use (default: codex-mini)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`client_id\` | OAuth client ID (required) | — |
+| \`client_secret\` | OAuth client secret | — |
+| \`access_token\` | Current OAuth access token | — |
+| \`refresh_token\` | OAuth refresh token used for automatic renewal | — |
+| \`model\` | Codex model to use | \`codex-mini\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

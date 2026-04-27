@@ -128,31 +128,31 @@ export class ScenesModule implements OnModuleInit {
 			name: 'Scenes',
 			description: 'Scenes for controlling multiple devices with a single action',
 			author: 'FastyBird',
-			readme: `# Scenes Module
+			readme: `# Scenes
 
-The Scenes module allows you to control multiple devices with a single action, perfect for creating quick shortcuts like "Movie Mode" or "Good Night".
+> Module · by FastyBird
+
+Lets you control many devices at once with a single action — the building block for shortcuts like *Movie Mode*, *Good Night*, *Away* or *Wake-up*. A scene bundles an ordered list of actions; triggering the scene runs every action in sequence and reports per-action status back to the caller.
 
 ## Features
 
-- **Scene Management** - Create, edit, and delete scenes
-- **Action Sequencing** - Define ordered sequences of device commands
-- **Space Assignment** - Associate scenes with rooms or zones
-- **Category Organization** - Categorize scenes (morning, evening, movie, etc.)
-- **Manual Execution** - Execute scenes via API or admin UI
-- **Plugin System** - Extensible action types through plugins
-
-## How It Works
-
-Scenes consist of one or more actions that are executed in sequence when manually triggered. Each action is handled by a registered plugin (e.g., local device control, third-party integrations).
+- **Scene CRUD** — create, edit, reorder and delete scenes through the API or the admin UI
+- **Ordered action lists** — actions execute in declared order; each action returns its own success / failure result so partial failures are visible
+- **Space assignment** — bind a scene to a specific room or zone so the panel can surface it where it's relevant
+- **Categorization & icons** — pick a category (morning, evening, movie, …) and an icon so scenes group nicely on the panel home screen
+- **Multi-trigger** — execute scenes manually from the admin UI, from a panel tile, via REST, from a Buddy chat, or as a step inside another automation
+- **Plugin-based actions** — action *types* are pluggable; the module ships a registry that lets plugins add new action kinds (for example controlling local devices, calling an external service, sending a notification, …)
+- **Validation** — every action references existing devices / channels / properties; the API rejects scenes that point at things that don't exist
+- **Factory reset & seed hooks** — registers itself with the platform reset / seed pipeline so demo scenes and full wipes behave consistently
 
 ## API Endpoints
 
-- \`GET /v1/modules/scenes/scenes\` - List all scenes
-- \`POST /v1/modules/scenes/scenes\` - Create a new scene
-- \`GET /v1/modules/scenes/scenes/{id}\` - Get scene details
-- \`PATCH /v1/modules/scenes/scenes/{id}\` - Update a scene
-- \`DELETE /v1/modules/scenes/scenes/{id}\` - Delete a scene
-- \`POST /v1/modules/scenes/scenes/{id}/trigger\` - Trigger scene execution`,
+- \`GET /api/v1/modules/scenes/scenes\` — list scenes (with their actions)
+- \`POST /api/v1/modules/scenes/scenes\` — create a scene
+- \`GET /api/v1/modules/scenes/scenes/:id\` — read a single scene
+- \`PATCH /api/v1/modules/scenes/scenes/:id\` — update a scene (metadata or actions)
+- \`DELETE /api/v1/modules/scenes/scenes/:id\` — delete a scene
+- \`POST /api/v1/modules/scenes/scenes/:id/trigger\` — execute a scene and receive per-action results`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

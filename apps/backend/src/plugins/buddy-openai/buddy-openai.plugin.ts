@@ -70,30 +70,39 @@ export class BuddyOpenaiPlugin implements OnModuleInit {
 			description: 'LLM, STT, and TTS provider for Buddy module using OpenAI API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.LLM, BuddyCapability.STT, BuddyCapability.TTS],
-			readme: `# Buddy OpenAI Provider
+			readme: `# OpenAI
 
-LLM and TTS provider plugin for the Buddy module using the OpenAI API.
+> Plugin · by FastyBird · capabilities: LLM, STT, TTS
 
-## Features
+OpenAI as an all-in-one provider for the Buddy module — chat completions via GPT, transcription via Whisper, and synthesis via the TTS API (\`alloy\`, \`echo\`, \`fable\`, \`onyx\`, \`nova\`, \`shimmer\`). One API key unlocks the whole assistant experience.
 
-- **GPT Models** - Access to GPT-4o, GPT-4o-mini, and other OpenAI models
-- **Chat Completions** - Powers Buddy text chat conversations
-- **Speech-to-Text** - OpenAI Whisper API for voice input transcription
-- **Text-to-Speech** - OpenAI TTS API for voice output (alloy, echo, fable, onyx, nova, shimmer voices)
+## What you get
+
+- A single key that powers chat, voice input and voice output, so Buddy is a complete experience without juggling three providers
+- High-quality streaming chat with native tool calling — the model can drive your devices and scenes through structured calls
+- Server-side speech recognition with Whisper for hands-free interaction on the panel
+- A choice of six TTS voices to match the personality you want for your home
+
+## Capabilities
+
+- **LLM (chat)** — streaming completions; native tool calls for device / scene control
+- **STT (speech-to-text)** — Whisper transcription of microphone audio captured on the panel
+- **TTS (text-to-speech)** — six voices, configurable per deployment
+- **Per-capability fan-out** — you can use OpenAI for any subset (just LLM, just TTS, …) and pair it with other providers for the rest
 
 ## Setup
 
-1. Create an account at [OpenAI](https://platform.openai.com)
-2. Generate an API key from your account dashboard
-3. Enter the API key in plugin configuration
-4. Set the buddy module \`provider\` to \`${BUDDY_OPENAI_PLUGIN_NAME}\` for chat
-5. Set the buddy module \`stt_plugin\` to \`${BUDDY_OPENAI_PLUGIN_NAME}\` for STT
-6. Set the buddy module \`tts_plugin\` to \`${BUDDY_OPENAI_PLUGIN_NAME}\` for TTS
+1. Create an account at [OpenAI Platform](https://platform.openai.com)
+2. Generate an API key in your dashboard
+3. Enter the API key in this plugin's configuration
+4. Set Buddy's \`provider\`, \`stt_plugin\` and/or \`tts_plugin\` to \`${BUDDY_OPENAI_PLUGIN_NAME}\` for the capabilities you want to use
 
 ## Configuration
 
-- **API Key** - Your OpenAI API key (required)
-- **Model** - Model name to use (default: gpt-4o)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`api_key\` | OpenAI API key (required) | — |
+| \`model\` | Model used for chat completions | \`gpt-4o\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

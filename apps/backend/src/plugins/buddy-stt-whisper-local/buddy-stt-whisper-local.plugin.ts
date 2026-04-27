@@ -59,24 +59,38 @@ export class BuddySttWhisperLocalPlugin implements OnModuleInit {
 			description: 'STT provider for Buddy module using locally installed Whisper',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.STT],
-			readme: `# Buddy Local Whisper STT Provider
+			readme: `# Whisper Local
 
-Speech-to-text provider plugin for the Buddy module using a locally installed Whisper CLI.
+> Plugin · by FastyBird · capability: STT
 
-## Prerequisites
+Speech-to-text provider that runs OpenAI's Whisper locally via the \`whisper\` CLI. No API key, no network calls — the audio captured on the panel never leaves your network.
 
-Install whisper on your system. The \`whisper\` command must be available in PATH.
+## What you get
+
+- A privacy-respecting STT path: voice queries are transcribed on the host running the backend
+- Free choice of model size — \`tiny\` for low-spec hardware, \`large\` for top accuracy
+- Auto language detection or a fixed language hint when you know everyone in the household speaks the same one
+- Drop-in replacement for cloud STT providers — pair with any LLM / TTS combination
+
+## Capabilities
+
+- **STT only** — pair with any LLM and any TTS provider
+- **Configurable accuracy / speed** — pick the Whisper model that fits your CPU
+- **Language hint** — optional, otherwise Whisper detects automatically
+- **No outbound traffic** — every transcription stays on the host
 
 ## Setup
 
-1. Install whisper on the system
-2. Enable the plugin
-3. Set the buddy module \`stt_plugin\` to \`${BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME}\`
+1. Install Whisper so that the \`whisper\` command is available on \`PATH\`
+2. Enable this plugin
+3. Set Buddy's \`stt_plugin\` to \`${BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **Model** - Whisper model size (default: base). Options: tiny, base, small, medium, large
-- **Language** - ISO 639-1 language hint (optional, e.g. en, cs)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`model\` | Whisper model size — \`tiny\`, \`base\`, \`small\`, \`medium\`, \`large\` | \`base\` |
+| \`language\` | ISO 639-1 language hint (e.g. \`en\`, \`cs\`) | auto-detect |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

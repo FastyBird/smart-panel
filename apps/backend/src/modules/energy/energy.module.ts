@@ -88,29 +88,43 @@ export class EnergyModule implements OnModuleInit {
 			name: 'Energy',
 			description: 'Energy consumption and production monitoring with per-space tracking and historical analysis',
 			author: 'FastyBird',
-			readme: `# Energy Module
+			readme: `# Energy
 
-The Energy module tracks energy consumption and production data for the Smart Panel display.
+> Module · by FastyBird
+
+Tracks electrical energy consumption and production across the home. Ingests cumulative kWh readings from any device channel that exposes them, normalises the data into fixed 5-minute buckets and surfaces both per-space breakdowns and a home-wide aggregate.
+
+## What it gives you
+
+- A single source of truth for "how much energy did the house use this week" — independent of how many meters, inverters or smart plugs are involved
+- Per-space accounting so you can see which room is the loudest consumer
+- A simple data model the dashboard energy tile and the assistant can both query without dealing with raw counter values
 
 ## Features
 
-- **Per-Space Tracking** - Monitor energy usage broken down by individual spaces
-- **Home Overview** - Aggregated energy data across all spaces
-- **Historical Analysis** - Query energy data by range (today, yesterday, week, month)
-- **Delta Computation** - Automatic interval-based delta bucketing from cumulative kWh readings
-- **Source Types** - Track consumption import, generation production, grid import, and grid export
+- **Per-space tracking** — energy usage broken down by individual spaces, with multiple sources per space
+- **Home overview** — aggregated consumption, production, grid import and grid export at home level
+- **Delta computation** — cumulative kWh meter readings are turned into 5-minute deltas in the background; counter resets and missing samples are detected and skipped
+- **Historical ranges** — pre-aggregated answers for today, yesterday, this week, this month and any custom range
+- **Cached aggregates** — frequently requested ranges are cached so dashboard tiles render instantly even on big histories
+- **Retention** — old raw records are pruned according to the configured policy; aggregated buckets are kept much longer
+- **Multi-source per space** — a space can mix several sources (e.g. a circuit meter + a solar inverter) and the module deduplicates and signs them correctly
 
-## Endpoints
+## Source Types
 
-- \`GET /api/v1/modules/energy/status\` - Current energy status and configuration
-- \`GET /api/v1/modules/energy/home\` - Aggregated home energy data
-- \`GET /api/v1/modules/energy/spaces/:id\` - Per-space energy breakdown
+| Type | Description |
+|------|-------------|
+| \`consumption\` | Energy imported from a meter or measured at a load |
+| \`production\` | Energy produced (e.g. solar inverter output) |
+| \`grid_import\` | Energy drawn from the utility grid |
+| \`grid_export\` | Energy fed back to the utility grid |
 
-## Architecture
+## API Endpoints
 
-The module ingests cumulative kWh meter readings from device channels and computes
-fixed-interval deltas (5-minute buckets). Results are cached for fast retrieval
-and old records are automatically cleaned up based on configurable retention policy.`,
+- \`GET /api/v1/modules/energy/status\` — current energy status and configuration
+- \`GET /api/v1/modules/energy/home\` — aggregated home energy data
+- \`GET /api/v1/modules/energy/spaces/:id\` — per-space energy breakdown
+- \`GET /api/v1/modules/energy/spaces/:id/sources\` — list / configure per-space sources`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

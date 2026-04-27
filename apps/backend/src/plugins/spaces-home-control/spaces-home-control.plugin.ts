@@ -362,27 +362,30 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 			description:
 				'Provides the built-in Room and Zone space types along with lighting, climate, covers, sensor, and media role domains, intent catalog, suggestions, and undo history.',
 			author: 'FastyBird',
-			readme: `# Spaces Home Control Plugin
+			readme: `# Home Control Spaces
 
-Contributes the home-control space types (Room and Zone) that turn the
-Smart Panel into an interactive surface for controlling devices.
+> Plugin · by FastyBird · platform: spaces
+
+Contributes the **Room** and **Zone** space types — the home-control surface that turns the Smart Panel into an interactive room / zone controller. Owns the lighting, climate, covers, sensor and media role domains, the intent catalog, the suggestions engine and the undo history. This is the plugin that makes "the living room lights" a thing instead of "channel \`onoff\` of device \`abc\`".
+
+## What you get
+
+- A real room-centric model: every room becomes a switchable, dimmable, climate-controllable space without per-device wiring
+- A semantic layer: lights, blinds, thermostats and sensors are bound by their *role* in the room, so swapping a bulb doesn't break a scene
+- Intents that compose: "turn off the lights" / "set living room to 22°C" / "close all blinds" map to validated, reversible operations
+- Suggestions and undo: the panel can propose smart actions and let you walk them back if they overshoot
 
 ## Features
 
-- **Room and Zone space types** — organize physical rooms and logical groupings.
-- **Lighting domain** — discover light targets, assign roles, execute lighting intents (on/off, brightness, color, temperature).
-- **Climate domain** — HVAC and setpoint roles, climate intents.
-- **Covers domain** — blinds, shades, and cover roles and intents.
-- **Sensor domain** — sensor roles and aggregated state.
-- **Media domain** — media activity bindings and orchestrated playback.
-- **Intent catalog** — YAML-driven intent definitions for voice/text assistants.
-- **Suggestions and undo history** — space-scoped automation hints and reversible intents.
-
-## Uninstall behavior
-
-Uninstalling this plugin disables Room and Zone creation and strips the
-domain endpoints listed above. Synthetic and signage space-type plugins
-continue to work independently.`,
+- **Room & Zone space types** — physical rooms and logical zone groupings; zones can contain rooms and inherit device membership
+- **Lighting domain** — main / accent / decorative light targets; roles for on / off, brightness, colour temperature, RGB; lighting modes (reading, movie, dim, off, …)
+- **Climate domain** — HVAC and setpoint roles with climate intents (set mode, set temperature, set humidity); merges multiple climate devices in the same room into a single coherent surface
+- **Covers domain** — blinds, shades and curtains with open / close / set-position intents; honours per-cover position limits
+- **Sensor domain** — sensor roles and aggregated readings (temperature, humidity, CO₂, motion, contact); the room exposes a single best value when several sensors are present
+- **Media domain** — media activity bindings and orchestrated playback (play / pause / volume / source) across the room's media-capable devices
+- **Intent catalog** — YAML-driven intent definitions used by the Buddy assistant and any other text / voice client
+- **Suggestions** — pattern-based automation hints scoped to the room; the user can accept or dismiss
+- **Undo history** — every space-scoped intent is recorded with an inverse so a user can revert recent actions in one tap`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

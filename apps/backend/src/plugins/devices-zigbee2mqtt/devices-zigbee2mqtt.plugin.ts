@@ -225,42 +225,57 @@ export class DevicesZigbee2mqttPlugin {
 			name: 'Zigbee2MQTT',
 			description: 'Integration plugin for Zigbee devices via Zigbee2MQTT',
 			author: 'FastyBird',
-			readme: `# Zigbee2MQTT Plugin
+			readme: `# Zigbee2MQTT
 
-Integration plugin for Zigbee devices through Zigbee2MQTT bridge.
+> Plugin · by FastyBird · platform: devices
+
+Integration for Zigbee devices via a [Zigbee2MQTT](https://www.zigbee2mqtt.io) bridge. Connects either through an MQTT broker or directly to the Zigbee2MQTT frontend over WebSocket, then automatically maps Z2M *exposes* to Smart Panel channels and properties so a freshly-paired bulb appears on your dashboard with no manual mapping.
+
+## What you get
+
+- A path to use any Zigbee device that Zigbee2MQTT supports — thousands of models across hundreds of vendors
+- Two transport options so the plugin fits both setups: a shared MQTT broker (typical Z2M install) or a direct WebSocket to the Z2M frontend (no broker needed)
+- Auto-mapping: most devices come up correctly out of the box because the plugin reads Z2M's *exposes* and maps them to standard Smart Panel property roles
+- A safety net: when a device exposes something unusual you can add a YAML override without touching code
 
 ## Features
 
-- **Dual Connection Mode** - Connect via MQTT broker or directly via WebSocket to Zigbee2MQTT
-- **Automatic Device Discovery** - Discovers and maps devices from Zigbee2MQTT bridge
-- **Dynamic Capability Mapping** - Automatically maps Z2M exposes to Smart Panel properties
-- **Real-time State Updates** - Receives state changes via MQTT subscriptions
-- **Bidirectional Control** - Send commands to devices via MQTT
-- **User-Extensible Mappings** - Define custom device mappings via YAML configuration
+- **Dual transport** — MQTT broker or direct WebSocket to Zigbee2MQTT
+- **Automatic discovery** — devices and their capabilities are pulled from the bridge on connect; new devices show up in the discovery feed in real time
+- **Dynamic mapping** — Z2M exposes are mapped to Smart Panel properties using a default rule set that covers lights, switches, sensors, climate, covers, locks
+- **Real-time updates** — state changes are streamed via MQTT or WS as they happen, no polling
+- **Bidirectional control** — commands from Smart Panel are translated back to Z2M's expected payload (turning a switch, setting brightness / colour / temperature, …)
+- **Custom YAML mappings** — drop a YAML file in the data dir to override defaults, add transformers, or model exotic devices
+- **Configurable auto-adopt** — choose whether newly-discovered devices appear adopted automatically or wait for explicit confirmation
 
 ## Supported Devices
 
-Supports all Zigbee devices compatible with Zigbee2MQTT, including:
-- Smart lights (dimmable, color, color temperature)
-- Switches and relays
-- Sensors (temperature, humidity, motion, door/window, etc.)
-- Thermostats and climate controls
-- Covers and blinds
-- Locks
+Any device supported by Zigbee2MQTT — smart lights (dimmable, CCT, RGB), switches and relays, sensors (temperature, humidity, motion, contact, …), thermostats, covers and locks.
 
-## Custom Device Mappings
+## Configuration
 
-Place custom YAML files in \`var/data/\` using the prefix \`plugin.devices-zigbee2mqtt.\` (e.g. \`plugin.devices-zigbee2mqtt.my-sensors.yaml\`), or set \`ZIGBEE_MAPPINGS_PATH\` env variable to a custom directory.
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`connection_type\` | \`mqtt\` (via broker) or \`ws\` (direct WebSocket) | \`mqtt\` |
+| \`mqtt.host\` | MQTT broker host (MQTT mode) | — |
+| \`mqtt.port\` | MQTT broker port (MQTT mode) | \`1883\` |
+| \`mqtt.tls\` | TLS / SSL options (MQTT mode) | disabled |
+| \`websocket.host\` | Zigbee2MQTT frontend host (WS mode) | — |
+| \`websocket.port\` | Zigbee2MQTT frontend port (WS mode) | \`8080\` |
+| \`base_topic\` | Zigbee2MQTT base topic | \`zigbee2mqtt\` |
+| \`discovery.auto_add\` | Auto-adopt newly discovered devices | \`true\` |
 
-### Example: Custom Sensor Property
+## Custom Mappings
+
+Drop YAML files into \`var/data/\` with the prefix \`plugin.devices-zigbee2mqtt.\` (e.g. \`plugin.devices-zigbee2mqtt.my-sensors.yaml\`) or set \`ZIGBEE_MAPPINGS_PATH\` to a custom directory.
+
+### Example — sensor property
 
 \`\`\`yaml
-# var/data/plugin.devices-zigbee2mqtt.my-sensors.yaml
 version: "1.0"
 
 mappings:
   - name: cpu_temperature_sensor
-    description: "Device internal temperature"
     priority: 100
     match:
       expose_type: numeric
@@ -280,13 +295,12 @@ mappings:
               settable: false
 \`\`\`
 
-### Example: Custom Transformer
+### Example — custom transformer
 
 \`\`\`yaml
 version: "1.0"
 
 transformers:
-  # Custom brightness scale (0-1000 instead of 0-254)
   brightness_1000:
     type: scale
     input_range: [0, 1000]
@@ -297,7 +311,7 @@ mappings:
     priority: 200
     match:
       expose_type: light
-      any_property: [custom_feature]  # Match specific device
+      any_property: [custom_feature]
     device_category: LIGHTING
     channels:
       - identifier: light
@@ -311,37 +325,9 @@ mappings:
             transformer: brightness_1000
 \`\`\`
 
-### Match Conditions
+**Match keys:** \`expose_type\` (\`light\`/\`switch\`/\`numeric\`/\`binary\`/\`enum\`/\`climate\`/\`cover\`/\`fan\`/\`lock\`), \`property\`, \`has_features\`, \`any_property\`, \`is_list\`.
 
-- \`expose_type\` - Z2M type: light, switch, numeric, binary, enum, climate, cover, fan, lock
-- \`property\` - Property name for generic exposes (temperature, humidity, etc.)
-- \`has_features\` - Required features: [state, brightness]
-- \`any_property\` - Match if device has any of these properties
-- \`is_list\` - True for multi-endpoint devices
-
-### Transformer Types
-
-- \`scale\` - Linear scaling: input_range, output_range
-- \`map\` - Value mapping: read, write, or bidirectional
-- \`boolean\` - Boolean conversion: true_value, false_value, invert
-- \`formula\` - Custom JS expression: read, write
-
-## Requirements
-
-- Running Zigbee2MQTT instance
-- For MQTT mode: MQTT broker (Mosquitto, etc.) and network connectivity
-- For WebSocket mode: Network connectivity to Zigbee2MQTT frontend
-
-## Configuration
-
-- **Connection Type** - "mqtt" (via MQTT broker) or "ws" (direct WebSocket to Zigbee2MQTT)
-- **MQTT Host** - MQTT broker hostname or IP (MQTT mode)
-- **MQTT Port** - MQTT broker port, default: 1883 (MQTT mode)
-- **WebSocket Host** - Zigbee2MQTT frontend hostname or IP (WebSocket mode)
-- **WebSocket Port** - Zigbee2MQTT frontend port, default: 8080 (WebSocket mode)
-- **Base Topic** - Zigbee2MQTT base topic (default: zigbee2mqtt)
-- **TLS** - Optional TLS/SSL configuration (MQTT mode)
-- **Discovery** - Auto-add devices and sync on startup options`,
+**Transformer types:** \`scale\`, \`map\`, \`boolean\`, \`formula\`.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

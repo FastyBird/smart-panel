@@ -203,31 +203,34 @@ export class DevicesReTerminalPlugin {
 			name: 'reTerminal',
 			description: 'Support for SeeedStudio reTerminal hardware peripherals',
 			author: 'FastyBird',
-			readme: `# reTerminal Devices Plugin
+			readme: `# reTerminal
 
-Host device integration plugin for SeeedStudio reTerminal hardware.
+> Plugin · by FastyBird · platform: devices
 
-## Supported Hardware
+Host-device platform that exposes the on-board peripherals of a SeeedStudio reTerminal (the panel running Smart Panel itself) — buttons, LEDs, buzzer and built-in sensors — as regular Smart Panel channels.
 
-- **reTerminal CM4** (5" touchscreen) - Buttons (F1, F2, F3, O), USR LED, STA LED (red/green), buzzer, light sensor, accelerometer
-- **reTerminal DM** (10.1" industrial) - Status LED, digital inputs/outputs, CPU temperature
+## What you get
+
+- The reTerminal becomes a fully-fledged smart device of your own home: its buttons can trigger scenes, its LEDs can signal alerts, its buzzer can wake the household
+- Built-in environmental data: ambient light sensor, accelerometer-derived orientation, and CPU temperature available to dashboards and Buddy
+- Zero configuration — the plugin auto-detects which reTerminal model you have and exposes only the peripherals that are actually present
 
 ## Features
 
-- **Auto-Detection** - Automatically detects reTerminal hardware variant
-- **Button Events** - Press, long press, and double press detection via evdev
-- **LED Control** - On/off, brightness, and color control via sysfs
-- **Buzzer Control** - Audible alert output
-- **Sensor Polling** - Light sensor, accelerometer, and CPU temperature monitoring
-- **Orientation Detection** - Computed from accelerometer data
+- **Auto-detection** — recognises the reTerminal hardware variant on first start
+- **Button events** — press, long press and double press via Linux evdev; usable as scene triggers from the scenes module
+- **LED control** — on / off, brightness and colour via sysfs; the panel can paint status (e.g. red while a leak alert is active)
+- **Buzzer control** — audible alert output for critical events
+- **Sensor polling** — light sensor, accelerometer, CPU temperature at a sensible default rate
+- **Orientation** — landscape / portrait derived from accelerometer data; useful for kiosks that get rotated on the wall
+- **No outbound traffic** — every read and write goes to the local kernel; nothing leaves the box
 
-## Communication
+## Supported Hardware
 
-Uses Linux sysfs and evdev interfaces:
-- \`/sys/class/leds/\` for LED and buzzer control
-- \`/dev/input/\` for button event monitoring
-- \`/sys/bus/iio/devices/\` for sensor data
-- \`/sys/class/thermal/\` for CPU temperature`,
+- **reTerminal CM4** (5" touchscreen) — F1 / F2 / F3 / O buttons, USR LED, STA LED (red / green), buzzer, light sensor, accelerometer
+- **reTerminal DM** (10.1" industrial) — status LED, digital inputs / outputs, CPU temperature
+
+The plugin auto-detects the hardware and talks to Linux sysfs (\`/sys/class/leds/\`, \`/sys/bus/iio/devices/\`, \`/sys/class/thermal/\`) and evdev (\`/dev/input/\`) directly — no configuration is required.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

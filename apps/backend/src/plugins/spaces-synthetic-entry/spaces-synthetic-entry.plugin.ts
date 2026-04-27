@@ -99,25 +99,24 @@ export class SpacesSyntheticEntryPlugin implements OnModuleInit {
 			name: 'Spaces Synthetic Entry',
 			description: 'Contributes the singleton Entry synthetic space for security / front-door surfaces.',
 			author: 'FastyBird',
-			readme: `# Spaces Synthetic Entry Plugin
+			readme: `# Entry Space
 
-Contributes the **Entry** space type — a singleton synthetic space that represents
-the security / front-door surface. Unlike Room and Zone spaces, the entry space has
-no physical-room semantics and no parent/child hierarchy.
+> Plugin · by FastyBird · platform: spaces
+
+Contributes the singleton **Entry** synthetic space — a security / front-door surface with no physical-room semantics. Used as the binding for entry-focused displays (intercom, alarm status, lock state, recent doorbell events).
+
+## What you get
+
+- A dedicated anchor for the front-door / entry experience, separate from any specific room
+- A clean target for displays placed near the entrance where the panel should show alarm and access information instead of a generic dashboard
+- Tight integration with the rest of the system: the security module's armed / alarm state feeds straight into pages bound to this space
 
 ## Features
 
-- **Singleton** — at most one entry space per installation. The singleton guard in the
-  spaces service rejects attempts to create a second one.
-- **User-owned** — the row is created, edited, and removed through the standard spaces
-  API. This plugin does not seed or restore the entry space automatically.
-- **Display target** — displays configured for security / entry surfaces point at this space.
-
-## Uninstall behavior
-
-Uninstalling this plugin leaves the entry row orphaned in the spaces table;
-displays pointing at it will no longer resolve to a rendered view until the
-plugin is reinstalled.`,
+- **Singleton** — only one entry space per installation; the spaces service rejects attempts to create a second one
+- **User-owned** — created, edited and removed through the standard spaces API (this plugin never auto-seeds it)
+- **Display target** — used as the binding for security / front-door displays
+- **Plays nicely with security & devices** — pages built on top can show alarm state, latest doorbell ring, lock state and recent intrusion alerts without bespoke wiring`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
