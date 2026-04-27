@@ -1,0 +1,142 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin status",
+		"aboutSerial": "Serial port configuration",
+		"aboutNetwork": "Network settings",
+		"aboutDiscovery": "Discovery settings",
+		"aboutDatabase": "Database",
+		"device": {
+			"deviceInfo": "Device information"
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the Zigbee Herdsman plugin. When disabled, no Zigbee devices will be monitored or controlled.",
+		"aboutSerial": "Configure the connection to your Zigbee coordinator. Supports USB dongles (e.g. /dev/ttyUSB0) and network adapters (e.g. tcp://192.168.1.100:6638 for SLZB-06/07).",
+		"aboutNetwork": "Configure Zigbee network settings.",
+		"aboutDiscovery": "Configure how devices are discovered and managed on the Zigbee network.",
+		"aboutDatabase": "Configure the path where the Zigbee network database is stored."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"serial": {
+				"path": {
+					"title": "Coordinator path",
+					"placeholder": "e.g., /dev/ttyUSB0 or tcp://192.168.1.100:6638",
+					"validation": {
+						"required": "Serial port path is required"
+					}
+				},
+				"baudRate": {
+					"title": "Baud rate",
+					"validation": {
+						"required": "Baud rate is required",
+						"number": "Must be a positive integer"
+					}
+				},
+				"adapterType": {
+					"title": "Adapter type",
+					"placeholder": "e.g., zstack, deconz, zigate, ezsp",
+					"validation": {
+						"required": "Adapter type is required"
+					}
+				}
+			},
+			"network": {
+				"channel": {
+					"title": "Channel",
+					"validation": {
+						"range": "Channel must be between 11 and 26"
+					}
+				}
+			},
+			"discovery": {
+				"permitJoinTimeout": {
+					"title": "Permit join timeout (s)",
+					"validation": {
+						"number": "Must be a number >= 0"
+					}
+				},
+				"mainsDeviceTimeout": {
+					"title": "Mains device timeout (s)",
+					"validation": {
+						"number": "Must be a number >= 0"
+					}
+				},
+				"batteryDeviceTimeout": {
+					"title": "Battery device timeout (s)",
+					"validation": {
+						"number": "Must be a number >= 0"
+					}
+				},
+				"commandRetries": {
+					"title": "Command retries",
+					"validation": {
+						"number": "Must be a number >= 0"
+					}
+				},
+				"syncOnStartup": {
+					"title": "Sync devices on startup"
+				}
+			},
+			"databasePath": {
+				"title": "Database path",
+				"placeholder": "e.g., /data/zigbee.db",
+				"validation": {
+					"required": "Database path is required"
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Device ID",
+				"placeholder": "Device ID"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Device category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Enabled"
+			},
+			"ieeeAddress": {
+				"title": "IEEE address",
+				"placeholder": "Enter IEEE address (e.g., 0x00158d0001234567)",
+				"validation": {
+					"required": "Please enter an IEEE address"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zigbee Herdsman plugin configuration has been updated",
+			"notEdited": "Failed to update Zigbee Herdsman plugin configuration"
+		},
+		"devices": {
+			"created": "Zigbee Herdsman device '{device}' has been created",
+			"notCreated": "Failed to create Zigbee Herdsman device '{device}'",
+			"edited": "Zigbee Herdsman device '{device}' has been updated",
+			"notEdited": "Failed to update Zigbee Herdsman device '{device}'"
+		}
+	},
+	"buttons": {
+		"save": "Save"
+	}
+}
