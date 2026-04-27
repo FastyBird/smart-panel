@@ -91,28 +91,44 @@ export class UsersModule implements OnModuleInit {
 			name: 'Users',
 			description: 'User accounts and roles management',
 			author: 'FastyBird',
-			readme: `# Users Module
+			readme: `# Users
 
-The Users module handles user account management and access control for the Smart Panel.
+> Module · by FastyBird
+
+Manages user accounts and role-based access control for the Smart Panel. The auth module verifies who you are; this module decides what you're allowed to do and stores the human-facing details (display name, email, language, avatar).
+
+## What it gives you
+
+- A clear role hierarchy — \`owner\` ➜ \`admin\` ➜ \`user\` — that every module can rely on through standard guards / decorators
+- A bootstrapping safeguard: there is always exactly one owner; deleting or demoting it is refused
+- Per-user preferences (language, theme, time-zone, dashboard layout overrides) so the same backend can serve mixed households
 
 ## Features
 
-- **User Management** - Create, update, and delete user accounts
-- **Role-Based Access** - Support for admin and regular user roles
-- **Profile Management** - Users can update their profile information
-- **Factory Reset** - User data can be cleared during factory reset
+- **Account management** — create, update and delete user accounts; password changes are routed through the auth module's hashing logic
+- **Role-based access** — \`@Roles()\` decorator and a registered guard enforce role checks across every other module without each module reinventing it
+- **Profile management** — users can edit their own display name, email, password and preferences; admins can edit anyone except the owner
+- **Bootstrapping** — first run promotes a single account to \`owner\` via the auth CLI; this module guarantees that role always exists
+- **Factory reset** — user data (except the owner) is cleared on factory reset; the owner's password is preserved unless explicitly reset
+- **Validation** — \`UserExists\` constraint exported for any module that wants to bind data to a user (favourites, preferences, audit trails)
 
 ## User Roles
 
-- **Owner** - Full system access, can manage all users and settings
-- **Admin** - Can manage devices, displays, and dashboard configuration
-- **User** - Basic access to view and control devices
+| Role | Description |
+|------|-------------|
+| \`owner\` | Full system access; can manage every setting and other users; the only role that can perform factory reset / power actions |
+| \`admin\` | Can manage devices, displays, dashboards and most configuration; cannot remove or demote the owner |
+| \`user\` | Can view dashboards and operate devices they have access to; cannot change configuration |
 
-## Security
+## API Endpoints
 
-- Passwords are securely hashed using bcrypt
-- User sessions are managed through JWT tokens
-- Role-based guards protect sensitive endpoints`,
+- \`GET|POST|PATCH|DELETE /api/v1/modules/users/users\` — manage users
+- \`GET /api/v1/modules/users/users/me\` — the current user's profile
+- \`PATCH /api/v1/modules/users/users/me\` — update your own profile
+
+## CLI Commands
+
+- \`pnpm run cli users:list\` — print the configured users to the console`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -42,16 +42,32 @@ export class MemoryStoragePlugin implements OnModuleInit {
 			description:
 				'In-memory ring-buffer storage. Data is lost on restart. Used as default fallback when no external database is available.',
 			author: 'FastyBird',
-			readme: `# In-Memory Storage Plugin
+			readme: `# In-Memory Storage
 
-Stores time-series data in process memory with automatic eviction. Always available — used as the default fallback when the primary storage is unreachable.
+> Plugin · by FastyBird · platform: storage
+
+Process-local ring-buffer time-series storage. Always available and used as the default fallback when no external database (InfluxDB, …) is configured or reachable. The "no-config, just works" backend that keeps the panel functional out of the box.
+
+## What you get
+
+- Zero-setup history: the panel starts up and dashboards have data immediately, no Influx instance required
+- A safety net for production setups: pair it with an external backend as the fallback so a network blip never loses recent data
+- Fast: every read / write is a memory operation, there is no network in the path
+- Predictable footprint — the ring buffer is hard-capped, so a misbehaving sensor can't fill the host's RAM
+
+## Use cases
+
+- **Out-of-the-box experience** — the panel works the moment it is installed, dashboards show real data within minutes
+- **Development and tests** — no Docker container or external service needed to exercise the time-series path
+- **Fallback for the primary backend** — keep the last 24 h locally so a temporary Influx outage doesn't black out the dashboards
+- **Tiny installations** — homes with few devices and short histories can run entirely on this backend
 
 ## Limitations
 
-- Data does NOT persist across process restarts
-- Limited to 10,000 points per measurement
-- Points older than 24 hours are automatically evicted
-- No continuous query support`,
+- Data does **not** persist across process restarts
+- Capped at 10 000 points per measurement
+- Points older than 24 hours are evicted automatically
+- No continuous-query support — downsampling is provided in a best-effort, on-the-fly manner`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

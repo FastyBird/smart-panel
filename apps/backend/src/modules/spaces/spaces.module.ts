@@ -121,27 +121,35 @@ export class SpacesModule implements OnModuleInit {
 			name: 'Spaces',
 			description: 'Manage spaces (rooms/zones) and organize devices and displays',
 			author: 'FastyBird',
-			readme: `# Spaces Module
+			readme: `# Spaces
 
-The Spaces module provides a room-centric organization for your Smart Panel system.
+> Module · by FastyBird
+
+Provides a room-centric organisation layer for the Smart Panel. Devices and displays are grouped into *rooms* and *zones*, which act as the foundation for space-based dashboards, role-based controls (lighting, climate, covers, sensors, media) and the Buddy AI context.
+
+## What it gives you
+
+- A spatial map of your home: every device knows which room it lives in and every display knows which space it primarily serves
+- A *role* layer on top of devices so pages and the assistant can talk about "lights in the living room" instead of "channel \`onoff\` of device \`abc-123\`"
+- A pluggable concept of "what is a space" — synthetic rooms, signage spaces and home-control rooms can all coexist behind the same API
 
 ## Features
 
-- **Space Management** - Create, edit, and delete spaces (rooms/zones)
-- **Device Assignment** - Assign devices to spaces for organized control
-- **Display Assignment** - Link displays to specific spaces
-- **Bulk Operations** - Assign multiple devices/displays at once
+- **Space CRUD** — create, edit and delete rooms and zones with icon, name and ordering
+- **Rooms and zones** — physical rooms (Living Room, Kitchen) and logical groupings (Downstairs, Outdoor); zones can contain rooms and inherit device membership
+- **Device & display assignment** — attach devices and displays to a space individually or in bulk
+- **Role registry** — channels register the role they play within a space (lighting, climate, covers, sensors, media); pages and Buddy use these roles to route commands
+- **Plugin-extensible** — space *types* are pluggable: \`spaces-home-control\`, \`spaces-signage-info-panel\` and the synthetic plugins each register their own space subtype with extra fields and validation
+- **Builder registry** — plugins extend the create / update flow with extra inputs (e.g. signage announcement defaults, home-control role bindings)
+- **Validation** — \`SpaceExists\` and role-binding constraints are exported for use in any other module's DTOs
+- **Stable identifiers** — re-ordering rooms or moving devices between spaces keeps every reference (dashboards, scenes, displays) intact
 
-## Space Types
+## API Endpoints
 
-- **Room** - Physical rooms like Living Room, Bedroom, Kitchen
-- **Zone** - Logical groupings like Downstairs, Outdoor, Entertainment Area
-
-## Benefits
-
-- Simplified device organization
-- Room-centric control experience
-- Foundation for Space Pages and intent-based controls`,
+- \`GET|POST|PATCH|DELETE /api/v1/modules/spaces/spaces\` — manage spaces
+- \`GET|POST|DELETE /api/v1/modules/spaces/spaces/:id/devices\` — attach / detach devices
+- \`GET|POST|DELETE /api/v1/modules/spaces/spaces/:id/displays\` — attach / detach displays
+- \`GET|POST|PATCH|DELETE /api/v1/modules/spaces/spaces/:id/roles\` — manage role bindings inside a space`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

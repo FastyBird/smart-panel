@@ -105,30 +105,35 @@ export class SecurityModule implements OnModuleInit {
 			name: 'Security',
 			description: 'Security status, armed state, and alert management',
 			author: 'FastyBird',
-			readme: `# Security Module
+			readme: `# Security
 
-The Security module provides security status information for the Smart Panel display.
+> Module · by FastyBird
+
+Aggregates the security state of the home (armed mode, alarm state, alerts) into a single API surface. Without any provider plugin installed it returns safe defaults (disarmed, no alerts); integration plugins can register providers to supply real data, and the module merges the results into one consistent view.
+
+## What it gives you
+
+- One canonical answer to "is the alarm on?" no matter how many sensors, sirens or panels are involved
+- A common alert pipe — leaks, smoke, motion, door / window, low battery, integration errors all flow through the same shape
+- A small, predictable surface for dashboards, the panel and Buddy to consume; provider plugins evolve underneath without breaking clients
 
 ## Features
 
-- **Armed State** - Track system armed state (disarmed, armed home, armed away, armed night)
-- **Alarm State** - Monitor alarm state (idle, pending, triggered, silenced)
-- **Alert Severity** - Aggregate alert severity across security devices
-- **Alert Acknowledgement** - Acknowledge alerts with persistent state
-- **Extensible** - Provider-based architecture for future integrations
+- **Armed state** — \`disarmed\`, \`armed_home\`, \`armed_away\`, \`armed_night\` with reason / actor tracking on every transition
+- **Alarm state** — \`idle\`, \`pending\`, \`triggered\`, \`silenced\`; transitions are time-stamped and stored
+- **Alert aggregation** — combines alerts from every registered provider into a unified list, picks the most severe overall level (info / warning / critical), de-duplicates noisy sensors
+- **Alert acknowledgement** — acknowledge individual alerts or wipe every active alert at once; acknowledged alerts stay visible in history
+- **Event timeline** — recent security events (state changes, alert raised / cleared, ack actions) are persisted as time-series for the panel "history" view
+- **Provider architecture** — providers are pluggable: a default safe provider, a future alarm-panel provider, sensor-based providers; the module enforces a stable contract so adding one doesn't change the API
+- **Real-time push** — every state change and alert transition is broadcast over WebSocket so panels and the admin UI react instantly
 
-## Endpoints
+## API Endpoints
 
-- \`GET /api/v1/modules/security/status\` - Current security status
-- \`PATCH /api/v1/modules/security/alerts/:id/ack\` - Acknowledge a single alert
-- \`PATCH /api/v1/modules/security/alerts/ack\` - Acknowledge all active alerts
-- \`GET /api/v1/modules/security/events\` - Recent security event timeline
-
-## Architecture
-
-The module is designed as a state aggregation layer. Security state providers can be registered
-by integration plugins (e.g., Home Assistant, Matter) to supply real device data. Without providers,
-the module returns safe default values (disarmed, no alerts).`,
+- \`GET /api/v1/modules/security/status\` — current armed / alarm state plus active alerts
+- \`GET /api/v1/modules/security/events\` — recent security event timeline
+- \`PATCH /api/v1/modules/security/alerts/:id/ack\` — acknowledge a single alert
+- \`PATCH /api/v1/modules/security/alerts/ack\` — acknowledge every active alert
+- \`PATCH /api/v1/modules/security/arm\` / \`/disarm\` — change armed state (subject to provider rules)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

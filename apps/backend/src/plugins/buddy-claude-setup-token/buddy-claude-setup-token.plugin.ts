@@ -60,26 +60,36 @@ export class BuddyClaudeSetupTokenPlugin implements OnModuleInit {
 			name: 'Claude Setup Token',
 			description: 'LLM provider for Buddy module using Anthropic Claude with setup-token authentication',
 			author: 'FastyBird',
-			readme: `# Buddy Claude Setup Token Provider
+			readme: `# Claude (Setup Token)
 
-LLM provider plugin for the Buddy module using the Anthropic Claude API with setup-token authentication.
+> Plugin · by FastyBird · capability: LLM
 
-## Features
+Alternative Claude provider that authenticates with a setup token issued by your Claude subscription instead of an API key — useful when you have access to Claude through Claude Code rather than the API console, and don't want to pay for a separate Anthropic API key.
 
-- **Claude Models** - Access to Claude Sonnet, Opus, and Haiku models
-- **Setup Token** - Uses a setup-token from your Claude subscription for API access
+## What you get
+
+- Use a Claude *subscription* you already have for Buddy chat, no Anthropic API key required
+- Same streaming and tool-calling behaviour as the regular Claude plugin — switching between the two is config-only
+- Automatic credential refresh — the plugin keeps the setup token valid in the background
+
+## Capabilities
+
+- **LLM (chat)** — streaming completions; native tool calling for device / scene control
+- **Drop-in alternative** — interchangeable with the regular \`buddy-claude\` plugin from Buddy's point of view
 
 ## Setup
 
-1. Run \`claude setup-token\` in your terminal (requires Claude Code CLI)
-2. Copy the generated token
-3. Paste the token in plugin configuration
-4. Set the buddy module \`provider\` to \`${BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME}\`
+1. Install the [Claude Code CLI](https://docs.claude.com/claude-code) and sign in
+2. Run \`claude setup-token\` and copy the generated token
+3. Paste the token into this plugin's configuration
+4. Set the Buddy module's \`provider\` to \`${BUDDY_CLAUDE_SETUP_TOKEN_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **Setup Token** - The token obtained from \`claude setup-token\` (required)
-- **Model** - Model name to use (default: claude-sonnet-4-20250514)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`setup_token\` | Token from \`claude setup-token\` (required) | — |
+| \`model\` | Claude model to use | \`claude-sonnet-4-20250514\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

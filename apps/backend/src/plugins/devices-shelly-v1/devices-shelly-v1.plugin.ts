@@ -198,39 +198,41 @@ export class DevicesShellyV1Plugin {
 			name: 'Shelly Gen 1',
 			description: 'Support for Shelly first-generation devices',
 			author: 'FastyBird',
-			readme: `# Shelly V1 Devices Plugin
+			readme: `# Shelly Gen 1
 
-Integration plugin for Shelly first-generation (Gen1) devices.
+> Plugin · by FastyBird · platform: devices
+
+Integration for Shelly first-generation (Gen1) devices. Discovers devices over mDNS, controls them via the HTTP API and listens to real-time state updates over CoAP — completely local, no Shelly cloud account required.
+
+## What you get
+
+- A drop-in path to use existing Shelly 1 / 2 / Dimmer / RGBW2 / Plug etc. as native Smart Panel devices, with no firmware changes
+- Real-time state via CoAP push — updates arrive immediately, even on devices that don't expose the newer WebSocket protocol
+- Automatic stale detection: when a device stops talking the plugin marks it offline and the panel reflects that within seconds
+- A unified device shape regardless of whether the underlying hardware is a single relay or a multi-channel power meter
 
 ## Features
 
-- **Auto-Discovery** - Discovers Shelly Gen1 devices via mDNS/CoAP
-- **Device Control** - Control relays, dimmers, and roller shutters
-- **Status Monitoring** - Monitor power consumption, temperature, inputs
-- **CoAP Protocol** - Efficient real-time updates via CoAP
+- **mDNS auto-discovery** — finds Shelly Gen1 devices on the local network and surfaces them in the discovery feed
+- **CoAP push updates** — listens on UDP 5683 for the multicast status frames the devices send on every change
+- **HTTP control** — relays, dimmers, roller-shutters, lights driven through Gen1's classic HTTP endpoints
+- **Status monitoring** — power, temperature, inputs and metering mapped to standard property roles
+- **Stale detection** — devices that go silent are marked offline; the panel and Buddy see the change immediately
+- **Auto-recovery** — when a stale device starts talking again it is brought back online without manual intervention
+- **Configurable timeouts** — tune request and stale thresholds for noisy networks
 
 ## Supported Devices
 
-- Shelly 1 / 1PM
-- Shelly 2 / 2.5
-- Shelly Dimmer / Dimmer 2
-- Shelly EM / 3EM
-- Shelly Plug / Plug S
-- Shelly RGBW2
-- Shelly Bulb / Duo
-- And other Gen1 devices
-
-## Communication
-
-- **CoAP** - Real-time state updates (UDP port 5683)
-- **HTTP API** - Device control and configuration
-- **mDNS** - Device discovery
+Shelly 1 / 1PM, Shelly 2 / 2.5, Shelly Dimmer / Dimmer 2, Shelly EM / 3EM, Shelly Plug / Plug S, Shelly RGBW2, Shelly Bulb / Duo and other Gen1 hardware.
 
 ## Configuration
 
-- Enable/disable automatic device discovery
-- Configure polling intervals
-- Set authentication credentials for protected devices`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`discovery.enabled\` | Run mDNS discovery for Shelly devices | \`true\` |
+| \`discovery.interface\` | Network interface to bind discovery to | system default |
+| \`timeouts.request_timeout\` | HTTP request timeout (ms) | \`5000\` |
+| \`timeouts.stale_timeout\` | Mark a device stale after no updates for (ms) | \`30000\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

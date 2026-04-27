@@ -99,25 +99,24 @@ export class SpacesSyntheticMasterPlugin implements OnModuleInit {
 			name: 'Spaces Synthetic Master',
 			description: 'Contributes the singleton Master synthetic space for whole-house overview surfaces.',
 			author: 'FastyBird',
-			readme: `# Spaces Synthetic Master Plugin
+			readme: `# Master Space
 
-Contributes the **Master** space type — a singleton synthetic space that represents
-the whole-house overview surface. Unlike Room and Zone spaces, the master space has
-no physical-room semantics and no parent/child hierarchy.
+> Plugin · by FastyBird · platform: spaces
+
+Contributes the singleton **Master** synthetic space — a whole-house overview surface with no physical-room semantics and no parent / child hierarchy. Displays configured for the overall view of the home are bound to this space.
+
+## What you get
+
+- A natural anchor for "the home" itself when a panel needs a top-level overview that isn't tied to any specific room
+- Cleanly separates "this is the whole house" from regular rooms / zones, so the panel can render a different layout without special-casing
+- Plays nicely with the rest of the spaces module: the same APIs, validations and home-page resolution apply
 
 ## Features
 
-- **Singleton** — at most one master space per installation. The singleton guard in the
-  spaces service rejects attempts to create a second one.
-- **User-owned** — the row is created, edited, and removed through the standard spaces
-  API. This plugin does not seed or restore the master space automatically.
-- **Display target** — displays configured for whole-house overview point at this space.
-
-## Uninstall behavior
-
-Uninstalling this plugin leaves the master row orphaned in the spaces table;
-displays pointing at it will no longer resolve to a rendered view until the
-plugin is reinstalled.`,
+- **Singleton** — only one master space per installation; the spaces service rejects attempts to create a second one
+- **User-owned** — created, edited and removed through the standard spaces API (this plugin never auto-seeds it)
+- **Display target** — used as the binding for whole-house overview displays
+- **Same plumbing as rooms / zones** — dashboards, scenes and Buddy treat the master space exactly like any other space, just with a different shape`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -259,35 +259,44 @@ export class DevicesShellyNgPlugin {
 			name: 'Shelly Next Generation',
 			description: 'Support for Shelly next-generation devices',
 			author: 'FastyBird',
-			readme: `# Shelly NG Devices Plugin
+			readme: `# Shelly Next Generation
 
-Integration plugin for Shelly next-generation (Gen2+) devices.
+> Plugin · by FastyBird · platform: devices
+
+Integration for Shelly next-generation (Gen2+) devices using Shelly's RPC API. Devices are discovered via mDNS, controlled over HTTP, and stream live state over an outbound WebSocket — even battery-powered, sleeping devices push status to the backend the moment they wake.
+
+## What you get
+
+- Plug-and-play onboarding: power up a new Shelly Plus / Pro device on the same network and the panel sees it within seconds
+- Real device telemetry, not poll snapshots: temperature, power, energy and switch state arrive at the backend as soon as the device sees a change
+- Stable, locally controlled devices — no Shelly cloud account required, all RPC traffic stays on your LAN
+- Per-device configuration is read on first connect (channels, ranges, units) so the panel always reflects the device's actual capabilities
 
 ## Features
 
-- **Auto-Discovery** - Automatically discovers Shelly NG devices on the local network
-- **Real-time Updates** - WebSocket-based state synchronization
-- **Device Control** - Control relays, lights, and other outputs
-- **Sensor Monitoring** - Read temperature, humidity, power consumption, etc.
+- **mDNS auto-discovery** — finds Gen2+ devices on the LAN automatically; new devices show up in the discovery feed for one-click adoption
+- **Outbound WebSocket** — devices initiate the WebSocket back to the backend, so battery / sleeping devices push state on wake without the backend having to poll them
+- **HTTP RPC fallback** — when WebSocket isn't available the plugin falls back to plain HTTP RPC; reconnection is automatic with configurable back-off
+- **Device control** — relays, dimmers, RGBW lights, covers / shutters and other outputs through one unified \`device.control\` surface
+- **Sensor monitoring** — temperature, humidity, power, energy, current, voltage; mapped onto standard channel property roles so dashboards and Buddy can read them generically
+- **Optional polling** — a low-rate status poll catches missed events and surfaces a clear warning when a device stops talking
+- **Resilient reconnect** — back-off ladder so a noisy network doesn't hammer either side
+- **Local-IP auto-detection** — works out which interface is on the device's subnet so the WebSocket URL is always reachable
 
 ## Supported Devices
 
-- Shelly Plus series (Plus 1, Plus 2PM, Plus Plug, etc.)
-- Shelly Pro series (Pro 1, Pro 2, Pro 4PM, etc.)
-- Shelly Mini series
-- Other Gen2+ devices with RPC API
-
-## Communication
-
-Uses Shelly's RPC (Remote Procedure Call) API over:
-- HTTP for device configuration and control
-- WebSocket for real-time state updates
-- mDNS for device discovery
+Shelly Plus (Plus 1, Plus 2PM, Plus Plug, …), Shelly Pro (Pro 1, Pro 2, Pro 4PM, …), Shelly Mini and any other Gen2+ device exposing the Shelly RPC API.
 
 ## Configuration
 
-- **Polling Interval** - How often to refresh device states
-- **Discovery** - Enable/disable automatic device discovery`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`status_poll_interval\` | Status poll interval in seconds (\`0\` disables polling) | \`60\` |
+| \`mdns.enabled\` | Run mDNS discovery for Shelly NG devices | \`true\` |
+| \`mdns.interface\` | Network interface to bind discovery to | system default |
+| \`websockets.request_timeout\` | RPC request timeout (s) | \`10\` |
+| \`websockets.ping_interval\` | WebSocket ping interval (s) | \`30\` |
+| \`websockets.reconnect_interval\` | Reconnect back-off in seconds | \`[5, 10, 15, 30, 60]\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

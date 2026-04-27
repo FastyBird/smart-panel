@@ -78,32 +78,26 @@ export class TilesTimePlugin {
 			name: 'Clock Tile',
 			description: 'Dashboard tiles for displaying time and date',
 			author: 'FastyBird',
-			readme: `# Time Tiles Plugin
+			readme: `# Clock Tile
 
-Dashboard tiles for displaying current time and date.
+> Plugin · by FastyBird · platform: dashboard tiles
+
+Dashboard tile that displays the current time and date with live updates — the simplest way to turn a panel into a glanceable clock without dedicating a whole page to it.
+
+## What you get
+
+- A clean, always-correct clock on any dashboard page
+- Per-tile timezone — drop two clock tiles on the same page to show home time and a remote office time at once
+- Live updates without polling — the panel renders the next minute as soon as it ticks
 
 ## Features
 
-- **Digital Clock** - Display current time in various formats
-- **Date Display** - Show current date with customizable formatting
-- **Timezone Support** - Display time for different timezones
-- **Auto-Update** - Real-time clock updates
+- **Digital clock** — 12 or 24-hour format, optional seconds, optional AM / PM marker
+- **Date display** — customisable date format (full, short, weekday-only, …)
+- **Timezone aware** — render time for any IANA timezone independently of the host's clock
+- **Auto-update** — re-renders without reloading the page; respects the panel's reduced-motion settings
 
-## Tile Types
-
-### Time Tile
-Displays the current time with configurable:
-- 12/24 hour format
-- Show/hide seconds
-- Custom time format strings
-
-## Usage
-
-Add a time tile to any dashboard page to display the current time. The tile updates automatically without requiring page refresh.
-
-## Styling
-
-The time display adapts to the tile size and supports both light and dark themes.`,
+Appearance and timezone are configured per tile when placed on a dashboard — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

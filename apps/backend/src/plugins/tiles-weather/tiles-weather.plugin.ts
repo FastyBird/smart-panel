@@ -121,35 +121,32 @@ export class TilesWeatherPlugin {
 			name: 'Weather Tiles',
 			description: 'Dashboard tiles for displaying current weather and forecasts',
 			author: 'FastyBird',
-			readme: `# Weather Tiles Plugin
+			readme: `# Weather Tiles
 
-Dashboard tiles for displaying weather information.
+> Plugin · by FastyBird · platform: dashboard tiles
 
-## Features
+Dashboard tiles that surface data from the Weather module — turn a configured location into an at-a-glance card on any page.
 
-- **Current Weather** - Display current conditions for a location
-- **Weather Forecast** - Show multi-day weather forecast
-- **Weather Icons** - Visual weather condition indicators
-- **Temperature Display** - Current, min, and max temperatures
+## What you get
+
+- Glanceable, real-time weather without writing any code or hitting any provider API yourself
+- A pluggable look-and-feel: the same data behind a compact "now" tile or an expanded multi-day forecast
+- Automatic units — the panel honours the unit chosen on the underlying weather location, so °C / °F / m·s⁻¹ / mph all behave correctly
 
 ## Tile Types
 
-### Day Weather Tile
-Shows current weather conditions:
-- Current temperature
-- Weather condition icon
-- Location name
-- Humidity and wind info
+- **Day weather** — current temperature, condition icon, location label, feels-like, humidity and wind
+- **Forecast** — multi-day high / low temperatures, condition icons, precipitation probability and short condition labels
 
-### Forecast Weather Tile
-Displays multi-day forecast:
-- Daily high/low temperatures
-- Weather icons for each day
-- Precipitation probability
+## Behaviour
+
+- **Live updates** — the tile re-renders as soon as the weather module pushes a new observation, so values are never more than one polling cycle stale
+- **Provider-agnostic** — works with any weather provider plugin you have installed
+- **Sensible defaults** — when a value isn't available from the chosen provider (e.g. UV index on Open-Meteo's current endpoint) the tile gracefully omits it rather than showing zero
 
 ## Requirements
 
-Requires the Weather module to be configured with at least one location and a weather provider plugin (e.g., OpenWeatherMap).`,
+The Weather module must be configured with at least one location and a weather provider plugin (e.g. OpenWeatherMap). Each tile is configured individually when placed on a dashboard.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

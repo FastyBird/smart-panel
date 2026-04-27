@@ -60,28 +60,38 @@ export class BuddyVoiceaiPlugin implements OnModuleInit {
 			description: 'TTS provider for Buddy module using Voice.ai API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.TTS],
-			readme: `# Buddy Voice.ai Provider
+			readme: `# Voice.ai
 
-TTS provider plugin for the Buddy module using the Voice.ai API.
+> Plugin · by FastyBird · capability: TTS
 
-## Features
+Voice.ai as a text-to-speech provider for the Buddy module. Synthesises Buddy's spoken replies with a natural-sounding voice — including custom cloned voices if you have set them up in your Voice.ai account.
 
-- **AI Voice Cloning** - Create custom voices from audio samples
-- **High-Quality TTS** - Natural-sounding text-to-speech synthesis
-- **Multiple Output Formats** - MP3, WAV, and PCM audio support
+## What you get
+
+- Studio-grade synthesis that turns Buddy from text-only into a real voice on the panel speaker
+- Voice cloning support — train a voice on Voice.ai once, then point this plugin at the resulting voice ID
+- Multiple audio formats so the plugin can hand the panel exactly what it can play without a server-side re-encode
+- A clean handoff with Buddy's chat / tool layer: the assistant generates the reply, this plugin turns it into audio
+
+## Capabilities
+
+- **TTS only** — pair with any LLM provider (Claude, OpenAI, Ollama, …) and any STT provider
+- **Per-deployment voice** — pick the voice ID once; every panel using this backend uses the same voice
+- **Streaming** where supported by the chosen voice / format, so playback can start before synthesis completes
 
 ## Setup
 
 1. Create an account at [Voice.ai](https://voice.ai)
-2. Generate an API key from your dashboard
-3. Enter the API key in plugin configuration
-4. Set a voice ID (use the Voice.ai API to list available voices)
-5. Set the buddy module \`tts_plugin\` to \`${BUDDY_VOICEAI_PLUGIN_NAME}\`
+2. Generate an API key in your dashboard
+3. Enter the API key and a voice ID in this plugin's configuration (use the Voice.ai API to list available voices)
+4. Set Buddy's \`tts_plugin\` to \`${BUDDY_VOICEAI_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **API Key** - Your Voice.ai API key (required)
-- **Voice ID** - Voice.ai voice ID (required)`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`api_key\` | Voice.ai API key (required) | — |
+| \`voice_id\` | Voice.ai voice ID (required) | — |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -94,34 +94,28 @@ export class TilesScenePlugin {
 			name: 'Scene Tile',
 			description: 'Dashboard tiles for displaying scene status and triggering scenes',
 			author: 'FastyBird',
-			readme: `# Scene Tiles Plugin
+			readme: `# Scene Tile
 
-Dashboard tiles for displaying scene status and quick triggering.
+> Plugin · by FastyBird · platform: dashboard tiles
+
+Dashboard tile that surfaces a scene — shows its status and category and lets the user trigger it with a single tap. The fastest way to put your most-used routines (Movie, Goodnight, Away) one finger-press away.
+
+## What you get
+
+- One-tap access to any scene right from the dashboard, no menu diving
+- Optimistic feedback — the tile shows the press happening immediately and updates with the real result the moment the backend confirms
+- Visual grouping by category (morning, evening, …) so a single page can host a coherent "scenes" layout
+- Last-run timestamp so it's clear when something actually fired
 
 ## Features
 
-- **Scene Status** - Show scene information on dashboard
-- **Quick Trigger** - Trigger scenes directly from the tile
-- **Status Icons** - Visual indicators for scene category
-- **Last Triggered** - Show when the scene was last executed
+- **Scene status** — name, icon and category indicator
+- **Quick trigger** — execute the bound scene directly from the tile, with progress / success / failure feedback
+- **Custom icon** — override the scene's default icon per-tile when placed on a dashboard
+- **Last triggered** — timestamp of the last execution, refreshed in real time
+- **Per-action result** — when a scene's action partially fails, the tile surfaces a warning so the user knows to look
 
-## Tile Types
-
-### Scene Tile
-Compact scene display:
-- Scene icon and name
-- Category indicator
-- Quick trigger button for triggerable scenes
-- Last triggered timestamp
-
-## Usage
-
-Add scene tiles to dashboard pages for quick access to your most used scenes. Tap tiles to trigger the scene execution.
-
-## Configuration
-
-- Select the scene to display
-- Choose a custom icon (optional)`,
+Each tile selects the scene to display and (optionally) a custom icon when placed on a dashboard — there is no global plugin configuration.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -143,32 +143,35 @@ export class DashboardModule implements OnModuleInit {
 			name: 'Dashboards',
 			description: 'Dashboard pages and tiles management',
 			author: 'FastyBird',
-			readme: `# Dashboard Module
+			readme: `# Dashboards
 
-The Dashboard module provides the visual interface framework for the Smart Panel display.
+> Module · by FastyBird
+
+Visual interface framework for the Smart Panel display. Organizes pages, tiles and data sources into a grid-based layout that the Flutter panel renders and operates. This module owns the *what* of the UI; page and tile plugins decide *how* each piece looks and behaves.
+
+## What it gives you
+
+- A page tree that mirrors what the user sees on every panel — swipeable, lockable per space, and editable from the admin UI
+- A grid of tiles per page, each tile owning its own type, configuration and data bindings
+- Data sources that decouple a tile's visuals from its underlying value: the same time-tile can be driven by the system clock or a device property without code changes
 
 ## Features
 
-- **Pages** - Create multiple dashboard pages that can be swiped through on the display
-- **Tiles** - Add various tiles to pages (device controls, weather, time, etc.)
-- **Data Sources** - Connect tiles to device properties or weather data
-- **Layout Grid** - Flexible grid-based tile positioning
+- **Pages** — multiple dashboard pages per space, swipeable on the display, with per-page icon, title and ordering
+- **Tiles** — interactive widgets registered by tile plugins (device controls, weather, time, scenes, info-cards, …); each tile type validates its own config
+- **Data sources** — pluggable adapters that supply live values to tiles (e.g. device channel property, weather location, scene)
+- **Grid layout** — flexible row × column positioning with size hints; the panel re-flows automatically for the configured screen
+- **Plugin registry** — page types, tile types and data-source types are added by plugins; this module enforces correct DTOs and references at the API boundary
+- **Cross-references checked** — tiles that point at devices / channels / properties / scenes are validated through the existence constraints exposed by other modules
+- **Real-time sync** — every change is broadcast over WebSocket so the admin UI and the panel update without polling
+- **Seeding & factory reset** — registers seed data and a reset handler so demo dashboards and full wipes work consistently with the rest of the system
 
-## Tile Types
+## API Endpoints
 
-Tiles are provided by plugins and can display:
-
-- Device property values and controls
-- Weather information
-- Current time and date
-- Custom content
-
-## Data Sources
-
-Data sources connect tiles to live data:
-
-- **Device Channel** - Link to device property values
-- **Weather** - Display weather forecast data`,
+- \`GET|POST|PATCH|DELETE /api/v1/modules/dashboard/pages\` — manage pages
+- \`GET|POST|PATCH|DELETE /api/v1/modules/dashboard/tiles\` — manage tiles
+- \`GET|POST|PATCH|DELETE /api/v1/modules/dashboard/data-sources\` — manage data sources
+- \`GET /api/v1/modules/dashboard/pages/:id/tiles\` — fetch every tile that belongs to a page in one call`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

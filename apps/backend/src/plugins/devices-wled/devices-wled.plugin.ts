@@ -197,36 +197,46 @@ export class DevicesWledPlugin {
 			name: 'WLED',
 			description: 'Support for WLED addressable LED controllers',
 			author: 'FastyBird',
-			readme: `# WLED Devices Plugin
+			readme: `# WLED
 
-Integration plugin for WLED addressable LED controllers.
+> Plugin · by FastyBird · platform: devices
+
+Integration for [WLED](https://kno.wled.ge) addressable-LED controllers running on ESP8266 / ESP32. Exposes brightness, colour, effects, segments, presets and palettes through WLED's JSON API and keeps panel state in sync via WLED's WebSocket.
+
+## What you get
+
+- Full creative control over WLED strips from the panel and dashboards — colour, effect, palette, segment, preset, all without leaving the room
+- Real-time state: open WLED's own UI on a phone and changes show on the panel instantly (and vice versa)
+- Per-segment control so a single physical strip can act as several independent lights on the panel
+- A graceful fallback: if WebSocket is unavailable the plugin polls the JSON API at a configurable interval, so the integration keeps working
 
 ## Features
 
-- **Auto-Discovery** - Automatically discovers WLED devices via mDNS
-- **Real-time Updates** - WebSocket-based state synchronization
-- **Device Control** - Control brightness, colors, effects, and segments
-- **Presets & Palettes** - Access WLED presets and color palettes
-- **Nightlight Mode** - Configure automatic dimming
-- **UDP Sync** - Enable/disable sync between WLED devices
+- **mDNS auto-discovery** — finds WLED devices on the LAN; new strips appear in the discovery feed and can be auto-adopted
+- **WebSocket sync** — live, push-based state updates with automatic reconnection
+- **HTTP / JSON fallback** — when WebSocket is off or unavailable, the plugin polls JSON state at a configurable interval
+- **Full effect / palette / preset access** — all the visual richness of WLED, addressable through the standard Smart Panel light channel
+- **Segments** — every WLED segment is exposed as its own channel so they can be controlled independently from dashboards or scenes
+- **Nightlight & UDP sync** — drive WLED's automatic dimming and inter-device sync from the panel
+- **Command debouncing** — fast slider drags don't flood the device; commands are coalesced before being sent
+- **Per-device tunables** — connection / debounce / poll intervals can be tuned for slow or chatty networks
 
 ## Supported Devices
 
-- All WLED-compatible ESP8266/ESP32 controllers
-- Any device running WLED firmware 0.13+
-
-## Communication
-
-Uses WLED's JSON API over:
-- HTTP for device configuration and control
-- WebSocket for real-time state updates
-- mDNS for device discovery
+Any ESP8266 / ESP32 controller running WLED firmware **0.13** or later.
 
 ## Configuration
 
-- **Polling Interval** - How often to refresh device states
-- **Discovery** - Enable/disable mDNS auto-discovery
-- **WebSocket** - Enable/disable real-time updates`,
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`mdns.enabled\` | Run mDNS discovery for WLED devices | \`true\` |
+| \`mdns.interface\` | Network interface to bind discovery to | all |
+| \`mdns.auto_add\` | Auto-add discovered devices | \`true\` |
+| \`websocket.enabled\` | Use WebSocket for real-time updates | \`true\` |
+| \`websocket.reconnect_interval\` | WebSocket reconnect interval (ms, min 1000) | \`5000\` |
+| \`polling.interval\` | State polling interval (ms, min 5000) | \`30000\` |
+| \`timeouts.connection_timeout\` | HTTP connection timeout (ms, min 1000) | plugin default |
+| \`timeouts.command_debounce\` | Command debounce delay (ms) | plugin default |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

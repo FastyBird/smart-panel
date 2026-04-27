@@ -227,30 +227,38 @@ export class DevicesModule implements OnModuleInit {
 			name: 'Devices',
 			description: 'Central module for device management and interactions',
 			author: 'FastyBird',
-			readme: `# Devices Module
+			readme: `# Devices
 
-The Devices module is the central component for managing all IoT devices connected to the Smart Panel.
+> Module · by FastyBird
+
+Central module for registering, configuring and controlling every IoT device connected to the Smart Panel. Provides a generic device → channel → property data model that integration plugins specialize for their hardware, plus the runtime services that move values between the network, the database, the time-series store and the panel UI.
+
+## What it gives you
+
+- A canonical inventory of every device the panel knows about — regardless of vendor or transport
+- A unified read / write surface so other modules and plugins (dashboards, scenes, Buddy, automations) never need to know how a specific device speaks
+- Live state propagation: property changes received from a plugin are instantly visible on every connected admin and panel client, and asked-for changes are routed back to the right plugin
 
 ## Features
 
-- **Device Management** - Add, configure, and remove devices
-- **Channel Support** - Each device can have multiple channels (e.g., temperature sensor, relay switch)
-- **Property Tracking** - Monitor and control device properties in real-time
-- **Status Monitoring** - Track device connectivity and online status
-- **Time-series Data** - Store historical property values via storage module
+- **Device · Channel · Property model** — three-level shape that fits everything from a single switch to a multi-sensor gateway, with controls (commands), zones and platform metadata on each level
+- **Type registry** — integration plugins register their own device, channel and property subtypes; this module enforces the right DTO / validation per type at the API boundary
+- **Real-time state** — property values are streamed to clients over WebSocket the moment they change, and persisted as time-series for charts and history
+- **Connection tracking** — automatic online / offline state per device with continuous-query history (1-minute rollups for 24h, retained 14 days) used by the stats module and the panel
+- **Provisioning queue** — coordinates device discovery and onboarding across plugins so two integrations can't fight over the same physical device
+- **Connectivity service** — reachability checks, reconnect orchestration and last-seen timestamps surfaced through the API
+- **Tool provider for Buddy** — exposes "list / read / control device" as a structured tool the AI assistant can invoke during chat
+- **Stats provider** — feeds device counts, online ratio and per-platform breakdowns to the system dashboard
+- **Seeders & factory reset** — registers itself with the seed and reset registries so demo data and factory wipes work consistently
+- **Validation constraints** — \`DeviceExists\`, \`ChannelExists\` and \`ChannelPropertyExists\` decorators usable by any other module's DTOs
 
-## Supported Device Types
+## API Endpoints
 
-Devices are managed through platform plugins that provide integration with specific device ecosystems:
-
-- Shelly NG devices
-- Shelly Gen1 devices
-- Home Assistant devices
-- Third-party/manual devices
-
-## Architecture
-
-The module uses a flexible type mapping system that allows plugins to register their own device, channel, and property types while maintaining a unified API.`,
+- \`GET|POST|PATCH|DELETE /api/v1/modules/devices/devices\` — manage devices
+- \`GET|POST|PATCH|DELETE /api/v1/modules/devices/devices/:id/channels\` — manage device channels
+- \`GET|POST|PATCH|DELETE /api/v1/modules/devices/devices/:id/channels/:cid/properties\` — manage channel properties
+- \`GET /api/v1/modules/devices/devices/:id/controls\` — list device controls
+- \`GET /api/v1/modules/devices/channels\` / \`/properties\` — flat aggregated lookups across all devices`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
