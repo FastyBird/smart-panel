@@ -6,70 +6,84 @@
 		table-layout="fixed"
 		row-key="id"
 	>
-			<el-table-column :label="t('spacesModule.onboarding.displayName')" min-width="200">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2">
-						<el-avatar :size="32">
-							<icon icon="mdi:monitor" class="w[20px] h[20px]" />
-						</el-avatar>
-						<div>
-							<template v-if="row.name">
-								<strong class="block">{{ row.name }}</strong>
-								<el-text
-									size="small"
-									class="block leading-4"
-									truncated
-								>
-									{{ row.macAddress }}
-								</el-text>
-							</template>
-							<template v-else>
-								<div class="font-medium">{{ row.macAddress }}</div>
-							</template>
-						</div>
+		<el-table-column
+			:label="t('spacesModule.onboarding.displayName')"
+			min-width="200"
+		>
+			<template #default="{ row }">
+				<div class="flex items-center gap-2">
+					<el-avatar :size="32">
+						<icon
+							icon="mdi:monitor"
+							class="w[20px] h[20px]"
+						/>
+					</el-avatar>
+					<div>
+						<template v-if="row.name">
+							<strong class="block">{{ row.name }}</strong>
+							<el-text
+								size="small"
+								class="block leading-4"
+								truncated
+							>
+								{{ row.macAddress }}
+							</el-text>
+						</template>
+						<template v-else>
+							<div class="font-medium">{{ row.macAddress }}</div>
+						</template>
 					</div>
-				</template>
-			</el-table-column>
+				</div>
+			</template>
+		</el-table-column>
 
-			<el-table-column :label="t('displaysModule.table.columns.state.title')" width="100" align="center">
-				<template #default="{ row }">
-					<el-tag
-						:type="row.online ? 'success' : 'danger'"
+		<el-table-column
+			:label="t('displaysModule.table.columns.state.title')"
+			width="100"
+			align="center"
+		>
+			<template #default="{ row }">
+				<el-tag
+					:type="row.online ? 'success' : 'danger'"
+					size="small"
+				>
+					{{ row.online ? 'Online' : 'Offline' }}
+				</el-tag>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			label=""
+			width="220"
+			align="right"
+		>
+			<template #default="{ row }">
+				<div class="flex items-center gap-2 justify-end">
+					<el-button
+						type="warning"
+						plain
 						size="small"
+						@click="onReassignDisplay(row)"
 					>
-						{{ row.online ? 'Online' : 'Offline' }}
-					</el-tag>
-				</template>
-			</el-table-column>
-
-			<el-table-column label="" width="220" align="right">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2 justify-end">
-						<el-button
-							type="warning"
-							plain
-							size="small"
-							@click="onReassignDisplay(row)"
-						>
-							<template #icon>
-								<icon icon="mdi:swap-horizontal" />
-							</template>
-							{{ t('spacesModule.detail.displays.reassign') }}
-						</el-button>
-						<el-button
-							type="danger"
-							plain
-							size="small"
-							@click="onRemoveDisplay(row)"
-						>
-							<template #icon>
-								<icon icon="mdi:close" />
-							</template>
-							{{ t('spacesModule.detail.displays.remove') }}
-						</el-button>
-					</div>
-				</template>
-			</el-table-column>
+						<template #icon>
+							<icon icon="mdi:swap-horizontal" />
+						</template>
+						{{ t('spacesModule.detail.displays.reassign') }}
+					</el-button>
+					<el-button
+						type="danger"
+						plain
+						size="small"
+						@click="onRemoveDisplay(row)"
+					>
+						<template #icon>
+							<icon icon="mdi:close" />
+						</template>
+						{{ t('spacesModule.detail.displays.remove') }}
+					</el-button>
+				</div>
+			</template>
+		</el-table-column>
 
 		<template #empty>
 			<div
@@ -155,7 +169,11 @@
 			<el-button @click="showReassignDialog = false">
 				{{ t('spacesModule.buttons.cancel.title') }}
 			</el-button>
-			<el-button type="primary" :loading="isReassigning" @click="confirmReassign">
+			<el-button
+				type="primary"
+				:loading="isReassigning"
+				@click="confirmReassign"
+			>
 				{{ t('spacesModule.buttons.save.title') }}
 			</el-button>
 		</template>
@@ -164,8 +182,8 @@
 
 <script setup lang="ts">
 import { onMounted, ref, toRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { Icon } from '@iconify/vue';
 import {
 	ElAvatar,
 	ElButton,
@@ -180,11 +198,12 @@ import {
 	ElText,
 	vLoading,
 } from 'element-plus';
-import { useI18n } from 'vue-i18n';
+
+import { Icon } from '@iconify/vue';
 
 import { IconWithChild, useFlashMessage } from '../../../common';
-import type { IDisplay } from '../../displays/store/displays.store.types';
-import { useSpaceDisplays, useSpaces } from '../composables';
+import type { IDisplay } from '../../../modules/displays/store/displays.store.types';
+import { useSpaceDisplays, useSpaces } from '../../../modules/spaces/composables';
 
 import type { ISpaceDisplaysSectionProps } from './space-displays-section.types';
 
@@ -205,13 +224,7 @@ const { roomSpaces } = useSpaces();
 
 const spaceIdRef = toRef(props, 'spaceId');
 
-const {
-	displays,
-	loading,
-	fetchDisplays,
-	removeDisplay,
-	reassignDisplay,
-} = useSpaceDisplays(spaceIdRef);
+const { displays, loading, fetchDisplays, removeDisplay, reassignDisplay } = useSpaceDisplays(spaceIdRef);
 
 const showReassignDialog = ref(false);
 const selectedDisplay = ref<IDisplay | null>(null);
@@ -248,15 +261,11 @@ const confirmReassign = async (): Promise<void> => {
 const onRemoveDisplay = (display: IDisplay): void => {
 	const displayName = display.name || display.macAddress;
 
-	ElMessageBox.confirm(
-		t('spacesModule.detail.displays.confirmRemove', { name: displayName }),
-		t('spacesModule.detail.displays.removeHeading'),
-		{
-			confirmButtonText: t('spacesModule.buttons.yes.title'),
-			cancelButtonText: t('spacesModule.buttons.no.title'),
-			type: 'warning',
-		}
-	)
+	ElMessageBox.confirm(t('spacesModule.detail.displays.confirmRemove', { name: displayName }), t('spacesModule.detail.displays.removeHeading'), {
+		confirmButtonText: t('spacesModule.buttons.yes.title'),
+		cancelButtonText: t('spacesModule.buttons.no.title'),
+		type: 'warning',
+	})
 		.then(async (): Promise<void> => {
 			try {
 				await removeDisplay(display.id);

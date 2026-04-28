@@ -6,71 +6,94 @@
 		table-layout="fixed"
 		row-key="id"
 	>
-			<el-table-column :label="t('spacesModule.onboarding.deviceName')" min-width="200">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2">
-						<el-avatar :size="32">
-							<icon :icon="getDeviceCategoryIcon(row.category)" class="w[20px] h[20px]" />
-						</el-avatar>
-						<div>
-							<div class="font-medium">{{ row.name }}</div>
-							<div v-if="row.description" class="text-xs text-gray-500">
-								{{ row.description }}
-							</div>
+		<el-table-column
+			:label="t('spacesModule.onboarding.deviceName')"
+			min-width="200"
+		>
+			<template #default="{ row }">
+				<div class="flex items-center gap-2">
+					<el-avatar :size="32">
+						<icon
+							:icon="getDeviceCategoryIcon(row.category)"
+							class="w[20px] h[20px]"
+						/>
+					</el-avatar>
+					<div>
+						<div class="font-medium">{{ row.name }}</div>
+						<div
+							v-if="row.description"
+							class="text-xs text-gray-500"
+						>
+							{{ row.description }}
 						</div>
 					</div>
-				</template>
-			</el-table-column>
+				</div>
+			</template>
+		</el-table-column>
 
-			<el-table-column :label="t('spacesModule.table.columns.category')" width="150">
-				<template #default="{ row }">
-					<el-tag size="small" type="info">
-						{{ t(`devicesModule.categories.devices.${row.category}`) }}
-					</el-tag>
-				</template>
-			</el-table-column>
+		<el-table-column
+			:label="t('spacesModule.table.columns.category')"
+			width="150"
+		>
+			<template #default="{ row }">
+				<el-tag
+					size="small"
+					type="info"
+				>
+					{{ t(`devicesModule.categories.devices.${row.category}`) }}
+				</el-tag>
+			</template>
+		</el-table-column>
 
-			<el-table-column :label="t('devicesModule.table.devices.columns.state.title')" width="100" align="center">
-				<template #default="{ row }">
-					<el-tag
-						:type="row.status?.online ? 'success' : 'danger'"
+		<el-table-column
+			:label="t('devicesModule.table.devices.columns.state.title')"
+			width="100"
+			align="center"
+		>
+			<template #default="{ row }">
+				<el-tag
+					:type="row.status?.online ? 'success' : 'danger'"
+					size="small"
+				>
+					{{ row.status?.online ? 'Online' : 'Offline' }}
+				</el-tag>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			label=""
+			:width="props.spaceType === SpaceType.ZONE ? 110 : 220"
+			align="right"
+		>
+			<template #default="{ row }">
+				<div class="flex items-center gap-2 justify-end">
+					<!-- Reassign button only shown for rooms (zones can have multiple assignments) -->
+					<el-button
+						v-if="props.spaceType === SpaceType.ROOM"
+						type="warning"
+						plain
 						size="small"
+						@click="onReassignDevice(row)"
 					>
-						{{ row.status?.online ? 'Online' : 'Offline' }}
-					</el-tag>
-				</template>
-			</el-table-column>
-
-			<el-table-column label="" :width="props.spaceType === SpaceType.ZONE ? 110 : 220" align="right">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2 justify-end">
-						<!-- Reassign button only shown for rooms (zones can have multiple assignments) -->
-						<el-button
-							v-if="props.spaceType === SpaceType.ROOM"
-							type="warning"
-							plain
-							size="small"
-							@click="onReassignDevice(row)"
-						>
-							<template #icon>
-								<icon icon="mdi:swap-horizontal" />
-							</template>
-							{{ t('spacesModule.detail.devices.reassign') }}
-						</el-button>
-						<el-button
-							type="danger"
-							plain
-							size="small"
-							@click="onRemoveDevice(row)"
-						>
-							<template #icon>
-								<icon icon="mdi:close" />
-							</template>
-							{{ t('spacesModule.detail.devices.remove') }}
-						</el-button>
-					</div>
-				</template>
-			</el-table-column>
+						<template #icon>
+							<icon icon="mdi:swap-horizontal" />
+						</template>
+						{{ t('spacesModule.detail.devices.reassign') }}
+					</el-button>
+					<el-button
+						type="danger"
+						plain
+						size="small"
+						@click="onRemoveDevice(row)"
+					>
+						<template #icon>
+							<icon icon="mdi:close" />
+						</template>
+						{{ t('spacesModule.detail.devices.remove') }}
+					</el-button>
+				</div>
+			</template>
+		</el-table-column>
 
 		<template #empty>
 			<div
@@ -156,7 +179,11 @@
 			<el-button @click="showReassignDialog = false">
 				{{ t('spacesModule.buttons.cancel.title') }}
 			</el-button>
-			<el-button type="primary" :loading="isReassigning" @click="confirmReassign">
+			<el-button
+				type="primary"
+				:loading="isReassigning"
+				@click="confirmReassign"
+			>
 				{{ t('spacesModule.buttons.save.title') }}
 			</el-button>
 		</template>
@@ -165,27 +192,16 @@
 
 <script setup lang="ts">
 import { onMounted, ref, toRef } from 'vue';
-
-import { Icon } from '@iconify/vue';
-import {
-	ElAvatar,
-	ElButton,
-	ElDialog,
-	ElMessageBox,
-	ElOption,
-	ElResult,
-	ElSelect,
-	ElTable,
-	ElTableColumn,
-	ElTag,
-	vLoading,
-} from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
+import { ElAvatar, ElButton, ElDialog, ElMessageBox, ElOption, ElResult, ElSelect, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
+
 import { IconWithChild, useFlashMessage } from '../../../common';
-import type { IDevice } from '../../devices/store/devices.store.types';
-import { useSpaceDevices, useSpaces } from '../composables';
-import { SpaceType } from '../spaces.constants';
+import type { IDevice } from '../../../modules/devices/store/devices.store.types';
+import { useSpaceDevices, useSpaces } from '../../../modules/spaces/composables';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 
 import type { ISpaceDevicesSectionProps } from './space-devices-section.types';
 
@@ -207,14 +223,7 @@ const { roomSpaces } = useSpaces();
 const spaceIdRef = toRef(props, 'spaceId');
 const spaceTypeRef = toRef(props, 'spaceType');
 
-const {
-	devices,
-	loading,
-	firstLoadFinished,
-	fetchDevices,
-	removeDevice,
-	reassignDevice,
-} = useSpaceDevices(spaceIdRef, spaceTypeRef);
+const { devices, loading, firstLoadFinished, fetchDevices, removeDevice, reassignDevice } = useSpaceDevices(spaceIdRef, spaceTypeRef);
 
 const showReassignDialog = ref(false);
 const selectedDevice = ref<IDevice | null>(null);
@@ -268,15 +277,11 @@ const confirmReassign = async (): Promise<void> => {
 };
 
 const onRemoveDevice = (device: IDevice): void => {
-	ElMessageBox.confirm(
-		t('spacesModule.detail.devices.confirmRemove', { name: device.name }),
-		t('spacesModule.detail.devices.removeHeading'),
-		{
-			confirmButtonText: t('spacesModule.buttons.yes.title'),
-			cancelButtonText: t('spacesModule.buttons.no.title'),
-			type: 'warning',
-		}
-	)
+	ElMessageBox.confirm(t('spacesModule.detail.devices.confirmRemove', { name: device.name }), t('spacesModule.detail.devices.removeHeading'), {
+		confirmButtonText: t('spacesModule.buttons.yes.title'),
+		cancelButtonText: t('spacesModule.buttons.no.title'),
+		type: 'warning',
+	})
 		.then(async (): Promise<void> => {
 			try {
 				await removeDevice(device.id);

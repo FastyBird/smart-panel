@@ -1,6 +1,14 @@
 <template>
-	<el-table v-loading="fetching" :data="spaces" row-key="id">
-		<el-table-column prop="name" :label="t('spacesModule.table.columns.name')" min-width="200">
+	<el-table
+		v-loading="fetching"
+		:data="spaces"
+		row-key="id"
+	>
+		<el-table-column
+			prop="name"
+			:label="t('spacesModule.table.columns.name')"
+			min-width="200"
+		>
 			<template #default="{ row }">
 				<div class="flex items-center gap-2">
 					<el-icon v-if="row.icon">
@@ -10,30 +18,44 @@
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column prop="type" :label="t('spacesModule.table.columns.type')" width="170">
+		<el-table-column
+			prop="type"
+			:label="t('spacesModule.table.columns.type')"
+			width="170"
+		>
 			<template #default="{ row }">
 				<spaces-table-column-plugin :space="row" />
 			</template>
 		</el-table-column>
-		<el-table-column prop="description" :label="t('spacesModule.table.columns.description')" min-width="250">
+		<el-table-column
+			prop="description"
+			:label="t('spacesModule.table.columns.description')"
+			min-width="250"
+		>
 			<template #default="{ row }">
 				{{ row.description ?? '-' }}
 			</template>
 		</el-table-column>
-		<el-table-column :label="t('spacesModule.table.columns.actions')" width="150" align="center">
+		<el-table-column
+			:label="t('spacesModule.table.columns.actions')"
+			width="150"
+			align="center"
+		>
 			<template #default="{ row }">
 				<el-button-group>
-					<el-button size="small" @click="onView(row)">
-						<el-icon>
-							<icon icon="mdi:eye" />
-						</el-icon>
-					</el-button>
-					<el-button size="small" @click="onEdit(row)">
+					<el-button
+						size="small"
+						@click="onEdit(row)"
+					>
 						<el-icon>
 							<icon icon="mdi:pencil" />
 						</el-icon>
 					</el-button>
-					<el-button size="small" type="danger" @click="onDelete(row)">
+					<el-button
+						size="small"
+						type="danger"
+						@click="onDelete(row)"
+					>
 						<el-icon>
 							<icon icon="mdi:delete" />
 						</el-icon>
@@ -80,10 +102,12 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue';
-import { ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElResult, ElTable, ElTableColumn, ElText } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+
+import { ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElResult, ElTable, ElTableColumn, ElText } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { IconWithChild, useFlashMessage } from '../../../common';
 import { useSpaces, useSpacesActions } from '../composables';
@@ -102,10 +126,6 @@ const { remove } = useSpacesActions();
 
 const onAdd = (): void => {
 	router.push({ name: RouteNames.SPACES_ADD });
-};
-
-const onView = (space: ISpace): void => {
-	router.push({ name: RouteNames.SPACE, params: { id: space.id } });
 };
 
 const onEdit = (space: ISpace): void => {

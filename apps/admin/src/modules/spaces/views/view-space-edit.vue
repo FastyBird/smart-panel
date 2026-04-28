@@ -121,7 +121,7 @@
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
@@ -145,10 +145,12 @@ const props = withDefaults(
 	defineProps<{
 		id?: string;
 		remoteFormChanged?: boolean;
+		returnRoute?: RouteLocationRaw;
 	}>(),
 	{
 		id: undefined,
 		remoteFormChanged: false,
+		returnRoute: undefined,
 	}
 );
 
@@ -196,10 +198,19 @@ const remoteFormChanged = ref(props.remoteFormChanged);
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
 
-const isDetailRoute = computed<boolean>(
-	(): boolean =>
-		route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined
-);
+const isDetailRoute = computed<boolean>((): boolean => route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined);
+
+const closeRoute = computed<RouteLocationRaw>((): RouteLocationRaw => {
+	if (props.returnRoute) {
+		return props.returnRoute;
+	}
+
+	if (isDetailRoute.value) {
+		return { name: RouteNames.SPACE, params: { id: spaceId.value } };
+	}
+
+	return { name: RouteNames.SPACES };
+});
 
 // Defer to the shared `getSpaceIcon` helper so this view's iconography stays
 // consistent with the scenes module and any other consumer (Bugbot flagged
@@ -211,7 +222,7 @@ const spaceIcon = computed<string>((): string =>
 				category: (space.value.category ?? null) as SpaceRoomCategory | SpaceZoneCategory | null,
 				type: space.value.type,
 			})
-		: 'mdi:shape-outline',
+		: 'mdi:shape-outline'
 );
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -226,7 +237,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		if (isDetailRoute.value) {
 			items.push({
 				label: t('spacesModule.breadcrumbs.spaces.detail', { space: space.value?.name }),
-				route: router.resolve({ name: RouteNames.SPACE, params: { id: spaceId.value } }),
+				route: router.resolve(closeRoute.value),
 			});
 			items.push({
 				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
@@ -243,6 +254,14 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+const close = (): void => {
+	if (isLGDevice.value) {
+		router.replace(closeRoute.value);
+	} else {
+		router.push(closeRoute.value);
+	}
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
 		confirmButtonText: t('spacesModule.buttons.yes.title'),
@@ -250,19 +269,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-				} else {
-					router.push({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-				}
-			} else {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.SPACES });
-				} else {
-					router.push({ name: RouteNames.SPACES });
-				}
-			}
+			close();
 		})
 		.catch((): void => {
 			// Just ignore it
@@ -276,53 +283,17 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-		} else {
-			router.push({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-		}
-	} else {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACES });
-		} else {
-			router.push({ name: RouteNames.SPACES });
-		}
-	}
+	close();
 };
 
 const onSaved = (savedSpace: ISpace): void => {
 	flashMessage.success(t('spacesModule.messages.edited', { space: savedSpace.name }));
 
-	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACE, params: { id: savedSpace.id } });
-		} else {
-			router.push({ name: RouteNames.SPACE, params: { id: savedSpace.id } });
-		}
-	} else {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACES });
-		} else {
-			router.push({ name: RouteNames.SPACES });
-		}
-	}
+	close();
 };
 
 const onCancel = (): void => {
-	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-		} else {
-			router.push({ name: RouteNames.SPACE, params: { id: spaceId.value } });
-		}
-	} else {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACES });
-		} else {
-			router.push({ name: RouteNames.SPACES });
-		}
-	}
+	close();
 };
 
 onBeforeMount(async (): Promise<void> => {
