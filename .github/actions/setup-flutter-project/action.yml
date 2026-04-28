@@ -7,7 +7,7 @@ description: "Install Flutter SDK, Melos, bootstrap dependencies, and run codege
 inputs:
   flutter-version:
     description: "Flutter SDK version"
-    default: "3.27.0"
+    default: "3.41.5"
     required: false
   flutter-channel:
     description: "Flutter release channel"

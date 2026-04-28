@@ -15,7 +15,7 @@ This GitHub Action sets up a Flutter project using a specified Flutter SDK versi
 - name: Setup Flutter Project
   uses: ./.github/actions/setup-flutter-project
   with:
-    flutter-version: 3.27.0      # Optional, defaults to 3.27.0
+    flutter-version: 3.41.5      # Optional, defaults to 3.41.5
     flutter-channel: stable      # Optional, defaults to stable
 ```
 
@@ -23,7 +23,7 @@ This GitHub Action sets up a Flutter project using a specified Flutter SDK versi
 
 | Name              | Description                                | Default  | Required |
 |-------------------|--------------------------------------------|----------|----------|
-| `flutter-version` | Version of the Flutter SDK to install      | `3.27.0` | ❌        |
+| `flutter-version` | Version of the Flutter SDK to install      | `3.41.5` | ❌        |
 | `flutter-channel` | Flutter release channel (`stable`, `beta`) | `stable` | ❌        |
 
 ## 🛠 Included Steps
