@@ -66,4 +66,15 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 		],
 	},
+	{
+		path: 'space/:id/plugin',
+		name: RouteNames.SPACE_PLUGIN,
+		component: () => import('../views/view-space-plugin.vue'),
+		props: true,
+		meta: {
+			guards: { authenticated: true },
+			title: 'Space plugin',
+			icon: 'mdi:home-group',
+		},
+	},
 ];

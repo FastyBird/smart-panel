@@ -11,3 +11,7 @@ export const SPACES_HOME_CONTROL_PLUGIN_SOURCE = 'com.fastybird.smart-panel.plug
  * values declared on the backend `RoomSpaceEntity` / `ZoneSpaceEntity` child entities.
  */
 export const SPACES_HOME_CONTROL_TYPES = [SpaceType.ROOM, SpaceType.ZONE] as const;
+
+export const RouteNames = {
+	SPACE: 'spaces_home_control_plugin-space',
+};
