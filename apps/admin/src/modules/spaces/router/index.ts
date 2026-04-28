@@ -46,24 +46,14 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: 'space/:id',
-		name: RouteNames.SPACE,
-		component: () => import('../views/view-space.vue'),
+		path: 'space/:id/plugin',
+		name: RouteNames.SPACE_PLUGIN,
+		component: () => import('../views/view-space-plugin.vue'),
 		props: true,
 		meta: {
 			guards: { authenticated: true },
+			title: 'Space plugin',
+			icon: 'mdi:home-group',
 		},
-		children: [
-			{
-				path: 'edit',
-				name: RouteNames.SPACE_EDIT,
-				component: () => import('../views/view-space-edit.vue'),
-				props: true,
-				meta: {
-					guards: { authenticated: true },
-					title: 'Edit space',
-				},
-			},
-		],
 	},
 ];

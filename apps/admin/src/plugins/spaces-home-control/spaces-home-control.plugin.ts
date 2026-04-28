@@ -1,31 +1,27 @@
 import type { App } from 'vue';
+import type { RouteLocationResolvedGeneric, RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import {
+	type ISpace,
 	type ISpacePluginRoutes,
 	type ISpacePluginsComponents,
 	type ISpacePluginsSchemas,
 	SPACES_MODULE_NAME,
 	SpaceAddFormSchema,
 	SpaceEditFormSchema,
+	RouteNames as SpacesRouteNames,
 } from '../../modules/spaces';
 import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
-import {
-	SpaceAddDeviceDialog,
-	SpaceAddDisplayDialog,
-	SpaceAddForm,
-	SpaceAddSceneDialog,
-	SpaceDetail,
-	SpaceDomainsSection,
-	SpaceEditForm,
-	SpaceScenesSection,
-} from './components/components';
+import { SpaceAddForm, SpaceDetail, SpaceEditForm } from './components/components';
 import { locales } from './locales';
+import { PluginRoutes } from './router';
 import {
+	RouteNames,
 	SPACES_HOME_CONTROL_PLUGIN_NAME,
 	SPACES_HOME_CONTROL_PLUGIN_SOURCE,
 	SPACES_HOME_CONTROL_TYPES,
@@ -43,6 +39,14 @@ export default {
 			const mergedMessages = defaultsDeep(currentMessages, { spacesHomeControlPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
+		}
+
+		const spacePluginRoute = options.router.getRoutes().find((route) => route.name === SpacesRouteNames.SPACE_PLUGIN);
+
+		if (spacePluginRoute) {
+			PluginRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(SpacesRouteNames.SPACE_PLUGIN, route);
+			});
 		}
 
 		pluginsManager.addPlugin(spacesHomeControlPluginKey, {
@@ -68,11 +72,6 @@ export default {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,
 					spaceEditForm: SpaceEditForm,
-					spaceDomainsSection: SpaceDomainsSection,
-					spaceScenesSection: SpaceScenesSection,
-					spaceAddDeviceDialog: SpaceAddDeviceDialog,
-					spaceAddDisplayDialog: SpaceAddDisplayDialog,
-					spaceAddSceneDialog: SpaceAddSceneDialog,
 				},
 				schemas: {
 					spaceSchema: SpaceSchema,
@@ -82,6 +81,20 @@ export default {
 					spaceUpdateReqSchema: SpaceEditSchema,
 				},
 			})),
+			...(spacePluginRoute
+				? {
+						routes: {
+							configure: (id: ISpace['id']): string | RouteLocationResolvedGeneric => {
+								return options.router.resolve({
+									name: RouteNames.SPACE,
+									params: {
+										id,
+									},
+								});
+							},
+						},
+					}
+				: {}),
 			modules: [SPACES_MODULE_NAME],
 			isCore: true,
 		});

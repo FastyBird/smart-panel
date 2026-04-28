@@ -86,7 +86,6 @@
 			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
-			@detail="onSpaceDetail"
 			@edit="onSpaceEdit"
 			@remove="onSpaceRemove"
 			@add="onAddSpace"
@@ -145,9 +144,7 @@
 					</template>
 
 					<suspense>
-						<router-view
-							v-slot="{ Component }"
-						>
+						<router-view v-slot="{ Component }">
 							<component
 								:is="Component"
 								v-model:remote-form-changed="remoteFormChanged"
@@ -170,7 +167,17 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import {
+	AppBar,
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	ViewError,
+	ViewHeader,
+	useBreakpoints,
+	useFlashMessage,
+} from '../../../common';
 import { ListSpaces } from '../components/components';
 import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
 import { useSpacesActions, useSpacesDataSource } from '../composables';
@@ -277,15 +284,6 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onSpaceDetail = (id: ISpace['id']): void => {
-	router.push({
-		name: RouteNames.SPACE,
-		params: {
-			id,
-		},
-	});
-};
-
 const onSpaceEdit = (id: ISpace['id']): void => {
 	if (isLGDevice.value) {
 		router.replace({
@@ -348,19 +346,14 @@ onBeforeMount((): void => {
 		flashMessage.error(t('spacesModule.messages.loadError'));
 	});
 
-	showDrawer.value =
-		route.matched.find(
-			(matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT
-		) !== undefined;
+	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT) !== undefined;
 });
 
 watch(
 	(): string => route.path,
 	(): void => {
 		showDrawer.value =
-			route.matched.find(
-				(matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT
-			) !== undefined;
+			route.matched.find((matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT) !== undefined;
 	}
 );
 </script>
