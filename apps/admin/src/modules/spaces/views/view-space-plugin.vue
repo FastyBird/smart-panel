@@ -58,7 +58,11 @@
 		@back="onClose"
 	/>
 
-	<div class="flex-1 overflow-hidden lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2">
+	<div
+		v-else
+		data-test-id="space-plugin-route"
+		class="flex-1 overflow-hidden lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
 		<router-view
 			:key="props.id"
 			v-slot="{ Component }"
@@ -76,7 +80,7 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElIcon } from 'element-plus';
 
@@ -119,6 +123,31 @@ const spaceIcon = computed<string>((): string =>
 		: 'mdi:shape-outline'
 );
 
+const detailRoute = computed<RouteLocationRaw>((): RouteLocationRaw => {
+	const namedMatches = route.matched.filter((matched) => matched.name !== undefined);
+	const currentMatch = namedMatches[namedMatches.length - 1];
+	const parentMatch = namedMatches[namedMatches.length - 2];
+
+	if (parentMatch?.name && parentMatch.name !== RouteNames.SPACE_PLUGIN) {
+		return {
+			name: parentMatch.name,
+			params: route.params,
+		};
+	}
+
+	if (currentMatch?.name && currentMatch.name !== RouteNames.SPACE_PLUGIN) {
+		return {
+			name: currentMatch.name,
+			params: route.params,
+		};
+	}
+
+	return {
+		name: RouteNames.SPACE_PLUGIN,
+		params: { id: spaceId.value },
+	};
+});
+
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
 		return [
@@ -128,7 +157,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			},
 			{
 				label: t('spacesModule.breadcrumbs.spaces.detail', { space: space.value?.name }),
-				route: router.resolve({ path: route.path }),
+				route: router.resolve(detailRoute.value),
 			},
 		];
 	}

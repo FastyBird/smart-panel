@@ -76,6 +76,12 @@ describe('spacesHomeControlPlugin', () => {
 		SpacesHomeControlPlugin.install({} as App, options);
 
 		expect(options.router.addRoute).not.toHaveBeenCalled();
+		expect(mocks.addPlugin).toHaveBeenCalledWith(
+			expect.any(Symbol),
+			expect.not.objectContaining({
+				routes: expect.any(Object),
+			})
+		);
 	});
 
 	it('registers configure child routes under the spaces plugin parent route', () => {
@@ -85,5 +91,13 @@ describe('spacesHomeControlPlugin', () => {
 
 		expect(options.router.addRoute).toHaveBeenCalled();
 		expect(options.router.addRoute).toHaveBeenCalledWith(SpacesRouteNames.SPACE_PLUGIN, expect.any(Object));
+		expect(mocks.addPlugin).toHaveBeenCalledWith(
+			expect.any(Symbol),
+			expect.objectContaining({
+				routes: {
+					configure: expect.any(Function),
+				},
+			})
+		);
 	});
 });

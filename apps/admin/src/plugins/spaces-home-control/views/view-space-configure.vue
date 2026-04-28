@@ -417,3 +417,7 @@ watch(
 	}
 );
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'view-space-configure.scss';
+</style>

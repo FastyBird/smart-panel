@@ -198,18 +198,20 @@ const remoteFormChanged = ref(props.remoteFormChanged);
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
 
-const isDetailRoute = computed<boolean>((): boolean => route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined);
-
 const closeRoute = computed<RouteLocationRaw>((): RouteLocationRaw => {
 	if (props.returnRoute) {
 		return props.returnRoute;
 	}
 
-	if (isDetailRoute.value) {
-		return { name: RouteNames.SPACE, params: { id: spaceId.value } };
+	return { name: RouteNames.SPACES };
+});
+
+const editRoute = computed<RouteLocationRaw>((): RouteLocationRaw => {
+	if (route.name) {
+		return { name: route.name, params: route.params };
 	}
 
-	return { name: RouteNames.SPACES };
+	return { name: RouteNames.SPACES_EDIT, params: { id: spaceId.value } };
 });
 
 // Defer to the shared `getSpaceIcon` helper so this view's iconography stays
@@ -234,14 +236,14 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			},
 		];
 
-		if (isDetailRoute.value) {
+		if (props.returnRoute) {
 			items.push({
 				label: t('spacesModule.breadcrumbs.spaces.detail', { space: space.value?.name }),
 				route: router.resolve(closeRoute.value),
 			});
 			items.push({
 				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
-				route: router.resolve({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } }),
+				route: router.resolve(editRoute.value),
 			});
 		} else {
 			items.push({

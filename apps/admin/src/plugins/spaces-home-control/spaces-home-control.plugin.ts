@@ -81,16 +81,20 @@ export default {
 					spaceUpdateReqSchema: SpaceEditSchema,
 				},
 			})),
-			routes: {
-				configure: (id: ISpace['id']): string | RouteLocationResolvedGeneric => {
-					return options.router.resolve({
-						name: RouteNames.SPACE,
-						params: {
-							id,
+			...(spacePluginRoute
+				? {
+						routes: {
+							configure: (id: ISpace['id']): string | RouteLocationResolvedGeneric => {
+								return options.router.resolve({
+									name: RouteNames.SPACE,
+									params: {
+										id,
+									},
+								});
+							},
 						},
-					});
-				},
-			},
+					}
+				: {}),
 			modules: [SPACES_MODULE_NAME],
 			isCore: true,
 		});

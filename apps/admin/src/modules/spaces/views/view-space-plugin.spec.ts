@@ -12,7 +12,22 @@ const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	routerResolve: vi.fn((route) => route),
-	space: null,
+	route: {
+		path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure',
+		name: 'plugin-configure',
+		params: { id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d' },
+		matched: [{ name: 'space-plugin' }, { name: 'plugin-configure' }],
+	},
+	space: null as null | {
+		id: string;
+		name: string;
+		description: string | null;
+		icon: string | null;
+		category: string | null;
+		type: string;
+		parentId: string | null;
+		suggestionsEnabled: boolean;
+	},
 	fetching: false,
 }));
 
@@ -29,9 +44,7 @@ vi.mock('vue-meta', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRoute: () => ({
-		path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure',
-	}),
+	useRoute: () => mocks.route,
 	useRouter: () => ({
 		push: mocks.routerPush,
 		replace: mocks.routerReplace,
@@ -70,7 +83,13 @@ vi.mock('../../../common', async () => {
 			LEFT: 'left',
 		},
 		AppBarHeading: StubComponent,
-		AppBreadcrumbs: StubComponent,
+		AppBreadcrumbs: defineComponent({
+			name: 'AppBreadcrumbs',
+			props: {
+				items: { type: Array, required: true },
+			},
+			template: '<div />',
+		}),
 		EntityNotFound,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
@@ -95,6 +114,7 @@ vi.mock('../composables', () => ({
 vi.mock('../spaces.constants', () => ({
 	RouteNames: {
 		SPACES: 'spaces',
+		SPACE_PLUGIN: 'space-plugin',
 	},
 	getSpaceIcon: () => 'mdi:shape-outline',
 }));
@@ -106,6 +126,12 @@ describe('ViewSpacePlugin', () => {
 		mocks.space = null;
 		mocks.fetching = false;
 		mocks.fetchSpace.mockResolvedValue(undefined);
+		mocks.route = {
+			path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure',
+			name: 'plugin-configure',
+			params: { id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d' },
+			matched: [{ name: 'space-plugin' }, { name: 'plugin-configure' }],
+		};
 	});
 
 	it('renders not-found fallback when plugin space lookup fails', async () => {
@@ -126,5 +152,94 @@ describe('ViewSpacePlugin', () => {
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'EntityNotFound' }).exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="space-plugin-route"]').exists()).toBe(false);
+	});
+
+	it('resolves detail breadcrumb to parent plugin route from nested child routes', () => {
+		mocks.space = {
+			id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+			name: 'Kitchen',
+			description: null,
+			icon: null,
+			category: null,
+			type: 'room',
+			parentId: null,
+			suggestionsEnabled: false,
+		};
+		mocks.route = {
+			path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure/edit',
+			name: 'plugin-edit',
+			params: { id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d' },
+			matched: [{ name: 'space-plugin' }, { name: 'plugin-configure' }, { name: 'plugin-edit' }],
+		};
+
+		const wrapper = shallowMount(ViewSpacePlugin, {
+			props: {
+				id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+			},
+			global: {
+				stubs: {
+					RouterView: true,
+					teleport: true,
+				},
+			},
+		});
+
+		const breadcrumbs = wrapper.findComponent({ name: 'AppBreadcrumbs' }).props('items');
+
+		expect(breadcrumbs).toEqual([
+			{
+				label: 'spacesModule.breadcrumbs.spaces.list',
+				route: { name: 'spaces' },
+			},
+			{
+				label: 'spacesModule.breadcrumbs.spaces.detail',
+				route: {
+					name: 'plugin-configure',
+					params: { id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d' },
+				},
+			},
+		]);
+	});
+
+	it('resolves detail breadcrumb to current plugin child route from configure routes', () => {
+		mocks.space = {
+			id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+			name: 'Kitchen',
+			description: null,
+			icon: null,
+			category: null,
+			type: 'room',
+			parentId: null,
+			suggestionsEnabled: false,
+		};
+
+		const wrapper = shallowMount(ViewSpacePlugin, {
+			props: {
+				id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+			},
+			global: {
+				stubs: {
+					RouterView: true,
+					teleport: true,
+				},
+			},
+		});
+
+		const breadcrumbs = wrapper.findComponent({ name: 'AppBreadcrumbs' }).props('items');
+
+		expect(breadcrumbs).toEqual([
+			{
+				label: 'spacesModule.breadcrumbs.spaces.list',
+				route: { name: 'spaces' },
+			},
+			{
+				label: 'spacesModule.breadcrumbs.spaces.detail',
+				route: {
+					name: 'plugin-configure',
+					params: { id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d' },
+				},
+			},
+		]);
 	});
 });
