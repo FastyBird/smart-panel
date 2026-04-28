@@ -238,6 +238,9 @@
 		"detail": {
 			"title": "Detail"
 		},
+		"configure": {
+			"title": "Konfigurovať"
+		},
 		"adjust": {
 			"title": "Filter"
 		},

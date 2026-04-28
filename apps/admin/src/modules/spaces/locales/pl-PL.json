@@ -238,6 +238,9 @@
 		"detail": {
 			"title": "Szczegoly"
 		},
+		"configure": {
+			"title": "Konfiguruj"
+		},
 		"adjust": {
 			"title": "Filtruj"
 		},

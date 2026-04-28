@@ -26,7 +26,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 		'spaceUpdateReqSchema',
 	];
 
-	const pluginRoutes: (keyof ISpacePluginRoutes)[] = [];
+	const pluginRoutes: (keyof ISpacePluginRoutes)[] = ['configure'];
 
 	const plugins = computed<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>[]>(() => {
 		return pluginsManager.getPlugins().filter((plugin) => {
