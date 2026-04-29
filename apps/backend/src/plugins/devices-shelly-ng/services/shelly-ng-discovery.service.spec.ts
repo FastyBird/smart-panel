@@ -186,4 +186,26 @@ describe('ShellyNgDiscoveryService', () => {
 		expect(stopMock).toHaveBeenCalledTimes(1);
 		expect(updated?.status).toBe('finished');
 	});
+
+	it('removes finished sessions after the cleanup delay', async () => {
+		const session = await service.start({ duration: 5 });
+
+		jest.advanceTimersByTime(5_000);
+		await Promise.resolve();
+
+		expect(service.get(session.id)?.status).toBe('finished');
+
+		jest.advanceTimersByTime(5 * 60_000);
+
+		expect(service.get(session.id)).toBeNull();
+	});
+
+	it('does not retain a session when mDNS startup fails', async () => {
+		startMock.mockRejectedValueOnce(new Error('bind failed'));
+
+		await expect(service.start({ duration: 5 })).rejects.toThrow('bind failed');
+
+		expect((service as unknown as { sessions: Map<string, unknown> }).sessions.size).toBe(0);
+		expect(jest.getTimerCount()).toBe(0);
+	});
 });

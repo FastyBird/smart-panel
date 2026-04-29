@@ -64,12 +64,15 @@ interface ShellyNgDiscoverySession {
 	startedAt: Date;
 	expiresAt: Date;
 	discoverer: MdnsDeviceDiscoverer;
-	timer: NodeJS.Timeout;
+	timer?: NodeJS.Timeout;
+	cleanupTimer?: NodeJS.Timeout;
 	devices: Map<string, ShellyNgDiscoveryDeviceSnapshot>;
 }
 
 @Injectable()
 export class ShellyNgDiscoveryService {
+	private static readonly FINISHED_SESSION_TTL_MS = 5 * 60_000;
+
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_NG_PLUGIN_NAME,
 		'ShellyNgDiscoveryService',
@@ -94,13 +97,8 @@ export class ShellyNgDiscoveryService {
 			startedAt,
 			expiresAt,
 			discoverer,
-			timer: setTimeout(() => {
-				void this.finish(id);
-			}, duration * 1_000),
 			devices: new Map(),
 		};
-
-		this.sessions.set(id, session);
 
 		discoverer.on('discover', (device: { deviceId?: string; hostname?: string }) => {
 			void this.inspectDevice(session, device.hostname ?? device.deviceId ?? '', 'mdns', null);
@@ -114,7 +112,19 @@ export class ShellyNgDiscoveryService {
 			});
 		});
 
-		await discoverer.start();
+		try {
+			await discoverer.start();
+		} catch (error) {
+			this.clearTimers(session);
+
+			throw error;
+		}
+
+		session.timer = setTimeout(() => {
+			void this.finish(id);
+		}, duration * 1_000);
+
+		this.sessions.set(id, session);
 
 		return this.toSnapshot(session);
 	}
@@ -153,6 +163,8 @@ export class ShellyNgDiscoveryService {
 
 		session.status = 'finished';
 
+		this.clearTimer(session);
+
 		try {
 			await session.discoverer.stop();
 		} catch (error) {
@@ -163,6 +175,35 @@ export class ShellyNgDiscoveryService {
 				message: err.message,
 				stack: err.stack,
 			});
+		}
+
+		this.scheduleCleanup(session);
+	}
+
+	private scheduleCleanup(session: ShellyNgDiscoverySession): void {
+		this.clearCleanupTimer(session);
+
+		session.cleanupTimer = setTimeout(() => {
+			this.sessions.delete(session.id);
+		}, ShellyNgDiscoveryService.FINISHED_SESSION_TTL_MS);
+	}
+
+	private clearTimers(session: ShellyNgDiscoverySession): void {
+		this.clearTimer(session);
+		this.clearCleanupTimer(session);
+	}
+
+	private clearTimer(session: ShellyNgDiscoverySession): void {
+		if (session.timer !== undefined) {
+			clearTimeout(session.timer);
+			session.timer = undefined;
+		}
+	}
+
+	private clearCleanupTimer(session: ShellyNgDiscoverySession): void {
+		if (session.cleanupTimer !== undefined) {
+			clearTimeout(session.cleanupTimer);
+			session.cleanupTimer = undefined;
 		}
 	}
 
