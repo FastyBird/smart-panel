@@ -10,6 +10,12 @@
 			"notSupported": "Je nám líto, vaše zařízení není podporováno",
 			"model": "Model",
 			"firmware": "Firmware"
+		},
+		"wizard": {
+			"discovery": "Vyhledávání",
+			"categories": "Kategorie",
+			"results": "Výsledky",
+			"status": "Stav"
 		}
 	},
 	"fields": {
@@ -108,16 +114,53 @@
 			"edited": "Změny uloženy! Zařízení Shelly Next-Generation: {device} bylo aktualizováno.",
 			"notEdited": "Něco se pokazilo. Aktualizace zařízení Shelly Next-Generation nebyla úspěšná.",
 			"failedLoadSupportedDevices": "Něco se pokazilo. Nepodařilo se načíst podporovaná zařízení pluginu."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Něco se pokazilo. Vyhledávání Shelly se nepodařilo spustit.",
+			"discoveryNotLoaded": "Něco se pokazilo. Vyhledávání Shelly se nepodařilo načíst.",
+			"manualNotAdded": "Něco se pokazilo. Ruční vyhledání zařízení Shelly se nepodařilo přidat.",
+			"adoptionNotCreated": "Něco se pokazilo. Zařízení Shelly se nepodařilo adoptovat."
 		}
 	},
 	"texts": {
 		"aboutPluginStatus": "Povolte nebo zakažte integraci zařízení Shelly Next Generation. Pokud je povolena, zařízení Shelly mohou být vyhledána a ovládána prostřednictvím Smart Panelu.",
 		"aboutMdns": "Nakonfigurujte, jak plugin vyhledává zařízení Shelly ve vaší lokální síti pomocí Multicast DNS (mDNS). To umožňuje automatickou detekci bez nutnosti ručního zadávání IP adres.",
-		"aboutWebsockets": "Spravujte parametry WebSocket připojení pro zařízení Shelly. Tato nastavení řídí stabilitu komunikace, zpracování požadavků a chování opětovného připojení."
+		"aboutWebsockets": "Spravujte parametry WebSocket připojení pro zařízení Shelly. Tato nastavení řídí stabilitu komunikace, zpracování požadavků a chování opětovného připojení.",
+		"wizard": {
+			"discovery": "Průvodce vyhledá zařízení Shelly NG v lokální síti a přijímá také ručně zadaný hostname nebo IP adresu.",
+			"categories": "Potvrďte, která připravená zařízení mají být adoptována, a vyberte cílovou kategorii pro každé z nich.",
+			"scanStatus": "Nalezeno zařízení: {count}",
+			"noDevices": "Nebyla nalezena žádná zařízení Shelly"
+		}
 	},
 	"buttons": {
 		"next": {
 			"title": "Další"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Vyhledat znovu"
+			},
+			"addManual": {
+				"title": "Přidat"
+			},
+			"adopt": {
+				"title": "Adoptovat vybrané"
+			},
+			"finish": {
+				"title": "Zpět na zařízení"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Kontrola",
+			"ready": "Připraveno",
+			"needs_password": "Vyžaduje heslo",
+			"already_registered": "Registrováno",
+			"unsupported": "Nepodporováno",
+			"failed": "Selhalo",
+			"created": "Vytvořeno"
 		}
 	}
 }

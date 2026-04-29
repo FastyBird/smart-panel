@@ -152,6 +152,8 @@ export type DevicesShellyNgPluginConfigSchema = components['schemas']['DevicesSh
 export type DevicesShellyNgPluginCreateDeviceSchema = components['schemas']['DevicesShellyNgPluginCreateDevice'];
 export type DevicesShellyNgPluginUpdateDeviceSchema = components['schemas']['DevicesShellyNgPluginUpdateDevice'];
 export type DevicesShellyNgPluginDeviceSchema = components['schemas']['DevicesShellyNgPluginDataDevice'];
+export type DevicesShellyNgPluginDiscoveryDeviceSchema = components['schemas']['DevicesShellyNgPluginDataDiscoveryDevice'];
+export type DevicesShellyNgPluginDiscoverySessionSchema = components['schemas']['DevicesShellyNgPluginDataDiscoverySession'];
 export type DevicesShellyNgPluginCreateChannelSchema = components['schemas']['DevicesShellyNgPluginCreateChannel'];
 export type DevicesShellyNgPluginUpdateChannelSchema = components['schemas']['DevicesShellyNgPluginUpdateChannel'];
 export type DevicesShellyNgPluginChannelSchema = components['schemas']['DevicesShellyNgPluginDataChannel'];
@@ -344,6 +346,9 @@ export type StatsModuleGetStatsOperation = operations['get-stats-module-stats'];
 // Devices Shelly NG Plugin Operations
 export type DevicesShellyNgPluginGetSupportedOperation = operations['get-devices-shelly-ng-plugin-supported'];
 export type DevicesShellyNgPluginCreateDeviceInfoOperation = operations['create-devices-shelly-ng-plugin-device-info'];
+export type DevicesShellyNgPluginCreateDiscoveryOperation = operations['create-devices-shelly-ng-plugin-discovery'];
+export type DevicesShellyNgPluginGetDiscoveryOperation = operations['get-devices-shelly-ng-plugin-discovery'];
+export type DevicesShellyNgPluginCreateDiscoveryManualOperation = operations['create-devices-shelly-ng-plugin-discovery-manual'];
 
 // Devices Shelly V1 Plugin Operations
 export type DevicesShellyV1PluginGetSupportedOperation = operations['get-devices-shelly-v1-plugin-supported'];

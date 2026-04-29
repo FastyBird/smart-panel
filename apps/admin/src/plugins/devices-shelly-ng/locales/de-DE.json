@@ -10,6 +10,12 @@
       "notSupported": "Leider wird Ihr Gerät nicht unterstützt",
       "model": "Modell",
       "firmware": "Firmware"
+    },
+    "wizard": {
+      "discovery": "Discovery",
+      "categories": "Categories",
+      "results": "Results",
+      "status": "Status"
     }
   },
   "fields": {
@@ -108,16 +114,53 @@
       "edited": "Änderungen gespeichert! Das Shelly Next-Generation-Gerät: {device} wurde aktualisiert.",
       "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung des Shelly Next-Generation-Geräts war nicht erfolgreich.",
       "failedLoadSupportedDevices": "Etwas ist schiefgelaufen. Die unterstützten Geräte des Plugins konnten nicht geladen werden."
+    },
+    "wizard": {
+      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
     }
   },
   "texts": {
     "aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Shelly Next Generation Geräteintegration. Wenn aktiviert, können Shelly-Geräte über das Smart Panel erkannt und gesteuert werden.",
     "aboutMdns": "Konfigurieren Sie, wie das Plugin Shelly-Geräte in Ihrem lokalen Netzwerk über Multicast DNS (mDNS) erkennt. Dies ermöglicht die automatische Erkennung ohne manuelle Eingabe von IP-Adressen.",
-    "aboutWebsockets": "Verwalten Sie WebSocket-Verbindungsparameter für Shelly-Geräte. Diese Einstellungen steuern Kommunikationsstabilität, Anfrageverarbeitung und Wiederverbindungsverhalten."
+    "aboutWebsockets": "Verwalten Sie WebSocket-Verbindungsparameter für Shelly-Geräte. Diese Einstellungen steuern Kommunikationsstabilität, Anfrageverarbeitung und Wiederverbindungsverhalten.",
+    "wizard": {
+      "discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
+      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+      "scanStatus": "{count} devices found",
+      "noDevices": "No Shelly devices found"
+    }
   },
   "buttons": {
     "next": {
       "title": "Weiter"
+    },
+    "wizard": {
+      "restart": {
+        "title": "Scan again"
+      },
+      "addManual": {
+        "title": "Add"
+      },
+      "adopt": {
+        "title": "Adopt selected"
+      },
+      "finish": {
+        "title": "Back to devices"
+      }
+    }
+  },
+  "statuses": {
+    "wizard": {
+      "checking": "Checking",
+      "ready": "Ready",
+      "needs_password": "Needs password",
+      "already_registered": "Registered",
+      "unsupported": "Unsupported",
+      "failed": "Failed",
+      "created": "Created"
     }
   }
 }
