@@ -20,7 +20,7 @@ import { useRouter } from 'vue-router';
 
 import { EntityNotFound } from '../../../common';
 import { useSpacesPlugins } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SPACES_MODULE_NAME } from '../spaces.constants';
 
 const props = defineProps<{
 	type: string;
@@ -31,5 +31,11 @@ const router = useRouter();
 const { getByPluginType } = useSpacesPlugins();
 
 const plugin = computed(() => getByPluginType(props.type));
-const element = computed(() => plugin.value?.elements.find((el) => !!el.components?.spaceWizard));
+const element = computed(() =>
+	plugin.value?.elements.find(
+		(el) =>
+			(el.modules === undefined || el.modules.includes(SPACES_MODULE_NAME)) &&
+			!!el.components?.spaceWizard
+	)
+);
 </script>
