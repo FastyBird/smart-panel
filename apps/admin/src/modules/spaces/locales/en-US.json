@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Spaces",
 		"spaces": "Spaces",
-		"detail": "Space detail",
+		"detail": "Space: {space}",
 		"add": "Add space",
 		"edit": "Edit space",
 		"removeSpace": "Remove space",
@@ -48,7 +48,7 @@
 		"list": "Organize devices and displays by rooms or zones",
 		"adjustFilters": "Adjust display filters",
 		"add": "Add new space",
-		"detail": "Manage space: {space}",
+		"detail": "Manage smart panel space",
 		"onboarding": "Setup wizard for spaces, devices and displays"
 	},
 	"breadcrumbs": {

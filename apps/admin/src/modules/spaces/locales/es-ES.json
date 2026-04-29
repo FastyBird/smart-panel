@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Espacios",
 		"spaces": "Espacios",
-		"detail": "Detalle del espacio",
+		"detail": "Espacio: {space}",
 		"add": "Añadir espacio",
 		"edit": "Editar espacio",
 		"removeSpace": "Eliminar espacio",
@@ -48,7 +48,7 @@
 		"list": "Organiza dispositivos y pantallas por habitaciones o zonas",
 		"adjustFilters": "Ajustar filtros de visualización",
 		"add": "Añadir nuevo espacio",
-		"detail": "Gestionar espacio: {space}",
+		"detail": "Gestionar espacio del panel inteligente",
 		"onboarding": "Asistente de configuración para espacios, dispositivos y pantallas"
 	},
 	"breadcrumbs": {

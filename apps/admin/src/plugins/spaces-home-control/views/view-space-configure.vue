@@ -58,12 +58,12 @@
 		v-if="!isSpaceEditRoute || isLGDevice"
 		class="flex flex-col h-full min-h-0"
 	>
-		<space-detail :space="props.space" />
-
-		<space-parent-zone-section
-			v-if="props.space.type === SpaceType.ROOM"
-			:space="props.space"
-		/>
+		<space-detail :space="props.space">
+			<space-parent-zone-section
+				v-if="props.space.type === SpaceType.ROOM"
+				:space="props.space"
+			/>
+		</space-detail>
 
 		<el-tabs
 			v-model="activeTab"

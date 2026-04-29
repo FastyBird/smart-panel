@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Prostory",
 		"spaces": "Prostory",
-		"detail": "Detail prostoru",
+		"detail": "Prostor: {space}",
 		"add": "Přidat prostor",
 		"edit": "Upravit prostor",
 		"removeSpace": "Odebrat prostor",
@@ -48,7 +48,7 @@
 		"list": "Organizujte zařízení a displeje podle místností nebo zón",
 		"adjustFilters": "Upravit nastavení filtrů",
 		"add": "Přidat nový prostor",
-		"detail": "Správa prostoru: {space}",
+		"detail": "Správa prostoru Smart panelu",
 		"onboarding": "Průvodce nastavením prostorů, zařízení a displejů"
 	},
 	"breadcrumbs": {

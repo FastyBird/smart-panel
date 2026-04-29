@@ -117,28 +117,30 @@ vi.mock('../../../modules/spaces', async () => {
 vi.mock('../components/components', async () => {
 	const { defineComponent, h } = await import('vue');
 
-	const StubComponent = defineComponent({
-		props: {
-			space: { type: Object, required: false, default: null },
-			spaceId: { type: String, required: false, default: null },
-			spaceType: { type: String, required: false, default: null },
-			visible: { type: Boolean, required: false },
-		},
-		setup(_, { slots }) {
-			return () => h('div', slots.default?.());
-		},
-	});
+	const StubComponent = (name: string) =>
+		defineComponent({
+			name,
+			props: {
+				space: { type: Object, required: false, default: null },
+				spaceId: { type: String, required: false, default: null },
+				spaceType: { type: String, required: false, default: null },
+				visible: { type: Boolean, required: false },
+			},
+			setup(_, { slots }) {
+				return () => h('div', slots.default?.());
+			},
+		});
 
 	return {
-		SpaceAddDeviceDialog: StubComponent,
-		SpaceAddDisplayDialog: StubComponent,
-		SpaceAddSceneDialog: StubComponent,
-		SpaceDetail: StubComponent,
-		SpaceDevicesSection: StubComponent,
-		SpaceDisplaysSection: StubComponent,
-		SpaceDomainsSection: StubComponent,
-		SpaceParentZoneSection: StubComponent,
-		SpaceScenesSection: StubComponent,
+		SpaceAddDeviceDialog: StubComponent('SpaceAddDeviceDialog'),
+		SpaceAddDisplayDialog: StubComponent('SpaceAddDisplayDialog'),
+		SpaceAddSceneDialog: StubComponent('SpaceAddSceneDialog'),
+		SpaceDetail: StubComponent('SpaceDetail'),
+		SpaceDevicesSection: StubComponent('SpaceDevicesSection'),
+		SpaceDisplaysSection: StubComponent('SpaceDisplaysSection'),
+		SpaceDomainsSection: StubComponent('SpaceDomainsSection'),
+		SpaceParentZoneSection: StubComponent('SpaceParentZoneSection'),
+		SpaceScenesSection: StubComponent('SpaceScenesSection'),
 	};
 });
 
@@ -174,6 +176,7 @@ describe('ViewSpaceConfigure', () => {
 				},
 			},
 			global: {
+				renderStubDefaultSlot: true,
 				stubs: {
 					RouterView: true,
 					teleport: true,
@@ -204,6 +207,7 @@ describe('ViewSpaceConfigure', () => {
 				},
 			},
 			global: {
+				renderStubDefaultSlot: true,
 				stubs: {
 					RouterView: true,
 					teleport: true,
@@ -253,5 +257,38 @@ describe('ViewSpaceConfigure', () => {
 		});
 
 		expect(wrapper.find('[data-test-id="space-configure-edit-route"]').exists()).toBe(true);
+	});
+
+	it('renders the room floor selector inside the space detail rows', () => {
+		const wrapper = shallowMount(ViewSpaceConfigure, {
+			props: {
+				space: {
+					id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+					name: 'Living room',
+					category: null,
+					description: null,
+					type: SpaceType.ROOM,
+					icon: null,
+					displayOrder: 0,
+					parentId: null,
+					suggestionsEnabled: false,
+					statusWidgets: null,
+					createdAt: new Date(),
+					updatedAt: null,
+					draft: false,
+				},
+			},
+			global: {
+				renderStubDefaultSlot: true,
+				stubs: {
+					RouterView: true,
+					teleport: true,
+				},
+			},
+		});
+
+		const detail = wrapper.findComponent({ name: 'SpaceDetail' });
+
+		expect(detail.findComponent({ name: 'SpaceParentZoneSection' }).exists()).toBe(true);
 	});
 });

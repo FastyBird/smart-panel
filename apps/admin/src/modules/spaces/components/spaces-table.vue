@@ -142,7 +142,7 @@
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="170"
+			:width="200"
 		>
 			<template #default="scope">
 				<spaces-table-column-plugin
