@@ -74,7 +74,8 @@
 			"bulkEnable": "Włączyć urządzenia?",
 			"bulkDisable": "Wyłączyć urządzenia?",
 			"adjustFilters": "Filtruj urządzenia",
-			"selectPlugin": "Wymagana wtyczka urządzenia"
+			"selectPlugin": "Wymagana wtyczka urządzenia",
+			"selectWizardPlugin": "Wybierz kreator urządzeń"
 		},
 		"channels": {
 			"list": "Kanały",
@@ -214,6 +215,7 @@
 				"window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
 			},
 			"selectPlugin": "Aby utworzyć nowe urządzenie, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonego typu urządzenia.",
+			"noWizardForDevicePlugin": "Wtyczka urządzeń „{type}\" nie udostępnia kreatora konfiguracji.",
 			"noChannels": "To urządzenie nie ma jeszcze żadnych kanałów. Kanały definiują wejścia lub wyjścia urządzenia. Utwórz nowy kanał, aby rozpocząć interakcję z tym urządzeniem.",
 			"category": "Kategoria",
 			"channelsCount": "Brak skonfigurowanych kanałów | Jeden skonfigurowany kanał | {count} skonfigurowanych kanałów",
@@ -611,6 +613,9 @@
 	"buttons": {
 		"add": {
 			"title": "Dodaj"
+		},
+		"wizard": {
+			"title": "Kreator"
 		},
 		"edit": {
 			"title": "Edytuj"

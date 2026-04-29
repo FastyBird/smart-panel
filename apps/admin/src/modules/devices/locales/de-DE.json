@@ -74,7 +74,8 @@
       "bulkEnable": "Geräte aktivieren?",
       "bulkDisable": "Geräte deaktivieren?",
       "adjustFilters": "Geräte filtern",
-      "selectPlugin": "Geräte-Plugin erforderlich"
+      "selectPlugin": "Geräte-Plugin erforderlich",
+      "selectWizardPlugin": "Geräteassistent auswählen"
     },
     "channels": {
       "list": "Kanäle",
@@ -214,6 +215,7 @@
         "window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
       },
       "selectPlugin": "Um ein neues Gerät zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Gerätetypen.",
+      "noWizardForDevicePlugin": "Das Geräte-Plugin „{type}\" stellt keinen Einrichtungsassistenten bereit.",
       "noChannels": "Dieses Gerät hat noch keine Kanäle. Kanäle definieren die Ein- oder Ausgänge eines Geräts. Erstellen Sie einen neuen Kanal, um mit diesem Gerät zu interagieren.",
       "category": "Kategorie",
       "channelsCount": "Keine Kanäle konfiguriert | Ein Kanal konfiguriert | {count} Kanäle konfiguriert",
@@ -611,6 +613,9 @@
   "buttons": {
     "add": {
       "title": "Hinzufügen"
+    },
+    "wizard": {
+      "title": "Assistent"
     },
     "edit": {
       "title": "Bearbeiten"
