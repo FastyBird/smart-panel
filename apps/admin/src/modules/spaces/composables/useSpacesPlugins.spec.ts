@@ -60,6 +60,28 @@ const mockPluginList = [
 		modules: [SPACES_MODULE_NAME],
 	},
 	{
+		type: 'space-type-plugin',
+		source: 'source4',
+		name: 'Space Type Plugin',
+		description: 'Space type plugin description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		elements: [
+			{
+				type: 'space-type',
+				name: 'Space Type',
+				components: {
+					spaceAddForm: {},
+				},
+			},
+		],
+		isCore: false,
+		modules: [SPACES_MODULE_NAME],
+	},
+	{
 		type: 'unrelated-plugin',
 		source: 'source2',
 		name: 'Unrelated Plugin',
@@ -123,6 +145,18 @@ describe('useSpacesPlugins', () => {
 				value: 'wizard-plugin',
 				label: 'Wizard Plugin',
 				description: 'Wizard plugin description',
+				disabled: false,
+			},
+		]);
+	});
+
+	it('excludes wizard-only elements from regular space type options', () => {
+		const { options } = useSpacesPlugins();
+
+		expect(options.value).toEqual([
+			{
+				value: 'space-type',
+				label: 'Space Type',
 				disabled: false,
 			},
 		]);

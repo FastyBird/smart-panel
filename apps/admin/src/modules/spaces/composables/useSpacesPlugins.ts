@@ -17,6 +17,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 	const { t, te } = useI18n();
 
 	const pluginComponents: (keyof ISpacePluginsComponents)[] = ['spaceDetail', 'spaceAddForm', 'spaceEditForm', 'spaceWizard'];
+	const typeOptionComponents: (keyof ISpacePluginsComponents)[] = ['spaceDetail', 'spaceAddForm', 'spaceEditForm'];
 
 	const pluginSchemas: (keyof ISpacePluginsSchemas)[] = [
 		'spaceSchema',
@@ -78,6 +79,12 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 			const flat: { value: IPluginElement['type']; label: string; disabled: boolean }[] = plugins.value.flatMap((plugin) => {
 				return (plugin.elements ?? [])
 					.filter((el) => el.modules === undefined || el.modules.includes(SPACES_MODULE_NAME))
+					.filter((el) => {
+						const hasTypeComponent = !!el.components && typeOptionComponents.some((key) => el.components && key in el.components);
+						const hasTypeSchema = !!el.schemas && pluginSchemas.some((key) => el.schemas && key in el.schemas);
+
+						return hasTypeComponent || hasTypeSchema;
+					})
 					.map((el) => ({
 						value: el.type,
 						label: el.name?.trim() ? resolveLabel(el.name) : resolveLabel(plugin.name),
