@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Bereiche",
 		"spaces": "Bereiche",
-		"detail": "Bereichsdetails",
+		"detail": "Bereich: {space}",
 		"add": "Bereich hinzufügen",
 		"edit": "Bereich bearbeiten",
 		"removeSpace": "Bereich entfernen",
@@ -48,7 +48,7 @@
 		"list": "Geräte und Displays nach Räumen oder Zonen organisieren",
 		"adjustFilters": "Anzeigefilter anpassen",
 		"add": "Neuen Bereich hinzufügen",
-		"detail": "Bereich verwalten: {space}",
+		"detail": "Smart Panel Bereich verwalten",
 		"onboarding": "Einrichtungsassistent für Bereiche, Geräte und Displays"
 	},
 	"breadcrumbs": {

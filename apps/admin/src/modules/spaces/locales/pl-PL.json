@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Przestrzenie",
 		"spaces": "Przestrzenie",
-		"detail": "Szczegoly przestrzeni",
+		"detail": "Przestrzen: {space}",
 		"add": "Dodaj przestrzen",
 		"edit": "Edytuj przestrzen",
 		"removeSpace": "Usun przestrzen",
@@ -48,7 +48,7 @@
 		"list": "Organizuj urzadzenia i wyswietlacze wedlug pokoi lub stref",
 		"adjustFilters": "Dostosuj filtry wyswietlania",
 		"add": "Dodaj nowa przestrzen",
-		"detail": "Zarzadzaj przestrzenia: {space}",
+		"detail": "Zarzadzaj przestrzenia smart panelu",
 		"onboarding": "Kreator konfiguracji przestrzeni, urzadzen i wyswietlaczy"
 	},
 	"breadcrumbs": {

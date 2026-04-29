@@ -1,5 +1,6 @@
 <template>
 	<el-card
+		shadow="never"
 		class="mt-2"
 		body-class="p-0!"
 	>
@@ -57,6 +58,8 @@
 					{{ space.icon }}
 				</el-text>
 			</dd>
+
+			<slot />
 		</dl>
 	</el-card>
 </template>

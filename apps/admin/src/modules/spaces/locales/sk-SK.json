@@ -7,7 +7,7 @@
 	"headings": {
 		"list": "Priestory",
 		"spaces": "Priestory",
-		"detail": "Detail priestoru",
+		"detail": "Priestor: {space}",
 		"add": "Pridať priestor",
 		"edit": "Upraviť priestor",
 		"removeSpace": "Odstrániť priestor",
@@ -48,7 +48,7 @@
 		"list": "Organizujte zariadenia a displeje podľa miestností alebo zón",
 		"adjustFilters": "Upraviť filtre zobrazenia",
 		"add": "Pridať nový priestor",
-		"detail": "Spravovať priestor: {space}",
+		"detail": "Spravovať priestor smart panelu",
 		"onboarding": "Sprievodca nastavením pre priestory, zariadenia a displeje"
 	},
 	"breadcrumbs": {
