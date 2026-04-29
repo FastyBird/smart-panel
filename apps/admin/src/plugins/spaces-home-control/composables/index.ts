@@ -7,4 +7,4 @@ export * from './useSpaceScenes';
 export * from './useSpaceSensorState';
 export * from './useSpaceSuggestion';
 export * from './useSpaceUndo';
-export * from './useSpacesOnboarding';
+export * from './useSpacesWizard';

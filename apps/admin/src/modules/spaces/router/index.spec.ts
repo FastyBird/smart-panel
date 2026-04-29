@@ -20,7 +20,7 @@ vi.mock('../spaces.constants', () => ({
 		SPACE: 'space',
 		SPACE_EDIT: 'space-edit',
 		SPACE_PLUGIN: 'space-plugin',
-		SPACES_ONBOARDING: 'spaces-onboarding',
+		SPACES_WIZARD: 'spaces-wizard',
 	},
 }));
 
@@ -35,9 +35,9 @@ describe('spaces module routes', () => {
 
 	it('requires a plugin type for the spaces wizard route', () => {
 		const spacesRoute = ModuleRoutes.find((route) => route.name === RouteNames.SPACES);
-		const onboardingRoute = spacesRoute?.children?.find((route) => route.name === RouteNames.SPACES_ONBOARDING);
+		const wizardRoute = spacesRoute?.children?.find((route) => route.name === RouteNames.SPACES_WIZARD);
 
-		expect(onboardingRoute?.path).toBe('wizard/:type');
-		expect(onboardingRoute?.props).toBe(true);
+		expect(wizardRoute?.path).toBe('wizard/:type');
+		expect(wizardRoute?.props).toBe(true);
 	});
 });

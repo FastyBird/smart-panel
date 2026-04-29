@@ -47,4 +47,4 @@ export { default as SpaceMediaActivitiesSummary } from './space-media-activities
 export { default as SpaceMediaActivitiesDialog } from './space-media-activities-dialog.vue';
 
 // Setup wizard
-export { default as SpacesWizard } from '../views/view-spaces-onboarding.vue';
+export { default as SpacesWizard } from '../views/view-spaces-wizard.vue';

@@ -49,7 +49,7 @@
 		"adjustFilters": "Anzeigefilter anpassen",
 		"add": "Neuen Bereich hinzufügen",
 		"detail": "Smart Panel Bereich verwalten",
-		"onboarding": "Einrichtungsassistent für Bereiche, Geräte und Displays"
+		"wizard": "Einrichtungsassistent für Bereiche, Geräte und Displays"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "Bereich: {space}",
 			"edit": "Bereich bearbeiten",
 			"add": "Bereich hinzufügen",
-			"onboarding": "Einrichtungsassistent"
+			"wizard": "Einrichtungsassistent"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Bereich: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Einrichtungsassistent für Bereiche"
 			}
 		}
@@ -284,7 +284,7 @@
 		"finish": {
 			"title": "Abschließen"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Einrichtungsassistent"
 		},
 		"viewAll": {
@@ -375,7 +375,7 @@
 			"zone": "Zone"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Einrichtungsassistent für Bereiche",
 		"devices": "Geräte",
 		"displays": "Displays",

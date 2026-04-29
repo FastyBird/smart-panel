@@ -137,7 +137,7 @@
 
 		<el-select
 			v-model="selectedTargetSpace"
-			:placeholder="t('spacesModule.onboarding.selectSpace')"
+			:placeholder="t('spacesModule.wizard.selectSpace')"
 			clearable
 			class="w-full"
 		>

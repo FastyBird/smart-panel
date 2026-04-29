@@ -120,7 +120,7 @@ vi.mock('../spaces.constants', () => ({
 		SPACES: 'spaces',
 		SPACES_ADD: 'spaces-add',
 		SPACES_EDIT: 'spaces-edit',
-		SPACES_ONBOARDING: 'spaces-wizard',
+		SPACES_WIZARD: 'spaces-wizard',
 	},
 }));
 
@@ -176,7 +176,7 @@ describe('ViewSpaces', () => {
 
 		const wrapper = mountView();
 
-		await wrapper.findAll('button').find((button) => button.text().includes('spacesModule.buttons.onboarding.title'))?.trigger('click');
+		await wrapper.findAll('button').find((button) => button.text().includes('spacesModule.buttons.wizard.title'))?.trigger('click');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({
 			name: 'spaces-wizard',

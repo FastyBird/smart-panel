@@ -38,7 +38,7 @@ export const RouteNames = {
 	SPACE: 'spaces_module-space',
 	SPACE_EDIT: 'spaces_module-space_edit',
 	SPACE_PLUGIN: 'spaces_module-space_plugin',
-	SPACES_ONBOARDING: 'spaces_module-onboarding',
+	SPACES_WIZARD: 'spaces_module-wizard',
 };
 
 export enum SpaceType {
@@ -425,7 +425,7 @@ export function getTemplatesForType(type: SpaceType): Record<string, Omit<SpaceC
 	}
 	// Synthetic singletons (master, entry) and plugin-contributed types
 	// (signage_info_panel, etc.) don't accept categories — return no templates
-	// so UI onboarding pickers don't surface invalid options. Mirrors
+	// so UI wizard pickers don't surface invalid options. Mirrors
 	// `getCategoriesForType` / `isValidCategoryForType`.
 	return {};
 }

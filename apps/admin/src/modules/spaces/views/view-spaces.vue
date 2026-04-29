@@ -1,11 +1,11 @@
 <template>
 	<app-breadcrumbs
-		v-if="!isOnboardingRoute"
+		v-if="!isWizardRoute"
 		:items="breadcrumbs"
 	/>
 
 	<app-bar-heading
-		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
 		teleport
 	>
 		<template #icon>
@@ -25,7 +25,7 @@
 	</app-bar-heading>
 
 	<app-bar-button
-		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
 		:align="AppBarButtonAlign.LEFT"
 		teleport
 		small
@@ -41,7 +41,7 @@
 	</app-bar-button>
 
 	<view-header
-		v-if="!isOnboardingRoute"
+		v-if="!isWizardRoute"
 		:heading="t('spacesModule.headings.list')"
 		:sub-heading="t('spacesModule.subHeadings.list')"
 		icon="mdi:home-group"
@@ -51,10 +51,10 @@
 				<el-button
 					v-if="wizardOptions.length > 0"
 					class="px-4!"
-					@click="onOnboarding"
+					@click="onWizard"
 				>
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
-					{{ t('spacesModule.buttons.onboarding.title') }}
+					{{ t('spacesModule.buttons.wizard.title') }}
 				</el-button>
 				<el-button
 					type="primary"
@@ -73,7 +73,7 @@
 	</view-header>
 
 	<div
-		v-if="(isSpacesListRoute || isLGDevice) && !isOnboardingRoute"
+		v-if="(isSpacesListRoute || isLGDevice) && !isWizardRoute"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-spaces
@@ -97,7 +97,7 @@
 	</div>
 
 	<router-view
-		v-if="isOnboardingRoute || (!isSpacesListRoute && !isLGDevice)"
+		v-if="isWizardRoute || (!isSpacesListRoute && !isLGDevice)"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -170,7 +170,7 @@
 				class="spaces-wizard-plugin-card"
 				:class="{ 'spaces-wizard-plugin-card--disabled': item.disabled }"
 				body-class="p-4!"
-				@click="!item.disabled && onStartOnboarding(item.value)"
+				@click="!item.disabled && onStartWizard(item.value)"
 			>
 				<div class="flex items-start gap-3">
 					<div class="spaces-wizard-plugin-card__icon">
@@ -268,8 +268,8 @@ const isSpacesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES;
 });
 
-const isOnboardingRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.SPACES_ONBOARDING;
+const isWizardRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.SPACES_WIZARD;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -379,22 +379,22 @@ const onAdjustList = (): void => {
 	adjustList.value = true;
 };
 
-const onOnboarding = (): void => {
+const onWizard = (): void => {
 	const enabledWizardOptions = wizardOptions.value.filter((item) => !item.disabled);
 
 	if (enabledWizardOptions.length === 1 && enabledWizardOptions[0]) {
-		onStartOnboarding(enabledWizardOptions[0].value);
+		onStartWizard(enabledWizardOptions[0].value);
 		return;
 	}
 
 	wizardPluginDialogVisible.value = true;
 };
 
-const onStartOnboarding = (type: string): void => {
+const onStartWizard = (type: string): void => {
 	wizardPluginDialogVisible.value = false;
 
 	router.push({
-		name: RouteNames.SPACES_ONBOARDING,
+		name: RouteNames.SPACES_WIZARD,
 		params: {
 			type,
 		},

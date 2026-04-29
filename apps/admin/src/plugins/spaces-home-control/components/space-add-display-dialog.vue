@@ -70,7 +70,7 @@
 				</div>
 			</template>
 
-			<el-table-column :label="t('spacesModule.onboarding.displayName')" min-width="200">
+			<el-table-column :label="t('spacesModule.wizard.displayName')" min-width="200">
 				<template #default="{ row }">
 					<div class="flex items-center gap-2">
 						<el-avatar :size="32">
@@ -95,7 +95,7 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="150">
+			<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="150">
 				<template #default="{ row }">
 					<el-tag v-if="row.spaceId" size="small" type="warning">
 						{{ getSpaceName(row.spaceId) }}

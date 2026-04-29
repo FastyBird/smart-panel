@@ -11,11 +11,11 @@
 		</template>
 
 		<template #title>
-			{{ t('spacesModule.onboarding.title') }}
+			{{ t('spacesModule.wizard.title') }}
 		</template>
 
 		<template #subtitle>
-			{{ t('spacesModule.subHeadings.onboarding') }}
+			{{ t('spacesModule.subHeadings.wizard') }}
 		</template>
 	</app-bar-heading>
 
@@ -36,8 +36,8 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		:heading="t('spacesModule.onboarding.title')"
-		:sub-heading="t('spacesModule.subHeadings.onboarding')"
+		:heading="t('spacesModule.wizard.title')"
+		:sub-heading="t('spacesModule.subHeadings.wizard')"
 		icon="mdi:wizard-hat"
 	>
 		<template
@@ -51,7 +51,7 @@
 					class="px-4!"
 					@click="showAdvancedZones = !showAdvancedZones"
 				>
-					{{ showAdvancedZones ? t('spacesModule.onboarding.basic') : t('spacesModule.onboarding.advanced') }}
+					{{ showAdvancedZones ? t('spacesModule.wizard.basic') : t('spacesModule.wizard.advanced') }}
 				</el-button>
 				<el-button
 					link
@@ -102,10 +102,10 @@
 					finish-status="success"
 					align-center
 				>
-					<el-step :title="t('spacesModule.onboarding.steps.spaces.title')" />
-					<el-step :title="t('spacesModule.onboarding.steps.displays.title')" />
-					<el-step :title="t('spacesModule.onboarding.steps.devices.title')" />
-					<el-step :title="t('spacesModule.onboarding.steps.summary.title')" />
+					<el-step :title="t('spacesModule.wizard.steps.spaces.title')" />
+					<el-step :title="t('spacesModule.wizard.steps.displays.title')" />
+					<el-step :title="t('spacesModule.wizard.steps.devices.title')" />
+					<el-step :title="t('spacesModule.wizard.steps.summary.title')" />
 				</el-steps>
 			</template>
 
@@ -118,8 +118,8 @@
 				<template v-if="currentStep === 0">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.spaces.alertTitle')"
-						:description="t('spacesModule.onboarding.steps.spaces.alertDescription')"
+						:title="t('spacesModule.wizard.steps.spaces.alertTitle')"
+						:description="t('spacesModule.wizard.steps.spaces.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -128,7 +128,7 @@
 					<el-scrollbar class="flex-1 overflow-hidden h-full">
 						<template v-if="proposedSpaces.length > 0">
 							<h4 class="my-2 font-medium">
-								{{ t('spacesModule.onboarding.steps.spaces.proposed') }}
+								{{ t('spacesModule.wizard.steps.spaces.proposed') }}
 							</h4>
 
 							<div
@@ -160,7 +160,7 @@
 										@blur="handleConfirmProposedNameEdit(index)"
 									/>
 								</div>
-								<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
+								<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.wizard.devices') }}</el-tag>
 								<el-select
 									v-model="space.type"
 									size="small"
@@ -234,7 +234,7 @@
 						<el-alert
 							v-else-if="matchedSpaces.length === 0"
 							type="info"
-							:title="t('spacesModule.onboarding.steps.spaces.noProposals')"
+							:title="t('spacesModule.wizard.steps.spaces.noProposals')"
 							:closable="false"
 							show-icon
 							class="!mb-4"
@@ -243,7 +243,7 @@
 						<!-- Matched existing spaces (proposals that match existing spaces) -->
 						<template v-if="aggregatedMatchedSpaces.length > 0">
 							<h4 class="my-2 font-medium">
-								{{ t('spacesModule.onboarding.steps.spaces.matchedExisting') }}
+								{{ t('spacesModule.wizard.steps.spaces.matchedExisting') }}
 							</h4>
 
 							<div
@@ -259,23 +259,23 @@
 									<template v-if="aggregated.matchCount === 1">
 										{{ aggregated.proposedNames[0] }}
 										<span class="text-gray-500 text-sm ml-2">
-											→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: aggregated.existingSpace.name }) }}
+											→ {{ t('spacesModule.wizard.steps.spaces.matchedWith', { name: aggregated.existingSpace.name }) }}
 										</span>
 									</template>
 									<template v-else>
 										<span class="text-gray-600">
-											{{ t('spacesModule.onboarding.steps.spaces.multipleMatchedWith', { count: aggregated.matchCount, name: aggregated.existingSpace.name }) }}
+											{{ t('spacesModule.wizard.steps.spaces.multipleMatchedWith', { count: aggregated.matchCount, name: aggregated.existingSpace.name }) }}
 										</span>
 									</template>
 								</span>
-								<el-tag size="small" type="info">{{ aggregated.totalDeviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
-								<el-tag size="small" type="success">{{ t('spacesModule.onboarding.steps.spaces.existingTag') }}</el-tag>
+								<el-tag size="small" type="info">{{ aggregated.totalDeviceCount }} {{ t('spacesModule.wizard.devices') }}</el-tag>
+								<el-tag size="small" type="success">{{ t('spacesModule.wizard.steps.spaces.existingTag') }}</el-tag>
 							</div>
 						</template>
 
 						<template v-if="unmatchedExistingSpaces.length > 0">
 							<h4 class="my-2 font-medium">
-								{{ t('spacesModule.onboarding.steps.spaces.existing') }}
+								{{ t('spacesModule.wizard.steps.spaces.existing') }}
 							</h4>
 
 							<div class="flex flex-wrap gap-2">
@@ -287,7 +287,7 @@
 
 						<template v-if="customSpaces.length > 0">
 							<h4 class="my-2 font-medium">
-								{{ t('spacesModule.onboarding.steps.spaces.custom') }}
+								{{ t('spacesModule.wizard.steps.spaces.custom') }}
 							</h4>
 
 							<div
@@ -390,10 +390,10 @@
 						</template>
 
 						<h4 class="my-2 font-medium">
-							{{ t('spacesModule.onboarding.steps.spaces.addManual') }}
+							{{ t('spacesModule.wizard.steps.spaces.addManual') }}
 						</h4>
 						<div class="flex items-center gap-3 p-2">
-							<el-input v-model="newSpaceName" :placeholder="t('spacesModule.onboarding.steps.spaces.placeholder')" />
+							<el-input v-model="newSpaceName" :placeholder="t('spacesModule.wizard.steps.spaces.placeholder')" />
 							<el-button type="primary" :disabled="!newSpaceName.trim()" @click="handleAddSpace">
 								{{ t('spacesModule.buttons.add.title') }}
 							</el-button>
@@ -405,8 +405,8 @@
 				<template v-if="currentStep === 1">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.displays.alertTitle')"
-						:description="t('spacesModule.onboarding.steps.displays.alertDescription')"
+						:title="t('spacesModule.wizard.steps.displays.alertTitle')"
+						:description="t('spacesModule.wizard.steps.displays.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -428,13 +428,13 @@
 									</template>
 
 									<template #title>
-										{{ t('spacesModule.onboarding.steps.displays.noDisplays') }}
+										{{ t('spacesModule.wizard.steps.displays.noDisplays') }}
 									</template>
 								</el-result>
 							</div>
 						</template>
 
-						<el-table-column prop="name" :label="t('spacesModule.onboarding.displayName')" min-width="200">
+						<el-table-column prop="name" :label="t('spacesModule.wizard.displayName')" min-width="200">
 							<template #default="{ row }">
 								<div>
 									<template v-if="row.name">
@@ -450,11 +450,11 @@
 							</template>
 						</el-table-column>
 
-						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="250">
+						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="250">
 							<template #default="{ row }">
 								<el-select
 									:model-value="displayAssignments[row.id]"
-									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									:placeholder="t('spacesModule.wizard.selectSpace')"
 									clearable
 									class="w-full"
 									@update:model-value="(val: string | null) => setDisplayAssignment(row.id, val)"
@@ -480,8 +480,8 @@
 				<template v-if="currentStep === 2">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.devices.alertTitle')"
-						:description="t('spacesModule.onboarding.steps.devices.alertDescription')"
+						:title="t('spacesModule.wizard.steps.devices.alertTitle')"
+						:description="t('spacesModule.wizard.steps.devices.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -503,13 +503,13 @@
 									</template>
 
 									<template #title>
-										{{ t('spacesModule.onboarding.steps.devices.noDevices') }}
+										{{ t('spacesModule.wizard.steps.devices.noDevices') }}
 									</template>
 								</el-result>
 							</div>
 						</template>
 
-						<el-table-column prop="name" :label="t('spacesModule.onboarding.deviceName')" min-width="200">
+						<el-table-column prop="name" :label="t('spacesModule.wizard.deviceName')" min-width="200">
 							<template #default="{ row }">
 								<div>
 									<div>{{ row.name }}</div>
@@ -520,11 +520,11 @@
 							</template>
 						</el-table-column>
 
-						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="250">
+						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="250">
 							<template #default="{ row }">
 								<el-select
 									:model-value="deviceAssignments[row.id]"
-									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									:placeholder="t('spacesModule.wizard.selectSpace')"
 									clearable
 									class="w-full"
 									@update:model-value="(val: string | null) => setDeviceAssignment(row.id, val)"
@@ -547,7 +547,7 @@
 						<!-- Optional zones column (advanced mode) -->
 						<el-table-column
 							v-if="showAdvancedZones && assignableZones.length > 0"
-							:label="t('spacesModule.onboarding.zones')"
+							:label="t('spacesModule.wizard.zones')"
 							width="250"
 						>
 							<template #default="{ row }">
@@ -556,7 +556,7 @@
 									multiple
 									clearable
 									collapse-tags
-									:placeholder="t('spacesModule.onboarding.selectZones')"
+									:placeholder="t('spacesModule.wizard.selectZones')"
 									class="w-full"
 									@update:model-value="(val: string[]) => setDeviceZones(row.id, val)"
 								>
@@ -576,8 +576,8 @@
 				<template v-if="currentStep === 3">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.summary.alertTitle')"
-						:description="t('spacesModule.onboarding.steps.summary.alertDescription')"
+						:title="t('spacesModule.wizard.steps.summary.alertTitle')"
+						:description="t('spacesModule.wizard.steps.summary.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -586,14 +586,14 @@
 					<div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center my-4 shrink-0">
 						<div>
 							<div class="text-2xl font-bold text-blue-600">{{ summary.spaceCount }}</div>
-							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.totalSpaces') }}</div>
+							<div class="text-sm text-gray-500">{{ t('spacesModule.wizard.summary.totalSpaces') }}</div>
 						</div>
 						<div>
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDevices }}</div>
-							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDevices') }}</div>
+							<div class="text-sm text-gray-500">{{ t('spacesModule.wizard.summary.assignedDevices') }}</div>
 						</div>
 						<el-tooltip
-							:content="t('spacesModule.onboarding.summary.clickToAssignDevices')"
+							:content="t('spacesModule.wizard.summary.clickToAssignDevices')"
 							placement="top"
 							:disabled="summary.unassignedDevices === 0"
 						>
@@ -602,15 +602,15 @@
 								@click="summary.unassignedDevices > 0 && (showUnassignedDevicesDialog = true)"
 							>
 								<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDevices }}</div>
-								<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDevices') }}</div>
+								<div class="text-sm text-gray-500">{{ t('spacesModule.wizard.summary.unassignedDevices') }}</div>
 							</div>
 						</el-tooltip>
 						<div>
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDisplays }}</div>
-							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDisplays') }}</div>
+							<div class="text-sm text-gray-500">{{ t('spacesModule.wizard.summary.assignedDisplays') }}</div>
 						</div>
 						<el-tooltip
-							:content="t('spacesModule.onboarding.summary.clickToAssignDisplays')"
+							:content="t('spacesModule.wizard.summary.clickToAssignDisplays')"
 							placement="top"
 							:disabled="summary.unassignedDisplays === 0"
 						>
@@ -619,18 +619,18 @@
 								@click="summary.unassignedDisplays > 0 && (showUnassignedDisplaysDialog = true)"
 							>
 								<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDisplays }}</div>
-								<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDisplays') }}</div>
+								<div class="text-sm text-gray-500">{{ t('spacesModule.wizard.summary.unassignedDisplays') }}</div>
 							</div>
 						</el-tooltip>
 					</div>
 
 					<template v-if="allSpaces.length > 0">
 						<h4 class="mb-2 font-medium">
-							{{ t('spacesModule.onboarding.summary.bySpace') }}
+							{{ t('spacesModule.wizard.summary.bySpace') }}
 						</h4>
 
 						<el-table :data="spaceSummaryData" class="h-full w-full flex-grow" table-layout="fixed">
-							<el-table-column prop="name" :label="t('spacesModule.onboarding.spaceName')">
+							<el-table-column prop="name" :label="t('spacesModule.wizard.spaceName')">
 								<template #default="{ row }">
 									<div class="flex items-center gap-2">
 										<icon :icon="getSpaceIcon(row)" class="w-4 h-4" />
@@ -648,13 +648,13 @@
 											type="warning"
 											class="ml-1"
 										>
-											{{ t('spacesModule.onboarding.summary.noDevices') }}
+											{{ t('spacesModule.wizard.summary.noDevices') }}
 										</el-tag>
 									</div>
 								</template>
 							</el-table-column>
-							<el-table-column prop="devices" :label="t('spacesModule.onboarding.devices')" width="120" align="center" />
-							<el-table-column prop="displays" :label="t('spacesModule.onboarding.displays')" width="120" align="center" />
+							<el-table-column prop="devices" :label="t('spacesModule.wizard.devices')" width="120" align="center" />
+							<el-table-column prop="displays" :label="t('spacesModule.wizard.displays')" width="120" align="center" />
 						</el-table>
 					</template>
 				</template>
@@ -662,15 +662,15 @@
 				<!-- Unassigned Devices Dialog -->
 				<el-dialog
 					v-model="showUnassignedDevicesDialog"
-					:title="t('spacesModule.onboarding.summary.unassignedDevicesTitle')"
+					:title="t('spacesModule.wizard.summary.unassignedDevicesTitle')"
 				>
 					<el-table :data="unassignedDevicesList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
-						<el-table-column prop="name" :label="t('spacesModule.onboarding.deviceName')" />
-						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
+						<el-table-column prop="name" :label="t('spacesModule.wizard.deviceName')" />
+						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="200">
 							<template #default="{ row }">
 								<el-select
 									:model-value="deviceAssignments[row.id]"
-									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									:placeholder="t('spacesModule.wizard.selectSpace')"
 									clearable
 									class="w-full"
 									@update:model-value="(val: string | null) => setDeviceAssignment(row.id, val)"
@@ -695,10 +695,10 @@
 				<!-- Unassigned Displays Dialog -->
 				<el-dialog
 					v-model="showUnassignedDisplaysDialog"
-					:title="t('spacesModule.onboarding.summary.unassignedDisplaysTitle')"
+					:title="t('spacesModule.wizard.summary.unassignedDisplaysTitle')"
 				>
 					<el-table :data="unassignedDisplaysList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
-						<el-table-column :label="t('spacesModule.onboarding.displayName')">
+						<el-table-column :label="t('spacesModule.wizard.displayName')">
 							<template #default="{ row }">
 								<template v-if="row.name">
 									<div class="font-medium">{{ row.name }}</div>
@@ -709,11 +709,11 @@
 								</template>
 							</template>
 						</el-table-column>
-						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
+						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="200">
 							<template #default="{ row }">
 								<el-select
 									:model-value="displayAssignments[row.id]"
-									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									:placeholder="t('spacesModule.wizard.selectSpace')"
 									clearable
 									class="w-full"
 									@update:model-value="(val: string | null) => setDisplayAssignment(row.id, val)"
@@ -754,7 +754,7 @@
 						:type="showAdvancedZones ? 'primary' : 'default'"
 						@click="showAdvancedZones = !showAdvancedZones"
 					>
-						{{ showAdvancedZones ? t('spacesModule.onboarding.basic') : t('spacesModule.onboarding.advanced') }}
+						{{ showAdvancedZones ? t('spacesModule.wizard.basic') : t('spacesModule.wizard.advanced') }}
 					</el-button>
 					<el-button v-if="currentStep < 3" type="primary" @click="handleNext">
 						{{ t('spacesModule.buttons.next.title') }}
@@ -816,7 +816,7 @@ import {
 	type SpaceZoneCategory,
 } from '../../../modules/spaces/spaces.constants';
 
-import { useSpacesOnboarding, type DeviceInfo, type DisplayInfo } from '../composables';
+import { useSpacesWizard, type DeviceInfo, type DisplayInfo } from '../composables';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -826,7 +826,7 @@ const flashMessage = useFlashMessage();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 useMeta({
-	title: t('spacesModule.meta.spaces.onboarding.title'),
+	title: t('spacesModule.meta.spaces.wizard.title'),
 });
 
 const {
@@ -868,7 +868,7 @@ const {
 	initializeDeviceAssignments,
 	initializeDisplayAssignments,
 	summary,
-} = useSpacesOnboarding();
+} = useSpacesWizard();
 
 const newSpaceName = ref('');
 // Use shallowRef for arrays that are replaced entirely, not mutated
@@ -927,9 +927,9 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				route: router.resolve({ name: RouteNames.SPACES }),
 			},
 			{
-				label: t('spacesModule.breadcrumbs.spaces.onboarding'),
+				label: t('spacesModule.breadcrumbs.spaces.wizard'),
 				route: router.resolve({
-					name: RouteNames.SPACES_ONBOARDING,
+					name: RouteNames.SPACES_WIZARD,
 					params: {
 						type: route.params.type as string,
 					},
@@ -1043,7 +1043,7 @@ const handleAddSpace = (): void => {
 			newSpaceName.value = '';
 		} else {
 			flashMessage.warning(
-				t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+				t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
 			);
 		}
 	}
@@ -1052,10 +1052,10 @@ const handleAddSpace = (): void => {
 const handleConfirmProposedNameEdit = (index: number): void => {
 	const result = confirmProposedNameEdit(index);
 	if (result.convertedToMatch) {
-		flashMessage.info(t('spacesModule.onboarding.steps.spaces.convertedToMatch'));
+		flashMessage.info(t('spacesModule.wizard.steps.spaces.convertedToMatch'));
 	} else if (result.duplicateOf) {
 		flashMessage.warning(
-			t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+			t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
 		);
 	}
 };
@@ -1063,10 +1063,10 @@ const handleConfirmProposedNameEdit = (index: number): void => {
 const handleConfirmCustomNameEdit = (index: number): void => {
 	const result = confirmCustomNameEdit(index);
 	if (result.convertedToMatch) {
-		flashMessage.info(t('spacesModule.onboarding.steps.spaces.convertedToMatch'));
+		flashMessage.info(t('spacesModule.wizard.steps.spaces.convertedToMatch'));
 	} else if (result.duplicateOf) {
 		flashMessage.warning(
-			t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+			t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
 		);
 	}
 };
@@ -1150,7 +1150,7 @@ const handleFinish = async (): Promise<void> => {
 		const result = await applyAssignments();
 
 		flashMessage.success(
-			t('spacesModule.onboarding.messages.completed', {
+			t('spacesModule.wizard.messages.completed', {
 				devices: result.devicesAssigned,
 				displays: result.displaysAssigned,
 				zones: result.zonesAssigned,

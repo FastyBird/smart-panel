@@ -96,7 +96,7 @@ const spaceCategoryToApiCategory = (category: SpaceRoomCategory | SpaceZoneCateg
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
 
-export const useSpacesOnboarding = () => {
+export const useSpacesWizard = () => {
 	const backendClient = injectBackendClient();
 	const { generate: uuid } = useUuid();
 

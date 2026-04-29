@@ -49,7 +49,7 @@
 		"adjustFilters": "Adjust display filters",
 		"add": "Add new space",
 		"detail": "Manage smart panel space",
-		"onboarding": "Setup wizard for spaces, devices and displays"
+		"wizard": "Setup wizard for spaces, devices and displays"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "space: {space}",
 			"edit": "edit space",
 			"add": "add space",
-			"onboarding": "setup wizard"
+			"wizard": "setup wizard"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Space: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Spaces setup wizard"
 			}
 		}
@@ -284,7 +284,7 @@
 		"finish": {
 			"title": "Finish"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Setup wizard"
 		},
 		"viewAll": {
@@ -375,7 +375,7 @@
 			"zone": "Zone"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Spaces setup wizard",
 		"devices": "devices",
 		"displays": "displays",
@@ -445,7 +445,7 @@
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
+			"completed": "Wizard complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
 		}
 	},
 	"labels": {
