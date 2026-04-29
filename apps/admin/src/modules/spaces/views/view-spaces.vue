@@ -49,7 +49,7 @@
 		<template #extra>
 			<div class="flex items-center">
 				<el-button
-					v-if="wizardOptions.length > 0"
+					v-if="enabledWizardOptions.length > 0"
 					class="px-4!"
 					@click="onWizard"
 				>
@@ -257,6 +257,7 @@ const {
 } = useSpacesDataSource();
 const spacesActions = useSpacesActions();
 const { wizardOptions } = useSpacesPlugins();
+const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
 
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
@@ -380,10 +381,8 @@ const onAdjustList = (): void => {
 };
 
 const onWizard = (): void => {
-	const enabledWizardOptions = wizardOptions.value.filter((item) => !item.disabled);
-
-	if (enabledWizardOptions.length === 1 && enabledWizardOptions[0]) {
-		onStartWizard(enabledWizardOptions[0].value);
+	if (enabledWizardOptions.value.length === 1 && enabledWizardOptions.value[0]) {
+		onStartWizard(enabledWizardOptions.value[0].value);
 		return;
 	}
 

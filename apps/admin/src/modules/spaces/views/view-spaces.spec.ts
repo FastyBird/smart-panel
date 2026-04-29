@@ -186,4 +186,19 @@ describe('ViewSpaces', () => {
 		});
 		expect(wrapper.text()).not.toContain('Home Control Spaces');
 	});
+
+	it('hides the wizard button when all wizard-capable plugins are disabled', () => {
+		mocks.wizardOptions = [
+			{
+				value: 'spaces-home-control-plugin',
+				label: 'Home Control Spaces',
+				description: 'Wizard',
+				disabled: true,
+			},
+		];
+
+		const wrapper = mountView();
+
+		expect(wrapper.findAll('button').some((button) => button.text().includes('spacesModule.buttons.wizard.title'))).toBe(false);
+	});
 });
