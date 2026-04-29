@@ -40,4 +40,19 @@ describe('spaces module routes', () => {
 		expect(wizardRoute?.path).toBe('wizard/:type');
 		expect(wizardRoute?.props).toBe(true);
 	});
+
+	it('redirects legacy and incomplete wizard paths before the edit route can match them as ids', () => {
+		const spacesRoute = ModuleRoutes.find((route) => route.name === RouteNames.SPACES);
+		const children = spacesRoute?.children ?? [];
+		const editIndex = children.findIndex((route) => route.name === RouteNames.SPACES_EDIT);
+		const onboardingIndex = children.findIndex((route) => route.path === 'onboarding');
+		const wizardFallbackIndex = children.findIndex((route) => route.path === 'wizard');
+
+		expect(onboardingIndex).toBeGreaterThanOrEqual(0);
+		expect(wizardFallbackIndex).toBeGreaterThanOrEqual(0);
+		expect(onboardingIndex).toBeLessThan(editIndex);
+		expect(wizardFallbackIndex).toBeLessThan(editIndex);
+		expect(children[onboardingIndex]?.redirect).toEqual({ name: RouteNames.SPACES });
+		expect(children[wizardFallbackIndex]?.redirect).toEqual({ name: RouteNames.SPACES });
+	});
 });

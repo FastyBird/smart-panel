@@ -25,14 +25,12 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: ':id',
-				name: RouteNames.SPACES_EDIT,
-				component: () => import('../views/view-space-edit.vue'),
-				props: true,
-				meta: {
-					guards: { authenticated: true },
-					title: 'Edit space',
-				},
+				path: 'onboarding',
+				redirect: { name: RouteNames.SPACES },
+			},
+			{
+				path: 'wizard',
+				redirect: { name: RouteNames.SPACES },
 			},
 			{
 				path: 'wizard/:type',
@@ -42,6 +40,16 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: { authenticated: true },
 					title: 'Spaces Wizard',
+				},
+			},
+			{
+				path: ':id',
+				name: RouteNames.SPACES_EDIT,
+				component: () => import('../views/view-space-edit.vue'),
+				props: true,
+				meta: {
+					guards: { authenticated: true },
+					title: 'Edit space',
 				},
 			},
 		],
