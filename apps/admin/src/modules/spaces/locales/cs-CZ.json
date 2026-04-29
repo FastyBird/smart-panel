@@ -226,6 +226,7 @@
 		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
 		"noEditFormForSpaceType": "Prostory typu „{type}\" nelze upravovat přímo z tohoto zobrazení.",
 		"noAddFormForSpaceType": "Prostory typu „{type}\" nelze vytvořit z tohoto zobrazení.",
+		"noWizardForSpaceType": "Prostory typu „{type}\" neposkytují průvodce nastavením.",
 		"selectPlugin": "Vyberte typ prostoru, který chcete nakonfigurovat. Formulář níže se přizpůsobí zvolenému typu."
 	},
 	"buttons": {

@@ -16,7 +16,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 	const { enabled } = useConfigPlugins();
 	const { t, te } = useI18n();
 
-	const pluginComponents: (keyof ISpacePluginsComponents)[] = ['spaceDetail', 'spaceAddForm', 'spaceEditForm'];
+	const pluginComponents: (keyof ISpacePluginsComponents)[] = ['spaceDetail', 'spaceAddForm', 'spaceEditForm', 'spaceWizard'];
 
 	const pluginSchemas: (keyof ISpacePluginsSchemas)[] = [
 		'spaceSchema',
@@ -89,6 +89,25 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 		}
 	);
 
+	const wizardOptions = computed<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>(() => {
+		const flat = plugins.value
+			.filter((plugin) =>
+				(plugin.elements ?? []).some(
+					(el) =>
+						(el.modules === undefined || el.modules.includes(SPACES_MODULE_NAME)) &&
+						!!el.components?.spaceWizard
+				)
+			)
+			.map((plugin) => ({
+				value: plugin.type,
+				label: resolveLabel(plugin.name),
+				description: plugin.description,
+				disabled: !enabled(plugin.type),
+			}));
+
+		return orderBy(flat, [(o) => o.label], ['asc']);
+	});
+
 	const getByPluginType = (type: IPlugin['type']): IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
@@ -116,6 +135,7 @@ export const useSpacesPlugins = (): IUseSpacesPlugins => {
 	return {
 		plugins,
 		options,
+		wizardOptions,
 		getByPluginType,
 		getByType,
 		getElement,

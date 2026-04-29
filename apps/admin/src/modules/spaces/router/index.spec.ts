@@ -32,4 +32,12 @@ describe('spaces module routes', () => {
 	it('keeps the plugin detail host route for space plugin configuration', () => {
 		expect(ModuleRoutes.some((route) => route.name === RouteNames.SPACE_PLUGIN)).toBe(true);
 	});
+
+	it('requires a plugin type for the spaces wizard route', () => {
+		const spacesRoute = ModuleRoutes.find((route) => route.name === RouteNames.SPACES);
+		const onboardingRoute = spacesRoute?.children?.find((route) => route.name === RouteNames.SPACES_ONBOARDING);
+
+		expect(onboardingRoute?.path).toBe('wizard/:type');
+		expect(onboardingRoute?.props).toBe(true);
+	});
 });

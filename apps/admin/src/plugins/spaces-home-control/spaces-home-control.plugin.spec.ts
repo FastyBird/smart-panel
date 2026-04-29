@@ -47,6 +47,7 @@ vi.mock('./components/components', async () => {
 		SpaceAddForm: StubComponent,
 		SpaceDetail: StubComponent,
 		SpaceEditForm: StubComponent,
+		SpacesWizard: StubComponent,
 	};
 });
 
@@ -97,6 +98,25 @@ describe('spacesHomeControlPlugin', () => {
 				routes: {
 					configure: expect.any(Function),
 				},
+			})
+		);
+	});
+
+	it('registers the home-control setup wizard component for each space type', () => {
+		const options = createOptions([{ name: SpacesRouteNames.SPACE_PLUGIN }]);
+
+		SpacesHomeControlPlugin.install({} as App, options);
+
+		expect(mocks.addPlugin).toHaveBeenCalledWith(
+			expect.any(Symbol),
+			expect.objectContaining({
+				elements: expect.arrayContaining([
+					expect.objectContaining({
+						components: expect.objectContaining({
+							spaceWizard: expect.any(Object),
+						}),
+					}),
+				]),
 			})
 		);
 	});

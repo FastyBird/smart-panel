@@ -226,6 +226,7 @@
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
 		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden.",
 		"noAddFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht erstellt werden.",
+		"noWizardForSpaceType": "Bereiche vom Typ „{type}\" stellen keinen Einrichtungsassistenten bereit.",
 		"selectPlugin": "Wählen Sie einen Bereichstyp zur Konfiguration. Das Formular unten passt sich dem gewählten Typ an."
 	},
 	"buttons": {

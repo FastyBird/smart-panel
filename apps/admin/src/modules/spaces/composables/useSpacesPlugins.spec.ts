@@ -33,6 +33,33 @@ const mockPluginList = [
 		modules: [SPACES_MODULE_NAME],
 	},
 	{
+		type: 'wizard-plugin',
+		source: 'source3',
+		name: 'Wizard Plugin',
+		description: 'Wizard plugin description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		elements: [
+			{
+				type: 'wizard-type',
+				name: 'Wizard Type',
+				components: {
+					spaceWizard: {},
+				},
+			},
+			{
+				type: 'non-wizard-type',
+				name: 'Non Wizard Type',
+				components: {},
+			},
+		],
+		isCore: false,
+		modules: [SPACES_MODULE_NAME],
+	},
+	{
 		type: 'unrelated-plugin',
 		source: 'source2',
 		name: 'Unrelated Plugin',
@@ -79,13 +106,25 @@ describe('useSpacesPlugins', () => {
 	it('returns spaces plugins that only contribute a configure route', () => {
 		const { plugins } = useSpacesPlugins();
 
-		expect(plugins.value).toHaveLength(1);
-		expect(plugins.value[0]?.type).toBe('route-only-plugin');
+		expect(plugins.value.some((plugin) => plugin.type === 'route-only-plugin')).toBe(true);
 	});
 
 	it('exposes configure routes on discovered spaces plugins', () => {
 		const { getByType } = useSpacesPlugins();
 
 		expect(getByType('route-only-type')?.routes?.configure).toBe('/space/plugin/configure');
+	});
+
+	it('exposes only wizard-capable spaces plugin elements as wizard options', () => {
+		const { wizardOptions } = useSpacesPlugins();
+
+		expect(wizardOptions.value).toEqual([
+			{
+				value: 'wizard-plugin',
+				label: 'Wizard Plugin',
+				description: 'Wizard plugin description',
+				disabled: false,
+			},
+		]);
 	});
 });

@@ -223,6 +223,7 @@
 		"loadingSpace": "Loading space...",
 		"noEditFormForSpaceType": "Spaces of type \"{type}\" are not directly editable from this view.",
 		"noAddFormForSpaceType": "Spaces of type \"{type}\" cannot be created from this view.",
+		"noWizardForSpaceType": "Spaces of type \"{type}\" do not provide a setup wizard.",
 		"selectPlugin": "Pick a space type to configure. The form below changes to match the chosen type.",
 		"noSpaces": "You don't have configured any space",
 		"noFilteredSpaces": "No spaces match your filter criteria",

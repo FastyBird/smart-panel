@@ -226,6 +226,7 @@
 		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
 		"noEditFormForSpaceType": "Los espacios de tipo «{type}» no se pueden editar directamente desde esta vista.",
 		"noAddFormForSpaceType": "Los espacios de tipo «{type}» no se pueden crear desde esta vista.",
+		"noWizardForSpaceType": "Los espacios de tipo «{type}» no proporcionan asistente de configuración.",
 		"selectPlugin": "Elija un tipo de espacio para configurar. El formulario siguiente cambia según el tipo elegido."
 	},
 	"buttons": {

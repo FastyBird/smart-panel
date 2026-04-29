@@ -226,6 +226,7 @@
 		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
 		"noEditFormForSpaceType": "Priestory typu „{type}\" nie je možné priamo upravovať z tohto zobrazenia.",
 		"noAddFormForSpaceType": "Priestory typu „{type}\" nie je možné vytvoriť z tohto zobrazenia.",
+		"noWizardForSpaceType": "Priestory typu „{type}\" neposkytujú sprievodcu nastavením.",
 		"selectPlugin": "Vyberte typ priestoru na konfiguráciu. Formulár nižšie sa prispôsobí zvolenému typu."
 	},
 	"buttons": {

@@ -14,6 +14,7 @@ export type ISpacePluginsComponents = {
 	spaceDetail?: DefineComponent<ISpaceDetailProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 	spaceAddForm?: DefineComponent<ISpaceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof spaceAddFormEmits>;
 	spaceEditForm?: DefineComponent<ISpaceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof spaceEditFormEmits>;
+	spaceWizard?: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 };
 
 export type ISpacePluginsSchemas = {

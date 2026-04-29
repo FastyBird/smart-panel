@@ -8,11 +8,16 @@ import {
 	type SpaceRoomCategory,
 	SpaceType,
 	type SpaceZoneCategory,
-} from '../spaces.constants';
-import { SpacesApiException } from '../spaces.exceptions';
-import { canonicalizeSpaceName } from '../spaces.utils';
-import type { ISpace, ISpaceCreateData } from '../store';
-import { type ApiSpace, apiTypeToSpaceType, spaceTypeToApiType, transformSpaceResponse } from '../store/spaces.transformers';
+} from '../../../modules/spaces/spaces.constants';
+import { SpacesApiException } from '../../../modules/spaces/spaces.exceptions';
+import { canonicalizeSpaceName } from '../../../modules/spaces/spaces.utils';
+import type { ISpace, ISpaceCreateData } from '../../../modules/spaces/store';
+import {
+	type ApiSpace,
+	apiTypeToSpaceType,
+	spaceTypeToApiType,
+	transformSpaceResponse,
+} from '../../../modules/spaces/store/spaces.transformers';
 
 interface ProposedSpace {
 	name: string;

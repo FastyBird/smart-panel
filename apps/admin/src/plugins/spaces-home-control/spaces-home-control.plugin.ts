@@ -17,7 +17,7 @@ import {
 } from '../../modules/spaces';
 import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
-import { SpaceAddForm, SpaceDetail, SpaceEditForm } from './components/components';
+import { SpaceAddForm, SpaceDetail, SpaceEditForm, SpacesWizard } from './components/components';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import {
@@ -72,6 +72,7 @@ export default {
 					spaceDetail: SpaceDetail,
 					spaceAddForm: SpaceAddForm,
 					spaceEditForm: SpaceEditForm,
+					spaceWizard: SpacesWizard,
 				},
 				schemas: {
 					spaceSchema: SpaceSchema,

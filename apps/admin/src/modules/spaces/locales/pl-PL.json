@@ -226,6 +226,7 @@
 		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucic?",
 		"noEditFormForSpaceType": "Przestrzeni typu „{type}\" nie można edytować bezpośrednio z tego widoku.",
 		"noAddFormForSpaceType": "Przestrzeni typu „{type}\" nie można utworzyć z tego widoku.",
+		"noWizardForSpaceType": "Przestrzeni typu „{type}\" nie udostępniają kreatora konfiguracji.",
 		"selectPlugin": "Wybierz typ przestrzeni do skonfigurowania. Formularz poniżej zmieni się zgodnie z wybranym typem."
 	},
 	"buttons": {
