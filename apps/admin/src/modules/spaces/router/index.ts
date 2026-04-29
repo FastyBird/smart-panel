@@ -25,6 +25,24 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'onboarding',
+				redirect: { name: RouteNames.SPACES },
+			},
+			{
+				path: 'wizard',
+				redirect: { name: RouteNames.SPACES },
+			},
+			{
+				path: 'wizard/:type',
+				name: RouteNames.SPACES_WIZARD,
+				component: () => import('../views/view-spaces-wizard.vue'),
+				props: true,
+				meta: {
+					guards: { authenticated: true },
+					title: 'Spaces Wizard',
+				},
+			},
+			{
 				path: ':id',
 				name: RouteNames.SPACES_EDIT,
 				component: () => import('../views/view-space-edit.vue'),
@@ -32,15 +50,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: { authenticated: true },
 					title: 'Edit space',
-				},
-			},
-			{
-				path: 'onboarding',
-				name: RouteNames.SPACES_ONBOARDING,
-				component: () => import('../views/view-spaces-onboarding.vue'),
-				meta: {
-					guards: { authenticated: true },
-					title: 'Spaces Onboarding',
 				},
 			},
 		],

@@ -45,3 +45,6 @@ export { default as SpaceAddSceneDialog } from './space-add-scene-dialog.vue';
 // Media sections
 export { default as SpaceMediaActivitiesSummary } from './space-media-activities-summary.vue';
 export { default as SpaceMediaActivitiesDialog } from './space-media-activities-dialog.vue';
+
+// Setup wizard
+export { default as SpacesWizard } from '../views/view-spaces-wizard.vue';

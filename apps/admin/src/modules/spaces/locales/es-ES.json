@@ -49,7 +49,7 @@
 		"adjustFilters": "Ajustar filtros de visualización",
 		"add": "Añadir nuevo espacio",
 		"detail": "Gestionar espacio del panel inteligente",
-		"onboarding": "Asistente de configuración para espacios, dispositivos y pantallas"
+		"wizard": "Asistente de configuración para espacios, dispositivos y pantallas"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "espacio: {space}",
 			"edit": "editar espacio",
 			"add": "añadir espacio",
-			"onboarding": "asistente de configuración"
+			"wizard": "asistente de configuración"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Espacio: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Asistente de configuración de espacios"
 			}
 		}
@@ -226,6 +226,7 @@
 		"confirmDiscard": "Tiene cambios sin guardar. ¿Está seguro de que desea descartarlos?",
 		"noEditFormForSpaceType": "Los espacios de tipo «{type}» no se pueden editar directamente desde esta vista.",
 		"noAddFormForSpaceType": "Los espacios de tipo «{type}» no se pueden crear desde esta vista.",
+		"noWizardForSpaceType": "Los espacios de tipo «{type}» no proporcionan asistente de configuración.",
 		"selectPlugin": "Elija un tipo de espacio para configurar. El formulario siguiente cambia según el tipo elegido."
 	},
 	"buttons": {
@@ -283,7 +284,7 @@
 		"finish": {
 			"title": "Finalizar"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Asistente de configuración"
 		},
 		"viewAll": {
@@ -374,7 +375,7 @@
 			"zone": "Zona"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Asistente de configuración de espacios",
 		"devices": "dispositivos",
 		"displays": "pantallas",

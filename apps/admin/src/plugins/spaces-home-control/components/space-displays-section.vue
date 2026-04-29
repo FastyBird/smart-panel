@@ -7,7 +7,7 @@
 		row-key="id"
 	>
 		<el-table-column
-			:label="t('spacesModule.onboarding.displayName')"
+			:label="t('spacesModule.wizard.displayName')"
 			min-width="200"
 		>
 			<template #default="{ row }">
@@ -152,7 +152,7 @@
 
 		<el-select
 			v-model="selectedTargetSpace"
-			:placeholder="t('spacesModule.onboarding.selectSpace')"
+			:placeholder="t('spacesModule.wizard.selectSpace')"
 			clearable
 			class="w-full"
 		>

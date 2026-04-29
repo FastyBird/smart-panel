@@ -20,7 +20,7 @@ vi.mock('../spaces.constants', () => ({
 		SPACE: 'space',
 		SPACE_EDIT: 'space-edit',
 		SPACE_PLUGIN: 'space-plugin',
-		SPACES_ONBOARDING: 'spaces-onboarding',
+		SPACES_WIZARD: 'spaces-wizard',
 	},
 }));
 
@@ -31,5 +31,28 @@ describe('spaces module routes', () => {
 
 	it('keeps the plugin detail host route for space plugin configuration', () => {
 		expect(ModuleRoutes.some((route) => route.name === RouteNames.SPACE_PLUGIN)).toBe(true);
+	});
+
+	it('requires a plugin type for the spaces wizard route', () => {
+		const spacesRoute = ModuleRoutes.find((route) => route.name === RouteNames.SPACES);
+		const wizardRoute = spacesRoute?.children?.find((route) => route.name === RouteNames.SPACES_WIZARD);
+
+		expect(wizardRoute?.path).toBe('wizard/:type');
+		expect(wizardRoute?.props).toBe(true);
+	});
+
+	it('redirects legacy and incomplete wizard paths before the edit route can match them as ids', () => {
+		const spacesRoute = ModuleRoutes.find((route) => route.name === RouteNames.SPACES);
+		const children = spacesRoute?.children ?? [];
+		const editIndex = children.findIndex((route) => route.name === RouteNames.SPACES_EDIT);
+		const onboardingIndex = children.findIndex((route) => route.path === 'onboarding');
+		const wizardFallbackIndex = children.findIndex((route) => route.path === 'wizard');
+
+		expect(onboardingIndex).toBeGreaterThanOrEqual(0);
+		expect(wizardFallbackIndex).toBeGreaterThanOrEqual(0);
+		expect(onboardingIndex).toBeLessThan(editIndex);
+		expect(wizardFallbackIndex).toBeLessThan(editIndex);
+		expect(children[onboardingIndex]?.redirect).toEqual({ name: RouteNames.SPACES });
+		expect(children[wizardFallbackIndex]?.redirect).toEqual({ name: RouteNames.SPACES });
 	});
 });

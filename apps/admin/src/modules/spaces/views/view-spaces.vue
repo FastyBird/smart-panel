@@ -1,11 +1,11 @@
 <template>
 	<app-breadcrumbs
-		v-if="!isOnboardingRoute"
+		v-if="!isWizardRoute"
 		:items="breadcrumbs"
 	/>
 
 	<app-bar-heading
-		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
 		teleport
 	>
 		<template #icon>
@@ -25,7 +25,7 @@
 	</app-bar-heading>
 
 	<app-bar-button
-		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
 		:align="AppBarButtonAlign.LEFT"
 		teleport
 		small
@@ -41,7 +41,7 @@
 	</app-bar-button>
 
 	<view-header
-		v-if="!isOnboardingRoute"
+		v-if="!isWizardRoute"
 		:heading="t('spacesModule.headings.list')"
 		:sub-heading="t('spacesModule.subHeadings.list')"
 		icon="mdi:home-group"
@@ -49,11 +49,12 @@
 		<template #extra>
 			<div class="flex items-center">
 				<el-button
+					v-if="enabledWizardOptions.length > 0"
 					class="px-4!"
-					@click="onOnboarding"
+					@click="onWizard"
 				>
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
-					{{ t('spacesModule.buttons.onboarding.title') }}
+					{{ t('spacesModule.buttons.wizard.title') }}
 				</el-button>
 				<el-button
 					type="primary"
@@ -72,7 +73,7 @@
 	</view-header>
 
 	<div
-		v-if="(isSpacesListRoute || isLGDevice) && !isOnboardingRoute"
+		v-if="(isSpacesListRoute || isLGDevice) && !isWizardRoute"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-spaces
@@ -96,7 +97,7 @@
 	</div>
 
 	<router-view
-		v-if="isOnboardingRoute || (!isSpacesListRoute && !isLGDevice)"
+		v-if="isWizardRoute || (!isSpacesListRoute && !isLGDevice)"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -155,6 +156,47 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<el-dialog
+		v-model="wizardPluginDialogVisible"
+		:title="t('spacesModule.headings.selectPlugin')"
+		width="520px"
+	>
+		<div class="flex flex-col gap-2">
+			<el-card
+				v-for="item in wizardOptions"
+				:key="item.value"
+				shadow="hover"
+				class="spaces-wizard-plugin-card"
+				:class="{ 'spaces-wizard-plugin-card--disabled': item.disabled }"
+				body-class="p-4!"
+				@click="!item.disabled && onStartWizard(item.value)"
+			>
+				<div class="flex items-start gap-3">
+					<div class="spaces-wizard-plugin-card__icon">
+						<icon icon="mdi:puzzle-outline" />
+					</div>
+					<div class="flex-1 min-w-0 spaces-wizard-plugin-card__content">
+						<h3 class="spaces-wizard-plugin-card__title">
+							{{ item.label }}
+						</h3>
+						<p class="spaces-wizard-plugin-card__description">
+							{{ item.description || '&nbsp;' }}
+						</p>
+					</div>
+					<div class="spaces-wizard-plugin-card__chevron">
+						<icon icon="mdi:chevron-right" />
+					</div>
+				</div>
+			</el-card>
+		</div>
+
+		<template #footer>
+			<el-button @click="wizardPluginDialogVisible = false">
+				{{ t('spacesModule.buttons.cancel.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -163,7 +205,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -180,7 +222,7 @@ import {
 } from '../../../common';
 import { ListSpaces } from '../components/components';
 import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
-import { useSpacesActions, useSpacesDataSource } from '../composables';
+import { useSpacesActions, useSpacesDataSource, useSpacesPlugins } from '../composables';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
@@ -214,9 +256,12 @@ const {
 	resetFilter,
 } = useSpacesDataSource();
 const spacesActions = useSpacesActions();
+const { wizardOptions } = useSpacesPlugins();
+const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
 
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
+const wizardPluginDialogVisible = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 
@@ -224,8 +269,8 @@ const isSpacesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES;
 });
 
-const isOnboardingRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.SPACES_ONBOARDING;
+const isWizardRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.SPACES_WIZARD;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -335,9 +380,23 @@ const onAdjustList = (): void => {
 	adjustList.value = true;
 };
 
-const onOnboarding = (): void => {
+const onWizard = (): void => {
+	if (enabledWizardOptions.value.length === 1 && enabledWizardOptions.value[0]) {
+		onStartWizard(enabledWizardOptions.value[0].value);
+		return;
+	}
+
+	wizardPluginDialogVisible.value = true;
+};
+
+const onStartWizard = (type: string): void => {
+	wizardPluginDialogVisible.value = false;
+
 	router.push({
-		name: RouteNames.SPACES_ONBOARDING,
+		name: RouteNames.SPACES_WIZARD,
+		params: {
+			type,
+		},
 	});
 };
 
@@ -357,3 +416,75 @@ watch(
 	}
 );
 </script>
+
+<style scoped lang="scss">
+.spaces-wizard-plugin-card {
+	cursor: pointer;
+	transition: all 0.2s ease;
+
+	&:hover {
+		.spaces-wizard-plugin-card__chevron {
+			opacity: 1;
+			transform: translateX(2px);
+		}
+	}
+}
+
+.spaces-wizard-plugin-card--disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.spaces-wizard-plugin-card__icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: var(--el-border-radius-base);
+	background-color: var(--el-color-success-light-9);
+	color: var(--el-color-success);
+	font-size: 1.25rem;
+	flex-shrink: 0;
+}
+
+.spaces-wizard-plugin-card__content {
+	display: flex;
+	flex-direction: column;
+	min-height: 4.5rem;
+}
+
+.spaces-wizard-plugin-card__title {
+	margin: 0 0 0.25rem 0;
+	font-size: 0.9375rem;
+	font-weight: 600;
+	line-height: 1.3;
+	color: var(--el-text-color-primary);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.spaces-wizard-plugin-card__description {
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.4;
+	color: var(--el-text-color-secondary);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.spaces-wizard-plugin-card__chevron {
+	display: flex;
+	align-items: center;
+	color: var(--el-text-color-placeholder);
+	font-size: 1.25rem;
+	opacity: 0.5;
+	transition: all 0.2s ease;
+	flex-shrink: 0;
+	align-self: center;
+}
+</style>

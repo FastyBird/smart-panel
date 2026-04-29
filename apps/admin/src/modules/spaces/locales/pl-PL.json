@@ -49,7 +49,7 @@
 		"adjustFilters": "Dostosuj filtry wyswietlania",
 		"add": "Dodaj nowa przestrzen",
 		"detail": "Zarzadzaj przestrzenia smart panelu",
-		"onboarding": "Kreator konfiguracji przestrzeni, urzadzen i wyswietlaczy"
+		"wizard": "Kreator konfiguracji przestrzeni, urzadzen i wyswietlaczy"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "przestrzen: {space}",
 			"edit": "edytuj przestrzen",
 			"add": "dodaj przestrzen",
-			"onboarding": "kreator konfiguracji"
+			"wizard": "kreator konfiguracji"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Przestrzen: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Kreator konfiguracji przestrzeni"
 			}
 		}
@@ -226,6 +226,7 @@
 		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucic?",
 		"noEditFormForSpaceType": "Przestrzeni typu „{type}\" nie można edytować bezpośrednio z tego widoku.",
 		"noAddFormForSpaceType": "Przestrzeni typu „{type}\" nie można utworzyć z tego widoku.",
+		"noWizardForSpaceType": "Przestrzeni typu „{type}\" nie udostępniają kreatora konfiguracji.",
 		"selectPlugin": "Wybierz typ przestrzeni do skonfigurowania. Formularz poniżej zmieni się zgodnie z wybranym typem."
 	},
 	"buttons": {
@@ -283,7 +284,7 @@
 		"finish": {
 			"title": "Zakoncz"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Kreator konfiguracji"
 		},
 		"viewAll": {
@@ -374,7 +375,7 @@
 			"zone": "Strefa"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Kreator konfiguracji przestrzeni",
 		"devices": "urzadzenia",
 		"displays": "wyswietlacze",

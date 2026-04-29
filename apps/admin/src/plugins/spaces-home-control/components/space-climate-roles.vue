@@ -19,7 +19,7 @@
 
 		<template v-else-if="climateTargets.length > 0 || loading">
 			<el-table :data="climateTargets" border max-height="400px">
-				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
+				<el-table-column prop="deviceName" :label="t('spacesModule.wizard.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
 							<icon :icon="getDeviceIcon(row.deviceCategory)" />

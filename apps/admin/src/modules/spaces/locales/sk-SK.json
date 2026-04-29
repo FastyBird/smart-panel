@@ -49,7 +49,7 @@
 		"adjustFilters": "Upraviť filtre zobrazenia",
 		"add": "Pridať nový priestor",
 		"detail": "Spravovať priestor smart panelu",
-		"onboarding": "Sprievodca nastavením pre priestory, zariadenia a displeje"
+		"wizard": "Sprievodca nastavením pre priestory, zariadenia a displeje"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "priestor: {space}",
 			"edit": "upraviť priestor",
 			"add": "pridať priestor",
-			"onboarding": "sprievodca nastavením"
+			"wizard": "sprievodca nastavením"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Priestor: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Sprievodca nastavením priestorov"
 			}
 		}
@@ -226,6 +226,7 @@
 		"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
 		"noEditFormForSpaceType": "Priestory typu „{type}\" nie je možné priamo upravovať z tohto zobrazenia.",
 		"noAddFormForSpaceType": "Priestory typu „{type}\" nie je možné vytvoriť z tohto zobrazenia.",
+		"noWizardForSpaceType": "Priestory typu „{type}\" neposkytujú sprievodcu nastavením.",
 		"selectPlugin": "Vyberte typ priestoru na konfiguráciu. Formulár nižšie sa prispôsobí zvolenému typu."
 	},
 	"buttons": {
@@ -283,7 +284,7 @@
 		"finish": {
 			"title": "Dokončiť"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Sprievodca nastavením"
 		},
 		"viewAll": {
@@ -374,7 +375,7 @@
 			"zone": "Zóna"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Spaces setup wizard",
 		"devices": "devices",
 		"displays": "displays",
@@ -444,7 +445,7 @@
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
+			"completed": "Wizard complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
 		}
 	},
 	"labels": {

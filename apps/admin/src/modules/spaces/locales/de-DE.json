@@ -49,7 +49,7 @@
 		"adjustFilters": "Anzeigefilter anpassen",
 		"add": "Neuen Bereich hinzufügen",
 		"detail": "Smart Panel Bereich verwalten",
-		"onboarding": "Einrichtungsassistent für Bereiche, Geräte und Displays"
+		"wizard": "Einrichtungsassistent für Bereiche, Geräte und Displays"
 	},
 	"breadcrumbs": {
 		"spaces": {
@@ -57,7 +57,7 @@
 			"detail": "Bereich: {space}",
 			"edit": "Bereich bearbeiten",
 			"add": "Bereich hinzufügen",
-			"onboarding": "Einrichtungsassistent"
+			"wizard": "Einrichtungsassistent"
 		}
 	},
 	"meta": {
@@ -74,7 +74,7 @@
 			"detail": {
 				"title": "Bereich: {space}"
 			},
-			"onboarding": {
+			"wizard": {
 				"title": "Einrichtungsassistent für Bereiche"
 			}
 		}
@@ -226,6 +226,7 @@
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
 		"noEditFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht direkt bearbeitet werden.",
 		"noAddFormForSpaceType": "Bereiche vom Typ „{type}\" können in dieser Ansicht nicht erstellt werden.",
+		"noWizardForSpaceType": "Bereiche vom Typ „{type}\" stellen keinen Einrichtungsassistenten bereit.",
 		"selectPlugin": "Wählen Sie einen Bereichstyp zur Konfiguration. Das Formular unten passt sich dem gewählten Typ an."
 	},
 	"buttons": {
@@ -283,7 +284,7 @@
 		"finish": {
 			"title": "Abschließen"
 		},
-		"onboarding": {
+		"wizard": {
 			"title": "Einrichtungsassistent"
 		},
 		"viewAll": {
@@ -374,7 +375,7 @@
 			"zone": "Zone"
 		}
 	},
-	"onboarding": {
+	"wizard": {
 		"title": "Einrichtungsassistent für Bereiche",
 		"devices": "Geräte",
 		"displays": "Displays",
