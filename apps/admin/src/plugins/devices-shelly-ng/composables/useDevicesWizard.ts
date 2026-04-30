@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { orderBy } from 'natural-orderby';
 import { v4 as uuid } from 'uuid';
 
-import { tryOnMounted, tryOnUnmounted } from '@vueuse/core';
+import { tryOnMounted, tryOnUnmounted, useNow } from '@vueuse/core';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
@@ -27,10 +27,13 @@ export interface IShellyNgWizardAdoptionResult {
 	error: string | null;
 }
 
+export const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
+
 export interface IUseDevicesWizard {
 	session: ComputedRef<IShellyNgDiscoverySession | null>;
 	devices: ComputedRef<IShellyNgDiscoveryDevice[]>;
 	selectedDevices: ComputedRef<IShellyNgDiscoveryDevice[]>;
+	scanPercentage: ComputedRef<number>;
 	formResult: ComputedRef<FormResultType>;
 	manual: Reactive<{
 		hostname: string;
@@ -70,11 +73,38 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 	let pollingTimer: number | null = null;
 
-	const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
+	// Captured at every applySession so scanPercentage can tick forward independent of any
+	// drift between the client and server clocks. We resnap to the server's `remainingSeconds`
+	// on every poll, so any local drift is bounded by the polling interval (~1s).
+	const sessionReceivedAt = ref<number | null>(null);
+	const sessionRemainingMsAtReceipt = ref<number>(0);
+	const sessionDurationMs = ref<number>(0);
+
+	const now = useNow({ interval: 1_000 });
 
 	const devices = computed<IShellyNgDiscoveryDevice[]>(() =>
 		orderBy(session.value?.devices ?? [], [(device) => (isAdoptableStatus(device.status) ? 0 : 1), (device) => device.hostname], ['asc', 'asc'])
 	);
+
+	const scanPercentage = computed<number>(() => {
+		if (session.value === null) {
+			return 0;
+		}
+
+		if (session.value.status !== 'running') {
+			return 100;
+		}
+
+		if (sessionReceivedAt.value === null || sessionDurationMs.value === 0) {
+			return 0;
+		}
+
+		const elapsedSinceReceipt = Math.max(0, now.value.getTime() - sessionReceivedAt.value);
+		const remainingMs = Math.max(0, sessionRemainingMsAtReceipt.value - elapsedSinceReceipt);
+		const elapsed = sessionDurationMs.value - remainingMs;
+
+		return Math.min(100, Math.max(0, Math.round((elapsed / sessionDurationMs.value) * 100)));
+	});
 
 	const selectedDevices = computed<IShellyNgDiscoveryDevice[]>(() =>
 		devices.value.filter(
@@ -106,9 +136,17 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 		session.value = nextSession;
 
+		// Snap the client-side progress reference to the moment we received this snapshot.
+		// scanPercentage ticks forward from here using `useNow`, so it stays accurate even
+		// when the client clock is skewed relative to the server's startedAt/expiresAt.
+		sessionReceivedAt.value = Date.now();
+		sessionRemainingMsAtReceipt.value = nextSession.remainingSeconds * 1_000;
+		sessionDurationMs.value = Math.max(1, new Date(nextSession.expiresAt).getTime() - new Date(nextSession.startedAt).getTime());
+
 		for (const device of nextSession.devices) {
 			const previousDevice = previousDevices.find((item) => item.hostname === device.hostname);
 			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
+			const becameAdoptable = previousDevice?.status === 'checking' && isAdoptableStatus(device.status);
 			const wasPreviouslyReady = readyHostnames.has(device.hostname);
 
 			// `ready` devices are pre-selected so the user can adopt new devices in one step.
@@ -122,7 +160,11 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				categoryByHostname[device.hostname] = device.suggestedCategory;
 			}
 
-			if (nameByHostname[device.hostname] === undefined || (becameReady && nameByHostname[device.hostname] === device.hostname)) {
+			// Refresh the editable name when the inspect step finishes (checking → ready or
+			// checking → already_registered) and the user hasn't typed anything yet — otherwise
+			// `already_registered` devices would keep the hostname placeholder and overwrite the
+			// existing registered name on update.
+			if (nameByHostname[device.hostname] === undefined || (becameAdoptable && nameByHostname[device.hostname] === device.hostname)) {
 				nameByHostname[device.hostname] = device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
 			}
 
@@ -384,6 +426,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		session: computed(() => session.value),
 		devices,
 		selectedDevices,
+		scanPercentage,
 		formResult: computed(() => formResult.value),
 		manual,
 		selected,

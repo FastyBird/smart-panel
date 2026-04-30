@@ -406,12 +406,11 @@ import {
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { useNow } from '@vueuse/core';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames, FormResult } from '../../../modules/devices';
 import { useDevicesWizard } from '../composables/composables';
-import type { IShellyNgWizardAdoptionResult } from '../composables/useDevicesWizard';
+import { type IShellyNgWizardAdoptionResult, isAdoptableStatus } from '../composables/useDevicesWizard';
 import type { IShellyNgDiscoveryDevice } from '../schemas/devices.types';
 
 defineOptions({
@@ -421,7 +420,6 @@ defineOptions({
 const { t } = useI18n();
 const router = useRouter();
 const { isMDDevice, isLGDevice } = useBreakpoints();
-const now = useNow({ interval: 1_000 });
 const {
 	session,
 	devices,
@@ -432,6 +430,7 @@ const {
 	adoptionResults,
 	canContinue,
 	formResult,
+	scanPercentage,
 	startDiscovery,
 	addManualDevice,
 	adoptSelected,
@@ -452,26 +451,7 @@ const activeStepIndex = computed<number>(() => {
 	return 0;
 });
 
-const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
-
 const adoptableDevices = computed<IShellyNgDiscoveryDevice[]>(() => devices.value.filter((device) => isAdoptableStatus(device.status)));
-
-const scanPercentage = computed<number>(() => {
-	if (session.value === null) {
-		return 0;
-	}
-
-	if (session.value.status !== 'running') {
-		return 100;
-	}
-
-	const startedAt = new Date(session.value.startedAt).getTime();
-	const expiresAt = new Date(session.value.expiresAt).getTime();
-	const total = Math.max(1, expiresAt - startedAt);
-	const elapsed = Math.max(0, Math.min(total, now.value.getTime() - startedAt));
-
-	return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
 	{

@@ -368,4 +368,80 @@ describe('useDevicesWizard', () => {
 			}),
 		]);
 	});
+
+	it('refreshes the editable name when a device transitions from checking to already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-3',
+					registeredDeviceName: 'Auto-adopted by main service',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: checkingDiscoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// Placeholder during checking — no registered name available yet.
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('192.168.1.10');
+
+		await wizard.refreshDiscovery();
+
+		// On checking → already_registered, the name field picks up registeredDeviceName so
+		// opting in to update doesn't accidentally overwrite the existing name with the hostname.
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('Auto-adopted by main service');
+	});
+
+	it('starts scan progress at 0 even when the client clock is skewed from server timestamps', async () => {
+		// The discoverySession says scan started at 2026-04-29T12:00:00Z. The client clock is
+		// in 2030 — a previous client-clock-based implementation would have read elapsed as years
+		// and stayed at 100% (or 0% if behind). Receipt-anchored logic returns 0% on receipt.
+		vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+
+		expect(wizard.scanPercentage.value).toBe(0);
+	});
+
+	it('jumps scan progress to 100 when the session finishes', async () => {
+		const finishedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			status: 'finished',
+			remainingSeconds: 0,
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: finishedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+		await wizard.refreshDiscovery();
+
+		expect(wizard.scanPercentage.value).toBe(100);
+	});
 });
