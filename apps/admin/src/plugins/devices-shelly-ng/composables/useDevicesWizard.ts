@@ -6,8 +6,8 @@ import { v4 as uuid } from 'uuid';
 
 import { tryOnMounted, tryOnUnmounted } from '@vueuse/core';
 
-import { getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, devicesStoreKey } from '../../../modules/devices';
 import {
 	DevicesModuleDeviceCategory,
@@ -23,7 +23,7 @@ import { transformDeviceInfoRequest, transformDiscoverySessionResponse } from '.
 export interface IShellyNgWizardAdoptionResult {
 	hostname: string;
 	name: string;
-	status: 'created' | 'failed';
+	status: 'created' | 'updated' | 'failed';
 	error: string | null;
 }
 
@@ -70,13 +70,15 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 	let pollingTimer: number | null = null;
 
+	const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
+
 	const devices = computed<IShellyNgDiscoveryDevice[]>(() =>
-		orderBy(session.value?.devices ?? [], [(device) => device.status === 'ready' ? 0 : 1, (device) => device.hostname], ['asc', 'asc'])
+		orderBy(session.value?.devices ?? [], [(device) => (isAdoptableStatus(device.status) ? 0 : 1), (device) => device.hostname], ['asc', 'asc'])
 	);
 
 	const selectedDevices = computed<IShellyNgDiscoveryDevice[]>(() =>
 		devices.value.filter(
-			(device) => selected[device.hostname] === true && device.status === 'ready' && categoryByHostname[device.hostname] !== null
+			(device) => selected[device.hostname] === true && isAdoptableStatus(device.status) && categoryByHostname[device.hostname] !== null
 		)
 	);
 
@@ -109,22 +111,22 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
 			const wasPreviouslyReady = readyHostnames.has(device.hostname);
 
+			// `ready` devices are pre-selected so the user can adopt new devices in one step.
+			// `already_registered` devices stay deselected — the user must opt in explicitly to override
+			// the category/name the main service auto-adopted them with.
 			if (selected[device.hostname] === undefined || (becameReady && !wasPreviouslyReady)) {
 				selected[device.hostname] = device.status === 'ready';
 			}
 
-			if (
-				categoryByHostname[device.hostname] === undefined ||
-				(categoryByHostname[device.hostname] === null && device.suggestedCategory !== null)
-			) {
+			if (categoryByHostname[device.hostname] === undefined || (categoryByHostname[device.hostname] === null && device.suggestedCategory !== null)) {
 				categoryByHostname[device.hostname] = device.suggestedCategory;
 			}
 
 			if (nameByHostname[device.hostname] === undefined || (becameReady && nameByHostname[device.hostname] === device.hostname)) {
-				nameByHostname[device.hostname] = device.name ?? device.displayName ?? device.hostname;
+				nameByHostname[device.hostname] = device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
 			}
 
-			if (device.status === 'ready') {
+			if (isAdoptableStatus(device.status)) {
 				readyHostnames.add(device.hostname);
 			}
 		}
@@ -234,10 +236,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		}
 
 		const errorReason = error
-			? getErrorReason<DevicesShellyNgPluginCreateDiscoveryManualOperation>(
-					error,
-					t('devicesShellyNgPlugin.messages.wizard.manualNotAdded')
-				)
+			? getErrorReason<DevicesShellyNgPluginCreateDiscoveryManualOperation>(error, t('devicesShellyNgPlugin.messages.wizard.manualNotAdded'))
 			: t('devicesShellyNgPlugin.messages.wizard.manualNotAdded');
 
 		formResult.value = FormResult.ERROR;
@@ -249,35 +248,89 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const adoptSelected = async (): Promise<IShellyNgWizardAdoptionResult[]> => {
 		formResult.value = FormResult.WORKING;
 
+		// Refresh once so we see any device the main service auto-adopted between scan and adoption.
+		// Lets us route those through `edit` instead of getting a duplicate-identifier error from `add`.
+		if (session.value !== null) {
+			try {
+				await refreshDiscovery();
+			} catch {
+				// Stale snapshot is fine — the per-device fallback below still handles late races.
+			}
+		}
+
 		const results: IShellyNgWizardAdoptionResult[] = [];
 
-		for (const device of selectedDevices.value) {
-			const id = uuid().toString();
+		for (const selection of selectedDevices.value) {
+			const device = devices.value.find((item) => item.hostname === selection.hostname) ?? selection;
 			const name = nameByHostname[device.hostname] || device.name || device.displayName || device.hostname;
+			const category = categoryByHostname[device.hostname] as DevicesModuleDeviceCategory;
+			const password = passwordByHostname[device.hostname] ?? null;
 
 			try {
-				await devicesStore.add({
-					id,
-					draft: false,
-					data: {
-						id,
-						type: DEVICES_SHELLY_NG_TYPE,
-						category: categoryByHostname[device.hostname] as DevicesModuleDeviceCategory,
-						identifier: device.identifier,
-						name,
-						description: null,
-						enabled: true,
-						password: passwordByHostname[device.hostname] ?? null,
-						wifiAddress: device.hostname,
-					},
-				});
+				if (device.status === 'already_registered' && device.registeredDeviceId !== null) {
+					await updateRegistered(device.registeredDeviceId, { name, category, password });
 
-				results.push({
-					hostname: device.hostname,
-					name,
-					status: 'created',
-					error: null,
-				});
+					results.push({
+						hostname: device.hostname,
+						name,
+						status: 'updated',
+						error: null,
+					});
+
+					continue;
+				}
+
+				const id = uuid().toString();
+
+				try {
+					await devicesStore.add({
+						id,
+						draft: false,
+						data: {
+							id,
+							type: DEVICES_SHELLY_NG_TYPE,
+							category,
+							identifier: device.identifier,
+							name,
+							description: null,
+							enabled: true,
+							password,
+							wifiAddress: device.hostname,
+						},
+					});
+
+					results.push({
+						hostname: device.hostname,
+						name,
+						status: 'created',
+						error: null,
+					});
+				} catch (createError: unknown) {
+					// The device may have been auto-created by the main shelly-ng service after the discovery
+					// snapshot was taken. Re-poll, and if it now shows as already_registered, fall back to update.
+					try {
+						await refreshDiscovery();
+					} catch {
+						// ignore — handled below
+					}
+
+					const refreshed = devices.value.find((item) => item.hostname === device.hostname);
+
+					if (refreshed?.status === 'already_registered' && refreshed.registeredDeviceId !== null) {
+						await updateRegistered(refreshed.registeredDeviceId, { name, category, password });
+
+						results.push({
+							hostname: device.hostname,
+							name,
+							status: 'updated',
+							error: null,
+						});
+
+						continue;
+					}
+
+					throw createError;
+				}
 			} catch (error: unknown) {
 				results.push({
 					hostname: device.hostname,
@@ -292,6 +345,23 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		formResult.value = results.some((result) => result.status === 'failed') ? FormResult.ERROR : FormResult.OK;
 
 		return results;
+	};
+
+	const updateRegistered = async (
+		id: string,
+		{ name, category, password }: { name: string; category: DevicesModuleDeviceCategory; password: string | null }
+	): Promise<void> => {
+		const data: { type: string; name: string; category: DevicesModuleDeviceCategory; password?: string } = {
+			type: DEVICES_SHELLY_NG_TYPE,
+			name,
+			category,
+		};
+
+		if (password !== null) {
+			data.password = password;
+		}
+
+		await devicesStore.edit({ id, data });
 	};
 
 	const categoryOptions = (device: IShellyNgDiscoveryDevice): { value: DevicesModuleDeviceCategory; label: string }[] =>

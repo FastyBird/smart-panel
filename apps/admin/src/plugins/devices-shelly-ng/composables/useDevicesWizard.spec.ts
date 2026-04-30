@@ -7,6 +7,7 @@ import type { IShellyNgDiscoverySession } from '../schemas/devices.types';
 import { useDevicesWizard } from './useDevicesWizard';
 
 const mockAdd = vi.fn();
+const mockEdit = vi.fn();
 
 const backendClient = {
 	GET: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('../../../common', async () => {
 		injectStoresManager: () => ({
 			getStore: () => ({
 				add: mockAdd,
+				edit: mockEdit,
 			}),
 		}),
 		useBackend: () => ({
@@ -99,6 +101,7 @@ describe('useDevicesWizard', () => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
 		mockAdd.mockResolvedValue(undefined);
+		mockEdit.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -126,22 +129,20 @@ describe('useDevicesWizard', () => {
 	});
 
 	it('adds a manual lookup to an existing discovery session', async () => {
-		backendClient.POST
-			.mockResolvedValueOnce({
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
 				data: {
-					data: {
-						...discoverySession,
-						devices: [],
-					},
+					...discoverySession,
+					devices: [],
 				},
-				response: { status: 200 },
-			})
-			.mockResolvedValueOnce({
-				data: {
-					data: discoverySession,
-				},
-				response: { status: 200 },
-			});
+			},
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
 
 		const wizard = useDevicesWizard();
 
@@ -206,19 +207,17 @@ describe('useDevicesWizard', () => {
 			},
 			response: { status: 200 },
 		});
-		backendClient.GET
-			.mockResolvedValueOnce({
-				data: {
-					data: checkingDiscoverySession,
-				},
-				response: { status: 200 },
-			})
-			.mockResolvedValueOnce({
-				data: {
-					data: discoverySession,
-				},
-				response: { status: 200 },
-			});
+		backendClient.GET.mockResolvedValueOnce({
+			data: {
+				data: checkingDiscoverySession,
+			},
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
 
 		const wizard = useDevicesWizard();
 
@@ -263,6 +262,109 @@ describe('useDevicesWizard', () => {
 				hostname: '192.168.1.10',
 				name: 'Kitchen relay',
 				status: 'created',
+			}),
+		]);
+	});
+
+	it('updates already_registered devices via edit when the user opts in', async () => {
+		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-1',
+					registeredDeviceName: 'Existing kitchen relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// already_registered devices start unselected — user must opt in to override
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('Existing kitchen relay');
+
+		wizard.selected['192.168.1.10'] = true;
+		wizard.categoryByHostname['192.168.1.10'] = DevicesModuleDeviceCategory.switcher;
+
+		await wizard.adoptSelected();
+
+		expect(mockEdit).toHaveBeenCalledWith({
+			id: 'device-uuid-1',
+			data: expect.objectContaining({
+				type: DEVICES_SHELLY_NG_TYPE,
+				category: DevicesModuleDeviceCategory.switcher,
+				name: 'Existing kitchen relay',
+			}),
+		});
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('falls back to update when create fails because the main service auto-adopted the device', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-2',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		// First refresh in adoptSelected: still shows the snapshot's `ready` status.
+		// Second refresh (after add fails): shows the device now exists.
+		backendClient.GET.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		}).mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		mockAdd.mockRejectedValueOnce(new Error('Duplicate identifier'));
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+		await wizard.adoptSelected();
+
+		expect(mockAdd).toHaveBeenCalledTimes(1);
+		expect(mockEdit).toHaveBeenCalledWith({
+			id: 'device-uuid-2',
+			data: expect.objectContaining({
+				type: DEVICES_SHELLY_NG_TYPE,
+				category: DevicesModuleDeviceCategory.lighting,
+				name: 'Kitchen relay',
+			}),
+		});
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
 			}),
 		]);
 	});

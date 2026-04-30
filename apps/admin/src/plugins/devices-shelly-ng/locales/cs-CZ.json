@@ -167,7 +167,9 @@
 			"already_registered": "Registrováno",
 			"unsupported": "Nepodporováno",
 			"failed": "Selhalo",
-			"created": "Vytvořeno"
+			"created": "Vytvořeno",
+			"updated": "Aktualizováno",
+			"willUpdate": "Aktualizuje stávající"
 		}
 	}
 }

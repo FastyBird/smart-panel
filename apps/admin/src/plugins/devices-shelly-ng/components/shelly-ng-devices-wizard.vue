@@ -223,7 +223,7 @@
 							min-width="220"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-								<span v-if="row.status !== 'ready'">-</span>
+								<span v-if="!isAdoptableStatus(row.status)">-</span>
 								<el-select
 									v-else
 									v-model="categoryByHostname[row.hostname]"
@@ -252,7 +252,7 @@
 					/>
 
 					<el-table
-						:data="readyDevices"
+						:data="adoptableDevices"
 						class="h-full w-full flex-grow"
 						table-layout="fixed"
 					>
@@ -266,7 +266,16 @@
 							min-width="220"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-								<el-input v-model="nameByHostname[row.hostname]" />
+								<div class="flex flex-col gap-1">
+									<el-input v-model="nameByHostname[row.hostname]" />
+									<el-tag
+										v-if="row.status === 'already_registered'"
+										size="small"
+										type="warning"
+									>
+										{{ t('devicesShellyNgPlugin.statuses.wizard.willUpdate') }}
+									</el-tag>
+								</div>
 							</template>
 						</el-table-column>
 						<el-table-column
@@ -309,7 +318,7 @@
 									:key="result.hostname"
 									class="flex items-center justify-center gap-2"
 								>
-									<el-tag :type="result.status === 'created' ? 'success' : 'danger'">
+									<el-tag :type="resultTagType(result.status)">
 										{{ t(`devicesShellyNgPlugin.statuses.wizard.${result.status}`) }}
 									</el-tag>
 									<span>{{ result.name }} ({{ result.hostname }})</span>
@@ -402,6 +411,7 @@ import { useNow } from '@vueuse/core';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames, FormResult } from '../../../modules/devices';
 import { useDevicesWizard } from '../composables/composables';
+import type { IShellyNgWizardAdoptionResult } from '../composables/useDevicesWizard';
 import type { IShellyNgDiscoveryDevice } from '../schemas/devices.types';
 
 defineOptions({
@@ -442,7 +452,9 @@ const activeStepIndex = computed<number>(() => {
 	return 0;
 });
 
-const readyDevices = computed<IShellyNgDiscoveryDevice[]>(() => devices.value.filter((device) => device.status === 'ready'));
+const isAdoptableStatus = (status: IShellyNgDiscoveryDevice['status']): boolean => status === 'ready' || status === 'already_registered';
+
+const adoptableDevices = computed<IShellyNgDiscoveryDevice[]>(() => devices.value.filter((device) => isAdoptableStatus(device.status)));
 
 const scanPercentage = computed<number>(() => {
 	if (session.value === null) {
@@ -485,6 +497,18 @@ const statusTagType = (status: IShellyNgDiscoveryDevice['status']): 'success' | 
 	}
 
 	if (status === 'needs_password' || status === 'already_registered') {
+		return 'warning';
+	}
+
+	return 'danger';
+};
+
+const resultTagType = (status: IShellyNgWizardAdoptionResult['status']): 'success' | 'warning' | 'danger' => {
+	if (status === 'created') {
+		return 'success';
+	}
+
+	if (status === 'updated') {
 		return 'warning';
 	}
 

@@ -167,7 +167,9 @@
 			"already_registered": "Registrované",
 			"unsupported": "Nepodporované",
 			"failed": "Zlyhalo",
-			"created": "Vytvorené"
+			"created": "Vytvorené",
+			"updated": "Aktualizované",
+			"willUpdate": "Aktualizuje existujúce"
 		}
 	}
 }

@@ -167,7 +167,9 @@
 			"already_registered": "Registered",
 			"unsupported": "Unsupported",
 			"failed": "Failed",
-			"created": "Created"
+			"created": "Created",
+			"updated": "Actualizado",
+			"willUpdate": "Actualizará el existente"
 		}
 	}
 }
