@@ -178,6 +178,22 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		}
 	};
 
+	const resetSessionScopedState = (): void => {
+		for (const key of Object.keys(selected)) {
+			delete selected[key];
+		}
+		for (const key of Object.keys(categoryByHostname)) {
+			delete categoryByHostname[key];
+		}
+		for (const key of Object.keys(nameByHostname)) {
+			delete nameByHostname[key];
+		}
+		for (const key of Object.keys(passwordByHostname)) {
+			delete passwordByHostname[key];
+		}
+		readyHostnames.clear();
+	};
+
 	const startDiscovery = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
 
@@ -188,6 +204,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/discovery`);
 
 		if (typeof responseData !== 'undefined') {
+			// Drop any selections / inputs from a previous scan before applying the new snapshot.
+			// Otherwise a device that was `ready` last time and now shows as `already_registered`
+			// would carry over `selected=true` and silently update an existing device on adopt.
+			// Refreshes within the same session keep their state — only `startDiscovery` resets,
+			// so the per-device race fallback in `adoptSelected` still works.
+			resetSessionScopedState();
 			applySession(transformDiscoverySessionResponse(responseData.data));
 			formResult.value = FormResult.NONE;
 			startPolling();

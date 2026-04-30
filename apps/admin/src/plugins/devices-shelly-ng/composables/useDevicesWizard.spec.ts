@@ -422,6 +422,43 @@ describe('useDevicesWizard', () => {
 		expect(wizard.scanPercentage.value).toBe(0);
 	});
 
+	it('clears stale selections from a previous scan when the user clicks Scan again', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			id: 'session-2',
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-existing',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		// First scan: device is ready, gets pre-selected.
+		await wizard.startDiscovery();
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		// User clicks Scan again. The same device now shows as already_registered (the main
+		// service auto-adopted it in the meantime). The previous selection must NOT persist —
+		// otherwise the next adopt would silently update an existing device.
+		await wizard.startDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
+	});
+
 	it('jumps scan progress to 100 when the session finishes', async () => {
 		const finishedSession: IShellyNgDiscoverySession = {
 			...discoverySession,
