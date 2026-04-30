@@ -52,6 +52,7 @@ export interface ShellyNgDiscoveryDeviceSnapshot {
 	};
 	registeredDeviceId: string | null;
 	registeredDeviceName: string | null;
+	registeredDeviceCategory: DeviceCategory | null;
 	error: string | null;
 	lastSeenAt: string;
 }
@@ -299,6 +300,7 @@ export class ShellyNgDiscoveryService {
 				authentication: { enabled: false, domain: null },
 				registeredDeviceId: registeredDevice?.id ?? null,
 				registeredDeviceName: registeredDevice?.name ?? null,
+				registeredDeviceCategory: registeredDevice?.category ?? null,
 				error: null,
 				lastSeenAt: new Date().toISOString(),
 			};
@@ -332,6 +334,7 @@ export class ShellyNgDiscoveryService {
 				authentication: { enabled: false, domain: null },
 				registeredDeviceId: null,
 				registeredDeviceName: null,
+				registeredDeviceCategory: null,
 				error: err.message,
 				lastSeenAt: new Date().toISOString(),
 			});
@@ -364,6 +367,7 @@ export class ShellyNgDiscoveryService {
 			authentication: existing?.authentication ?? { enabled: false, domain: null },
 			registeredDeviceId: existing?.registeredDeviceId ?? null,
 			registeredDeviceName: existing?.registeredDeviceName ?? null,
+			registeredDeviceCategory: existing?.registeredDeviceCategory ?? null,
 			error: null,
 			lastSeenAt: new Date().toISOString(),
 		});
@@ -406,6 +410,7 @@ export class ShellyNgDiscoveryService {
 				authentication,
 				registeredDeviceId: registeredDevice?.id ?? null,
 				registeredDeviceName: registeredDevice?.name ?? null,
+				registeredDeviceCategory: registeredDevice?.category ?? null,
 				error: null,
 				lastSeenAt: new Date().toISOString(),
 			};

@@ -80,6 +80,7 @@ const discoverySession: IShellyNgDiscoverySession = {
 			},
 			registeredDeviceId: null,
 			registeredDeviceName: null,
+			registeredDeviceCategory: null,
 			error: null,
 			lastSeenAt: '2026-04-29T12:00:01.000Z',
 		},
@@ -272,6 +273,35 @@ describe('useDevicesWizard', () => {
 		]);
 	});
 
+	it('pre-fills the category dropdown from registeredDeviceCategory for already_registered devices', async () => {
+		// Plus 1 supports both `lighting` and `switcher`, so `suggestedCategory` is null. Without
+		// `registeredDeviceCategory` the user would land on step 2 with an empty selector even
+		// though we already chose a category when the device was first adopted.
+		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					suggestedCategory: null,
+					registeredDeviceId: 'device-uuid-1',
+					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceCategory: DevicesModuleDeviceCategory.switcher,
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+
+		expect(wizard.categoryByHostname['192.168.1.10']).toBe(DevicesModuleDeviceCategory.switcher);
+	});
+
 	it('updates already_registered devices via edit when the user opts in', async () => {
 		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
 			...discoverySession,
@@ -281,6 +311,7 @@ describe('useDevicesWizard', () => {
 					status: 'already_registered',
 					registeredDeviceId: 'device-uuid-1',
 					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceCategory: DevicesModuleDeviceCategory.lighting,
 				},
 			],
 		};

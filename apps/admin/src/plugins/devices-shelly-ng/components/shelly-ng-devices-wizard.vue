@@ -196,18 +196,28 @@
 						:empty-text="t('devicesShellyNgPlugin.texts.wizard.noDevices')"
 					>
 						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
+							min-width="200"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<div class="flex flex-col">
+									<span class="font-medium">
+										{{ row.registeredDeviceName || row.name || row.displayName || row.model || row.hostname }}
+									</span>
+									<span
+										v-if="row.displayName || row.model"
+										class="text-xs text-gray-500"
+									>
+										{{ row.displayName || row.model }}
+									</span>
+								</div>
+							</template>
+						</el-table-column>
+						<el-table-column
 							prop="hostname"
 							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
 							min-width="150"
 						/>
-						<el-table-column
-							:label="t('devicesShellyNgPlugin.headings.device.model')"
-							min-width="180"
-						>
-							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-								<span>{{ row.displayName || row.model || row.hostname }}</span>
-							</template>
-						</el-table-column>
 						<el-table-column
 							:label="t('devicesShellyNgPlugin.headings.wizard.status')"
 							width="170"

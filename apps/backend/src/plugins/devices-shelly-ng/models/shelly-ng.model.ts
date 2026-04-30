@@ -387,6 +387,18 @@ export class ShellyNgDiscoveryDeviceModel {
 	registeredDeviceName: string | null;
 
 	@ApiPropertyOptional({
+		description:
+			'Already registered device category — used to pre-fill the wizard so adopted devices keep their existing category by default',
+		enum: DeviceCategory,
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsIn(Object.values(DeviceCategory))
+	@IsOptional()
+	registeredDeviceCategory: DeviceCategory | null;
+
+	@ApiPropertyOptional({
 		description: 'Error message from the last lookup attempt',
 		nullable: true,
 		example: null,

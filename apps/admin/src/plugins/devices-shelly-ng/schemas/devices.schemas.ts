@@ -30,7 +30,7 @@ export const ShellyNgDeviceEditFormSchema = DeviceEditFormSchema.extend({
 	{
 		message: 'At least one network address (WiFi or Ethernet) is required',
 		path: ['wifiAddress'],
-	},
+	}
 );
 
 export const ShellyNgSupportedDeviceSchema = z.object({
@@ -94,6 +94,7 @@ export const ShellyNgDiscoveryDeviceSchema = z.object({
 	}),
 	registeredDeviceId: z.string().nullable(),
 	registeredDeviceName: z.string().nullable(),
+	registeredDeviceCategory: z.nativeEnum(DevicesModuleDeviceCategory).nullable(),
 	error: z.string().nullable(),
 	lastSeenAt: z.string(),
 });

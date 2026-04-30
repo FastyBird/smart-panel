@@ -166,8 +166,15 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				selected[device.hostname] = false;
 			}
 
-			if (categoryByHostname[device.hostname] === undefined || (categoryByHostname[device.hostname] === null && device.suggestedCategory !== null)) {
-				categoryByHostname[device.hostname] = device.suggestedCategory;
+			// Pre-fill the category dropdown so the wizard never lands on an empty selector for
+			// already-adopted devices: prefer the existing DB category over the descriptor's
+			// suggestion (the descriptor's `suggestedCategory` is only set when the model maps
+			// to a single category, so a Plus 1 — which supports both `lighting` and `switcher` —
+			// would otherwise show as blank even though we already picked one when adopting).
+			const initialCategory = device.registeredDeviceCategory ?? device.suggestedCategory;
+
+			if (categoryByHostname[device.hostname] === undefined || (categoryByHostname[device.hostname] === null && initialCategory !== null)) {
+				categoryByHostname[device.hostname] = initialCategory;
 			}
 
 			// Refresh the editable name when the inspect step finishes (checking → ready or
