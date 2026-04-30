@@ -112,9 +112,16 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	});
 
 	const selectedDevices = computed<IShellyV1DiscoveryDevice[]>(() =>
-		devices.value.filter(
-			(device) => selected[device.hostname] === true && isAdoptableStatus(device.status) && categoryByHostname[device.hostname] !== null
-		)
+		devices.value.filter((device) => {
+			const category = categoryByHostname[device.hostname];
+
+			// Reject `undefined` (no entry yet) AND `null` (entry exists but no category chosen).
+			// `categoryByHostname[hostname]` is typed as `DevicesModuleDeviceCategory | null`, but
+			// indexing a `Record` for a missing key returns `undefined` at runtime — without the
+			// `!= null` guard the filter would let half-initialized rows through and `adoptSelected`
+			// would cast `undefined` to `DevicesModuleDeviceCategory` and send it to the backend.
+			return selected[device.hostname] === true && isAdoptableStatus(device.status) && category != null;
+		})
 	);
 
 	const canContinue = computed<boolean>(() => selectedDevices.value.length > 0);
@@ -124,7 +131,11 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 		pollingTimer = window.setInterval(() => {
 			refreshDiscovery().catch(() => {
-				// User can trigger discovery again if polling fails.
+				// Stop polling on any error — the most likely failure is a 404 after the server
+				// cleaned up the session, and there's no point re-hitting a missing endpoint every
+				// second until the component unmounts. The user can hit "Scan again" to start a
+				// fresh session.
+				stopPolling();
 			});
 		}, 1_000);
 	};
