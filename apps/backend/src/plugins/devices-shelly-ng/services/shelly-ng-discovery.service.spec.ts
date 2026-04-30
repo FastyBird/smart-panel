@@ -103,6 +103,9 @@ describe('ShellyNgDiscoveryService', () => {
 				status: 'ready',
 				source: 'mdns',
 				categories: ['lighting', 'switcher'],
+				// Multi-category models pre-fill with the descriptor's first category so the
+				// user can adopt without picking — Plus 1's primary use is lighting.
+				suggestedCategory: 'lighting',
 			}),
 		]);
 	});

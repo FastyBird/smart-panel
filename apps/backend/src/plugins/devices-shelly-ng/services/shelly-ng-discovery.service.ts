@@ -291,7 +291,12 @@ export class ShellyNgDiscoveryService {
 				status,
 				source: 'mdns',
 				categories,
-				suggestedCategory: categories.length === 1 ? categories[0] : null,
+				// Pre-fill the wizard's category dropdown with the first listed category for the
+				// model so the user can adopt a brand-new device without picking anything. The
+				// descriptor's category list is ordered most-common-first (e.g. Plus 1 → lighting,
+				// switcher), so this lands on the typical use; users with edge cases can still
+				// flip the dropdown in step 2.
+				suggestedCategory: categories.length > 0 ? categories[0] : null,
 				// Devices in `shellies.values()` have already authenticated successfully
 				// (the main connector wouldn't expose them otherwise). Password-protected
 				// devices the connector can't reach never appear here — they have to be
@@ -406,7 +411,12 @@ export class ShellyNgDiscoveryService {
 				status,
 				source,
 				categories,
-				suggestedCategory: categories.length === 1 ? categories[0] : null,
+				// Pre-fill the wizard's category dropdown with the first listed category for the
+				// model so the user can adopt a brand-new device without picking anything. The
+				// descriptor's category list is ordered most-common-first (e.g. Plus 1 → lighting,
+				// switcher), so this lands on the typical use; users with edge cases can still
+				// flip the dropdown in step 2.
+				suggestedCategory: categories.length > 0 ? categories[0] : null,
 				authentication,
 				registeredDeviceId: registeredDevice?.id ?? null,
 				registeredDeviceName: registeredDevice?.name ?? null,
