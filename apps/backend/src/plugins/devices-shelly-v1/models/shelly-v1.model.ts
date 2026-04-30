@@ -1,7 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
+import { DeviceCategory } from '../../../modules/devices/devices.constants';
 
 @ApiSchema({ name: 'DevicesShellyV1PluginDataSupportedDevice' })
 export class ShellyV1SupportedDeviceModel {
@@ -135,4 +137,240 @@ export class ShellyV1DeviceInfoModel {
 		example: 'Living room light switch',
 	})
 	description?: string;
+}
+
+@ApiSchema({ name: 'DevicesShellyV1PluginDataDiscoveryDeviceAuthentication' })
+export class ShellyV1DiscoveryDeviceAuthenticationModel {
+	@ApiProperty({
+		description: 'Whether authentication is enabled',
+		example: false,
+	})
+	@Expose()
+	@IsBoolean()
+	enabled: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Whether authentication is valid (only set when a password was supplied)',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsBoolean()
+	@IsOptional()
+	valid: boolean | null;
+}
+
+@ApiSchema({ name: 'DevicesShellyV1PluginDataDiscoveryDevice' })
+export class ShellyV1DiscoveryDeviceModel {
+	@ApiPropertyOptional({
+		description: 'Shelly device identifier',
+		nullable: true,
+		example: 'shelly1-A8032ABE5084',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	identifier: string | null;
+
+	@ApiProperty({
+		description: 'Discovered hostname or IP address',
+		example: '192.168.1.100',
+	})
+	@Expose()
+	@IsString()
+	hostname: string;
+
+	@ApiPropertyOptional({
+		description: 'Device name',
+		nullable: true,
+		example: 'Kitchen relay',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	name: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Device model',
+		nullable: true,
+		example: 'SHSW-1',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	model: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Friendly supported-device name',
+		nullable: true,
+		example: 'Shelly 1',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	displayName: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Firmware version',
+		nullable: true,
+		example: '20230913-001',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	firmware: string | null;
+
+	@ApiProperty({
+		description: 'Discovery candidate status',
+		enum: ['checking', 'ready', 'needs_password', 'already_registered', 'unsupported', 'failed'],
+		example: 'ready',
+	})
+	@Expose()
+	@IsIn(['checking', 'ready', 'needs_password', 'already_registered', 'unsupported', 'failed'])
+	status: string;
+
+	@ApiProperty({
+		description: 'How the candidate was found',
+		enum: ['mdns', 'manual'],
+		example: 'mdns',
+	})
+	@Expose()
+	@IsIn(['mdns', 'manual'])
+	source: string;
+
+	@ApiProperty({
+		description: 'Available target device categories',
+		type: 'array',
+		items: { type: 'string', enum: Object.values(DeviceCategory) },
+		example: [DeviceCategory.SWITCHER, DeviceCategory.LIGHTING],
+	})
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	categories: DeviceCategory[];
+
+	@ApiPropertyOptional({
+		description: 'Suggested target device category when the plugin can infer one',
+		nullable: true,
+		enum: DeviceCategory,
+		example: DeviceCategory.SWITCHER,
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	suggestedCategory: DeviceCategory | null;
+
+	@ApiProperty({
+		description: 'Authentication configuration',
+		type: () => ShellyV1DiscoveryDeviceAuthenticationModel,
+	})
+	@Expose()
+	@ValidateNested({ each: true })
+	@Type(() => ShellyV1DiscoveryDeviceAuthenticationModel)
+	authentication: ShellyV1DiscoveryDeviceAuthenticationModel;
+
+	@ApiPropertyOptional({
+		description: 'Already registered device id',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	registeredDeviceId: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Already registered device name',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	registeredDeviceName: string | null;
+
+	@ApiPropertyOptional({
+		description:
+			'Already registered device category — used to pre-fill the wizard so adopted devices keep their existing category by default',
+		enum: DeviceCategory,
+		nullable: true,
+		example: DeviceCategory.SWITCHER,
+	})
+	@Expose()
+	@IsIn(Object.values(DeviceCategory))
+	@IsOptional()
+	registeredDeviceCategory: DeviceCategory | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message from the last lookup attempt',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	error: string | null;
+
+	@ApiProperty({
+		description: 'Last time this candidate was observed or checked',
+		example: '2026-04-29T12:00:00.000Z',
+	})
+	@Expose()
+	@IsString()
+	lastSeenAt: string;
+}
+
+@ApiSchema({ name: 'DevicesShellyV1PluginDataDiscoverySession' })
+export class ShellyV1DiscoverySessionModel {
+	@ApiProperty({
+		description: 'Discovery session id',
+		example: 'c66808d8-0af1-4b93-bd61-4131cf62f20f',
+	})
+	@Expose()
+	@IsString()
+	id: string;
+
+	@ApiProperty({
+		description: 'Discovery session status',
+		enum: ['running', 'finished', 'failed'],
+		example: 'running',
+	})
+	@Expose()
+	@IsIn(['running', 'finished', 'failed'])
+	status: string;
+
+	@ApiProperty({
+		description: 'Discovery start timestamp',
+		example: '2026-04-29T12:00:00.000Z',
+	})
+	@Expose()
+	@IsString()
+	startedAt: string;
+
+	@ApiProperty({
+		description: 'Discovery expiry timestamp',
+		example: '2026-04-29T12:00:30.000Z',
+	})
+	@Expose()
+	@IsString()
+	expiresAt: string;
+
+	@ApiProperty({
+		description: 'Remaining discovery time in seconds',
+		example: 30,
+	})
+	@Expose()
+	@IsInt()
+	remainingSeconds: number;
+
+	@ApiProperty({
+		description: 'Discovered Shelly V1 device candidates',
+		type: 'array',
+		items: { $ref: getSchemaPath(ShellyV1DiscoveryDeviceModel) },
+	})
+	@Expose()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => ShellyV1DiscoveryDeviceModel)
+	devices: ShellyV1DiscoveryDeviceModel[];
 }

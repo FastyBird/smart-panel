@@ -10,7 +10,20 @@
       "notSupported": "Lo sentimos, su dispositivo no es compatible",
       "model": "Modelo",
       "firmware": "Firmware"
+    },
+    "wizard": {
+      "title": "Asistente de descubrimiento de Shelly Gen 1",
+      "discovery": "Discovery",
+      "categories": "Categories",
+      "results": "Results",
+      "status": "Status"
     }
+  },
+  "subHeadings": {
+    "wizard": "Encuentre y adopte dispositivos Shelly Gen 1 en su red"
+  },
+  "breadcrumbs": {
+    "wizard": "asistente de descubrimiento"
   },
   "fields": {
     "devices": {
@@ -44,6 +57,9 @@
       "password": {
         "title": "Contraseña de administrador",
         "placeholder": "Proporcione la contraseña del dispositivo si está protegido"
+      },
+      "error": {
+        "title": "Error"
       },
       "hostname": {
         "title": "Nombre de host del dispositivo",
@@ -101,16 +117,60 @@
       "edited": "¡Cambios guardados! El dispositivo Shelly Gen 1: {device} ha sido actualizado.",
       "notEdited": "Algo salió mal. La actualización del dispositivo Shelly Gen 1 no fue exitosa.",
       "failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
+    },
+    "wizard": {
+      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
     }
   },
   "texts": {
     "aboutPluginStatus": "Habilitar o deshabilitar la integración de dispositivos Shelly Gen 1. Cuando está habilitado, los dispositivos Shelly pueden ser descubiertos y controlados a través del Smart Panel.",
     "aboutDiscovery": "Configure cómo el plugin descubre dispositivos Shelly Gen 1 en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
-    "aboutTimeouts": "Configure los tiempos de espera para la comunicación HTTP con los dispositivos Shelly Gen 1. Estos ajustes controlan el manejo de solicitudes y la monitorización del estado del dispositivo."
+    "aboutTimeouts": "Configure los tiempos de espera para la comunicación HTTP con los dispositivos Shelly Gen 1. Estos ajustes controlan el manejo de solicitudes y la monitorización del estado del dispositivo.",
+    "wizard": {
+      "discovery": "The wizard scans the local network for Shelly Gen 1 devices and also accepts a manually entered hostname or IP address.",
+      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+      "scanStatus": "{count} devices found",
+      "noDevices": "No Shelly devices found",
+      "results": {
+        "success": "Todos los dispositivos se adoptaron correctamente.",
+        "failed": "Algunos dispositivos no pudieron ser adoptados. Revise los errores a continuación."
+      }
+    }
   },
   "buttons": {
     "next": {
       "title": "Siguiente"
+    },
+    "wizard": {
+      "restart": {
+        "title": "Scan again"
+      },
+      "addManual": {
+        "title": "Add"
+      },
+      "adopt": {
+        "title": "Adopt selected"
+      },
+      "finish": {
+        "title": "Back to devices"
+      }
+    }
+  },
+  "statuses": {
+    "wizard": {
+      "checking": "Checking",
+      "ready": "Ready",
+      "needs_password": "Needs password",
+      "already_registered": "Registered",
+      "unsupported": "Unsupported",
+      "failed": "Failed",
+      "created": "Created",
+      "updated": "Actualizado",
+      "willCreate": "Se creará",
+      "willUpdate": "Actualizará el existente"
     }
   }
 }

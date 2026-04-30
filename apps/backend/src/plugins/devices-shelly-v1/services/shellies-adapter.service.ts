@@ -38,6 +38,13 @@ export class ShelliesAdapterService {
 	 */
 	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
 
+	/**
+	 * External 'add' subscribers that should receive every device discovered while
+	 * they are subscribed. Kept across stop/start cycles so wizard discovery sessions
+	 * that opened during a connector restart still receive events once the lib is up.
+	 */
+	private readonly addSubscribers = new Set<(device: ShellyDevice) => void>();
+
 	private callbacks: ShelliesAdapterCallbacks = {};
 
 	constructor(
@@ -76,6 +83,13 @@ export class ShelliesAdapterService {
 
 			//this.shellies.on('discover', deviceDiscoveredHandler);
 			this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
+
+			// Re-attach external 'add' subscribers (wizard discovery sessions) that registered
+			// while we were stopped/restarting. `subscribeToAddedDevice` keeps them in the set
+			// across connector lifecycles.
+			for (const handler of this.addSubscribers) {
+				this.shellies.on('add', handler);
+			}
 
 			this.logger.log('Shellies library initialized, starting discovery');
 
@@ -168,6 +182,48 @@ export class ShelliesAdapterService {
 	 */
 	getRegisteredDevice(deviceId: string): RegisteredDevice | undefined {
 		return this.devicesRegistry.get(deviceId);
+	}
+
+	/**
+	 * Get all currently-known devices from the underlying shellies library.
+	 * Used by the discovery wizard to seed a new session with devices the lib
+	 * already saw before the wizard opened.
+	 */
+	getKnownDevices(): ShellyDevice[] {
+		const devices: ShellyDevice[] = [];
+
+		if (!this.shellies) {
+			return devices;
+		}
+
+		for (const registered of this.devicesRegistry.values()) {
+			const device = this.shellies.getDevice(registered.type, registered.id);
+
+			if (device) {
+				devices.push(device);
+			}
+		}
+
+		return devices;
+	}
+
+	/**
+	 * Subscribe to new devices the lib discovers for as long as the returned
+	 * unsubscribe is not invoked. Used by the wizard to pick up devices that
+	 * power on during a scan session without needing its own mDNS/CoAP browser.
+	 *
+	 * The handler is also kept across connector stop/start cycles, so a wizard
+	 * scan window that opened during a restart still receives events once the
+	 * lib comes up.
+	 */
+	subscribeToAddedDevice(handler: (device: ShellyDevice) => void): () => void {
+		this.addSubscribers.add(handler);
+		this.shellies?.on('add', handler);
+
+		return () => {
+			this.addSubscribers.delete(handler);
+			this.shellies?.off('add', handler);
+		};
 	}
 
 	/**

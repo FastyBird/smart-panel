@@ -10,7 +10,20 @@
 			"notSupported": "Przepraszamy, Twoje urzadzenie nie jest obslugiwane",
 			"model": "Model",
 			"firmware": "Firmware"
+		},
+		"wizard": {
+			"title": "Kreator wyszukiwania Shelly Gen 1",
+			"discovery": "Discovery",
+			"categories": "Categories",
+			"results": "Results",
+			"status": "Status"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Znajdz i adoptuj urzadzenia Shelly Gen 1 w swojej sieci"
+	},
+	"breadcrumbs": {
+		"wizard": "kreator wyszukiwania"
 	},
 	"fields": {
 		"devices": {
@@ -44,6 +57,9 @@
 			"password": {
 				"title": "Haslo administratora",
 				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
+			},
+			"error": {
+				"title": "Blad"
 			},
 			"hostname": {
 				"title": "Nazwa hosta urzadzenia",
@@ -101,16 +117,60 @@
 			"edited": "Zmiany zapisane! Urzadzenie Shelly Gen 1: {device} zostalo zaktualizowane.",
 			"notEdited": "Cos poszlo nie tak. Aktualizacja urzadzenia Shelly Gen 1 nie powiodla sie.",
 			"failedLoadSupportedDevices": "Cos poszlo nie tak. Obslugiwane urzadzenia wtyczki nie mogly zostac zaladowane."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
 		}
 	},
 	"texts": {
 		"aboutPluginStatus": "Wlacz lub wylacz integracje urzadzen Shelly Gen 1. Po wlaczeniu urzadzenia Shelly moga byc wykrywane i sterowane przez Smart Panel.",
 		"aboutDiscovery": "Skonfiguruj, jak wtyczka wykrywa urzadzenia Shelly Gen 1 w sieci lokalnej za pomoca Multicast DNS (mDNS).",
-		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1."
+		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1.",
+		"wizard": {
+			"discovery": "The wizard scans the local network for Shelly Gen 1 devices and also accepts a manually entered hostname or IP address.",
+			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+			"scanStatus": "{count} devices found",
+			"noDevices": "No Shelly devices found",
+			"results": {
+				"success": "Wszystkie urzadzenia zostaly pomyslnie adoptowane.",
+				"failed": "Niektore urzadzenia nie mogly zostac adoptowane. Sprawdz blody ponizej."
+			}
+		}
 	},
 	"buttons": {
 		"next": {
 			"title": "Dalej"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Scan again"
+			},
+			"addManual": {
+				"title": "Add"
+			},
+			"adopt": {
+				"title": "Adopt selected"
+			},
+			"finish": {
+				"title": "Back to devices"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Checking",
+			"ready": "Ready",
+			"needs_password": "Needs password",
+			"already_registered": "Registered",
+			"unsupported": "Unsupported",
+			"failed": "Failed",
+			"created": "Created",
+			"updated": "Zaktualizowano",
+			"willCreate": "Zostanie utworzone",
+			"willUpdate": "Zaktualizuje istniejace"
 		}
 	}
 }

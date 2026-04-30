@@ -10,7 +10,20 @@
 			"notSupported": "Je nám líto, vaše zařízení není podporováno",
 			"model": "Model",
 			"firmware": "Firmware"
+		},
+		"wizard": {
+			"title": "Průvodce vyhledáním Shelly Gen 1",
+			"discovery": "Vyhledávání",
+			"categories": "Kategorie",
+			"results": "Výsledky",
+			"status": "Stav"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Najděte a adoptujte zařízení Shelly Gen 1 ve vaší síti"
+	},
+	"breadcrumbs": {
+		"wizard": "průvodce vyhledáním"
 	},
 	"fields": {
 		"devices": {
@@ -44,6 +57,9 @@
 			"password": {
 				"title": "Heslo administrátora",
 				"placeholder": "Zadejte heslo zařízení, pokud je chráněno"
+			},
+			"error": {
+				"title": "Chyba"
 			},
 			"hostname": {
 				"title": "Název hostitele zařízení",
@@ -101,16 +117,60 @@
 			"edited": "Změny uloženy! Zařízení Shelly Gen 1: {device} bylo aktualizováno.",
 			"notEdited": "Něco se pokazilo. Aktualizace zařízení Shelly Gen 1 nebyla úspěšná.",
 			"failedLoadSupportedDevices": "Něco se pokazilo. Nepodařilo se načíst podporovaná zařízení pluginu."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Něco se pokazilo. Vyhledávání Shelly se nepodařilo spustit.",
+			"discoveryNotLoaded": "Něco se pokazilo. Vyhledávání Shelly se nepodařilo načíst.",
+			"manualNotAdded": "Něco se pokazilo. Ruční vyhledání zařízení Shelly se nepodařilo přidat.",
+			"adoptionNotCreated": "Něco se pokazilo. Zařízení Shelly se nepodařilo adoptovat."
 		}
 	},
 	"texts": {
 		"aboutPluginStatus": "Povolte nebo zakažte integraci zařízení Shelly Gen 1. Pokud je povolena, zařízení Shelly mohou být vyhledána a ovládána prostřednictvím Smart Panelu.",
 		"aboutDiscovery": "Nakonfigurujte, jak plugin vyhledává zařízení Shelly Gen 1 ve vaší lokální síti pomocí Multicast DNS (mDNS). To umožňuje automatickou detekci bez nutnosti ručního zadávání IP adres.",
-		"aboutTimeouts": "Nakonfigurujte nastavení časových limitů pro HTTP komunikaci se zařízeními Shelly Gen 1. Tato nastavení řídí zpracování požadavků a monitorování stavu zařízení."
+		"aboutTimeouts": "Nakonfigurujte nastavení časových limitů pro HTTP komunikaci se zařízeními Shelly Gen 1. Tato nastavení řídí zpracování požadavků a monitorování stavu zařízení.",
+		"wizard": {
+			"discovery": "Průvodce vyhledá zařízení Shelly Gen 1 v lokální síti a přijímá také ručně zadaný hostname nebo IP adresu.",
+			"categories": "Potvrďte, která připravená zařízení mají být adoptována, a vyberte cílovou kategorii pro každé z nich.",
+			"scanStatus": "Nalezeno zařízení: {count}",
+			"noDevices": "Nebyla nalezena žádná zařízení Shelly",
+			"results": {
+				"success": "Všechna zařízení byla úspěšně adoptována.",
+				"failed": "Některá zařízení se nepodařilo adoptovat. Zkontrolujte chyby níže."
+			}
+		}
 	},
 	"buttons": {
 		"next": {
 			"title": "Další"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Vyhledat znovu"
+			},
+			"addManual": {
+				"title": "Přidat"
+			},
+			"adopt": {
+				"title": "Adoptovat vybrané"
+			},
+			"finish": {
+				"title": "Zpět na zařízení"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Kontrola",
+			"ready": "Připraveno",
+			"needs_password": "Vyžaduje heslo",
+			"already_registered": "Registrováno",
+			"unsupported": "Nepodporováno",
+			"failed": "Selhalo",
+			"created": "Vytvořeno",
+			"updated": "Aktualizováno",
+			"willCreate": "Bude vytvořeno",
+			"willUpdate": "Aktualizuje stávající"
 		}
 	}
 }
