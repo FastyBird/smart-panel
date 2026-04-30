@@ -15,7 +15,7 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
-import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
+import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm, ShellyNgDevicesWizard } from './components/components';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
 import { locales } from './locales';
 import { ShellyNgConfigEditFormSchema } from './schemas/config.schemas';
@@ -75,6 +75,7 @@ export default {
 					components: {
 						deviceAddForm: ShellyNgDeviceAddForm,
 						deviceEditForm: ShellyNgDeviceEditForm,
+						deviceWizard: ShellyNgDevicesWizard,
 					},
 					schemas: {
 						deviceSchema: ShellyNgDeviceSchema,

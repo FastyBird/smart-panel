@@ -10,6 +10,12 @@
 			"notSupported": "Ľutujeme, vaše zariadenie nie je podporované",
 			"model": "Model",
 			"firmware": "Firmware"
+		},
+		"wizard": {
+			"discovery": "Vyhľadávanie",
+			"categories": "Kategórie",
+			"results": "Výsledky",
+			"status": "Stav"
 		}
 	},
 	"fields": {
@@ -108,16 +114,53 @@
 			"edited": "Zmeny uložené! Zariadenie Shelly Next-Generation: {device} bolo aktualizované.",
 			"notEdited": "Niečo sa pokazilo. Aktualizácia zariadenia Shelly Next-Generation nebola úspešná.",
 			"failedLoadSupportedDevices": "Niečo sa pokazilo. Podporované zariadenia pluginu sa nepodarilo načítať."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Niečo sa pokazilo. Vyhľadávanie Shelly sa nepodarilo spustiť.",
+			"discoveryNotLoaded": "Niečo sa pokazilo. Vyhľadávanie Shelly sa nepodarilo načítať.",
+			"manualNotAdded": "Niečo sa pokazilo. Manuálne vyhľadanie zariadenia Shelly sa nepodarilo pridať.",
+			"adoptionNotCreated": "Niečo sa pokazilo. Zariadenie Shelly sa nepodarilo adoptovať."
 		}
 	},
 	"texts": {
 		"aboutPluginStatus": "Povoľte alebo zakážte integráciu zariadení Shelly Next Generation. Keď je povolená, zariadenia Shelly môžu byť objavené a ovládané cez Smart Panel.",
 		"aboutMdns": "Nakonfigurujte, ako plugin objavuje zariadenia Shelly na vašej lokálnej sieti pomocou Multicast DNS (mDNS). To umožňuje automatickú detekciu bez potreby manuálneho zadávania IP adries.",
-		"aboutWebsockets": "Spravujte parametre WebSocket pripojenia pre zariadenia Shelly. Tieto nastavenia ovládajú stabilitu komunikácie, spracovanie požiadaviek a správanie pri opätovnom pripojení."
+		"aboutWebsockets": "Spravujte parametre WebSocket pripojenia pre zariadenia Shelly. Tieto nastavenia ovládajú stabilitu komunikácie, spracovanie požiadaviek a správanie pri opätovnom pripojení.",
+		"wizard": {
+			"discovery": "Sprievodca vyhľadá zariadenia Shelly NG v lokálnej sieti a prijíma aj manuálne zadaný hostname alebo IP adresu.",
+			"categories": "Potvrďte, ktoré pripravené zariadenia sa majú adoptovať, a vyberte cieľovú kategóriu pre každé z nich.",
+			"scanStatus": "Nájdené zariadenia: {count}",
+			"noDevices": "Neboli nájdené žiadne zariadenia Shelly"
+		}
 	},
 	"buttons": {
 		"next": {
 			"title": "Ďalej"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Vyhľadať znova"
+			},
+			"addManual": {
+				"title": "Pridať"
+			},
+			"adopt": {
+				"title": "Adoptovať vybrané"
+			},
+			"finish": {
+				"title": "Späť na zariadenia"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Kontrola",
+			"ready": "Pripravené",
+			"needs_password": "Vyžaduje heslo",
+			"already_registered": "Registrované",
+			"unsupported": "Nepodporované",
+			"failed": "Zlyhalo",
+			"created": "Vytvorené"
 		}
 	}
 }
