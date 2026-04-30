@@ -51,10 +51,14 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	// Used by the wizard service to react to devices joined during a pairing session.
 	private readonly deviceJoinedSubscribers = new Set<(device: Z2mRegisteredDevice) => void>();
 
-	// Friendly names already known to this service. Used to detect truly new
-	// devices in handleDevicesReceived so we only notify subscribers once per
-	// new device — never on subsequent re-publishes of the device list.
-	private readonly knownFriendlyNames = new Set<string>();
+	// Friendly names captured from real `device_joined` / `device_announce`
+	// bridge events. The bridge follows up with a `bridge/devices` republish
+	// once interview completes — at that point we drain this set, look up the
+	// full `Z2mRegisteredDevice`, and fire `notifyDeviceJoined` exactly once
+	// per truly new device. This avoids the initial-fetch problem where every
+	// already-paired device would otherwise look "new" to a freshly-started
+	// service.
+	private readonly pendingJoinedFriendlyNames = new Set<string>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -470,7 +474,7 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
-		this.knownFriendlyNames.clear();
+		this.pendingJoinedFriendlyNames.clear();
 
 		// Set all devices to unknown state
 		try {
@@ -508,22 +512,23 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
 
-		// Notify subscribers about devices that are new to this service since the
-		// last bridge/devices message. We compare against knownFriendlyNames so we
-		// fire exactly once per device — not on every refresh that includes it.
-		for (const registered of registeredDevices) {
-			if (!this.knownFriendlyNames.has(registered.friendlyName)) {
-				this.knownFriendlyNames.add(registered.friendlyName);
-				this.notifyDeviceJoined(registered);
-			}
-		}
-
-		// Drop friendly names that are no longer present so a future re-pairing of
-		// the same friendly_name (e.g. after device_leave) is treated as new again.
-		const currentNames = new Set(registeredDevices.map((d) => d.friendlyName));
-		for (const name of this.knownFriendlyNames) {
-			if (!currentNames.has(name)) {
-				this.knownFriendlyNames.delete(name);
+		// Drain pending joined friendly names. The bridge fires a real
+		// `device_joined` / `device_announce` event for new devices, then
+		// republishes `bridge/devices` once the interview completes. Here we
+		// look up each pending join in the now-populated registry and notify
+		// subscribers — exactly once per truly new device. Already-paired
+		// devices in this republish are NOT notified, which avoids the
+		// initial-fetch problem.
+		if (this.pendingJoinedFriendlyNames.size > 0) {
+			const registryByName = new Map(registeredDevices.map((d) => [d.friendlyName, d]));
+			for (const friendlyName of [...this.pendingJoinedFriendlyNames]) {
+				const registered = registryByName.get(friendlyName);
+				if (registered) {
+					this.pendingJoinedFriendlyNames.delete(friendlyName);
+					this.notifyDeviceJoined(registered);
+				}
+				// If not yet in registry (interview still pending), leave it in
+				// the set; the next `bridge/devices` republish will pick it up.
 			}
 		}
 
@@ -612,10 +617,18 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	}
 
 	/**
-	 * Handle device joined event
+	 * Handle device joined event.
+	 *
+	 * The bridge sends this for actual `device_joined` / `device_announce`
+	 * events — the authoritative signal that a NEW device is pairing. The
+	 * bridge then republishes `bridge/devices` once the interview completes
+	 * (which is what populates the registry). We record the friendly name
+	 * here and let `handleDevicesReceived` drain the pending set once the
+	 * full `Z2mRegisteredDevice` is available.
 	 */
 	private handleDeviceJoined(_ieeeAddress: string, friendlyName: string): void {
 		this.logger.log(`Device joined: ${friendlyName}`);
+		this.pendingJoinedFriendlyNames.add(friendlyName);
 	}
 
 	/**
