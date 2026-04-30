@@ -430,6 +430,90 @@ describe('useDevicesWizard', () => {
 		]);
 	});
 
+	it('deselects a previously ready device when polling reports it as already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-mid-session',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// Device started ready and was auto-selected.
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		// Polling refresh: device transitions to already_registered (e.g., main connector
+		// auto-adopted it). Selection must clear so the next Adopt click doesn't silently
+		// update the existing device — the user has to explicitly opt in for updates.
+		await wizard.refreshDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
+	});
+
+	it('still adopts a device the user selected if the refresh inside adoptSelected flips it to already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-in-flight',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		// First refresh (inside adoptSelected) reports the status flip.
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+		// User explicitly selected the device when it was still `ready`.
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		await wizard.adoptSelected();
+
+		// Snapshot-before-refresh keeps the device in scope for adoption even though
+		// the refresh deselects it in live state.
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'device-uuid-in-flight',
+			})
+		);
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
 	it('refreshes the editable name when a device transitions from checking to already_registered', async () => {
 		const racedSession: IShellyNgDiscoverySession = {
 			...discoverySession,

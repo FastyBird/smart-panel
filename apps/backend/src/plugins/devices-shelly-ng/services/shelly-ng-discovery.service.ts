@@ -112,13 +112,19 @@ export class ShellyNgDiscoveryService {
 		// a parallel one. Two browsers + two RPC inspect loops were causing relay glitches
 		// on some Plus/Pro firmware. The 30s session window is kept for UX so the user can
 		// still power on a new device during the scan and have it picked up.
-		for (const device of this.shellyNgService.getKnownDevices()) {
-			await this.handleLibDevice(session, device as LibDevice);
-		}
-
+		//
+		// Subscribe BEFORE iterating the seed list — `getKnownDevices()` + the awaited DB
+		// lookups inside `handleLibDevice` create a window where the lib could fire `add`
+		// for a fresh device that's not in the seed and there's no listener attached yet.
+		// `handleLibDevice` is keyed on hostname so an overlap between a seed entry and
+		// a concurrent `add` event just overwrites the same row rather than duplicating.
 		session.unsubscribeAdded = this.shellyNgService.subscribeToAddedDevice((device) => {
 			void this.handleLibDevice(session, device as LibDevice);
 		});
+
+		for (const device of this.shellyNgService.getKnownDevices()) {
+			await this.handleLibDevice(session, device as LibDevice);
+		}
 
 		session.timer = setTimeout(() => {
 			void this.finish(id);
@@ -254,49 +260,82 @@ export class ShellyNgDiscoveryService {
 			return;
 		}
 
-		const registeredDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			device.id,
-			DEVICES_SHELLY_NG_TYPE,
-		);
+		try {
+			const registeredDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+				'identifier',
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
 
-		const descriptor = this.findDescriptor(device.model);
-		const categories = descriptor?.categories ?? [];
+			const descriptor = this.findDescriptor(device.model);
+			const categories = descriptor?.categories ?? [];
 
-		let status: ShellyNgDiscoveryDeviceStatus;
+			let status: ShellyNgDiscoveryDeviceStatus;
 
-		if (registeredDevice !== null) {
-			status = 'already_registered';
-		} else if (descriptor === null) {
-			status = 'unsupported';
-		} else {
-			status = 'ready';
+			if (registeredDevice !== null) {
+				status = 'already_registered';
+			} else if (descriptor === null) {
+				status = 'unsupported';
+			} else {
+				status = 'ready';
+			}
+
+			const snapshot: ShellyNgDiscoveryDeviceSnapshot = {
+				identifier: device.id,
+				hostname,
+				name: device.system?.config?.device?.name ?? null,
+				model: device.model,
+				displayName: descriptor?.name ?? device.modelName ?? device.model,
+				firmware: device.firmware?.version ?? null,
+				status,
+				source: 'mdns',
+				categories,
+				suggestedCategory: categories.length === 1 ? categories[0] : null,
+				// Devices in `shellies.values()` have already authenticated successfully
+				// (the main connector wouldn't expose them otherwise). Password-protected
+				// devices the connector can't reach never appear here — they have to be
+				// adopted via the wizard's manual-entry path, which still inspects over
+				// HTTP and surfaces `needs_password` correctly.
+				authentication: { enabled: false, domain: null },
+				registeredDeviceId: registeredDevice?.id ?? null,
+				registeredDeviceName: registeredDevice?.name ?? null,
+				error: null,
+				lastSeenAt: new Date().toISOString(),
+			};
+
+			session.devices.set(hostname, snapshot);
+		} catch (error) {
+			// Most likely a transient DB error from `findOneBy`. Surface the device with a
+			// `failed` snapshot so the user can see something happened, but never let the
+			// promise reject — this is invoked from a fire-and-forget `add` listener and
+			// a rejection here would crash the process.
+			const err = error as Error;
+
+			this.logger.warn('Failed to build discovery snapshot for device from main connector', {
+				session: session.id,
+				hostname,
+				message: err.message,
+				stack: err.stack,
+			});
+
+			session.devices.set(hostname, {
+				identifier: device.id,
+				hostname,
+				name: device.system?.config?.device?.name ?? null,
+				model: device.model,
+				displayName: device.modelName ?? device.model,
+				firmware: device.firmware?.version ?? null,
+				status: 'failed',
+				source: 'mdns',
+				categories: [],
+				suggestedCategory: null,
+				authentication: { enabled: false, domain: null },
+				registeredDeviceId: null,
+				registeredDeviceName: null,
+				error: err.message,
+				lastSeenAt: new Date().toISOString(),
+			});
 		}
-
-		const snapshot: ShellyNgDiscoveryDeviceSnapshot = {
-			identifier: device.id,
-			hostname,
-			name: device.system?.config?.device?.name ?? null,
-			model: device.model,
-			displayName: descriptor?.name ?? device.modelName ?? device.model,
-			firmware: device.firmware?.version ?? null,
-			status,
-			source: 'mdns',
-			categories,
-			suggestedCategory: categories.length === 1 ? categories[0] : null,
-			// Devices in `shellies.values()` have already authenticated successfully
-			// (the main connector wouldn't expose them otherwise). Password-protected
-			// devices the connector can't reach never appear here — they have to be
-			// adopted via the wizard's manual-entry path, which still inspects over
-			// HTTP and surfaces `needs_password` correctly.
-			authentication: { enabled: false, domain: null },
-			registeredDeviceId: registeredDevice?.id ?? null,
-			registeredDeviceName: registeredDevice?.name ?? null,
-			error: null,
-			lastSeenAt: new Date().toISOString(),
-		};
-
-		session.devices.set(hostname, snapshot);
 	}
 
 	private async inspectDevice(

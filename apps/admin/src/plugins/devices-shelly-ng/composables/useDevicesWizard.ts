@@ -147,13 +147,23 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			const previousDevice = previousDevices.find((item) => item.hostname === device.hostname);
 			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
 			const becameAdoptable = previousDevice?.status === 'checking' && isAdoptableStatus(device.status);
+			const becameAlreadyRegistered =
+				previousDevice !== undefined && previousDevice.status !== 'already_registered' && device.status === 'already_registered';
 			const wasPreviouslyReady = readyHostnames.has(device.hostname);
 
 			// `ready` devices are pre-selected so the user can adopt new devices in one step.
 			// `already_registered` devices stay deselected — the user must opt in explicitly to override
 			// the category/name the main service auto-adopted them with.
+			//
+			// If a device that was previously `ready` (and possibly user-selected) refreshes to
+			// `already_registered` — typically because the main connector auto-adopted it during the
+			// session — clear the selection so the next Adopt click doesn't silently update an
+			// existing device. `adoptSelected` snapshots the user's selections before its own
+			// refresh, so an in-flight adopt isn't dropped by this rule.
 			if (selected[device.hostname] === undefined || (becameReady && !wasPreviouslyReady)) {
 				selected[device.hostname] = device.status === 'ready';
+			} else if (becameAlreadyRegistered) {
+				selected[device.hostname] = false;
 			}
 
 			if (categoryByHostname[device.hostname] === undefined || (categoryByHostname[device.hostname] === null && device.suggestedCategory !== null)) {
@@ -312,6 +322,14 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const adoptSelected = async (): Promise<IShellyNgWizardAdoptionResult[]> => {
 		formResult.value = FormResult.WORKING;
 
+		// Snapshot the user's intent BEFORE refreshing. The refresh below can flip a
+		// `ready` device to `already_registered` (because the main connector auto-adopted
+		// it concurrently), and `applySession` deselects on that transition to keep the
+		// opt-in-for-updates contract on subsequent clicks. We still want THIS click to
+		// adopt the device the user chose — as an update, since that's what the new
+		// status means.
+		const userSelections = selectedDevices.value.slice();
+
 		// Refresh once so we see any device the main service auto-adopted between scan and adoption.
 		// Lets us route those through `edit` instead of getting a duplicate-identifier error from `add`.
 		if (session.value !== null) {
@@ -324,7 +342,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 		const results: IShellyNgWizardAdoptionResult[] = [];
 
-		for (const selection of selectedDevices.value) {
+		for (const selection of userSelections) {
 			const device = devices.value.find((item) => item.hostname === selection.hostname) ?? selection;
 			const name = nameByHostname[device.hostname] || device.name || device.displayName || device.hostname;
 			const category = categoryByHostname[device.hostname] as DevicesModuleDeviceCategory;
