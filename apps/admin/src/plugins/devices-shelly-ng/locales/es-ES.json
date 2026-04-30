@@ -58,6 +58,9 @@
 				"title": "Contraseña de administrador",
 				"placeholder": "Proporcione la contraseña del dispositivo si está protegido"
 			},
+			"error": {
+				"title": "Error"
+			},
 			"hostname": {
 				"title": "Nombre de host del dispositivo",
 				"placeholder": "Nombre de red o dirección IP del dispositivo",
@@ -137,7 +140,11 @@
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
 			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
 			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found"
+			"noDevices": "No Shelly devices found",
+			"results": {
+				"success": "Todos los dispositivos se adoptaron correctamente.",
+				"failed": "Algunos dispositivos no pudieron ser adoptados. Revise los errores a continuación."
+			}
 		}
 	},
 	"buttons": {

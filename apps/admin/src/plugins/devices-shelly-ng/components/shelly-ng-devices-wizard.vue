@@ -265,6 +265,7 @@
 						:data="adoptableDevices"
 						class="h-full w-full flex-grow"
 						table-layout="fixed"
+						:default-sort="{ prop: 'name', order: 'ascending' }"
 					>
 						<el-table-column width="60">
 							<template #header>
@@ -280,8 +281,11 @@
 							</template>
 						</el-table-column>
 						<el-table-column
+							prop="name"
 							:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
 							min-width="220"
+							sortable
+							:sort-method="sortByName"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
 								<el-input v-model="nameByHostname[row.hostname]" />
@@ -291,10 +295,15 @@
 							prop="hostname"
 							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
 							min-width="150"
+							sortable
+							:sort-method="sortByHostname"
 						/>
 						<el-table-column
+							prop="status"
 							:label="t('devicesShellyNgPlugin.headings.wizard.status')"
 							width="170"
+							sortable
+							:sort-method="sortByStatus"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
 								<el-tag
@@ -314,8 +323,11 @@
 							</template>
 						</el-table-column>
 						<el-table-column
+							prop="category"
 							:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
 							min-width="240"
+							sortable
+							:sort-method="sortByCategory"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
 								<el-select
@@ -336,26 +348,62 @@
 				</template>
 
 				<template v-else>
-					<el-result
-						:icon="adoptionResults.some((result) => result.status === 'failed') ? 'warning' : 'success'"
-						:title="t('devicesShellyNgPlugin.headings.wizard.results')"
-						class="flex-grow"
+					<el-alert
+						:title="t(`devicesShellyNgPlugin.texts.wizard.results.${adoptionResultSummary}`)"
+						:type="adoptionResultSummary === 'failed' ? 'warning' : 'success'"
+						:closable="false"
+						show-icon
+						class="shrink-0"
+					/>
+
+					<el-table
+						:data="adoptionResults"
+						class="h-full w-full flex-grow"
+						table-layout="fixed"
 					>
-						<template #sub-title>
-							<div class="flex flex-col gap-2">
-								<div
-									v-for="result in adoptionResults"
-									:key="result.hostname"
-									class="flex items-center justify-center gap-2"
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.headings.wizard.status')"
+							width="140"
+						>
+							<template #default="{ row }: { row: IShellyNgWizardAdoptionResult }">
+								<el-tag :type="resultTagType(row.status)">
+									{{ t(`devicesShellyNgPlugin.statuses.wizard.${row.status}`) }}
+								</el-tag>
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
+							min-width="200"
+						>
+							<template #default="{ row }: { row: IShellyNgWizardAdoptionResult }">
+								<span class="font-medium">{{ row.name }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column
+							prop="hostname"
+							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
+							min-width="150"
+						/>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.error.title')"
+							min-width="200"
+						>
+							<template #default="{ row }: { row: IShellyNgWizardAdoptionResult }">
+								<span
+									v-if="row.error"
+									class="text-red-500"
 								>
-									<el-tag :type="resultTagType(result.status)">
-										{{ t(`devicesShellyNgPlugin.statuses.wizard.${result.status}`) }}
-									</el-tag>
-									<span>{{ result.name }} ({{ result.hostname }})</span>
-								</div>
-							</div>
-						</template>
-					</el-result>
+									{{ row.error }}
+								</span>
+								<span
+									v-else
+									class="text-gray-400"
+								>
+									—
+								</span>
+							</template>
+						</el-table-column>
+					</el-table>
 				</template>
 			</div>
 
@@ -425,7 +473,6 @@ import {
 	ElInput,
 	ElOption,
 	ElProgress,
-	ElResult,
 	ElSelect,
 	ElStep,
 	ElSteps,
@@ -496,6 +543,40 @@ const onToggleSelectAll = (value: boolean | string | number): void => {
 		selected[device.hostname] = next;
 	}
 };
+
+// Sort comparators for the categories table — `prop`-based sorting can't read our reactive
+// per-hostname maps, so each column gets a custom comparator that reaches into the right
+// source of truth (user-edited name, current category selection, …).
+const compareLocale = (a: string | null | undefined, b: string | null | undefined): number => {
+	const left = (a ?? '').toString();
+	const right = (b ?? '').toString();
+	return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+};
+
+const sortByName = (a: IShellyNgDiscoveryDevice, b: IShellyNgDiscoveryDevice): number => {
+	const aName = nameByHostname[a.hostname] ?? a.registeredDeviceName ?? a.name ?? a.displayName ?? a.hostname;
+	const bName = nameByHostname[b.hostname] ?? b.registeredDeviceName ?? b.name ?? b.displayName ?? b.hostname;
+	return compareLocale(aName, bName);
+};
+
+const sortByHostname = (a: IShellyNgDiscoveryDevice, b: IShellyNgDiscoveryDevice): number => compareLocale(a.hostname, b.hostname);
+
+// Group "will create" devices before "will update" ones, then by hostname inside each bucket.
+const sortByStatus = (a: IShellyNgDiscoveryDevice, b: IShellyNgDiscoveryDevice): number => {
+	const order = (status: IShellyNgDiscoveryDevice['status']): number => (status === 'already_registered' ? 1 : 0);
+	const diff = order(a.status) - order(b.status);
+	return diff !== 0 ? diff : compareLocale(a.hostname, b.hostname);
+};
+
+const sortByCategory = (a: IShellyNgDiscoveryDevice, b: IShellyNgDiscoveryDevice): number => {
+	const aLabel = categoryByHostname[a.hostname] ? t(`devicesModule.categories.devices.${categoryByHostname[a.hostname]}`) : '';
+	const bLabel = categoryByHostname[b.hostname] ? t(`devicesModule.categories.devices.${categoryByHostname[b.hostname]}`) : '';
+	return compareLocale(aLabel, bLabel);
+};
+
+const adoptionResultSummary = computed<'success' | 'failed'>(() =>
+	adoptionResults.value.some((result) => result.status === 'failed') ? 'failed' : 'success'
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
 	{

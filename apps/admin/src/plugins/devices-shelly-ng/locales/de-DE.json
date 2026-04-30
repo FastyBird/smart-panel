@@ -58,6 +58,9 @@
 				"title": "Admin-Passwort",
 				"placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
 			},
+			"error": {
+				"title": "Fehler"
+			},
 			"hostname": {
 				"title": "Geräte-Hostname",
 				"placeholder": "Netzwerkname oder IP-Adresse des Geräts",
@@ -137,7 +140,11 @@
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
 			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
 			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found"
+			"noDevices": "No Shelly devices found",
+			"results": {
+				"success": "Alle Geräte wurden erfolgreich übernommen.",
+				"failed": "Einige Geräte konnten nicht übernommen werden. Überprüfen Sie die Fehler unten."
+			}
 		}
 	},
 	"buttons": {

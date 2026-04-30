@@ -58,6 +58,9 @@
 				"title": "Heslo administrátora",
 				"placeholder": "Zadejte heslo zařízení, pokud je chráněno"
 			},
+			"error": {
+				"title": "Chyba"
+			},
 			"hostname": {
 				"title": "Název hostitele zařízení",
 				"placeholder": "Síťový název nebo IP adresa zařízení",
@@ -137,7 +140,11 @@
 			"discovery": "Průvodce vyhledá zařízení Shelly NG v lokální síti a přijímá také ručně zadaný hostname nebo IP adresu.",
 			"categories": "Potvrďte, která připravená zařízení mají být adoptována, a vyberte cílovou kategorii pro každé z nich.",
 			"scanStatus": "Nalezeno zařízení: {count}",
-			"noDevices": "Nebyla nalezena žádná zařízení Shelly"
+			"noDevices": "Nebyla nalezena žádná zařízení Shelly",
+			"results": {
+				"success": "Všechna zařízení byla úspěšně adoptována.",
+				"failed": "Některá zařízení se nepodařilo adoptovat. Zkontrolujte chyby níže."
+			}
 		}
 	},
 	"buttons": {
