@@ -317,10 +317,23 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		});
 
 		if (typeof responseData !== 'undefined') {
-			passwordByHostname[hostname] = password;
+			const nextSession = transformDiscoverySessionResponse(responseData.data);
+			const inspected = nextSession.devices.find((item) => item.hostname === hostname);
+
+			// Only persist the entered password when the backend confirms it works (or no auth was
+			// involved). For `already_registered` devices, the DB-hit status takes priority over
+			// `needs_password`, so a wrong password against an existing device still produces
+			// `status: 'already_registered'` with `authentication.valid: false`. Storing it
+			// unconditionally would overwrite the correct on-disk password the next time the user
+			// hits Adopt — `adoptSelected` reads `passwordByHostname[hostname]` and sends it
+			// straight to `updateRegistered`.
+			if (password !== null && inspected?.authentication.valid !== false) {
+				passwordByHostname[hostname] = password;
+			}
+
 			manual.hostname = '';
 			manual.password = '';
-			applySession(transformDiscoverySessionResponse(responseData.data));
+			applySession(nextSession);
 			formResult.value = FormResult.NONE;
 
 			return;
