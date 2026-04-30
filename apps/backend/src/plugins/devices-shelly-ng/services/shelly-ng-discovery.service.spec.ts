@@ -204,12 +204,13 @@ describe('ShellyNgDiscoveryService', () => {
 
 		discoverers[0]?.emit('discover', {
 			deviceId: 'shellyht-aabbcc',
+			hostname: 'shellyht-aabbcc.local',
 		});
 
 		await Promise.resolve();
 		await Promise.resolve();
 
-		expect(deviceManager.getDeviceInfo.mock.calls.at(-1)).toEqual(['shellyht-aabbcc', 'secret']);
+		expect(deviceManager.getDeviceInfo.mock.calls.at(-1)).toEqual(['shellyht-aabbcc.local', 'secret']);
 		expect(service.get(session.id)?.devices.at(-1)).toEqual(
 			expect.objectContaining({
 				status: 'ready',

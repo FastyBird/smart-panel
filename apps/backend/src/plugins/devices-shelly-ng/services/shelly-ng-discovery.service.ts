@@ -104,8 +104,12 @@ export class ShellyNgDiscoveryService {
 
 		discoverer.on('discover', (device: { deviceId?: string; hostname?: string }) => {
 			const hostname = device.hostname ?? device.deviceId ?? '';
+			const password =
+				session.passwords.get(hostname) ??
+				(device.deviceId !== undefined ? session.passwords.get(device.deviceId) : undefined) ??
+				null;
 
-			void this.inspectDevice(session, hostname, 'mdns', session.passwords.get(hostname) ?? null);
+			void this.inspectDevice(session, hostname, 'mdns', password);
 		});
 
 		discoverer.on('error', (error: Error) => {
