@@ -425,6 +425,13 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			data.password = password;
 		}
 
+		// `devicesStore.edit` requires the device to be present in the local store. When the
+		// main connector auto-adopts a device after the wizard's snapshot was taken, the new
+		// row may not be in the admin store yet — pull it in first so the edit can land.
+		if (devicesStore.findById(id) === null) {
+			await devicesStore.get({ id });
+		}
+
 		await devicesStore.edit({ id, data });
 	};
 

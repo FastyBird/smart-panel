@@ -8,6 +8,8 @@ import { useDevicesWizard } from './useDevicesWizard';
 
 const mockAdd = vi.fn();
 const mockEdit = vi.fn();
+const mockGet = vi.fn();
+const mockFindById = vi.fn();
 
 const backendClient = {
 	GET: vi.fn(),
@@ -40,6 +42,8 @@ vi.mock('../../../common', async () => {
 			getStore: () => ({
 				add: mockAdd,
 				edit: mockEdit,
+				get: mockGet,
+				findById: mockFindById,
 			}),
 		}),
 		useBackend: () => ({
@@ -102,6 +106,8 @@ describe('useDevicesWizard', () => {
 		vi.clearAllMocks();
 		mockAdd.mockResolvedValue(undefined);
 		mockEdit.mockResolvedValue(undefined);
+		mockGet.mockResolvedValue(undefined);
+		mockFindById.mockReturnValue({ id: 'placeholder' });
 	});
 
 	afterEach(() => {
@@ -367,6 +373,55 @@ describe('useDevicesWizard', () => {
 				name: 'Kitchen relay',
 			}),
 		});
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('loads the device into the local store before editing if it was just auto-adopted', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-fresh',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		// Device exists in the backend (already_registered) but not yet in the admin store —
+		// `devicesStore.edit` would otherwise reject the id.
+		mockFindById.mockReturnValue(null);
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		wizard.selected['192.168.1.10'] = true;
+		wizard.categoryByHostname['192.168.1.10'] = DevicesModuleDeviceCategory.switcher;
+
+		await wizard.adoptSelected();
+
+		expect(mockGet).toHaveBeenCalledWith({ id: 'device-uuid-fresh' });
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'device-uuid-fresh',
+			})
+		);
 		expect(wizard.adoptionResults.value).toEqual([
 			expect.objectContaining({
 				hostname: '192.168.1.10',

@@ -285,7 +285,10 @@ export class ShellyNgDiscoveryService {
 			categories,
 			suggestedCategory: categories.length === 1 ? categories[0] : null,
 			// Devices in `shellies.values()` have already authenticated successfully
-			// (the main connector wouldn't expose them otherwise).
+			// (the main connector wouldn't expose them otherwise). Password-protected
+			// devices the connector can't reach never appear here — they have to be
+			// adopted via the wizard's manual-entry path, which still inspects over
+			// HTTP and surfaces `needs_password` correctly.
 			authentication: { enabled: false, domain: null },
 			registeredDeviceId: registeredDevice?.id ?? null,
 			registeredDeviceName: registeredDevice?.name ?? null,
