@@ -56,7 +56,18 @@ describe('Z2mWizardService', () => {
 									exposeType: 'light',
 									status: 'mapped',
 									suggestedChannel: { category: 'light', name: 'Light', confidence: 'high' },
-									suggestedProperties: [],
+									suggestedProperties: [
+										{
+											category: 'on',
+											name: 'On',
+											z2mProperty: 'state',
+											dataType: 'bool',
+											permissions: ['rw'],
+											format: null,
+											required: true,
+											currentValue: null,
+										},
+									],
 									missingRequiredProperties: [],
 								},
 							],
@@ -184,6 +195,79 @@ describe('Z2mWizardService', () => {
 		it('returns null for unknown session id', async () => {
 			expect(await service.enablePermitJoin('nope')).toBeNull();
 			expect(await service.disablePermitJoin('nope')).toBeNull();
+		});
+	});
+
+	describe('adopt', () => {
+		const ieee = '0x00158d0001a1b2c3';
+		const sampleZ2mDevice = {
+			ieeeAddress: ieee,
+			friendlyName: 'living_room_lamp',
+			type: 'Router',
+			modelId: 'LCT001',
+			supported: true,
+			available: true,
+			definition: { vendor: 'Philips', model: 'LCT001', description: 'Hue', exposes: [{ type: 'light' }] },
+		};
+
+		beforeEach(() => {
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
+		});
+
+		it('returns created result on successful adoption', async () => {
+			const adoptionService = (service as any).deviceAdoptionService;
+			adoptionService.adoptDevice.mockResolvedValueOnce({ id: 'd1', name: 'Living Room Lamp' });
+			const started = await service.start();
+			const out = await service.adopt(started.id, [
+				{ ieeeAddress: ieee, name: 'Living Room Lamp', category: 'lighting' as any },
+			]);
+			expect(out).toEqual([{ ieeeAddress: ieee, name: 'Living Room Lamp', status: 'created', error: null }]);
+			expect(adoptionService.adoptDevice).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ieeeAddress: ieee,
+					name: 'Living Room Lamp',
+					category: 'lighting',
+					channels: expect.arrayContaining([expect.objectContaining({ category: 'light' })]),
+				}),
+			);
+		});
+
+		it('returns updated result when device was already adopted (race fallback)', async () => {
+			const started = await service.start();
+			const session = (service as any).sessions.get(started.id);
+			session.devices.get(ieee).status = 'already_registered';
+			session.devices.get(ieee).registeredDeviceId = 'd1';
+			const devicesService = (service as any).devicesService;
+			devicesService.update = jest.fn().mockResolvedValue({ id: 'd1' });
+			const out = await service.adopt(started.id, [{ ieeeAddress: ieee, name: 'X', category: 'lighting' as any }]);
+			expect(out[0]?.status).toBe('updated');
+			expect(devicesService.update).toHaveBeenCalledWith(
+				'd1',
+				expect.objectContaining({ name: 'X', category: 'lighting' }),
+			);
+		});
+
+		it('returns failed result when adoption throws', async () => {
+			const adoptionService = (service as any).deviceAdoptionService;
+			adoptionService.adoptDevice.mockRejectedValueOnce(new Error('boom'));
+			const started = await service.start();
+			const out = await service.adopt(started.id, [{ ieeeAddress: ieee, name: 'X', category: 'lighting' as any }]);
+			expect(out[0]?.status).toBe('failed');
+			expect(out[0]?.error).toBe('boom');
+		});
+
+		it('returns empty array for unknown session id', async () => {
+			const out = await service.adopt('nope', []);
+			expect(out).toEqual([]);
+		});
+
+		it('returns failed when device not in session', async () => {
+			const started = await service.start();
+			const out = await service.adopt(started.id, [
+				{ ieeeAddress: '0xnotinsession', name: 'X', category: 'lighting' as any },
+			]);
+			expect(out[0]?.status).toBe('failed');
+			expect(out[0]?.error).toContain('not in session');
 		});
 	});
 });

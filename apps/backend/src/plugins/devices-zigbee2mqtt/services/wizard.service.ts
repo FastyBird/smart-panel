@@ -6,6 +6,7 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import { AdoptChannelDefinitionDto, AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { Z2mMappingPreviewModel } from '../models/zigbee2mqtt-response.model';
@@ -15,6 +16,13 @@ import { Z2mMappingPreviewService } from './mapping-preview.service';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 export type Z2mWizardDeviceStatus = 'ready' | 'unsupported' | 'already_registered' | 'failed';
+
+export interface Z2mWizardAdoptionResult {
+	ieeeAddress: string;
+	name: string;
+	status: 'created' | 'updated' | 'failed';
+	error: string | null;
+}
 
 export interface Z2mWizardDeviceSnapshot {
 	ieeeAddress: string;
@@ -312,5 +320,157 @@ export class Z2mWizardService implements OnModuleDestroy {
 		};
 	}
 
-	// adopt — implemented in Task 8
+	async adopt(
+		id: string,
+		requests: { ieeeAddress: string; name: string; category: DeviceCategory }[],
+	): Promise<Z2mWizardAdoptionResult[]> {
+		const session = this.sessions.get(id);
+		if (!session) return [];
+		this.refreshIdleTimer(session);
+
+		// Refresh-before-adopt: rebuild snapshots so we see current registered status.
+		const adopted = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
+		for (const z2mDevice of this.zigbee2mqttService.getRegisteredDevices()) {
+			const refreshed = await this.computeSnapshot(z2mDevice, adopted);
+			const existing = session.devices.get(refreshed.ieeeAddress);
+			// Preserve already_registered status set by a previous successful adopt() call
+			// in this session, even if the underlying findAll didn't pick the record up
+			// for some reason. The race-fallback path needs the registeredDeviceId.
+			if (existing?.status === 'already_registered' && existing.registeredDeviceId) {
+				session.devices.set(refreshed.ieeeAddress, {
+					...refreshed,
+					status: 'already_registered',
+					registeredDeviceId: existing.registeredDeviceId,
+					registeredDeviceName: existing.registeredDeviceName,
+					registeredDeviceCategory: existing.registeredDeviceCategory,
+				});
+			} else {
+				session.devices.set(refreshed.ieeeAddress, refreshed);
+			}
+		}
+
+		const results: Z2mWizardAdoptionResult[] = [];
+
+		for (const req of requests) {
+			const current = session.devices.get(req.ieeeAddress);
+
+			if (!current) {
+				results.push({
+					ieeeAddress: req.ieeeAddress,
+					name: req.name,
+					status: 'failed',
+					error: 'Device not in session',
+				});
+				continue;
+			}
+
+			try {
+				// Race fallback: device already adopted (either before session start or
+				// by an auto-adopt path mid-session). Update name/category instead of creating.
+				if (current.status === 'already_registered' && current.registeredDeviceId) {
+					await this.devicesService.update(current.registeredDeviceId, {
+						type: DEVICES_ZIGBEE2MQTT_TYPE,
+						name: req.name,
+						category: req.category,
+					} as never);
+
+					session.devices.set(req.ieeeAddress, {
+						...current,
+						registeredDeviceName: req.name,
+						registeredDeviceCategory: req.category,
+					});
+
+					results.push({
+						ieeeAddress: req.ieeeAddress,
+						name: req.name,
+						status: 'updated',
+						error: null,
+					});
+					continue;
+				}
+
+				// Build the AdoptDeviceRequestDto from the device's mapping preview.
+				const adoptRequest = await this.buildAdoptRequest(req.ieeeAddress, req.name, req.category);
+				const created = await this.deviceAdoptionService.adoptDevice(adoptRequest);
+
+				session.devices.set(req.ieeeAddress, {
+					...current,
+					status: 'already_registered',
+					registeredDeviceId: created.id,
+					registeredDeviceName: req.name,
+					registeredDeviceCategory: req.category,
+				});
+
+				results.push({
+					ieeeAddress: req.ieeeAddress,
+					name: req.name,
+					status: 'created',
+					error: null,
+				});
+			} catch (e) {
+				results.push({
+					ieeeAddress: req.ieeeAddress,
+					name: req.name,
+					status: 'failed',
+					error: (e as Error).message,
+				});
+			}
+		}
+
+		return results;
+	}
+
+	/**
+	 * Convert a device's mapping preview into a fully-populated AdoptDeviceRequestDto.
+	 * Mirrors the conversion logic in the admin's useDeviceAddFormMultiStep composable
+	 * (single-device form). Groups exposes by suggested channel category, skips
+	 * 'skipped'/'unmapped' exposes and 'generic' channels, dedupes properties by category
+	 * (NOT z2mProperty since multiple props can share one Z2M property like color hue/saturation).
+	 */
+	private async buildAdoptRequest(
+		ieeeAddress: string,
+		name: string,
+		category: DeviceCategory,
+	): Promise<AdoptDeviceRequestDto> {
+		const preview = await this.mappingPreviewService.generatePreview(ieeeAddress);
+
+		const channelMap = new Map<string, AdoptChannelDefinitionDto>();
+		for (const expose of preview.exposes) {
+			if (expose.status === 'skipped' || expose.status === 'unmapped') continue;
+			if (!expose.suggestedChannel) continue;
+			const channelCategory = expose.suggestedChannel.category;
+			// Skip generic channels (admin form does the same — it's a placeholder category)
+			if ((channelCategory as string) === 'generic') continue;
+			if (!expose.suggestedProperties || expose.suggestedProperties.length === 0) continue;
+
+			let channel = channelMap.get(channelCategory);
+			if (!channel) {
+				channel = {
+					category: channelCategory,
+					name: expose.suggestedChannel.name || channelCategory,
+					identifier: channelCategory,
+					properties: [],
+				};
+				channelMap.set(channelCategory, channel);
+			}
+
+			for (const prop of expose.suggestedProperties) {
+				if (channel.properties.find((p) => p.category === prop.category)) continue;
+				channel.properties.push({
+					category: prop.category,
+					z2mProperty: prop.z2mProperty,
+					dataType: prop.dataType,
+					permissions: prop.permissions,
+					format: (prop.format ?? null) as string[] | number[] | null,
+				});
+			}
+		}
+
+		const request = new AdoptDeviceRequestDto();
+		request.ieeeAddress = ieeeAddress;
+		request.name = name;
+		request.category = category;
+		request.channels = Array.from(channelMap.values());
+		return request;
+	}
 }
