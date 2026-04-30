@@ -162,4 +162,28 @@ describe('Z2mWizardService', () => {
 			expect(snapshot.devices[0]?.status).toBe('unsupported');
 		});
 	});
+
+	describe('permit_join', () => {
+		it('enablePermitJoin() sets active=true and remainingSeconds≈254', async () => {
+			const started = await service.start();
+			const updated = await service.enablePermitJoin(started.id);
+			expect(updated?.permitJoin.active).toBe(true);
+			expect(updated?.permitJoin.remainingSeconds).toBeGreaterThan(250);
+			expect(zigbee2mqttService.setPermitJoin).toHaveBeenCalledWith(254);
+		});
+
+		it('disablePermitJoin() sets active=false and remainingSeconds=0', async () => {
+			const started = await service.start();
+			await service.enablePermitJoin(started.id);
+			const updated = await service.disablePermitJoin(started.id);
+			expect(updated?.permitJoin.active).toBe(false);
+			expect(updated?.permitJoin.remainingSeconds).toBe(0);
+			expect(zigbee2mqttService.setPermitJoin).toHaveBeenLastCalledWith(0);
+		});
+
+		it('returns null for unknown session id', async () => {
+			expect(await service.enablePermitJoin('nope')).toBeNull();
+			expect(await service.disablePermitJoin('nope')).toBeNull();
+		});
+	});
 });

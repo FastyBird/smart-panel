@@ -129,6 +129,52 @@ export class Z2mWizardService implements OnModuleDestroy {
 		this.sessions.clear();
 	}
 
+	async enablePermitJoin(id: string): Promise<Z2mWizardSessionSnapshot | null> {
+		const session = this.sessions.get(id);
+
+		if (!session) {
+			return null;
+		}
+
+		this.refreshIdleTimer(session);
+
+		const ok = await this.zigbee2mqttService.setPermitJoin(Z2mWizardService.PERMIT_JOIN_DURATION_S);
+
+		if (!ok) {
+			this.logger.warn('Failed to enable permit_join', { session: id });
+
+			return this.toSnapshot(session);
+		}
+
+		if (session.permitJoin.timer) {
+			clearTimeout(session.permitJoin.timer);
+		}
+
+		session.permitJoin = {
+			active: true,
+			expiresAt: new Date(Date.now() + Z2mWizardService.PERMIT_JOIN_DURATION_S * 1_000),
+			timer: setTimeout(() => {
+				session.permitJoin = { active: false, expiresAt: null };
+			}, Z2mWizardService.PERMIT_JOIN_DURATION_S * 1_000),
+		};
+
+		return this.toSnapshot(session);
+	}
+
+	async disablePermitJoin(id: string): Promise<Z2mWizardSessionSnapshot | null> {
+		const session = this.sessions.get(id);
+
+		if (!session) {
+			return null;
+		}
+
+		this.refreshIdleTimer(session);
+
+		await this.disablePermitJoinInternal(session);
+
+		return this.toSnapshot(session);
+	}
+
 	private async cleanupSession(session: Z2mWizardSession): Promise<void> {
 		await this.disablePermitJoinInternal(session);
 
@@ -266,6 +312,5 @@ export class Z2mWizardService implements OnModuleDestroy {
 		};
 	}
 
-	// enablePermitJoin, disablePermitJoin — implemented in Task 7
 	// adopt — implemented in Task 8
 }
