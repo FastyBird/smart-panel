@@ -24,6 +24,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
+import { Zigbee2mqttWizardController } from './controllers/zigbee2mqtt-wizard.controller';
 import {
 	DEVICES_ZIGBEE2MQTT_API_TAG_DESCRIPTION,
 	DEVICES_ZIGBEE2MQTT_API_TAG_NAME,
@@ -54,6 +55,7 @@ import { Z2mExposesMapperService } from './services/exposes-mapper.service';
 import { Z2mMappingPreviewService } from './services/mapping-preview.service';
 import { Z2mMqttClientAdapterService } from './services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from './services/virtual-property.service';
+import { Z2mWizardService } from './services/wizard.service';
 import { Z2mWsClientAdapterService } from './services/ws-client-adapter.service';
 import { Zigbee2mqttConfigValidatorService } from './services/zigbee2mqtt-config-validator.service';
 import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
@@ -85,10 +87,11 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		Z2mVirtualPropertyService,
 		Z2mMappingPreviewService,
 		Z2mDeviceAdoptionService,
+		Z2mWizardService,
 		Zigbee2mqttDevicePlatform,
 		Zigbee2mqttService,
 	],
-	controllers: [Zigbee2mqttDiscoveredDevicesController],
+	controllers: [Zigbee2mqttDiscoveredDevicesController, Zigbee2mqttWizardController],
 })
 export class DevicesZigbee2mqttPlugin {
 	constructor(
