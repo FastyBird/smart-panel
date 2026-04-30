@@ -265,7 +265,7 @@ export class ShellyV1DiscoveryDeviceModel {
 		type: () => ShellyV1DiscoveryDeviceAuthenticationModel,
 	})
 	@Expose()
-	@ValidateNested({ each: true })
+	@ValidateNested()
 	@Type(() => ShellyV1DiscoveryDeviceAuthenticationModel)
 	authentication: ShellyV1DiscoveryDeviceAuthenticationModel;
 

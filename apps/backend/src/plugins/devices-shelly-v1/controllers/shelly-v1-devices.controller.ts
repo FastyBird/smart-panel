@@ -54,9 +54,9 @@ export class ShellyV1DevicesController {
 	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('discovery')
-	async startDiscovery(): Promise<ShellyV1DiscoverySessionResponseModel> {
+	startDiscovery(): ShellyV1DiscoverySessionResponseModel {
 		const response = new ShellyV1DiscoverySessionResponseModel();
-		response.data = await this.discoveryService.start({ duration: 30 });
+		response.data = this.discoveryService.start({ duration: 30 });
 
 		return response;
 	}

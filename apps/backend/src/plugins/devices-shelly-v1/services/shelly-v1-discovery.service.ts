@@ -89,7 +89,7 @@ export class ShellyV1DiscoveryService {
 		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
-	async start({ duration }: { duration: number }): Promise<ShellyV1DiscoverySessionSnapshot> {
+	start({ duration }: { duration: number }): ShellyV1DiscoverySessionSnapshot {
 		const id = randomUUID();
 		const startedAt = new Date();
 		const expiresAt = new Date(startedAt.getTime() + duration * 1_000);
@@ -106,29 +106,31 @@ export class ShellyV1DiscoveryService {
 		// parallel one. The 30s session window is kept for UX so the user can still power on a
 		// new device during the scan and have it picked up.
 		//
-		// Subscribe BEFORE iterating the seed list — `getKnownDevices()` + the awaited DB lookups
-		// inside `handleLibDevice` create a window where the lib could fire `add` for a fresh
-		// device that's not in the seed and there's no listener attached yet. `handleLibDevice` is
-		// keyed on hostname so an overlap between a seed entry and a concurrent `add` event just
+		// Subscribe BEFORE seeding — `getKnownDevices()` + the awaited DB lookups inside
+		// `handleLibDevice` create a window where the lib could fire `add` for a fresh device
+		// that's not in the seed and there's no listener attached yet. `handleLibDevice` is keyed
+		// on hostname so an overlap between a seed entry and a concurrent `add` event just
 		// overwrites the same row rather than duplicating.
 		session.unsubscribeAdded = this.shelliesAdapter.subscribeToAddedDevice((device) => {
 			void this.handleLibDevice(session, device);
 		});
 
-		// Arm the finish timer and register the session BEFORE the seed loop so the wall-clock
-		// session lifetime matches `expiresAt`. Each seed iteration does an HTTP probe + DB lookup
-		// and can take several seconds end-to-end; if the timer were started after the loop the
-		// real expiry would drift by exactly that delay, leaving the frontend's progress bar at
-		// 100% while polling still reports `running`.
+		// Arm the finish timer and register the session BEFORE seeding so the wall-clock session
+		// lifetime matches `expiresAt` regardless of how long enrichment takes.
 		session.timer = setTimeout(() => {
 			void this.finish(id);
 		}, duration * 1_000);
 
 		this.sessions.set(id, session);
 
-		for (const device of this.shelliesAdapter.getKnownDevices()) {
-			await this.handleLibDevice(session, device);
-		}
+		// Seed concurrently and don't await — each `handleLibDevice` does an HTTP probe with a
+		// 3s timeout, so awaiting them sequentially would push the start response past the scan
+		// duration with even a few unreachable devices in the lib's registry. Per-device snapshots
+		// land in `session.devices` as they finish; the frontend's 1Hz polling picks them up
+		// without us blocking the initial response.
+		void Promise.allSettled(
+			this.shelliesAdapter.getKnownDevices().map((device) => this.handleLibDevice(session, device)),
+		);
 
 		return this.toSnapshot(session);
 	}
