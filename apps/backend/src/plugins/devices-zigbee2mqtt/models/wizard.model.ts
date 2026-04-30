@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -69,7 +69,7 @@ export class Z2mWizardDeviceSnapshotModel {
 	})
 	@Expose()
 	@IsIn(['ready', 'unsupported', 'already_registered', 'failed'])
-	status: string;
+	status: 'ready' | 'unsupported' | 'already_registered' | 'failed';
 
 	@ApiProperty({
 		description: 'Available target device categories',
@@ -79,7 +79,7 @@ export class Z2mWizardDeviceSnapshotModel {
 	})
 	@Expose()
 	@IsArray()
-	@IsString({ each: true })
+	@IsEnum(DeviceCategory, { each: true })
 	categories: DeviceCategory[];
 
 	@ApiPropertyOptional({
@@ -89,7 +89,7 @@ export class Z2mWizardDeviceSnapshotModel {
 		example: DeviceCategory.LIGHTING,
 	})
 	@Expose()
-	@IsString()
+	@IsEnum(DeviceCategory)
 	@IsOptional()
 	suggestedCategory: DeviceCategory | null;
 
@@ -128,7 +128,7 @@ export class Z2mWizardDeviceSnapshotModel {
 		example: null,
 	})
 	@Expose()
-	@IsIn(Object.values(DeviceCategory))
+	@IsEnum(DeviceCategory)
 	@IsOptional()
 	registeredDeviceCategory: DeviceCategory | null;
 
@@ -194,7 +194,7 @@ export class Z2mWizardAdoptionResultModel {
 	@ApiProperty({ description: 'Adoption outcome', enum: ['created', 'updated', 'failed'], example: 'created' })
 	@Expose()
 	@IsIn(['created', 'updated', 'failed'])
-	status: string;
+	status: 'created' | 'updated' | 'failed';
 
 	@ApiPropertyOptional({ description: 'Failure message', nullable: true, example: null })
 	@Expose()
