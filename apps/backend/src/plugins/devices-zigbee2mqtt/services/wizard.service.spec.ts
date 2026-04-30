@@ -1,5 +1,9 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unsafe-call,
+@typescript-eslint/no-unsafe-argument
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -83,5 +87,57 @@ describe('Z2mWizardService', () => {
 		expect(service.get(started.id)).toBeNull();
 		// permit_join was never enabled in this session, so end() should NOT have called setPermitJoin
 		expect(zigbee2mqttService.setPermitJoin).not.toHaveBeenCalled();
+	});
+
+	describe('device snapshots', () => {
+		const sampleZ2mDevice = {
+			ieeeAddress: '0x00158d0001a1b2c3',
+			friendlyName: 'living_room_lamp',
+			type: 'Router',
+			modelId: 'LCT001',
+			powerSource: 'Mains',
+			supported: true,
+			available: true,
+			definition: {
+				vendor: 'Philips',
+				model: 'LCT001',
+				description: 'Hue White and Color Ambiance E27',
+				exposes: [{ type: 'light', name: 'light', features: [], property: undefined, label: undefined, access: 7 }],
+			},
+		};
+
+		it('marks ready when device has descriptor and is unadopted', async () => {
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
+			const snapshot = await service.start();
+			expect(snapshot.devices).toHaveLength(1);
+			expect(snapshot.devices[0]?.status).toBe('ready');
+			expect(snapshot.devices[0]?.suggestedCategory).toBe('LIGHTING');
+			expect(snapshot.devices[0]?.previewChannelCount).toBe(1);
+		});
+
+		it('marks already_registered when device has matching adopted record', async () => {
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
+			const findAll = (service as any).devicesService.findAll;
+			findAll.mockResolvedValueOnce([
+				{ id: 'adopted-1', identifier: 'living_room_lamp', name: 'Existing Lamp', category: 'LIGHTING' },
+			]);
+			const snapshot = await service.start();
+			expect(snapshot.devices[0]?.status).toBe('already_registered');
+			expect(snapshot.devices[0]?.registeredDeviceId).toBe('adopted-1');
+		});
+
+		it('marks unsupported when mapping preview returns no channels', async () => {
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
+			const previewService = (service as any).mappingPreviewService;
+			previewService.generatePreview.mockResolvedValueOnce({
+				suggestedCategory: null,
+				channels: [],
+				warnings: [],
+				readyToAdopt: false,
+				exposes: [],
+			});
+			const snapshot = await service.start();
+			expect(snapshot.devices[0]?.status).toBe('unsupported');
+		});
 	});
 });
