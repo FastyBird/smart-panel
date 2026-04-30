@@ -264,6 +264,13 @@ export class ShellyNgService extends BaseManagedPluginService {
 				.on('unknown', this.handleUnknownDevice)
 				.on('error', this.handleError);
 
+			// Re-attach external 'add' subscribers (wizard discovery sessions) that registered
+			// while we were stopped/restarting. `subscribeToAddedDevice` keeps them in the set
+			// across connector lifecycles.
+			for (const handler of this.addSubscribers) {
+				this.shellies.on('add', handler);
+			}
+
 			this.shellies.registerDiscoverer(this.databaseDiscovererService);
 
 			await this.databaseDiscovererService.run();
@@ -525,6 +532,50 @@ export class ShellyNgService extends BaseManagedPluginService {
 			stack: error.stack,
 		});
 	};
+
+	/**
+	 * External subscribers (currently the wizard) that want to be notified when the
+	 * main lib discovers new devices. Tracked here separately from the connector's
+	 * own internal handlers so they can be re-attached automatically across
+	 * stop/start cycles — a wizard scan opened while the connector is restarting
+	 * will pick up events as soon as the new `shellies` instance comes up.
+	 */
+	private readonly addSubscribers: Set<(device: Device) => void> = new Set();
+
+	/**
+	 * Snapshot of every device the main mDNS/lib has currently discovered.
+	 *
+	 * Used by `ShellyNgDiscoveryService` so the wizard can read the existing
+	 * known-device list instead of running a parallel `MdnsDeviceDiscoverer`.
+	 * Running two browsers + two RPC inspect loops on the same LAN was causing
+	 * relay glitches on some Plus/Pro firmware.
+	 */
+	getKnownDevices(): Device[] {
+		if (typeof this.shellies === 'undefined') {
+			return [];
+		}
+
+		return Array.from(this.shellies.values());
+	}
+
+	/**
+	 * Subscribe to new devices the lib discovers for as long as the returned
+	 * unsubscribe is not invoked. Used by the wizard to pick up devices that
+	 * power on during a scan session without needing its own mDNS browser.
+	 *
+	 * The handler is also kept across connector stop/start cycles, so a wizard
+	 * scan window that opened during a restart still receives events once the
+	 * lib comes up.
+	 */
+	subscribeToAddedDevice(handler: (device: Device) => void): () => void {
+		this.addSubscribers.add(handler);
+		this.shellies?.on('add', handler);
+
+		return () => {
+			this.addSubscribers.delete(handler);
+			this.shellies?.off('add', handler);
+		};
+	}
 
 	private async initialize(): Promise<void> {
 		const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);

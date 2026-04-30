@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { MdnsDeviceDiscoverer } from 'shellies-ds9';
+import { Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable } from '@nestjs/common';
 
@@ -15,6 +15,13 @@ import {
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 import { DeviceManagerService } from './device-manager.service';
+import { ShellyNgService } from './shelly-ng.service';
+
+type LibDevice = Device & {
+	wifi?: WiFi & { sta_ip?: string | null };
+	ethernet?: Ethernet & { ip?: string | null };
+	system?: { config?: { device?: { name?: string | null } } };
+};
 
 export type ShellyNgDiscoverySessionStatus = 'running' | 'finished' | 'failed';
 
@@ -45,6 +52,7 @@ export interface ShellyNgDiscoveryDeviceSnapshot {
 	};
 	registeredDeviceId: string | null;
 	registeredDeviceName: string | null;
+	registeredDeviceCategory: DeviceCategory | null;
 	error: string | null;
 	lastSeenAt: string;
 }
@@ -63,9 +71,9 @@ interface ShellyNgDiscoverySession {
 	status: ShellyNgDiscoverySessionStatus;
 	startedAt: Date;
 	expiresAt: Date;
-	discoverer: MdnsDeviceDiscoverer;
 	timer?: NodeJS.Timeout;
 	cleanupTimer?: NodeJS.Timeout;
+	unsubscribeAdded?: () => void;
 	devices: Map<string, ShellyNgDiscoveryDeviceSnapshot>;
 	passwords: Map<string, string>;
 }
@@ -84,48 +92,39 @@ export class ShellyNgDiscoveryService {
 	constructor(
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly devicesService: DevicesService,
+		private readonly shellyNgService: ShellyNgService,
 	) {}
 
 	async start({ duration }: { duration: number }): Promise<ShellyNgDiscoverySessionSnapshot> {
 		const id = randomUUID();
 		const startedAt = new Date();
 		const expiresAt = new Date(startedAt.getTime() + duration * 1_000);
-		const discoverer = new MdnsDeviceDiscoverer();
 
 		const session: ShellyNgDiscoverySession = {
 			id,
 			status: 'running',
 			startedAt,
 			expiresAt,
-			discoverer,
 			devices: new Map(),
 			passwords: new Map(),
 		};
 
-		discoverer.on('discover', (device: { deviceId?: string; hostname?: string }) => {
-			const hostname = device.hostname ?? device.deviceId ?? '';
-			const password =
-				session.passwords.get(hostname) ??
-				(device.deviceId !== undefined ? session.passwords.get(device.deviceId) : undefined) ??
-				null;
-
-			void this.inspectDevice(session, hostname, 'mdns', password);
+		// Reuse the main connector's already-running mDNS browser instead of spinning up
+		// a parallel one. Two browsers + two RPC inspect loops were causing relay glitches
+		// on some Plus/Pro firmware. The 30s session window is kept for UX so the user can
+		// still power on a new device during the scan and have it picked up.
+		//
+		// Subscribe BEFORE iterating the seed list — `getKnownDevices()` + the awaited DB
+		// lookups inside `handleLibDevice` create a window where the lib could fire `add`
+		// for a fresh device that's not in the seed and there's no listener attached yet.
+		// `handleLibDevice` is keyed on hostname so an overlap between a seed entry and
+		// a concurrent `add` event just overwrites the same row rather than duplicating.
+		session.unsubscribeAdded = this.shellyNgService.subscribeToAddedDevice((device) => {
+			void this.handleLibDevice(session, device as LibDevice);
 		});
 
-		discoverer.on('error', (error: Error) => {
-			this.logger.warn('mDNS discovery emitted an error', {
-				session: id,
-				message: error.message,
-				stack: error.stack,
-			});
-		});
-
-		try {
-			await discoverer.start();
-		} catch (error) {
-			this.clearTimers(session);
-
-			throw error;
+		for (const device of this.shellyNgService.getKnownDevices()) {
+			await this.handleLibDevice(session, device as LibDevice);
 		}
 
 		session.timer = setTimeout(() => {
@@ -176,20 +175,29 @@ export class ShellyNgDiscoveryService {
 		session.status = 'finished';
 
 		this.clearTimer(session);
-
-		try {
-			await session.discoverer.stop();
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.warn('Failed to stop Shelly NG mDNS discovery session', {
-				session: id,
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+		this.unsubscribeFromAdded(session);
 
 		this.scheduleCleanup(session);
+
+		await Promise.resolve();
+	}
+
+	private unsubscribeFromAdded(session: ShellyNgDiscoverySession): void {
+		if (typeof session.unsubscribeAdded === 'function') {
+			try {
+				session.unsubscribeAdded();
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.warn('Failed to detach Shelly NG discovery listener', {
+					session: session.id,
+					message: err.message,
+					stack: err.stack,
+				});
+			}
+
+			session.unsubscribeAdded = undefined;
+		}
 	}
 
 	private scheduleCleanup(session: ShellyNgDiscoverySession): void {
@@ -203,6 +211,7 @@ export class ShellyNgDiscoveryService {
 	private clearTimers(session: ShellyNgDiscoverySession): void {
 		this.clearTimer(session);
 		this.clearCleanupTimer(session);
+		this.unsubscribeFromAdded(session);
 	}
 
 	private clearTimer(session: ShellyNgDiscoverySession): void {
@@ -228,6 +237,112 @@ export class ShellyNgDiscoveryService {
 
 		if (device.identifier !== null) {
 			session.passwords.set(device.identifier, password);
+		}
+	}
+
+	/**
+	 * Build a discovery snapshot for a device the main connector's mDNS browser already
+	 * knows about. No HTTP RPC is sent to the device — everything comes from the lib's
+	 * cached info plus a DB lookup. Manual entries still go through `inspectDevice`
+	 * because they may target devices the main connector hasn't reached.
+	 */
+	private async handleLibDevice(session: ShellyNgDiscoverySession, device: LibDevice): Promise<void> {
+		const hostname = device.wifi?.sta_ip ?? device.ethernet?.ip ?? null;
+
+		if (typeof hostname !== 'string' || hostname.length === 0) {
+			return;
+		}
+
+		// Skip if the user already entered this device manually — that path has the password
+		// and a richer (RPC-fetched) snapshot we don't want to overwrite.
+		const existing = session.devices.get(hostname);
+
+		if (existing && existing.source === 'manual') {
+			return;
+		}
+
+		try {
+			const registeredDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+				'identifier',
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			const descriptor = this.findDescriptor(device.model);
+			const categories = descriptor?.categories ?? [];
+
+			let status: ShellyNgDiscoveryDeviceStatus;
+
+			if (registeredDevice !== null) {
+				status = 'already_registered';
+			} else if (descriptor === null) {
+				status = 'unsupported';
+			} else {
+				status = 'ready';
+			}
+
+			const snapshot: ShellyNgDiscoveryDeviceSnapshot = {
+				identifier: device.id,
+				hostname,
+				name: device.system?.config?.device?.name ?? null,
+				model: device.model,
+				displayName: descriptor?.name ?? device.modelName ?? device.model,
+				firmware: device.firmware?.version ?? null,
+				status,
+				source: 'mdns',
+				categories,
+				// Pre-fill the wizard's category dropdown with the first listed category for the
+				// model so the user can adopt a brand-new device without picking anything. The
+				// descriptor's category list is ordered most-common-first (e.g. Plus 1 → lighting,
+				// switcher), so this lands on the typical use; users with edge cases can still
+				// flip the dropdown in step 2.
+				suggestedCategory: categories.length > 0 ? categories[0] : null,
+				// Devices in `shellies.values()` have already authenticated successfully
+				// (the main connector wouldn't expose them otherwise). Password-protected
+				// devices the connector can't reach never appear here — they have to be
+				// adopted via the wizard's manual-entry path, which still inspects over
+				// HTTP and surfaces `needs_password` correctly.
+				authentication: { enabled: false, domain: null },
+				registeredDeviceId: registeredDevice?.id ?? null,
+				registeredDeviceName: registeredDevice?.name ?? null,
+				registeredDeviceCategory: registeredDevice?.category ?? null,
+				error: null,
+				lastSeenAt: new Date().toISOString(),
+			};
+
+			session.devices.set(hostname, snapshot);
+		} catch (error) {
+			// Most likely a transient DB error from `findOneBy`. Surface the device with a
+			// `failed` snapshot so the user can see something happened, but never let the
+			// promise reject — this is invoked from a fire-and-forget `add` listener and
+			// a rejection here would crash the process.
+			const err = error as Error;
+
+			this.logger.warn('Failed to build discovery snapshot for device from main connector', {
+				session: session.id,
+				hostname,
+				message: err.message,
+				stack: err.stack,
+			});
+
+			session.devices.set(hostname, {
+				identifier: device.id,
+				hostname,
+				name: device.system?.config?.device?.name ?? null,
+				model: device.model,
+				displayName: device.modelName ?? device.model,
+				firmware: device.firmware?.version ?? null,
+				status: 'failed',
+				source: 'mdns',
+				categories: [],
+				suggestedCategory: null,
+				authentication: { enabled: false, domain: null },
+				registeredDeviceId: null,
+				registeredDeviceName: null,
+				registeredDeviceCategory: null,
+				error: err.message,
+				lastSeenAt: new Date().toISOString(),
+			});
 		}
 	}
 
@@ -257,6 +372,7 @@ export class ShellyNgDiscoveryService {
 			authentication: existing?.authentication ?? { enabled: false, domain: null },
 			registeredDeviceId: existing?.registeredDeviceId ?? null,
 			registeredDeviceName: existing?.registeredDeviceName ?? null,
+			registeredDeviceCategory: existing?.registeredDeviceCategory ?? null,
 			error: null,
 			lastSeenAt: new Date().toISOString(),
 		});
@@ -295,10 +411,16 @@ export class ShellyNgDiscoveryService {
 				status,
 				source,
 				categories,
-				suggestedCategory: categories.length === 1 ? categories[0] : null,
+				// Pre-fill the wizard's category dropdown with the first listed category for the
+				// model so the user can adopt a brand-new device without picking anything. The
+				// descriptor's category list is ordered most-common-first (e.g. Plus 1 → lighting,
+				// switcher), so this lands on the typical use; users with edge cases can still
+				// flip the dropdown in step 2.
+				suggestedCategory: categories.length > 0 ? categories[0] : null,
 				authentication,
 				registeredDeviceId: registeredDevice?.id ?? null,
 				registeredDeviceName: registeredDevice?.name ?? null,
+				registeredDeviceCategory: registeredDevice?.category ?? null,
 				error: null,
 				lastSeenAt: new Date().toISOString(),
 			};

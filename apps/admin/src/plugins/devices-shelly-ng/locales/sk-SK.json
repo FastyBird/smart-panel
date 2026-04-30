@@ -12,11 +12,18 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
+			"title": "Sprievodca vyhľadaním Shelly NG",
 			"discovery": "Vyhľadávanie",
 			"categories": "Kategórie",
 			"results": "Výsledky",
 			"status": "Stav"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Nájdite a adoptujte zariadenia Shelly NG vo vašej sieti"
+	},
+	"breadcrumbs": {
+		"wizard": "sprievodca vyhľadaním"
 	},
 	"fields": {
 		"devices": {
@@ -50,6 +57,9 @@
 			"password": {
 				"title": "Heslo administrátora",
 				"placeholder": "Zadajte heslo zariadenia, ak je chránené"
+			},
+			"error": {
+				"title": "Chyba"
 			},
 			"hostname": {
 				"title": "Hostname zariadenia",
@@ -130,7 +140,11 @@
 			"discovery": "Sprievodca vyhľadá zariadenia Shelly NG v lokálnej sieti a prijíma aj manuálne zadaný hostname alebo IP adresu.",
 			"categories": "Potvrďte, ktoré pripravené zariadenia sa majú adoptovať, a vyberte cieľovú kategóriu pre každé z nich.",
 			"scanStatus": "Nájdené zariadenia: {count}",
-			"noDevices": "Neboli nájdené žiadne zariadenia Shelly"
+			"noDevices": "Neboli nájdené žiadne zariadenia Shelly",
+			"results": {
+				"success": "Všetky zariadenia boli úspešne adoptované.",
+				"failed": "Niektoré zariadenia nebolo možné adoptovať. Skontrolujte chyby nižšie."
+			}
 		}
 	},
 	"buttons": {
@@ -160,7 +174,10 @@
 			"already_registered": "Registrované",
 			"unsupported": "Nepodporované",
 			"failed": "Zlyhalo",
-			"created": "Vytvorené"
+			"created": "Vytvorené",
+			"updated": "Aktualizované",
+			"willCreate": "Bude vytvorené",
+			"willUpdate": "Aktualizuje existujúce"
 		}
 	}
 }

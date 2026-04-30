@@ -22,6 +22,7 @@ import {
 	ComponentType,
 	DESCRIPTORS,
 	DEVICES_SHELLY_NG_PLUGIN_NAME,
+	DeviceDescriptor,
 	DeviceProfile,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
@@ -72,16 +73,27 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 	public pm1: Map<number, Pm1> = new Map();
 
+	/**
+	 * The descriptor that matched this device's model. Stored on construction so callers
+	 * (e.g. `DelegatesManagerService.determineCategory`) can read the canonical category
+	 * list directly instead of inferring from which component maps the lib happened to
+	 * populate — for sensor-only devices like the PM Mini Gen3, the lib may not expose a
+	 * component the heuristic checks against, falling through to `GENERIC`.
+	 */
+	public readonly descriptor: DeviceDescriptor | null;
+
 	private changeHandlers: Map<string, (char: string, val: CharacteristicValue) => void> = new Map();
 
 	constructor(private shelly: Device) {
 		super();
 
 		let isKnown = false;
+		let matchedDescriptor: DeviceDescriptor | null = null;
 
 		Object.values(DESCRIPTORS).forEach((DESCRIPTOR): void => {
 			if (DESCRIPTOR.models.includes(this.shelly.model.toUpperCase())) {
 				isKnown = true;
+				matchedDescriptor = DESCRIPTOR;
 
 				this.connected = this.shelly.rpcHandler.connected;
 
@@ -193,6 +205,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		if (!isKnown) {
 			throw new DevicesShellyNgException('Device is not supported.');
 		}
+
+		this.descriptor = matchedDescriptor;
 	}
 
 	public get id(): string {

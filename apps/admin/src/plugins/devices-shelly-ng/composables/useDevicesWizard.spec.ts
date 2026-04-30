@@ -7,6 +7,9 @@ import type { IShellyNgDiscoverySession } from '../schemas/devices.types';
 import { useDevicesWizard } from './useDevicesWizard';
 
 const mockAdd = vi.fn();
+const mockEdit = vi.fn();
+const mockGet = vi.fn();
+const mockFindById = vi.fn();
 
 const backendClient = {
 	GET: vi.fn(),
@@ -38,6 +41,9 @@ vi.mock('../../../common', async () => {
 		injectStoresManager: () => ({
 			getStore: () => ({
 				add: mockAdd,
+				edit: mockEdit,
+				get: mockGet,
+				findById: mockFindById,
 			}),
 		}),
 		useBackend: () => ({
@@ -74,6 +80,7 @@ const discoverySession: IShellyNgDiscoverySession = {
 			},
 			registeredDeviceId: null,
 			registeredDeviceName: null,
+			registeredDeviceCategory: null,
 			error: null,
 			lastSeenAt: '2026-04-29T12:00:01.000Z',
 		},
@@ -99,6 +106,9 @@ describe('useDevicesWizard', () => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
 		mockAdd.mockResolvedValue(undefined);
+		mockEdit.mockResolvedValue(undefined);
+		mockGet.mockResolvedValue(undefined);
+		mockFindById.mockReturnValue({ id: 'placeholder' });
 	});
 
 	afterEach(() => {
@@ -126,22 +136,20 @@ describe('useDevicesWizard', () => {
 	});
 
 	it('adds a manual lookup to an existing discovery session', async () => {
-		backendClient.POST
-			.mockResolvedValueOnce({
+		backendClient.POST.mockResolvedValueOnce({
+			data: {
 				data: {
-					data: {
-						...discoverySession,
-						devices: [],
-					},
+					...discoverySession,
+					devices: [],
 				},
-				response: { status: 200 },
-			})
-			.mockResolvedValueOnce({
-				data: {
-					data: discoverySession,
-				},
-				response: { status: 200 },
-			});
+			},
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
 
 		const wizard = useDevicesWizard();
 
@@ -206,19 +214,17 @@ describe('useDevicesWizard', () => {
 			},
 			response: { status: 200 },
 		});
-		backendClient.GET
-			.mockResolvedValueOnce({
-				data: {
-					data: checkingDiscoverySession,
-				},
-				response: { status: 200 },
-			})
-			.mockResolvedValueOnce({
-				data: {
-					data: discoverySession,
-				},
-				response: { status: 200 },
-			});
+		backendClient.GET.mockResolvedValueOnce({
+			data: {
+				data: checkingDiscoverySession,
+			},
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
 
 		const wizard = useDevicesWizard();
 
@@ -265,5 +271,390 @@ describe('useDevicesWizard', () => {
 				status: 'created',
 			}),
 		]);
+	});
+
+	it('pre-fills the category dropdown from registeredDeviceCategory for already_registered devices', async () => {
+		// Plus 1 supports both `lighting` and `switcher`, so `suggestedCategory` is null. Without
+		// `registeredDeviceCategory` the user would land on step 2 with an empty selector even
+		// though we already chose a category when the device was first adopted.
+		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					suggestedCategory: null,
+					registeredDeviceId: 'device-uuid-1',
+					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceCategory: DevicesModuleDeviceCategory.switcher,
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+
+		expect(wizard.categoryByHostname['192.168.1.10']).toBe(DevicesModuleDeviceCategory.switcher);
+	});
+
+	it('updates already_registered devices via edit when the user opts in', async () => {
+		const alreadyRegisteredSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-1',
+					registeredDeviceName: 'Existing kitchen relay',
+					registeredDeviceCategory: DevicesModuleDeviceCategory.lighting,
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: alreadyRegisteredSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// already_registered devices start unselected — user must opt in to override
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('Existing kitchen relay');
+
+		// Even though nothing is selected (so canContinue is false), the device list still has
+		// adoptable entries — the wizard's Next button must gate on that, not on canContinue,
+		// or a scan returning only already_registered devices would trap the user on step 1.
+		expect(wizard.canContinue.value).toBe(false);
+		expect(wizard.devices.value.some((d) => d.status === 'already_registered')).toBe(true);
+
+		wizard.selected['192.168.1.10'] = true;
+		wizard.categoryByHostname['192.168.1.10'] = DevicesModuleDeviceCategory.switcher;
+
+		await wizard.adoptSelected();
+
+		expect(mockEdit).toHaveBeenCalledWith({
+			id: 'device-uuid-1',
+			data: expect.objectContaining({
+				type: DEVICES_SHELLY_NG_TYPE,
+				category: DevicesModuleDeviceCategory.switcher,
+				name: 'Existing kitchen relay',
+			}),
+		});
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('falls back to update when create fails because the main service auto-adopted the device', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-2',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		// First refresh in adoptSelected: still shows the snapshot's `ready` status.
+		// Second refresh (after add fails): shows the device now exists.
+		backendClient.GET.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		}).mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		mockAdd.mockRejectedValueOnce(new Error('Duplicate identifier'));
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+		await wizard.adoptSelected();
+
+		expect(mockAdd).toHaveBeenCalledTimes(1);
+		expect(mockEdit).toHaveBeenCalledWith({
+			id: 'device-uuid-2',
+			data: expect.objectContaining({
+				type: DEVICES_SHELLY_NG_TYPE,
+				category: DevicesModuleDeviceCategory.lighting,
+				name: 'Kitchen relay',
+			}),
+		});
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('loads the device into the local store before editing if it was just auto-adopted', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-fresh',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		// Device exists in the backend (already_registered) but not yet in the admin store —
+		// `devicesStore.edit` would otherwise reject the id.
+		mockFindById.mockReturnValue(null);
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		wizard.selected['192.168.1.10'] = true;
+		wizard.categoryByHostname['192.168.1.10'] = DevicesModuleDeviceCategory.switcher;
+
+		await wizard.adoptSelected();
+
+		expect(mockGet).toHaveBeenCalledWith({ id: 'device-uuid-fresh' });
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'device-uuid-fresh',
+			})
+		);
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('deselects a previously ready device when polling reports it as already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-mid-session',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// Device started ready and was auto-selected.
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		// Polling refresh: device transitions to already_registered (e.g., main connector
+		// auto-adopted it). Selection must clear so the next Adopt click doesn't silently
+		// update the existing device — the user has to explicitly opt in for updates.
+		await wizard.refreshDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
+	});
+
+	it('still adopts a device the user selected if the refresh inside adoptSelected flips it to already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-in-flight',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		// First refresh (inside adoptSelected) reports the status flip.
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+		// User explicitly selected the device when it was still `ready`.
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		await wizard.adoptSelected();
+
+		// Snapshot-before-refresh keeps the device in scope for adoption even though
+		// the refresh deselects it in live state.
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'device-uuid-in-flight',
+			})
+		);
+		expect(wizard.adoptionResults.value).toEqual([
+			expect.objectContaining({
+				hostname: '192.168.1.10',
+				status: 'updated',
+			}),
+		]);
+	});
+
+	it('refreshes the editable name when a device transitions from checking to already_registered', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-3',
+					registeredDeviceName: 'Auto-adopted by main service',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: checkingDiscoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		// Placeholder during checking — no registered name available yet.
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('192.168.1.10');
+
+		await wizard.refreshDiscovery();
+
+		// On checking → already_registered, the name field picks up registeredDeviceName so
+		// opting in to update doesn't accidentally overwrite the existing name with the hostname.
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('Auto-adopted by main service');
+	});
+
+	it('starts scan progress at 0 even when the client clock is skewed from server timestamps', async () => {
+		// The discoverySession says scan started at 2026-04-29T12:00:00Z. The client clock is
+		// in 2030 — a previous client-clock-based implementation would have read elapsed as years
+		// and stayed at 100% (or 0% if behind). Receipt-anchored logic returns 0% on receipt.
+		vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+
+		expect(wizard.scanPercentage.value).toBe(0);
+	});
+
+	it('clears stale selections from a previous scan when the user clicks Scan again', async () => {
+		const racedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			id: 'session-2',
+			devices: [
+				{
+					...discoverySession.devices[0]!,
+					status: 'already_registered',
+					registeredDeviceId: 'device-uuid-existing',
+					registeredDeviceName: 'Auto-adopted relay',
+				},
+			],
+		};
+
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		}).mockResolvedValueOnce({
+			data: { data: racedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		// First scan: device is ready, gets pre-selected.
+		await wizard.startDiscovery();
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+
+		// User clicks Scan again. The same device now shows as already_registered (the main
+		// service auto-adopted it in the meantime). The previous selection must NOT persist —
+		// otherwise the next adopt would silently update an existing device.
+		await wizard.startDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
+	});
+
+	it('jumps scan progress to 100 when the session finishes', async () => {
+		const finishedSession: IShellyNgDiscoverySession = {
+			...discoverySession,
+			status: 'finished',
+			remainingSeconds: 0,
+		};
+
+		backendClient.POST.mockResolvedValue({
+			data: { data: discoverySession },
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: { data: finishedSession },
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+		await wizard.startDiscovery();
+		await wizard.refreshDiscovery();
+
+		expect(wizard.scanPercentage.value).toBe(100);
 	});
 });

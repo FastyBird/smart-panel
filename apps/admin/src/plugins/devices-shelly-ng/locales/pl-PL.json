@@ -12,11 +12,18 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
+			"title": "Kreator wyszukiwania Shelly NG",
 			"discovery": "Discovery",
 			"categories": "Categories",
 			"results": "Results",
 			"status": "Status"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Znajdz i adoptuj urzadzenia Shelly NG w swojej sieci"
+	},
+	"breadcrumbs": {
+		"wizard": "kreator wyszukiwania"
 	},
 	"fields": {
 		"devices": {
@@ -50,6 +57,9 @@
 			"password": {
 				"title": "Haslo administratora",
 				"placeholder": "Podaj haslo urzadzenia, jesli urzadzenie jest chronione"
+			},
+			"error": {
+				"title": "Blad"
 			},
 			"hostname": {
 				"title": "Nazwa hosta urzadzenia",
@@ -130,7 +140,11 @@
 			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
 			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
 			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found"
+			"noDevices": "No Shelly devices found",
+			"results": {
+				"success": "Wszystkie urzadzenia zostaly pomyslnie adoptowane.",
+				"failed": "Niektore urzadzenia nie mogly zostac adoptowane. Sprawdz blody ponizej."
+			}
 		}
 	},
 	"buttons": {
@@ -160,7 +174,10 @@
 			"already_registered": "Registered",
 			"unsupported": "Unsupported",
 			"failed": "Failed",
-			"created": "Created"
+			"created": "Created",
+			"updated": "Zaktualizowano",
+			"willCreate": "Zostanie utworzone",
+			"willUpdate": "Zaktualizuje istniejace"
 		}
 	}
 }

@@ -1,166 +1,183 @@
 {
-  "headings": {
-    "aboutPluginStatus": "Estado del plugin",
-    "aboutMdns": "Configuración de mDNS",
-    "aboutWebsockets": "Configuración de WebSockets",
-    "device": {
-      "deviceConnection": "Conexión del dispositivo",
-      "information": "Información del dispositivo",
-      "supported": "¡Felicidades! El dispositivo es compatible",
-      "notSupported": "Lo sentimos, su dispositivo no es compatible",
-      "model": "Modelo",
-      "firmware": "Firmware"
-    },
-    "wizard": {
-      "discovery": "Discovery",
-      "categories": "Categories",
-      "results": "Results",
-      "status": "Status"
-    }
-  },
-  "fields": {
-    "devices": {
-      "id": {
-        "title": "Identificador interno",
-        "placeholder": "ID del dispositivo"
-      },
-      "category": {
-        "title": "Categoría",
-        "placeholder": "Categoría del dispositivo",
-        "description": "Acerca de la categoría",
-        "validation": {
-          "required": "Por favor, seleccione la categoría del dispositivo"
-        }
-      },
-      "name": {
-        "title": "Nombre",
-        "placeholder": "Nombre del dispositivo",
-        "validation": {
-          "required": "Por favor, introduzca el nombre del dispositivo"
-        }
-      },
-      "description": {
-        "title": "Descripción",
-        "placeholder": "Descripción del dispositivo"
-      },
-      "enabled": {
-        "title": "Habilitado",
-        "placeholder": "Habilitar o deshabilitar el dispositivo"
-      },
-      "password": {
-        "title": "Contraseña de administrador",
-        "placeholder": "Proporcione la contraseña del dispositivo si está protegido"
-      },
-      "hostname": {
-        "title": "Nombre de host del dispositivo",
-        "placeholder": "Nombre de red o dirección IP del dispositivo",
-        "validation": {
-          "required": "Por favor, introduzca el nombre de host o la dirección IP del dispositivo"
-        }
-      }
-    },
-    "config": {
-      "enabled": {
-        "title": "Habilitado"
-      },
-      "mdns": {
-        "enabled": {
-          "title": "Descubrimiento habilitado"
-        },
-        "interface": {
-          "title": "Interfaz",
-          "placeholder": "La interfaz de red a utilizar. Si no se especifica ninguna, se utilizarán todas las interfaces disponibles."
-        }
-      },
-      "websockets": {
-        "requestTimeout": {
-          "title": "Tiempo de espera de solicitud",
-          "placeholder": "El tiempo, en segundos, de espera para una respuesta antes de abortar la solicitud.",
-          "validation": {
-            "required": "Por favor, introduzca el tiempo de espera de solicitud",
-            "number": "El tiempo de espera de solicitud debe ser un número"
-          }
-        },
-        "pingInterval": {
-          "title": "Intervalo de ping",
-          "placeholder": "El intervalo, en segundos, para realizar solicitudes de ping y verificar que la conexión está abierta. Establezca en 0 para deshabilitar.",
-          "validation": {
-            "required": "Por favor, introduzca el intervalo de ping",
-            "number": "El intervalo de ping debe ser un número"
-          }
-        },
-        "reconnectInterval": {
-          "title": "Intervalo de reconexión",
-          "placeholder": "El intervalo, en segundos, para intentar reconectar después de que un socket se haya cerrado.",
-          "validation": {
-            "required": "Por favor, introduzca el intervalo de reconexión",
-            "number": "El intervalo de reconexión debe ser un número",
-            "array": "El intervalo de reconexión debe ser un arreglo de números"
-          }
-        }
-      }
-    }
-  },
-  "messages": {
-    "config": {
-      "edited": "¡Cambios guardados! La configuración del plugin Shelly Next Generation ha sido actualizada.",
-      "notEdited": "Algo salió mal. La actualización de la configuración del plugin Shelly Next Generation no fue exitosa."
-    },
-    "devices": {
-      "exists": "El dispositivo con el nombre de host y la contraseña proporcionados ya está registrado en el sistema.",
-      "created": "Nuevo dispositivo Shelly Next-Generation agregado correctamente.",
-      "notCreated": "Algo salió mal. No se pudo crear el dispositivo Shelly Next-Generation.",
-      "notChecked": "Algo salió mal. No se pudo cargar la información del dispositivo. Verifique el nombre de host o la contraseña del dispositivo.",
-      "edited": "¡Cambios guardados! El dispositivo Shelly Next-Generation: {device} ha sido actualizado.",
-      "notEdited": "Algo salió mal. La actualización del dispositivo Shelly Next-Generation no fue exitosa.",
-      "failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
-    },
-    "wizard": {
-      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
-    }
-  },
-  "texts": {
-    "aboutPluginStatus": "Habilitar o deshabilitar la integración de dispositivos Shelly Next Generation. Cuando está habilitado, los dispositivos Shelly pueden ser descubiertos y controlados a través del Smart Panel.",
-    "aboutMdns": "Configure cómo el plugin descubre dispositivos Shelly en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
-    "aboutWebsockets": "Gestione los parámetros de conexión WebSocket para los dispositivos Shelly. Estos ajustes controlan la estabilidad de la comunicación, el manejo de solicitudes y el comportamiento de reconexión.",
-    "wizard": {
-      "discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-      "scanStatus": "{count} devices found",
-      "noDevices": "No Shelly devices found"
-    }
-  },
-  "buttons": {
-    "next": {
-      "title": "Siguiente"
-    },
-    "wizard": {
-      "restart": {
-        "title": "Scan again"
-      },
-      "addManual": {
-        "title": "Add"
-      },
-      "adopt": {
-        "title": "Adopt selected"
-      },
-      "finish": {
-        "title": "Back to devices"
-      }
-    }
-  },
-  "statuses": {
-    "wizard": {
-      "checking": "Checking",
-      "ready": "Ready",
-      "needs_password": "Needs password",
-      "already_registered": "Registered",
-      "unsupported": "Unsupported",
-      "failed": "Failed",
-      "created": "Created"
-    }
-  }
+	"headings": {
+		"aboutPluginStatus": "Estado del plugin",
+		"aboutMdns": "Configuración de mDNS",
+		"aboutWebsockets": "Configuración de WebSockets",
+		"device": {
+			"deviceConnection": "Conexión del dispositivo",
+			"information": "Información del dispositivo",
+			"supported": "¡Felicidades! El dispositivo es compatible",
+			"notSupported": "Lo sentimos, su dispositivo no es compatible",
+			"model": "Modelo",
+			"firmware": "Firmware"
+		},
+		"wizard": {
+			"title": "Asistente de descubrimiento de Shelly NG",
+			"discovery": "Discovery",
+			"categories": "Categories",
+			"results": "Results",
+			"status": "Status"
+		}
+	},
+	"subHeadings": {
+		"wizard": "Encuentre y adopte dispositivos Shelly NG en su red"
+	},
+	"breadcrumbs": {
+		"wizard": "asistente de descubrimiento"
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Identificador interno",
+				"placeholder": "ID del dispositivo"
+			},
+			"category": {
+				"title": "Categoría",
+				"placeholder": "Categoría del dispositivo",
+				"description": "Acerca de la categoría",
+				"validation": {
+					"required": "Por favor, seleccione la categoría del dispositivo"
+				}
+			},
+			"name": {
+				"title": "Nombre",
+				"placeholder": "Nombre del dispositivo",
+				"validation": {
+					"required": "Por favor, introduzca el nombre del dispositivo"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Descripción del dispositivo"
+			},
+			"enabled": {
+				"title": "Habilitado",
+				"placeholder": "Habilitar o deshabilitar el dispositivo"
+			},
+			"password": {
+				"title": "Contraseña de administrador",
+				"placeholder": "Proporcione la contraseña del dispositivo si está protegido"
+			},
+			"error": {
+				"title": "Error"
+			},
+			"hostname": {
+				"title": "Nombre de host del dispositivo",
+				"placeholder": "Nombre de red o dirección IP del dispositivo",
+				"validation": {
+					"required": "Por favor, introduzca el nombre de host o la dirección IP del dispositivo"
+				}
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Descubrimiento habilitado"
+				},
+				"interface": {
+					"title": "Interfaz",
+					"placeholder": "La interfaz de red a utilizar. Si no se especifica ninguna, se utilizarán todas las interfaces disponibles."
+				}
+			},
+			"websockets": {
+				"requestTimeout": {
+					"title": "Tiempo de espera de solicitud",
+					"placeholder": "El tiempo, en segundos, de espera para una respuesta antes de abortar la solicitud.",
+					"validation": {
+						"required": "Por favor, introduzca el tiempo de espera de solicitud",
+						"number": "El tiempo de espera de solicitud debe ser un número"
+					}
+				},
+				"pingInterval": {
+					"title": "Intervalo de ping",
+					"placeholder": "El intervalo, en segundos, para realizar solicitudes de ping y verificar que la conexión está abierta. Establezca en 0 para deshabilitar.",
+					"validation": {
+						"required": "Por favor, introduzca el intervalo de ping",
+						"number": "El intervalo de ping debe ser un número"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Intervalo de reconexión",
+					"placeholder": "El intervalo, en segundos, para intentar reconectar después de que un socket se haya cerrado.",
+					"validation": {
+						"required": "Por favor, introduzca el intervalo de reconexión",
+						"number": "El intervalo de reconexión debe ser un número",
+						"array": "El intervalo de reconexión debe ser un arreglo de números"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "¡Cambios guardados! La configuración del plugin Shelly Next Generation ha sido actualizada.",
+			"notEdited": "Algo salió mal. La actualización de la configuración del plugin Shelly Next Generation no fue exitosa."
+		},
+		"devices": {
+			"exists": "El dispositivo con el nombre de host y la contraseña proporcionados ya está registrado en el sistema.",
+			"created": "Nuevo dispositivo Shelly Next-Generation agregado correctamente.",
+			"notCreated": "Algo salió mal. No se pudo crear el dispositivo Shelly Next-Generation.",
+			"notChecked": "Algo salió mal. No se pudo cargar la información del dispositivo. Verifique el nombre de host o la contraseña del dispositivo.",
+			"edited": "¡Cambios guardados! El dispositivo Shelly Next-Generation: {device} ha sido actualizado.",
+			"notEdited": "Algo salió mal. La actualización del dispositivo Shelly Next-Generation no fue exitosa.",
+			"failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Habilitar o deshabilitar la integración de dispositivos Shelly Next Generation. Cuando está habilitado, los dispositivos Shelly pueden ser descubiertos y controlados a través del Smart Panel.",
+		"aboutMdns": "Configure cómo el plugin descubre dispositivos Shelly en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
+		"aboutWebsockets": "Gestione los parámetros de conexión WebSocket para los dispositivos Shelly. Estos ajustes controlan la estabilidad de la comunicación, el manejo de solicitudes y el comportamiento de reconexión.",
+		"wizard": {
+			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
+			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+			"scanStatus": "{count} devices found",
+			"noDevices": "No Shelly devices found",
+			"results": {
+				"success": "Todos los dispositivos se adoptaron correctamente.",
+				"failed": "Algunos dispositivos no pudieron ser adoptados. Revise los errores a continuación."
+			}
+		}
+	},
+	"buttons": {
+		"next": {
+			"title": "Siguiente"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Scan again"
+			},
+			"addManual": {
+				"title": "Add"
+			},
+			"adopt": {
+				"title": "Adopt selected"
+			},
+			"finish": {
+				"title": "Back to devices"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Checking",
+			"ready": "Ready",
+			"needs_password": "Needs password",
+			"already_registered": "Registered",
+			"unsupported": "Unsupported",
+			"failed": "Failed",
+			"created": "Created",
+			"updated": "Actualizado",
+			"willCreate": "Se creará",
+			"willUpdate": "Actualizará el existente"
+		}
+	}
 }
