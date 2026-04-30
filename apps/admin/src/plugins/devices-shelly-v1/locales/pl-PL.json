@@ -13,9 +13,9 @@
 		},
 		"wizard": {
 			"title": "Kreator wyszukiwania Shelly Gen 1",
-			"discovery": "Discovery",
-			"categories": "Categories",
-			"results": "Results",
+			"discovery": "Wyszukiwanie",
+			"categories": "Kategorie",
+			"results": "Wyniki",
 			"status": "Status"
 		}
 	},
@@ -119,10 +119,10 @@
 			"failedLoadSupportedDevices": "Cos poszlo nie tak. Obslugiwane urzadzenia wtyczki nie mogly zostac zaladowane."
 		},
 		"wizard": {
-			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
+			"discoveryNotStarted": "Cos poszlo nie tak. Wyszukiwanie Shelly nie moglo zostac uruchomione.",
+			"discoveryNotLoaded": "Cos poszlo nie tak. Wyszukiwanie Shelly nie moglo zostac zaladowane.",
+			"manualNotAdded": "Cos poszlo nie tak. Reczne wyszukanie urzadzenia Shelly nie moglo zostac dodane.",
+			"adoptionNotCreated": "Cos poszlo nie tak. Urzadzenie Shelly nie moglo zostac adoptowane."
 		}
 	},
 	"texts": {
@@ -130,10 +130,10 @@
 		"aboutDiscovery": "Skonfiguruj, jak wtyczka wykrywa urzadzenia Shelly Gen 1 w sieci lokalnej za pomoca Multicast DNS (mDNS).",
 		"aboutTimeouts": "Skonfiguruj ustawienia limitow czasu komunikacji HTTP z urzadzeniami Shelly Gen 1.",
 		"wizard": {
-			"discovery": "The wizard scans the local network for Shelly Gen 1 devices and also accepts a manually entered hostname or IP address.",
-			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-			"scanStatus": "{count} devices found",
-			"noDevices": "No Shelly devices found",
+			"discovery": "Kreator skanuje siec lokalna w poszukiwaniu urzadzen Shelly Gen 1 i akceptuje takze recznie wprowadzona nazwe hosta lub adres IP.",
+			"categories": "Potwierdz, ktore gotowe urzadzenia maja zostac adoptowane, i wybierz docelowa kategorie dla kazdego z nich.",
+			"scanStatus": "Znaleziono urzadzen: {count}",
+			"noDevices": "Nie znaleziono zadnych urzadzen Shelly",
 			"results": {
 				"success": "Wszystkie urzadzenia zostaly pomyslnie adoptowane.",
 				"failed": "Niektore urzadzenia nie mogly zostac adoptowane. Sprawdz blody ponizej."
@@ -146,28 +146,28 @@
 		},
 		"wizard": {
 			"restart": {
-				"title": "Scan again"
+				"title": "Skanuj ponownie"
 			},
 			"addManual": {
-				"title": "Add"
+				"title": "Dodaj"
 			},
 			"adopt": {
-				"title": "Adopt selected"
+				"title": "Adoptuj wybrane"
 			},
 			"finish": {
-				"title": "Back to devices"
+				"title": "Powrot do urzadzen"
 			}
 		}
 	},
 	"statuses": {
 		"wizard": {
-			"checking": "Checking",
-			"ready": "Ready",
-			"needs_password": "Needs password",
-			"already_registered": "Registered",
-			"unsupported": "Unsupported",
-			"failed": "Failed",
-			"created": "Created",
+			"checking": "Sprawdzanie",
+			"ready": "Gotowe",
+			"needs_password": "Wymaga hasla",
+			"already_registered": "Zarejestrowane",
+			"unsupported": "Nieobslugiwane",
+			"failed": "Nieudane",
+			"created": "Utworzone",
 			"updated": "Zaktualizowano",
 			"willCreate": "Zostanie utworzone",
 			"willUpdate": "Zaktualizuje istniejace"

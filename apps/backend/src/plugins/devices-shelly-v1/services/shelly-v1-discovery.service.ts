@@ -477,6 +477,14 @@ export class ShellyV1DiscoveryService {
 		return mac.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 	}
 
+	/**
+	 * Mirror the matching strategy used by `device-mapper.service.ts` and the device platform
+	 * — substring match on `descriptor.models`, then partial-name fallback on the descriptor
+	 * key / friendly name. The wizard MUST agree with the main connector here: if a device
+	 * type the connector adopts gets `unsupported` in the wizard, users see a confusing
+	 * inconsistency for variants whose `type` carries an extra suffix beyond the canonical
+	 * model code (e.g. SHSW-1 vs SHSW-1-something).
+	 */
 	private findDescriptor(model: string | null | undefined): DeviceDescriptor | null {
 		if (typeof model !== 'string' || model.length === 0) {
 			return null;
@@ -484,17 +492,19 @@ export class ShellyV1DiscoveryService {
 
 		const normalizedModel = model.toUpperCase();
 
-		// First, try an exact match on a descriptor key (e.g. "SHELLY1")
-		if (normalizedModel in DESCRIPTORS) {
-			return DESCRIPTORS[normalizedModel];
+		for (const descriptor of Object.values(DESCRIPTORS)) {
+			if (descriptor.models.some((descriptorModel) => normalizedModel.includes(descriptorModel.toUpperCase()))) {
+				return descriptor;
+			}
 		}
 
-		// Try to match against the model array of every descriptor
-		return (
-			Object.values(DESCRIPTORS).find((descriptor) =>
-				descriptor.models.some((descriptorModel) => descriptorModel.toUpperCase() === normalizedModel),
-			) ?? null
-		);
+		for (const [key, descriptor] of Object.entries(DESCRIPTORS)) {
+			if (normalizedModel.includes(key) || descriptor.name.toUpperCase().includes(normalizedModel)) {
+				return descriptor;
+			}
+		}
+
+		return null;
 	}
 
 	private toSnapshot(session: ShellyV1DiscoverySession): ShellyV1DiscoverySessionSnapshot {

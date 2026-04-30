@@ -13,10 +13,10 @@
     },
     "wizard": {
       "title": "Asistente de descubrimiento de Shelly Gen 1",
-      "discovery": "Discovery",
-      "categories": "Categories",
-      "results": "Results",
-      "status": "Status"
+      "discovery": "Descubrimiento",
+      "categories": "Categorías",
+      "results": "Resultados",
+      "status": "Estado"
     }
   },
   "subHeadings": {
@@ -119,10 +119,10 @@
       "failedLoadSupportedDevices": "Algo salió mal. No se pudieron cargar los dispositivos compatibles del plugin."
     },
     "wizard": {
-      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
+      "discoveryNotStarted": "Algo salió mal. No se pudo iniciar el descubrimiento de Shelly.",
+      "discoveryNotLoaded": "Algo salió mal. No se pudo cargar el descubrimiento de Shelly.",
+      "manualNotAdded": "Algo salió mal. No se pudo añadir la búsqueda manual del dispositivo Shelly.",
+      "adoptionNotCreated": "Algo salió mal. No se pudo adoptar el dispositivo Shelly."
     }
   },
   "texts": {
@@ -130,10 +130,10 @@
     "aboutDiscovery": "Configure cómo el plugin descubre dispositivos Shelly Gen 1 en su red local usando DNS Multidifusión (mDNS). Esto permite la detección automática sin necesidad de introducir direcciones IP manualmente.",
     "aboutTimeouts": "Configure los tiempos de espera para la comunicación HTTP con los dispositivos Shelly Gen 1. Estos ajustes controlan el manejo de solicitudes y la monitorización del estado del dispositivo.",
     "wizard": {
-      "discovery": "The wizard scans the local network for Shelly Gen 1 devices and also accepts a manually entered hostname or IP address.",
-      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-      "scanStatus": "{count} devices found",
-      "noDevices": "No Shelly devices found",
+      "discovery": "El asistente escanea la red local en busca de dispositivos Shelly Gen 1 y también acepta un nombre de host o dirección IP introducidos manualmente.",
+      "categories": "Confirme qué dispositivos preparados deben ser adoptados y elija la categoría de destino para cada uno.",
+      "scanStatus": "{count} dispositivos encontrados",
+      "noDevices": "No se encontraron dispositivos Shelly",
       "results": {
         "success": "Todos los dispositivos se adoptaron correctamente.",
         "failed": "Algunos dispositivos no pudieron ser adoptados. Revise los errores a continuación."
@@ -146,28 +146,28 @@
     },
     "wizard": {
       "restart": {
-        "title": "Scan again"
+        "title": "Escanear de nuevo"
       },
       "addManual": {
-        "title": "Add"
+        "title": "Añadir"
       },
       "adopt": {
-        "title": "Adopt selected"
+        "title": "Adoptar seleccionados"
       },
       "finish": {
-        "title": "Back to devices"
+        "title": "Volver a los dispositivos"
       }
     }
   },
   "statuses": {
     "wizard": {
-      "checking": "Checking",
-      "ready": "Ready",
-      "needs_password": "Needs password",
-      "already_registered": "Registered",
-      "unsupported": "Unsupported",
-      "failed": "Failed",
-      "created": "Created",
+      "checking": "Comprobando",
+      "ready": "Listo",
+      "needs_password": "Necesita contraseña",
+      "already_registered": "Registrado",
+      "unsupported": "No compatible",
+      "failed": "Fallido",
+      "created": "Creado",
       "updated": "Actualizado",
       "willCreate": "Se creará",
       "willUpdate": "Actualizará el existente"
