@@ -2,6 +2,7 @@ export * from './useDeviceAddForm';
 export * from './useDeviceAddFormMultiStep';
 export * from './useDeviceAdoption';
 export * from './useDeviceEditForm';
+export * from './useDevicesWizard';
 export * from './useDiscoveredDevices';
 export * from './useDiscoveredDevicesOptions';
 export * from './useFriendlyNameHumanizer';
