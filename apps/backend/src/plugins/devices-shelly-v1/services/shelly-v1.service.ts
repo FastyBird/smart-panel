@@ -17,9 +17,9 @@ import {
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import {
-	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
+	DeviceDescriptor,
 	PropertyBinding,
 	SHELLY_AUTH_USERNAME,
 	SHELLY_V1_CHANNEL_IDENTIFIERS,
@@ -33,6 +33,7 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interfaces/shellies.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
+import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
@@ -510,9 +511,7 @@ export class ShellyV1Service extends BaseManagedPluginService {
 	/**
 	 * Find the descriptor for a device entity by querying the model from a device_information channel
 	 */
-	private async findDescriptor(
-		device: ShellyV1DeviceEntity,
-	): Promise<(typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null> {
+	private async findDescriptor(device: ShellyV1DeviceEntity): Promise<DeviceDescriptor | null> {
 		// Get the device_information channel
 		const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
@@ -541,31 +540,14 @@ export class ShellyV1Service extends BaseManagedPluginService {
 			return null;
 		}
 
-		const deviceModel = String(modelProperty.value.value).toUpperCase();
+		const deviceModel = String(modelProperty.value.value);
+		const descriptor = findShellyV1Descriptor(deviceModel);
 
-		// Try to find by exact device model match first
-		for (const descriptor of Object.values(DESCRIPTORS)) {
-			if (descriptor.models.some((model) => deviceModel === model)) {
-				return descriptor;
-			}
-		}
-		// Fallback: try to find by partial device model match
-		for (const descriptor of Object.values(DESCRIPTORS)) {
-			if (descriptor.models.some((model) => deviceModel.includes(model))) {
-				return descriptor;
-			}
+		if (!descriptor) {
+			this.logger.warn(`No descriptor found for device model: ${deviceModel.toUpperCase()}`);
 		}
 
-		// Fallback: try to match by partial name
-		for (const [key, descriptor] of Object.entries(DESCRIPTORS)) {
-			if (deviceModel.includes(key) || descriptor.name.toUpperCase().includes(deviceModel)) {
-				return descriptor;
-			}
-		}
-
-		this.logger.warn(`No descriptor found for device model: ${deviceModel}`);
-
-		return null;
+		return descriptor;
 	}
 
 	/**

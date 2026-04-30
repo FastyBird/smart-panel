@@ -21,7 +21,6 @@ import {
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
 import {
-	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
@@ -45,6 +44,7 @@ import {
 import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
 import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 import { getSyntheticProperties, isSyntheticProperty } from '../utils/synthetic-properties.utils';
 import { VALUE_MAP_REGISTRY, mapValueToCanonical, validateEnumValue } from '../utils/value-mapping.utils';
 
@@ -85,7 +85,7 @@ export class DeviceMapperService {
 		}
 
 		// Find the device descriptor for this device type
-		const descriptor = this.findDescriptor(event.type);
+		const descriptor = findShellyV1Descriptor(event.type);
 
 		if (!descriptor) {
 			this.logger.warn(`No descriptor found for device type: ${event.type}`);
@@ -844,29 +844,6 @@ export class DeviceMapperService {
 			.split('_')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
-	}
-
-	/**
-	 * Find the descriptor for a device type
-	 */
-	private findDescriptor(deviceType: string): (typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null {
-		// Try to find by exact type match first
-		for (const descriptor of Object.values(DESCRIPTORS)) {
-			if (descriptor.models.some((model) => deviceType.toUpperCase().includes(model))) {
-				return descriptor;
-			}
-		}
-
-		// Fallback: try to match by partial name
-		const typeUpper = deviceType.toUpperCase();
-
-		for (const [key, descriptor] of Object.entries(DESCRIPTORS)) {
-			if (typeUpper.includes(key) || descriptor.name.toUpperCase().includes(typeUpper)) {
-				return descriptor;
-			}
-		}
-
-		return null;
 	}
 
 	/**

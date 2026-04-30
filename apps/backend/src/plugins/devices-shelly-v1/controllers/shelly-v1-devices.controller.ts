@@ -24,7 +24,11 @@ import {
 	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 } from '../models/shelly-v1-response.model';
-import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from '../models/shelly-v1.model';
+import {
+	ShellyV1DeviceInfoModel,
+	ShellyV1DiscoverySessionModel,
+	ShellyV1SupportedDeviceModel,
+} from '../models/shelly-v1.model';
 import { ShellyV1DiscoveryService } from '../services/shelly-v1-discovery.service';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
@@ -56,7 +60,7 @@ export class ShellyV1DevicesController {
 	@Post('discovery')
 	startDiscovery(): ShellyV1DiscoverySessionResponseModel {
 		const response = new ShellyV1DiscoverySessionResponseModel();
-		response.data = this.discoveryService.start({ duration: 30 });
+		response.data = toInstance(ShellyV1DiscoverySessionModel, this.discoveryService.start({ duration: 30 }));
 
 		return response;
 	}
@@ -80,7 +84,7 @@ export class ShellyV1DevicesController {
 		}
 
 		const response = new ShellyV1DiscoverySessionResponseModel();
-		response.data = session;
+		response.data = toInstance(ShellyV1DiscoverySessionModel, session);
 
 		return response;
 	}
@@ -118,7 +122,7 @@ export class ShellyV1DevicesController {
 		}
 
 		const response = new ShellyV1DiscoverySessionResponseModel();
-		response.data = session;
+		response.data = toInstance(ShellyV1DiscoverySessionModel, session);
 
 		return response;
 	}

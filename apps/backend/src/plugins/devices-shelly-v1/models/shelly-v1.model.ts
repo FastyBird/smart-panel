@@ -201,11 +201,12 @@ export class ShellyV1DiscoveryDeviceModel {
 	model: string | null;
 
 	@ApiPropertyOptional({
+		name: 'display_name',
 		description: 'Friendly supported-device name',
 		nullable: true,
 		example: 'Shelly 1',
 	})
-	@Expose()
+	@Expose({ name: 'display_name' })
 	@IsString()
 	@IsOptional()
 	displayName: string | null;
@@ -250,12 +251,13 @@ export class ShellyV1DiscoveryDeviceModel {
 	categories: DeviceCategory[];
 
 	@ApiPropertyOptional({
+		name: 'suggested_category',
 		description: 'Suggested target device category when the plugin can infer one',
 		nullable: true,
 		enum: DeviceCategory,
 		example: DeviceCategory.SWITCHER,
 	})
-	@Expose()
+	@Expose({ name: 'suggested_category' })
 	@IsString()
 	@IsOptional()
 	suggestedCategory: DeviceCategory | null;
@@ -270,33 +272,36 @@ export class ShellyV1DiscoveryDeviceModel {
 	authentication: ShellyV1DiscoveryDeviceAuthenticationModel;
 
 	@ApiPropertyOptional({
+		name: 'registered_device_id',
 		description: 'Already registered device id',
 		nullable: true,
 		example: null,
 	})
-	@Expose()
+	@Expose({ name: 'registered_device_id' })
 	@IsString()
 	@IsOptional()
 	registeredDeviceId: string | null;
 
 	@ApiPropertyOptional({
+		name: 'registered_device_name',
 		description: 'Already registered device name',
 		nullable: true,
 		example: null,
 	})
-	@Expose()
+	@Expose({ name: 'registered_device_name' })
 	@IsString()
 	@IsOptional()
 	registeredDeviceName: string | null;
 
 	@ApiPropertyOptional({
+		name: 'registered_device_category',
 		description:
 			'Already registered device category — used to pre-fill the wizard so adopted devices keep their existing category by default',
 		enum: DeviceCategory,
 		nullable: true,
 		example: DeviceCategory.SWITCHER,
 	})
-	@Expose()
+	@Expose({ name: 'registered_device_category' })
 	@IsIn(Object.values(DeviceCategory))
 	@IsOptional()
 	registeredDeviceCategory: DeviceCategory | null;
@@ -312,10 +317,11 @@ export class ShellyV1DiscoveryDeviceModel {
 	error: string | null;
 
 	@ApiProperty({
+		name: 'last_seen_at',
 		description: 'Last time this candidate was observed or checked',
 		example: '2026-04-29T12:00:00.000Z',
 	})
-	@Expose()
+	@Expose({ name: 'last_seen_at' })
 	@IsString()
 	lastSeenAt: string;
 }
@@ -340,26 +346,29 @@ export class ShellyV1DiscoverySessionModel {
 	status: string;
 
 	@ApiProperty({
+		name: 'started_at',
 		description: 'Discovery start timestamp',
 		example: '2026-04-29T12:00:00.000Z',
 	})
-	@Expose()
+	@Expose({ name: 'started_at' })
 	@IsString()
 	startedAt: string;
 
 	@ApiProperty({
+		name: 'expires_at',
 		description: 'Discovery expiry timestamp',
 		example: '2026-04-29T12:00:30.000Z',
 	})
-	@Expose()
+	@Expose({ name: 'expires_at' })
 	@IsString()
 	expiresAt: string;
 
 	@ApiProperty({
+		name: 'remaining_seconds',
 		description: 'Remaining discovery time in seconds',
 		example: 30,
 	})
-	@Expose()
+	@Expose({ name: 'remaining_seconds' })
 	@IsInt()
 	remainingSeconds: number;
 

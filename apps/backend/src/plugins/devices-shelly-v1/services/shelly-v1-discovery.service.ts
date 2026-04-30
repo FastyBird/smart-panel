@@ -6,14 +6,13 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
-	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
-	DeviceDescriptor,
 	SHELLY_AUTH_USERNAME,
 } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShellyDevice } from '../interfaces/shellies.interface';
+import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -246,7 +245,7 @@ export class ShellyV1DiscoveryService {
 				DEVICES_SHELLY_V1_TYPE,
 			);
 
-			const descriptor = this.findDescriptor(device.type);
+			const descriptor = findShellyV1Descriptor(device.type);
 			const categories = descriptor?.categories ?? [];
 
 			let status: ShellyV1DiscoveryDeviceStatus;
@@ -373,7 +372,7 @@ export class ShellyV1DiscoveryService {
 
 		try {
 			const shellyInfo = await this.httpClient.getDeviceInfo(hostname);
-			const descriptor = this.findDescriptor(shellyInfo.type);
+			const descriptor = findShellyV1Descriptor(shellyInfo.type);
 			// Mirror the shellies library's `device.id` format — uppercase MAC without separators —
 			// so wizard-adopted devices match the identifier the auto-discovery flow uses.
 			const identifier = this.buildIdentifier(shellyInfo.mac);
@@ -464,36 +463,6 @@ export class ShellyV1DiscoveryService {
 		}
 
 		return mac.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-	}
-
-	/**
-	 * Mirror the matching strategy used by `device-mapper.service.ts` and the device platform
-	 * — substring match on `descriptor.models`, then partial-name fallback on the descriptor
-	 * key / friendly name. The wizard MUST agree with the main connector here: if a device
-	 * type the connector adopts gets `unsupported` in the wizard, users see a confusing
-	 * inconsistency for variants whose `type` carries an extra suffix beyond the canonical
-	 * model code (e.g. SHSW-1 vs SHSW-1-something).
-	 */
-	private findDescriptor(model: string | null | undefined): DeviceDescriptor | null {
-		if (typeof model !== 'string' || model.length === 0) {
-			return null;
-		}
-
-		const normalizedModel = model.toUpperCase();
-
-		for (const descriptor of Object.values(DESCRIPTORS)) {
-			if (descriptor.models.some((descriptorModel) => normalizedModel.includes(descriptorModel.toUpperCase()))) {
-				return descriptor;
-			}
-		}
-
-		for (const [key, descriptor] of Object.entries(DESCRIPTORS)) {
-			if (normalizedModel.includes(key) || descriptor.name.toUpperCase().includes(normalizedModel)) {
-				return descriptor;
-			}
-		}
-
-		return null;
 	}
 
 	private toSnapshot(session: ShellyV1DiscoverySession): ShellyV1DiscoverySessionSnapshot {
