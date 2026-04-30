@@ -6,6 +6,7 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constants';
+import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
 import { Z2mDeviceAdoptionService } from './device-adoption.service';
 import { Z2mMappingPreviewService } from './mapping-preview.service';
@@ -79,11 +80,17 @@ export class Z2mWizardService implements OnModuleDestroy {
 		this.sessions.set(id, session);
 		this.refreshIdleTimer(session);
 
-		await this.populateInitialDevices(session);
-
+		// Subscribe BEFORE populating the seed list — `populateInitialDevices` will perform
+		// awaited DB lookups (Task 6) that create a window where the bridge could fire
+		// `device_joined` for a fresh device that's not in the seed and there's no listener
+		// attached yet. `handleDeviceJoined` is keyed on `ieeeAddress` so an overlap between
+		// a seed entry and a concurrent `device_joined` event just overwrites the same row
+		// rather than duplicating.
 		session.unsubscribeJoined = this.zigbee2mqttService.subscribeToDeviceJoined((device) => {
 			void this.handleDeviceJoined(session, device);
 		});
+
+		await this.populateInitialDevices(session);
 
 		return this.toSnapshot(session);
 	}
@@ -107,6 +114,20 @@ export class Z2mWizardService implements OnModuleDestroy {
 			return;
 		}
 
+		await this.cleanupSession(session);
+
+		this.sessions.delete(id);
+	}
+
+	async onModuleDestroy(): Promise<void> {
+		for (const session of this.sessions.values()) {
+			await this.cleanupSession(session);
+		}
+
+		this.sessions.clear();
+	}
+
+	private async cleanupSession(session: Z2mWizardSession): Promise<void> {
 		await this.disablePermitJoinInternal(session);
 
 		session.unsubscribeJoined?.();
@@ -114,22 +135,6 @@ export class Z2mWizardService implements OnModuleDestroy {
 		if (session.idleTimer) {
 			clearTimeout(session.idleTimer);
 		}
-
-		this.sessions.delete(id);
-	}
-
-	async onModuleDestroy(): Promise<void> {
-		for (const session of this.sessions.values()) {
-			await this.disablePermitJoinInternal(session);
-
-			session.unsubscribeJoined?.();
-
-			if (session.idleTimer) {
-				clearTimeout(session.idleTimer);
-			}
-		}
-
-		this.sessions.clear();
 	}
 
 	private toSnapshot(session: Z2mWizardSession): Z2mWizardSessionSnapshot {
@@ -182,7 +187,7 @@ export class Z2mWizardService implements OnModuleDestroy {
 		await Promise.resolve();
 	}
 
-	private async handleDeviceJoined(_session: Z2mWizardSession, _device: unknown): Promise<void> {
+	private async handleDeviceJoined(_session: Z2mWizardSession, _device: Z2mRegisteredDevice): Promise<void> {
 		// Implemented in Task 6
 		await Promise.resolve();
 	}

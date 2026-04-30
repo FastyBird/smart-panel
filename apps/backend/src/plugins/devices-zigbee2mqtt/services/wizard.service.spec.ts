@@ -1,3 +1,10 @@
+/*
+eslint-disable @typescript-eslint/unbound-method
+*/
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
+*/
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -74,6 +81,7 @@ describe('Z2mWizardService', () => {
 		const started = await service.start();
 		await service.end(started.id);
 		expect(service.get(started.id)).toBeNull();
-		expect(zigbee2mqttService).toBeDefined();
+		// permit_join was never enabled in this session, so end() should NOT have called setPermitJoin
+		expect(zigbee2mqttService.setPermitJoin).not.toHaveBeenCalled();
 	});
 });
