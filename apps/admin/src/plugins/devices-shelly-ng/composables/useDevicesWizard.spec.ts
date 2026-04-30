@@ -80,6 +80,20 @@ const discoverySession: IShellyNgDiscoverySession = {
 	],
 };
 
+const checkingDiscoverySession: IShellyNgDiscoverySession = {
+	...discoverySession,
+	devices: [
+		{
+			...discoverySession.devices[0]!,
+			name: null,
+			displayName: null,
+			status: 'checking',
+			categories: [],
+			suggestedCategory: null,
+		},
+	],
+};
+
 describe('useDevicesWizard', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -153,6 +167,70 @@ describe('useDevicesWizard', () => {
 		});
 		expect(wizard.manual.hostname).toBe('');
 		expect(wizard.devices.value).toHaveLength(1);
+	});
+
+	it('promotes polling placeholders when discovered devices become ready', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: {
+				data: checkingDiscoverySession,
+			},
+			response: { status: 200 },
+		});
+		backendClient.GET.mockResolvedValue({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.categoryByHostname['192.168.1.10']).toBeNull();
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('192.168.1.10');
+
+		await wizard.refreshDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(true);
+		expect(wizard.categoryByHostname['192.168.1.10']).toBe(DevicesModuleDeviceCategory.lighting);
+		expect(wizard.nameByHostname['192.168.1.10']).toBe('Kitchen relay');
+		expect(wizard.canContinue.value).toBe(true);
+	});
+
+	it('keeps a user deselection when a ready device is rediscovered', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
+		backendClient.GET
+			.mockResolvedValueOnce({
+				data: {
+					data: checkingDiscoverySession,
+				},
+				response: { status: 200 },
+			})
+			.mockResolvedValueOnce({
+				data: {
+					data: discoverySession,
+				},
+				response: { status: 200 },
+			});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		wizard.selected['192.168.1.10'] = false;
+
+		await wizard.refreshDiscovery();
+		await wizard.refreshDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
 	});
 
 	it('adopts selected ready devices through the devices store', async () => {
