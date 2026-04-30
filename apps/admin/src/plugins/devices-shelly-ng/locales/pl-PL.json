@@ -12,11 +12,18 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
+			"title": "Kreator wyszukiwania Shelly NG",
 			"discovery": "Discovery",
 			"categories": "Categories",
 			"results": "Results",
 			"status": "Status"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Znajdz i adoptuj urzadzenia Shelly NG w swojej sieci"
+	},
+	"breadcrumbs": {
+		"wizard": "kreator wyszukiwania"
 	},
 	"fields": {
 		"devices": {

@@ -1,263 +1,388 @@
 <template>
-	<section class="flex flex-col gap-4">
-		<el-steps
-			:active="activeStepIndex"
-			finish-status="success"
-			align-center
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:wizard-hat"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('devicesShellyNgPlugin.headings.wizard.title') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('devicesShellyNgPlugin.subHeadings.wizard') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="handleCancel"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<view-header
+		:heading="t('devicesShellyNgPlugin.headings.wizard.title')"
+		:sub-heading="t('devicesShellyNgPlugin.subHeadings.wizard')"
+		icon="mdi:wizard-hat"
+	>
+		<template
+			v-if="isMDDevice"
+			#extra
 		>
-			<el-step :title="t('devicesShellyNgPlugin.headings.wizard.discovery')" />
-			<el-step :title="t('devicesShellyNgPlugin.headings.wizard.categories')" />
-			<el-step :title="t('devicesShellyNgPlugin.headings.wizard.results')" />
-		</el-steps>
-
-		<template v-if="activeStep === 'discovery'">
-			<el-alert
-				:title="t('devicesShellyNgPlugin.texts.wizard.discovery')"
-				type="info"
-				:closable="false"
-				show-icon
-			/>
-
-			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-				<div class="flex min-w-0 flex-1 flex-col gap-1">
-					<el-text>
-						{{ t('devicesShellyNgPlugin.texts.wizard.scanStatus', { count: devices.length }) }}
-					</el-text>
-					<el-progress
-						:percentage="scanPercentage"
-						:status="session?.status === 'finished' ? 'success' : undefined"
-					/>
-				</div>
-
+			<div class="flex items-center gap-2">
 				<el-button
-					:loading="formResult === FormResult.WORKING"
-					@click="startDiscovery"
+					link
+					class="px-4!"
+					@click="handleCancel"
 				>
-					<template #icon>
-						<icon icon="mdi:radar" />
-					</template>
-					{{ t('devicesShellyNgPlugin.buttons.wizard.restart.title') }}
+					{{ t('devicesModule.buttons.cancel.title') }}
 				</el-button>
-			</div>
 
-			<el-form
-				:model="manual"
-				label-position="top"
-				class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-				@submit.prevent="addManualDevice"
-			>
-				<el-form-item
-					:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
-					class="mb-0!"
-				>
-					<el-input
-						v-model="manual.hostname"
-						:placeholder="t('devicesShellyNgPlugin.fields.devices.hostname.placeholder')"
-						name="hostname"
-					/>
-				</el-form-item>
-
-				<el-form-item
-					:label="t('devicesShellyNgPlugin.fields.devices.password.title')"
-					class="mb-0!"
-				>
-					<el-input
-						v-model="manual.password"
-						:placeholder="t('devicesShellyNgPlugin.fields.devices.password.placeholder')"
-						name="password"
-						show-password
-					/>
-				</el-form-item>
-
-				<el-form-item class="mb-0! md:self-end">
+				<template v-if="activeStep === 'discovery'">
 					<el-button
 						type="primary"
-						native-type="submit"
-						:disabled="manual.hostname.trim().length === 0"
-						:loading="formResult === FormResult.WORKING"
+						class="px-4!"
+						:disabled="!canContinue"
+						@click="activeStep = 'categories'"
 					>
-						<template #icon>
-							<icon icon="mdi:plus" />
-						</template>
-						{{ t('devicesShellyNgPlugin.buttons.wizard.addManual.title') }}
+						{{ t('devicesShellyNgPlugin.buttons.next.title') }}
 					</el-button>
-				</el-form-item>
-			</el-form>
-
-			<el-table
-				:data="devices"
-				class="w-full"
-				:empty-text="t('devicesShellyNgPlugin.texts.wizard.noDevices')"
-			>
-				<el-table-column
-					prop="hostname"
-					:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
-					min-width="150"
-				/>
-				<el-table-column
-					:label="t('devicesShellyNgPlugin.headings.device.model')"
-					min-width="180"
-				>
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<span>{{ row.displayName || row.model || row.hostname }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('devicesShellyNgPlugin.headings.wizard.status')"
-					width="170"
-				>
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<el-tag :type="statusTagType(row.status)">
-							{{ t(`devicesShellyNgPlugin.statuses.wizard.${row.status}`) }}
-						</el-tag>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
-					min-width="220"
-				>
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<span v-if="row.status !== 'ready'">-</span>
-						<el-select
-							v-else
-							v-model="categoryByHostname[row.hostname]"
-							:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
-							filterable
-						>
-							<el-option
-								v-for="item in categoryOptions(row)"
-								:key="item.value"
-								:label="item.label"
-								:value="item.value"
-							/>
-						</el-select>
-					</template>
-				</el-table-column>
-			</el-table>
-
-			<div class="flex justify-end">
-				<el-button
-					type="primary"
-					:disabled="!canContinue"
-					@click="activeStep = 'categories'"
-				>
-					{{ t('devicesShellyNgPlugin.buttons.next.title') }}
-				</el-button>
-			</div>
-		</template>
-
-		<template v-else-if="activeStep === 'categories'">
-			<el-alert
-				:title="t('devicesShellyNgPlugin.texts.wizard.categories')"
-				type="info"
-				:closable="false"
-				show-icon
-			/>
-
-			<el-table
-				:data="readyDevices"
-				class="w-full"
-			>
-				<el-table-column width="70">
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<el-checkbox v-model="selected[row.hostname]" />
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
-					min-width="220"
-				>
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<el-input v-model="nameByHostname[row.hostname]" />
-					</template>
-				</el-table-column>
-				<el-table-column
-					prop="hostname"
-					:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
-					min-width="150"
-				/>
-				<el-table-column
-					:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
-					min-width="240"
-				>
-					<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-						<el-select
-							v-model="categoryByHostname[row.hostname]"
-							:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
-							filterable
-						>
-							<el-option
-								v-for="item in categoryOptions(row)"
-								:key="item.value"
-								:label="item.label"
-								:value="item.value"
-							/>
-						</el-select>
-					</template>
-				</el-table-column>
-			</el-table>
-
-			<div class="flex justify-between gap-3">
-				<el-button @click="activeStep = 'discovery'">
-					{{ t('devicesModule.buttons.back.title') }}
-				</el-button>
-				<el-button
-					type="primary"
-					:disabled="!canContinue"
-					:loading="formResult === FormResult.WORKING"
-					@click="onAdopt"
-				>
-					<template #icon>
-						<icon icon="mdi:check" />
-					</template>
-					{{ t('devicesShellyNgPlugin.buttons.wizard.adopt.title') }}
-				</el-button>
-			</div>
-		</template>
-
-		<template v-else>
-			<el-result
-				:icon="adoptionResults.some((result) => result.status === 'failed') ? 'warning' : 'success'"
-				:title="t('devicesShellyNgPlugin.headings.wizard.results')"
-			>
-				<template #sub-title>
-					<div class="flex flex-col gap-2">
-						<div
-							v-for="result in adoptionResults"
-							:key="result.hostname"
-							class="flex items-center justify-center gap-2"
-						>
-							<el-tag :type="result.status === 'created' ? 'success' : 'danger'">
-								{{ t(`devicesShellyNgPlugin.statuses.wizard.${result.status}`) }}
-							</el-tag>
-							<span>{{ result.name }} ({{ result.hostname }})</span>
-						</div>
-					</div>
 				</template>
-				<template #extra>
+
+				<template v-else-if="activeStep === 'categories'">
+					<el-button
+						class="px-4!"
+						@click="activeStep = 'discovery'"
+					>
+						{{ t('devicesModule.buttons.back.title') }}
+					</el-button>
 					<el-button
 						type="primary"
-						@click="router.push({ name: DevicesRouteNames.DEVICES })"
+						class="px-4!"
+						:disabled="!canContinue"
+						:loading="formResult === FormResult.WORKING"
+						@click="onAdopt"
+					>
+						{{ t('devicesShellyNgPlugin.buttons.wizard.adopt.title') }}
+					</el-button>
+				</template>
+
+				<template v-else>
+					<el-button
+						type="primary"
+						class="px-4!"
+						@click="handleFinish"
 					>
 						{{ t('devicesShellyNgPlugin.buttons.wizard.finish.title') }}
 					</el-button>
 				</template>
-			</el-result>
+			</div>
 		</template>
-	</section>
+	</view-header>
+
+	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
+		<el-card
+			shadow="never"
+			class="max-h-full flex flex-col overflow-hidden box-border"
+			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+		>
+			<template #header>
+				<el-steps
+					:active="activeStepIndex"
+					finish-status="success"
+					align-center
+				>
+					<el-step :title="t('devicesShellyNgPlugin.headings.wizard.discovery')" />
+					<el-step :title="t('devicesShellyNgPlugin.headings.wizard.categories')" />
+					<el-step :title="t('devicesShellyNgPlugin.headings.wizard.results')" />
+				</el-steps>
+			</template>
+
+			<div class="p-4 max-h-full box-border flex flex-col gap-3 overflow-hidden">
+				<template v-if="activeStep === 'discovery'">
+					<el-alert
+						:title="t('devicesShellyNgPlugin.texts.wizard.discovery')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="shrink-0"
+					/>
+
+					<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
+						<div class="flex min-w-0 flex-1 flex-col gap-1">
+							<el-text>
+								{{ t('devicesShellyNgPlugin.texts.wizard.scanStatus', { count: devices.length }) }}
+							</el-text>
+							<el-progress
+								:percentage="scanPercentage"
+								:status="session?.status === 'finished' ? 'success' : undefined"
+							/>
+						</div>
+
+						<el-button
+							:loading="formResult === FormResult.WORKING"
+							@click="startDiscovery"
+						>
+							<template #icon>
+								<icon icon="mdi:radar" />
+							</template>
+							{{ t('devicesShellyNgPlugin.buttons.wizard.restart.title') }}
+						</el-button>
+					</div>
+
+					<el-form
+						:model="manual"
+						label-position="top"
+						class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] shrink-0"
+						@submit.prevent="addManualDevice"
+					>
+						<el-form-item
+							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
+							class="mb-0!"
+						>
+							<el-input
+								v-model="manual.hostname"
+								:placeholder="t('devicesShellyNgPlugin.fields.devices.hostname.placeholder')"
+								name="hostname"
+							/>
+						</el-form-item>
+
+						<el-form-item
+							:label="t('devicesShellyNgPlugin.fields.devices.password.title')"
+							class="mb-0!"
+						>
+							<el-input
+								v-model="manual.password"
+								:placeholder="t('devicesShellyNgPlugin.fields.devices.password.placeholder')"
+								name="password"
+								show-password
+							/>
+						</el-form-item>
+
+						<el-form-item class="mb-0! md:self-end">
+							<el-button
+								type="primary"
+								native-type="submit"
+								:disabled="manual.hostname.trim().length === 0"
+								:loading="formResult === FormResult.WORKING"
+							>
+								<template #icon>
+									<icon icon="mdi:plus" />
+								</template>
+								{{ t('devicesShellyNgPlugin.buttons.wizard.addManual.title') }}
+							</el-button>
+						</el-form-item>
+					</el-form>
+
+					<el-table
+						:data="devices"
+						class="h-full w-full flex-grow"
+						table-layout="fixed"
+						:empty-text="t('devicesShellyNgPlugin.texts.wizard.noDevices')"
+					>
+						<el-table-column
+							prop="hostname"
+							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
+							min-width="150"
+						/>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.headings.device.model')"
+							min-width="180"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<span>{{ row.displayName || row.model || row.hostname }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.headings.wizard.status')"
+							width="170"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<el-tag :type="statusTagType(row.status)">
+									{{ t(`devicesShellyNgPlugin.statuses.wizard.${row.status}`) }}
+								</el-tag>
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
+							min-width="220"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<span v-if="row.status !== 'ready'">-</span>
+								<el-select
+									v-else
+									v-model="categoryByHostname[row.hostname]"
+									:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
+									filterable
+								>
+									<el-option
+										v-for="item in categoryOptions(row)"
+										:key="item.value"
+										:label="item.label"
+										:value="item.value"
+									/>
+								</el-select>
+							</template>
+						</el-table-column>
+					</el-table>
+				</template>
+
+				<template v-else-if="activeStep === 'categories'">
+					<el-alert
+						:title="t('devicesShellyNgPlugin.texts.wizard.categories')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="shrink-0"
+					/>
+
+					<el-table
+						:data="readyDevices"
+						class="h-full w-full flex-grow"
+						table-layout="fixed"
+					>
+						<el-table-column width="70">
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<el-checkbox v-model="selected[row.hostname]" />
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
+							min-width="220"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<el-input v-model="nameByHostname[row.hostname]" />
+							</template>
+						</el-table-column>
+						<el-table-column
+							prop="hostname"
+							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
+							min-width="150"
+						/>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
+							min-width="240"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<el-select
+									v-model="categoryByHostname[row.hostname]"
+									:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
+									filterable
+								>
+									<el-option
+										v-for="item in categoryOptions(row)"
+										:key="item.value"
+										:label="item.label"
+										:value="item.value"
+									/>
+								</el-select>
+							</template>
+						</el-table-column>
+					</el-table>
+				</template>
+
+				<template v-else>
+					<el-result
+						:icon="adoptionResults.some((result) => result.status === 'failed') ? 'warning' : 'success'"
+						:title="t('devicesShellyNgPlugin.headings.wizard.results')"
+						class="flex-grow"
+					>
+						<template #sub-title>
+							<div class="flex flex-col gap-2">
+								<div
+									v-for="result in adoptionResults"
+									:key="result.hostname"
+									class="flex items-center justify-center gap-2"
+								>
+									<el-tag :type="result.status === 'created' ? 'success' : 'danger'">
+										{{ t(`devicesShellyNgPlugin.statuses.wizard.${result.status}`) }}
+									</el-tag>
+									<span>{{ result.name }} ({{ result.hostname }})</span>
+								</div>
+							</div>
+						</template>
+					</el-result>
+				</template>
+			</div>
+
+			<div
+				v-if="!isMDDevice"
+				class="flex justify-between gap-2 p-4 border-t border-t-solid"
+			>
+				<template v-if="activeStep === 'discovery'">
+					<el-button @click="handleCancel">
+						{{ t('devicesModule.buttons.cancel.title') }}
+					</el-button>
+					<el-button
+						type="primary"
+						:disabled="!canContinue"
+						@click="activeStep = 'categories'"
+					>
+						{{ t('devicesShellyNgPlugin.buttons.next.title') }}
+					</el-button>
+				</template>
+
+				<template v-else-if="activeStep === 'categories'">
+					<el-button @click="activeStep = 'discovery'">
+						{{ t('devicesModule.buttons.back.title') }}
+					</el-button>
+					<div class="flex gap-2">
+						<el-button @click="handleCancel">
+							{{ t('devicesModule.buttons.cancel.title') }}
+						</el-button>
+						<el-button
+							type="primary"
+							:disabled="!canContinue"
+							:loading="formResult === FormResult.WORKING"
+							@click="onAdopt"
+						>
+							{{ t('devicesShellyNgPlugin.buttons.wizard.adopt.title') }}
+						</el-button>
+					</div>
+				</template>
+
+				<template v-else>
+					<div></div>
+					<el-button
+						type="primary"
+						@click="handleFinish"
+					>
+						{{ t('devicesShellyNgPlugin.buttons.wizard.finish.title') }}
+					</el-button>
+				</template>
+			</div>
+		</el-card>
+	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
 import {
 	ElAlert,
 	ElButton,
+	ElCard,
 	ElCheckbox,
 	ElForm,
 	ElFormItem,
+	ElIcon,
 	ElInput,
 	ElOption,
 	ElProgress,
@@ -272,8 +397,10 @@ import {
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useNow } from '@vueuse/core';
 
-import { FormResult, RouteNames as DevicesRouteNames } from '../../../modules/devices';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { RouteNames as DevicesRouteNames, FormResult } from '../../../modules/devices';
 import { useDevicesWizard } from '../composables/composables';
 import type { IShellyNgDiscoveryDevice } from '../schemas/devices.types';
 
@@ -283,6 +410,8 @@ defineOptions({
 
 const { t } = useI18n();
 const router = useRouter();
+const { isMDDevice, isLGDevice } = useBreakpoints();
+const now = useNow({ interval: 1_000 });
 const {
 	session,
 	devices,
@@ -320,13 +449,31 @@ const scanPercentage = computed<number>(() => {
 		return 0;
 	}
 
+	if (session.value.status !== 'running') {
+		return 100;
+	}
+
 	const startedAt = new Date(session.value.startedAt).getTime();
 	const expiresAt = new Date(session.value.expiresAt).getTime();
 	const total = Math.max(1, expiresAt - startedAt);
-	const remaining = Math.max(0, session.value.remainingSeconds * 1_000);
+	const elapsed = Math.max(0, Math.min(total, now.value.getTime() - startedAt));
 
-	return Math.min(100, Math.max(0, Math.round(((total - remaining) / total) * 100)));
+	return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
 });
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
+	{
+		label: t('devicesModule.breadcrumbs.devices.list'),
+		route: router.resolve({ name: DevicesRouteNames.DEVICES }),
+	},
+	{
+		label: t('devicesShellyNgPlugin.breadcrumbs.wizard'),
+		route: router.resolve({
+			name: DevicesRouteNames.DEVICES_WIZARD,
+			params: { type: 'devices-shelly-ng-plugin' },
+		}),
+	},
+]);
 
 const statusTagType = (status: IShellyNgDiscoveryDevice['status']): 'success' | 'warning' | 'info' | 'danger' => {
 	if (status === 'ready') {
@@ -342,6 +489,18 @@ const statusTagType = (status: IShellyNgDiscoveryDevice['status']): 'success' | 
 	}
 
 	return 'danger';
+};
+
+const handleCancel = (): void => {
+	if (isLGDevice.value) {
+		router.replace({ name: DevicesRouteNames.DEVICES });
+	} else {
+		router.push({ name: DevicesRouteNames.DEVICES });
+	}
+};
+
+const handleFinish = (): void => {
+	handleCancel();
 };
 
 const onAdopt = async (): Promise<void> => {

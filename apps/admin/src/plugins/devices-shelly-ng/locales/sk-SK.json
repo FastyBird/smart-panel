@@ -12,11 +12,18 @@
 			"firmware": "Firmware"
 		},
 		"wizard": {
+			"title": "Sprievodca vyhľadaním Shelly NG",
 			"discovery": "Vyhľadávanie",
 			"categories": "Kategórie",
 			"results": "Výsledky",
 			"status": "Stav"
 		}
+	},
+	"subHeadings": {
+		"wizard": "Nájdite a adoptujte zariadenia Shelly NG vo vašej sieti"
+	},
+	"breadcrumbs": {
+		"wizard": "sprievodca vyhľadaním"
 	},
 	"fields": {
 		"devices": {

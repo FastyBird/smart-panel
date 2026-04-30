@@ -1,174 +1,181 @@
 {
-  "headings": {
-    "aboutPluginStatus": "Plugin Status",
-    "aboutMdns": "MDNS settings",
-    "aboutWebsockets": "Websockets settings",
-    "device": {
-      "deviceConnection": "Device connection",
-      "information": "Device information",
-      "supported": "Congrats! Device is supported",
-      "notSupported": "We are sorry, you device is not supported",
-      "model": "Model",
-      "firmware": "Firmware"
-    },
-    "wizard": {
-      "discovery": "Discovery",
-      "categories": "Categories",
-      "results": "Results",
-      "status": "Status"
-    }
-  },
-  "fields": {
-    "devices": {
-      "id": {
-        "title": "Internal identifier",
-        "placeholder": "Device id"
-      },
-      "category": {
-        "title": "Category",
-        "placeholder": "Device category",
-        "description": "About category",
-        "validation": {
-          "required": "Please select device category"
-        }
-      },
-      "name": {
-        "title": "Name",
-        "placeholder": "Device name",
-        "validation": {
-          "required": "Please fill in device name"
-        }
-      },
-      "description": {
-        "title": "Description",
-        "placeholder": "Device description"
-      },
-      "enabled": {
-        "title": "Enabled",
-        "placeholder": "Enable or disable device"
-      },
-      "password": {
-        "title": "Admin password",
-        "placeholder": "Provide device password if device is protected"
-      },
-      "hostname": {
-        "title": "Device hostname",
-        "placeholder": "Device network name or IP address",
-        "validation": {
-          "required": "Please fill in device hostname or IP address"
-        }
-      },
-      "ethernetAddress": {
-        "title": "Ethernet address",
-        "placeholder": "Ethernet IP address (e.g. 192.168.1.100)"
-      },
-      "wifiAddress": {
-        "title": "WiFi address",
-        "placeholder": "WiFi IP address (e.g. 192.168.1.101)"
-      }
-    },
-    "config": {
-      "enabled": {
-        "title": "Enabled"
-      },
-      "mdns": {
-        "enabled": {
-          "title": "Discovery enabled"
-        },
-        "interface": {
-          "title": "Interface",
-          "placeholder": "The network interface to use. If none is specified, all available interfaces will be used."
-        }
-      },
-      "websockets": {
-        "requestTimeout": {
-          "title": "Request timeout",
-          "placeholder": "The time, in seconds, to wait for a response before a request is aborted.",
-          "validation": {
-            "required": "Please fill in request timeout",
-            "number": "Request timeout must be a number"
-          }
-        },
-        "pingInterval": {
-          "title": "Ping interval",
-          "placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable.",
-          "validation": {
-            "required": "Please fill in ping interval",
-            "number": "Ping interval must be a number"
-          }
-        },
-        "reconnectInterval": {
-          "title": "Reconnect interval",
-          "placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed.",
-          "validation": {
-            "required": "Please fill in reconnect interval",
-            "number": "Reconnect interval must be a number",
-            "array": "Reconnect interval must be an array of numbers"
-          }
-        }
-      }
-    }
-  },
-  "messages": {
-    "config": {
-      "edited": "Changes saved! The Shelly Next Generation plugin config has been updated.",
-      "notEdited": "Something went wrong. Shelly Next Generation plugin config update was not successful."
-    },
-    "devices": {
-      "exists": "Device with provided hostname and password is already registered in system.",
-      "created": "New Shelly Next-Generation device added successfully.",
-      "notCreated": "Something went wrong. Unable to create the Shelly Next-Generation device.",
-      "notChecked": "Something went wrong. Device information could not be loaded. Check the device hostname or password.",
-      "edited": "Changes saved! The Shelly Next-Generation device: {device} has been updated.",
-      "notEdited": "Something went wrong. Shelly Next-Generation device update was not successful.",
-      "failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
-    },
-    "wizard": {
-      "discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
-      "discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
-      "manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
-      "adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
-    }
-  },
-  "texts": {
-    "aboutPluginStatus": "Enable or disable the Shelly Next Generation device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
-    "aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
-    "aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior.",
-    "wizard": {
-      "discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
-      "categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
-      "scanStatus": "{count} devices found",
-      "noDevices": "No Shelly devices found"
-    }
-  },
-  "buttons": {
-    "next": {
-      "title": "Next"
-    },
-    "wizard": {
-      "restart": {
-        "title": "Scan again"
-      },
-      "addManual": {
-        "title": "Add"
-      },
-      "adopt": {
-        "title": "Adopt selected"
-      },
-      "finish": {
-        "title": "Back to devices"
-      }
-    }
-  },
-  "statuses": {
-    "wizard": {
-      "checking": "Checking",
-      "ready": "Ready",
-      "needs_password": "Needs password",
-      "already_registered": "Registered",
-      "unsupported": "Unsupported",
-      "failed": "Failed",
-      "created": "Created"
-    }
-  }
+	"headings": {
+		"aboutPluginStatus": "Plugin Status",
+		"aboutMdns": "MDNS settings",
+		"aboutWebsockets": "Websockets settings",
+		"device": {
+			"deviceConnection": "Device connection",
+			"information": "Device information",
+			"supported": "Congrats! Device is supported",
+			"notSupported": "We are sorry, you device is not supported",
+			"model": "Model",
+			"firmware": "Firmware"
+		},
+		"wizard": {
+			"title": "Shelly NG discovery wizard",
+			"discovery": "Discovery",
+			"categories": "Categories",
+			"results": "Results",
+			"status": "Status"
+		}
+	},
+	"subHeadings": {
+		"wizard": "Find and adopt Shelly NG devices on your network"
+	},
+	"breadcrumbs": {
+		"wizard": "discovery wizard"
+	},
+	"fields": {
+		"devices": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Device id"
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Device category",
+				"description": "About category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Enabled",
+				"placeholder": "Enable or disable device"
+			},
+			"password": {
+				"title": "Admin password",
+				"placeholder": "Provide device password if device is protected"
+			},
+			"hostname": {
+				"title": "Device hostname",
+				"placeholder": "Device network name or IP address",
+				"validation": {
+					"required": "Please fill in device hostname or IP address"
+				}
+			},
+			"ethernetAddress": {
+				"title": "Ethernet address",
+				"placeholder": "Ethernet IP address (e.g. 192.168.1.100)"
+			},
+			"wifiAddress": {
+				"title": "WiFi address",
+				"placeholder": "WiFi IP address (e.g. 192.168.1.101)"
+			}
+		},
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Discovery enabled"
+				},
+				"interface": {
+					"title": "Interface",
+					"placeholder": "The network interface to use. If none is specified, all available interfaces will be used."
+				}
+			},
+			"websockets": {
+				"requestTimeout": {
+					"title": "Request timeout",
+					"placeholder": "The time, in seconds, to wait for a response before a request is aborted.",
+					"validation": {
+						"required": "Please fill in request timeout",
+						"number": "Request timeout must be a number"
+					}
+				},
+				"pingInterval": {
+					"title": "Ping interval",
+					"placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable.",
+					"validation": {
+						"required": "Please fill in ping interval",
+						"number": "Ping interval must be a number"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Reconnect interval",
+					"placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed.",
+					"validation": {
+						"required": "Please fill in reconnect interval",
+						"number": "Reconnect interval must be a number",
+						"array": "Reconnect interval must be an array of numbers"
+					}
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Changes saved! The Shelly Next Generation plugin config has been updated.",
+			"notEdited": "Something went wrong. Shelly Next Generation plugin config update was not successful."
+		},
+		"devices": {
+			"exists": "Device with provided hostname and password is already registered in system.",
+			"created": "New Shelly Next-Generation device added successfully.",
+			"notCreated": "Something went wrong. Unable to create the Shelly Next-Generation device.",
+			"notChecked": "Something went wrong. Device information could not be loaded. Check the device hostname or password.",
+			"edited": "Changes saved! The Shelly Next-Generation device: {device} has been updated.",
+			"notEdited": "Something went wrong. Shelly Next-Generation device update was not successful.",
+			"failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
+		},
+		"wizard": {
+			"discoveryNotStarted": "Something went wrong. Shelly discovery could not be started.",
+			"discoveryNotLoaded": "Something went wrong. Shelly discovery could not be loaded.",
+			"manualNotAdded": "Something went wrong. Manual Shelly device lookup could not be added.",
+			"adoptionNotCreated": "Something went wrong. Shelly device could not be adopted."
+		}
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the Shelly Next Generation device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
+		"aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
+		"aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior.",
+		"wizard": {
+			"discovery": "The wizard scans the local network for Shelly NG devices and also accepts a manually entered hostname or IP address.",
+			"categories": "Confirm which ready devices should be adopted and choose the target category for each one.",
+			"scanStatus": "{count} devices found",
+			"noDevices": "No Shelly devices found"
+		}
+	},
+	"buttons": {
+		"next": {
+			"title": "Next"
+		},
+		"wizard": {
+			"restart": {
+				"title": "Scan again"
+			},
+			"addManual": {
+				"title": "Add"
+			},
+			"adopt": {
+				"title": "Adopt selected"
+			},
+			"finish": {
+				"title": "Back to devices"
+			}
+		}
+	},
+	"statuses": {
+		"wizard": {
+			"checking": "Checking",
+			"ready": "Ready",
+			"needs_password": "Needs password",
+			"already_registered": "Registered",
+			"unsupported": "Unsupported",
+			"failed": "Failed",
+			"created": "Created"
+		}
+	}
 }
