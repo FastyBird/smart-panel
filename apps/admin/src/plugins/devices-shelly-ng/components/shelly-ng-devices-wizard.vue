@@ -57,7 +57,7 @@
 					<el-button
 						type="primary"
 						class="px-4!"
-						:disabled="!canContinue"
+						:disabled="adoptableDevices.length === 0"
 						@click="activeStep = 'categories'"
 					>
 						{{ t('devicesShellyNgPlugin.buttons.next.title') }}
@@ -339,7 +339,7 @@
 					</el-button>
 					<el-button
 						type="primary"
-						:disabled="!canContinue"
+						:disabled="adoptableDevices.length === 0"
 						@click="activeStep = 'categories'"
 					>
 						{{ t('devicesShellyNgPlugin.buttons.next.title') }}

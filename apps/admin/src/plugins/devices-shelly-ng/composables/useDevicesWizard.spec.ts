@@ -296,6 +296,12 @@ describe('useDevicesWizard', () => {
 		expect(wizard.selected['192.168.1.10']).toBe(false);
 		expect(wizard.nameByHostname['192.168.1.10']).toBe('Existing kitchen relay');
 
+		// Even though nothing is selected (so canContinue is false), the device list still has
+		// adoptable entries — the wizard's Next button must gate on that, not on canContinue,
+		// or a scan returning only already_registered devices would trap the user on step 1.
+		expect(wizard.canContinue.value).toBe(false);
+		expect(wizard.devices.value.some((d) => d.status === 'already_registered')).toBe(true);
+
 		wizard.selected['192.168.1.10'] = true;
 		wizard.categoryByHostname['192.168.1.10'] = DevicesModuleDeviceCategory.switcher;
 
