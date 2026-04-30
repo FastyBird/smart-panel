@@ -8,6 +8,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mMappingPreviewModel } from '../models/zigbee2mqtt-response.model';
 
 import { Z2mDeviceAdoptionService } from './device-adoption.service';
 import { Z2mMappingPreviewService } from './mapping-preview.service';
@@ -214,40 +215,37 @@ export class Z2mWizardService implements OnModuleDestroy {
 	): Promise<Z2mWizardDeviceSnapshot> {
 		const adoptedRecord = adopted.find((d) => d.identifier === z2mDevice.friendlyName) ?? null;
 
-		// The wizard treats the preview output as `{ suggestedCategory, channels }` — a flatter
-		// shape than `Z2mMappingPreviewService['generatePreview']` returns. The cast lets us read
-		// the wizard contract without coupling tests to the full Z2mMappingPreviewModel.
-		type WizardPreviewShape = {
-			suggestedCategory?: DeviceCategory | null;
-			channels?: Array<{ identifier?: string; name?: string }>;
-		};
-		let preview: WizardPreviewShape | null = null;
+		let preview: Z2mMappingPreviewModel | null = null;
 		let previewError: string | null = null;
 		try {
-			preview = (await this.mappingPreviewService.generatePreview(
-				z2mDevice.ieeeAddress,
-			)) as unknown as WizardPreviewShape;
+			preview = await this.mappingPreviewService.generatePreview(z2mDevice.ieeeAddress);
 		} catch (e) {
 			previewError = (e as Error).message;
 		}
 
-		const previewChannels = preview?.channels ?? [];
+		const suggestedCategory = preview?.suggestedDevice?.category ?? null;
+		const categories: DeviceCategory[] = suggestedCategory ? [suggestedCategory] : [];
+
+		// Distinct channel categories from exposes that have a real suggested channel mapping.
+		const channelCategories = new Set<string>();
+		for (const expose of preview?.exposes ?? []) {
+			if (expose.suggestedChannel && (expose.status === 'mapped' || expose.status === 'partial')) {
+				channelCategories.add(expose.suggestedChannel.category);
+			}
+		}
+		const previewChannelIdentifiers = Array.from(channelCategories);
+		const previewChannelCount = previewChannelIdentifiers.length;
 
 		let status: Z2mWizardDeviceStatus;
 		if (previewError) {
 			status = 'failed';
 		} else if (adoptedRecord) {
 			status = 'already_registered';
-		} else if (!preview || previewChannels.length === 0) {
+		} else if (previewChannelCount === 0) {
 			status = 'unsupported';
 		} else {
 			status = 'ready';
 		}
-
-		const suggestedCategory = preview?.suggestedCategory ?? null;
-		const categories: DeviceCategory[] = suggestedCategory ? [suggestedCategory] : [];
-		const previewChannelCount = previewChannels.length;
-		const previewChannelIdentifiers = previewChannels.map((c) => c.identifier ?? c.name ?? '');
 
 		return {
 			ieeeAddress: z2mDevice.ieeeAddress,

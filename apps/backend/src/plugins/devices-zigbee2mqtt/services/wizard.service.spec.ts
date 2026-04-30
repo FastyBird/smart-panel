@@ -42,11 +42,26 @@ describe('Z2mWizardService', () => {
 					provide: Z2mMappingPreviewService,
 					useValue: {
 						generatePreview: jest.fn().mockResolvedValue({
-							suggestedCategory: 'LIGHTING',
-							channels: [{ identifier: 'light', name: 'Light', properties: [] }],
+							z2mDevice: {
+								ieeeAddress: '0x00158d0001a1b2c3',
+								friendlyName: 'living_room_lamp',
+								manufacturer: 'Philips',
+								model: 'LCT001',
+								description: null,
+							},
+							suggestedDevice: { category: 'lighting', name: 'Light', confidence: 'high' },
+							exposes: [
+								{
+									exposeName: 'light',
+									exposeType: 'light',
+									status: 'mapped',
+									suggestedChannel: { category: 'light', name: 'Light', confidence: 'high' },
+									suggestedProperties: [],
+									missingRequiredProperties: [],
+								},
+							],
 							warnings: [],
 							readyToAdopt: true,
-							exposes: [],
 						}),
 					},
 				},
@@ -111,15 +126,16 @@ describe('Z2mWizardService', () => {
 			const snapshot = await service.start();
 			expect(snapshot.devices).toHaveLength(1);
 			expect(snapshot.devices[0]?.status).toBe('ready');
-			expect(snapshot.devices[0]?.suggestedCategory).toBe('LIGHTING');
+			expect(snapshot.devices[0]?.suggestedCategory).toBe('lighting');
 			expect(snapshot.devices[0]?.previewChannelCount).toBe(1);
+			expect(snapshot.devices[0]?.previewChannelIdentifiers).toContain('light');
 		});
 
 		it('marks already_registered when device has matching adopted record', async () => {
 			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
 			const findAll = (service as any).devicesService.findAll;
 			findAll.mockResolvedValueOnce([
-				{ id: 'adopted-1', identifier: 'living_room_lamp', name: 'Existing Lamp', category: 'LIGHTING' },
+				{ id: 'adopted-1', identifier: 'living_room_lamp', name: 'Existing Lamp', category: 'lighting' },
 			]);
 			const snapshot = await service.start();
 			expect(snapshot.devices[0]?.status).toBe('already_registered');
@@ -130,11 +146,17 @@ describe('Z2mWizardService', () => {
 			zigbee2mqttService.getRegisteredDevices.mockReturnValue([sampleZ2mDevice as any]);
 			const previewService = (service as any).mappingPreviewService;
 			previewService.generatePreview.mockResolvedValueOnce({
-				suggestedCategory: null,
-				channels: [],
+				z2mDevice: {
+					ieeeAddress: '0x00158d0001a1b2c3',
+					friendlyName: 'living_room_lamp',
+					manufacturer: null,
+					model: null,
+					description: null,
+				},
+				suggestedDevice: { category: 'generic', name: 'Generic', confidence: 'low' },
+				exposes: [],
 				warnings: [],
 				readyToAdopt: false,
-				exposes: [],
 			});
 			const snapshot = await service.start();
 			expect(snapshot.devices[0]?.status).toBe('unsupported');
