@@ -297,5 +297,68 @@
 		"adoptDevice": "Prijať zariadenie",
 		"refresh": "Obnoviť",
 		"use": "Použiť"
+	},
+	"wizard": {
+		"title": "Pridať zariadenia Zigbee",
+		"subtitle": "Objavte a hromadne pridajte vaše Zigbee zariadenia",
+		"bridge": {
+			"offline": {
+				"title": "Bridge offline",
+				"message": "Zigbee2MQTT bridge je momentálne offline. Pre pokračovanie nakonfigurujte pripojenie.",
+				"openConfig": "Otvoriť konfiguráciu"
+			}
+		},
+		"steps": {
+			"discovery": {
+				"title": "Vyhľadávanie",
+				"permitJoin": "Spárovať nové zariadenie",
+				"cancelPairing": "Zrušiť párovanie",
+				"pairingActive": "Režim párovania aktívny — zostáva {remaining}s",
+				"pairingDisabled": "Režim párovania deaktivovaný",
+				"autoPickAll": "Vybrať všetko",
+				"clearSelection": "Zrušiť výber",
+				"empty": "Neboli objavené žiadne Zigbee zariadenia. Kliknite na \"Spárovať nové zariadenie\" pre prepnutie bridge do režimu párovania."
+			},
+			"categorize": {
+				"title": "Kategorizácia",
+				"willCreate": "Bude vytvorené",
+				"willUpdate": "Bude aktualizované",
+				"channels": "{count} kanál | {count} kanály | {count} kanálov"
+			},
+			"results": {
+				"title": "Výsledky",
+				"created": "Vytvorené",
+				"updated": "Aktualizované",
+				"failed": "Zlyhalo",
+				"done": "Hotovo",
+				"addMore": "Pridať ďalšie"
+			}
+		},
+		"columns": {
+			"name": "Názov",
+			"friendlyName": "Priateľské meno",
+			"manufacturer": "Výrobca",
+			"model": "Model",
+			"status": "Stav",
+			"category": "Kategória",
+			"channels": "Kanály",
+			"error": "Chyba"
+		},
+		"status": {
+			"ready": "Pripravené",
+			"unsupported": "Nepodporované",
+			"alreadyRegistered": "Už pridané",
+			"failed": "Zlyhalo"
+		},
+		"actions": {
+			"next": "Ďalej",
+			"back": "Späť",
+			"adopt": "Pridať vybrané",
+			"cancel": "Zrušiť"
+		},
+		"validation": {
+			"nameRequired": "Názov je povinný",
+			"categoryRequired": "Kategória je povinná"
+		}
 	}
 }

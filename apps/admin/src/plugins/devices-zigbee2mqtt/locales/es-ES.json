@@ -297,5 +297,68 @@
 		"adoptDevice": "Adoptar dispositivo",
 		"refresh": "Actualizar",
 		"use": "Usar"
+	},
+	"wizard": {
+		"title": "Adoptar dispositivos Zigbee",
+		"subtitle": "Descubra y adopte sus dispositivos Zigbee en bloque",
+		"bridge": {
+			"offline": {
+				"title": "Bridge sin conexión",
+				"message": "El bridge de Zigbee2MQTT está actualmente sin conexión. Configure la conexión para continuar.",
+				"openConfig": "Abrir configuración"
+			}
+		},
+		"steps": {
+			"discovery": {
+				"title": "Descubrimiento",
+				"permitJoin": "Emparejar nuevo dispositivo",
+				"cancelPairing": "Cancelar emparejamiento",
+				"pairingActive": "Modo de emparejamiento activo — {remaining}s restantes",
+				"pairingDisabled": "Modo de emparejamiento desactivado",
+				"autoPickAll": "Seleccionar todo",
+				"clearSelection": "Borrar selección",
+				"empty": "No se han descubierto dispositivos Zigbee. Haga clic en \"Emparejar nuevo dispositivo\" para poner el bridge en modo de emparejamiento."
+			},
+			"categorize": {
+				"title": "Categorizar",
+				"willCreate": "Se creará",
+				"willUpdate": "Se actualizará",
+				"channels": "{count} canal | {count} canales"
+			},
+			"results": {
+				"title": "Resultados",
+				"created": "Creado",
+				"updated": "Actualizado",
+				"failed": "Fallido",
+				"done": "Hecho",
+				"addMore": "Agregar más"
+			}
+		},
+		"columns": {
+			"name": "Nombre",
+			"friendlyName": "Nombre amigable",
+			"manufacturer": "Fabricante",
+			"model": "Modelo",
+			"status": "Estado",
+			"category": "Categoría",
+			"channels": "Canales",
+			"error": "Error"
+		},
+		"status": {
+			"ready": "Listo",
+			"unsupported": "No compatible",
+			"alreadyRegistered": "Ya adoptado",
+			"failed": "Fallido"
+		},
+		"actions": {
+			"next": "Siguiente",
+			"back": "Atrás",
+			"adopt": "Adoptar seleccionados",
+			"cancel": "Cancelar"
+		},
+		"validation": {
+			"nameRequired": "El nombre es obligatorio",
+			"categoryRequired": "La categoría es obligatoria"
+		}
 	}
 }
