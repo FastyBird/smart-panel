@@ -526,6 +526,43 @@ export class ShellyNgService extends BaseManagedPluginService {
 		});
 	};
 
+	/**
+	 * Snapshot of every device the main mDNS/lib has currently discovered.
+	 *
+	 * Used by `ShellyNgDiscoveryService` so the wizard can read the existing
+	 * known-device list instead of running a parallel `MdnsDeviceDiscoverer`.
+	 * Running two browsers + two RPC inspect loops on the same LAN was causing
+	 * relay glitches on some Plus/Pro firmware.
+	 */
+	getKnownDevices(): Device[] {
+		if (typeof this.shellies === 'undefined') {
+			return [];
+		}
+
+		return Array.from(this.shellies.values());
+	}
+
+	/**
+	 * Subscribe to new devices the lib discovers for as long as the returned
+	 * unsubscribe is not invoked. Used by the wizard to pick up devices that
+	 * power on during a scan session without needing its own mDNS browser.
+	 */
+	subscribeToAddedDevice(handler: (device: Device) => void): () => void {
+		if (typeof this.shellies === 'undefined') {
+			return () => {
+				/* noop — service not running */
+			};
+		}
+
+		const shellies = this.shellies;
+
+		shellies.on('add', handler);
+
+		return () => {
+			shellies.off('add', handler);
+		};
+	}
+
 	private async initialize(): Promise<void> {
 		const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
 

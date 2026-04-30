@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { MdnsDeviceDiscoverer } from 'shellies-ds9';
+import { Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable } from '@nestjs/common';
 
@@ -15,6 +15,13 @@ import {
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 import { DeviceManagerService } from './device-manager.service';
+import { ShellyNgService } from './shelly-ng.service';
+
+type LibDevice = Device & {
+	wifi?: WiFi & { sta_ip?: string | null };
+	ethernet?: Ethernet & { ip?: string | null };
+	system?: { config?: { device?: { name?: string | null } } };
+};
 
 export type ShellyNgDiscoverySessionStatus = 'running' | 'finished' | 'failed';
 
@@ -63,9 +70,9 @@ interface ShellyNgDiscoverySession {
 	status: ShellyNgDiscoverySessionStatus;
 	startedAt: Date;
 	expiresAt: Date;
-	discoverer: MdnsDeviceDiscoverer;
 	timer?: NodeJS.Timeout;
 	cleanupTimer?: NodeJS.Timeout;
+	unsubscribeAdded?: () => void;
 	devices: Map<string, ShellyNgDiscoveryDeviceSnapshot>;
 	passwords: Map<string, string>;
 }
@@ -84,49 +91,34 @@ export class ShellyNgDiscoveryService {
 	constructor(
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly devicesService: DevicesService,
+		private readonly shellyNgService: ShellyNgService,
 	) {}
 
 	async start({ duration }: { duration: number }): Promise<ShellyNgDiscoverySessionSnapshot> {
 		const id = randomUUID();
 		const startedAt = new Date();
 		const expiresAt = new Date(startedAt.getTime() + duration * 1_000);
-		const discoverer = new MdnsDeviceDiscoverer();
 
 		const session: ShellyNgDiscoverySession = {
 			id,
 			status: 'running',
 			startedAt,
 			expiresAt,
-			discoverer,
 			devices: new Map(),
 			passwords: new Map(),
 		};
 
-		discoverer.on('discover', (device: { deviceId?: string; hostname?: string }) => {
-			const hostname = device.hostname ?? device.deviceId ?? '';
-			const password =
-				session.passwords.get(hostname) ??
-				(device.deviceId !== undefined ? session.passwords.get(device.deviceId) : undefined) ??
-				null;
-
-			void this.inspectDevice(session, hostname, 'mdns', password);
-		});
-
-		discoverer.on('error', (error: Error) => {
-			this.logger.warn('mDNS discovery emitted an error', {
-				session: id,
-				message: error.message,
-				stack: error.stack,
-			});
-		});
-
-		try {
-			await discoverer.start();
-		} catch (error) {
-			this.clearTimers(session);
-
-			throw error;
+		// Reuse the main connector's already-running mDNS browser instead of spinning up
+		// a parallel one. Two browsers + two RPC inspect loops were causing relay glitches
+		// on some Plus/Pro firmware. The 30s session window is kept for UX so the user can
+		// still power on a new device during the scan and have it picked up.
+		for (const device of this.shellyNgService.getKnownDevices()) {
+			await this.handleLibDevice(session, device as LibDevice);
 		}
+
+		session.unsubscribeAdded = this.shellyNgService.subscribeToAddedDevice((device) => {
+			void this.handleLibDevice(session, device as LibDevice);
+		});
 
 		session.timer = setTimeout(() => {
 			void this.finish(id);
@@ -176,20 +168,29 @@ export class ShellyNgDiscoveryService {
 		session.status = 'finished';
 
 		this.clearTimer(session);
-
-		try {
-			await session.discoverer.stop();
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.warn('Failed to stop Shelly NG mDNS discovery session', {
-				session: id,
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+		this.unsubscribeFromAdded(session);
 
 		this.scheduleCleanup(session);
+
+		await Promise.resolve();
+	}
+
+	private unsubscribeFromAdded(session: ShellyNgDiscoverySession): void {
+		if (typeof session.unsubscribeAdded === 'function') {
+			try {
+				session.unsubscribeAdded();
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.warn('Failed to detach Shelly NG discovery listener', {
+					session: session.id,
+					message: err.message,
+					stack: err.stack,
+				});
+			}
+
+			session.unsubscribeAdded = undefined;
+		}
 	}
 
 	private scheduleCleanup(session: ShellyNgDiscoverySession): void {
@@ -203,6 +204,7 @@ export class ShellyNgDiscoveryService {
 	private clearTimers(session: ShellyNgDiscoverySession): void {
 		this.clearTimer(session);
 		this.clearCleanupTimer(session);
+		this.unsubscribeFromAdded(session);
 	}
 
 	private clearTimer(session: ShellyNgDiscoverySession): void {
@@ -229,6 +231,69 @@ export class ShellyNgDiscoveryService {
 		if (device.identifier !== null) {
 			session.passwords.set(device.identifier, password);
 		}
+	}
+
+	/**
+	 * Build a discovery snapshot for a device the main connector's mDNS browser already
+	 * knows about. No HTTP RPC is sent to the device — everything comes from the lib's
+	 * cached info plus a DB lookup. Manual entries still go through `inspectDevice`
+	 * because they may target devices the main connector hasn't reached.
+	 */
+	private async handleLibDevice(session: ShellyNgDiscoverySession, device: LibDevice): Promise<void> {
+		const hostname = device.wifi?.sta_ip ?? device.ethernet?.ip ?? null;
+
+		if (typeof hostname !== 'string' || hostname.length === 0) {
+			return;
+		}
+
+		// Skip if the user already entered this device manually — that path has the password
+		// and a richer (RPC-fetched) snapshot we don't want to overwrite.
+		const existing = session.devices.get(hostname);
+
+		if (existing && existing.source === 'manual') {
+			return;
+		}
+
+		const registeredDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+			'identifier',
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		const descriptor = this.findDescriptor(device.model);
+		const categories = descriptor?.categories ?? [];
+
+		let status: ShellyNgDiscoveryDeviceStatus;
+
+		if (registeredDevice !== null) {
+			status = 'already_registered';
+		} else if (descriptor === null) {
+			status = 'unsupported';
+		} else {
+			status = 'ready';
+		}
+
+		const snapshot: ShellyNgDiscoveryDeviceSnapshot = {
+			identifier: device.id,
+			hostname,
+			name: device.system?.config?.device?.name ?? null,
+			model: device.model,
+			displayName: descriptor?.name ?? device.modelName ?? device.model,
+			firmware: device.firmware?.version ?? null,
+			status,
+			source: 'mdns',
+			categories,
+			suggestedCategory: categories.length === 1 ? categories[0] : null,
+			// Devices in `shellies.values()` have already authenticated successfully
+			// (the main connector wouldn't expose them otherwise).
+			authentication: { enabled: false, domain: null },
+			registeredDeviceId: registeredDevice?.id ?? null,
+			registeredDeviceName: registeredDevice?.name ?? null,
+			error: null,
+			lastSeenAt: new Date().toISOString(),
+		};
+
+		session.devices.set(hostname, snapshot);
 	}
 
 	private async inspectDevice(
