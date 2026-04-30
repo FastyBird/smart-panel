@@ -66,6 +66,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		hostname: '',
 		password: '',
 	});
+	const readyHostnames = new Set<string>();
 
 	let pollingTimer: number | null = null;
 
@@ -106,8 +107,9 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		for (const device of nextSession.devices) {
 			const previousDevice = previousDevices.find((item) => item.hostname === device.hostname);
 			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
+			const wasPreviouslyReady = readyHostnames.has(device.hostname);
 
-			if (selected[device.hostname] === undefined || becameReady) {
+			if (selected[device.hostname] === undefined || (becameReady && !wasPreviouslyReady)) {
 				selected[device.hostname] = device.status === 'ready';
 			}
 
@@ -120,6 +122,10 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 			if (nameByHostname[device.hostname] === undefined || (becameReady && nameByHostname[device.hostname] === device.hostname)) {
 				nameByHostname[device.hostname] = device.name ?? device.displayName ?? device.hostname;
+			}
+
+			if (device.status === 'ready') {
+				readyHostnames.add(device.hostname);
 			}
 		}
 

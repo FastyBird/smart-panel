@@ -156,7 +156,7 @@ export class ShellyNgDiscoveryService {
 		const discoveredDevice = await this.inspectDevice(session, hostname, 'manual', password ?? null);
 
 		if (password !== null && typeof password !== 'undefined' && discoveredDevice?.status === 'ready') {
-			session.passwords.set(hostname, password);
+			this.storePassword(session, discoveredDevice, password);
 		}
 
 		return this.toSnapshot(session);
@@ -212,6 +212,18 @@ export class ShellyNgDiscoveryService {
 		if (session.cleanupTimer !== undefined) {
 			clearTimeout(session.cleanupTimer);
 			session.cleanupTimer = undefined;
+		}
+	}
+
+	private storePassword(
+		session: ShellyNgDiscoverySession,
+		device: ShellyNgDiscoveryDeviceSnapshot,
+		password: string,
+	): void {
+		session.passwords.set(device.hostname, password);
+
+		if (device.identifier !== null) {
+			session.passwords.set(device.identifier, password);
 		}
 	}
 

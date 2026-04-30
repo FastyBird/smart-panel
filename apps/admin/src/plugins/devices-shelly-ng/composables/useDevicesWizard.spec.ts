@@ -199,6 +199,40 @@ describe('useDevicesWizard', () => {
 		expect(wizard.canContinue.value).toBe(true);
 	});
 
+	it('keeps a user deselection when a ready device is rediscovered', async () => {
+		backendClient.POST.mockResolvedValue({
+			data: {
+				data: discoverySession,
+			},
+			response: { status: 200 },
+		});
+		backendClient.GET
+			.mockResolvedValueOnce({
+				data: {
+					data: checkingDiscoverySession,
+				},
+				response: { status: 200 },
+			})
+			.mockResolvedValueOnce({
+				data: {
+					data: discoverySession,
+				},
+				response: { status: 200 },
+			});
+
+		const wizard = useDevicesWizard();
+
+		await wizard.startDiscovery();
+
+		wizard.selected['192.168.1.10'] = false;
+
+		await wizard.refreshDiscovery();
+		await wizard.refreshDiscovery();
+
+		expect(wizard.selected['192.168.1.10']).toBe(false);
+		expect(wizard.canContinue.value).toBe(false);
+	});
+
 	it('adopts selected ready devices through the devices store', async () => {
 		backendClient.POST.mockResolvedValue({
 			data: {
