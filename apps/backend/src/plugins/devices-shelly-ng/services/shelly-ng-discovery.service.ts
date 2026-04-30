@@ -67,6 +67,7 @@ interface ShellyNgDiscoverySession {
 	timer?: NodeJS.Timeout;
 	cleanupTimer?: NodeJS.Timeout;
 	devices: Map<string, ShellyNgDiscoveryDeviceSnapshot>;
+	passwords: Map<string, string>;
 }
 
 @Injectable()
@@ -98,10 +99,13 @@ export class ShellyNgDiscoveryService {
 			expiresAt,
 			discoverer,
 			devices: new Map(),
+			passwords: new Map(),
 		};
 
 		discoverer.on('discover', (device: { deviceId?: string; hostname?: string }) => {
-			void this.inspectDevice(session, device.hostname ?? device.deviceId ?? '', 'mdns', null);
+			const hostname = device.hostname ?? device.deviceId ?? '';
+
+			void this.inspectDevice(session, hostname, 'mdns', session.passwords.get(hostname) ?? null);
 		});
 
 		discoverer.on('error', (error: Error) => {
@@ -149,7 +153,11 @@ export class ShellyNgDiscoveryService {
 			return null;
 		}
 
-		await this.inspectDevice(session, hostname, 'manual', password ?? null);
+		const discoveredDevice = await this.inspectDevice(session, hostname, 'manual', password ?? null);
+
+		if (password !== null && typeof password !== 'undefined' && discoveredDevice?.status === 'ready') {
+			session.passwords.set(hostname, password);
+		}
 
 		return this.toSnapshot(session);
 	}
@@ -212,9 +220,9 @@ export class ShellyNgDiscoveryService {
 		hostname: string,
 		source: ShellyNgDiscoveryDeviceSource,
 		password: string | null,
-	): Promise<void> {
+	): Promise<ShellyNgDiscoveryDeviceSnapshot | null> {
 		if (hostname.length === 0) {
-			return;
+			return null;
 		}
 
 		const existing = session.devices.get(hostname);
@@ -261,7 +269,7 @@ export class ShellyNgDiscoveryService {
 				status = 'needs_password';
 			}
 
-			session.devices.set(hostname, {
+			const discoveredDevice: ShellyNgDiscoveryDeviceSnapshot = {
 				identifier: deviceInfo.id,
 				hostname,
 				name: deviceInfo.name ?? null,
@@ -277,22 +285,30 @@ export class ShellyNgDiscoveryService {
 				registeredDeviceName: registeredDevice?.name ?? null,
 				error: null,
 				lastSeenAt: new Date().toISOString(),
-			});
+			};
+
+			session.devices.set(hostname, discoveredDevice);
+
+			return discoveredDevice;
 		} catch (error) {
 			const err = error as Error;
 			const currentDevice = session.devices.get(hostname);
 
 			if (currentDevice === undefined) {
-				return;
+				return null;
 			}
 
-			session.devices.set(hostname, {
+			const failedDevice: ShellyNgDiscoveryDeviceSnapshot = {
 				...currentDevice,
 				status: 'failed',
 				source,
 				error: err.message,
 				lastSeenAt: new Date().toISOString(),
-			});
+			};
+
+			session.devices.set(hostname, failedDevice);
+
+			return failedDevice;
 		}
 	}
 

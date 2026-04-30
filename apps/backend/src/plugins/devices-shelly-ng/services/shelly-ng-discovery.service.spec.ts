@@ -175,6 +175,49 @@ describe('ShellyNgDiscoveryService', () => {
 		);
 	});
 
+	it('keeps using verified credentials when a protected device is rediscovered', async () => {
+		deviceManager.getDeviceInfo.mockResolvedValue({
+			id: 'shellyht-aabbcc',
+			name: 'Bathroom sensor',
+			mac: 'AABBCC',
+			model: 'SNSN-0013A',
+			fw_id: '2024-05-05-0000',
+			ver: '1.2.3',
+			app: 'HT',
+			profile: 'sensor',
+			auth_en: true,
+			auth_domain: 'shelly',
+			discoverable: true,
+			key: 'key-abc',
+			batch: 'b',
+			fw_sbits: 'bits',
+			components: [{ type: 'temperature', ids: [0] }],
+		});
+		devicesService.findOneBy.mockResolvedValue(null);
+
+		const session = await service.start({ duration: 30 });
+
+		await service.manual(session.id, {
+			hostname: '192.168.1.11',
+			password: 'secret',
+		});
+
+		discoverers[0]?.emit('discover', {
+			deviceId: 'shellyht-aabbcc',
+			hostname: '192.168.1.11',
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(deviceManager.getDeviceInfo.mock.calls.at(-1)).toEqual(['192.168.1.11', 'secret']);
+		expect(service.get(session.id)?.devices[0]).toEqual(
+			expect.objectContaining({
+				status: 'ready',
+			}),
+		);
+	});
+
 	it('finishes and stops the mDNS scan after the requested duration', async () => {
 		const session = await service.start({ duration: 5 });
 

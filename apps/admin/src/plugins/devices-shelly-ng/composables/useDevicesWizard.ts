@@ -99,18 +99,26 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	};
 
 	const applySession = (nextSession: IShellyNgDiscoverySession): void => {
+		const previousDevices = session.value?.devices ?? [];
+
 		session.value = nextSession;
 
 		for (const device of nextSession.devices) {
-			if (selected[device.hostname] === undefined) {
+			const previousDevice = previousDevices.find((item) => item.hostname === device.hostname);
+			const becameReady = previousDevice?.status === 'checking' && device.status === 'ready';
+
+			if (selected[device.hostname] === undefined || becameReady) {
 				selected[device.hostname] = device.status === 'ready';
 			}
 
-			if (categoryByHostname[device.hostname] === undefined) {
+			if (
+				categoryByHostname[device.hostname] === undefined ||
+				(categoryByHostname[device.hostname] === null && device.suggestedCategory !== null)
+			) {
 				categoryByHostname[device.hostname] = device.suggestedCategory;
 			}
 
-			if (nameByHostname[device.hostname] === undefined) {
+			if (nameByHostname[device.hostname] === undefined || (becameReady && nameByHostname[device.hostname] === device.hostname)) {
 				nameByHostname[device.hostname] = device.name ?? device.displayName ?? device.hostname;
 			}
 		}
