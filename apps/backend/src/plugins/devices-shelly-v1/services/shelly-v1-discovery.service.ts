@@ -70,7 +70,6 @@ interface ShellyV1DiscoverySession {
 	cleanupTimer?: NodeJS.Timeout;
 	unsubscribeAdded?: () => void;
 	devices: Map<string, ShellyV1DiscoveryDeviceSnapshot>;
-	passwords: Map<string, string>;
 }
 
 @Injectable()
@@ -101,7 +100,6 @@ export class ShellyV1DiscoveryService {
 			startedAt,
 			expiresAt,
 			devices: new Map(),
-			passwords: new Map(),
 		};
 
 		// Reuse the main connector's already-running CoAP/mDNS browser instead of spinning up a
@@ -117,15 +115,20 @@ export class ShellyV1DiscoveryService {
 			void this.handleLibDevice(session, device);
 		});
 
-		for (const device of this.shelliesAdapter.getKnownDevices()) {
-			await this.handleLibDevice(session, device);
-		}
-
+		// Arm the finish timer and register the session BEFORE the seed loop so the wall-clock
+		// session lifetime matches `expiresAt`. Each seed iteration does an HTTP probe + DB lookup
+		// and can take several seconds end-to-end; if the timer were started after the loop the
+		// real expiry would drift by exactly that delay, leaving the frontend's progress bar at
+		// 100% while polling still reports `running`.
 		session.timer = setTimeout(() => {
 			void this.finish(id);
 		}, duration * 1_000);
 
 		this.sessions.set(id, session);
+
+		for (const device of this.shelliesAdapter.getKnownDevices()) {
+			await this.handleLibDevice(session, device);
+		}
 
 		return this.toSnapshot(session);
 	}
@@ -150,11 +153,7 @@ export class ShellyV1DiscoveryService {
 			return null;
 		}
 
-		const discoveredDevice = await this.inspectDevice(session, hostname, 'manual', password ?? null);
-
-		if (password !== null && typeof password !== 'undefined' && discoveredDevice?.status === 'ready') {
-			this.storePassword(session, discoveredDevice, password);
-		}
+		await this.inspectDevice(session, hostname, 'manual', password ?? null);
 
 		return this.toSnapshot(session);
 	}
@@ -213,18 +212,6 @@ export class ShellyV1DiscoveryService {
 		if (session.cleanupTimer !== undefined) {
 			clearTimeout(session.cleanupTimer);
 			session.cleanupTimer = undefined;
-		}
-	}
-
-	private storePassword(
-		session: ShellyV1DiscoverySession,
-		device: ShellyV1DiscoveryDeviceSnapshot,
-		password: string,
-	): void {
-		session.passwords.set(device.hostname, password);
-
-		if (device.identifier !== null) {
-			session.passwords.set(device.identifier, password);
 		}
 	}
 
