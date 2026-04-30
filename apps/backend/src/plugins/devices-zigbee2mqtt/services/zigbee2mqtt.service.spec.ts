@@ -107,6 +107,7 @@ describe('Zigbee2mqttService', () => {
 		getCachedState: jest.fn().mockReturnValue({}),
 		publishCommand: jest.fn().mockResolvedValue(true),
 		requestState: jest.fn().mockResolvedValue(true),
+		setPermitJoin: jest.fn().mockResolvedValue(true),
 		getDevice: jest.fn(),
 		getDeviceByIeeeAddress: jest.fn(),
 		setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {

@@ -13,7 +13,7 @@ import {
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mMqttConfig, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mDevice, Z2mMqttConfig, Z2mRegisteredDevice, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -46,6 +46,15 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 
 	// The active adapter is selected based on connection_type config
 	private activeAdapter: Z2mBaseClientAdapter;
+
+	// Subscribers notified when a brand-new Z2M device appears in the registry.
+	// Used by the wizard service to react to devices joined during a pairing session.
+	private readonly deviceJoinedSubscribers = new Set<(device: Z2mRegisteredDevice) => void>();
+
+	// Friendly names already known to this service. Used to detect truly new
+	// devices in handleDevicesReceived so we only notify subscribers once per
+	// new device — never on subsequent re-publishes of the device list.
+	private readonly knownFriendlyNames = new Set<string>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -219,6 +228,59 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	 */
 	async requestDeviceState(friendlyName: string): Promise<boolean> {
 		return this.activeAdapter.requestState(friendlyName);
+	}
+
+	/**
+	 * Toggle the bridge's permit_join state for a bounded number of seconds.
+	 * Returns true on successful publish/send, false otherwise.
+	 * Pass 0 to disable pairing immediately.
+	 *
+	 * Returns false if the bridge is offline or no adapter is active.
+	 */
+	async setPermitJoin(seconds: number): Promise<boolean> {
+		if (!this.isBridgeOnline()) {
+			return false;
+		}
+
+		if (!this.activeAdapter) {
+			return false;
+		}
+
+		return this.activeAdapter.setPermitJoin(seconds);
+	}
+
+	/**
+	 * Subscribe to "device joined" notifications.
+	 *
+	 * The callback is invoked with the new Z2mRegisteredDevice each time a
+	 * previously-unknown device is added to the internal registry. It is NOT
+	 * invoked for updates to already-registered devices.
+	 *
+	 * Returns an unsubscribe function.
+	 */
+	subscribeToDeviceJoined(cb: (device: Z2mRegisteredDevice) => void): () => void {
+		this.deviceJoinedSubscribers.add(cb);
+
+		return () => {
+			this.deviceJoinedSubscribers.delete(cb);
+		};
+	}
+
+	/**
+	 * Notify all device-joined subscribers of a new device.
+	 * Subscriber exceptions are caught and logged so a faulty subscriber
+	 * cannot break the others (or the calling sync logic).
+	 */
+	private notifyDeviceJoined(device: Z2mRegisteredDevice): void {
+		for (const cb of this.deviceJoinedSubscribers) {
+			try {
+				cb(device);
+			} catch (e) {
+				this.logger.warn('Device-joined subscriber threw', {
+					message: e instanceof Error ? e.message : String(e),
+				});
+			}
+		}
 	}
 
 	/**
@@ -408,6 +470,7 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
+		this.knownFriendlyNames.clear();
 
 		// Set all devices to unknown state
 		try {
@@ -444,6 +507,25 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		const registeredDevices = this.activeAdapter.getRegisteredDevices();
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
+
+		// Notify subscribers about devices that are new to this service since the
+		// last bridge/devices message. We compare against knownFriendlyNames so we
+		// fire exactly once per device — not on every refresh that includes it.
+		for (const registered of registeredDevices) {
+			if (!this.knownFriendlyNames.has(registered.friendlyName)) {
+				this.knownFriendlyNames.add(registered.friendlyName);
+				this.notifyDeviceJoined(registered);
+			}
+		}
+
+		// Drop friendly names that are no longer present so a future re-pairing of
+		// the same friendly_name (e.g. after device_leave) is treated as new again.
+		const currentNames = new Set(registeredDevices.map((d) => d.friendlyName));
+		for (const name of this.knownFriendlyNames) {
+			if (!currentNames.has(name)) {
+				this.knownFriendlyNames.delete(name);
+			}
+		}
 
 		// Process cached state for all existing devices
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
