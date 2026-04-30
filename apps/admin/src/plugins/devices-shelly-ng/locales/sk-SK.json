@@ -169,6 +169,7 @@
 			"failed": "Zlyhalo",
 			"created": "Vytvorené",
 			"updated": "Aktualizované",
+			"willCreate": "Bude vytvorené",
 			"willUpdate": "Aktualizuje existujúce"
 		}
 	}

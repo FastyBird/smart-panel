@@ -256,7 +256,15 @@
 						class="h-full w-full flex-grow"
 						table-layout="fixed"
 					>
-						<el-table-column width="70">
+						<el-table-column width="60">
+							<template #header>
+								<el-checkbox
+									:model-value="allAdoptableSelected"
+									:indeterminate="someAdoptableSelected && !allAdoptableSelected"
+									:disabled="adoptableDevices.length === 0"
+									@change="onToggleSelectAll"
+								/>
+							</template>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
 								<el-checkbox v-model="selected[row.hostname]" />
 							</template>
@@ -266,16 +274,7 @@
 							min-width="220"
 						>
 							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
-								<div class="flex flex-col gap-1">
-									<el-input v-model="nameByHostname[row.hostname]" />
-									<el-tag
-										v-if="row.status === 'already_registered'"
-										size="small"
-										type="warning"
-									>
-										{{ t('devicesShellyNgPlugin.statuses.wizard.willUpdate') }}
-									</el-tag>
-								</div>
+								<el-input v-model="nameByHostname[row.hostname]" />
 							</template>
 						</el-table-column>
 						<el-table-column
@@ -283,6 +282,27 @@
 							:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
 							min-width="150"
 						/>
+						<el-table-column
+							:label="t('devicesShellyNgPlugin.headings.wizard.status')"
+							width="170"
+						>
+							<template #default="{ row }: { row: IShellyNgDiscoveryDevice }">
+								<el-tag
+									v-if="row.status === 'already_registered'"
+									size="small"
+									type="warning"
+								>
+									{{ t('devicesShellyNgPlugin.statuses.wizard.willUpdate') }}
+								</el-tag>
+								<el-tag
+									v-else
+									size="small"
+									type="success"
+								>
+									{{ t('devicesShellyNgPlugin.statuses.wizard.willCreate') }}
+								</el-tag>
+							</template>
+						</el-table-column>
 						<el-table-column
 							:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
 							min-width="240"
@@ -452,6 +472,20 @@ const activeStepIndex = computed<number>(() => {
 });
 
 const adoptableDevices = computed<IShellyNgDiscoveryDevice[]>(() => devices.value.filter((device) => isAdoptableStatus(device.status)));
+
+const allAdoptableSelected = computed<boolean>(
+	() => adoptableDevices.value.length > 0 && adoptableDevices.value.every((device) => selected[device.hostname] === true)
+);
+
+const someAdoptableSelected = computed<boolean>(() => adoptableDevices.value.some((device) => selected[device.hostname] === true));
+
+const onToggleSelectAll = (value: boolean | string | number): void => {
+	const next = value === true;
+
+	for (const device of adoptableDevices.value) {
+		selected[device.hostname] = next;
+	}
+};
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
 	{

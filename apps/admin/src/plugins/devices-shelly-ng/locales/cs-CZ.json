@@ -169,6 +169,7 @@
 			"failed": "Selhalo",
 			"created": "Vytvořeno",
 			"updated": "Aktualizováno",
+			"willCreate": "Bude vytvořeno",
 			"willUpdate": "Aktualizuje stávající"
 		}
 	}

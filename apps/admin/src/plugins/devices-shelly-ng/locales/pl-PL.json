@@ -169,6 +169,7 @@
 			"failed": "Failed",
 			"created": "Created",
 			"updated": "Zaktualizowano",
+			"willCreate": "Zostanie utworzone",
 			"willUpdate": "Zaktualizuje istniejace"
 		}
 	}
