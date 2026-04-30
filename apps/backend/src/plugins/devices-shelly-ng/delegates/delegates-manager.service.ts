@@ -2112,6 +2112,16 @@ export class DelegatesManagerService {
 	}
 
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
+		// Prefer the descriptor's canonical first category. The component-based heuristic
+		// below misclassified some sensor-only devices (e.g. Shelly PM Mini Gen3, whose
+		// only relevant component is `pm1:1`) as GENERIC when the lib didn't expose the
+		// expected component shape — descriptor-first is the source of truth.
+		if (delegate.descriptor && delegate.descriptor.categories.length > 0) {
+			return delegate.descriptor.categories[0];
+		}
+
+		// Fallback for the rare case a delegate is built without a matched descriptor
+		// (the constructor throws in that case today, but keep the heuristic for safety).
 		if (delegate.covers.size > 0) {
 			return DeviceCategory.WINDOW_COVERING;
 		} else if (delegate.lights.size > 0 || delegate.rgb.size > 0 || delegate.rgbw.size > 0 || delegate.cct.size > 0) {
