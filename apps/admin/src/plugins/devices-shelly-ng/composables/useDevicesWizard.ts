@@ -185,7 +185,14 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				nameByHostname[device.hostname] = device.registeredDeviceName ?? device.name ?? device.displayName ?? device.hostname;
 			}
 
-			if (isAdoptableStatus(device.status)) {
+			// `readyHostnames` records devices that have been observed in the `ready` state at
+			// least once during the session. Its only consumer is the `becameReady &&
+			// !wasPreviouslyReady` guard above, which prevents re-selecting a device the user
+			// already deselected. We must NOT include `already_registered` here — otherwise a
+			// device that started as `already_registered`, was deleted from the DB mid-session,
+			// then transitioned `checking → ready` would be treated as previously-ready and skip
+			// auto-selection.
+			if (device.status === 'ready') {
 				readyHostnames.add(device.hostname);
 			}
 		}

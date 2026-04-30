@@ -391,7 +391,7 @@ export class ShellyNgDiscoveryDeviceModel {
 			'Already registered device category — used to pre-fill the wizard so adopted devices keep their existing category by default',
 		enum: DeviceCategory,
 		nullable: true,
-		example: null,
+		example: DeviceCategory.LIGHTING,
 	})
 	@Expose()
 	@IsIn(Object.values(DeviceCategory))
