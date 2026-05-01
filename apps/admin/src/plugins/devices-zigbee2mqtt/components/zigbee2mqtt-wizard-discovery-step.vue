@@ -34,7 +34,7 @@
 						</el-text>
 						<el-progress
 							:percentage="permitJoinPercentage"
-							:status="permitJoinPercentage <= 25 ? 'warning' : undefined"
+							:status="permitJoinPercentage >= 75 ? 'warning' : undefined"
 						/>
 					</template>
 				</div>
