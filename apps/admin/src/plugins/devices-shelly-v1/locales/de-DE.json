@@ -10,7 +10,20 @@
       "notSupported": "Leider wird Ihr Gerät nicht unterstützt",
       "model": "Modell",
       "firmware": "Firmware"
+    },
+    "wizard": {
+      "title": "Shelly Gen 1 Discovery-Assistent",
+      "discovery": "Erkennung",
+      "categories": "Kategorien",
+      "results": "Ergebnisse",
+      "status": "Status"
     }
+  },
+  "subHeadings": {
+    "wizard": "Finden und übernehmen Sie Shelly Gen 1-Geräte in Ihrem Netzwerk"
+  },
+  "breadcrumbs": {
+    "wizard": "Discovery-Assistent"
   },
   "fields": {
     "devices": {
@@ -44,6 +57,9 @@
       "password": {
         "title": "Admin-Passwort",
         "placeholder": "Gerätepasswort eingeben, falls das Gerät geschützt ist"
+      },
+      "error": {
+        "title": "Fehler"
       },
       "hostname": {
         "title": "Geräte-Hostname",
@@ -101,16 +117,60 @@
       "edited": "Änderungen gespeichert! Das Shelly Gen 1-Gerät: {device} wurde aktualisiert.",
       "notEdited": "Etwas ist schiefgelaufen. Die Aktualisierung des Shelly Gen 1-Geräts war nicht erfolgreich.",
       "failedLoadSupportedDevices": "Etwas ist schiefgelaufen. Die unterstützten Geräte des Plugins konnten nicht geladen werden."
+    },
+    "wizard": {
+      "discoveryNotStarted": "Etwas ist schiefgelaufen. Die Shelly-Erkennung konnte nicht gestartet werden.",
+      "discoveryNotLoaded": "Etwas ist schiefgelaufen. Die Shelly-Erkennung konnte nicht geladen werden.",
+      "manualNotAdded": "Etwas ist schiefgelaufen. Die manuelle Shelly-Gerätesuche konnte nicht hinzugefügt werden.",
+      "adoptionNotCreated": "Etwas ist schiefgelaufen. Das Shelly-Gerät konnte nicht übernommen werden."
     }
   },
   "texts": {
     "aboutPluginStatus": "Aktivieren oder deaktivieren Sie die Shelly Gen 1 Geräteintegration. Wenn aktiviert, können Shelly-Geräte über das Smart Panel erkannt und gesteuert werden.",
     "aboutDiscovery": "Konfigurieren Sie, wie das Plugin Shelly Gen 1-Geräte in Ihrem lokalen Netzwerk über Multicast DNS (mDNS) erkennt. Dies ermöglicht die automatische Erkennung ohne manuelle Eingabe von IP-Adressen.",
-    "aboutTimeouts": "Konfigurieren Sie Zeitlimit-Einstellungen für die HTTP-Kommunikation mit Shelly Gen 1-Geräten. Diese Einstellungen steuern die Anfrageverarbeitung und Gerätestatusüberwachung."
+    "aboutTimeouts": "Konfigurieren Sie Zeitlimit-Einstellungen für die HTTP-Kommunikation mit Shelly Gen 1-Geräten. Diese Einstellungen steuern die Anfrageverarbeitung und Gerätestatusüberwachung.",
+    "wizard": {
+      "discovery": "Der Assistent durchsucht das lokale Netzwerk nach Shelly Gen 1-Geräten und akzeptiert auch einen manuell eingegebenen Hostname oder eine IP-Adresse.",
+      "categories": "Bestätigen Sie, welche bereiten Geräte übernommen werden sollen, und wählen Sie für jedes die Zielkategorie aus.",
+      "scanStatus": "{count} Geräte gefunden",
+      "noDevices": "Keine Shelly-Geräte gefunden",
+      "results": {
+        "success": "Alle Geräte wurden erfolgreich übernommen.",
+        "failed": "Einige Geräte konnten nicht übernommen werden. Überprüfen Sie die Fehler unten."
+      }
+    }
   },
   "buttons": {
     "next": {
       "title": "Weiter"
+    },
+    "wizard": {
+      "restart": {
+        "title": "Erneut scannen"
+      },
+      "addManual": {
+        "title": "Hinzufügen"
+      },
+      "adopt": {
+        "title": "Ausgewählte übernehmen"
+      },
+      "finish": {
+        "title": "Zurück zu den Geräten"
+      }
+    }
+  },
+  "statuses": {
+    "wizard": {
+      "checking": "Wird geprüft",
+      "ready": "Bereit",
+      "needs_password": "Passwort erforderlich",
+      "already_registered": "Registriert",
+      "unsupported": "Nicht unterstützt",
+      "failed": "Fehlgeschlagen",
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "willCreate": "Wird erstellt",
+      "willUpdate": "Bestehendes wird aktualisiert"
     }
   }
 }

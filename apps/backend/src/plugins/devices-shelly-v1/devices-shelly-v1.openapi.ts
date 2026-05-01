@@ -20,9 +20,16 @@ import {
 import { ShellyV1ConfigModel, ShellyV1DiscoveryConfigModel, ShellyV1TimeoutsConfigModel } from './models/config.model';
 import {
 	ShellyV1DeviceInfoResponseModel,
+	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 } from './models/shelly-v1-response.model';
-import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from './models/shelly-v1.model';
+import {
+	ShellyV1DeviceInfoModel,
+	ShellyV1DiscoveryDeviceAuthenticationModel,
+	ShellyV1DiscoveryDeviceModel,
+	ShellyV1DiscoverySessionModel,
+	ShellyV1SupportedDeviceModel,
+} from './models/shelly-v1.model';
 
 export const DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -37,10 +44,14 @@ export const DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ShellyV1UpdatePluginConfigTimeoutsDto,
 	// Response models
 	ShellyV1DeviceInfoResponseModel,
+	ShellyV1DiscoverySessionResponseModel,
 	ShellyV1SupportedDevicesResponseModel,
 	// Data models
 	ShellyV1SupportedDeviceModel,
 	ShellyV1DeviceInfoModel,
+	ShellyV1DiscoveryDeviceAuthenticationModel,
+	ShellyV1DiscoveryDeviceModel,
+	ShellyV1DiscoverySessionModel,
 	ShellyV1DiscoveryConfigModel,
 	ShellyV1TimeoutsConfigModel,
 	ShellyV1ConfigModel,

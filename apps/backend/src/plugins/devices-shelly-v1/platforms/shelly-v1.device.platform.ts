@@ -4,9 +4,9 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { coerceBooleanSafe, coerceNumberSafe } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
-	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
+	DeviceDescriptor,
 	PropertyBinding,
 } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
@@ -17,6 +17,7 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 import { ROLLER_COMMAND_VALUE_MAP, validateEnumValue } from '../utils/value-mapping.utils';
 
 export type IShellyV1DevicePropertyData = IDevicePropertyData & {
@@ -141,7 +142,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		shellyDevice: ShellyDevice,
 	): Promise<boolean> {
 		// Find the device descriptor
-		const descriptor = this.findDescriptor(shellyDevice.type);
+		const descriptor = findShellyV1Descriptor(shellyDevice.type);
 
 		if (!descriptor) {
 			this.logger.warn(`No descriptor found for device type: ${shellyDevice.type}`, { resource: device.id });
@@ -228,7 +229,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		shellyDevice: ShellyDevice,
 		index: number,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
-		descriptor: (typeof DESCRIPTORS)[keyof typeof DESCRIPTORS],
+		descriptor: DeviceDescriptor,
 	): Promise<boolean> {
 		// Collect property values
 		const values: {
@@ -494,25 +495,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 	}
 
 	/**
-	 * Find a descriptor for a device type
-	 */
-	private findDescriptor(deviceType: string): (typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null {
-		for (const descriptor of Object.values(DESCRIPTORS)) {
-			if (descriptor.models.some((model) => deviceType.toUpperCase().includes(model))) {
-				return descriptor;
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * Get bindings for a device considering mode
 	 */
-	private getBindings(
-		descriptor: (typeof DESCRIPTORS)[keyof typeof DESCRIPTORS],
-		shellyDevice: ShellyDevice,
-	): PropertyBinding[] {
+	private getBindings(descriptor: DeviceDescriptor, shellyDevice: ShellyDevice): PropertyBinding[] {
 		if (descriptor.instance?.modeProperty && descriptor.modes) {
 			const modeValue = shellyDevice[descriptor.instance.modeProperty];
 			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);

@@ -353,6 +353,9 @@ export type DevicesShellyNgPluginCreateDiscoveryManualOperation = operations['cr
 // Devices Shelly V1 Plugin Operations
 export type DevicesShellyV1PluginGetSupportedOperation = operations['get-devices-shelly-v1-plugin-supported'];
 export type DevicesShellyV1PluginCreateDeviceInfoOperation = operations['create-devices-shelly-v1-plugin-device-info'];
+export type DevicesShellyV1PluginCreateDiscoveryOperation = operations['create-devices-shelly-v1-plugin-discovery'];
+export type DevicesShellyV1PluginGetDiscoveryOperation = operations['get-devices-shelly-v1-plugin-discovery'];
+export type DevicesShellyV1PluginCreateDiscoveryManualOperation = operations['create-devices-shelly-v1-plugin-discovery-manual'];
 
 // Pages Cards Plugin Operations
 export type PagesCardsPluginGetPageCardOperation = operations['get-pages-cards-plugin-page-card'];

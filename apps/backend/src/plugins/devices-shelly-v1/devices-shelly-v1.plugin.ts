@@ -47,6 +47,7 @@ import { ShellyV1ConfigModel } from './models/config.model';
 import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
+import { ShellyV1DiscoveryService } from './services/shelly-v1-discovery.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
 import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
@@ -70,6 +71,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DeviceMapperService,
 		ShellyV1HttpClientService,
 		ShellyV1ProbeService,
+		ShellyV1DiscoveryService,
 		ShellyV1DevicePlatform,
 		ShellyV1Service,
 		DeviceEntitySubscriber,
