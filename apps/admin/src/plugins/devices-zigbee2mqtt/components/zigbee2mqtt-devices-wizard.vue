@@ -77,10 +77,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
 import { ElButton, ElStep, ElSteps } from 'element-plus';
 
 import { useFlashMessage } from '../../../common';
+import { RouteNames as DevicesRouteNames } from '../../../modules/devices/devices.constants';
 import { type DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useDevicesWizard } from '../composables/useDevicesWizard';
 
@@ -92,11 +94,8 @@ defineOptions({
 	name: 'Zigbee2mqttDevicesWizard',
 });
 
-const emit = defineEmits<{
-	(e: 'done'): void;
-}>();
-
 const { t } = useI18n();
+const router = useRouter();
 const flashMessage = useFlashMessage();
 
 const {
@@ -198,8 +197,8 @@ const onAdopt = async (): Promise<void> => {
 	}
 };
 
-const onDone = (): void => {
-	emit('done');
+const onDone = async (): Promise<void> => {
+	await router.push({ name: DevicesRouteNames.DEVICES });
 };
 
 // "Add more" wipes the previous session so the next round of pairings starts from a clean
