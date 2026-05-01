@@ -210,10 +210,12 @@ const permitJoinPercentage = computed<number>(() => {
 		return 0;
 	}
 
-	// 254 seconds is the typical Zigbee permit-join window — clamp the bar so it always fits.
-	const total = Math.max(props.permitJoin.remainingSeconds, 1);
+	// `el-progress` shows "how much is complete", so we render elapsed time (filling up
+	// toward the deadline) rather than remaining time. 254 s is the typical Zigbee
+	// permit-join window; clamp to [0, 100] in case remainingSeconds briefly exceeds it.
+	const elapsedSeconds = Math.max(0, 254 - props.permitJoin.remainingSeconds);
 
-	return Math.min(100, Math.round((total / 254) * 100));
+	return Math.min(100, Math.round((elapsedSeconds / 254) * 100));
 });
 
 const sortByFriendlyName = (a: IZ2mWizardDevice, b: IZ2mWizardDevice): number => compareLocale(a.friendlyName, b.friendlyName);
