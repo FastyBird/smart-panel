@@ -30,7 +30,7 @@
 				<div class="flex min-w-0 flex-1 flex-col gap-1">
 					<template v-if="permitJoin.active">
 						<el-text>
-							{{ t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingActive', { remaining: permitJoin.remainingSeconds }) }}
+							{{ t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingActive', { remaining: smoothRemainingSeconds }) }}
 						</el-text>
 						<el-progress
 							:percentage="permitJoinPercentage"
@@ -157,6 +157,8 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useNow } from '@vueuse/core';
+
 import { ElAlert, ElButton, ElCheckbox, ElProgress, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
@@ -190,6 +192,32 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+// Tick the countdown locally between backend polls so the progress bar and "Xs remaining"
+// text update smoothly instead of freezing for a full second between server responses.
+// Resolution of 250 ms gives a perceptibly fluid bar without overdrawing.
+const now = useNow({ interval: 250 });
+
+// Smoothed remaining seconds derived from the server-supplied `expiresAt`. Falls back to
+// the server's `remainingSeconds` if `expiresAt` isn't available yet (e.g. a transient null
+// during the first poll), so the UI still shows something sensible.
+const smoothRemainingSeconds = computed<number>(() => {
+	if (!props.permitJoin.active) {
+		return 0;
+	}
+
+	if (props.permitJoin.expiresAt === null) {
+		return props.permitJoin.remainingSeconds;
+	}
+
+	const expiresAtMs = new Date(props.permitJoin.expiresAt).getTime();
+
+	if (Number.isNaN(expiresAtMs)) {
+		return props.permitJoin.remainingSeconds;
+	}
+
+	return Math.max(0, Math.ceil((expiresAtMs - now.value.getTime()) / 1_000));
+});
+
 // Group adoptable devices first, then by ieeeAddress — matches the wizard composable's
 // default ordering so the table opens with new pairings on top.
 const sortedDevices = computed<IZ2mWizardDevice[]>(() =>
@@ -208,7 +236,8 @@ const permitJoinPercentage = computed<number>(() => {
 	// `el-progress` shows "how much is complete", so we render elapsed time (filling up
 	// toward the deadline) rather than remaining time. 254 s is the typical Zigbee
 	// permit-join window; clamp to [0, 100] in case remainingSeconds briefly exceeds it.
-	const elapsedSeconds = Math.max(0, 254 - props.permitJoin.remainingSeconds);
+	// Drives off the smoothed countdown so the bar advances visibly between polls.
+	const elapsedSeconds = Math.max(0, 254 - smoothRemainingSeconds.value);
 
 	return Math.min(100, Math.round((elapsedSeconds / 254) * 100));
 });
