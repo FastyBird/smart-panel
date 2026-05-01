@@ -196,6 +196,12 @@ describe('Z2mWizardService', () => {
 			expect(await service.enablePermitJoin('nope')).toBeNull();
 			expect(await service.disablePermitJoin('nope')).toBeNull();
 		});
+
+		it('throws when bridge fails to activate permit_join', async () => {
+			const started = await service.start();
+			zigbee2mqttService.setPermitJoin.mockResolvedValueOnce(false);
+			await expect(service.enablePermitJoin(started.id)).rejects.toThrow();
+		});
 	});
 
 	describe('adopt', () => {

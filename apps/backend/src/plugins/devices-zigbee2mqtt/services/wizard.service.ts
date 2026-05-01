@@ -6,6 +6,7 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import { Zigbee2mqttBridgeOfflineException } from '../devices-zigbee2mqtt.exceptions';
 import { AdoptChannelDefinitionDto, AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
@@ -151,7 +152,9 @@ export class Z2mWizardService implements OnModuleDestroy {
 		if (!ok) {
 			this.logger.warn('Failed to enable permit_join', { session: id });
 
-			return this.toSnapshot(session);
+			// Surface the failure so the frontend can show an error instead of silently
+			// rendering a "still off" snapshot (which the user reads as "click had no effect").
+			throw new Zigbee2mqttBridgeOfflineException();
 		}
 
 		if (session.permitJoin.timer) {
