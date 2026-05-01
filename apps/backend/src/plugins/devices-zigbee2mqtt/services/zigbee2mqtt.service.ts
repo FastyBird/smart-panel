@@ -58,7 +58,11 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	// per truly new device. This avoids the initial-fetch problem where every
 	// already-paired device would otherwise look "new" to a freshly-started
 	// service.
-	private readonly pendingJoinedFriendlyNames = new Set<string>();
+	// Keyed by IEEE address (immutable) rather than friendly name, because Z2M
+	// can rename a device between the `device_joined` event and the subsequent
+	// `bridge/devices` republish (auto-rename on collision, user rename via Z2M
+	// UI mid-interview). Looking up by IEEE address keeps the drain robust.
+	private readonly pendingJoinedIeeeAddresses = new Set<string>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -474,7 +478,7 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
-		this.pendingJoinedFriendlyNames.clear();
+		this.pendingJoinedIeeeAddresses.clear();
 
 		// Set all devices to unknown state
 		try {
@@ -512,19 +516,20 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
 
-		// Drain pending joined friendly names. The bridge fires a real
+		// Drain pending joined IEEE addresses. The bridge fires a real
 		// `device_joined` / `device_announce` event for new devices, then
 		// republishes `bridge/devices` once the interview completes. Here we
 		// look up each pending join in the now-populated registry and notify
 		// subscribers — exactly once per truly new device. Already-paired
 		// devices in this republish are NOT notified, which avoids the
-		// initial-fetch problem.
-		if (this.pendingJoinedFriendlyNames.size > 0) {
-			const registryByName = new Map(registeredDevices.map((d) => [d.friendlyName, d]));
-			for (const friendlyName of [...this.pendingJoinedFriendlyNames]) {
-				const registered = registryByName.get(friendlyName);
+		// initial-fetch problem. Keyed by IEEE address (immutable) so a Z2M
+		// auto-rename or user rename mid-interview doesn't lose the device.
+		if (this.pendingJoinedIeeeAddresses.size > 0) {
+			const registryByIeee = new Map(registeredDevices.map((d) => [d.ieeeAddress, d]));
+			for (const ieeeAddress of [...this.pendingJoinedIeeeAddresses]) {
+				const registered = registryByIeee.get(ieeeAddress);
 				if (registered) {
-					this.pendingJoinedFriendlyNames.delete(friendlyName);
+					this.pendingJoinedIeeeAddresses.delete(ieeeAddress);
 					this.notifyDeviceJoined(registered);
 				}
 				// If not yet in registry (interview still pending), leave it in
@@ -622,13 +627,13 @@ export class Zigbee2mqttService extends BaseManagedPluginService {
 	 * The bridge sends this for actual `device_joined` / `device_announce`
 	 * events — the authoritative signal that a NEW device is pairing. The
 	 * bridge then republishes `bridge/devices` once the interview completes
-	 * (which is what populates the registry). We record the friendly name
+	 * (which is what populates the registry). We record the IEEE address
 	 * here and let `handleDevicesReceived` drain the pending set once the
 	 * full `Z2mRegisteredDevice` is available.
 	 */
-	private handleDeviceJoined(_ieeeAddress: string, friendlyName: string): void {
-		this.logger.log(`Device joined: ${friendlyName}`);
-		this.pendingJoinedFriendlyNames.add(friendlyName);
+	private handleDeviceJoined(ieeeAddress: string, friendlyName: string): void {
+		this.logger.log(`Device joined: ${friendlyName} (${ieeeAddress})`);
+		this.pendingJoinedIeeeAddresses.add(ieeeAddress);
 	}
 
 	/**
