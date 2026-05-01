@@ -203,9 +203,13 @@ const onDone = async (): Promise<void> => {
 
 // "Add more" wipes the previous session so the next round of pairings starts from a clean
 // state; the composable's auto-cleanup hook only fires on unmount, not on user-driven resets.
+//
+// Order matters: switching `activeStep` to 'discovery' BEFORE the new session is loaded would
+// briefly render the discovery step with `session.value === null`, which makes `bridgeOnline`
+// compute to false and flashes a misleading "Bridge offline" banner. We finish endSession +
+// startSession first and only then transition the UI, so the discovery step mounts with a
+// real session in place.
 const onRestart = async (): Promise<void> => {
-	activeStep.value = 'discovery';
-
 	try {
 		await endSession();
 	} catch {
@@ -217,5 +221,7 @@ const onRestart = async (): Promise<void> => {
 	} catch {
 		// Errors are surfaced by the composable via flashMessage.
 	}
+
+	activeStep.value = 'discovery';
 };
 </script>
