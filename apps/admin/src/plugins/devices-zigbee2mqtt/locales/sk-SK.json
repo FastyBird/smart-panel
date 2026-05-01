@@ -274,6 +274,13 @@
 			"loadFailed": "Nepodarilo sa načítať objavené zariadenia",
 			"mappingPreviewFailed": "Nepodarilo sa načítať náhľad mapovania"
 		},
+		"wizard": {
+			"sessionNotStarted": "Nepodarilo sa spustiť sprievodcu pridávaním",
+			"sessionNotLoaded": "Nepodarilo sa obnoviť sprievodcu pridávaním",
+			"permitJoinNotEnabled": "Nepodarilo sa zapnúť režim párovania",
+			"permitJoinNotDisabled": "Nepodarilo sa vypnúť režim párovania",
+			"adoptionFailed": "Nepodarilo sa pridať vybrané zariadenia"
+		},
 		"mapping": {
 			"previewError": "Nepodarilo sa načítať náhľad mapovania",
 			"previewLoading": "Načítavanie náhľadu mapovania...",
@@ -299,8 +306,9 @@
 		"use": "Použiť"
 	},
 	"wizard": {
-		"title": "Pridať zariadenia Zigbee",
-		"subtitle": "Objavte a hromadne pridajte vaše Zigbee zariadenia",
+		"title": "Sprievodca pridávaním Zigbee2MQTT",
+		"subtitle": "Nájdite a pridajte Zigbee zariadenia cez Zigbee2MQTT bridge",
+		"breadcrumb": "sprievodca pridávaním",
 		"bridge": {
 			"offline": {
 				"title": "Bridge offline",
@@ -311,6 +319,7 @@
 		"steps": {
 			"discovery": {
 				"title": "Vyhľadávanie",
+				"loading": "Načítavanie objavených zariadení...",
 				"permitJoin": "Spárovať nové zariadenie",
 				"cancelPairing": "Zrušiť párovanie",
 				"pairingActive": "Režim párovania aktívny — zostáva {remaining}s",

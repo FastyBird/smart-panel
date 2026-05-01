@@ -33,7 +33,10 @@ export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
 		return next.handle().pipe(
 			map((data) => {
 				const responseTime = Date.now() - startTime;
-				if (request.method === 'DELETE') {
+				// Only force 204 for DELETE handlers that returned nothing. DELETE handlers that
+				// return a payload (e.g. wizard permit-join toggle returning the updated session)
+				// must keep their body so the client can apply the new state.
+				if (request.method === 'DELETE' && (data === null || data === undefined)) {
 					response.status(HttpStatus.NO_CONTENT);
 
 					return null;

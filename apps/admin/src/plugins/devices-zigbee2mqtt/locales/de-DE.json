@@ -274,6 +274,13 @@
 			"loadFailed": "Erkannte Geräte konnten nicht geladen werden",
 			"mappingPreviewFailed": "Zuordnungsvorschau konnte nicht geladen werden"
 		},
+		"wizard": {
+			"sessionNotStarted": "Erkennungsassistent konnte nicht gestartet werden",
+			"sessionNotLoaded": "Erkennungsassistent konnte nicht aktualisiert werden",
+			"permitJoinNotEnabled": "Kopplungsmodus konnte nicht aktiviert werden",
+			"permitJoinNotDisabled": "Kopplungsmodus konnte nicht deaktiviert werden",
+			"adoptionFailed": "Ausgewählte Geräte konnten nicht übernommen werden"
+		},
 		"mapping": {
 			"previewError": "Zuordnungsvorschau konnte nicht geladen werden",
 			"previewLoading": "Zuordnungsvorschau wird geladen...",
@@ -299,8 +306,9 @@
 		"use": "Verwenden"
 	},
 	"wizard": {
-		"title": "Zigbee-Geräte übernehmen",
-		"subtitle": "Entdecken und übernehmen Sie Ihre Zigbee-Geräte in großen Mengen",
+		"title": "Zigbee2MQTT-Erkennungsassistent",
+		"subtitle": "Zigbee-Geräte über die Zigbee2MQTT-Bridge finden und übernehmen",
+		"breadcrumb": "Erkennungsassistent",
 		"bridge": {
 			"offline": {
 				"title": "Bridge offline",
@@ -311,6 +319,7 @@
 		"steps": {
 			"discovery": {
 				"title": "Suche",
+				"loading": "Erkannte Geräte werden geladen...",
 				"permitJoin": "Neues Gerät koppeln",
 				"cancelPairing": "Kopplung abbrechen",
 				"pairingActive": "Kopplungsmodus aktiv — {remaining}s verbleibend",
