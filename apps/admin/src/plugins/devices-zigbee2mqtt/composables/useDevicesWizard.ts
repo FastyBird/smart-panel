@@ -320,6 +320,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		}
 
 		formResult.value = FormResult.WORKING;
+		const requestGeneration = sessionGeneration;
 
 		const {
 			data: responseData,
@@ -332,6 +333,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				},
 			},
 		});
+
+		// Drop the response if endSession (or onRestart) ran during the await — otherwise
+		// applySession would resurrect the deleted session and trigger a 404 polling loop.
+		if (sessionGeneration !== requestGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			applySession(transformWizardSessionResponse((responseData as { data: ApiWizardSession }).data));
@@ -356,6 +363,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		}
 
 		formResult.value = FormResult.WORKING;
+		const requestGeneration = sessionGeneration;
 
 		const {
 			data: responseData,
@@ -368,6 +376,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				},
 			},
 		});
+
+		// Drop the response if endSession (or onRestart) ran during the await — otherwise
+		// applySession would resurrect the deleted session and trigger a 404 polling loop.
+		if (sessionGeneration !== requestGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			applySession(transformWizardSessionResponse((responseData as { data: ApiWizardSession }).data));
