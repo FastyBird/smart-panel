@@ -89,6 +89,17 @@ export class ShellyV1DiscoveryService {
 	) {}
 
 	start({ duration }: { duration: number }): ShellyV1DiscoverySessionSnapshot {
+		// Finish any session still running before this one. A second `start()` (e.g. the user
+		// clicking "Scan again") would otherwise stack a fresh `add` subscription on top of the
+		// previous one, double-probing every device the lib sees and leaving an orphan
+		// finish-timer ticking until it fires. The frontend only tracks the latest session id
+		// anyway, so any in-flight work on the old session is invisible to the user.
+		for (const existing of this.sessions.values()) {
+			if (existing.status === 'running') {
+				void this.finish(existing.id);
+			}
+		}
+
 		const id = randomUUID();
 		const startedAt = new Date();
 		const expiresAt = new Date(startedAt.getTime() + duration * 1_000);
