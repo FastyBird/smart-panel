@@ -278,7 +278,10 @@ export class Z2mWizardService implements OnModuleDestroy {
 		}
 
 		const suggestedCategory = preview?.suggestedDevice?.category ?? null;
-		const categories: DeviceCategory[] = suggestedCategory ? [suggestedCategory] : [];
+		// Always offer the full enum so users can override the suggested category. The
+		// suggestion is exposed separately via `suggestedCategory` so the frontend can
+		// pre-select it. If no suggestion was produced the user still gets the full picker.
+		const categories: DeviceCategory[] = Object.values(DeviceCategory) as DeviceCategory[];
 
 		// Distinct channel categories from exposes that have a real suggested channel mapping.
 		const channelCategories = new Set<string>();
