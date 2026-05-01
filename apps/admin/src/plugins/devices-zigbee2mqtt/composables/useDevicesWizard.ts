@@ -12,6 +12,7 @@ import {
 	DevicesModuleDeviceCategory,
 	type DevicesZigbee2mqttPluginAdoptWizardOperation,
 	type DevicesZigbee2mqttPluginCreateWizardOperation,
+	type DevicesZigbee2mqttPluginDeleteWizardOperation,
 	type DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation,
 	type DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation,
 	type DevicesZigbee2mqttPluginGetWizardOperation,
@@ -290,13 +291,21 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		}
 
 		try {
-			await backend.client.DELETE(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/wizard/{id}`, {
+			const { error } = await backend.client.DELETE(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/wizard/{id}`, {
 				params: {
 					path: {
 						id: currentSession.id,
 					},
 				},
 			});
+
+			if (error) {
+				// Best-effort cleanup — DELETE failures are logged but don't surface to the user,
+				// who has already moved on. The typed reason gives a clearer log line than the
+				// raw API envelope.
+				const reason = getErrorReason<DevicesZigbee2mqttPluginDeleteWizardOperation>(error, 'Failed to cleanly end z2m wizard session');
+				logger.warn(reason);
+			}
 		} catch (error: unknown) {
 			logger.warn('Failed to cleanly end z2m wizard session', error);
 		} finally {
