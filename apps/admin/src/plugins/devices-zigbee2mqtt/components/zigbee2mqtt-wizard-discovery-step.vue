@@ -167,6 +167,7 @@ import { RouteNames as ConfigRouteNames } from '../../../modules/config';
 import { isAdoptableStatus } from '../composables/useDevicesWizard';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constants';
 import type { IZ2mWizardDevice, IZ2mWizardDeviceStatus, IZ2mWizardPermitJoin } from '../schemas/wizard.types';
+import { compareLocale } from '../utils/wizard.sort';
 
 defineOptions({
 	name: 'Zigbee2mqttWizardDiscoveryStep',
@@ -188,12 +189,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-const compareLocale = (a: string | null | undefined, b: string | null | undefined): number => {
-	const left = (a ?? '').toString();
-	const right = (b ?? '').toString();
-	return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
-};
 
 // Group adoptable devices first, then by ieeeAddress — matches the wizard composable's
 // default ordering so the table opens with new pairings on top.

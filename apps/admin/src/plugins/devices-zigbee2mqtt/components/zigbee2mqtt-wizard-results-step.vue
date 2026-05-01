@@ -109,6 +109,7 @@ import { ElButton, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import type { IZ2mWizardAdoptionResult, IZ2mWizardDevice } from '../schemas/wizard.types';
+import { compareLocale } from '../utils/wizard.sort';
 
 defineOptions({
 	name: 'Zigbee2mqttWizardResultsStep',
@@ -132,12 +133,6 @@ interface IResultRow {
 	result: IZ2mWizardAdoptionResult;
 	device: IZ2mWizardDevice | null;
 }
-
-const compareLocale = (a: string | null | undefined, b: string | null | undefined): number => {
-	const left = (a ?? '').toString();
-	const right = (b ?? '').toString();
-	return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
-};
 
 // Pre-join each result with its source device so the table cells don't have to repeat the
 // O(n) lookup, and so sort comparators can index into the device fields cleanly.

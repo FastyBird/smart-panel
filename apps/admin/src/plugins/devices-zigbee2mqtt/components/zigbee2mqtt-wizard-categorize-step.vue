@@ -144,6 +144,7 @@ import { orderBy } from 'natural-orderby';
 
 import { type DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IZ2mWizardDevice } from '../schemas/wizard.types';
+import { compareLocale } from '../utils/wizard.sort';
 
 defineOptions({
 	name: 'Zigbee2mqttWizardCategorizeStep',
@@ -165,12 +166,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-const compareLocale = (a: string | null | undefined, b: string | null | undefined): number => {
-	const left = (a ?? '').toString();
-	const right = (b ?? '').toString();
-	return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
-};
 
 // Only show devices the user actively selected on the discovery step. Devices that became
 // `unsupported` or `failed` after selection are also dropped — the wizard composable already
