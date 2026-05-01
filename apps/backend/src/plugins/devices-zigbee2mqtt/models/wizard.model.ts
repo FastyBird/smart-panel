@@ -125,7 +125,6 @@ export class Z2mWizardDeviceSnapshotModel {
 		description: 'Already registered device category',
 		nullable: true,
 		enum: DeviceCategory,
-		example: null,
 	})
 	@Expose()
 	@IsEnum(DeviceCategory)

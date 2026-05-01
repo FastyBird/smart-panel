@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Post } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Post } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -73,8 +73,10 @@ export class Zigbee2mqttWizardController {
 		operationId: 'delete-devices-zigbee2mqtt-plugin-wizard',
 	})
 	@ApiParam({ name: 'id', type: 'string' })
+	@ApiNoContentResponse({ description: 'Wizard session ended' })
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id')
+	@HttpCode(204)
 	async endSession(@Param('id') id: string): Promise<void> {
 		this.logger.debug(`Ending Zigbee2MQTT wizard session id=${id}`);
 
