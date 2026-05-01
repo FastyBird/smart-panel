@@ -283,12 +283,17 @@ export class Z2mWizardService implements OnModuleDestroy {
 		// pre-select it. If no suggestion was produced the user still gets the full picker.
 		const categories: DeviceCategory[] = Object.values(DeviceCategory) as DeviceCategory[];
 
-		// Distinct channel categories from exposes that have a real suggested channel mapping.
+		// Distinct channel categories from exposes that would actually be adopted. Filter
+		// rules MUST match buildAdoptRequest exactly — otherwise a device whose only mapped
+		// exposes produce 'generic' channels would be marked 'ready' here but produce an
+		// empty-channel device when adopted.
 		const channelCategories = new Set<string>();
 		for (const expose of preview?.exposes ?? []) {
-			if (expose.suggestedChannel && (expose.status === 'mapped' || expose.status === 'partial')) {
-				channelCategories.add(expose.suggestedChannel.category);
-			}
+			if (expose.status === 'skipped' || expose.status === 'unmapped') continue;
+			if (!expose.suggestedChannel) continue;
+			if ((expose.suggestedChannel.category as string) === 'generic') continue;
+			if (!expose.suggestedProperties || expose.suggestedProperties.length === 0) continue;
+			channelCategories.add(expose.suggestedChannel.category);
 		}
 		const previewChannelIdentifiers = Array.from(channelCategories);
 		const previewChannelCount = previewChannelIdentifiers.length;
