@@ -30,11 +30,11 @@ import {
 
 import { useFriendlyNameHumanizer } from './useFriendlyNameHumanizer';
 
-export const isAdoptableStatus = (status: IZ2mWizardDevice['status']): boolean =>
-	status === 'ready' || status === 'already_registered';
+export const isAdoptableStatus = (status: IZ2mWizardDevice['status']): boolean => status === 'ready' || status === 'already_registered';
 
 export interface IUseDevicesWizard {
 	session: ComputedRef<IZ2mWizardSession | null>;
+	sessionReady: ComputedRef<boolean>;
 	devices: ComputedRef<IZ2mWizardDevice[]>;
 	selectedDevices: ComputedRef<IZ2mWizardDevice[]>;
 	permitJoin: ComputedRef<IZ2mWizardSession['permitJoin']>;
@@ -85,11 +85,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	let sessionGeneration = 0;
 
 	const devices = computed<IZ2mWizardDevice[]>(() =>
-		orderBy(
-			session.value?.devices ?? [],
-			[(device) => (isAdoptableStatus(device.status) ? 0 : 1), (device) => device.ieeeAddress],
-			['asc', 'asc']
-		)
+		orderBy(session.value?.devices ?? [], [(device) => (isAdoptableStatus(device.status) ? 0 : 1), (device) => device.ieeeAddress], ['asc', 'asc'])
 	);
 
 	const selectedDevices = computed<IZ2mWizardDevice[]>(() =>
@@ -112,6 +108,12 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const permitJoin = computed<IZ2mWizardSession['permitJoin']>(() => session.value?.permitJoin ?? DEFAULT_PERMIT_JOIN);
 
 	const bridgeOnline = computed<boolean>(() => session.value?.bridgeOnline ?? false);
+
+	// `bridgeOnline` defaults to false while the session is still loading, which would otherwise
+	// flash a misleading "Bridge offline / Configure the connection" alert on initial mount even
+	// for healthy bridges. `sessionReady` lets consumers gate that alert until we have a real
+	// answer from the backend.
+	const sessionReady = computed<boolean>(() => session.value !== null);
 
 	const stopPolling = (): void => {
 		if (pollingTimer !== null) {
@@ -205,11 +207,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		sessionGeneration += 1;
 		const startGeneration = sessionGeneration;
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/wizard`);
+		const { data: responseData, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/wizard`);
 
 		// If endSession (or another startSession) raced ahead while POST was in-flight,
 		// drop this response so we don't resurrect a session the caller has already torn down.
@@ -226,9 +224,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return;
 		}
 
-		const errorReason = error
-			? getErrorReason<DevicesZigbee2mqttPluginCreateWizardOperation>(error, t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }))
-			: t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
+		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.sessionNotStarted');
+		const errorReason = error ? getErrorReason<DevicesZigbee2mqttPluginCreateWizardOperation>(error, fallback) : fallback;
 
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
@@ -269,9 +266,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return;
 		}
 
-		const errorReason = error
-			? getErrorReason<DevicesZigbee2mqttPluginGetWizardOperation>(error, t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }))
-			: t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
+		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.sessionNotLoaded');
+		const errorReason = error ? getErrorReason<DevicesZigbee2mqttPluginGetWizardOperation>(error, fallback) : fallback;
 
 		throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 	};
@@ -347,9 +343,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return;
 		}
 
-		const errorReason = error
-			? getErrorReason<DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation>(error, t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }))
-			: t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
+		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.permitJoinNotEnabled');
+		const errorReason = error ? getErrorReason<DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation>(error, fallback) : fallback;
 
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
@@ -390,9 +385,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return;
 		}
 
-		const errorReason = error
-			? getErrorReason<DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation>(error, t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }))
-			: t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
+		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.permitJoinNotDisabled');
+		const errorReason = error ? getErrorReason<DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation>(error, fallback) : fallback;
 
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
@@ -437,9 +431,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return results;
 		}
 
-		const errorReason = error
-			? getErrorReason<DevicesZigbee2mqttPluginAdoptWizardOperation>(error, t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' }))
-			: t('devicesZigbee2mqttPlugin.messages.devices.notAdopted', { device: '' });
+		const fallback = t('devicesZigbee2mqttPlugin.messages.wizard.adoptionFailed');
+		const errorReason = error ? getErrorReason<DevicesZigbee2mqttPluginAdoptWizardOperation>(error, fallback) : fallback;
 
 		formResult.value = FormResult.ERROR;
 		flashMessage.error(errorReason);
@@ -479,6 +472,7 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 	return {
 		session: computed(() => session.value),
+		sessionReady,
 		devices,
 		selectedDevices,
 		permitJoin,

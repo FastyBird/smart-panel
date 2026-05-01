@@ -274,6 +274,13 @@
 			"loadFailed": "Error al cargar los dispositivos descubiertos",
 			"mappingPreviewFailed": "Error al cargar la vista previa del mapeo"
 		},
+		"wizard": {
+			"sessionNotStarted": "Error al iniciar el asistente de descubrimiento",
+			"sessionNotLoaded": "Error al actualizar el asistente de descubrimiento",
+			"permitJoinNotEnabled": "Error al activar el modo de emparejamiento",
+			"permitJoinNotDisabled": "Error al desactivar el modo de emparejamiento",
+			"adoptionFailed": "Error al adoptar los dispositivos seleccionados"
+		},
 		"mapping": {
 			"previewError": "Error al cargar la vista previa del mapeo",
 			"previewLoading": "Cargando vista previa del mapeo...",
@@ -299,8 +306,9 @@
 		"use": "Usar"
 	},
 	"wizard": {
-		"title": "Adoptar dispositivos Zigbee",
-		"subtitle": "Descubra y adopte sus dispositivos Zigbee en bloque",
+		"title": "Asistente de descubrimiento de Zigbee2MQTT",
+		"subtitle": "Encuentre y adopte dispositivos Zigbee a través del bridge Zigbee2MQTT",
+		"breadcrumb": "asistente de descubrimiento",
 		"bridge": {
 			"offline": {
 				"title": "Bridge sin conexión",
@@ -311,6 +319,7 @@
 		"steps": {
 			"discovery": {
 				"title": "Descubrimiento",
+				"loading": "Cargando dispositivos descubiertos...",
 				"permitJoin": "Emparejar nuevo dispositivo",
 				"cancelPairing": "Cancelar emparejamiento",
 				"pairingActive": "Modo de emparejamiento activo — {remaining}s restantes",

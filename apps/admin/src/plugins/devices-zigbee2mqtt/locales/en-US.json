@@ -274,6 +274,13 @@
 			"loadFailed": "Failed to load discovered devices",
 			"mappingPreviewFailed": "Failed to load mapping preview"
 		},
+		"wizard": {
+			"sessionNotStarted": "Failed to start the adoption wizard",
+			"sessionNotLoaded": "Failed to refresh the adoption wizard",
+			"permitJoinNotEnabled": "Failed to enable pairing mode",
+			"permitJoinNotDisabled": "Failed to disable pairing mode",
+			"adoptionFailed": "Failed to adopt the selected devices"
+		},
 		"mapping": {
 			"previewError": "Failed to load mapping preview",
 			"previewLoading": "Loading mapping preview...",
@@ -299,8 +306,9 @@
 		"use": "Use"
 	},
 	"wizard": {
-		"title": "Adopt Zigbee devices",
-		"subtitle": "Discover and adopt your Zigbee devices in bulk",
+		"title": "Zigbee2MQTT discovery wizard",
+		"subtitle": "Find and adopt Zigbee devices via the Zigbee2MQTT bridge",
+		"breadcrumb": "discovery wizard",
 		"bridge": {
 			"offline": {
 				"title": "Bridge offline",
@@ -311,6 +319,7 @@
 		"steps": {
 			"discovery": {
 				"title": "Discovery",
+				"loading": "Loading discovered devices...",
 				"permitJoin": "Pair new device",
 				"cancelPairing": "Cancel pairing",
 				"pairingActive": "Pairing mode active — {remaining}s remaining",

@@ -1,7 +1,12 @@
 <template>
-	<div class="flex flex-col gap-3 h-full overflow-hidden">
+	<div
+		v-loading="!sessionReady"
+		:element-loading-text="t('devicesZigbee2mqttPlugin.wizard.steps.discovery.loading')"
+		element-loading-background="var(--el-bg-color-overlay)"
+		class="flex flex-col gap-3 h-full overflow-hidden min-h-[200px]"
+	>
 		<el-alert
-			v-if="!bridgeOnline"
+			v-if="sessionReady && !bridgeOnline"
 			type="warning"
 			:closable="false"
 			show-icon
@@ -25,25 +30,28 @@
 			</template>
 		</el-alert>
 
-		<template v-else>
+		<template v-else-if="sessionReady && bridgeOnline">
 			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
-				<div class="flex min-w-0 flex-1 flex-col gap-1">
-					<template v-if="permitJoin.active">
-						<el-text>
-							{{ t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingActive', { remaining: smoothRemainingSeconds }) }}
-						</el-text>
-						<el-progress
-							:percentage="permitJoinPercentage"
-							:status="permitJoinPercentage >= 75 ? 'warning' : undefined"
-						/>
-					</template>
+				<div
+					class="flex min-w-0 flex-1 flex-col gap-1"
+					:class="{ invisible: !permitJoin.active }"
+					aria-live="polite"
+				>
+					<el-text>
+						{{ t('devicesZigbee2mqttPlugin.wizard.steps.discovery.pairingActive', { remaining: smoothRemainingSeconds }) }}
+					</el-text>
+					<el-progress
+						:percentage="permitJoinPercentage"
+						:status="permitJoinPercentage >= 75 ? 'warning' : undefined"
+					/>
 				</div>
 
 				<div class="flex flex-wrap gap-2">
 					<el-button
 						v-if="!permitJoin.active"
 						type="primary"
-						:disabled="!bridgeOnline"
+						:disabled="!bridgeOnline || permitJoinPending"
+						:loading="permitJoinPending"
 						@click="emit('enable-permit-join')"
 					>
 						<template #icon>
@@ -55,6 +63,8 @@
 					<el-button
 						v-else
 						type="warning"
+						:disabled="permitJoinPending"
+						:loading="permitJoinPending"
 						@click="emit('disable-permit-join')"
 					>
 						<template #icon>
@@ -157,13 +167,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { useNow } from '@vueuse/core';
-
-import { ElAlert, ElButton, ElCheckbox, ElProgress, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElProgress, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { orderBy } from 'natural-orderby';
 
 import { Icon } from '@iconify/vue';
-
-import { orderBy } from 'natural-orderby';
+import { useNow } from '@vueuse/core';
 
 import { RouteNames as ConfigRouteNames } from '../../../modules/config';
 import { isAdoptableStatus } from '../composables/useDevicesWizard';
@@ -180,6 +188,8 @@ interface IProps {
 	selected: Record<string, boolean>;
 	permitJoin: IZ2mWizardPermitJoin;
 	bridgeOnline: boolean;
+	sessionReady: boolean;
+	permitJoinPending: boolean;
 }
 
 const props = defineProps<IProps>();

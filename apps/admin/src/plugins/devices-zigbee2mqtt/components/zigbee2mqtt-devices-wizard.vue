@@ -1,87 +1,193 @@
 <template>
-	<div class="z2m-devices-wizard flex flex-col gap-3 h-full overflow-hidden">
-		<el-steps
-			:active="activeStepIndex"
-			finish-status="success"
-			align-center
-			class="shrink-0"
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:wizard-hat"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('devicesZigbee2mqttPlugin.wizard.title') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('devicesZigbee2mqttPlugin.wizard.subtitle') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="handleCancel"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<view-header
+		:heading="t('devicesZigbee2mqttPlugin.wizard.title')"
+		:sub-heading="t('devicesZigbee2mqttPlugin.wizard.subtitle')"
+		icon="mdi:wizard-hat"
+	>
+		<template
+			v-if="isMDDevice"
+			#extra
 		>
-			<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.discovery.title')" />
-			<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.categorize.title')" />
-			<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.results.title')" />
-		</el-steps>
+			<div class="flex items-center gap-2">
+				<el-button
+					v-if="activeStep !== 'results'"
+					link
+					class="px-4!"
+					@click="handleCancel"
+				>
+					{{ t('devicesZigbee2mqttPlugin.wizard.actions.cancel') }}
+				</el-button>
 
-		<div class="flex-grow overflow-hidden">
-			<Zigbee2mqttWizardDiscoveryStep
-				v-if="activeStep === 'discovery'"
-				:devices="devices"
-				:selected="selected"
-				:permit-join="permitJoin"
-				:bridge-online="bridgeOnline"
-				@enable-permit-join="enablePermitJoin"
-				@disable-permit-join="disablePermitJoin"
-				@update:selected="onUpdateSelected"
-			/>
+				<template v-if="activeStep === 'discovery'">
+					<el-button
+						type="primary"
+						class="px-4!"
+						:disabled="selectedDevices.length === 0"
+						@click="goToCategorize"
+					>
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.next') }}
+					</el-button>
+				</template>
 
-			<Zigbee2mqttWizardCategorizeStep
-				v-else-if="activeStep === 'categorize'"
-				:devices="devices"
-				:selected="selected"
-				:name-by-ieee="nameByIeee"
-				:category-by-ieee="categoryByIeee"
-				:category-options="categoryOptions"
-				@update:name-by-ieee="onUpdateNameByIeee"
-				@update:category-by-ieee="onUpdateCategoryByIeee"
-			/>
+				<template v-else-if="activeStep === 'categorize'">
+					<el-button
+						class="px-4!"
+						@click="goBack"
+					>
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.back') }}
+					</el-button>
+					<el-button
+						type="primary"
+						class="px-4!"
+						:disabled="!canContinue"
+						:loading="isAdopting"
+						@click="onAdopt"
+					>
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.adopt') }}
+					</el-button>
+				</template>
+			</div>
+		</template>
+	</view-header>
 
-			<Zigbee2mqttWizardResultsStep
-				v-else
-				:results="adoptionResults"
-				:devices="devices"
-				@done="onDone"
-				@restart="onRestart"
-			/>
-		</div>
+	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
+		<el-card
+			shadow="never"
+			class="max-h-full flex flex-col overflow-hidden box-border"
+			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+		>
+			<template #header>
+				<el-steps
+					:active="activeStepIndex"
+					finish-status="success"
+					align-center
+				>
+					<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.discovery.title')" />
+					<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.categorize.title')" />
+					<el-step :title="t('devicesZigbee2mqttPlugin.wizard.steps.results.title')" />
+				</el-steps>
+			</template>
 
-		<div class="flex justify-between gap-2 shrink-0">
-			<el-button
-				v-if="activeStep === 'categorize'"
-				@click="goBack"
+			<div class="p-4 max-h-full box-border flex flex-col gap-3 overflow-hidden">
+				<Zigbee2mqttWizardDiscoveryStep
+					v-if="activeStep === 'discovery'"
+					:devices="devices"
+					:selected="selected"
+					:permit-join="permitJoin"
+					:bridge-online="bridgeOnline"
+					:session-ready="sessionReady"
+					:permit-join-pending="isPermitJoinPending"
+					@enable-permit-join="onEnablePermitJoin"
+					@disable-permit-join="onDisablePermitJoin"
+					@update:selected="onUpdateSelected"
+				/>
+
+				<Zigbee2mqttWizardCategorizeStep
+					v-else-if="activeStep === 'categorize'"
+					:devices="devices"
+					:selected="selected"
+					:name-by-ieee="nameByIeee"
+					:category-by-ieee="categoryByIeee"
+					:category-options="categoryOptions"
+					@update:name-by-ieee="onUpdateNameByIeee"
+					@update:category-by-ieee="onUpdateCategoryByIeee"
+				/>
+
+				<Zigbee2mqttWizardResultsStep
+					v-else
+					:results="adoptionResults"
+					:devices="devices"
+					@done="onDone"
+					@restart="onRestart"
+				/>
+			</div>
+
+			<div
+				v-if="!isMDDevice && activeStep !== 'results'"
+				class="flex justify-between gap-2 p-4 border-t border-t-solid"
 			>
-				{{ t('devicesZigbee2mqttPlugin.wizard.actions.back') }}
-			</el-button>
-			<div v-else />
+				<template v-if="activeStep === 'discovery'">
+					<el-button @click="handleCancel">
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.cancel') }}
+					</el-button>
+					<el-button
+						type="primary"
+						:disabled="selectedDevices.length === 0"
+						@click="goToCategorize"
+					>
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.next') }}
+					</el-button>
+				</template>
 
-			<el-button
-				v-if="activeStep === 'discovery'"
-				type="primary"
-				:disabled="selectedDevices.length === 0"
-				@click="goToCategorize"
-			>
-				{{ t('devicesZigbee2mqttPlugin.wizard.actions.next') }}
-			</el-button>
-
-			<el-button
-				v-else-if="activeStep === 'categorize'"
-				type="primary"
-				:disabled="!canContinue"
-				:loading="isAdopting"
-				@click="onAdopt"
-			>
-				{{ t('devicesZigbee2mqttPlugin.wizard.actions.adopt') }}
-			</el-button>
-		</div>
+				<template v-else-if="activeStep === 'categorize'">
+					<el-button @click="goBack">
+						{{ t('devicesZigbee2mqttPlugin.wizard.actions.back') }}
+					</el-button>
+					<div class="flex gap-2">
+						<el-button @click="handleCancel">
+							{{ t('devicesZigbee2mqttPlugin.wizard.actions.cancel') }}
+						</el-button>
+						<el-button
+							type="primary"
+							:disabled="!canContinue"
+							:loading="isAdopting"
+							@click="onAdopt"
+						>
+							{{ t('devicesZigbee2mqttPlugin.wizard.actions.adopt') }}
+						</el-button>
+					</div>
+				</template>
+			</div>
+		</el-card>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElIcon, ElStep, ElSteps } from 'element-plus';
 
-import { useFlashMessage } from '../../../common';
+import { Icon } from '@iconify/vue';
+
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices/devices.constants';
 import { type DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useDevicesWizard } from '../composables/useDevicesWizard';
@@ -97,6 +203,7 @@ defineOptions({
 const { t } = useI18n();
 const router = useRouter();
 const flashMessage = useFlashMessage();
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const {
 	devices,
@@ -106,6 +213,7 @@ const {
 	selectedDevices,
 	permitJoin,
 	bridgeOnline,
+	sessionReady,
 	canContinue,
 	adoptionResults,
 	enablePermitJoin,
@@ -120,6 +228,7 @@ type WizardStep = 'discovery' | 'categorize' | 'results';
 
 const activeStep = ref<WizardStep>('discovery');
 const isAdopting = ref<boolean>(false);
+const isPermitJoinPending = ref<boolean>(false);
 
 const activeStepIndex = computed<number>(() => {
 	if (activeStep.value === 'categorize') {
@@ -132,6 +241,20 @@ const activeStepIndex = computed<number>(() => {
 
 	return 0;
 });
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
+	{
+		label: t('devicesModule.breadcrumbs.devices.list'),
+		route: router.resolve({ name: DevicesRouteNames.DEVICES }),
+	},
+	{
+		label: t('devicesZigbee2mqttPlugin.wizard.breadcrumb'),
+		route: router.resolve({
+			name: DevicesRouteNames.DEVICES_WIZARD,
+			params: { type: 'devices-zigbee2mqtt-plugin' },
+		}),
+	},
+]);
 
 // The step components emit fresh maps; sync them back into the reactive maps owned by the
 // composable so its derived state (`selectedDevices`, `canContinue`, …) updates immediately.
@@ -165,6 +288,33 @@ const onUpdateCategoryByIeee = (value: Record<string, DevicesModuleDeviceCategor
 	Object.assign(categoryByIeee, value);
 };
 
+// Track in-flight permit_join toggles separately so the discovery step can disable / show
+// loading on the pair / cancel buttons during the round-trip. Errors are already surfaced by
+// the composable via flashMessage; we just need to release the pending flag either way.
+const onEnablePermitJoin = async (): Promise<void> => {
+	isPermitJoinPending.value = true;
+
+	try {
+		await enablePermitJoin();
+	} catch {
+		// Error already surfaced by the composable.
+	} finally {
+		isPermitJoinPending.value = false;
+	}
+};
+
+const onDisablePermitJoin = async (): Promise<void> => {
+	isPermitJoinPending.value = true;
+
+	try {
+		await disablePermitJoin();
+	} catch {
+		// Error already surfaced by the composable.
+	} finally {
+		isPermitJoinPending.value = false;
+	}
+};
+
 const goToCategorize = async (): Promise<void> => {
 	// Pairing should never be left active once the user moves on — silently turn it off so the
 	// gateway stops accepting new joins while the categorize step is in focus.
@@ -194,6 +344,14 @@ const onAdopt = async (): Promise<void> => {
 		// Errors are surfaced by the composable via flashMessage; stay on the categorize step.
 	} finally {
 		isAdopting.value = false;
+	}
+};
+
+const handleCancel = (): void => {
+	if (isLGDevice.value) {
+		router.replace({ name: DevicesRouteNames.DEVICES });
+	} else {
+		router.push({ name: DevicesRouteNames.DEVICES });
 	}
 };
 

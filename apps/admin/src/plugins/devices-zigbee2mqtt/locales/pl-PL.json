@@ -274,6 +274,13 @@
 			"loadFailed": "Nie udało się załadować wykrytych urządzeń",
 			"mappingPreviewFailed": "Nie udało się załadować podglądu mapowania"
 		},
+		"wizard": {
+			"sessionNotStarted": "Nie udało się uruchomić kreatora wykrywania",
+			"sessionNotLoaded": "Nie udało się odświeżyć kreatora wykrywania",
+			"permitJoinNotEnabled": "Nie udało się włączyć trybu parowania",
+			"permitJoinNotDisabled": "Nie udało się wyłączyć trybu parowania",
+			"adoptionFailed": "Nie udało się adoptować wybranych urządzeń"
+		},
 		"mapping": {
 			"previewError": "Nie udało się załadować podglądu mapowania",
 			"previewLoading": "Ładowanie podglądu mapowania...",
@@ -299,8 +306,9 @@
 		"use": "Użyj"
 	},
 	"wizard": {
-		"title": "Adoptuj urządzenia Zigbee",
-		"subtitle": "Odkryj i adoptuj swoje urządzenia Zigbee zbiorczo",
+		"title": "Kreator wykrywania Zigbee2MQTT",
+		"subtitle": "Znajdź i adoptuj urządzenia Zigbee przez bridge Zigbee2MQTT",
+		"breadcrumb": "kreator wykrywania",
 		"bridge": {
 			"offline": {
 				"title": "Bridge offline",
@@ -311,6 +319,7 @@
 		"steps": {
 			"discovery": {
 				"title": "Wykrywanie",
+				"loading": "Ładowanie wykrytych urządzeń...",
 				"permitJoin": "Sparuj nowe urządzenie",
 				"cancelPairing": "Anuluj parowanie",
 				"pairingActive": "Tryb parowania aktywny — pozostało {remaining}s",
