@@ -369,6 +369,12 @@ export type DevicesZigbee2mqttPluginGetDiscoveredDevicesOperation = operations['
 export type DevicesZigbee2mqttPluginGetDiscoveredDeviceOperation = operations['get-devices-zigbee2mqtt-plugin-device'];
 export type DevicesZigbee2mqttPluginPreviewMappingOperation = operations['preview-devices-zigbee2mqtt-plugin-device-mapping'];
 export type DevicesZigbee2mqttPluginAdoptDeviceOperation = operations['adopt-devices-zigbee2mqtt-plugin-device'];
+export type DevicesZigbee2mqttPluginCreateWizardOperation = operations['create-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginGetWizardOperation = operations['get-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginDeleteWizardOperation = operations['delete-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation = operations['enable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
+export type DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation = operations['disable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
+export type DevicesZigbee2mqttPluginAdoptWizardOperation = operations['adopt-devices-zigbee2mqtt-plugin-wizard'];
 
 // Devices Home Assistant Plugin Operations
 export type DevicesHomeAssistantPluginGetDeviceOperation = operations['get-devices-home-assistant-plugin-device'];

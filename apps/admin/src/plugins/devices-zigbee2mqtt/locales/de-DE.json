@@ -297,5 +297,68 @@
 		"adoptDevice": "Gerät übernehmen",
 		"refresh": "Aktualisieren",
 		"use": "Verwenden"
+	},
+	"wizard": {
+		"title": "Zigbee-Geräte übernehmen",
+		"subtitle": "Entdecken und übernehmen Sie Ihre Zigbee-Geräte in großen Mengen",
+		"bridge": {
+			"offline": {
+				"title": "Bridge offline",
+				"message": "Die Zigbee2MQTT-Bridge ist derzeit offline. Konfigurieren Sie die Verbindung, um fortzufahren.",
+				"openConfig": "Konfiguration öffnen"
+			}
+		},
+		"steps": {
+			"discovery": {
+				"title": "Suche",
+				"permitJoin": "Neues Gerät koppeln",
+				"cancelPairing": "Kopplung abbrechen",
+				"pairingActive": "Kopplungsmodus aktiv — {remaining}s verbleibend",
+				"pairingDisabled": "Kopplungsmodus deaktiviert",
+				"autoPickAll": "Alle auswählen",
+				"clearSelection": "Auswahl aufheben",
+				"empty": "Keine Zigbee-Geräte gefunden. Klicken Sie auf \"Neues Gerät koppeln\", um die Bridge in den Kopplungsmodus zu versetzen."
+			},
+			"categorize": {
+				"title": "Kategorisieren",
+				"willCreate": "Wird erstellt",
+				"willUpdate": "Wird aktualisiert",
+				"channels": "{count} Kanal | {count} Kanäle"
+			},
+			"results": {
+				"title": "Ergebnisse",
+				"created": "Erstellt",
+				"updated": "Aktualisiert",
+				"failed": "Fehlgeschlagen",
+				"done": "Fertig",
+				"addMore": "Mehr hinzufügen"
+			}
+		},
+		"columns": {
+			"name": "Name",
+			"friendlyName": "Anzeigename",
+			"manufacturer": "Hersteller",
+			"model": "Modell",
+			"status": "Status",
+			"category": "Kategorie",
+			"channels": "Kanäle",
+			"error": "Fehler"
+		},
+		"status": {
+			"ready": "Bereit",
+			"unsupported": "Nicht unterstützt",
+			"alreadyRegistered": "Bereits übernommen",
+			"failed": "Fehlgeschlagen"
+		},
+		"actions": {
+			"next": "Weiter",
+			"back": "Zurück",
+			"adopt": "Ausgewählte übernehmen",
+			"cancel": "Abbrechen"
+		},
+		"validation": {
+			"nameRequired": "Name ist erforderlich",
+			"categoryRequired": "Kategorie ist erforderlich"
+		}
 	}
 }

@@ -129,6 +129,13 @@ export abstract class Z2mBaseClientAdapter {
 	 */
 	abstract requestState(friendlyName: string, properties?: string[]): Promise<boolean>;
 
+	/**
+	 * Toggle the bridge's permit_join state for a bounded number of seconds.
+	 * Returns true on successful publish/send, false otherwise.
+	 * Pass 0 to disable pairing immediately.
+	 */
+	abstract setPermitJoin(seconds: number): Promise<boolean>;
+
 	// =========================================================================
 	// Shared message handling logic
 	// =========================================================================

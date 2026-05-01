@@ -297,5 +297,68 @@
 		"adoptDevice": "Adopt device",
 		"refresh": "Refresh",
 		"use": "Use"
+	},
+	"wizard": {
+		"title": "Adopt Zigbee devices",
+		"subtitle": "Discover and adopt your Zigbee devices in bulk",
+		"bridge": {
+			"offline": {
+				"title": "Bridge offline",
+				"message": "The Zigbee2MQTT bridge is currently offline. Configure the connection to continue.",
+				"openConfig": "Open configuration"
+			}
+		},
+		"steps": {
+			"discovery": {
+				"title": "Discovery",
+				"permitJoin": "Pair new device",
+				"cancelPairing": "Cancel pairing",
+				"pairingActive": "Pairing mode active — {remaining}s remaining",
+				"pairingDisabled": "Pairing mode disabled",
+				"autoPickAll": "Select all",
+				"clearSelection": "Clear selection",
+				"empty": "No Zigbee devices discovered. Click \"Pair new device\" to put the bridge into pairing mode."
+			},
+			"categorize": {
+				"title": "Categorize",
+				"willCreate": "Will create",
+				"willUpdate": "Will update",
+				"channels": "{count} channel | {count} channels"
+			},
+			"results": {
+				"title": "Results",
+				"created": "Created",
+				"updated": "Updated",
+				"failed": "Failed",
+				"done": "Done",
+				"addMore": "Add more"
+			}
+		},
+		"columns": {
+			"name": "Name",
+			"friendlyName": "Friendly name",
+			"manufacturer": "Manufacturer",
+			"model": "Model",
+			"status": "Status",
+			"category": "Category",
+			"channels": "Channels",
+			"error": "Error"
+		},
+		"status": {
+			"ready": "Ready",
+			"unsupported": "Unsupported",
+			"alreadyRegistered": "Already adopted",
+			"failed": "Failed"
+		},
+		"actions": {
+			"next": "Next",
+			"back": "Back",
+			"adopt": "Adopt selected",
+			"cancel": "Cancel"
+		},
+		"validation": {
+			"nameRequired": "Name is required",
+			"categoryRequired": "Category is required"
+		}
 	}
 }
