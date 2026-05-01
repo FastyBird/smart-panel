@@ -76,6 +76,13 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 	let pollingTimer: number | null = null;
 
+	// Generation counter — incremented on every session boundary (start / end). Polling
+	// captures the generation at schedule time; if the generation changed by the time the
+	// awaited refresh resolves, the response is dropped instead of resurrecting the session.
+	// This prevents an in-flight `refreshSession` started before `endSession` from writing
+	// back to `session.value` after deletion and looping on 404s.
+	let sessionGeneration = 0;
+
 	const devices = computed<IZ2mWizardDevice[]>(() =>
 		orderBy(
 			session.value?.devices ?? [],
@@ -115,6 +122,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	const schedulePoll = (): void => {
 		stopPolling();
 
+		const scheduledGeneration = sessionGeneration;
+
 		pollingTimer = window.setTimeout(async () => {
 			pollingTimer = null;
 
@@ -123,7 +132,10 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			} catch {
 				// Polling failures are non-fatal — keep trying so transient hiccups recover automatically.
 			} finally {
-				if (session.value !== null) {
+				// If endSession or startSession ran during the awaited refresh, the generation
+				// has bumped and rescheduling here would either resurrect a deleted session or
+				// race with the new one. Bail out and let the new session manage its own polls.
+				if (sessionGeneration === scheduledGeneration && session.value !== null) {
 					schedulePoll();
 				}
 			}
@@ -189,12 +201,20 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 
 	const startSession = async (): Promise<void> => {
 		formResult.value = FormResult.WORKING;
+		sessionGeneration += 1;
+		const startGeneration = sessionGeneration;
 
 		const {
 			data: responseData,
 			error,
 			response,
 		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/wizard`);
+
+		// If endSession (or another startSession) raced ahead while POST was in-flight,
+		// drop this response so we don't resurrect a session the caller has already torn down.
+		if (sessionGeneration !== startGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			resetSessionScopedState();
@@ -221,6 +241,8 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 			return;
 		}
 
+		const refreshGeneration = sessionGeneration;
+
 		const {
 			data: responseData,
 			error,
@@ -232,6 +254,13 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 				},
 			},
 		});
+
+		// Discard the response if endSession ran during the await — otherwise applySession
+		// would write the stale snapshot back into session.value, resurrecting a deleted
+		// session and triggering a 404 loop the next time polling fires.
+		if (sessionGeneration !== refreshGeneration) {
+			return;
+		}
 
 		if (typeof responseData !== 'undefined') {
 			applySession(transformWizardSessionResponse((responseData as { data: ApiWizardSession }).data));
@@ -247,6 +276,9 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 	};
 
 	const endSession = async (): Promise<void> => {
+		// Bump the generation BEFORE awaiting anything so any in-flight refreshSession
+		// (or its scheduling tail) sees the change and bails out instead of writing back.
+		sessionGeneration += 1;
 		stopPolling();
 
 		const currentSession = session.value;
