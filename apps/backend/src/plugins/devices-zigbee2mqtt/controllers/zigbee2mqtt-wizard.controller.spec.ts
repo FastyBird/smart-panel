@@ -101,4 +101,13 @@ describe('Zigbee2mqttWizardController', () => {
 		expect(res.data.results).toHaveLength(1);
 		expect(res.data.results[0]?.status).toBe('created');
 	});
+
+	it('POST /wizard/:id/adopt throws 404 when service returns null (unknown session)', async () => {
+		wizardService.adopt.mockResolvedValueOnce(null);
+		await expect(
+			controller.adopt('nope', {
+				data: { devices: [{ ieeeAddress: 'x', name: 'X', category: 'lighting' as any }] },
+			} as any)
+		).rejects.toBeInstanceOf(NotFoundException);
+	});
 });

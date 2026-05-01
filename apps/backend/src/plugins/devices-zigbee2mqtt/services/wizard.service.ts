@@ -334,9 +334,11 @@ export class Z2mWizardService implements OnModuleDestroy {
 	async adopt(
 		id: string,
 		requests: { ieeeAddress: string; name: string; category: DeviceCategory }[],
-	): Promise<Z2mWizardAdoptionResult[]> {
+	): Promise<Z2mWizardAdoptionResult[] | null> {
 		const session = this.sessions.get(id);
-		if (!session) return [];
+		// Returning null lets the controller distinguish "unknown session" (404) from
+		// "session exists but no devices were requested" (200 with empty array).
+		if (!session) return null;
 		this.refreshIdleTimer(session);
 
 		// Refresh-before-adopt: rebuild snapshots so we see current registered status.

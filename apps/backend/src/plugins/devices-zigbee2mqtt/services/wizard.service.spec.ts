@@ -262,9 +262,9 @@ describe('Z2mWizardService', () => {
 			expect(out[0]?.error).toBe('boom');
 		});
 
-		it('returns empty array for unknown session id', async () => {
+		it('returns null for unknown session id (so the controller can 404)', async () => {
 			const out = await service.adopt('nope', []);
-			expect(out).toEqual([]);
+			expect(out).toBeNull();
 		});
 
 		it('returns failed when device not in session', async () => {
@@ -272,8 +272,8 @@ describe('Z2mWizardService', () => {
 			const out = await service.adopt(started.id, [
 				{ ieeeAddress: '0xnotinsession', name: 'X', category: 'lighting' as any },
 			]);
-			expect(out[0]?.status).toBe('failed');
-			expect(out[0]?.error).toContain('not in session');
+			expect(out?.[0]?.status).toBe('failed');
+			expect(out?.[0]?.error).toContain('not in session');
 		});
 	});
 });

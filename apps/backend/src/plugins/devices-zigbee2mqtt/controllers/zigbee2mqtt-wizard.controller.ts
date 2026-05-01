@@ -148,6 +148,10 @@ export class Zigbee2mqttWizardController {
 
 		const results = await this.wizardService.adopt(id, body.data.devices);
 
+		if (results === null) {
+			throw new NotFoundException('Wizard session could not be found');
+		}
+
 		const response = new Z2mWizardAdoptionResponseModel();
 		response.data = { results } as never;
 		return response;
