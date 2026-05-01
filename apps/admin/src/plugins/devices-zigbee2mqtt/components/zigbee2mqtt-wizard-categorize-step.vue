@@ -143,6 +143,7 @@ import { ElInput, ElOption, ElSelect, ElTable, ElTableColumn, ElTag, ElTooltip }
 import { orderBy } from 'natural-orderby';
 
 import { type DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { isAdoptableStatus } from '../composables/useDevicesWizard';
 import type { IZ2mWizardDevice } from '../schemas/wizard.types';
 import { compareLocale } from '../utils/wizard.sort';
 
@@ -169,10 +170,12 @@ const { t } = useI18n();
 
 // Only show devices the user actively selected on the discovery step. Devices that became
 // `unsupported` or `failed` after selection are also dropped — the wizard composable already
-// strips them from the adoption payload, so showing them here would mislead the user.
+// strips them from the adoption payload, so showing them here would mislead the user. The
+// `isAdoptableStatus` filter here MUST match the composable's `selectedDevices` filter so the
+// table matches what `adoptSelected` will actually send.
 const selectedDevices = computed<IZ2mWizardDevice[]>(() =>
 	orderBy(
-		props.devices.filter((device) => props.selected[device.ieeeAddress] === true),
+		props.devices.filter((device) => props.selected[device.ieeeAddress] === true && isAdoptableStatus(device.status)),
 		[(device) => device.ieeeAddress],
 		['asc']
 	)
