@@ -71,17 +71,6 @@ export class Z2mWizardDeviceSnapshotModel {
 	@IsIn(['ready', 'unsupported', 'already_registered', 'failed'])
 	status: 'ready' | 'unsupported' | 'already_registered' | 'failed';
 
-	@ApiProperty({
-		description: 'Available target device categories',
-		type: 'array',
-		items: { type: 'string', enum: Object.values(DeviceCategory) },
-		example: [DeviceCategory.LIGHTING],
-	})
-	@Expose()
-	@IsArray()
-	@IsEnum(DeviceCategory, { each: true })
-	categories: DeviceCategory[];
-
 	@ApiPropertyOptional({
 		description: 'Suggested target device category from descriptor',
 		nullable: true,

@@ -15,7 +15,6 @@ export interface IZ2mWizardDevice {
 	model: string | null;
 	description: string | null;
 	status: IZ2mWizardDeviceStatus;
-	categories: DevicesModuleDeviceCategory[];
 	suggestedCategory: DevicesModuleDeviceCategory | null;
 	previewChannelCount: number;
 	previewChannelIdentifiers: string[];

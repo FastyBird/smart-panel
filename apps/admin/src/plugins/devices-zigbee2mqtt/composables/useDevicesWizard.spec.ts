@@ -57,7 +57,6 @@ const baseDevice = {
 	model: 'RTCGQ11LM',
 	description: 'Aqara human body sensor',
 	status: 'ready' as const,
-	categories: [DevicesModuleDeviceCategory.sensor],
 	suggestedCategory: DevicesModuleDeviceCategory.sensor,
 	previewChannelCount: 2,
 	previewChannelIdentifiers: ['occupancy', 'illuminance'],

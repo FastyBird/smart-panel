@@ -91,7 +91,7 @@
 						@update:model-value="(value: DevicesModuleDeviceCategory | null) => onUpdateCategory(row.ieeeAddress, value)"
 					>
 						<el-option
-							v-for="opt in categoryOptions(row)"
+							v-for="opt in categoryOptions()"
 							:key="opt.value"
 							:label="opt.label"
 							:value="opt.value"
@@ -156,7 +156,7 @@ interface IProps {
 	selected: Record<string, boolean>;
 	nameByIeee: Record<string, string>;
 	categoryByIeee: Record<string, DevicesModuleDeviceCategory | null>;
-	categoryOptions: (device: IZ2mWizardDevice) => { value: DevicesModuleDeviceCategory; label: string }[];
+	categoryOptions: () => { value: DevicesModuleDeviceCategory; label: string }[];
 }
 
 const props = defineProps<IProps>();

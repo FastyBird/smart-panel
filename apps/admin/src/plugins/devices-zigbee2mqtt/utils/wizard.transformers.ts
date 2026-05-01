@@ -24,7 +24,6 @@ interface ApiWizardDevice {
 	model?: string | null;
 	description?: string | null;
 	status: string;
-	categories?: string[];
 	suggestedCategory?: string | null;
 	previewChannelCount: number;
 	previewChannelIdentifiers?: string[];
@@ -65,7 +64,6 @@ const transformWizardDevice = (device: ApiWizardDevice): IZ2mWizardDevice => ({
 	model: device.model ?? null,
 	description: device.description ?? null,
 	status: device.status as IZ2mWizardDeviceStatus,
-	categories: (device.categories ?? []) as DevicesModuleDeviceCategory[],
 	suggestedCategory: (device.suggestedCategory ?? null) as DevicesModuleDeviceCategory | null,
 	previewChannelCount: device.previewChannelCount,
 	previewChannelIdentifiers: device.previewChannelIdentifiers ?? [],

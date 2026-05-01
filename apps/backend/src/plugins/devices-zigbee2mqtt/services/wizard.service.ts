@@ -32,7 +32,6 @@ export interface Z2mWizardDeviceSnapshot {
 	model: string | null;
 	description: string | null;
 	status: Z2mWizardDeviceStatus;
-	categories: DeviceCategory[];
 	suggestedCategory: DeviceCategory | null;
 	previewChannelCount: number;
 	previewChannelIdentifiers: string[];
@@ -280,11 +279,11 @@ export class Z2mWizardService implements OnModuleDestroy {
 			previewError = (e as Error).message;
 		}
 
+		// `suggestedCategory` is the descriptor's best guess used as the dropdown's pre-fill.
+		// The wizard always lets the user pick any DeviceCategory, so we deliberately don't
+		// publish a per-device "available categories" list — the frontend renders the full
+		// enum directly.
 		const suggestedCategory = preview?.suggestedDevice?.category ?? null;
-		// Always offer the full enum so users can override the suggested category. The
-		// suggestion is exposed separately via `suggestedCategory` so the frontend can
-		// pre-select it. If no suggestion was produced the user still gets the full picker.
-		const categories: DeviceCategory[] = Object.values(DeviceCategory) as DeviceCategory[];
 
 		// Distinct channel categories from exposes that would actually be adopted. Filter
 		// rules MUST match buildAdoptRequest exactly — otherwise a device whose only mapped
@@ -319,7 +318,6 @@ export class Z2mWizardService implements OnModuleDestroy {
 			model: z2mDevice.definition?.model ?? null,
 			description: z2mDevice.definition?.description ?? null,
 			status,
-			categories,
 			suggestedCategory,
 			previewChannelCount,
 			previewChannelIdentifiers,

@@ -51,7 +51,7 @@ export interface IUseDevicesWizard {
 	enablePermitJoin: () => Promise<void>;
 	disablePermitJoin: () => Promise<void>;
 	adoptSelected: () => Promise<IZ2mWizardAdoptionResult[]>;
-	categoryOptions: (device: IZ2mWizardDevice) => { value: DevicesModuleDeviceCategory; label: string }[];
+	categoryOptions: () => { value: DevicesModuleDeviceCategory; label: string }[];
 }
 
 const DEFAULT_PERMIT_JOIN: IZ2mWizardSession['permitJoin'] = {
@@ -447,22 +447,15 @@ export const useDevicesWizard = (): IUseDevicesWizard => {
 		throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 	};
 
-	const categoryOptions = (device: IZ2mWizardDevice): { value: DevicesModuleDeviceCategory; label: string }[] => {
-		const categorySet = new Set<DevicesModuleDeviceCategory>(device.categories);
-
-		// Always include the device's existing registered category, even if the descriptor no
-		// longer reports it — otherwise the dropdown would render an empty value for an existing
-		// device and silently lose the user's previous choice on save.
-		if (device.registeredDeviceCategory !== null) {
-			categorySet.add(device.registeredDeviceCategory);
-		}
-
-		// When a descriptor exposes no categories at all, fall back to the full enum so the user
-		// can still pick something for a generic device.
-		const candidates: DevicesModuleDeviceCategory[] =
-			categorySet.size > 0 ? Array.from(categorySet) : (Object.values(DevicesModuleDeviceCategory) as DevicesModuleDeviceCategory[]);
-
-		return orderBy(candidates, [(category: string) => t(`devicesModule.categories.devices.${category}`)], ['asc']).map((value) => ({
+	const categoryOptions = (): { value: DevicesModuleDeviceCategory; label: string }[] => {
+		// The wizard always lets users pick any DeviceCategory — `suggestedCategory` and
+		// `registeredDeviceCategory` are pre-fill defaults, not constraints. Render the
+		// full enum sorted by translated label for stable, predictable ordering.
+		return orderBy(
+			Object.values(DevicesModuleDeviceCategory) as DevicesModuleDeviceCategory[],
+			[(category: string) => t(`devicesModule.categories.devices.${category}`)],
+			['asc']
+		).map((value) => ({
 			value,
 			label: t(`devicesModule.categories.devices.${value}`),
 		}));
