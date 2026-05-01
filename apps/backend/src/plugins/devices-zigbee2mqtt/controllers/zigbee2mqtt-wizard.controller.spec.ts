@@ -107,7 +107,7 @@ describe('Zigbee2mqttWizardController', () => {
 		await expect(
 			controller.adopt('nope', {
 				data: { devices: [{ ieeeAddress: 'x', name: 'X', category: 'lighting' as any }] },
-			} as any)
+			} as any),
 		).rejects.toBeInstanceOf(NotFoundException);
 	});
 });
