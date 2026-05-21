@@ -4,6 +4,7 @@ import { Footer, Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "./globals.css";
+import { CookieConsent } from "./_components/cookie_consent";
 import { Logo, SmallLogo } from "./_components/logo";
 
 export const metadata = {
@@ -134,11 +135,7 @@ export default async function RootLayout({ children }) {
         >
           {children}
         </Layout>
-        <script
-          defer
-          src="https://cloud.umami.is/script.js"
-          data-website-id="f893c539-0cf2-442f-a511-904e606f9e15"
-        ></script>
+        <CookieConsent />
       </body>
     </html>
   );
