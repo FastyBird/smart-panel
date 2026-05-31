@@ -4,7 +4,6 @@ import { Footer, Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "./globals.css";
-import { CookieConsent } from "./_components/cookie_consent";
 import { Logo, SmallLogo } from "./_components/logo";
 
 export const metadata = {
@@ -135,7 +134,11 @@ export default async function RootLayout({ children }) {
         >
           {children}
         </Layout>
-        <CookieConsent />
+        <script
+          defer
+          src="https://analytics.studio81.cz/script.js"
+          data-website-id="a4756197-5ee3-4948-9a6b-ce3f1dba416b"
+        ></script>
       </body>
     </html>
   );
