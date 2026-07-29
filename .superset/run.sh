@@ -16,29 +16,63 @@ cd "$ROOT_DIR"
 
 TARGET="${1:-default}"
 
-# First free TCP port at or above $1.
-free_port() {
+# Pick one free port per base, all in a single pass: every probe socket stays
+# bound until the last port is chosen, and ports already claimed by the caller
+# are excluded. Probing each base independently would hand two services the same
+# port whenever their scan ranges meet — with 3000-3004 busy, a scan from 3000
+# and a scan from 3003 both land on 3005.
+# Usage: alloc_ports "<comma separated ports to avoid>" <base> [base...]
+alloc_ports() {
 	node -e '
 		const net = require("net");
-		let port = Number(process.argv[1]);
-		const probe = () => {
+		const taken = new Set(String(process.argv[1]).split(",").filter(Boolean).map(Number));
+		const bases = process.argv.slice(2).map(Number);
+		const held = [];
+		const chosen = [];
+
+		const claim = (port, done) => {
+			if (taken.has(port)) return claim(port + 1, done);
+
 			const server = net.createServer();
-			server.once("error", () => { port += 1; probe(); });
-			server.once("listening", () => server.close(() => console.log(port)));
+			server.once("error", () => claim(port + 1, done));
+			server.once("listening", () => {
+				held.push(server);
+				taken.add(port);
+				done(port);
+			});
 			server.listen(port, "0.0.0.0");
 		};
-		probe();
-	' "$1"
+
+		const report = () => {
+			let pending = held.length;
+			if (pending === 0) return console.log(chosen.join(" "));
+			held.forEach((server) => server.close(() => { if (--pending === 0) console.log(chosen.join(" ")); }));
+		};
+
+		const next = (index) => {
+			if (index === bases.length) return report();
+			claim(bases[index], (port) => { chosen.push(port); next(index + 1); });
+		};
+
+		next(0);
+	' "$@"
 }
+
+pinned=""
+for port in "${FB_BACKEND_PORT:-}" "${FB_ADMIN_PORT:-}" "${FB_WEBSITE_PORT:-}"; do
+	[ -n "$port" ] && pinned="$pinned,$port"
+done
+
+read -r auto_backend auto_admin auto_website <<<"$(alloc_ports "$pinned" 3000 3003 3006)"
 
 # The backend reads these from process.env before .env/.env.local, and the admin
 # vite config exposes any FB_APP_/FB_BACKEND_/FB_ADMIN_ prefixed process.env var
 # with priority over the root .env files — so exporting them here wins.
 export NODE_ENV="${NODE_ENV:-development}"
 export FB_APP_HOST="${FB_APP_HOST:-http://127.0.0.1}"
-export FB_BACKEND_PORT="${FB_BACKEND_PORT:-$(free_port 3000)}"
-export FB_ADMIN_PORT="${FB_ADMIN_PORT:-$(free_port 3003)}"
-FB_WEBSITE_PORT="${FB_WEBSITE_PORT:-$(free_port 3006)}"
+export FB_BACKEND_PORT="${FB_BACKEND_PORT:-$auto_backend}"
+export FB_ADMIN_PORT="${FB_ADMIN_PORT:-$auto_admin}"
+FB_WEBSITE_PORT="${FB_WEBSITE_PORT:-$auto_website}"
 
 pids=""
 

@@ -60,7 +60,55 @@ node init.js
 if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPERSET_ROOT_PATH" != "$ROOT_DIR" ]; then
 	if [ -f "$SUPERSET_ROOT_PATH/.env.local" ] && [ ! -f .env.local ]; then
 		log "Copying .env.local from the root checkout"
-		cp "$SUPERSET_ROOT_PATH/.env.local" .env.local
+		# FB_CONFIG_PATH, FB_DB_PATH and FB_ADMIN_UI_PATH are read from the repo
+		# root .env.local by the running backend. Copied verbatim they would point
+		# this workspace at the root checkout's config and database — so anything
+		# resolving inside the root checkout is repointed at the workspace copy.
+		node -e '
+			const fs = require("fs");
+			const [src, dst, rootPath, workspacePath] = process.argv.slice(1);
+			const DOUBLE_QUOTE = 34;
+			const SINGLE_QUOTE = 39;
+			const shared = [];
+
+			const rewritten = fs
+				.readFileSync(src, "utf8")
+				.split(/\r?\n/)
+				.map((line) => {
+					const match = line.match(/^(\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*)(.*)$/);
+					if (!match) return line;
+
+					const [, assignment, key, rawValue] = match;
+					if (!/_PATH$/.test(key)) return line;
+
+					const trimmed = rawValue.trim();
+					const first = trimmed.charCodeAt(0);
+					const quoted =
+						trimmed.length > 1 &&
+						(first === DOUBLE_QUOTE || first === SINGLE_QUOTE) &&
+						trimmed.charCodeAt(trimmed.length - 1) === first;
+					const quote = quoted ? trimmed[0] : "";
+					const value = quoted ? trimmed.slice(1, -1) : trimmed;
+
+					if (!value) return line;
+
+					if (value === rootPath || value.startsWith(`${rootPath}/`)) {
+						return `${assignment}${quote}${workspacePath}${value.slice(rootPath.length)}${quote}`;
+					}
+
+					if (value.startsWith("/")) shared.push(`${key}=${value}`);
+
+					return line;
+				})
+				.join("\n");
+
+			fs.writeFileSync(dst, rewritten);
+
+			if (shared.length > 0) {
+				console.error(`  kept absolute paths outside the root checkout: ${shared.join(", ")}`);
+				console.error("  this workspace shares that state with the root checkout");
+			}
+		' "$SUPERSET_ROOT_PATH/.env.local" .env.local "$SUPERSET_ROOT_PATH" "$ROOT_DIR"
 	fi
 
 	if [ -f "$SUPERSET_ROOT_PATH/var/data/config.yaml" ] && [ ! -f var/data/config.yaml ]; then
@@ -82,11 +130,29 @@ if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPER
 
 	if [ -z "${SUPERSET_SKIP_DB_COPY:-}" ] && [ -f "$SUPERSET_ROOT_PATH/var/db/database.sqlite" ] && [ ! -f var/db/database.sqlite ]; then
 		log "Copying the SQLite database from the root checkout"
+		# Always go through the SQLite backup API. A plain cp of a database the
+		# root backend is writing to can miss committed data still sitting in the
+		# -wal file, or capture a torn page — and setup would report success while
+		# handing over a database that is short of rows or will not open at all.
 		if command -v sqlite3 >/dev/null 2>&1; then
-			# .backup takes a consistent snapshot even if the root backend is running.
-			sqlite3 "$SUPERSET_ROOT_PATH/var/db/database.sqlite" ".backup '$ROOT_DIR/var/db/database.sqlite'"
+			db_copied=$(sqlite3 "$SUPERSET_ROOT_PATH/var/db/database.sqlite" ".backup '$ROOT_DIR/var/db/database.sqlite'" && echo yes || echo no)
 		else
-			cp "$SUPERSET_ROOT_PATH/var/db/database.sqlite" var/db/database.sqlite
+			# Node >= 24 is required by this repo and ships the same backup API.
+			db_copied=$(node -e '
+				const { DatabaseSync, backup } = require("node:sqlite");
+				const [src, dst] = process.argv.slice(1);
+				if (typeof backup !== "function") process.exit(1);
+				const db = new DatabaseSync(src, { readOnly: true });
+				backup(db, dst).then(
+					() => db.close(),
+					(error) => { db.close(); console.error(error.message); process.exit(1); },
+				);
+			' "$SUPERSET_ROOT_PATH/var/db/database.sqlite" "$ROOT_DIR/var/db/database.sqlite" && echo yes || echo no)
+		fi
+
+		if [ "$db_copied" != "yes" ]; then
+			rm -f var/db/database.sqlite
+			warn "Could not snapshot the root database — starting empty. Create a user with 'pnpm run onboard'."
 		fi
 	fi
 fi
