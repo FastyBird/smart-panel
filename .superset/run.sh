@@ -92,9 +92,63 @@ for port in "${FB_BACKEND_PORT:-}" "${FB_ADMIN_PORT:-}" "${FB_WEBSITE_PORT:-}"; 
 	fi
 done
 
+# What the apps themselves will resolve for a variable: an exported one wins,
+# then .env.local, then .env, then the fallback. Anything this script only needs
+# to know (rather than change) goes through here — exporting a "default" would
+# override a configured value, since both the backend and Vite give the process
+# environment priority over the env files.
+env_value() { # env_value <KEY> <fallback>
+	node -e '
+		const fs = require("fs");
+		const path = require("path");
+		const [key, fallback] = process.argv.slice(1);
+		const DOUBLE_QUOTE = 34;
+		const SINGLE_QUOTE = 39;
+
+		const resolveValue = () => {
+			if (process.env[key]) return process.env[key];
+
+			for (const file of [".env.local", ".env"]) {
+				const full = path.join(process.cwd(), file);
+				if (!fs.existsSync(full)) continue;
+
+				for (const line of fs.readFileSync(full, "utf8").split(/\r?\n/)) {
+					const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+					if (!match || match[1] !== key) continue;
+
+					let value = match[2].trim();
+					const first = value.charCodeAt(0);
+					if (
+						value.length > 1 &&
+						(first === DOUBLE_QUOTE || first === SINGLE_QUOTE) &&
+						value.charCodeAt(value.length - 1) === first
+					) {
+						value = value.slice(1, -1);
+					}
+
+					if (value) return value;
+				}
+			}
+
+			return fallback;
+		};
+
+		console.log(resolveValue());
+	' "$1" "$2"
+}
+
+# Start the backend scan at the configured port so a separate admin-only pane,
+# which proxies to whatever the env files say, agrees with it. FB_ADMIN_PORT is
+# not treated the same way: .env sets it to 80 for the bundled production admin,
+# which the Vite dev server cannot bind.
+backend_base="$(env_value FB_BACKEND_PORT 3000)"
+case "$backend_base" in
+'' | *[!0-9]*) backend_base=3000 ;;
+esac
+
 bases=""
 if [ "$starts_backend" = yes ] && [ -z "${FB_BACKEND_PORT:-}" ]; then
-	bases="$bases 3000"
+	bases="$bases $backend_base"
 fi
 if [ "$starts_admin" = yes ] && [ -z "${FB_ADMIN_PORT:-}" ]; then
 	bases="$bases 3003"
@@ -123,11 +177,19 @@ if [ "$starts_website" = yes ] && [ -z "${FB_WEBSITE_PORT:-}" ]; then
 	shift
 fi
 
-# The backend reads these from process.env before .env/.env.local, and the admin
-# vite config exposes any FB_APP_/FB_BACKEND_/FB_ADMIN_ prefixed process.env var
-# with priority over the root .env files — so exporting them here wins.
-export NODE_ENV="${NODE_ENV:-development}"
-export FB_APP_HOST="${FB_APP_HOST:-http://127.0.0.1}"
+# Only default NODE_ENV when nothing configures it — .env.local saying
+# production is a deliberate choice, not something a dev runner should undo.
+if [ -z "$(env_value NODE_ENV '')" ]; then
+	export NODE_ENV=development
+fi
+
+# FB_APP_HOST is never exported: .env.local may point the admin at a backend on
+# another host, and exporting a loopback default would silently redirect the
+# proxy there. Resolve it for display instead.
+app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
+
+# The ports are different — these are ports this script picked, so the servers
+# and the proxy have to be told about them.
 if [ -n "${FB_BACKEND_PORT:-}" ]; then
 	export FB_BACKEND_PORT
 fi
@@ -184,18 +246,16 @@ start() {
 printf '\n\033[1mFastyBird Smart Panel — %s\033[0m\n' "${SUPERSET_WORKSPACE_NAME:-workspace}"
 
 if [ "$starts_backend" = yes ]; then
-	printf '  backend   %s:%s  (docs at /api/docs)\n' "$FB_APP_HOST" "$FB_BACKEND_PORT"
+	printf '  backend   %s:%s  (docs at /api/docs)\n' "$app_host" "$FB_BACKEND_PORT"
 fi
 
 if [ "$starts_admin" = yes ]; then
 	printf '  admin     http://localhost:%s\n' "$FB_ADMIN_PORT"
 
+	# An admin-only run proxies /api at whatever the env files configure, which
+	# is the point — say so, since nothing on screen would otherwise reveal it.
 	if [ "$starts_backend" = no ]; then
-		if [ -n "${FB_BACKEND_PORT:-}" ]; then
-			printf '  api proxy %s:%s\n' "$FB_APP_HOST" "$FB_BACKEND_PORT"
-		else
-			printf '  api proxy → FB_BACKEND_PORT from .env/.env.local (export it to point elsewhere)\n'
-		fi
+		printf '  api proxy %s:%s (from .env/.env.local)\n' "$app_host" "$(env_value FB_BACKEND_PORT 3000)"
 	fi
 fi
 

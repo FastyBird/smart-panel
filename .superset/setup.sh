@@ -110,6 +110,9 @@ if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPER
 				console.error("  this workspace shares that state with the root checkout");
 			}
 		' "$SUPERSET_ROOT_PATH/.env.local" .env.local "$SUPERSET_ROOT_PATH" "$ROOT_DIR"
+		# Written through writeFileSync, so it lands at 0644 under the usual umask
+		# no matter how the source was protected — and it carries FB_TOKEN_SECRET.
+		chmod 600 .env.local
 	fi
 
 fi
@@ -130,6 +133,12 @@ env_path() { # env_path <checkout> <KEY> <fallback>
 		const SINGLE_QUOTE = 39;
 
 		const resolveValue = () => {
+			// @nestjs/config keeps an already-exported variable in preference to the
+			// env files, so an ambient FB_DB_PATH/FB_CONFIG_PATH is what the backend
+			// will actually open — resolve it the same way or setup prepares a
+			// location nothing ever reads.
+			if (process.env[key]) return path.resolve(checkout, process.env[key]);
+
 			for (const file of [".env.local", ".env"]) {
 				const full = path.join(checkout, file);
 				if (!fs.existsSync(full)) continue;
@@ -159,14 +168,50 @@ env_path() { # env_path <checkout> <KEY> <fallback>
 	' "$1" "$2" "$3"
 }
 
-config_dir="$(env_path "$ROOT_DIR" FB_CONFIG_PATH "$ROOT_DIR/var/data")"
-db_dir="$(env_path "$ROOT_DIR" FB_DB_PATH "$ROOT_DIR/var/db")"
-mkdir -p "$config_dir" "$db_dir"
-
+# Resolve the root checkout's locations first: env_path honours ambient
+# variables, and the exports below would otherwise answer for both sides.
+root_config_dir=""
+root_db_dir=""
 if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPERSET_ROOT_PATH" != "$ROOT_DIR" ]; then
 	root_config_dir="$(env_path "$SUPERSET_ROOT_PATH" FB_CONFIG_PATH "$SUPERSET_ROOT_PATH/var/data")"
 	root_db_dir="$(env_path "$SUPERSET_ROOT_PATH" FB_DB_PATH "$SUPERSET_ROOT_PATH/var/db")"
+fi
 
+config_dir="$(env_path "$ROOT_DIR" FB_CONFIG_PATH "$ROOT_DIR/var/data")"
+db_dir="$(env_path "$ROOT_DIR" FB_DB_PATH "$ROOT_DIR/var/db")"
+
+# A location outside the worktree belongs to someone else — the root checkout or
+# whatever an exported variable points at. Setup falls back to the workspace
+# defaults there: it must not copy over live files, and it must not apply this
+# branch's migrations to a database another checkout is running on.
+inside_workspace() {
+	case "$1/" in
+	"$ROOT_DIR"/*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+if ! inside_workspace "$config_dir"; then
+	warn "FB_CONFIG_PATH points outside this workspace ($config_dir)"
+	warn "Preparing workspace-local configuration instead; unset it here to have the backend use that copy"
+	config_dir="$ROOT_DIR/var/data"
+fi
+
+if ! inside_workspace "$db_dir"; then
+	warn "FB_DB_PATH points outside this workspace ($db_dir)"
+	warn "Preparing a workspace-local database instead; unset it here to have the backend use that copy"
+	db_dir="$ROOT_DIR/var/db"
+fi
+
+mkdir -p "$config_dir" "$db_dir"
+
+# Pin every later step to these. Generating the OpenAPI spec boots the whole
+# Nest app, so without this an ambient FB_DB_PATH would have setup opening — and
+# writing to — the database of another checkout.
+export FB_CONFIG_PATH="$config_dir"
+export FB_DB_PATH="$db_dir"
+
+if [ -n "$root_config_dir" ]; then
 	if [ -f "$root_config_dir/config.yaml" ] && [ ! -f "$config_dir/config.yaml" ]; then
 		log "Copying config.yaml from the root checkout"
 		cp "$root_config_dir/config.yaml" "$config_dir/config.yaml"
@@ -229,7 +274,7 @@ pnpm run generate:openapi
 log "Applying database migrations"
 # The migration CLI reads its env from apps/backend, not the repo root, so it
 # would default to var/db even when FB_DB_PATH moves the database elsewhere.
-FB_DB_PATH="$db_dir" pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run
+pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run
 
 # --- Flutter panel (optional) ------------------------------------------------
 #
