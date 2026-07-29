@@ -116,8 +116,45 @@ env_value() { # env_value <KEY> <fallback> [env file...]
 		const path = require("path");
 		const [key, fallback, ...files] = process.argv.slice(1);
 		const searched = files.length > 0 ? files : [".env.local", ".env"];
-		const DOUBLE_QUOTE = 34;
-		const SINGLE_QUOTE = 39;
+
+		// Parse with the very library the backend and Vite use, so this script
+		// cannot disagree with them about what a line means — an inline comment in
+		// `FB_DB_PATH=/tmp/db # local` is part of the value to a naive parser and
+		// stripped by dotenv, and exporting our reading would override theirs.
+		const loadDotenvParse = () => {
+			try {
+				return require(
+					require.resolve("dotenv", { paths: [path.join(process.cwd(), "apps/backend"), process.cwd()] }),
+				).parse;
+			} catch (error) {
+				return null;
+			}
+		};
+
+		// Only reached before dependencies are installed. Mirrors dotenv closely:
+		// quoted values are literal, unquoted ones end at the first #.
+		const parseFallback = (content) => {
+			const values = {};
+
+			for (const line of content.split(/\r?\n/)) {
+				const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+				if (!match) continue;
+
+				let value = match[2].trim();
+				const quote = value[0];
+				if (value.length > 1 && (quote === String.fromCharCode(34) || quote === String.fromCharCode(39)) && value.endsWith(quote)) {
+					value = value.slice(1, -1);
+				} else {
+					value = value.split("#")[0].trim();
+				}
+
+				values[match[1]] = value;
+			}
+
+			return values;
+		};
+
+		const parse = loadDotenvParse() || parseFallback;
 
 		const resolveValue = () => {
 			if (process.env[key]) return process.env[key];
@@ -126,22 +163,8 @@ env_value() { # env_value <KEY> <fallback> [env file...]
 				const full = path.join(process.cwd(), file);
 				if (!fs.existsSync(full)) continue;
 
-				for (const line of fs.readFileSync(full, "utf8").split(/\r?\n/)) {
-					const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-					if (!match || match[1] !== key) continue;
-
-					let value = match[2].trim();
-					const first = value.charCodeAt(0);
-					if (
-						value.length > 1 &&
-						(first === DOUBLE_QUOTE || first === SINGLE_QUOTE) &&
-						value.charCodeAt(value.length - 1) === first
-					) {
-						value = value.slice(1, -1);
-					}
-
-					if (value) return value;
-				}
+				const value = parse(fs.readFileSync(full, "utf8"))[key];
+				if (value) return value;
 			}
 
 			return fallback;

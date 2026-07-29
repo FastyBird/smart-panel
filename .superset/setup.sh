@@ -73,7 +73,14 @@ node init.js
 # needing `pnpm run onboard` first. Existing files are never overwritten.
 
 if [ -n "${SUPERSET_ROOT_PATH:-}" ] && [ -d "$SUPERSET_ROOT_PATH" ] && [ "$SUPERSET_ROOT_PATH" != "$ROOT_DIR" ]; then
-	if [ -f "$SUPERSET_ROOT_PATH/.env.local" ] && [ ! -f .env.local ]; then
+	if [ -f "$SUPERSET_ROOT_PATH/.env.local" ] && [ ! -f .env.local ] && flag_enabled "${SUPERSET_ALLOW_SHARED_STATE:-}"; then
+		# Sharing was asked for, so the root's paths are the point — rewriting them
+		# to workspace equivalents would leave nothing for the opt-in to act on and
+		# quietly hand back a copy instead.
+		log "Copying .env.local from the root checkout (paths kept: shared state allowed)"
+		cp "$SUPERSET_ROOT_PATH/.env.local" .env.local
+		chmod 600 .env.local
+	elif [ -f "$SUPERSET_ROOT_PATH/.env.local" ] && [ ! -f .env.local ]; then
 		log "Copying .env.local from the root checkout"
 		# FB_CONFIG_PATH, FB_DB_PATH and FB_ADMIN_UI_PATH are read from the repo
 		# root .env.local by the running backend. Copied verbatim they would point
@@ -143,8 +150,45 @@ env_path() { # env_path <checkout> <KEY> <fallback>
 		const fs = require("fs");
 		const path = require("path");
 		const [checkout, key, fallback] = process.argv.slice(1);
-		const DOUBLE_QUOTE = 34;
-		const SINGLE_QUOTE = 39;
+
+		// Parse with the library the backend itself uses, so this script cannot
+		// read a line differently than the app that will open the result — dotenv
+		// strips an inline comment from `FB_DB_PATH=/tmp/db # local`, a naive
+		// parser keeps it and would prepare a directory nothing opens.
+		const loadDotenvParse = () => {
+			try {
+				return require(
+					require.resolve("dotenv", { paths: [path.join(checkout, "apps/backend"), checkout] }),
+				).parse;
+			} catch (error) {
+				return null;
+			}
+		};
+
+		// Only reached before dependencies are installed. Mirrors dotenv closely:
+		// quoted values are literal, unquoted ones end at the first #.
+		const parseFallback = (content) => {
+			const values = {};
+
+			for (const line of content.split(/\r?\n/)) {
+				const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+				if (!match) continue;
+
+				let value = match[2].trim();
+				const quote = value[0];
+				if (value.length > 1 && (quote === String.fromCharCode(34) || quote === String.fromCharCode(39)) && value.endsWith(quote)) {
+					value = value.slice(1, -1);
+				} else {
+					value = value.split("#")[0].trim();
+				}
+
+				values[match[1]] = value;
+			}
+
+			return values;
+		};
+
+		const parse = loadDotenvParse() || parseFallback;
 
 		const resolveValue = () => {
 			// @nestjs/config keeps an already-exported variable in preference to the
@@ -157,22 +201,8 @@ env_path() { # env_path <checkout> <KEY> <fallback>
 				const full = path.join(checkout, file);
 				if (!fs.existsSync(full)) continue;
 
-				for (const line of fs.readFileSync(full, "utf8").split(/\r?\n/)) {
-					const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-					if (!match || match[1] !== key) continue;
-
-					let value = match[2].trim();
-					const first = value.charCodeAt(0);
-					if (
-						value.length > 1 &&
-						(first === DOUBLE_QUOTE || first === SINGLE_QUOTE) &&
-						value.charCodeAt(value.length - 1) === first
-					) {
-						value = value.slice(1, -1);
-					}
-
-					if (value) return path.resolve(checkout, value);
-				}
+				const value = parse(fs.readFileSync(full, "utf8"))[key];
+				if (value) return path.resolve(checkout, value);
 			}
 
 			return fallback;
