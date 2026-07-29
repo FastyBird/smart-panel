@@ -15,8 +15,14 @@ export class FakeSocket implements IAuthenticatedSocket {
 
 	public disconnectCalls = 0;
 
-	/** What the next handshake should do. `silent` never settles, for the timeout case. */
-	public handshake: 'connect' | 'connect_error' | 'silent' = 'connect';
+	/**
+	 * What the next handshake should do.
+	 *
+	 * `silent` never settles, for the timeout case. `rejected_after_connect` reproduces the real
+	 * server behaviour for an unauthorised token: the namespace sends CONNECT before the gateway
+	 * authorises the client, so the client sees `connect` and only then `disconnect`.
+	 */
+	public handshake: 'connect' | 'connect_error' | 'rejected_after_connect' | 'silent' = 'connect';
 
 	private listeners: Map<string, Set<Listener>> = new Map();
 
@@ -28,12 +34,22 @@ export class FakeSocket implements IAuthenticatedSocket {
 		}
 
 		queueMicrotask(() => {
-			if (this.handshake === 'connect') {
-				this.connected = true;
-
-				this.emit('connect');
-			} else {
+			if (this.handshake === 'connect_error') {
 				this.emit('connect_error', new Error('backend unreachable'));
+
+				return;
+			}
+
+			this.connected = true;
+
+			this.emit('connect');
+
+			if (this.handshake === 'rejected_after_connect') {
+				queueMicrotask(() => {
+					this.connected = false;
+
+					this.emit('disconnect', 'io server disconnect');
+				});
 			}
 		});
 	}

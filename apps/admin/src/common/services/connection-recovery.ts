@@ -1,4 +1,4 @@
-import { ensureSocketConnection } from './socket-connection';
+import { DEFAULT_AUTH_GRACE, ensureSocketConnection } from './socket-connection';
 import type { IConnectionRecovery, IConnectionRecoveryOptions } from './types';
 
 /**
@@ -18,7 +18,12 @@ import type { IConnectionRecovery, IConnectionRecoveryOptions } from './types';
  *    on its own without any wake signal.
  */
 export const createConnectionRecovery = (options: IConnectionRecoveryOptions): IConnectionRecovery => {
-	const { socket, session, onReconnected, onFailure, timeout } = options;
+	const { socket, session, onReconnected, onFailure, timeout, authGrace } = options;
+
+	const connectionOptions = {
+		...(timeout !== undefined ? { timeout } : {}),
+		...(authGrace !== undefined ? { authGrace } : {}),
+	};
 
 	let listening = false;
 	let recovering = false;
@@ -44,7 +49,7 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 		recovering = true;
 
 		try {
-			if (!(await ensureSocketConnection(socket, session, timeout !== undefined ? { timeout } : undefined))) {
+			if (!(await ensureSocketConnection(socket, session, connectionOptions))) {
 				onFailure?.();
 			}
 		} catch {
@@ -73,7 +78,14 @@ export const createConnectionRecovery = (options: IConnectionRecoveryOptions): I
 			return;
 		}
 
-		void onReconnected?.();
+		// `connect` only means the namespace accepted us, not that the gateway authorised the
+		// token - it rejects by disconnecting straight after. Confirm we are still up before
+		// re-fetching everything over a socket that is already on its way out.
+		setTimeout(() => {
+			if (socket.connected) {
+				void onReconnected?.();
+			}
+		}, authGrace ?? DEFAULT_AUTH_GRACE);
 	};
 
 	return {

@@ -161,6 +161,18 @@ Each module registers its handler in `install()`, next to its existing `sockets.
 subscription. Handlers guard on `firstLoadFinished()` so a wake never fetches data the user
 never opened.
 
+### 7.2b `connect` is not proof of authorisation
+
+`socket.io` sends the namespace CONNECT packet *before* Nest runs `handleConnection`, which is
+where an unauthorised token is rejected with a server side `disconnect()` — see `_doConnect` in
+`socket.io/dist/namespace.js`, whose own comment notes the internal connect logic must fire before
+user-set events. A rejected token therefore reaches the client as `connect` immediately followed by
+`disconnect`, not as `connect_error`.
+
+Treating `connect` alone as success would skip the failure toast and re-fetch every store over a
+socket already on its way out. Both the handshake wait and the reconnect refresh hold their verdict
+for a short grace window (`DEFAULT_AUTH_GRACE`) and confirm the socket is still up.
+
 ### 7.3 Recovery composable
 
 New `apps/admin/src/common/composables/useConnectionRecovery.ts`, installed once at app root

@@ -113,6 +113,15 @@ describe('ensureSocketConnection', () => {
 		expect(socket.auth).toEqual({ token: 'valid-token' });
 	});
 
+	it('resolves false when the server rejects the token right after the handshake', async () => {
+		// socket.io sends the namespace CONNECT packet before the gateway gets to authorise the
+		// client, so an unauthorised token arrives as `connect` followed by `disconnect`.
+		// Treating `connect` alone as success would skip the failure toast.
+		socket.handshake = 'rejected_after_connect';
+
+		await expect(ensureSocketConnection(socket, createSession(), { authGrace: 20 })).resolves.toBe(false);
+	});
+
 	it('resolves false when the connection attempt errors', async () => {
 		socket.handshake = 'connect_error';
 

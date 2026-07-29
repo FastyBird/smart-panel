@@ -15,9 +15,9 @@ const setVisibility = (state: 'visible' | 'hidden'): void => {
 	Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
 };
 
-/** Lets every queued microtask and the recovery chain settle. */
+/** Lets every queued microtask and the recovery chain settle, including the auth grace window. */
 const flush = async (): Promise<void> => {
-	await new Promise((resolve) => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 20));
 };
 
 describe('createConnectionRecovery', () => {
@@ -35,7 +35,7 @@ describe('createConnectionRecovery', () => {
 	});
 
 	it('reconnects when the tab becomes visible while disconnected', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		document.dispatchEvent(new Event('visibilitychange'));
@@ -49,7 +49,7 @@ describe('createConnectionRecovery', () => {
 	it('does nothing when the tab becomes visible while already connected', async () => {
 		socket.connected = true;
 
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		document.dispatchEvent(new Event('visibilitychange'));
@@ -62,7 +62,7 @@ describe('createConnectionRecovery', () => {
 	it('ignores the visibility event when the tab went hidden', async () => {
 		setVisibility('hidden');
 
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		document.dispatchEvent(new Event('visibilitychange'));
@@ -73,7 +73,7 @@ describe('createConnectionRecovery', () => {
 	});
 
 	it('reconnects when the window regains focus', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -84,7 +84,7 @@ describe('createConnectionRecovery', () => {
 	});
 
 	it('reconnects when the browser reports it is back online', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		window.dispatchEvent(new Event('online'));
@@ -95,7 +95,7 @@ describe('createConnectionRecovery', () => {
 	});
 
 	it('collapses the burst of triggers a wake produces into one attempt', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -112,7 +112,7 @@ describe('createConnectionRecovery', () => {
 
 		socket.handshake = 'connect_error';
 
-		recovery = createConnectionRecovery({ socket, session: createSession(), onFailure });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onFailure });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -129,7 +129,7 @@ describe('createConnectionRecovery', () => {
 		// reported as a failed recovery.
 		const session = createSession({ accessToken: (): string | null => null });
 
-		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session, onFailure });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -152,7 +152,7 @@ describe('createConnectionRecovery', () => {
 			accessToken: (): string | null => 'stale-token',
 		});
 
-		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session, onFailure });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -172,7 +172,7 @@ describe('createConnectionRecovery', () => {
 			},
 		});
 
-		recovery = createConnectionRecovery({ socket, session, onFailure });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session, onFailure });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -190,7 +190,7 @@ describe('createConnectionRecovery', () => {
 			},
 		});
 
-		recovery = createConnectionRecovery({ socket, session });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -199,7 +199,7 @@ describe('createConnectionRecovery', () => {
 
 		// A stuck `recovering` flag would make every later wake a silent no-op.
 		recovery.stop();
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		window.dispatchEvent(new Event('focus'));
@@ -210,7 +210,7 @@ describe('createConnectionRecovery', () => {
 	});
 
 	it('retries on the next trigger after a failed recovery', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 
 		socket.handshake = 'connect_error';
@@ -232,7 +232,7 @@ describe('createConnectionRecovery', () => {
 	it('refreshes data on a reconnect but not on the first connect', async () => {
 		const onReconnected = vi.fn(async (): Promise<void> => {});
 
-		recovery = createConnectionRecovery({ socket, session: createSession(), onReconnected });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onReconnected });
 		recovery.start();
 
 		// First connect after app start - the views already fetched their data.
@@ -256,7 +256,7 @@ describe('createConnectionRecovery', () => {
 	it('refreshes data after a reconnect socket.io recovered on its own', async () => {
 		const onReconnected = vi.fn(async (): Promise<void> => {});
 
-		recovery = createConnectionRecovery({ socket, session: createSession(), onReconnected });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onReconnected });
 		recovery.start();
 
 		socket.connected = true;
@@ -275,8 +275,34 @@ describe('createConnectionRecovery', () => {
 		expect(onReconnected).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not refresh when the server rejects the reconnect', async () => {
+		const onReconnected = vi.fn(async (): Promise<void> => {});
+
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession(), onReconnected });
+		recovery.start();
+
+		socket.connected = true;
+		socket.emit('connect');
+
+		await flush();
+
+		socket.connected = false;
+		socket.emit('disconnect', 'transport close');
+
+		// The gateway accepts the handshake and only then rejects the token, so `connect` is
+		// followed immediately by `disconnect`. Refreshing over that socket is pointless.
+		socket.connected = true;
+		socket.emit('connect');
+		socket.connected = false;
+		socket.emit('disconnect', 'io server disconnect');
+
+		await flush();
+
+		expect(onReconnected).not.toHaveBeenCalled();
+	});
+
 	it('stops listening once stopped', async () => {
-		recovery = createConnectionRecovery({ socket, session: createSession() });
+		recovery = createConnectionRecovery({ authGrace: 5, socket, session: createSession() });
 		recovery.start();
 		recovery.stop();
 

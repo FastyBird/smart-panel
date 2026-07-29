@@ -77,6 +77,8 @@ export interface IConnectionRecoveryOptions {
 	onFailure?: () => void;
 	/** Handshake timeout, in milliseconds. */
 	timeout?: number;
+	/** How long to wait after `connect` for a server side rejection, in milliseconds. */
+	authGrace?: number;
 }
 
 export interface IRefreshableStore {
