@@ -93,22 +93,23 @@ for port in "${FB_BACKEND_PORT:-}" "${FB_ADMIN_PORT:-}" "${FB_WEBSITE_PORT:-}"; 
 done
 
 # What the apps themselves will resolve for a variable: an exported one wins,
-# then .env.local, then .env, then the fallback. Anything this script only needs
-# to know (rather than change) goes through here — exporting a "default" would
-# override a configured value, since both the backend and Vite give the process
-# environment priority over the env files.
-env_value() { # env_value <KEY> <fallback>
+# then the given env files (.env.local then .env by default), then the fallback.
+# Anything this script only needs to know (rather than change) goes through here
+# — exporting a "default" would override a configured value, since both the
+# backend and Vite give the process environment priority over the env files.
+env_value() { # env_value <KEY> <fallback> [env file...]
 	node -e '
 		const fs = require("fs");
 		const path = require("path");
-		const [key, fallback] = process.argv.slice(1);
+		const [key, fallback, ...files] = process.argv.slice(1);
+		const searched = files.length > 0 ? files : [".env.local", ".env"];
 		const DOUBLE_QUOTE = 34;
 		const SINGLE_QUOTE = 39;
 
 		const resolveValue = () => {
 			if (process.env[key]) return process.env[key];
 
-			for (const file of [".env.local", ".env"]) {
+			for (const file of searched) {
 				const full = path.join(process.cwd(), file);
 				if (!fs.existsSync(full)) continue;
 
@@ -134,7 +135,7 @@ env_value() { # env_value <KEY> <fallback>
 		};
 
 		console.log(resolveValue());
-	' "$1" "$2"
+	' "$@"
 }
 
 # Start the backend scan at the configured port so a separate admin-only pane,
@@ -177,16 +178,25 @@ if [ "$starts_website" = yes ] && [ -z "${FB_WEBSITE_PORT:-}" ]; then
 	shift
 fi
 
-# Only default NODE_ENV when nothing configures it — .env.local saying
-# production is a deliberate choice, not something a dev runner should undo.
-if [ -z "$(env_value NODE_ENV '')" ]; then
+# .env ships NODE_ENV=production for deployments, so treating it as configured
+# would leave this dev runner in production mode — global-error.filter.ts then
+# replaces exception details with "An unexpected server error occurred.". Only
+# an ambient value or .env.local counts as a deliberate choice here.
+if [ -z "$(env_value NODE_ENV '' .env.local)" ]; then
 	export NODE_ENV=development
 fi
 
-# FB_APP_HOST is never exported: .env.local may point the admin at a backend on
-# another host, and exporting a loopback default would silently redirect the
-# proxy there. Resolve it for display instead.
-app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
+if [ "$starts_backend" = yes ]; then
+	# This invocation starts the backend, so it listens locally on the port just
+	# allocated. The host has to match: pairing a configured remote FB_APP_HOST
+	# with a local port would aim the admin proxy at neither backend.
+	export FB_APP_HOST="${FB_APP_HOST:-http://127.0.0.1}"
+	app_host="$FB_APP_HOST"
+else
+	# Nothing local to point at — keep whatever endpoint is configured, which is
+	# the whole point of an admin-only run, and only read it for the banner.
+	app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
+fi
 
 # The ports are different — these are ports this script picked, so the servers
 # and the proxy have to be told about them.
