@@ -9,6 +9,9 @@
 # workspaces (and the root checkout) can run side by side. Pin them by exporting
 # FB_BACKEND_PORT / FB_ADMIN_PORT / FB_WEBSITE_PORT before starting.
 #
+# FB_CONFIG_PATH / FB_DB_PATH are kept inside the worktree so a workspace cannot
+# write another checkout's state; export SUPERSET_ALLOW_SHARED_STATE=1 to opt out.
+#
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -186,6 +189,46 @@ if [ -z "$(env_value NODE_ENV '' .env.local)" ]; then
 	export NODE_ENV=development
 fi
 
+# Superset runs setup and this script as separate processes, so the paths setup
+# exported do not reach here — an ambient FB_DB_PATH/FB_CONFIG_PATH pointing
+# outside the worktree would have this backend open, migrate and write another
+# checkout's state while the copies setup prepared sit unused. Writing them into
+# .env.local would not help either: @nestjs/config skips keys already present in
+# process.env. So clamp them again, here, for the processes we start.
+state_notes=""
+
+inside_workspace() {
+	case "$1/" in
+	"$ROOT_DIR"/*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+clamp_state_path() { # clamp_state_path <KEY> <workspace default>
+	local key="$1"
+	local workspace_default="$2"
+	local current
+
+	current="$(env_value "$key" "$workspace_default")"
+	case "$current" in
+	/*) ;;
+	*) current="$ROOT_DIR/$current" ;;
+	esac
+
+	if inside_workspace "$current" || [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
+		return 0
+	fi
+
+	state_notes="$state_notes  note      $key pointed outside the workspace ($current); using $workspace_default
+"
+	export "$key=$workspace_default"
+}
+
+if [ "$starts_backend" = yes ]; then
+	clamp_state_path FB_CONFIG_PATH "$ROOT_DIR/var/data"
+	clamp_state_path FB_DB_PATH "$ROOT_DIR/var/db"
+fi
+
 app_host="$(env_value FB_APP_HOST http://127.0.0.1)"
 overridden_host=""
 
@@ -272,6 +315,11 @@ if [ "$starts_backend" = yes ]; then
 	if [ -n "$overridden_host" ]; then
 		printf '  note      FB_APP_HOST %s ignored: the admin proxy has to reach the backend started here\n' "$overridden_host"
 		printf '            run the backend on its own to keep it as the public origin\n'
+	fi
+
+	if [ -n "$state_notes" ]; then
+		printf '%s' "$state_notes"
+		printf '            set SUPERSET_ALLOW_SHARED_STATE=1 to use the shared location instead\n'
 	fi
 fi
 

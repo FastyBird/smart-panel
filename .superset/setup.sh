@@ -13,10 +13,14 @@
 # slowest part of bootstrap.
 #
 # Knobs:
-#   SUPERSET_SKIP_DB_COPY=1   start from an empty database instead of copying
-#                             the root checkout's SQLite database
-#   SUPERSET_SKIP_FLUTTER=1   skip the apps/panel steps (`flutter pub get` and
-#                             the `melos rebuild-all` client generation, ~2 min)
+#   SUPERSET_SKIP_DB_COPY=1        start from an empty database instead of
+#                                  copying the root checkout's SQLite database
+#   SUPERSET_SKIP_FLUTTER=1        skip the apps/panel steps (`flutter pub get`
+#                                  and `melos rebuild-all`, ~2 min)
+#   SUPERSET_ALLOW_SHARED_STATE=1  let FB_CONFIG_PATH/FB_DB_PATH point outside
+#                                  the worktree instead of falling back to the
+#                                  workspace copies — this branch's migrations
+#                                  then run against that shared database
 #
 set -euo pipefail
 
@@ -191,16 +195,23 @@ inside_workspace() {
 	esac
 }
 
-if ! inside_workspace "$config_dir"; then
-	warn "FB_CONFIG_PATH points outside this workspace ($config_dir)"
-	warn "Preparing workspace-local configuration instead; unset it here to have the backend use that copy"
-	config_dir="$ROOT_DIR/var/data"
-fi
+if [ -n "${SUPERSET_ALLOW_SHARED_STATE:-}" ]; then
+	if ! inside_workspace "$config_dir" || ! inside_workspace "$db_dir"; then
+		warn "SUPERSET_ALLOW_SHARED_STATE is set — using state outside this workspace as-is"
+		warn "Migrations from this branch will be applied to whatever else runs on it"
+	fi
+else
+	if ! inside_workspace "$config_dir"; then
+		warn "FB_CONFIG_PATH points outside this workspace ($config_dir)"
+		warn "Preparing workspace-local configuration instead; .superset/run.sh keeps the backend on it"
+		config_dir="$ROOT_DIR/var/data"
+	fi
 
-if ! inside_workspace "$db_dir"; then
-	warn "FB_DB_PATH points outside this workspace ($db_dir)"
-	warn "Preparing a workspace-local database instead; unset it here to have the backend use that copy"
-	db_dir="$ROOT_DIR/var/db"
+	if ! inside_workspace "$db_dir"; then
+		warn "FB_DB_PATH points outside this workspace ($db_dir)"
+		warn "Preparing a workspace-local database instead; .superset/run.sh keeps the backend on it"
+		db_dir="$ROOT_DIR/var/db"
+	fi
 fi
 
 mkdir -p "$config_dir" "$db_dir"
