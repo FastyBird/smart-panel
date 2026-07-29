@@ -128,11 +128,18 @@ describe('BuddyContextService', () => {
 			getAlerts: jest.fn().mockResolvedValue([]),
 		};
 
+		// Both ends have to come from one clock reading: the service derives the
+		// kWh→kW factor from the interval length, so a millisecond of drift between
+		// two separate `new Date()` calls makes it 300001ms instead of 300000 and
+		// the rate misses the expected value by more than the assertion tolerance.
+		const intervalEnd = new Date();
+		const intervalStart = new Date(intervalEnd.getTime() - 5 * 60 * 1000);
+
 		energyDataService = {
 			getDeltas: jest.fn().mockResolvedValue([
 				{
-					intervalStart: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-					intervalEnd: new Date().toISOString(),
+					intervalStart: intervalStart.toISOString(),
+					intervalEnd: intervalEnd.toISOString(),
 					productionDeltaKwh: 0.4,
 					gridImportDeltaKwh: 0.2,
 					gridExportDeltaKwh: 0.1,
